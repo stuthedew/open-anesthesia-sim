@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/
 added: 2026-10-19
 closed: 2026-10-24
 pr: 1728
+filed-pr: 1682
 payoff: a REJECT from verify --self means something again, while a branch whose tests no longer catch a change to its own lines still fails
 verify: ! grep -qF 'no existing assertion removed' subprojects/docket/src/docket/verify.py
 reenters: PL-4W2L

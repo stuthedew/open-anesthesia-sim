@@ -783,6 +783,14 @@ class Item:
     #: outlives it. Defaulted empty like the fields below, so an item written
     #: before the field existed still parses.
     pr: str = ""
+    #: The pull request open on the branch that filed this item, as a bare
+    #: number, written by `docket new` when the forge names one. It is the
+    #: one record of which pull request added the item. `docket inflow` reads
+    #: it to tell a filing found while a fix was being built, which the same
+    #: pull request filed and closed, from a fix that shipped and then did not
+    #: hold (`PL-C47M`). Empty where the filing had no pull request open, or
+    #: the forge could not be asked.
+    filed_pr: str = ""
     #: One plain-language line of what closing this item buys - faster, fewer
     #: bugs reaching `main`, a check that stops lying, a release that stops
     #: needing a person to remember a step. The consequence, never a
@@ -1558,6 +1566,40 @@ def split_generator_verdict(value: str) -> tuple[str, str]:
     return verdict.lower(), text[len(verdict) :].strip(" -\u2013\u2014:,;").strip()
 
 
+#: What a head's `spent` reason opens with once the head is closed `done`:
+#: the kind of mechanism that stops the next member, or `none` with why there
+#: is none. Written as `spent - check: tools/x.py refuses ...`. The audit of
+#: 2026-11-10 found that the fixes which held each had a check or a checked
+#: type, and that the ones which did not hold were sweeps or prose, while a
+#: verdict in free prose read the same either way (`PL-D8L0`). The kind is
+#: the decidable half. Whether the named mechanism does stop the next member
+#: stays the closing session's judgment.
+MECHANISM_KINDS = ("check", "type", "single writer", "none")
+
+#: The first close date `generator_faults` holds a head's verdict to
+#: `MECHANISM_KINDS`. Heads closed before it are not rewritten: their verdicts
+#: were written to the rule of their day, and a kind added now would be a
+#: judgment made after the fact by a session that did not do the work.
+MECHANISM_REQUIRED_FROM = date(2026, 11, 23)
+
+
+def verdict_mechanism(value: str) -> str:
+    """The `MECHANISM_KINDS` entry a `spent` reason opens with, or `""`.
+
+    Read case-insensitively, with the colon after the kind required, so a
+    sentence that only starts with the word "type" or "none" is not taken
+    for the record.
+    """
+    verdict, reason = split_generator_verdict(value)
+    if verdict != GENERATOR_VERDICTS[1]:
+        return ""
+    lowered = reason.lower()
+    for kind in MECHANISM_KINDS:
+        if lowered.startswith(f"{kind}:"):
+            return kind
+    return ""
+
+
 def split_deferred_from(value: str) -> tuple[str, str]:
     """A `deferred-from:` value as its gate's version and its reason, neither judged.
 
@@ -1637,9 +1679,9 @@ def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     field that decides whether an item outranks a `safety`-classed `P1`.
 
     **Only where a verdict could still move something.** A closed item is
-    never startable, so `recommend` never ranks one and a verdict written onto
-    it is read by nothing - which is `generator_candidates`' own test for the
-    window `root-cause-of:` acts in, arriving here. Demanding one anyway would
+    never startable, so `recommend` never ranks one and its verdict moves no
+    rank - which is `generator_candidates`' own test for the window
+    `root-cause-of:` acts in, arriving here. Demanding one anyway would
     mean backfilling every head this project has already closed with a
     retrospective judgment about a mechanism that session did not diagnose,
     which invents the audit fact rather than recording it.
@@ -1651,6 +1693,13 @@ def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     session that recorded a live generator and believes it is now ranked,
     where nothing else in the project would ever say it is not.
 
+    **A head closed `done` from `MECHANISM_REQUIRED_FROM` names its
+    mechanism** (`PL-D8L0`). Its verdict is `spent` and its reason opens with
+    one of `MECHANISM_KINDS`, so a head closed by a check reads differently
+    from one closed on a sweep or on silence. This is the one place a closed
+    item's verdict is read, and it asks nothing of heads closed before that
+    date.
+
     A verdict without a `root-cause-of:` is faulted from the other end. It
     judges the recurrence of a cluster the item does not record, so the reader
     is told which field is missing rather than left with a line that ranks
@@ -1658,6 +1707,14 @@ def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     """
     verdict, reason = split_generator_verdict(item.generator)
     sound_claim = is_generator(item, known)
+    if sound_claim and _owes_mechanism(item) and not verdict_mechanism(item.generator):
+        kinds = ", ".join(f"`{kind}:`" for kind in MECHANISM_KINDS)
+        return (
+            "does not name what stops the next member; a head closed `done` from "
+            f"{MECHANISM_REQUIRED_FROM.isoformat()} writes `{GENERATOR_VERDICTS[1]} - ` and "
+            f"then one of {kinds}, followed by the check, type or single writer, or by why "
+            "there is none",
+        )
 
     if not item.generator:
         if sound_claim and item.is_open:
@@ -1689,6 +1746,13 @@ def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
             "stopped doing - rather than an unexplained rank"
         )
     return tuple(faults)
+
+
+def _owes_mechanism(item: Item) -> bool:
+    """Whether `item`, a sound head, was closed `done` on or after `MECHANISM_REQUIRED_FROM`."""
+    return (
+        item.status == "done" and item.closed is not None and item.closed >= MECHANISM_REQUIRED_FROM
+    )
 
 
 def misread_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
@@ -1766,8 +1830,8 @@ def ranks_as_generator(item: Item, known: Collection[str]) -> bool:
     the outcome the ratified decision exists to remove.
 
     **A closed item earns nothing, whatever its verdict says.** `recommend`
-    ranks from the startable set, so a closed head is on no tier - and the
-    README's "a closed head is asked for nothing" is the same rule. It is
+    ranks from the startable set, so a closed head is on no tier, whatever
+    mechanism its verdict names. It is
     decided here rather than by each reader because it was not: the test lived
     in `render._verdict_phrase` alone, and `docket show`, which asks this about
     any item it is given, reported five closed heads as ranked on the tier
@@ -2271,6 +2335,7 @@ def parse_item(text: str, path: str = "") -> Item:
         closed=_parse_date(fields.get("closed", "")),
         commit=fields.get("commit", ""),
         pr=fields.get("pr", ""),
+        filed_pr=fields.get("filed-pr", ""),
         reason=fields.get("reason", ""),
         payoff=fields.get("payoff", ""),
         tests=lists["tests"],
@@ -2323,6 +2388,7 @@ FIELD_ORDER = (
     "closed",
     "commit",
     "pr",
+    "filed-pr",
     "reason",
     "payoff",
     "tests",
@@ -2364,6 +2430,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "closed": item.closed.isoformat() if item.closed else "",
         "commit": item.commit,
         "pr": item.pr,
+        "filed-pr": item.filed_pr,
         "reason": item.reason,
         "payoff": item.payoff,
         "tests": ", ".join(item.tests),

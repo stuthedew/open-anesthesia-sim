@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/app/display_units.py, src/anesthesia_sim/app/agent_c
 added: 2026-11-21
 closed: 2026-11-21
 pr: 2196
+filed-pr: 2181
 payoff: A change to how a unit of agent amount is written reaches every place the interface writes it, so two Views cannot name one amount in two ways
 tests: tests/unit/test_display_units.py::test_no_agent_amount_unit_is_spelled_outside_the_units_module, tests/unit/test_display_units.py::test_the_search_for_a_typed_amount_unit_finds_one_in_each_kind_of_string, tests/unit/test_display_units.py::test_the_cost_views_unit_names_are_the_members_full_spellings, tests/unit/test_display_units.py::test_the_formatters_write_the_members_labels, tests/unit/test_display_units.py::test_a_refused_bottle_volume_names_its_unit_from_the_member
 reenters: PL-G84G

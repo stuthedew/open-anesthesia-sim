@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1973
+filed-pr: 1972
 payoff: messages to the owner that ask for nothing stop being refused, so threads stop filing an item for each new phrasing
 not-delegable: The fix is a choice of how the guard recognises an ask, and no command written before that choice can tell a fixed guard from one with four more exemptions
 root-cause-of: PL-VHMS, PL-0W6J, PL-Q0TK, PL-VNRM

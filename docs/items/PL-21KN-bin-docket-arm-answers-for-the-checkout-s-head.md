@@ -13,6 +13,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-26
 pr: 1126
+filed-pr: 1047
 payoff: arm stops advising an update for a pull request already level with main, so neither misfiring remedy gets run
 verify: grep -q 'def test_arm_reads_the_pull_requests_branch_on_the_remote_not_head' subprojects/docket/tests/test_cli.py
 reenters: PL-4Q9B

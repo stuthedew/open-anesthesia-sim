@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/agent
 added: 2026-10-25
 closed: 2026-10-26
 pr: 1846
+filed-pr: 1830
 payoff: the accounting panel reports a conservation failure at the moment one is detected, instead of saying Valid under the banner that reports it
 verify: grep -q 'def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt' tests/unit/test_dashboard_frame.py
 reenters: PL-X7D5

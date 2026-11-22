@@ -11,6 +11,7 @@ touches: tools/pr_title_check.py, tools/generator_check.py, tools/branch_id_chec
 added: 2026-09-23
 closed: 2026-09-23
 pr: 938
+filed-pr: 938
 payoff: the last three tools/ git readers say 'not checked' when git fails, instead of passing any pull request title, printing a spawn ratio of 0.00 nobody measured, or telling a branch it owes no id
 verify: grep -q 'def test_a_head_git_cannot_read_is_not_a_branch_that_closes_nothing' tests/unit/test_pr_title_check.py && grep -q 'def test_a_history_git_cannot_read_leaves_the_ratio_unmeasured_rather_than_zero' tests/unit/test_generator_check.py && grep -q 'def test_a_walk_git_did_not_answer_declines_instead_of_owing_nothing' tests/unit/test_branch_id_check.py
 reenters: PL-9RFP

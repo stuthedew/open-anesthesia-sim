@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 closed: 2026-10-17
 pr: 1500
+filed-pr: 1027
 payoff: a session editing through Bash is told its branch claims nothing at its first edit that is work, as an Edit-tool session is, instead of by CI refusing its pull request a push later
 verify: grep -q 'def test_branch_guard_says_to_claim_after_the_first_bash_edit_that_is_work' tests/unit/test_docket_branch_guard.py
 reenters: PL-J9S0, PL-Q9NJ

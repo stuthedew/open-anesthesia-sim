@@ -227,8 +227,13 @@ def test_picks_leads_with_a_live_head_and_lists_it_once() -> None:
     assert found.led == ("PL-G1G1",)
 
 
-def test_picks_offers_startable_scope_entries_with_what_waits_on_them() -> None:
-    """Entry 1 holds two of the scope's three others, one directly; blocked entries are absent."""
+def test_picks_holds_back_startable_scope_entries_with_what_waits_on_them() -> None:
+    """Entry 1 holds two of the scope's three others, one directly; blocked entries are absent.
+
+    While the gate is being cleared the entries are listed unnumbered, under a
+    heading that says the roadmap holds them back, so none can be picked
+    (`PL-JF22`). Each still names what would come first once the gate clears.
+    """
     _, found = _picks()
     builds = [line for line in found.lines if line.kind == BUILD]
     assert [(b.entry, [i.identifier for i in b.items]) for b in builds] == [
@@ -238,8 +243,11 @@ def test_picks_offers_startable_scope_entries_with_what_waits_on_them() -> None:
     layout = builds[0]
     assert (layout.waiting_on_it, layout.waiting_directly, layout.scope_others) == (2, 1, 3)
     text = format_picks(found)
-    assert "the roadmap clears the gate first, with 7 entries still open" in text
-    assert "build entry 1, The layout model - 1 startable (product): 1 L; 2 of the" in text
+    assert "Held back until the gate clears, with 7 entries still open" in text
+    assert "the Required-scope work held back until it clears." in text
+    assert "  - build entry 1, The layout model - 1 startable (product): 1 L; 2 of the" in text
+    assert "first once the gate clears: PL-F1F1" in text
+    assert "  8. build entry" not in text
     assert "none of the scope's 3 other open items waits on it" in text
     # What the gate cannot clear is counted, never offered.
     assert "Not offered: 1 the milestone clears itself and 1 blocked outside the gate" in text

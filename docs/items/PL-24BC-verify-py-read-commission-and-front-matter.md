@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 closed: 2026-10-01
 pr: 1271
+filed-pr: 1270
 payoff: the next change to the item-file grammar reaches the audit's two readers of it without a second edit
 verify: ! grep -qF 'held_name.startswith(f"{item.identifier}-")' subprojects/docket/src/docket/verify.py
 reenters: PL-PVW2

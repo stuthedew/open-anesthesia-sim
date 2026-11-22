@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 closed: 2026-10-05
 pr: 1363
+filed-pr: 1353
 payoff: a YAML block-scalar header or a stray dashed line in an item's front matter can no longer put text into a value nobody wrote, or drop every field below it, while check reports no errors
 verify: grep -q 'def test_a_block_scalar_header_is_never_read_as_part_of_the_value' subprojects/docket/tests/test_model.py && grep -q 'def test_front_matter_closes_only_on_a_line_that_is_exactly_three_dashes' subprojects/docket/tests/test_model.py
 reenters: PL-9HD1

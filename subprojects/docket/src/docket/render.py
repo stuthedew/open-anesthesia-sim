@@ -37,6 +37,8 @@ from .model import (
     LANE_PRODUCT,
     LANE_UNPLACED,
     LANE_WORKFLOW,
+    MECHANISM_KINDS,
+    MECHANISM_REQUIRED_FROM,
     MIN_RECURRENCES,
     NO_DELEGATION,
     PRIORITIES,
@@ -50,6 +52,7 @@ from .model import (
     recurrences_of,
     split_deferred_from,
     split_generator_verdict,
+    verdict_mechanism,
 )
 from .notes import Thread
 from .picks import BUILD, BUILD_REST, HEAD, LANE, PickLine, Picks
@@ -1927,11 +1930,47 @@ def format_clusters(
             f"  {cluster.head.identifier} "
             f"{_plural(len(cluster.members), 'member', 'members')}, {_drain_phrase(cluster)}"
             f"{_verdict_phrase(cluster.head, standings.get(cluster.head.identifier))}"
+            + "".join(f" [{mark}]" for mark in _closure_marks(cluster))
         )
         lines.append(f"      {_misread_or_title(cluster.head)}")
+    if any(_closure_marks(cluster) for cluster in ordered):
+        lines += [
+            "",
+            f"  [{MEMBERS_OPEN_MARK}]: the head is done and some of its members are not.",
+            f"  [{NO_MECHANISM_MARK}]: the head is done and its generator: reason does not "
+            f"open with {', '.join(f'{kind}:' for kind in MECHANISM_KINDS)}.",
+            f"  A head closed from {MECHANISM_REQUIRED_FROM.isoformat()} must open with one; "
+            "older heads are not rewritten.",
+        ]
     lines.extend(_format_overlaps(overlaps))
     lines.extend(_outside_clusters(unsound, defects, standings, heads=clusters.keys()))
     return "\n".join(lines)
+
+
+def _closure_marks(cluster: Cluster) -> list[str]:
+    """What a closed head's close left undone, as short clauses, or none (`PL-D8L0`).
+
+    Two things make a head's close read like one made by a check when it was
+    not. Its members were still open, so the cause was closed before the
+    repairs. Or its verdict names no check, type or single writer, which is
+    how a close on a sweep, on silence or on prose reads. Heads closed before
+    `MECHANISM_REQUIRED_FROM` are marked too, since the mark records what the
+    head says and rewrites nothing.
+    """
+    head = cluster.head
+    if head.status != "done":
+        return []
+    marks = []
+    if cluster.open_items:
+        marks.append(MEMBERS_OPEN_MARK)
+    if not verdict_mechanism(head.generator):
+        marks.append(NO_MECHANISM_MARK)
+    return marks
+
+
+#: The marks `_closure_marks` puts on a closed head's line in `docket generators`.
+MEMBERS_OPEN_MARK = "closed with members open"
+NO_MECHANISM_MARK = "no mechanism named"
 
 
 def _misread_or_title(head: Item) -> str:
@@ -3620,8 +3659,13 @@ def _pick_name(line: PickLine) -> str:
     return line.name
 
 
-def _pick_block(number: int, line: PickLine) -> list[str]:
-    """One numbered line of `format_picks`, with its next pick and its members beneath."""
+def _pick_block(number: int | None, line: PickLine) -> list[str]:
+    """One line of `format_picks`, with its next pick and its members beneath.
+
+    `number` is `None` for a build line the roadmap holds back until the gate
+    clears. It is not offered, so it carries no number to name it back by,
+    and its pick is what would come first then (`PL-JF22`).
+    """
     lanes = (
         ", ".join(f"{lane} {count}" for lane, count in line.lanes)
         if len(line.lanes) > 1
@@ -3636,7 +3680,8 @@ def _pick_block(number: int, line: PickLine) -> list[str]:
         [effort_total(list(line.items)), *(f"{count} {said}" for count, said in held if count)]
     )
     what = "startable" if line.kind in (BUILD, BUILD_REST) else "open"
-    head = f"  {number}. {_pick_name(line)} - {len(line.items)} {what} ({lanes}): {counts}"
+    mark = "-" if number is None else f"{number}."
+    head = f"  {mark} {_pick_name(line)} - {len(line.items)} {what} ({lanes}): {counts}"
     if line.kind == BUILD:
         others = _plural(line.scope_others, "other open item", "other open items")
         head += (
@@ -3650,7 +3695,8 @@ def _pick_block(number: int, line: PickLine) -> list[str]:
         lines.append("       next: nothing here can start now")
     else:
         item = line.pick.item
-        lines.append(f"       next: {item.identifier} ({item.effort}) {_gloss(item.title, 100)}")
+        said = "first once the gate clears" if number is None else "next"
+        lines.append(f"       {said}: {item.identifier} ({item.effort}) {_gloss(item.title, 100)}")
         if item.payoff:
             lines.append(f"       payoff: {item.payoff}")
     if line.kind != HEAD:
@@ -3667,21 +3713,32 @@ def format_picks(picks: Picks) -> str:
     """
     entries = _plural(picks.clearable, "entry", "entries")
     lines = [
-        f"{picks.milestone}: the {entries} its gate can clear, by feature, and the"
-        " Required-scope work that can start now.",
+        f"{picks.milestone}: the {entries} its gate can clear, by feature"
+        + (
+            ", and the Required-scope work held back until it clears."
+            if picks.build_waits
+            else ", and the Required-scope work that can start now."
+        ),
         "",
     ]
     number = 0
     built = False
     for line in picks.lines:
-        if line.kind in (BUILD, BUILD_REST) and not built:
+        build = line.kind in (BUILD, BUILD_REST)
+        if build and not built:
             built = True
-            waits = (
-                f" - the roadmap clears the gate first, with {entries} still open"
-                if picks.build_waits
-                else ""
-            )
-            lines += ["", f"  Build, from the milestone's Required scope{waits}:"]
+            if picks.build_waits:
+                lines += [
+                    "",
+                    f"  Held back until the gate clears, with {entries} still open: the",
+                    '  Required-scope work that could start then. ROADMAP.md § "The cadence"',
+                    "  clears the gate before the milestone is built, so none of it is offered.",
+                ]
+            else:
+                lines += ["", "  Build, from the milestone's Required scope:"]
+        if build and picks.build_waits:
+            lines += _pick_block(None, line)
+            continue
         number += 1
         lines += _pick_block(number, line)
     if not picks.lines:
@@ -4377,7 +4434,8 @@ def format_inflow(report: Inflow) -> str:
         "  filed      filings no head or sweep explained when they arrived. /day divides by",
         "             the days the period has, so a short final period compares with the rest.",
         "  re-entry   of filed, those whose reenters: names a closed item whose fix should",
-        "             have covered them, as triage's generator check judged it.",
+        "             have covered them, as triage's generator check judged it. A name the",
+        "             filing's own pull request closed is left out: that fix had not shipped.",
         "  +head      filed while a head whose root-cause-of names them was open: the head's",
         "             own sweep, or new instances of a cause already found. Kept apart so",
         "             a deliberate sweep does not read as regression.",
@@ -4397,6 +4455,13 @@ def format_inflow(report: Inflow) -> str:
             "+sweep is ? because git could not say which item's work filed each item, so a",
             "sweep's filings are counted in filed. The reason:",
             f"  {report.sweeps_unread}.",
+        ]
+    if report.unchecked_reentries:
+        lines += [
+            "",
+            f"{report.unchecked_reentries} re-entering filing(s) record no filed-pr:, so whether",
+            "the pull request that closed the item they name also filed them was not checked.",
+            "They are counted.",
         ]
     # A line a successor head answers is listed apart, naming the head: under
     # the first heading it read as a question nobody had answered, and only a

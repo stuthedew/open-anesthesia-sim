@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a new problem: check_untied_restatements came with 5ec0e
 added: 2026-11-02
 closed: 2026-11-22
 pr: 2224
+filed-pr: 1927
 payoff: a stored value restated in the documents is checked against its source even when its unit wraps to the next line
 tests: tests/unit/test_doc_check.py::test_a_figure_whose_unit_opens_the_next_line_is_asked_about, tests/unit/test_doc_check.py::test_a_number_ending_a_paragraph_joins_no_unit_from_the_next
 reenters: PL-R417

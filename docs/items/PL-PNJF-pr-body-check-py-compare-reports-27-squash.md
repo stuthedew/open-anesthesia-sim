@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-24
 closed: 2026-09-26
 pr: 1068
+filed-pr: 998
 verify: grep -q 'def test_recording_a_merged_pull_request_names_how_its_squash_copy_compares' tests/unit/test_pr_body_check.py
 reenters: PL-WFFX
 recurrences: 2026-09-25 PL-YYDT withdrawn 2026-09-25 PL-PNJF, 2026-09-26 PL-7VWK withdrawn 2026-09-26 PL-PNJF, 2026-09-26 PL-X2XP withdrawn 2026-09-26 PL-PNJF

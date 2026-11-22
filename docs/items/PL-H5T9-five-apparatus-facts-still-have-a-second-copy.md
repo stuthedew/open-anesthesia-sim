@@ -11,6 +11,7 @@ touches: tools/, subprojects/docket/src/docket/
 added: 2026-10-24
 closed: 2026-10-25
 pr: 1762
+filed-pr: 1740
 payoff: five apparatus facts each have one home, so editing one copy cannot leave another giving the old answer
 verify: ! grep -q '^SECTION_ID_RE = ' subprojects/docket/src/docket/roadmap.py && ! grep -q '^FRONT_MATTER = ' tools/pr_body_check.py && ! grep -q '^def repo_slug' tools/pr_body_check.py && ! grep -q '^FENCE_OPENING_RE = ' tools/fixture_id_check.py
 reenters: PL-40SJ

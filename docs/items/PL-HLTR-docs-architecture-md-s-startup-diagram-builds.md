@@ -11,6 +11,7 @@ touches: docs/ARCHITECTURE.md
 added: 2026-11-05
 closed: 2026-11-09
 pr: 2072
+filed-pr: 2044
 payoff: a contributor following the startup diagram lands on the constructor that startup actually calls
 verify: ! grep -qF 'AgentUptakeSystem.default()' docs/ARCHITECTURE.md
 reenters: PL-4FBP

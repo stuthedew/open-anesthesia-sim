@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/run_surfaces.py
 added: 2026-11-11
 closed: 2026-11-22
 pr: 2214
+filed-pr: 2125
 payoff: while two runs are compared, a learner reads each dial setting against the run it belongs to
 tests: tests/integration/simulation_view/test_simulation_view_views.py::test_each_row_of_dials_names_its_run_while_two_are_drawn_and_only_then
 reenters: PL-GTH6

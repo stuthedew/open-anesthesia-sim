@@ -11,6 +11,7 @@ touches: docs/MODEL.md, tests/reference/test_mac_awake_washout_figures.py
 added: 2026-10-26
 closed: 2026-10-31
 pr: 1900
+filed-pr: 1863
 payoff: a change to a coefficient or a default flow that moves the MAC-awake washout figures fails a test, instead of leaving docs/MODEL.md teaching a wake-up time the model no longer produces
 verify: uv run pytest -q tests/reference/test_mac_awake_washout_figures.py
 reenters: PL-4FBP

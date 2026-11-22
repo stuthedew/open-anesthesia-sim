@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/python.py, subprojects/docket/src/docket/
 added: 2026-10-25
 closed: 2026-10-25
 pr: 1821
+filed-pr: 1810
 payoff: which files are Python source is answered in one place, so a suffix added there reaches verify's suppression and quoting readers and doc_check's removed-definition reader together
 verify: uv run pytest -q subprojects/docket/tests/test_verify.py tests/unit/test_doc_check.py -k 'python_source_suffixes or python_source_is_named'
 reenters: PL-3PKN

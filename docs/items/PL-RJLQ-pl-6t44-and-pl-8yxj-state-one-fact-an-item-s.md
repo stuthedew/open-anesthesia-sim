@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/p
 added: 2026-09-24
 closed: 2026-10-18
 pr: 1581
+filed-pr: 985
 payoff: one family head says whether reading an item's queue state wrongly is still producing work, so the next reader who misreads it is ranked rather than filed
 verify: grep -q '^generator: spent' docs/items/PL-RJLQ-*.md
 root-cause-of: PL-6T44, PL-8YXJ, PL-0H5D, PL-59QW, PL-9F8B, PL-JNWS, PL-2349

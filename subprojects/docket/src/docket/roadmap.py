@@ -1473,6 +1473,24 @@ class Scope:
         """The later milestone naming this id, as `v0.4.0`, or `""`."""
         return self.later.get(identifier, "")
 
+    def held_for_gate(self, identifier: str) -> bool:
+        """Whether the roadmap holds this id back until the gate being cleared is clear.
+
+        True for an id in the anchor's own `Required scope` while its gate is
+        the beat. `ROADMAP.md` § "The cadence" clears the gate before the
+        milestone it gates is built, so that work is not offered until then
+        (`PL-JF22`). `milestone()` answers with a bare `v0.7.0`, and `anchor`
+        carries the roadmap's label, so the anchor's first token is compared.
+        """
+        placed_by = self.milestone(identifier)
+        return (
+            self.clearing
+            and bool(placed_by)
+            and bool(self.anchor)
+            and self.anchor.split()[0] == placed_by
+            and identifier not in self.current
+        )
+
 
 def milestone_scope(
     sections: Sequence[MilestoneSection],

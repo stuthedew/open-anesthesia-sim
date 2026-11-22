@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - filed after the gate froze, and a docket defect in how t
 added: 2026-10-11
 closed: 2026-10-12
 pr: 1427
+filed-pr: 1426
 payoff: an item stops reading blocked the moment nothing blocks it, so released work reaches bin/docket next in the pull request that released it instead of waiting for a grooming pass
 verify: grep -q 'def test_a_blocked_item_whose_every_blocker_has_closed_is_an_error' subprojects/docket/tests/test_checks.py
 reenters: PL-6T44

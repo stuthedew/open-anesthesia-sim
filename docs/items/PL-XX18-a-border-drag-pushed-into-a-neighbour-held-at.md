@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - filed after the gate froze; a missing WARNING cue on a d
 added: 2026-10-27
 closed: 2026-11-01
 pr: 1912
+filed-pr: 1880
 payoff: a drag that hits a held neighbour shows the WARNING line, as a keyboard step does, so a border that will not move says why
 verify: grep -q 'def test_a_drag_into_a_held_neighbour_lights_the_border_warning' tests/integration/test_layout_adapter.py
 reenters: PL-97WX

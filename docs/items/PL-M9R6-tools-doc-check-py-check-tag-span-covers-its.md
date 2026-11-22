@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 closed: 2026-10-01
 pr: 1271
+filed-pr: 1270
 payoff: a tag whose span holds a closure its notes never name is refused instead of passing on a longer number that happens to contain it
 verify: grep -q 'def test_a_span_note_names_its_pull_request_as_a_token' tests/unit/test_doc_check.py
 reenters: PL-PVW2

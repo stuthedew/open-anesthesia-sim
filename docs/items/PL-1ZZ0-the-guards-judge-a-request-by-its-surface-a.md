@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze; a guard-hook defect in the wo
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1991
+filed-pr: 1987
 payoff: a merge, a published address or a ref deletion is checked whichever spelling, client or field carries it
 verify: grep -q 'def test_an_address_in_a_commit_message_is_refused_and_nothing_is_sent' tests/unit/test_git_hooks.py
 root-cause-of: PL-82J5, PL-3986, PL-D16Y

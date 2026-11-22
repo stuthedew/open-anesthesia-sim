@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-27
 pr: 1133
+filed-pr: 1118
 payoff: a check wired into make check in one mode can no longer merge unenforced because CI happens to run the same script in another mode
 verify: grep -q 'def test_gate_parity_refuses_a_mode_only_one_gate_runs' tests/unit/test_doc_check.py
 reenters: PL-0HPV

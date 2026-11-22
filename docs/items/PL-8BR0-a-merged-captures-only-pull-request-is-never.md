@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 closed: 2026-09-27
 pr: 1147
+filed-pr: 1007
 payoff: a session whose pull request already squash-merged is told to restart instead of merging the base in, so its next capture is not stranded on a branch nothing will merge again
 verify: grep -q 'def test_a_merged_captures_only_branch_is_told_to_restart' subprojects/docket/tests/test_vcs.py
 reenters: PL-GHHW

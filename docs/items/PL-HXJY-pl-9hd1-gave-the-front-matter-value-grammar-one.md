@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 closed: 2026-10-05
 pr: 1363
+filed-pr: 1362
 payoff: a value any docket command writes is read back exactly as written, so no queue reading starts from a field its writer and its reader disagree on
 verify: grep -q 'def test_every_writer_refuses_a_value_the_reader_would_not_read_back' subprojects/docket/tests/test_model.py && grep -q '^generator: spent' docs/items/PL-HXJY-*.md
 root-cause-of: PL-0779, PL-LNDJ, PL-WJM4

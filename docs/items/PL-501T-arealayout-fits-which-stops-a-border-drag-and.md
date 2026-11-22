@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_ad
 added: 2026-11-01
 closed: 2026-11-16
 pr: 2169
+filed-pr: 1922
 payoff: a border drag stops where the neighbouring Area reaches the size it needs, so the stored layout matches what is drawn
 verify: grep -q 'def test_a_drag_stops_where_an_area_in_a_nested_split_reaches_its_views_need' tests/integration/test_layout_adapter.py
 reenters: PL-16BG
