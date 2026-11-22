@@ -40,3 +40,33 @@ verify: grep -qF "No test bounds the calculation error in a learner" docs/INTERF
 No assertion, limit or expected value changed: the module's AST is identical to `origin/main`'s once every string is blanked. One failure message changed its pointer from § "Displayed precision" to § "Comparing two readouts".
 
 Files checked: `docs/INTERFACE.md`, `docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md`, `README.md`, `src/` and `tests/`, by `grep -rn "148 500\|1 485 000\|never disagreed"`. No other place quoted them.
+
+**The owner's read, 2026-11-22.** The question was whether the explanations
+inside the three checks against published data could be rewritten, with every
+limit and expected value unchanged. The owner answered "research best
+practice" at 20:52Z. Read in this session, in full text:
+
+1. Google's documentation best practices
+   (https://google.github.io/styleguide/docguide/best_practices.html). Under
+   "Delete Dead Documentation": "Dead docs are bad. They misinform". Under
+   "Minimum Viable Documentation": "Cut out everything unnecessary, including
+   out-of-date, incorrect, or redundant information." Under "Duplication is
+   Evil": link to the one guide instead of writing another. Under
+   "Documentation is the Story of Your Code": inline comments exist to give
+   "information that the code itself cannot contain, such as why the code is
+   there."
+2. *Software Engineering at Google*, chapter 12, "Unit Testing"
+   (https://abseil.io/resources/swe-book/html/ch12.html). Under "Writing Clear
+   Tests": "A clear test is one whose purpose for existing and reason for
+   failing is immediately clear to the engineer diagnosing a failure." Under
+   "Write Clear Failure Messages", the message should carry the important
+   information. Under "DAMP, Not DRY", some duplication is acceptable in a test
+   "so long as that duplication makes the test simpler and clearer". The
+   copies removed here are dated measurements, not test setup, so that
+   allowance does not cover them.
+
+Each source supports the rewrite: the comments now give why each limit holds,
+the stale measurements are gone, each figure is kept once and pointed at, and
+the failure message that misstated its limit is corrected. The ASME V&V 40
+subcommittee's slide deck was also read and says nothing on where
+verification evidence should be recorded, so it is not relied on.
