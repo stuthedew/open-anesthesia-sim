@@ -159,6 +159,7 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import (
+    DialInput,
     FocusRing,
     NewCaseDialog,
     NoticeLabel,
@@ -300,7 +301,8 @@ class RunView(QWidget):
             the run.
         presentation_requested: Emitted with the coalesce flag when an action
             on this run means the dashboard must draw a frame. `True`, as for
-            a slider drag, leaves the frame to the next render tick. `False`
+            a held thumb's movement or a held key's repeat, leaves the frame
+            to the next render tick. `False`
             asks for a frame now. `SimulationView.present` handles the signal
             (`PL-R2YM`).
         case_restarted: Emitted when this run has started over from
@@ -947,8 +949,9 @@ class RunView(QWidget):
     def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
         """Rewrite this run's own widgets now, from `snapshot`, while the charts wait.
 
-        After a coalesced slider change, what is shown beside the dial must
-        be updated at once. It has to agree with the snapshot from the moment
+        After a coalesced slider change, which a held input's repeat or the
+        release of a held thumb makes (`DialInput`), what is shown beside the
+        dial must be updated at once. It has to agree with the snapshot from the moment
         the setting is applied (`PL-018`). The frame itself waits for the
         render tick (`PL-R2YM`). The values written here are kept, and the
         dashboard hands them to every View when this run then asks for a
@@ -1146,8 +1149,9 @@ class RunView(QWidget):
 
         Args:
             apply: The controller call that applies the setting.
-            coalesce: Whether the caller reports continuously, as a dragged
-                slider does.
+            coalesce: Whether the caller leaves the frame to be drawn later:
+                by the render tick for a held input's repeat, and by the end
+                of the preview for a released thumb (`DialInput`).
         """
 
         settled_notice = self._rejected_setting_notice
@@ -1232,47 +1236,67 @@ class RunView(QWidget):
         self.presentation_requested.emit(False)
 
     @halt_gate
-    def request_setting(self, control: ControlInput, value: float) -> None:
+    def request_setting(self, control: ControlInput, value: float, dial_input: DialInput) -> None:
         """Apply the value that one of this run's dials was moved to, in whichever View holds it.
 
         The dashboard calls this method when a View asks for the change.
+        `dial_input` decides when the frame for it is drawn. One discrete input
+        draws it at once, so the readouts, the schematic and the charts show
+        the same step on every frame (`PL-2WVC`). A held input's repeat
+        leaves it to the render tick, so a held key does not draw a frame for
+        every step it makes (`PL-R2YM`). A released thumb leaves it to the
+        end of the preview, which follows at once (`end_preview`).
         """
 
-        handlers: Mapping[ControlInput, Callable[[float], None]] = {
+        handlers: Mapping[ControlInput, Callable[[float, DialInput], None]] = {
             ControlInput.FRESH_GAS_FLOW: self._handle_fresh_gas_flow_change,
             ControlInput.DELIVERED: self._handle_delivered_concentration_change,
             ControlInput.ALVEOLAR_VENTILATION: self._handle_alveolar_ventilation_change,
             ControlInput.CARDIAC_OUTPUT: self._handle_cardiac_output_change,
         }
-        handlers[control](value)
+        handlers[control](value, dial_input)
 
     # Each dial's value is built into its checked type inside the call that
     # `_apply_setting` makes. So a value that the model refuses is refused
     # inside that call, and is reported as a refused setting. The vaporizer
     # dial's `Percent` below works the same way (`PL-0YYV`).
+    #
+    # Each handler takes the kind of input that applied the value. Only one
+    # discrete input draws its frame at once (`request_setting`). A test that
+    # calls a handler stands for one such input, which is the default.
 
-    def _handle_fresh_gas_flow_change(self, flow_l_min: float) -> None:
+    def _handle_fresh_gas_flow_change(
+        self, flow_l_min: float, dial_input: DialInput = DialInput.DISCRETE
+    ) -> None:
         self._apply_setting(
-            lambda: self.controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min)), coalesce=True
+            lambda: self.controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min)),
+            coalesce=dial_input is not DialInput.DISCRETE,
         )
 
-    def _handle_delivered_concentration_change(self, percent: float) -> None:
+    def _handle_delivered_concentration_change(
+        self, percent: float, dial_input: DialInput = DialInput.DISCRETE
+    ) -> None:
         self._apply_setting(
             lambda: self.controller.set_delivered_concentration_percent(
                 Percent(percent, name="delivered_concentration_percent")
             ),
-            coalesce=True,
+            coalesce=dial_input is not DialInput.DISCRETE,
         )
 
-    def _handle_alveolar_ventilation_change(self, flow_l_min: float) -> None:
+    def _handle_alveolar_ventilation_change(
+        self, flow_l_min: float, dial_input: DialInput = DialInput.DISCRETE
+    ) -> None:
         self._apply_setting(
             lambda: self.controller.set_alveolar_ventilation(AlveolarVentilation(flow_l_min)),
-            coalesce=True,
+            coalesce=dial_input is not DialInput.DISCRETE,
         )
 
-    def _handle_cardiac_output_change(self, flow_l_min: float) -> None:
+    def _handle_cardiac_output_change(
+        self, flow_l_min: float, dial_input: DialInput = DialInput.DISCRETE
+    ) -> None:
         self._apply_setting(
-            lambda: self.controller.set_cardiac_output(CardiacOutput(flow_l_min)), coalesce=True
+            lambda: self.controller.set_cardiac_output(CardiacOutput(flow_l_min)),
+            coalesce=dial_input is not DialInput.DISCRETE,
         )
 
     # ----------------------------------------------------------- transport

@@ -1176,6 +1176,47 @@ def test_the_time_axis_title_states_the_window_and_breaks_only_after_a_comma(
     chart.close()
 
 
+@pytest.mark.parametrize(
+    "chart_kind", [ConcentrationChart, WashInChart], ids=["concentration chart", "wash-in plot"]
+)
+def test_deleting_a_chart_s_window_leaves_its_time_axis_title_writing_nothing(
+    application: QApplication,
+    capfd: pytest.CaptureFixture[str],
+    chart_kind: type[ConcentrationChart] | type[WashInChart],
+) -> None:
+    """A chart whose window is deleted prints no traceback from its time axis title (`PL-9RZJ`).
+
+    The title is fitted again whenever the time axis changes geometry. After a
+    frame is drawn and then withheld, Qt reports a geometry change on the
+    axis while the axis itself is being deleted, after its Python side is
+    gone. Before the fix, that report printed `RuntimeError: ... Internal
+    C++ object (AxisItem) already deleted` to the error stream. PySide prints
+    an exception raised in a slot and goes on, so no test failed while it
+    happened.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 60)
+    window = QWidget()
+    chart = chart_kind(window)
+    window.resize(900, 400)
+    chart.resize(900, 400)
+    window.show()
+    application.processEvents()
+    chart.draw(_frame(controller))
+    application.processEvents()
+    chart.withhold()
+    application.processEvents()
+    capfd.readouterr()
+
+    window.deleteLater()
+    application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+    assert "Traceback" not in capfd.readouterr().err
+
+
 def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wrap(
     application: QApplication,
 ) -> None:

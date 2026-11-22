@@ -5558,7 +5558,11 @@ and the value printed above the slider is that setting. The value is applied
 before the preview ends, so the frame drawn at release already shows the run
 under its new setting. A key press, one notch of the scroll wheel or a click on
 the slider away from its handle is a single input, so it applies at once and
-draws no preview. A handle released at the setting already in force applies
+draws no preview. Such an input also draws the whole screen at once, so the
+readouts, the compartment schematic and both charts show the same instant
+after it (`PL-2WVC`). The repeats of a held key or a held button, and a
+trackpad swipe after it begins, are drawn on the next render tick instead, so a held input does not draw a frame for every
+step it makes. A handle released at the setting already in force applies
 nothing, and the run records no setting change.
 
 **A click on the slider away from its handle follows the platform's own

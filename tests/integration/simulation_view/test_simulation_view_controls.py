@@ -41,6 +41,7 @@ from anesthesia_sim.app.qt_widgets import ParameterSlider
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import ACCENT_TEXT, INK, MUTED, PANEL
+from anesthesia_sim.app.views import CompartmentSchematicView
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -405,6 +406,54 @@ def _step_up(slider: QSlider, step: _Input) -> None:
 
 
 @pytest.mark.parametrize("step", list(_Input), ids=[step.value for step in _Input])
+def test_one_input_on_a_dial_of_a_running_run_draws_every_part_of_the_screen_at_one_step(
+    application: QApplication, step: _Input
+) -> None:
+    """A key press, a wheel notch or a click on the track draws its frame at once (`PL-2WVC`).
+
+    The last frame is drawn at the start, and the run then takes 30 steps
+    with no frame drawn, as it does between two render ticks. One input on
+    the flow dial then follows. Before the fix, the input rewrote the run's
+    readouts and the compartment schematic at once and left both charts to
+    the render tick. So for up to 0.2 s the readouts and the schematic stood
+    at 30 s while both charts still ended at 0 s.
+
+    The expected instant is written out by hand: 30 steps of one second each.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+    slider.setFocus()
+    _advance(controller, 30)
+
+    _step_up(slider, step)
+
+    schematic = next(
+        v for v in view.layout_container.views() if isinstance(v, CompartmentSchematicView)
+    )
+    concentration_frame = _concentration(view).chart.frame
+    wash_in_frame = _wash_in(view).chart.frame
+    assert concentration_frame is not None
+    assert wash_in_frame is not None
+    assert controller.snapshot().fresh_gas_flow_l_min == pytest.approx(4.1)
+    assert {
+        "readout clock": run._readout_row.panels[0].value_label.text(),
+        "schematic": schematic.schematics[0].name_text.text(),
+        "concentration chart": concentration_frame.runs[0].elapsed_s,
+        "wash-in chart": wash_in_frame.runs[0].elapsed_s,
+    } == {
+        "readout clock": "30s",
+        "schematic": "At 30s of simulated time",
+        "concentration chart": 30.0,
+        "wash-in chart": 30.0,
+    }
+
+
+@pytest.mark.parametrize("step", list(_Input), ids=[step.value for step in _Input])
 def test_each_step_of_a_dial_at_a_new_instant_is_marked_and_listed(
     application: QApplication, step: _Input
 ) -> None:
@@ -598,7 +647,7 @@ def _flow_slider_at_four(
     _style_slider(control.slider, platform)
     assert controller.settings().fresh_gas_flow_l_min == 4.0
     signals: list[object] = []
-    control.value_changed.connect(lambda value: signals.append(("applied", value)))
+    control.value_changed.connect(lambda value, _input: signals.append(("applied", value)))
     control.preview_moved.connect(lambda value: signals.append(("preview", value)))
     control.preview_ended.connect(lambda: signals.append("preview ended"))
 

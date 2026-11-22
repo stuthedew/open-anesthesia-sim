@@ -159,6 +159,7 @@ from anesthesia_sim.app.preferences import (
 )
 from anesthesia_sim.app.qt_widgets import (
     ClauseWrappingLabel,
+    DialInput,
     FocusRing,
     MarkButton,
     MarkEntry,
@@ -1703,12 +1704,16 @@ class SimulationView(QWidget):
         a coalesced frame has already rewritten its own readouts
         (`RunView._apply_setting`). So the dials, the accounting panel, the
         schematic and the agent cost panel in the Areas move with those
-        readouts, and do not wait for the tick (`PL-RF2S`).
+        readouts, and do not wait for the tick (`PL-RF2S`). Until the tick,
+        those panels show a later step than the charts. So only an input
+        that repeats asks for a coalesced frame: a held thumb's movement, a
+        held key or a press held on the track (`DialInput`). A key press, a
+        wheel notch or a click on the track draws at once (`PL-2WVC`).
 
         Args:
             coalesce: True to mark a frame as owed and let the render tick
-                draw it, as a dragged slider does. False to draw at once, as
-                every discrete action does (`PL-R2YM`).
+                draw it, as a held input's repeats do. False to draw at once,
+                as every discrete action does (`PL-R2YM`).
         """
 
         if coalesce:
@@ -2474,15 +2479,20 @@ class SimulationView(QWidget):
         self._run_with(run_id).start_adjustment()
 
     @halt_gate
-    def _handle_setting_request(self, run_id: RunId, control: ControlInput, value: float) -> None:
+    def _handle_setting_request(
+        self, run_id: RunId, control: ControlInput, value: float, dial_input: DialInput
+    ) -> None:
         """Ask the run that a View named to take `value` as its setting on `control`.
+
+        `dial_input` says which kind of input applied the value, and so when
+        its frame is drawn (`RunView.request_setting`).
 
         Raises:
             ValueError: If the dashboard holds no such run (`_run_with`). The
                 halt gate then halts every run.
         """
 
-        self._run_with(run_id).request_setting(control, value)
+        self._run_with(run_id).request_setting(control, value, dial_input)
 
     @halt_gate
     def _handle_preview_request(self, run_id: RunId, control: ControlInput, value: float) -> None:

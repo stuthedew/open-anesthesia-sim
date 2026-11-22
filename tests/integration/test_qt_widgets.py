@@ -62,6 +62,7 @@ from anesthesia_sim.app.formatting import format_flow, format_percent
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
+    DialInput,
     FlowLayout,
     MarkButton,
     MarkEditor,
@@ -567,7 +568,7 @@ def test_the_value_applied_to_the_model_is_exactly_the_value_printed_above_the_s
     for setting in _settings():
         control = ParameterSlider(setting)
         emitted: list[float] = []
-        control.value_changed.connect(emitted.append)
+        control.value_changed.connect(lambda value, _input, emitted=emitted: emitted.append(value))
         minimum, maximum = control.slider.minimum(), control.slider.maximum()
         positions = sorted(
             {minimum, maximum, *range(minimum, maximum + 1, max(1, (maximum - minimum) // 40))}
@@ -623,7 +624,7 @@ def test_driving_a_slider_from_the_snapshot_emits_no_change(application: QApplic
     fresh_gas_flow, delivered, *_ = _settings()
     control = ParameterSlider(delivered)
     emitted: list[float] = []
-    control.value_changed.connect(emitted.append)
+    control.value_changed.connect(lambda value, _input: emitted.append(value))
     started: list[None] = []
     control.adjustment_started.connect(lambda: started.append(None))
     moved = SettingReadout(
@@ -744,7 +745,9 @@ def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
     events: list[tuple[str, float | None]] = []
     control.preview_moved.connect(lambda value: events.append(("preview", value)))
     control.preview_ended.connect(lambda: events.append(("ended", control.value())))
-    control.value_changed.connect(lambda value: events.append(("applied", value)))
+    control.value_changed.connect(
+        lambda value, dial_input: events.append((f"applied on {dial_input.value}", value))
+    )
     start = slider_position(setting.value, setting.decimals)
 
     control.slider.setSliderDown(True)
@@ -762,7 +765,7 @@ def test_a_dragged_thumb_previews_until_release_and_then_applies_once(
 
     assert events == [
         *held,
-        ("applied", slider_value(start + 10, setting.decimals)),
+        ("applied on a released thumb", slider_value(start + 10, setting.decimals)),
         ("ended", slider_value(start + 10, setting.decimals)),
     ]
 
@@ -772,7 +775,7 @@ def test_a_released_thumb_back_where_it_started_applies_nothing(application: QAp
     control = ParameterSlider(setting)
     applied: list[float] = []
     ended: list[None] = []
-    control.value_changed.connect(applied.append)
+    control.value_changed.connect(lambda value, _input: applied.append(value))
     control.preview_ended.connect(lambda: ended.append(None))
     start = slider_position(setting.value, setting.decimals)
 
@@ -789,15 +792,88 @@ def test_a_key_step_applies_at_once_and_previews_nothing(application: QApplicati
     setting = _settings()[0]
     control = ParameterSlider(setting)
     previewed: list[float] = []
-    applied: list[float] = []
+    applied: list[tuple[float, DialInput]] = []
     control.preview_moved.connect(previewed.append)
-    control.value_changed.connect(applied.append)
+    control.value_changed.connect(lambda value, dial_input: applied.append((value, dial_input)))
     start = slider_position(setting.value, setting.decimals)
 
     QTest.keyClick(control.slider, Qt.Key.Key_Right)
 
-    assert applied == [slider_value(start + 1, setting.decimals)]
+    assert applied == [(slider_value(start + 1, setting.decimals), DialInput.DISCRETE)]
     assert previewed == []
+
+
+def test_each_applied_value_says_whether_one_input_or_a_repeat_applied_it(
+    application: QApplication,
+) -> None:
+    """A key press, a wheel notch and a click on the track are one input, and their repeats are not.
+
+    One input draws its frame at once, and a held input's repeats leave theirs
+    to the render tick (`DialInput`, `PL-2WVC`). Under Fusion, which the
+    tests run under, a press held on the track repeats its step from a timer
+    after 500 ms and then every 50 ms (`QAbstractSlider.setRepeatAction`).
+    So the press is held for 700 ms, which gives at least one repeat.
+    """
+
+    control = ParameterSlider(_settings()[0])
+    control.resize(400, control.sizeHint().height())
+    slider = control.slider
+    applied: list[tuple[str, DialInput]] = []
+    inputs = (
+        ("key", lambda: QApplication.sendEvent(slider, _key_event(repeat=False))),
+        ("repeat", lambda: QApplication.sendEvent(slider, _key_event(repeat=True))),
+        (
+            "notch",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.NoScrollPhase)
+            ),
+        ),
+        (
+            "swipe begins",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollBegin)
+            ),
+        ),
+        (
+            "swipe moves",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollUpdate)
+            ),
+        ),
+        (
+            "swipe coasts",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollMomentum)
+            ),
+        ),
+    )
+
+    for name, send in inputs:
+        control.value_changed.connect(
+            lambda _value, dial_input, name=name: applied.append((name, dial_input))
+        )
+        send()
+        control.value_changed.disconnect()
+
+    assert applied == [
+        ("key", DialInput.DISCRETE),
+        ("repeat", DialInput.REPEAT),
+        ("notch", DialInput.DISCRETE),
+        ("swipe begins", DialInput.DISCRETE),
+        ("swipe moves", DialInput.REPEAT),
+        ("swipe coasts", DialInput.REPEAT),
+    ]
+
+    held: list[DialInput] = []
+    control.value_changed.connect(lambda _value, dial_input: held.append(dial_input))
+    track_end = QPoint(slider.width() - 1, slider.height() // 2)
+    QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end)
+    QTest.qWait(700)
+    QTest.mouseRelease(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end)
+
+    assert held[0] is DialInput.DISCRETE
+    assert len(held) >= 2
+    assert set(held[1:]) == {DialInput.REPEAT}
 
 
 def test_a_frame_written_during_a_drag_leaves_the_thumb_under_the_pointer(
