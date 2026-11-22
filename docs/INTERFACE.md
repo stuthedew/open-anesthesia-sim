@@ -4229,12 +4229,13 @@ enforces the `<0.01%` form
 
 #### Why the readouts show two decimals
 
-**The equation solver does not limit how many decimals a readout can show.** On
-2026-09-06, the simulator's results differed from an independently computed
-solution by at most $`1.6\times10^{-12}`$ percentage points anywhere in the
-reference test's runs, and by $`5.2\times10^{-12}`$ over an hour with the
-settings held constant. That is about one two-billionth of the last displayed
-digit, so **a third decimal would not be numerical noise.** Legibility sets the
+**The equation solver does not limit how many decimals a readout can show.** The
+test that `docs/VERIFICATION.md` § "Independent-solution test" describes holds the
+simulator's results to within $`4\times10^{-11}`$ percentage points of an
+independently computed solution, and to within $`10^{-10}`$ over an hour with the
+settings held constant. Those limits are $`4\times10^{-13}`$ and $`10^{-12}`$ as a
+fraction. The larger is one hundred-millionth of the last displayed digit, so **a
+third decimal would not be numerical noise.** Legibility sets the
 number of decimals instead: the readouts show the coarsest resolution that keeps
 every compartment's wash-in visible (below). How far the model's parameters vary
 between patients does not set it (project owner, 2026-11-14, `PL-W51N`). That
