@@ -2449,8 +2449,8 @@ def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> 
     banner = notice(halted, None)
 
     assert banner is not None
-    assert "The rejected step's totals: " in banner
-    assert "delivered=4.240000e+00 L" in banner
+    assert "the agent accounting check failed" in banner
+    assert "e+00" not in banner, "the totals are for the log, and the panel shows them"
     assert "except the agent accounting panel, which shows the rejected step" in banner
 
 

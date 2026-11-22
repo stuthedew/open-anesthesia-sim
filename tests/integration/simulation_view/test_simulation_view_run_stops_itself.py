@@ -5,6 +5,7 @@ These tests cover a run that stops itself (`PL-T995`).
 `simulation_view_support.py` describes the whole suite.
 """
 
+import logging
 import time
 from collections.abc import Callable, Mapping
 from typing import Final, NoReturn
@@ -1709,6 +1710,46 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
         "No frame has been drawn since the run started over: the readouts and the charts "
         "are withheld, and the run itself stands at its last completed step."
     ) in banner
+
+
+@pytest.mark.parametrize("scenario", ["accounting halt", "accounting halt, no frame drawn"])
+def test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    scenario: str,
+) -> None:
+    """The banner after a failed accounting check says what happened in plain words.
+
+    Until `PL-TWZY`, the banner showed the core's message for a developer: the
+    exception's class name, and every total in e-notation under a code name, such
+    as `absolute_error=1.000000e+00 L`. The expected opening is written out here
+    rather than read from the interface's constant. The core's message, with its
+    totals, still reaches the log for a developer. The injected check has 40.0 L
+    delivered, 20.0 L exhausted and 14.0 L stored, which leaves 6.0 L unaccounted
+    (`_a_failing_check`).
+    """
+
+    caplog.set_level(logging.ERROR, logger="anesthesia_sim.app.run_view")
+
+    run, _ = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
+
+    banner = run._notice_text.notice()
+    assert banner is not None
+    assert banner.startswith(
+        "Simulation stopped — the agent accounting check failed: in the rejected step, the "
+        "agent delivered, exhausted and stored did not add up. This is a fault in the "
+        "simulator, not a change in the patient. "
+    ), banner
+    assert banner.endswith("Reset to start a new run."), banner
+    assert not any(f"{digit}e" in banner for digit in "0123456789"), f"e-notation in {banner!r}"
+    assert "Error" not in banner
+    assert "=" not in banner
+    assert "_" not in banner
+
+    logged = "\n".join(record.getMessage() for record in caplog.records)
+    assert "AgentSimulationValidationError" in logged
+    assert "unaccounted=6.000000e+00 L" in logged
 
 
 def test_an_accounting_error_with_a_check_of_the_wrong_type_still_halts_the_run(

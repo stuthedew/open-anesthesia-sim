@@ -84,6 +84,7 @@ question is open in the window, because the question blocks the Pause button
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping
 from dataclasses import replace
 from typing import Final
@@ -219,6 +220,10 @@ from anesthesia_sim.layout.run_identity import RunId
 # data files.
 if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
     raise RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents")
+
+#: The log that a halt writes the full exception to. The banner words a failure
+#: for the learner, and a developer reads the exception's own message here.
+_LOG: Final = logging.getLogger(__name__)
 
 #: The (agent_id, display_name) pair for every built-in agent, in
 #: `AGENT_DATA_FILENAMES` order. The pairs are read once from the data files,
@@ -1652,6 +1657,12 @@ class RunView(QWidget):
         """
 
         disposition, reason = halt_disposition(error)
+
+        if disposition is HaltDisposition.FAILURE:
+            # The banner may word a failure for the learner and leave out the
+            # exception's own message (`shown_failure_reason`), so the full
+            # message and its traceback are logged for a developer (`PL-TWZY`).
+            _LOG.error("The run stopped on a failure: %s", reason, exc_info=error)
 
         if in_frame:
             self.controller.record_failed_frame(reason)

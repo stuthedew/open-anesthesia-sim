@@ -2515,7 +2515,9 @@ its lines between drawn instants could be wider than a pixel.
 the failure, the panel shows the same result from the run's record. The run
 stops, and the model undoes the failed step, so the run's own accounting passes
 again. The banner names the panel as the one exception to "the values shown are
-the last completed step".
+the last completed step". It says in words that the check failed, and that this
+is a fault in the simulator and not a change in the patient. It does not print
+the totals, which the panel shows.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2548,7 +2550,11 @@ displayed value unchanged
 (`test_a_failed_step_leaves_every_displayed_value_bit_identical`), and a stopped
 run refuses every setting
 (`test_a_stopped_run_refuses_every_setting_and_records_nothing`), both in
-`tests/integration/controller/test_controller_running.py`.
+`tests/integration/controller/test_controller_running.py`. The banner after a
+failed accounting check shows no e-notation and no code name, and the log keeps
+the totals
+(`test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals`, in
+the same file as the first test).
 
 ### Naming the run in a comparison
 
@@ -4793,8 +4799,8 @@ sign are set by the order in which the arithmetic ran, not by anything modelled.
 They change even when a correct edit to the code alters only the last binary digits of that
 arithmetic, so neither line shows them. Without a sign, the two lines read alike.
 The sign means something only in a check that fails. The run then halts, and the
-failure notice prints the signed unaccounted amount with six decimal places,
-such as `1.000000e+00 L`.
+application's log records the signed unaccounted amount with six decimal places,
+such as `1.000000e+00 L`, for a developer. The banner does not show it.
 
 **For developers.** At 1 MAC with the reference adult's flows, one 0.1 L step is
 worth between about four SDs, for isoflurane at 1 h, and a seventh of an SD, for

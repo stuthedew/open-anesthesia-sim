@@ -245,6 +245,21 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step, "
     "except the agent accounting panel, which shows the rejected step. {exit}"
 )
+# The reason that every failure banner gives for a step whose agent accounting
+# failed its check. Any other failure shows the exception's own message
+# (`halt_disposition`), but this one has two readers. The core's message names
+# the exception class and prints every total in e-notation under its code name,
+# such as `absolute_error=1.000000e+00 L`, which is for a developer reading the
+# log (`RunView.halt` logs it). The learner gets plain words: what happened,
+# that it is a fault in the simulator and not a change in the patient, and,
+# through the banner's own exit, what to do next. The rejected step's amounts
+# are on the accounting panel beside the banner, so the banner does not repeat
+# them (`PL-TWZY`). The wording is a placeholder.
+ACCOUNTING_FAILURE_REASON_TEXT: Final = (
+    "the agent accounting check failed: in the rejected step, the agent delivered, "
+    "exhausted and stored did not add up. This is a fault in the simulator, not a change "
+    "in the patient"
+)
 # The failure banner that `run_presentation.halted_run` gives before any frame of the
 # stopped run has been drawn. At that point the chart and the readouts still show
 # the frame drawn before the stop, which is not the step the run stopped at. So
@@ -1956,6 +1971,30 @@ def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = F
     )
 
 
+def shown_failure_reason(status: RunStatus) -> str | None:
+    """Return the reason that a failure banner shows the learner, or None if the run has not failed.
+
+    A step whose agent accounting failed its check is reported in plain words,
+    `ACCOUNTING_FAILURE_REASON_TEXT`, and not in the core's message, which is
+    written for a developer. Every other failure shows the reason the run
+    recorded. A controller records the accounting check only with the first
+    failure (`SimulationController.fail`), so a run that failed for something
+    else first keeps that reason.
+
+    Args:
+        status: The run's status, either a `RunStatus` or the snapshot
+            carrying one.
+    """
+
+    if status.failure_reason is None:
+        return None
+
+    if status.rejected_accounting is not None:
+        return ACCOUNTING_FAILURE_REASON_TEXT
+
+    return status.failure_reason
+
+
 def refused_setting_notice(error: SimulationConfigurationError) -> str:
     """Return what the banner says about a setting that the core refused.
 
@@ -2062,7 +2101,7 @@ def notice(
             else REJECTED_ACCOUNTING_NOTICE_TEMPLATE
         )
         return template.format(
-            failure_reason=status.failure_reason,
+            failure_reason=shown_failure_reason(status),
             exit=_stopped_run_exit(
                 rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),
@@ -2145,7 +2184,7 @@ def halt_notice(
             template = UNDRAWN_FAILURE_NOTICE_TEMPLATE
 
         return template.format(
-            failure_reason=status.failure_reason,
+            failure_reason=shown_failure_reason(status),
             exit=_stopped_run_exit(
                 rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),

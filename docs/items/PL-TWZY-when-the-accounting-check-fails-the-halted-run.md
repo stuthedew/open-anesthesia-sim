@@ -3,12 +3,15 @@ id: PL-TWZY
 title: When the accounting check fails, the halted-run notice shows core's developer message to the learner, with e-notation and code names such as absolute_error=
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: interface-design-review
-touches: src/anesthesia_sim/core/agent_simulation_validation.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, docs/INTERFACE.md, tests/integration/simulation_view/test_simulation_view_run_stops_itself.py, tests/unit/test_dashboard_frame.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2259
 payoff: a learner whose run halts on a failed accounting check reads why in plain words
+tests: tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals
 ---
 
 **Problem.** When the accounting check fails, the halted-run notice shows core's developer message to the learner, with e-notation and code names such as absolute_error=
@@ -41,3 +44,58 @@ e-notation and no code name in the text the halt banner shows.
 **Generator check.** Possibly one route with several instances: `_halt_run`
 shows `str(error)` from `core/` verbatim, so every `core/` error message is
 learner text (`tools/glyph_check.py` names the same route). Not counted here.
+
+**Decided and built, 2026-11-22.** The halt banner gives the learner plain
+words, and the core's message, with its totals, goes to the application's log
+for a developer. The core's message is unchanged, because a developer reading a
+log or a traceback is its reader. Research taken before the change, each page
+read on 2026-11-22:
+
+1. Nielsen Norman Group, "Error-Message Guidelines"
+   (https://www.nngroup.com/articles/error-message-guidelines/): "Avoid
+   technical jargon and use language familiar to your users instead", and
+   "Hide or minimize the use of obscure error codes or abbreviations; show them
+   for technical diagnostic purposes only."
+2. Microsoft, Win32 "Error Message Guidelines"
+   (https://learn.microsoft.com/en-us/windows/win32/debug/error-message-guidelines):
+   "If a message has multiple audiences, you may need to provide separate text
+   for administrators, end users, and developers", and "If the error is a
+   critical error, write it to the event log." It asks a message to say what
+   happened and why, and what the user can do.
+3. Google, Technical Writing, "Write for the target audience"
+   (https://developers.google.com/tech-writing/error-messages/target-audience):
+   avoid jargon or technical terms the audience may not understand.
+4. OWASP Error Handling Cheat Sheet
+   (https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html):
+   "the error details are logged server side for investigation, and not
+   returned to the user."
+
+All four point the same way, so no option was put to the owner. The banner
+says what happened (the check failed and the step was rejected), why it
+matters to a learner (a fault in the simulator, not a change in the patient),
+and what to do (the banner's existing exit, Reset). The rejected step's
+amounts are on the accounting panel beside it, so the banner does not repeat
+them. The wording is a placeholder, and it changes what a halt tells a
+learner, so its pull request records the owner's read.
+
+`dashboard_frame.shown_failure_reason` chooses the words for every failure
+banner. `RunView.halt` logs every failure with its traceback at error level.
+Python's logging prints it to standard error when no handler is set.
+
+**Regression test run before the fix.** With `src/` stashed,
+`uv run pytest -q "tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals"`
+failed in both cases with `AssertionError: Simulation stopped —
+AgentSimulationValidationError: Agent accounting validation failed, so the
+step was rejected and rolled back. The rejected step's totals:
+unaccounted=6.000000e+00 L, ...`.
+
+**Generator check.** The route is still open for other failures:
+`halt_disposition` records `"{TypeName}: {message}"`, and every other failure
+banner shows it. Those failures are defects with no plain cause a learner
+could act on, and their banners already say Reset is the way out. Filed as
+`PL-XWCH` (the other halt banners) rather than widened here; this chain takes it next.
+
+**Docs swept:** `docs/INTERFACE.md` (§ "Every value and what qualifies it come
+from one step", § "Displayed precision"), `docs/MODEL.md` and
+`docs/VERIFICATION.md` (grep for the banner and the six-decimal form: no
+mention).
