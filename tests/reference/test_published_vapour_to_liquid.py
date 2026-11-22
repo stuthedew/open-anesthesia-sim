@@ -18,10 +18,12 @@ prints from these comparisons: its two tables, the ranges it states and the
 sevoflurane example. It reads each published input from the section, as
 `tests/reference/test_known_limitations_figures.py` does.
 
-The tests import only the agent loader, the conversion and its physical
-constants. `docs/ARCHITECTURE.md` § "Tests (`tests/`)" lets a test in this directory
+The tests import only the agent loader and the conversion.
+`docs/ARCHITECTURE.md` § "Tests (`tests/`)" lets a test in this directory
 import a parameter loader but not use a solver in `core/`. The conversion is a
 closed-form expression, not a solver.
+The last test also imports the physical constants that the conversion is
+built from, and one unit factor.
 """
 
 from __future__ import annotations
