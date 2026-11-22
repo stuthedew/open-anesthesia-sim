@@ -2289,10 +2289,12 @@ not a smaller release than the plan's — it is the plan's milestone going out
 under its own name with most of it missing, which a tag makes permanent. So
 `release.release_offer` puts the suggestion beside what the plan has already
 spoken for — every version `ROADMAP.md` names *ahead* of the current one, which
-`wave` carries as `reserved`: where one of them is the number the bump arrived
-at, the digest withholds the offer and names what holds it; where the plan is
-itself asking for a release, the digest offers the version the roadmap named
-rather than the one a class label inferred. The digest's release line and its
+`wave` carries as `reserved`. Where one of them is the number the bump arrived
+at, the digest offers the next patch instead and names the milestone that holds
+the bumped number. It withholds the offer only where that patch is spent too,
+or lies past a reserved number (`PL-49J8`). Where the plan is itself asking for
+a release, the digest offers the version the roadmap named rather than the one
+a class label inferred. The digest's release line and its
 plan line can no longer recommend opposite actions.
 
 A reading of the plan rather than of the reader's position in it, and that is
