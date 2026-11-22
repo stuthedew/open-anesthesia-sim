@@ -115,6 +115,7 @@ import sys
 import tempfile
 import tomllib
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -174,6 +175,11 @@ INTERRUPTED = 2
 COLLECTION_ERROR_RE = re.compile(r"Interrupted: \d+ errors? during collection")
 #: How long that run may take before its mutant is reported as a timeout.
 RERUN_TIMEOUT_S = 900
+#: How many of those runs go at once: one for each processor, which is the
+#: number of workers mutmut 3.8.0 starts when nothing sets `max_children`
+#: (`_run` in `mutmut/__main__.py`). One run after another left three cores of
+#: four idle for over 20 minutes on 2026-11-11 (`PL-SGBT`).
+RERUN_WORKERS = os.cpu_count() or 1
 #: Why a run whose results list is empty is refused rather than reported.
 LISTING_UNREAD = (
     "Its output may have changed shape, and a report built from it would call every "
@@ -850,26 +856,34 @@ def settle(root: Path, found: Mapping[str, str], codes: Mapping[str, int]) -> di
     kill. A changed test id can hide a survivor, and a run of the whole files
     tells the two apart. The files first run once with no mutant applied, so
     that a failure of this way of running them is never counted as a kill.
+    Then the mutants run `RERUN_WORKERS` at a time, as mutmut's own run did.
     """
     settled = dict(found)
     raised = sorted(name for name in found if codes.get(name) == RAISED)
-    files = {name: _test_files(root, name) for name in raised}
-    every = sorted({file for named in files.values() for file in named})
-    if every and _pytest_in_mutants(root, every, "") != 0:
-        for name in raised:
-            settled[name] = "unsettled, its test files fail with no mutant applied"
+    if not raised:
         return settled
-    for name in raised:
-        if not files[name]:
-            # pytest given no file runs the whole of `testpaths`.
-            settled[name] = "unsettled, mutmut names no test for it"
-            continue
-        code = _pytest_in_mutants(root, files[name], name)
-        settled[name] = (
-            "timeout"
-            if code is None
-            else RERUN_STATUS.get(code, f"unsettled, pytest exited {code}")
+    with ThreadPoolExecutor(max_workers=RERUN_WORKERS) as pool:
+        # Each worker waits on a subprocess, so threads run them in parallel.
+        files = dict(
+            zip(raised, pool.map(lambda name: _test_files(root, name), raised), strict=True)
         )
+        every = sorted({file for named in files.values() for file in named})
+        if every and _pytest_in_mutants(root, every, "") != 0:
+            for name in raised:
+                settled[name] = "unsettled, its test files fail with no mutant applied"
+            return settled
+        # pytest given no file runs the whole of `testpaths`, so those are not run.
+        named = [name for name in raised if files[name]]
+        for name in raised:
+            if not files[name]:
+                settled[name] = "unsettled, mutmut names no test for it"
+        exits = pool.map(lambda name: _pytest_in_mutants(root, files[name], name), named)
+        for name, code in zip(named, exits, strict=True):
+            settled[name] = (
+                "timeout"
+                if code is None
+                else RERUN_STATUS.get(code, f"unsettled, pytest exited {code}")
+            )
     return settled
 
 
