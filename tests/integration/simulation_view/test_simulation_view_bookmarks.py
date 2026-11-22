@@ -5,10 +5,13 @@ These tests cover bookmarks.
 `simulation_view_support.py` describes the whole suite.
 """
 
+from typing import NoReturn
+
 import pytest
 from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import ViewScroll
 from anesthesia_sim.app.bookmarks import MarkStanding, TimeBookmark
 from anesthesia_sim.app.controller import SimulationController
@@ -40,9 +43,11 @@ from tests.integration.simulation_view.simulation_view_support import (
     _advance_to,
     _branched_case,
     _case_view,
+    _failing_assembly,
     _halted_branch_view,
     _mark_editor,
     _marks_panel,
+    _paused_run_with_history,
     _real_step_failure,
     _settle,
     _shown_view,
@@ -661,6 +666,48 @@ def test_a_rebuilt_bookmarks_view_does_not_select_a_row_the_reader_lost(
 
     assert rebuilt.time_list.count() == 3
     assert rebuilt.time_list.currentRow() == -1
+
+
+def test_a_copy_built_while_a_halt_hides_the_lists_selects_the_kept_row_once_they_return(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A copy of the editor built while the lists are hidden selects the reader's row once shown.
+
+    A halt that cannot work out the marks' standings hides the lists in every
+    copy (`PL-F5KT`). A copy built then has no rows, so it cannot select the
+    row the reader chose. Once a frame lists the marks again, both copies must
+    select that row. Otherwise the two Areas show different selections, and
+    Remove acts in one copy and is refused in the other (`PL-CHX0`).
+    """
+
+    controller = _paused_run_with_history()
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(900), "later"))
+    view = _shown_view(application, controller)
+    (first,) = _editors(view)
+    first.time_list.setCurrentRow(1)
+
+    def unanswerable(self: SimulationController) -> NoReturn:
+        raise RuntimeError("the run could not say where it stands on its marks")
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    monkeypatch.setattr(SimulationController, "bookmark_standings", unanswerable)
+    view.present(False)
+    view.layout_container.choose_view(AreaId(2), BOOKMARKS)
+    _settle(application)
+    (second,) = [editor for editor in _editors(view) if editor is not first]
+
+    assert second.time_list.isHidden() is True
+
+    monkeypatch.undo()
+    view.present(False)
+
+    assert second.time_list.isHidden() is False
+    assert [editor.time_list.currentRow() for editor in (first, second)] == [1, 1]
+
+    second.remove_time_button.click()
+
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0]
 
 
 def test_the_marks_editor_scrolls_inside_the_default_bookmarks_area_rather_than_clipping(

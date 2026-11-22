@@ -2059,16 +2059,36 @@ class MarkEditor(QWidget):
         blockers = [QSignalBlocker(field) for field in fields]
         self.instant_spin.setValue(entry.instant_s)
         self.time_label_edit.setText(entry.time_name)
-        self.time_list.setCurrentRow(entry.time_row)
         self.compartment_combo.setCurrentIndex(entry.compartment_row)
         self.height_spin.setValue(entry.height_mac)
         self.target_label_edit.setText(entry.target_name)
-        self.target_list.setCurrentRow(entry.target_row)
 
         for blocker in blockers:
             blocker.unblock()
 
+        self.select_rows(entry)
         self._refresh_instant_preview(self.instant_spin.value())
+
+    def select_rows(self, entry: MarkEntry) -> None:
+        """Select the rows that `entry` names in both lists, without emitting `entry_edited`.
+
+        A row past the end of its list selects nothing in that list. The
+        dashboard calls this method after every refill of the lists, as well as
+        through `set_entry`. A copy built while the lists were hidden had no
+        rows to select, and this call selects the reader's row once the rows
+        are back. The fields are not written again, because writing a field
+        moves its cursor while the reader is typing in it.
+
+        Args:
+            entry: The entry whose `time_row` and `target_row` to select.
+        """
+
+        for listing, row in (
+            (self.time_list, entry.time_row),
+            (self.target_list, entry.target_row),
+        ):
+            with QSignalBlocker(listing):
+                listing.setCurrentRow(row)
 
     def selected_time_index(self) -> int:
         """Which marked instant is selected, or -1 for none."""

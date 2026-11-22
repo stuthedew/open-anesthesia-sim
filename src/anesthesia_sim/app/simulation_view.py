@@ -1921,6 +1921,13 @@ class SimulationView(QWidget):
             marks.set_panel(panel)
             marks.editor.set_reachable_height(self._reachable_height_mac)
 
+            if self._mark_entry is not None:
+                # A copy built while a halt hid the lists had no rows to
+                # select. Selecting the kept rows on every refill gives every
+                # copy the reader's selection, so Remove acts on the same
+                # mark in each.
+                marks.editor.select_rows(self._mark_entry)
+
         if self._bookmarks_panels:
             # A shorter list can drop a selected row, and the bound can lower
             # the height, without the reader editing anything. The copies all
