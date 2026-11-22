@@ -48,6 +48,29 @@ the system's reading with the record's last entry is the same fact at the
 copy's opening. A branch still goes through `stands_at`, since `resume_at`
 has just written its state.
 
+**Sources.** Researched after the merge, at the owner's question of
+2026-11-22, and they support the design as built.
+
+1. Goldberg, "What Every Computer Scientist Should Know About
+   Floating-Point Arithmetic", ACM Computing Surveys, March 1991, read in
+   full in Oracle's edited reprint
+   (https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html) on
+   2026-11-22. Theorem 7 proves that dividing and then multiplying by the
+   same number returns the original only when both are integers and the
+   divisor has the form 2^i + 2^j. An amount and a volume in litres are
+   neither, so a check that divides and multiplies back cannot be exact in
+   general. A sample of 10,000 random alveolar amounts (0.001 to 0.2 L) over
+   random volumes (1 to 6 L) gave 9.7% that did not return to themselves,
+   which matches the brief's one in eight. So the check compares what the
+   system reads with what the run stored, which takes no arithmetic.
+2. The Python standard library's `pickle` documentation
+   (https://docs.python.org/3/library/pickle.html, read 2026-11-22), § "Pickling
+   Class Instances". It says that `__init__` is usually not invoked when an
+   instance is unpickled, and that a type relying on an invariant must
+   establish it another way. `PL-HXNL` made a copy rebuild through the
+   constructor for that reason. This item keeps that route and only makes
+   its check exact.
+
 **Regression test.** `tests/unit/test_simulation.py::test_a_run_opened_from_directly_written_amounts_copies_before_its_first_step`
 copies and pickles runs opened from forty directly written alveolar amounts,
 0.001 to 0.19 L, and steps each copy beside its run. Against
