@@ -108,3 +108,8 @@ that he did not ask for in his own words; the pull request now records that
 and asks him. It found that a control's name can also name a clinical value,
 so the text now says the kinds that wait for the owner win. And it found the
 list copied into `docs/maintainer.md`, which now points to the docstring.
+
+**Owner's answer, 2026-11-22.** "Agree with recs", to the question whether a
+session approves on-screen wording changes itself and brings him only those
+that change clinical meaning (project owner, 2026-11-22, ratified, over
+keeping every wording change for his approval).
