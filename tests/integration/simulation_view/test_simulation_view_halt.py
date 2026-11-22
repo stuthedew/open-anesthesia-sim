@@ -170,6 +170,14 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
         "it returns the Workspaces as the Areas draw them, for the tab strip to duplicate "
         "or save, and it reads no run"
     ),
+    ("SimulationView", "self._owe_focus_order"): (
+        "it only marks Tab's order as stale, so that the next draw sets it again, and it "
+        "reads no run (`PL-B45W`)"
+    ),
+    ("SimulationView", "def showEvent"): (
+        "it gives the first run's first control the focus at the dashboard's first show, "
+        "and it reads widgets and no run (`PL-B45W`)"
+    ),
 }
 
 

@@ -88,6 +88,7 @@ from functools import partial
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
     QBoxLayout,
@@ -279,6 +280,31 @@ def _case_copy[W: QWidget](copies: list[W], copy: W) -> W:
 
 def _drop_case_copy[W: QWidget](copies: list[W], copy: W) -> None:
     copies[:] = [kept for kept in copies if kept is not copy]
+
+
+def _focusable_widgets(window: QWidget) -> list[QWidget]:
+    """Return each widget under `window` that Tab can reach, in the widget tree's order.
+
+    The tree holds each widget's children in the order in which they were
+    placed in it, and a layout places them in the order it lays them out. A
+    View that builds a widget again moves it back to its drawn place in the
+    tree (`_RunWidgets.follow`). Hidden and disabled widgets are included,
+    because they keep their place in the order and Tab skips them only while
+    they cannot take the focus. A widget inside a window of its own, such as
+    a selector's list of choices, is left out, because Tab does not move
+    between windows.
+
+    The list comes from `findChildren`. Walking Qt's focus chain with
+    `nextInFocusChain` on every draw made one keyboard test crash inside a
+    chart's layout several steps later, and the cause is not yet known
+    (`PL-2D9Z`).
+    """
+
+    return [
+        widget
+        for widget in window.findChildren(QWidget)
+        if widget.focusPolicy() & Qt.FocusPolicy.TabFocus and widget.window() is window.window()
+    ]
 
 
 def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
@@ -559,10 +585,19 @@ class SimulationView(QWidget):
         self._fork_offer_shown: ForkOffer | None = None
         self._fork_selection: ForkPoint | None = None
 
+        # Whether Tab's order must be set again before the next draw ends
+        # (`_order_focus`).
+        self._focus_order_owed = True
         self._build_page()
 
         for controller in controllers:
             self._place_run(controller)
+
+        # The order is set before the window is first shown. The first draw
+        # sets it again, once each View has built its rows, and the first show
+        # gives the first run's first control the focus (`showEvent`).
+        self._order_focus()
+        self._focus_given = False
 
         self._render_timer = QTimer(self)
         self._render_timer.setTimerType(Qt.TimerType.PreciseTimer)
@@ -669,6 +704,7 @@ class SimulationView(QWidget):
         )
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
+        self._areas.views_changed.connect(self._owe_focus_order)
         self._areas.views_changed.connect(partial(self.present, False))
         middle_column.addWidget(self._tabs)
         middle_column.addWidget(self._areas, 1)
@@ -757,6 +793,8 @@ class SimulationView(QWidget):
         row.addWidget(run_rows, _RUN_ROWS_STRETCH)
         row.addWidget(record_scroll, _RECORD_COLUMN_STRETCH)
         self._unconditional_region = region
+        self._run_rows = run_rows
+        self._record_scroll = record_scroll
 
         return region
 
@@ -825,6 +863,91 @@ class SimulationView(QWidget):
             self.present(False)
 
         self._tabs.show_set(workspaces)
+        self._owe_focus_order()
+        self._order_focus_if_owed()
+
+    # ------------------------------------------------------------ Tab's order
+
+    def _owe_focus_order(self) -> None:
+        """Mark Tab's order as stale, so that the next draw sets it again."""
+
+        self._focus_order_owed = True
+
+    def _order_focus_if_owed(self) -> None:
+        """Set Tab's order where something has changed which widgets the dashboard holds."""
+
+        if self._focus_order_owed:
+            self._focus_order_owed = False
+            self._order_focus()
+
+    def _order_focus(self) -> None:
+        """Set the order in which Tab reaches the dashboard's controls to its reading order.
+
+        Qt's own order follows the order in which the widgets were built. So
+        Tab reached the control-change record and the Workspace tabs before
+        Start, and reached the parameter dials about twenty stops after the
+        Parameters Area's chooser, because each View builds its rows at its
+        first draw (`PL-B45W`). WCAG 2.2 Success Criterion 2.4.3, Focus Order,
+        asks for an order that preserves meaning and operability.
+
+        The order is the region above the Areas, from the left: each run's
+        transport row and readouts, then the record of control changes. Then
+        the Workspace tabs and "+", then each Area in reading order with its
+        View chooser followed by its View's controls (`AreaLayout.focus_order`).
+        The Area borders and the page's scroll area come last. Within each
+        part, widgets come in the order the widget tree holds them
+        (`_focusable_widgets`).
+        """
+
+        chain = _focusable_widgets(self)
+        placed = [
+            *[widget for widget in chain if self._run_rows.isAncestorOf(widget)],
+            *[
+                widget
+                for widget in chain
+                if widget is self._record_scroll or self._record_scroll.isAncestorOf(widget)
+            ],
+            *self._tabs.focus_order(),
+            *self._areas.focus_order(chain),
+        ]
+        order = [*placed, *[widget for widget in chain if widget not in placed]]
+
+        for before, after in zip(order, order[1:], strict=False):
+            QWidget.setTabOrder(before, after)
+
+    def showEvent(self, event: QShowEvent) -> None:
+        """Give the first run's first control the focus when the dashboard is first shown.
+
+        The focus is given here and not when the dashboard is built, because
+        `main()` builds the dashboard as a window of its own and then moves it
+        into the main window. Qt forgets a widget's focus when the widget moves
+        to another window, so a focus given while building was lost
+        (`PL-B45W`).
+        """
+
+        super().showEvent(event)
+
+        if not self._focus_given:
+            self._focus_given = True
+            self._focus_first_control()
+
+    def _focus_first_control(self) -> None:
+        """Give the first run's first control the focus that a new window starts with.
+
+        Without this, Qt gave the focus to the record of control changes,
+        whatever the order. Qt cannot place the dashboard itself in the order,
+        because the dashboard takes no focus. Qt's guide to keyboard focus
+        says to call `setFocus` on the widget where the focus should start
+        (https://doc.qt.io/qt-6/focus.html). Qt gives that widget the focus
+        when its window becomes active.
+        """
+
+        first = next(
+            widget
+            for widget in _focusable_widgets(self)
+            if self._run_rows.isAncestorOf(widget) and not widget.isHidden()
+        )
+        first.setFocus(Qt.FocusReason.OtherFocusReason)
 
     # ------------------------------------------------------------ the runs
 
@@ -900,6 +1023,7 @@ class SimulationView(QWidget):
         self._runs = (*self._runs, run)
         self._slots = (*self._slots, _RunSlots(placed))
         self._rename_runs()
+        self._owe_focus_order()
 
         return run
 
@@ -1738,6 +1862,8 @@ class SimulationView(QWidget):
         # Areas drew. A banner shown or hidden there changes the height that
         # the Areas are given, so the Areas are laid out again now (`PL-MXMG`).
         self._areas.follow_needs()
+        # The Views and the runs' panels have now built every widget they show.
+        self._order_focus_if_owed()
         self.presented_frames += 1
 
     def _runs_the_views_show(self) -> tuple[int, ...] | None:
@@ -1804,6 +1930,7 @@ class SimulationView(QWidget):
             PreferencesInForce(self._preferences, self._preferences_notice),
             self,
         )
+        self._order_focus_if_owed()
 
     # -------------------------------------------------------------- bookmarks
 
