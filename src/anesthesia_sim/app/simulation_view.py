@@ -156,9 +156,9 @@ from anesthesia_sim.app.preferences import (
 from anesthesia_sim.app.qt_widgets import (
     BookmarksPanel,
     ForkPanel,
+    MarkButton,
     MarkEditor,
     MarkEntry,
-    MarkForm,
     MarkRefusal,
     styled_label,
 )
@@ -1982,7 +1982,7 @@ class SimulationView(QWidget):
                 marks.editor.set_entry(self._mark_entry)
 
     def _apply_to_every_run(
-        self, edit: Callable[[SimulationController], None], form: MarkForm
+        self, edit: Callable[[SimulationController], None], button: MarkButton
     ) -> None:
         """Make one change to every displayed run, or have the first of them refuse it.
 
@@ -2005,8 +2005,8 @@ class SimulationView(QWidget):
 
         Args:
             edit: What to do to one run.
-            form: The editor's form whose button asked for the change. A
-                refusal is shown under that form.
+            button: The editor's button that asked for the change. A
+                refusal is shown under that button.
         """
 
         self._show_mark_refusal(None)
@@ -2015,12 +2015,12 @@ class SimulationView(QWidget):
             for run in self._runs:
                 edit(run.controller)
         except SimulationConfigurationError as error:
-            self._show_mark_refusal(MarkRefusal(form, refused_setting_notice(error)))
+            self._show_mark_refusal(MarkRefusal(button, refused_setting_notice(error)))
 
         self.present(False)
 
     def _show_mark_refusal(self, refusal: MarkRefusal | None) -> None:
-        """Show why an edit was refused under its form, in every copy of the editor."""
+        """Show why an edit was refused under its button, in every copy of the editor."""
 
         self._mark_refusal = refusal
 
@@ -2034,11 +2034,11 @@ class SimulationView(QWidget):
         try:
             bookmark = editor.entered_time_bookmark()
         except SimulationConfigurationError as error:
-            self._show_mark_refusal(MarkRefusal(MarkForm.TIMES, refused_setting_notice(error)))
+            self._show_mark_refusal(MarkRefusal(MarkButton.ADD_TIME, refused_setting_notice(error)))
 
             return
 
-        self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark), MarkForm.TIMES)
+        self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark), MarkButton.ADD_TIME)
         editor.clear_entry()
 
     @halt_gate
@@ -2054,12 +2054,16 @@ class SimulationView(QWidget):
         index = editor.selected_time_index()
 
         if not 0 <= index < len(marks):
-            self._show_mark_refusal(MarkRefusal(MarkForm.TIMES, REMOVE_NOTHING_SELECTED_TEXT))
+            self._show_mark_refusal(
+                MarkRefusal(MarkButton.REMOVE_TIME, REMOVE_NOTHING_SELECTED_TEXT)
+            )
 
             return
 
         selected = marks[index]
-        self._apply_to_every_run(lambda run: run.remove_time_bookmark(selected), MarkForm.TIMES)
+        self._apply_to_every_run(
+            lambda run: run.remove_time_bookmark(selected), MarkButton.REMOVE_TIME
+        )
 
     @halt_gate
     def _add_mac_target(self, editor: MarkEditor) -> None:
@@ -2068,11 +2072,13 @@ class SimulationView(QWidget):
         try:
             target = editor.entered_mac_target()
         except SimulationConfigurationError as error:
-            self._show_mark_refusal(MarkRefusal(MarkForm.TARGETS, refused_setting_notice(error)))
+            self._show_mark_refusal(
+                MarkRefusal(MarkButton.ADD_TARGET, refused_setting_notice(error))
+            )
 
             return
 
-        self._apply_to_every_run(lambda run: run.add_mac_target(target), MarkForm.TARGETS)
+        self._apply_to_every_run(lambda run: run.add_mac_target(target), MarkButton.ADD_TARGET)
         editor.clear_entry()
 
     @halt_gate
@@ -2086,12 +2092,16 @@ class SimulationView(QWidget):
         index = editor.selected_target_index()
 
         if not 0 <= index < len(marks):
-            self._show_mark_refusal(MarkRefusal(MarkForm.TARGETS, REMOVE_NOTHING_SELECTED_TEXT))
+            self._show_mark_refusal(
+                MarkRefusal(MarkButton.REMOVE_TARGET, REMOVE_NOTHING_SELECTED_TEXT)
+            )
 
             return
 
         selected = marks[index]
-        self._apply_to_every_run(lambda run: run.remove_mac_target(selected), MarkForm.TARGETS)
+        self._apply_to_every_run(
+            lambda run: run.remove_mac_target(selected), MarkButton.REMOVE_TARGET
+        )
 
     def halt_for_slot(self, error: Exception) -> None:
         """Halt every run for an exception that one of this view's slots raised.

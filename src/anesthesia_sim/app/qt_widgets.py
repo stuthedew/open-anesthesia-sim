@@ -1699,23 +1699,25 @@ def _form_grid(*rows: tuple[QWidget | None, ...]) -> QGridLayout:
     return grid
 
 
-class MarkForm(Enum):
-    """One of the marks editor's two forms."""
+class MarkButton(Enum):
+    """One of the marks editor's four buttons, each of which shows its own refusal."""
 
-    TIMES = "times"
-    TARGETS = "targets"
+    ADD_TIME = "add time"
+    REMOVE_TIME = "remove time"
+    ADD_TARGET = "add target"
+    REMOVE_TARGET = "remove target"
 
 
 @dataclass(frozen=True, slots=True)
 class MarkRefusal:
-    """Why an edit of the marks was refused, and the form in which it was made.
+    """Why an edit of the marks was refused, and the button that asked for it.
 
     Attributes:
-        form: The form whose button the reader pressed.
+        button: The button the reader pressed. The refusal is shown under it.
         text: What the refusal says.
     """
 
-    form: MarkForm
+    button: MarkButton
     text: str
 
 
@@ -1765,11 +1767,15 @@ class MarkEditor(QWidget):
     have different fields, not the same fields under a different kind, so a
     shared form would have nothing in common to hold.
 
-    **Each form shows its refusal directly under its buttons.** In the
-    Default Workspace at 1366 by 768 pixels the Bookmarks Area is about 150
-    pixels tall, so the View scrolls. One refusal below both forms would be
-    out of sight of the button that was pressed. So the Add and Remove
-    buttons share a row, and the form's notice is the row below them.
+    **Each Remove button sits directly under the list it acts on, and each
+    button shows its own refusal directly under it.** In the Default Workspace
+    at 1366 by 768 pixels the Bookmarks Area is about 150 pixels tall, so the
+    View scrolls. A Remove button above its list could be pressed with the
+    list scrolled out of view. After a removal the next row is selected at
+    once, so a second press would then remove a mark the reader never chose,
+    from every run. Under the list, the button is in view only with the rows
+    above it. Add stays with the fields it reads. A refusal under any other
+    button could be out of sight of the button that was pressed.
 
     **Each input control declares its own colours, as a palette**
     (`PL-RKRY`). Their fills, the spin boxes' steppers, and the lists' rows
@@ -1800,18 +1806,23 @@ class MarkEditor(QWidget):
         time_label_edit: The optional name for a time bookmark.
         add_time_button: Adds the time bookmark. The view connects its
             `clicked` signal.
-        remove_time_button: Removes the selected instant.
-        time_notice: Why the last edit of the time bookmarks was refused,
-            hidden when there is nothing to say.
+        add_time_notice: Why the last press of `add_time_button` was
+            refused, hidden when there is nothing to say.
         time_list: The marked instants, selectable for removal.
+        remove_time_button: Removes the selected instant.
+        remove_time_notice: Why the last press of `remove_time_button` was
+            refused.
         compartment_combo: The compartment whose value a target is compared
             against.
         height_spin: The height, in multiples of the running agent's 1 MAC.
         target_label_edit: The optional name for a target.
         add_target_button: Adds the target.
-        remove_target_button: Removes the selected target.
-        target_notice: Why the last edit of the targets was refused.
+        add_target_notice: Why the last press of `add_target_button` was
+            refused.
         target_list: The marked heights, selectable for removal.
+        remove_target_button: Removes the selected target.
+        remove_target_notice: Why the last press of `remove_target_button`
+            was refused.
     """
 
     entry_edited = Signal()
@@ -1829,9 +1840,10 @@ class MarkEditor(QWidget):
         self.time_label_edit = QLineEdit()
         self.time_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_time_button = QPushButton(ADD_MARK_LABEL)
-        self.remove_time_button = QPushButton(REMOVE_MARK_LABEL)
-        self.time_notice = NoticeLabel()
+        self.add_time_notice = NoticeLabel()
         self.time_list = QListWidget()
+        self.remove_time_button = QPushButton(REMOVE_MARK_LABEL)
+        self.remove_time_notice = NoticeLabel()
 
         self.compartment_combo = QComboBox()
         self.compartment_combo.setStyleSheet(selector_stylesheet())
@@ -1846,9 +1858,10 @@ class MarkEditor(QWidget):
         self.target_label_edit = QLineEdit()
         self.target_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_target_button = QPushButton(ADD_MARK_LABEL)
-        self.remove_target_button = QPushButton(REMOVE_MARK_LABEL)
-        self.target_notice = NoticeLabel()
+        self.add_target_notice = NoticeLabel()
         self.target_list = QListWidget()
+        self.remove_target_button = QPushButton(REMOVE_MARK_LABEL)
+        self.remove_target_notice = NoticeLabel()
 
         for listing in (self.time_list, self.target_list):
             listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
@@ -1886,7 +1899,7 @@ class MarkEditor(QWidget):
         self.set_reachable_height(DEFAULT_MAXIMUM_TARGET_MAC)
 
     def _build_layout(self) -> None:
-        """Lay the two forms out one above the other, each over its own list."""
+        """Lay out the two forms one above the other, each over its list and Remove button."""
 
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
@@ -1899,9 +1912,11 @@ class MarkEditor(QWidget):
             (times_heading, times_heading, times_heading),
             (instant_name, self.instant_spin, self.instant_preview),
             (time_label_name, self.time_label_edit, self.time_label_edit),
-            (None, self.add_time_button, self.remove_time_button),
-            (self.time_notice, self.time_notice, self.time_notice),
+            (None, self.add_time_button, None),
+            (self.add_time_notice, self.add_time_notice, self.add_time_notice),
             (self.time_list, self.time_list, self.time_list),
+            (None, self.remove_time_button, None),
+            (self.remove_time_notice, self.remove_time_notice, self.remove_time_notice),
         )
 
         targets_heading = styled_label(TARGET_FORM_HEADING, color=INK, bold=True)
@@ -1913,9 +1928,11 @@ class MarkEditor(QWidget):
             (compartment_name, self.compartment_combo, self.compartment_combo),
             (height_name, self.height_spin, None),
             (target_label_name, self.target_label_edit, self.target_label_edit),
-            (None, self.add_target_button, self.remove_target_button),
-            (self.target_notice, self.target_notice, self.target_notice),
+            (None, self.add_target_button, None),
+            (self.add_target_notice, self.add_target_notice, self.add_target_notice),
             (self.target_list, self.target_list, self.target_list),
+            (None, self.remove_target_button, None),
+            (self.remove_target_notice, self.remove_target_notice, self.remove_target_notice),
         )
 
         for form in (times_form, targets_form):
@@ -1988,18 +2005,20 @@ class MarkEditor(QWidget):
         )
 
     def show_refusal(self, refusal: MarkRefusal | None) -> None:
-        """Show why the last edit was refused under the form it was made in, and clear the other.
+        """Show why the last edit was refused under the button that asked for it, clearing the rest.
 
         Args:
             refusal: The last refusal, or None where the last edit was accepted.
         """
 
-        for form, notice in (
-            (MarkForm.TIMES, self.time_notice),
-            (MarkForm.TARGETS, self.target_notice),
+        for button, notice in (
+            (MarkButton.ADD_TIME, self.add_time_notice),
+            (MarkButton.REMOVE_TIME, self.remove_time_notice),
+            (MarkButton.ADD_TARGET, self.add_target_notice),
+            (MarkButton.REMOVE_TARGET, self.remove_target_notice),
         ):
             notice.set_notice(
-                refusal.text if refusal is not None and refusal.form is form else None
+                refusal.text if refusal is not None and refusal.button is button else None
             )
 
     def entry(self) -> MarkEntry:

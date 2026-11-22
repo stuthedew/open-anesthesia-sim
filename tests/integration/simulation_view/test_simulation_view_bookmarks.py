@@ -182,7 +182,8 @@ def test_removing_with_nothing_selected_says_so_and_removes_nothing(
     editor.time_list.setCurrentRow(-1)
     editor.remove_time_button.click()
 
-    assert editor.time_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+    assert editor.remove_time_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+    assert editor.add_time_notice.notice() is None
     assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
 
 
@@ -194,7 +195,7 @@ def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplica
     editor.add_time_button.click()
     editor.add_time_button.click()
 
-    notice = editor.time_notice.notice()
+    notice = editor.add_time_notice.notice()
 
     assert notice is not None
     assert "marked once" in notice
@@ -546,15 +547,15 @@ def test_every_copy_of_the_marks_editor_shows_one_entry_and_acts_on_it(
     assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [900.0, 300.0]
 
 
-def test_a_refusal_shows_in_every_copy_under_the_form_that_was_used(
+def test_a_refusal_shows_in_every_copy_under_the_button_that_was_pressed(
     application: QApplication,
 ) -> None:
-    """A refused edit is explained under its own form, in every Area that shows the editor.
+    """A refused edit is explained under its own button, in every Area that shows the editor.
 
     The Bookmarks Area of the Default Workspace is about 150 pixels tall at
-    1366 by 768, so the View scrolls. A refusal is shown under the form whose
-    button was pressed, so that it is in view of that button (`PL-CHX0`). The
-    next edit replaces it, in either form.
+    1366 by 768, so the View scrolls. A refusal is shown directly under the
+    button that was pressed, so that it is in view of that button
+    (`PL-CHX0`). The next edit replaces it, under whichever button asked.
     """
 
     view = _shown_view(application, SimulationController())
@@ -565,17 +566,17 @@ def test_a_refusal_shows_in_every_copy_under_the_form_that_was_used(
     second.add_time_button.click()
 
     for editor in (first, second):
-        notice = editor.time_notice.notice()
+        notice = editor.add_time_notice.notice()
         assert notice is not None
         assert "marked once" in notice
-        assert editor.target_notice.notice() is None
+        assert editor.remove_target_notice.notice() is None
 
     second.target_list.setCurrentRow(-1)
     second.remove_target_button.click()
 
     for editor in (first, second):
-        assert editor.time_notice.notice() is None
-        assert editor.target_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+        assert editor.add_time_notice.notice() is None
+        assert editor.remove_target_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
 
 
 def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_left(
@@ -602,7 +603,7 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
         editor.compartment_combo.findData(RecordedQuantity.FAT.value)
     )
     editor.time_list.setCurrentRow(0)
-    refusal = editor.time_notice.notice()
+    refusal = editor.add_time_notice.notice()
     assert refusal is not None
 
     view.layout_container.choose_view(AreaId(5), AGENT_ACCOUNTING)
@@ -620,7 +621,7 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
     assert rebuilt.time_label_edit.text() == "emergence"
     assert rebuilt.compartment_combo.currentData() == RecordedQuantity.FAT.value
     assert rebuilt.time_list.currentRow() == 0
-    assert rebuilt.time_notice.notice() == refusal
+    assert rebuilt.add_time_notice.notice() == refusal
 
 
 def test_a_rebuilt_bookmarks_view_does_not_select_a_row_the_reader_lost(

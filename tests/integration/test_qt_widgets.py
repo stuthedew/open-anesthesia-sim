@@ -60,9 +60,9 @@ from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
     FlowLayout,
+    MarkButton,
     MarkEditor,
     MarkEntry,
-    MarkForm,
     MarkRefusal,
     MetricPanel,
     NewCaseDialog,
@@ -959,9 +959,12 @@ def test_the_marks_editor_seats_each_field_in_its_cell(application: QApplication
     three neighbouring columns spans them.
 
     `PL-CHX0` moved the editor from a window into the Bookmarks View, where an
-    Area about 150 pixels tall scrolls it. So each Remove button moved up
-    beside its Add button, and each form's refusal is the row directly under
-    the two. A refusal is then on screen next to the button that was pressed.
+    Area about 150 pixels tall scrolls it. Each Remove button stays directly
+    under the list it acts on, as it was in the window. A Remove button above
+    its list could be pressed while the list was scrolled out of view, and it
+    would then remove a row the reader could not see. Each button's refusal
+    is the row directly under it, so that it is on screen next to the button
+    that was pressed.
     """
 
     editor = MarkEditor()
@@ -974,9 +977,10 @@ def test_the_marks_editor_seats_each_field_in_its_cell(application: QApplication
         MARK_NAME_FIELD_LABEL: (2, 0, 1, 1),
         "time_label_edit": (2, 1, 1, 2),
         "add_time_button": (3, 1, 1, 1),
-        "remove_time_button": (3, 2, 1, 1),
-        "time_notice": (4, 0, 1, 3),
+        "add_time_notice": (4, 0, 1, 3),
         "time_list": (5, 0, 1, 3),
+        "remove_time_button": (6, 1, 1, 1),
+        "remove_time_notice": (7, 0, 1, 3),
     }
     assert _form_cells(editor, _form(editor, 1)) == {
         TARGET_FORM_HEADING: (0, 0, 1, 3),
@@ -987,9 +991,10 @@ def test_the_marks_editor_seats_each_field_in_its_cell(application: QApplication
         MARK_NAME_FIELD_LABEL: (3, 0, 1, 1),
         "target_label_edit": (3, 1, 1, 2),
         "add_target_button": (4, 1, 1, 1),
-        "remove_target_button": (4, 2, 1, 1),
-        "target_notice": (5, 0, 1, 3),
+        "add_target_notice": (5, 0, 1, 3),
         "target_list": (6, 0, 1, 3),
+        "remove_target_button": (7, 1, 1, 1),
+        "remove_target_notice": (8, 0, 1, 3),
     }
 
 
@@ -1030,14 +1035,14 @@ def test_the_marks_editor_tabs_through_its_controls_from_top_to_bottom(
         "instant_spin",
         "time_label_edit",
         "add_time_button",
-        "remove_time_button",
         "time_list",
+        "remove_time_button",
         "compartment_combo",
         "height_spin",
         "target_label_edit",
         "add_target_button",
-        "remove_target_button",
         "target_list",
+        "remove_target_button",
     ]
 
 
@@ -1080,32 +1085,60 @@ def test_an_entry_written_into_the_editor_is_the_entry_it_returns_and_is_not_rep
     assert edited == [True]
 
 
-def test_a_refusal_shows_under_the_form_it_belongs_to_and_clears_the_other(
+def test_a_refusal_shows_under_the_button_that_was_pressed_and_clears_the_others(
     application: QApplication,
 ) -> None:
-    """Each refusal shows under one form, and the next one replaces it.
+    """Each refusal shows under one button, and the next one replaces it.
 
-    The two forms share one refusal at a time, as the editor's single notice
-    did before `PL-CHX0`. Each is shown under the form whose button was
+    The four buttons share one refusal at a time, as the editor's single
+    notice did before `PL-CHX0`. Each is shown under the button that was
     pressed, so that it is in view of that button.
     """
 
     editor = MarkEditor()
+    notices = {
+        MarkButton.ADD_TIME: editor.add_time_notice,
+        MarkButton.REMOVE_TIME: editor.remove_time_notice,
+        MarkButton.ADD_TARGET: editor.add_target_notice,
+        MarkButton.REMOVE_TARGET: editor.remove_target_notice,
+    }
 
-    editor.show_refusal(MarkRefusal(MarkForm.TIMES, "marked once"))
+    for pressed in MarkButton:
+        editor.show_refusal(MarkRefusal(pressed, f"refused by {pressed.value}"))
 
-    assert editor.time_notice.notice() == "marked once"
-    assert editor.target_notice.notice() is None
-
-    editor.show_refusal(MarkRefusal(MarkForm.TARGETS, "out of reach"))
-
-    assert editor.time_notice.notice() is None
-    assert editor.target_notice.notice() == "out of reach"
+        assert {button: notice.notice() for button, notice in notices.items()} == {
+            button: f"refused by {pressed.value}" if button is pressed else None
+            for button in MarkButton
+        }
 
     editor.show_refusal(None)
 
-    assert editor.time_notice.isHidden() is True
-    assert editor.target_notice.isHidden() is True
+    assert [notice.isHidden() for notice in notices.values()] == [True] * 4
+
+
+def test_each_remove_button_is_drawn_below_the_list_it_removes_from(
+    application: QApplication,
+) -> None:
+    """On screen, each Remove button is drawn under its whole list, and each Add button above it.
+
+    The cells above say where the grid places each widget. This test checks the
+    drawn geometry, so a list drawn over its button also fails (`PL-CHX0`).
+    """
+
+    editor = MarkEditor()
+    editor.resize(400, 900)
+    editor.show()
+    application.processEvents()
+
+    try:
+        for add, listing, remove in (
+            (editor.add_time_button, editor.time_list, editor.remove_time_button),
+            (editor.add_target_button, editor.target_list, editor.remove_target_button),
+        ):
+            assert add.geometry().bottom() < listing.geometry().top()
+            assert listing.geometry().bottom() < remove.geometry().top()
+    finally:
+        editor.close()
 
 
 def _wheel_down(widget: QWidget) -> None:
