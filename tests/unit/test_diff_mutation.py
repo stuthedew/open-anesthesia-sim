@@ -16,6 +16,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import subprocess
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -439,6 +440,31 @@ def test_settle_reruns_each_mutant_whose_pytest_run_raised(
     # The control run comes first, over every file, with no mutant applied.
     assert runs[0] == (("tests/unit/test_e.py", "tests/unit/test_f.py"), "")
     assert sorted(mutant for _, mutant in runs[1:]) == raised
+
+
+def test_settle_reruns_the_mutants_at_once_on_every_worker(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """One rerun after another took over 20 minutes for 238 raised mutants (`PL-SGBT`).
+
+    Each stubbed run waits until three are under way, so the reruns pass only
+    if three run at the same time. One after another, the first waits out the
+    barrier's timeout and raises.
+    """
+    raised = [f"m.x_f__mutmut_{n}" for n in range(1, 7)]
+    barrier = threading.Barrier(3, timeout=10)
+
+    def pytest_in_mutants(root: Path, named: list[str], mutant: str) -> int | None:
+        if mutant:
+            barrier.wait()
+        return 0 if not mutant else 1
+
+    monkeypatch.setattr(diff_mutation, "RERUN_WORKERS", 3)
+    monkeypatch.setattr(diff_mutation, "_test_files", lambda root, name: ["tests/unit/test_f.py"])
+    monkeypatch.setattr(diff_mutation, "_pytest_in_mutants", pytest_in_mutants)
+
+    found = dict.fromkeys(raised, "timeout")
+    assert settle(tmp_path, found, dict.fromkeys(raised, 255)) == dict.fromkeys(raised, "killed")
 
 
 def test_settle_counts_no_kill_when_the_files_fail_with_no_mutant(
