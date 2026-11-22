@@ -3,13 +3,16 @@ id: PL-FBKK
 title: After an agent change, a price form that was already open in the agent cost View still has the earlier agent selected
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: every-view-in-run-state-tests
 touches: src/anesthesia_sim/app/qt_agent_price.py, tests/integration/test_agent_cost_view.py
 deferred-from: v0.7.0 - a new problem: the price form came in with PL-1P15 (#1939, 7baae320, 2026-11-02), work building v0.7.0 after the freeze; not safety or science, and no price or cost the View shows changes
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2226
 payoff: after an agent change, the open price form shows the agent the learner is now running, unless they picked one by hand
+tests: tests/integration/test_agent_cost_view.py::test_an_open_price_form_follows_the_run_s_agent_until_the_reader_picks_one, tests/integration/test_agent_cost_view.py::test_an_agent_the_reader_picked_in_the_price_form_stays_through_an_agent_change
 ---
 
 **Problem.** After an agent change, a price form that was already open in the agent cost View still has the earlier agent selected
@@ -38,3 +41,5 @@ that the run no longer holds.
 **Done when.** After an agent change, an open price form in which the reader has not picked an agent shows the run's new agent. A form in which the reader picked an agent by hand keeps that pick. A test shows both.
 
 **Generator check.** The fact misread is which widgets state a run's current state, and that each is restated on every path that changes it. The open head `PL-RF2S` states that fact. The selector takes the run's agent at the form's first fill and is not restated on an agent change. The head is open, so this is not a re-entry.
+
+**Documentation checked on 2026-11-22**, each passage that names a changed module, for a statement the change made untrue: `docs/ARCHITECTURE.md`, `docs/INTERFACE.md`, `docs/interface-provenance.md`, `ROADMAP.md` and `.claude/rules/ui-areas.md`. None needed a change.

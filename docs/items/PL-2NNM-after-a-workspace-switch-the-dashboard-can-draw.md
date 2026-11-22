@@ -3,13 +3,16 @@ id: PL-2NNM
 title: After a Workspace switch the dashboard can draw a View narrower than its least width for several passes of the event loop before the Areas settle (measured offscreen on 2026-11-14: Parameters 350 px wide against a 590 px least width in Induction at 1366 by 768, reaching 604 px after about ten passes and a frame), and the page-scroll test checks only the scroll bar, which cannot see the squeeze
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: window-is-the-frame
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/simulation_view/test_simulation_view_page.py
 deferred-from: v0.7.0 - present-or-not unmeasured, deferred on a stated reason: the squeeze lasts a few passes of the event loop after a Workspace switch and then settles, no value is misread in it, and the area-sizing work it follows is finished
 added: 2026-11-14
+closed: 2026-11-22
+pr: 2226
 payoff: A Workspace switch never draws a View cut short of its least width, and the fit test would catch a change that made it do so.
+tests: tests/integration/simulation_view/test_simulation_view_page.py::test_no_shipped_workspace_scrolls_the_page, tests/integration/simulation_view/test_simulation_view_page.py::test_no_view_paints_narrower_than_its_least_width_after_a_workspace_switch
 reenters: PL-YJ21
 ---
 
@@ -38,3 +41,5 @@ from the second frame.
 **Done when.** After a Workspace switch, no View is drawn narrower than its least width on any frame, and a test of every shipped Workspace at the reference window sizes checks each View's drawn width against its least width as well as the scroll bar.
 
 **Generator check.** An instance of the fact that `PL-YJ21` states, "a View's least size is read before Qt has applied the layout requests its last frame posted": the Areas settle, a View's first frame raises its least width, and the Areas settle again. `PL-YJ21` closed on 2026-10-19, before this was filed, so it is recorded as re-entering that head.
+
+**Documentation checked on 2026-11-22**, each passage that names a changed module, for a statement the change made untrue: `docs/ARCHITECTURE.md`, `docs/INTERFACE.md`, `docs/interface-provenance.md`, `ROADMAP.md` and `.claude/rules/ui-areas.md`. None needed a change.
