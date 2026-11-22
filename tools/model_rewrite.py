@@ -786,7 +786,7 @@ def misattributed(
     """Each quotation after a mention of one document that names a heading only the other has.
 
     `repoint` changes the path before the first quotation after it. A sentence
-    that names one document and then two sections, such as "`docs/MODEL.md`
+    that names one document and then two sections, such as "`docs/VERIFICATION.md`
     § "Time" and § "Concentrations"", keeps one path for both, which is wrong when the move
     parted them (`PL-CTXZ`, found by both blind review passes). No rule says
     where the second path belongs in the sentence, so each is listed for a

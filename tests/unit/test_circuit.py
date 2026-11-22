@@ -50,7 +50,8 @@ def test_rejects_agent_amount_above_circuit_capacity() -> None:
         SimulationConfigurationError,
         match=(
             r"^circuit agent_amount_l of 6.1 L is more than the 6.0 L the breathing circuit "
-            r'holds at a partial pressure of one atmosphere \(docs/MODEL.md, "Gas compartments"\)$'
+            r"holds at a partial pressure of one atmosphere \(docs/MODEL.md, "
+            r'"How much agent each compartment holds"\)$'
         ),
     ):
         circuit.set_agent_amount(6.1)
@@ -282,7 +283,7 @@ def test_changing_circuit_volume_conserves_stored_agent() -> None:
 
     The circuit stores agent as a fraction of its volume. So before this guard
     existed, `set_circuit_volume` scaled `agent_amount_l` with the volume, and
-    halving the volume halved the agent in it. `docs/MODEL.md`'s required
+    halving the volume halved the agent in it. `docs/VERIFICATION.md`'s required
     invariants rule that out in so many words: "no compartment creates agent
     spontaneously" and "changing a setting does not reset stored state". The
     conservation check that can halt a run is also computed from exactly this
@@ -324,7 +325,7 @@ def test_a_circuit_volume_too_small_for_its_agent_is_refused_unchanged() -> None
         match=(
             r"^circuit_volume_l of 1.0 is too small for the 2.0 L of agent the breathing "
             r"circuit holds: it would leave room for 1.0 L at a partial pressure of one "
-            r'atmosphere \(docs/MODEL.md, "Breathing circuit"\)$'
+            r'atmosphere \(docs/MODEL.md, "How much agent each compartment holds"\)$'
         ),
     ):
         circuit.set_circuit_volume(CompartmentVolume(1.0))

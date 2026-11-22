@@ -3,7 +3,7 @@ id: PL-4H8Q
 title: Sort the verification document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its sections (stage 3 of the split PL-P3GZ decided)
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: docs
 feature: model-md-structure
 touches: docs/VERIFICATION.md

@@ -81,7 +81,7 @@ circuit ($`M_{\mathrm{delivered}}`$) and exhausted from it
 ($`M_{\mathrm{exhausted}}`$); their rows are the accounting rows. The ninth is
 the constant one, written $`\mathbf 1`$, through whose column a term that does
 not depend on any state enters. The alveolar, venous and tissue rows are the
-patient rows. The exact propagator is $`\exp(A\,\Delta t)`$. The symbols are those of `docs/MODEL.md`
+patient rows. The exact propagator is $`\exp(A\,\Delta t)`$. The symbols are those of `docs/VERIFICATION.md`
 § "Symbols": $`\dot V_F`$ is the fresh gas flow, $`\dot V_A`$ the alveolar
 ventilation, $`F_D`$ the delivered fraction set at the vaporizer, $`F_I`$ the
 inspired fraction and $`F_A`$ the alveolar fraction. Five entries of the matrix
@@ -640,7 +640,7 @@ three options and refused one. Besides the decline above, they are:
   actual circle-absorber breathing system rather than an idealized one (Lerou
   2001, in § "Sources"), and under a model of that kind the two become
   distinct states, so this model's single $`F_I`$ stops describing both.
-  `docs/MODEL.md` § "Model boundary" already names that consequence, and the
+  `docs/MODEL.md` § "What the model represents" already names that consequence, and the
   departure has to be recorded there before the model is extended that way.
   Representing inlet position changes the model boundary, so it belongs to
   planned-milestone item 39, not to item 1.

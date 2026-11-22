@@ -6,7 +6,7 @@ has no shunt and one alveolar compartment, and the lung's exchange with blood
 is perfusion-limited, so it defines arterial blood as leaving the lung at the
 alveolar partial pressure. That identity is a deliberate simplification: in
 patients the arterial partial pressure runs below the end-tidal one
-(`docs/MODEL.md` § "Model boundary").
+(`docs/MODEL.md` § "What the model represents").
 """
 
 from dataclasses import dataclass
@@ -138,7 +138,6 @@ class VenousBloodCompartment:
                         self.blood_gas_partition_coefficient,
                         getattr(self, "agent_amount_l", None),
                         "venous blood",
-                        "Blood compartments",
                     )
             elif name == "blood_gas_partition_coefficient":
                 require_coefficient(field, value)
@@ -149,7 +148,8 @@ class VenousBloodCompartment:
                         f"{self.blood_gas_partition_coefficient} cannot be written again, as "
                         f"{value}, once the pool is built, because every tissue group's "
                         "tissue:blood coefficient is formed from it (docs/MODEL.md, "
-                        '"Blood compartments"): build a new system for another agent'
+                        '"How much agent each compartment holds"): build a new system for '
+                        "another agent"
                     )
 
                 # The coefficient is written only onto a new pool, and the constructor, a copy
@@ -157,9 +157,7 @@ class VenousBloodCompartment:
                 # checks it against the capacity that this coefficient gives.
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)
-                require_within_the_capacity(
-                    field, value, self.capacity_l, "venous blood", "Blood compartments"
-                )
+                require_within_the_capacity(field, value, self.capacity_l, "venous blood")
 
             super().__setattr__(name, value)
 
@@ -185,7 +183,7 @@ class VenousBloodCompartment:
     def capacity_l(self) -> float:
         """Equivalent gas capacity at a fraction of one, $`V_v\\lambda_{b:g}`$.
 
-        `docs/MODEL.md` § "Blood compartments" is the definition.
+        `docs/MODEL.md` § "How much agent each compartment holds" is the definition.
         """
 
         return self.volume_l * self.blood_gas_partition_coefficient

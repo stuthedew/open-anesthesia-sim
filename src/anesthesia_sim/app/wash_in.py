@@ -16,7 +16,7 @@ $`F_A`$ is the modelled alveolar fraction, and $`F_I`$ is the modelled
 *inspired* fraction. In this model $`F_I`$ is identical to the
 breathing-circuit fraction, $`F_C \equiv F_I`$. That holds because the model
 contains one ideal, perfectly mixed circuit with no dead space and no separate
-inspiratory and expiratory limbs (`docs/MODEL.md` § "Model boundary"). A
+inspiratory and expiratory limbs (`docs/MODEL.md` § "What the model represents"). A
 breathing system with several limbs would break that identity, and would make
 this ratio wrong too. $`F_I`$ is not the vaporizer dial setting. The circuit
 fraction only approaches the dial setting, over the circuit's own time constant.

@@ -1507,7 +1507,7 @@ see a wrong value from it now.
      amount read as liquid.
    - The subsection also records why no container is drawn for arterial
      blood. This model gives arterial blood no amount of its own, because
-     $`F_a \equiv F_A`$ (§ "Blood compartments"). A container drawn for
+     $`F_a \equiv F_A`$ (§ "How much agent each compartment holds"). A container drawn for
      arterial blood would show agent that the model does not hold.
 
 2. **Each compartment's amount passed to the display** (queue item `PL-KFTM`).
@@ -1897,6 +1897,12 @@ provenance check before it is added. None of the three should be assumed
 available just because the Gas Man reference simulator shows it. The idea will
 be added back here as its own item once someone is ready to scope it.
 
+Agent held in the breathing circuit's plastic and rubber is not planned while no
+teaching objective asks for it. It would be a second gas store with its own time
+constant. `docs/MODEL.md` § "Absorption by the circuit" gives what a real circuit
+holds and the early lag the model therefore cannot show for sevoflurane and
+isoflurane.
+
 ### Machines and agents (items 1-7)
 
 #### 1. Modular anesthesia-machine abstraction with interlocks
@@ -2085,7 +2091,7 @@ forking is for, because a learner reading the comparison cannot see it.
 This note named three causes, and two of them are closed as of PL-VM40
 (v0.4.0's Required scope). § "Completed: v0.4.0 - the teachable case" →
 "Designed for forking" lists all three. What is left is a different step size, which
-`docs/MODEL.md` § "The reproducibility guarantee" states it does not cover.
+`docs/VERIFICATION.md` § "The reproducibility guarantee" states it does not cover.
 Also left is whatever a branch restores from a stored point rather than
 resimulating. If exactness is unreachable, the divergence must be bounded,
 documented in `docs/MODEL.md`, and shown to the user rather than implied to
@@ -2374,7 +2380,7 @@ kind (`alveolar_ventilation_l_min`), which a bare symbol cannot do. The
 compartment object already supplies the subscript, so $`F_A`$ in code is
 `alveoli.<accessor>` rather than any single identifier. The mapping is
 therefore from a symbol to an **expression**. It is kept as a fourth
-column of `docs/MODEL.md` § "Symbols" (`PL-H46J`), which makes the pass
+column of `docs/VERIFICATION.md` § "Symbols" (`PL-H46J`), which makes the pass
 both finite and checkable. Beside it sits one name per modelled quantity.
 `core/` currently gives the partial-pressure-equivalent fraction eight
 names across four compartments, and `PL-9SH6` collapses them to one.
@@ -2442,7 +2448,7 @@ decomposition of the run view (`PL-B9PY`) made possible in v0.4.25. So
 this item's payoff is available as soon as it ships.
 
 *This item removes a safeguard that `docs/MODEL.md` names (`PL-DXJR`).*
-The fixed reference adult is one of the two safeguards in `docs/MODEL.md`
+The fixed reference adult is one of the two safeguards in `docs/VERIFICATION.md`
 § "What keeps a real patient's data out of a run". Once age, sex and
 weight are inputs, a run can be built from a real patient's data. So this
 item rewrites that section and its hazard row.
@@ -3091,12 +3097,10 @@ to a reader only where an amount leaves the unit. That happens in the
 liquid-equivalent consumption figure that item 28 plans.
 
 *Its own item because two recorded limitations already end here.*
-`docs/MODEL.md` § "Known limitations" has two notes that both stop at the
-same unbuilt change. The note under § "One reference condition, where the
-model physically has two" sizes the temperature half. The alveolar, venous
-and tissue stores hold 5.5 % fewer moles than their 20 °C label implies. The
-note under § "The modeled alveoli are dry, and real ones are saturated at 47
-mmHg" sizes the water half at 47/760. Each note says that removing its
+`docs/MODEL.md` describes two limitations that both stop at the same unbuilt
+change. Its § "Units and symbols" sizes the temperature half: the alveolar,
+venous and tissue stores hold 5.5 % fewer moles than their 20 °C label
+implies. Its § "Dry alveoli" sizes the water half at 47/760. Removing either
 limitation is outside the current milestone.
 
 *This item is one change rather than two, and half of it is worse than
@@ -5454,7 +5458,7 @@ readers about its own limits. The `safety` entry is the successor to
   that on the Zeus "the surplus gas valve can be closed to prevent any loss of
   gas volume", which is not a small exhaust but a different conservation
   statement. Confirmed at triage that `docs/MODEL.md` carries no semi-closed
-  assumption anywhere — § "Model boundary" and § "Assumptions" are silent — so a
+  assumption anywhere — § "What the model represents" and § "Assumptions" are silent — so a
   reader who knows closed-circuit machines exist cannot tell whether the model
   excluded them or overlooked them. It matters ahead of any machine
   implementation for the reason the survey gives: this is the one machine

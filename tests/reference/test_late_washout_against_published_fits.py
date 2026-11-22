@@ -1127,7 +1127,7 @@ def _open_circuit_system_per_min(
     venous blood and the three tissue groups, in `OPEN_CIRCUIT_STATES`' order.
     M is built at the reference patient's default ventilation and cardiac
     output, which is `_configured_system()`'s operating point. Each row is the
-    equation that `docs/MODEL.md` § "Governing equations" gives for its state,
+    equation that `docs/MODEL.md` § "Equations" gives for its state,
     with the inspired fraction held at zero. That is the limit that the
     open-circuit driver approaches by enlarging the circuit and emptying it
     after every step. Only the parameter loaders are reused, as

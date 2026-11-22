@@ -6,7 +6,7 @@ here come from a closed form and from transcribed constants, never from the
 conversion under test. The delivered vapour is the dial times the fresh gas
 flow times the time. The tests work out the vapour-to-liquid factor for each
 agent from three values. Two are the agent's liquid density at 20 °C and its
-molar mass, as `docs/MODEL.md` § "Agent amount" tabulates them (Laster, Fang
+molar mass, as `docs/PARAMETERS.md` § "Agent amount" tabulates them (Laster, Fang
 and Eger's densities, and formula masses). The third is the ideal-gas molar
 volume at 20 °C and 1 atm, written out from R.
 
@@ -55,7 +55,7 @@ from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 
 #: Each agent's liquid density at 20 °C in g/mL and molar mass in g/mol,
-#: transcribed from `docs/MODEL.md` § "Agent amount", the table under "Why
+#: transcribed from `docs/PARAMETERS.md` § "Agent amount", the table under "Why
 #: 20 °C". The densities are Laster, Fang and Eger's.
 _DENSITY_AND_MOLAR_MASS = {
     "sevoflurane": (1.5203, 200.05),

@@ -41,7 +41,7 @@ several steps at a time, so the same slider moves made at two playback rates can
 produce different runs. `docs/VERIFICATION.md` § "Supported simulation step" quantifies this.
 
 **For developers.** § "Interface boundary" sets the constraints on the
-interface's own settings. `docs/MODEL.md` § "The reproducibility guarantee" rules out treating
+interface's own settings. `docs/VERIFICATION.md` § "The reproducibility guarantee" rules out treating
 the playback rate as a model input.
 
 ### Halting on a marked crossing
@@ -850,7 +850,7 @@ output leaves the original's flows unchanged. A tissue group is given a `BloodFl
 venous pool is given the cardiac output. Each refuses a plain `float`, whatever its value, with
 a `TypeError` that names the type to build. A tissue group is given the blood:gas coefficient as
 well as its flow, so that it keeps no copy that could disagree with the coefficient
-(`docs/MODEL.md` § "Blood compartments"). A new cardiac output written onto the field of a built patient is
+(`docs/MODEL.md` § "How much agent each compartment holds"). A new cardiac output written onto the field of a built patient is
 refused, and the refusal names `set_cardiac_output`, so that cardiac output has one way in.
 Writing the value that the field already holds is accepted.
 
@@ -1518,7 +1518,7 @@ agent starts a new case, and the questions from the Workspace strip. While one
 is open, the user cannot press Pause on any run. A run that was running
 resumes at the same playback rate, and a paused run stays paused. The wait
 changes nothing in a run, so each run follows the same course as if the user
-had answered at once, as `docs/MODEL.md` § "The reproducibility guarantee" requires. The
+had answered at once, as `docs/VERIFICATION.md` § "The reproducibility guarantee" requires. The
 bookmark editor does not block the window, so runs go on as usual while it is
 open.
 
@@ -1546,7 +1546,7 @@ and the Workspace strip's questions.
 **A difference between two runs is real, but a comparison does not say what it
 means for a patient.** The difference does not come from rounding, from the
 order of the program's arithmetic, from the playback rate or from the computer
-(`docs/MODEL.md` § "The reproducibility guarantee", `docs/INTERFACE.md` § "Each second has one stored state"). A
+(`docs/VERIFICATION.md` § "The reproducibility guarantee", `docs/INTERFACE.md` § "Each second has one stored state"). A
 comparison can teach only the mechanism: which way a curve moves when one thing
 changes, why it moves that way, and roughly how fast, in a model whose
 structure makes the reason easy to see.
@@ -1618,7 +1618,7 @@ The code enforces what the two runs share as follows:
   the agent begins a new run (§ "Agent-change behavior"), so an agent change
   during a comparison would end one of the two runs rather than vary it.
 - Exact reproducibility is not guaranteed across model versions or platforms
-  (`docs/MODEL.md` § "The reproducibility guarantee"), and the two runs of a comparison always
+  (`docs/VERIFICATION.md` § "The reproducibility guarantee"), and the two runs of a comparison always
   share one model version and one platform.
 - The circuit volume is a build-time parameter with no live setter
   (`test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter`).
@@ -1713,7 +1713,7 @@ first is about variability.
 - **"this patient"**: there is one modelled patient and no population around
   it, so nothing on screen is about a patient at all.
 - **"woke"**: this model has no effect-site compartment and defines
-  $`F_a \equiv F_A`$ (`docs/MODEL.md` § "Model boundary"), so it has no measure of
+  $`F_a \equiv F_A`$ (`docs/MODEL.md` § "What the model represents"), so it has no measure of
   responsiveness in which two runs could differ. The nearest thing the chart
   shows is the vessel-rich trace read against the MAC-awake band. That band is
   one standard deviation either side of a published population mean, and it is
@@ -2359,7 +2359,7 @@ this readout is not a simulated end-tidal measurement.
 
 Arterial concentration is **not** in the list above. In this model the arterial
 fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
-`docs/MODEL.md` § "Model boundary"). A separate arterial readout would show the alveolar number
+`docs/MODEL.md` § "What the model represents"). A separate arterial readout would show the alveolar number
 a second time under another name, as though the model computed an arterial
 value of its own.
 
@@ -2377,8 +2377,7 @@ that draws it has gone. Three entries have no field in the snapshot at all. The
 playback rate and the chart's span are view settings, and $`F_A/F_I`$ is
 computed when the plot is drawn.
 
-The documentation check reads the list of required outputs (`docs/MODEL.md` § "How this
-document is held to the tree"), and fails when an entry names nothing that backs
+The documentation check reads the list of required outputs (`docs/VERIFICATION.md` § "How this document is held to the tree"), and fails when an entry names nothing that backs
 it, or names a test that does not exist.
 
 ### Every value and what qualifies it come from one step
@@ -3003,7 +3002,7 @@ how fast the run advances, so that a long case can be watched in one sitting.
 **A time base changes the view and never the run.** No simulation step is
 resized or taken again. Nothing that defines the run is added, discarded or
 altered. A case watched at a width of fifteen minutes or of twelve hours is the
-same run, so `docs/MODEL.md` § "The reproducibility guarantee" still applies. Every point drawn
+same run, so `docs/VERIFICATION.md` § "The reproducibility guarantee" still applies. Every point drawn
 at any width is a state that the run reached at the simulated instant where the
 point sits. In a wider window, these states lie further apart in simulated time.
 No drawn value is estimated from its neighbours, and no stored image is
@@ -3141,7 +3140,7 @@ time-to-wake-up figure of any kind, because this model does not support a
 per-patient prediction.
 
 **Read the band against the vessel-rich trace.** This model has no effect-site
-compartment and defines $`F_a \equiv F_A`$ (see `docs/MODEL.md` § "Model boundary"), so the
+compartment and defines $`F_a \equiv F_A`$ (see `docs/MODEL.md` § "What the model represents"), so the
 alveolar trace is the fastest patient trace on the chart and the furthest from
 where responsiveness returns. One simulation shows the size of the gap. It ran
 sevoflurane for 3 hours at the opening dial of 2.0%, which is the stored 1 MAC,
@@ -3191,7 +3190,7 @@ $$
 \frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
 $$
 
-This is the perfusion-limited form that `docs/MODEL.md` § "Tissue uptake and return" uses for
+This is the perfusion-limited form that `docs/MODEL.md` § "Tissue groups" uses for
 each tissue group. Katoh's compartment is the brain alone, though, while this
 model's vessel-rich group pools the brain with the heart, liver, kidney and
 viscera.
@@ -3398,7 +3397,7 @@ prediction for an individual patient.
 
 **The denominator is the modelled inspired concentration, not the vaporizer
 dial.** This model assumes that the inspired fraction is the concentration in
-the breathing circuit (`docs/MODEL.md` § "Model boundary"). The circuit approaches the
+the breathing circuit (`docs/MODEL.md` § "What the model represents"). The circuit approaches the
 delivered concentration only over its own time constant, so early in a run the
 two differ substantially. Dividing by the dial would understate the ratio for
 as long as they differed. The interface says beside the plot which denominator
@@ -4262,7 +4261,7 @@ that the model cannot support.
 
 A negative value is never shown as `<0.01%`, where it would pass for a plausible
 small positive reading. The model cannot hold a negative concentration
-(`docs/MODEL.md` § "Concentrations"), so a negative value that reaches the display means that
+(`docs/VERIFICATION.md` § "Concentrations"), so a negative value that reaches the display means that
 something upstream is wrong, and the display refuses it.
 
 **For developers.** The readout's decimal count must not feed back into the
@@ -4272,7 +4271,7 @@ input ranges are intervals in L/min. Both are derived without reference to the
 readout, in `docs/VERIFICATION.md` § "Supported simulation step" and `docs/INTERFACE.md` § "Supported input ranges". A
 future change to one decimal has to answer the objection to it given under the
 lower limit above. The negative concentrations that the model cannot hold
-include minus zero (`docs/MODEL.md` § "Concentrations"). No value of the `Fraction` type can be
+include minus zero (`docs/VERIFICATION.md` § "Concentrations"). No value of the `Fraction` type can be
 negative, and the formatter is the code that refuses a negative value.
 
 #### The MAC multiple's resolution
@@ -5802,7 +5801,7 @@ into fat, a route between tissues that this model omits (`PL-RNYV`).
 
 **No container is drawn for arterial blood.** The model sets arterial tension
 equal to alveolar tension at every instant ($`F_a \equiv F_A`$,
-`docs/MODEL.md` § "Blood compartments"), so it gives arterial blood no volume, capacity or
+`docs/MODEL.md` § "How much agent each compartment holds"), so it gives arterial blood no volume, capacity or
 amount of its own. The alveolar container therefore shows arterial tension as
 well. Gas Man's Picture draws an arterial container. Here such a container
 would show agent that the model does not hold.

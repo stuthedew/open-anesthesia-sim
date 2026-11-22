@@ -1150,7 +1150,7 @@ def _build_derivative(agent_id: str, point: OperatingPoint) -> Derivative:
     """Build dy/dt for the `docs/MODEL.md` system, from the specification.
 
     Only the parameter loaders are reused. Every equation below is written
-    out from `docs/MODEL.md` § "Governing equations" rather than called from
+    out from `docs/MODEL.md` § "Equations" rather than called from
     the implementation under test. That is what makes agreement between the
     two solutions count as evidence.
     """

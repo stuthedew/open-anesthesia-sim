@@ -357,7 +357,7 @@ class TissueGroupEquationSettings:
     def washin_rate_s(self) -> float:
         """Return $`Q_i / (V_i\\lambda_{i:b})`$, the reciprocal of $`\\tau_i`$.
 
-        `docs/MODEL.md` § "Tissue uptake and return" gives the tissue time
+        `docs/MODEL.md` § "Tissue groups" gives the tissue time
         constant as $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$, which is undefined at
         zero flow. This property is its reciprocal, which is zero at zero flow
         instead. An unperfused tissue exchanges nothing, as the document's
@@ -385,8 +385,8 @@ class UptakeEquationSettings:
     below.
 
     **Flows are stored in the litres per minute to which they were set, and
-    read in litres per second.** `docs/MODEL.md` § "Governing equations" writes
-    every flow term per second. So each flow has a per-second property, and
+    read in litres per second.** The equations take every flow per second
+    (`docs/VERIFICATION.md` § "Time"). So each flow has a per-second property, and
     `build_system_matrix` reads only those properties. That keeps the
     conversion out of every equation. The value as set is what is stored,
     because a run records this object for each stretch
@@ -394,7 +394,7 @@ class UptakeEquationSettings:
     exactly. A cardiac output of 1.9 L/min, divided
     by sixty and multiplied back, is 1.8999999999999997, and settings rebuilt
     from that value differ in all three tissue flows (`PL-SM5V`).
-    `docs/MODEL.md` § "Time" states which of the two values is the one
+    `docs/VERIFICATION.md` § "Time" states which of the two values is the one
     recorded.
 
     **The delivered concentration is stored as the percent that was dialled,
@@ -402,7 +402,7 @@ class UptakeEquationSettings:
     read $`F_D`$ through `delivered_partial_pressure_fraction`. A fraction
     multiplied by a hundred does not give back the percent it came from for
     126 of the 801 settings that a 0 to 8% dial makes in 0.01% steps. So a
-    fraction stored here would not give back what was set. `docs/MODEL.md`
+    fraction stored here would not give back what was set. `docs/VERIFICATION.md`
     § "Concentrations" states this rule.
 
     **Each flow is a checked type, so no record can store a flow outside its
@@ -605,9 +605,9 @@ class UptakeEquationSettings:
 def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     """Assemble $`A`$, so that $`\\exp(A\\Delta t)`$ advances the model exactly.
 
-    Each block below is one equation of `docs/MODEL.md` § "Governing
-    equations" or `docs/VERIFICATION.md` § "Conservation of agent mass",
-    written in the symbols of `docs/MODEL.md`. The blocks follow the order of
+    Each block below is one equation of `docs/MODEL.md` § "Equations" or
+    `docs/VERIFICATION.md` § "Conservation of agent mass", written in the
+    symbols of `docs/MODEL.md`. The blocks follow the order of
     the state vector, so the venous balance comes before the tissue balances,
     and the two totals come last. The comment above each block is the
     equation, and each line under the comment writes one of its terms as one
@@ -686,7 +686,7 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     # exchange with blood is perfusion-limited, so it defines the arterial
     # fraction F_a as the alveolar fraction F_A. The driving fraction is
     # therefore read from the alveolar state directly. Setting F_a equal to F_A
-    # is a deliberate simplification (docs/MODEL.md § "Model boundary").
+    # is a deliberate simplification (docs/MODEL.md § "What the model represents").
     for offset, tissue in enumerate(settings.tissues):
         state = FIRST_TISSUE_FRACTION + offset
         washin_rate_s = tissue.washin_rate_s

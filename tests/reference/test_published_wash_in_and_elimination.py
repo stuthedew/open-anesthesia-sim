@@ -76,7 +76,7 @@ such term. It divides the alveolar fraction by its own value five minutes
 earlier. So agent that returns to the alveoli *from the circuit* is counted
 exactly as though it had come back out of the patient.
 
-This model always rebreathes. `docs/MODEL.md` § "Model boundary" gives it one
+This model always rebreathes. `docs/MODEL.md` § "What the model represents" gives it one
 ideal circuit. That circuit is a closed recirculating path except for
 fresh-gas inflow and exhaust, and inspired gas *is* circuit gas. So during an
 elimination the inspired fraction settles near V_A/(V_A + fresh gas flow)
@@ -2411,7 +2411,7 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
     the counterpart. With the circuit enlarged and discarded after every step,
     the same sweep moves the ratio by 1.3e-10 SD at most.
 
-    `docs/MODEL.md` § "Model boundary" gives the mechanism. Inspired gas is
+    `docs/MODEL.md` § "What the model represents" gives the mechanism. Inspired gas is
     circuit gas, and the circuit is a closed recirculating path except for
     fresh-gas inflow and exhaust. So during elimination the inspired fraction
     settles near V_A/(V_A + fresh gas flow) times the alveolar fraction. At

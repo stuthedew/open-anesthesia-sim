@@ -1,18 +1,20 @@
-"""The arithmetic figures in `docs/MODEL.md` § "Known limitations" follow from their inputs.
+"""The arithmetic figures behind the known limitations follow from their inputs.
 
-The section sizes each limitation with figures a reader uses to judge how much
-it matters. Many of them are arithmetic on a stored parameter, a physical
-constant or a published value that the same paragraph states. Before
+`docs/MODEL.md` sizes each limitation with figures a reader uses to judge how
+much it matters, and `docs/PARAMETERS.md` § "The evidence behind the known
+limitations" keeps the working behind them. Both are read here as one text.
+Many of the figures are arithmetic on a stored parameter, a physical constant
+or a published value that the same paragraph states. Before
 `PL-19W8`, nothing checked that arithmetic. This module redoes it.
 
-Each test reads the inputs and the result from the section as printed, takes
-the stored parameters from the data files through the loaders, and compares
-the result at the number of decimal places the section prints it with. So a
-changed parameter that moves a figure fails here, and so does an edit to the
-section that changes a figure without changing its inputs. The published
-inputs, such as Baker and Farmery's coefficients, are read from the section,
-because each is restated there beside its citation. These tests check that the
-section's arithmetic is right. They cannot check that a published input was
+Each test reads the inputs and the result from the text as printed, takes the
+stored parameters from the data files through the loaders, and compares the
+result at the number of decimal places the text prints it with. So a changed
+parameter that moves a figure fails here, and so does an edit to the text that
+changes a figure without changing its inputs. The published inputs, such as
+Baker and Farmery's coefficients, are read from the text, because each is
+restated there beside its citation. These tests check that the text's
+arithmetic is right. They cannot check that a published input was
 transcribed correctly, which is the citation's job.
 """
 
@@ -34,9 +36,10 @@ from anesthesia_sim.core.parameters import (
 from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE
 
 MODEL_PATH = Path(__file__).resolve().parents[2] / "docs" / "MODEL.md"
-#: The document that holds the table of Yasuda, Targ and Eger's Table 1.
+#: The document that holds the evidence behind the limitations, and the table
+#: of Yasuda, Targ and Eger's Table 1.
 PARAMETERS_PATH = MODEL_PATH.with_name("PARAMETERS.md")
-SECTION_HEADING = "## Known limitations"
+EVIDENCE_HEADING = "## The evidence behind the known limitations"
 
 #: One standard atmosphere in mmHg, the pressure that `STANDARD_ATMOSPHERE_PA`
 #: holds in pascals. The section works in mmHg, and `core/liquid_agent.py`
@@ -49,25 +52,41 @@ BODY_TEMPERATURE_CELSIUS = 37.0
 
 @cache
 def _section_text() -> str:
-    """The section's prose, with each run of whitespace made one space."""
+    """The prose of `docs/MODEL.md` and of the evidence section, with each run
+    of whitespace made one space.
 
-    text = MODEL_PATH.read_text(encoding="utf-8")
-    start = text.index(SECTION_HEADING)
-    end = text.find("\n## ", start + len(SECTION_HEADING))
+    The whole of `docs/MODEL.md` is read, because the clinician's text states
+    some of these figures where they first matter, outside its known
+    limitations.
+    """
 
-    return " ".join(text[start : end if end >= 0 else None].split())
+    model = MODEL_PATH.read_text(encoding="utf-8")
+    parameters = PARAMETERS_PATH.read_text(encoding="utf-8")
+    start = parameters.index(EVIDENCE_HEADING)
+    end = parameters.find("\n## ", start + len(EVIDENCE_HEADING))
+    evidence = parameters[start : end if end >= 0 else None]
+
+    return " ".join(f"{model}\n{evidence}".split())
 
 
 def _one(pattern: str) -> tuple[str, ...]:
-    """The groups of the one match of `pattern` in the section, or a failure naming it."""
+    """The groups that every match of `pattern` gives, or a failure naming it.
+
+    A figure may be stated both in `docs/MODEL.md` and in the evidence
+    section. Each statement must give the same figures, so that neither copy
+    can drift from the other.
+    """
 
     # regex: a search for one sentence's figures through free prose, which no
     # parser reads; the caller's pattern names the sentence's fixed words.
     matches = re.findall(pattern, _section_text())
-    assert len(matches) == 1, (
-        f"docs/MODEL.md § 'Known limitations' should state this once, as {pattern!r}, and it "
-        f"states it {len(matches)} times. If the sentence was reworded, update the pattern "
-        f"here so the figure stays checked."
+    assert matches, (
+        f"neither docs/MODEL.md nor docs/PARAMETERS.md § 'The evidence behind the known "
+        f"limitations' states this as {pattern!r}. If the sentence was reworded, update the "
+        f"pattern here so the figure stays checked."
+    )
+    assert len(set(matches)) == 1, (
+        f"the statements matching {pattern!r} give different figures: {sorted(set(matches))}"
     )
     found = matches[0]
 
@@ -106,9 +125,10 @@ def _molar_volume_l_mol(celsius: float) -> float:
 def test_the_reference_condition_gap_is_the_ratio_of_molar_volumes() -> None:
     """The 5.8 % overstatement and the 5.5 % shortfall come from 37 °C against 20 °C."""
 
-    body, reference = _one(r"The ratio behind both figures is (\d+\.\d+)/(\d+\.\d+)")
-    (overstated,) = _one(r"\*\*The size is (\d+\.\d) %")
-    (fewer,) = _one(r"stores hold (\d+\.\d) % fewer moles")
+    (reference,) = _one(r"molar volume at that condition is (\d+\.\d+) L/mol")
+    (body,) = _one(r"measured at 37 °C, where the molar volume is (\d+\.\d+) L/mol")
+    (overstated,) = _one(r"overstates it by (\d+\.\d) ?%")
+    (fewer,) = _one(r"stores hold (\d+\.\d) ?% fewer moles")
     at_body = _molar_volume_l_mol(BODY_TEMPERATURE_CELSIUS)
 
     assert _as_printed(at_body, body) == body
@@ -122,9 +142,9 @@ def test_the_reference_condition_gap_is_the_ratio_of_molar_volumes() -> None:
 def test_the_humidification_dilution_follows_from_the_water_vapour_pressure() -> None:
     """47 mmHg of water leaves 713 mmHg, a 6.2 % dilution and a 6.6 % overstatement."""
 
-    water, rest = _one(r"of the 760 mmHg available, (\d+) mmHg is water and (\d+) mmHg is left")
-    (dilution,) = _one(r"That is a dilution of 47/760, or (\d+\.\d) %")
-    (above,) = _one(r"the undiluted figure is (\d+\.\d) % above the humidified one")
+    water, rest = _one(r"saturated with water vapou?r at (\d+) mmHg, which leaves (\d+) mmHg")
+    (dilution,) = _one(r"diluted by 47/760, or (\d+\.\d) ?%")
+    (above,) = _one(r"the undiluted figure is (\d+\.\d) ?% above the humidified one")
     water_mmhg = float(water)
     dry_mmhg = STANDARD_ATMOSPHERE_MMHG - water_mmhg
 
@@ -156,7 +176,7 @@ def test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form(
 def test_lowe_and_ernsts_cardiac_output_at_the_reference_weight() -> None:
     """0.2 M^(3/4) at the reference patient's 70 kg is the 4.84 L/min printed."""
 
-    printed, weight = _one(r"which is (\d+\.\d+) L/min at (\d+) kg")
+    printed, weight = _one(r"(\d+\.\d+) L/min at (\d+) kg")
     reference_weight_kg = load_reference_adult_parameters().weight_kg
 
     assert float(weight) == reference_weight_kg
@@ -346,10 +366,9 @@ def test_yasudas_fat_spreads_are_the_percents_printed() -> None:
 def test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed() -> None:
     """Seven of nine stored values differ from the means, by at most 9%, in isoflurane's fat."""
 
-    (bullet,) = _one(r"Gas Man's, which differ by up to (\d+)% from the means")
     cells_differing, largest, stored_fat, mean_fat = _one(
-        r"means in (\w+) of the nine cells, by up to (\d+)% in isoflurane's fat coefficient, "
-        r"(\d+\.\d) against (\d+\.\d)"
+        r"means in (\w+) of nine cells, by up to (\d+)% \(isoflurane fat, "
+        r"(\d+\.\d) against (\d+\.\d)\)"
     )
     table = _yasuda_table()
     gaps = {cell: abs(stored / mean - 1.0) * 100.0 for cell, (stored, mean, _sd) in table.items()}
@@ -357,7 +376,7 @@ def test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed() -> 
 
     assert widest == ("isoflurane", "fat")
     assert (float(stored_fat), float(mean_fat)) == table[widest][:2]
-    assert _as_printed(gaps[widest], largest) == largest == bullet
+    assert _as_printed(gaps[widest], largest) == largest
     differing = sum(stored != mean for stored, mean, _sd in table.values())
     assert cells_differing == ("seven" if differing == 7 else str(differing)), (
         f"{differing} of the nine stored values differ from Yasuda's means"

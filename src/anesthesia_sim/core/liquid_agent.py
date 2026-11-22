@@ -38,9 +38,8 @@ conversion is exact for them. The alveolar, venous and tissue stores are at
 body temperature. They carry the 20 °C condition only as a label, and they
 hold 5.5 % fewer moles than the label implies. So the label overstates them by
 5.8 %, and the liquid volume converted from a store is 5.8 % too high
-(`docs/MODEL.md` § "One reference condition, where the model physically has
-two", under § "Known limitations"). A cost is a delivered amount, so it is
-exact. A readout that converts a store must say so (`PL-B396`).
+(`docs/MODEL.md` § "Units and symbols"). A cost is a delivered amount, so it
+is exact. A readout that converts a store must say so (`PL-B396`).
 """
 
 from __future__ import annotations

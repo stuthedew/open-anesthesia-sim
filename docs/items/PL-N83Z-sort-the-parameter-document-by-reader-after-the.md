@@ -3,7 +3,7 @@ id: PL-N83Z
 title: Sort the parameter document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its section (stage 3 of the split PL-P3GZ decided)
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: model-md-structure
 touches: docs/PARAMETERS.md

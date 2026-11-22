@@ -4101,8 +4101,8 @@ class EntityKind:
     #: `check_named_tests` for a test name - so this never becomes a second
     #: resolver that could disagree with the first.
     names: Callable[[str], bool]
-    #: The fixed form that `docs/MODEL.md` § "How this document is held to the
-    #: tree" sets for a missing test. The words in front of it are the
+    #: The fixed form that `docs/VERIFICATION.md` § "How this document is held
+    #: to the tree" sets for a missing test. The words in front of it are the
     #: sentence's own; this parenthesis is what makes a declared absence
     #: distinguishable from a forgotten link by a script rather than by a
     #: reader.
@@ -4126,7 +4126,7 @@ TEST_ENTITY = _entity_kind("test", _names_a_test)
 class BoundFamily:
     """A heading that promises one assertion per member, and what each owes.
 
-    `docs/MODEL.md` § "How this document is held to the tree": where a
+    `docs/VERIFICATION.md` § "How this document is held to the tree": where a
     heading promises one assertion per member, every member names its entity or
     carries the declared-none form. The table is what turns that sentence into
     a decidable question, one family at a time.
@@ -4329,10 +4329,9 @@ def _holds_its_figures(member: str) -> bool:
 #: absence it may declare is a test still owed.
 FIGURE_ENTITY = _entity_kind("test", _holds_its_figures)
 
-#: How a note for developers opens. `.claude/rules/plain-writing.md` sends a
-#: `docs/MODEL.md` section's test names and numerical detail to a paragraph
-#: that opens this way, so that the paragraphs a clinician reads need not
-#: carry them.
+#: How a note for developers opens. `.claude/rules/sources-and-docstrings.md`
+#: sends a section's test names and numerical detail to a paragraph that opens
+#: this way, so that the paragraphs a clinician reads need not carry them.
 DEVELOPER_NOTE_OPENING = "**For developers.**"
 
 
@@ -4689,8 +4688,8 @@ BOUND_FAMILIES = (
         ),
     ),
     BoundFamily(
-        document=MODEL,
-        heading="Known limitations",
+        document=PARAMETERS,
+        heading="The evidence behind the known limitations",
         level=2,
         kind=FIGURE_ENTITY,
         members=_numeric_paragraph_members,

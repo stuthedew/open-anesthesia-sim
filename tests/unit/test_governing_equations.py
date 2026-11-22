@@ -6,7 +6,7 @@ plausible trajectory. The reference gates would catch the error only as a
 number that disagrees with the oracle, without saying where the error is.
 
 So every expected value below is written out from `docs/MODEL.md`
-§ "Governing equations", independently of the module under test. The settings
+§ "Equations", independently of the module under test. The settings
 are chosen so that no two rates share a value, and so a transposed index
 cannot pass. The propagator depends on three structural properties: the
 matrix is Metzler, the unit state is constant, and the compartments conserve
@@ -564,7 +564,7 @@ def test_each_tissue_row_is_that_group_s_balance() -> None:
 
         # The model defines arterial blood as carrying the alveolar fraction:
         # it assumes no shunt, one alveolar compartment and perfusion-limited
-        # exchange (docs/MODEL.md § "Model boundary"). A tissue is therefore
+        # exchange (docs/MODEL.md § "What the model represents"). A tissue is therefore
         # driven by that fraction and by nothing else: not by the circuit, by
         # mixed venous blood or by another tissue group.
         assert row[INSPIRED_FRACTION] == 0.0

@@ -3,7 +3,7 @@ id: PL-XLDN
 title: docs/PARAMETERS.md § 'Where each stored value comes from' says a measurement beside a tier-3 number does not source it, 'which is the second of the three rules below', but the three rules are above it, in § 'Source hierarchy'
 priority: P3
 effort: S
-status: blocked
+status: ready
 classes: defect, docs
 feature: model-md-structure
 touches: docs/PARAMETERS.md
