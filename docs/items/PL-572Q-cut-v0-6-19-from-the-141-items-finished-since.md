@@ -1,11 +1,9 @@
 ---
 id: PL-572Q
 title: Cut v0.6.19 from the 141 items finished since v0.6.18
-status: done
+status: untriaged
 resource: release-train
 added: 2026-11-22
-closed: 2026-11-22
-pr: 2209
 verify: grep -qF '## Current baseline: v0.6.19' ROADMAP.md
 ---
 
