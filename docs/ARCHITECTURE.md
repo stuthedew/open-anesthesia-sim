@@ -1002,11 +1002,25 @@ their place, and the delivered line withholds its values (`PL-SV2Q`).
 
 One test checks that each value on screen and what qualifies it come from one
 step (`test_every_value_and_its_qualifiers_on_screen_come_from_one_state`,
-`PL-J5GC`). A second requires every other widget to read the same on a halted
-run as on a drawn one. It includes a widget by default, so one added later is
-checked without anyone listing it
-(`test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`,
-`PL-X7D5`).
+`PL-J5GC`). Another checks that nothing on screen keeps a value from an earlier
+state (`test_every_registered_view_draws_a_state_alike_whatever_it_drew_before`
+in `tests/integration/test_view_contract.py`, `PL-RF2S`). It shows a table of
+states in turn to one dashboard: two compared runs, both open questions, a new
+branch in the place of a discarded one, a halt after a Reset and a halt after
+an agent change with no frame drawn since, and a halt that keeps the last
+frame. It shows each state again to a new dashboard built over the same runs,
+and the two must read alike. The reading covers every widget's text, value,
+enabled state and style sheet, every painted string, every item each plot
+draws with its pen and fill, and the pen of each legend swatch. A pen is read
+because a trace's width and dash say which run and which compartment it is.
+The test also hands every
+tick of the walk to a new View of each registered kind, once after each other
+tick and once alone, and requires the same. It finds the widgets and plot
+items by a walk, so a widget or View added later is checked without anyone
+listing it. A companion test requires every field of the tick a View is
+handed to change between two states shown one after the other. So a field
+added later fails until a state of the table changes it
+(`test_each_field_of_a_view_tick_changes_between_two_states_of_the_walk`).
 
 The legends are told what a frame drew only once both plots have drawn it, so
 when the frame that a click asked for fails, the legend boxes still name the
@@ -1382,7 +1396,11 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   (`PL-R1WQ`). Each Area holds one View, and its chooser lists the new kind
   of View at once (`PL-50PZ`). A test builds the View, checks it against the
   protocol, and checks that it reads back the state it saves
-  (`tests/integration/test_view_contract.py`).
+  (`tests/integration/test_view_contract.py`). Another test in that file
+  hands the new kind every state of its walk after each other one, so the
+  View is checked for a value left from an earlier state without being
+  named (`PL-RF2S`). When the View reads a new field of `ViewTick` or of a
+  value it carries, add a state to that walk's table that changes the field.
 - A new display panel or control → three places. What the panel *claims* goes
   in `app/dashboard_frame.py`, as a plain value with a test in
   `tests/unit/test_dashboard_frame.py`. The widget that draws it goes in
