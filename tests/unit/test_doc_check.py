@@ -293,8 +293,11 @@ def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> 
         if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
         # `PL-48MX` moved the numeric paragraphs that the family reads from
         # `docs/MODEL.md` § "Known limitations" to a section of
-        # `docs/PARAMETERS.md`. The fixture keeps them under the old heading.
-        else dataclasses.replace(family, document=doc_check.MODEL, heading="Known limitations")
+        # `docs/PARAMETERS.md`. The fixture keeps them under the old heading,
+        # at its own depth, whatever the depth of the section in that document.
+        else dataclasses.replace(
+            family, document=doc_check.MODEL, heading="Known limitations", level=2
+        )
         if family.document == doc_check.PARAMETERS
         else family
         for family in doc_check.BOUND_FAMILIES
