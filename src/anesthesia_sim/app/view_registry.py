@@ -65,6 +65,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.dashboard_frame import FORK_HEADING
+from anesthesia_sim.app.theme import CHART_LEAST_HEIGHT
 from anesthesia_sim.app.view_contract import ViewFactory
 from anesthesia_sim.app.views import (
     AccountingView,
@@ -385,15 +386,16 @@ def required_kinds(
 # 110 px the column needs 477 px.
 _LEAST_HEIGHT_PX: Final = 110
 
-# The concentration chart's least height. It is the height of the View's
-# heading, the first two rows above the plot and the plot at
-# `theme.CHART_LEAST_HEIGHT`, measured at 275 px with the offscreen font and
-# rounded up. So the chart's Area keeps the plot whole, and a neighbour gives
-# up the room (`PL-CBYS`, project owner, 2026-11-11: the long plot is kept).
-# While two runs are compared the rows above the plot are taller, so the
-# View's entry carries `whole`, and its Area grows to keep the plot whole then
-# too (`PL-D5J4`).
-_CHART_LEAST_HEIGHT_PX: Final = 280
+# The concentration chart declares only its plot's least height. Its entry
+# carries `whole`, so its Area is held at the least height of the View's whole
+# content, read from the View's own layout: the heading, the key, every
+# advisory shown above the plot and the plot (`PL-D5J4`). The chart's Area so
+# keeps the plot whole, and a neighbour gives up the room (`PL-CBYS`, project
+# owner, 2026-11-11: the long plot is kept). The Area grows while an advisory
+# or a second run's notice is shown. Keeping room for every advisory all the
+# time would leave the plot unmoved, but Induction at 1366 by 768 with two
+# runs has no room to spare for it (`PL-S6CP`, project owner, 2026-11-22,
+# ratified).
 
 # The Parameters View's least height, which is one run's row of controls. The
 # row was measured at 106 px with the offscreen font and rounded up (`PL-4JCC`).
@@ -409,7 +411,7 @@ REGISTERED: Final = registry(
         CONCENTRATION_CHART,
         "Concentrations",
         ConcentrationView,
-        minimum=PixelSize(420, _CHART_LEAST_HEIGHT_PX),
+        minimum=PixelSize(420, CHART_LEAST_HEIGHT),
         whole=True,
     ),
     RegisteredView(WASH_IN, "Wash-in", WashInView, minimum=PixelSize(300, _LEAST_HEIGHT_PX)),

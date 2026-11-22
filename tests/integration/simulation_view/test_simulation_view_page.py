@@ -10,6 +10,7 @@ from PySide6.QtCore import QEvent, QObject, QPoint
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import PARAMETER_SLIDER_LEAST_LENGTH
 from anesthesia_sim.app.view_registry import (
@@ -893,3 +894,41 @@ def test_the_screen_walk_reads_the_mac_awake_entry_whole_where_its_words_wrap(
     assert "\n" in band.text()
     assert words in view.visible_strings()
     assert band.text() not in view.visible_strings()
+
+
+def test_an_advisory_above_the_concentration_plot_grows_its_area_and_keeps_the_plot_whole(
+    application: QApplication,
+) -> None:
+    """`PL-S6CP`: in Induction on a laptop, the plot's time axis never scrolls out of sight.
+
+    A second run adds the notice that the chart draws at most two compartments
+    per run, and hiding every trace adds the advisory that none is shown. Each
+    sits above the plot. The chart's Area grows by their height, so the plot
+    stays whole and its time axis stays in sight (project owner, 2026-11-22,
+    ratified). Keeping room for every advisory all the time would leave the
+    Areas unmoved, but at this size one advisory with one run already makes
+    the page scroll 47 px in Induction, so there is no room to keep. Whether
+    the page scrolls with two runs is `PL-5J1X`'s question, not this test's.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768, branched=True)
+    areas = view.layout_container
+    (chart_area,) = (area for area in areas.model.areas() if area.view == CONCENTRATION_CHART)
+    frame = areas.frame(chart_area.id)
+    chart_view = frame.content
+    assert isinstance(chart_view, ConcentrationView)
+    assert not chart_view.capped_traces_text.isHidden()
+    before_px = frame.height()
+
+    for quantity in RecordedQuantity:
+        view._handle_compartment_request(quantity, False)
+
+    _settle(application)
+    scroll = frame.view_scroll
+    assert scroll is not None
+
+    assert not chart_view.hidden_traces_text.isHidden()
+    assert frame.height() > before_px
+    assert scroll.verticalScrollBar().maximum() == 0
+    plot = chart_view.chart.geometry()
+    assert plot.bottom() < scroll.viewport().height(), (plot, scroll.viewport().height())
