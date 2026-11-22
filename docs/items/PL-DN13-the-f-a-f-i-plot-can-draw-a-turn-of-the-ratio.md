@@ -3,12 +3,15 @@ id: PL-DN13
 title: The F_A/F_I plot can draw a turn of the ratio low or high where it falls between two chart columns
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: run-computed-one-way
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/chart_time_base.py
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2214
 payoff: a learner reading how far F_A/F_I fell after a dial change reads the true trough, not a column value above it
+tests: tests/integration/controller/test_controller_stored_states.py::test_a_trough_of_the_ratio_between_two_chart_columns_is_drawn_at_its_stored_value, tests/unit/test_chart_time_base.py::test_a_second_with_no_value_is_neither_returned_nor_compared_with, tests/unit/test_chart_time_base.py::test_a_trace_that_starts_after_zero_is_searched_only_between_the_drawn_seconds, tests/unit/test_controller_drawn_seconds.py::test_an_alveolar_series_longer_than_the_inspired_one_is_refused
 ---
 
 **Problem.** The F_A/F_I plot draws the alveolar fraction divided by the inspired fraction at each second that the chart draws (`DrawnWindow.wash_in_quotients` in `app/run_series.py`). Since `PL-BLZJ` (draw each peak between two columns), `SimulationController.drawn_window` also draws the second at which each compartment's fraction is highest or lowest between two columns. The ratio of two fractions can turn at a second where neither fraction does. After the dial is raised, the inspired fraction rises faster than the alveolar one, so the ratio falls for some seconds and then recovers. The raising is drawn, and the lowest ratio is drawn only if it falls on a column or on a second that one of the six fractions turns at.
@@ -24,3 +27,5 @@ payoff: a learner reading how far F_A/F_I fell after a dial change reads the tru
 **Checked 2026-11-22.** In `app/controller.py`, the helper that chooses the drawn seconds still applies `extreme_seconds` only to the compartments' fraction series. `DrawnWindow.wash_in_quotients` forms the ratio only at the seconds chosen from them. At the freeze no turn between two columns was drawn for any series, so the ratio's case was present then. `PL-BLZJ` (#2180) drew the fractions' turns and not the ratio's.
 
 **Generator check.** The fact misread is which series the chart draws a turn for between two columns. `PL-BLZJ` is the same mechanism for the six fractions. This item was filed by the pull request that closed `PL-BLZJ`, so it was found while that fix was built rather than after a shipped fix failed, and it is not recorded as a re-entry (`PL-C47M` has that rule).
+
+**Done 2026-11-22.** The chart's thinning of a long run now keeps the F_A/F_I ratio's own highest and lowest seconds between two columns, searched as a seventh series by `chart_time_base.extreme_seconds_with_gaps`, which never returns a second with no ratio. Before the fix, a trough between two columns was drawn up to 0.12 off on the 0 to 1.15 axis. Docs checked: `docs/INTERFACE.md` (updated where the chart keeps each stretch's highest and lowest seconds), `docs/MODEL.md` and `docs/VERIFICATION.md` (no statement about the chart's thinning: `grep -n -i "column\|thinn"` finds only table columns), `README.md` (none). Left for later: PL-03YG (the search's cost on a long window).

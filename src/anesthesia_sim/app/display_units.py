@@ -16,7 +16,7 @@ panel and the formatters write `label` beside a value. The chart writes
 
 The delivered concentration shows why one member holds three spellings. The
 record states its unit in full, "percent of 1 atm", because the record has to
-say what the percent is of. The panel shows "%" beside the slider, where the
+say what the percent is of. The panel shows "%" above the slider, where the
 full phrase would not fit. The chart's left axis says "% of 1 atm". The three
 spellings are one unit, so they live in one member.
 

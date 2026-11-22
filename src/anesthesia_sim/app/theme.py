@@ -563,11 +563,6 @@ PREVIEW_REGION_EDGE_STROKE_WIDTH = 1.5
 # (`PL-PZD9`). The width is a placeholder until the visual pass.
 PRICE_FIELD_MAX_WIDTH = 320
 
-# The bookmark editor. Wider than the new-case dialog because it carries two
-# forms and two lists rather than three sentences, and each target row states
-# a compartment, a height, a direction and a name.
-BOOKMARK_DIALOG_WIDTH = 480
-
 # The gap between a collection's heading and its rows. It is the tighter of the
 # two gaps, so the heading looks like part of the rows under it rather than
 # floating between the two collections.
@@ -596,7 +591,7 @@ MARK_ROW_SPACING = 2
 
 # The greatest height that each of the editor's two lists may grow to: about
 # six rows, after which the list scrolls. It is a fixed limit rather than a
-# stretch, because a list widget allowed to grow freely takes the whole dialog.
+# stretch, because a list widget allowed to grow freely takes the whole View.
 # The list then leaves its form floating above a field of white. The
 # lists only confirm what was just added, while the form is what the reader
 # came to use.
@@ -622,6 +617,16 @@ CONTROL_ROW_SPACING = 8
 
 # The gap between the four setting sliders, in px.
 PARAMETER_SLIDER_SPACING = 12
+
+# The least length of a setting slider's groove, in px. A short slider spread
+# over its whole range moves several steps for each pixel the pointer moves,
+# so a reader dragging it cannot land on the value they want. At 90 px each
+# flow slider moves one or two steps of its readout per pixel. The delivered
+# concentration has finer steps, which the arrow keys set one at a time. The
+# length is a placeholder that `PL-V4Q8` chose. A longer one makes the
+# Parameters View wider than the Maintenance Workspace leaves it beside the
+# compartment schematic in a 1366 px window.
+PARAMETER_SLIDER_LEAST_LENGTH = 90
 
 # This gap, in px, separates a run's readout heading from the row of readouts
 # under it. The heading names the substance, says the values are modelled, and

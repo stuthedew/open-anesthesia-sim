@@ -49,8 +49,8 @@ from tests.integration.simulation_view.simulation_view_support import (
     _case_view,
     _failing_assembly,
     _fork_panel,
+    _mark_editor,
     _marks_panel,
-    _opened_bookmark_dialog,
     _paused_run_with_history,
     _select_agent,
     _settle,
@@ -948,24 +948,26 @@ def test_a_dashboard_slot_that_raises_withdraws_branching_and_names_the_dashboar
     """An exception in a dashboard slot halts every run, and the refusal names the dashboard.
 
     Through the halt gate, every slot of `SimulationView` that raises now halts every run,
-    as a frame that fails does. One such slot is Edit on the marks panel, which raises when
-    the editor cannot be built. The branch panel's refusal used to say "the frame this run
-    is drawn in failed", although no frame had failed (blind review of `PL-HJKN`).
+    as a frame that fails does. One such slot is Add in the marks editor, which raises here
+    when the run cannot take the mark. Before `PL-CHX0` the test pressed Edit on the marks
+    panel, which raised when the editor window could not be built. The branch panel's
+    refusal used to say "the frame this run is drawn in failed", although no frame had
+    failed (blind review of `PL-HJKN`).
     """
 
     case = _branched_case()
     view = _case_view(application, case)
 
     def refuse(*args: object, **kwargs: object) -> NoReturn:
-        raise RuntimeError("the marks editor could not be built")
+        raise RuntimeError("the mark could not be added")
 
-    monkeypatch.setattr(simulation_view_module, "BookmarkDialog", refuse)
-    _marks_panel(view).edit_button.click()
+    monkeypatch.setattr(SimulationController, "add_time_bookmark", refuse)
+    _mark_editor(view).add_time_button.click()
 
     assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
     assert case.trunk.fork_refusal == (
-        "the dashboard this run is drawn in failed (RuntimeError: the marks editor could not "
-        "be built), and a branch would be drawn by the same dashboard and could fail the same "
+        "the dashboard this run is drawn in failed (RuntimeError: the mark could not "
+        "be added), and a branch would be drawn by the same dashboard and could fail the same "
         "way; reset the run first"
     )
 
@@ -1122,7 +1124,7 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
     by hand in `_halt_every_run`, so a panel added later was restated only if someone
     remembered to add it there (`PL-5JTH`). This test builds the dashboard with every panel
     that holds a control. It gives the view a case, so that the branch panel is offered,
-    adds a mark, and opens the marks editor. It then fails on any control that no run
+    and adds a mark, which the marks editor lists. It then fails on any control that no run
     holds, that no `halt_restatements` panel holds, and that no container in
     `NOT_RESTATED_ON_A_HALT` holds.
     """
@@ -1130,7 +1132,6 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
     case = _branched_case()
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
-    _opened_bookmark_dialog(view)
     run_widgets = {id(widget) for run in view.runs for widget in _widget_attributes(run).values()}
     restated = {
         id(panel) for restatement in view.halt_restatements() for panel in restatement.panels
@@ -1154,7 +1155,7 @@ def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication
 
         unrestated.append(" < ".join(type(widget).__name__ for widget in chain[:6]))
 
-    assert view._bookmark_dialog is not None
+    assert _mark_editor(view).time_list.count() == 1
     assert sorted(set(unrestated)) == [], (
         "these controls are in no RunView and in no panel a halt restates: add their panel "
         "to SimulationView.halt_restatements, or name its container in "
@@ -1251,7 +1252,7 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
 
     `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
     checks that each `RunView` has one writer of its run state (`PL-X7D5`).
-    The branch panel, the marks panel, the marks editor and every Area's
+    The branch panel, the marks panel with its editor, and every Area's
     header sit outside the runs, and the halt restates them through
     `halt_restatements` (`PL-5JTH`). `test_every_dashboard_control_is_restated_on_a_halt`
     checks that each control is in a restated panel, but not what the panel
@@ -1268,7 +1269,6 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     case = _branched_case()
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
-    _opened_bookmark_dialog(view)
     view.present(False)
     _fork_panel(view).point_selector.clear()
     _fork_panel(view).take_button.click()
@@ -1440,14 +1440,14 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
     )
 
 
-def test_a_withdrawn_bookmark_panel_withdraws_the_open_dialog(
+def test_a_withdrawn_bookmark_panel_withdraws_the_editor_s_lists(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A halt that withdraws the bookmark panel withdraws the editor's lists and Remove buttons too.
 
-    The editor lists the same rows as the panel beside the chart. A halt that could not
-    work out the marks' standings used to hide the panel but leave the open editor
-    listing the last frame's rows. The editor then still showed the mark ahead of the
+    The editor lists the same rows as the lists above it. A halt that could not work out
+    the marks' standings used to hide the panel but leave the editor, then a window of
+    its own, listing the last frame's rows. The editor then still showed the mark ahead of the
     clock as still to come, and its Remove button still worked on that row (`PL-F5KT`).
     The next frame that is drawn shows both again.
     """
@@ -1455,14 +1455,14 @@ def test_a_withdrawn_bookmark_panel_withdraws_the_open_dialog(
     controller = _paused_run_with_history()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
-    dialog = _opened_bookmark_dialog(view)
+    editor = _mark_editor(view)
     withdrawn = (
-        dialog.time_list,
-        dialog.remove_time_button,
-        dialog.target_list,
-        dialog.remove_target_button,
+        editor.time_list,
+        editor.remove_time_button,
+        editor.target_list,
+        editor.remove_target_button,
     )
-    assert dialog.time_list.count() == 1
+    assert editor.time_list.count() == 1
     assert not any(widget.isHidden() for widget in withdrawn)
 
     def unanswerable(self: SimulationController) -> NoReturn:

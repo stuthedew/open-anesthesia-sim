@@ -6,7 +6,7 @@
       "name": "Maintenance",
       "origin": "shipped:maintenance",
       "layout": {
-        "next_area_id": 6,
+        "next_area_id": 4,
         "windows": [
           {
             "tree": {
@@ -17,43 +17,25 @@
               ],
               "children": [
                 {
-                  "area": 1,
-                  "view": "concentration_chart"
-                },
-                {
                   "split": "column",
                   "sizes": [
-                    0.52,
-                    0.2,
-                    0.28
+                    0.9,
+                    0.1
                   ],
                   "children": [
                     {
+                      "area": 1,
+                      "view": "concentration_chart"
+                    },
+                    {
                       "area": 2,
-                      "view": "compartment_schematic"
-                    },
-                    {
-                      "area": 3,
                       "view": "parameter_controls"
-                    },
-                    {
-                      "split": "row",
-                      "sizes": [
-                        0.5,
-                        0.5
-                      ],
-                      "children": [
-                        {
-                          "area": 4,
-                          "view": "bookmarks"
-                        },
-                        {
-                          "area": 5,
-                          "view": "branch"
-                        }
-                      ]
                     }
                   ]
+                },
+                {
+                  "area": 3,
+                  "view": "compartment_schematic"
                 }
               ]
             }

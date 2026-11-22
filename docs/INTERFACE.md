@@ -55,6 +55,12 @@ of the case, not an input to it. A run that halts at its marks computes exactly
 the values that an unmarked run computes, element for element. The only thing a mark changes is when
 the run stops.
 
+**The marks are added and removed in the Bookmarks View**, below the lists of
+marks and each run's standing on them. No window opens to edit a mark
+(§ "What this list requires once the layout is the reader's"). After a mark is
+removed, no mark in that list is selected, so a second press of its Remove
+button removes nothing.
+
 **The run halts on the simulation step that crossed a mark, at every playback
 rate.** Every step is tested for a crossing. At the faster rates, a halt is
 finer than anything a learner can do while the run plays. A setting changed
@@ -1518,9 +1524,7 @@ agent starts a new case, and the questions from the Workspace strip. While one
 is open, the user cannot press Pause on any run. A run that was running
 resumes at the same playback rate, and a paused run stays paused. The wait
 changes nothing in a run, so each run follows the same course as if the user
-had answered at once, as `docs/VERIFICATION.md` § "The reproducibility guarantee" requires. The
-bookmark editor does not block the window, so runs go on as usual while it is
-open.
+had answered at once, as `docs/VERIFICATION.md` § "The reproducibility guarantee" requires.
 
 **For developers.** Runs with nothing to lose get no question because a
 question asked when nothing is at stake teaches the user to answer it without
@@ -1581,8 +1585,8 @@ guarantees that both runs share the following:
   settings at the fork.
 - **The bookmarks.** A bookmark marks an instant or a height on a curve, and a
   run halts when it reaches one. The branch opens with the trunk's bookmarks.
-  While the comparison is shown, the bookmark editor writes each bookmark that
-  is added or removed to both runs, so the two runs always hold the same
+  While the comparison is shown, each bookmark that is added or removed in the
+  Bookmarks View is written to both runs, so the two runs always hold the same
   bookmarks. Each run has its own standing on each bookmark.
 - **The time frame.** Both runs count time from induction. The chart anchors
   both to induction rather than to either run's own start, so the two traces
@@ -1941,9 +1945,25 @@ measured 2026-11-21). Predicting every
 second to the right edge of a 12-hour axis took 0.26 s, so a drag on a dial
 stuttered. The preview now takes about 0.03 s on any axis.
 
-The F_A/F_I plot still draws one value for each column. It divides the two
-fractions at each drawn second, and the ratio can turn at a second where
-neither fraction does (`PL-DN13`).
+**The F_A/F_I plot draws the ratio's own peaks and troughs between two columns
+too** (`PL-DN13`). The ratio can turn at a second where neither fraction does.
+After the dial is raised, the inspired fraction rises faster than the alveolar
+one, so the ratio falls for some seconds and then recovers. So the chart also
+draws the second at which the ratio is highest and the second at which it is
+lowest between two columns, by the rule it uses for a compartment. A second
+whose inspired fraction is too small to divide by has no ratio. That second is
+left out of the search, and a column with no ratio is not compared with.
+
+A plot that drew the ratio only at its columns and at the fractions' turns
+could draw it above its trough. With the default sevoflurane patient on the
+twelve-hour time base, the dial was raised to 8% at each second from 30 s to
+102 s in turn. The largest gap between the drawn line and the trough was 0.090
+of the ratio on a plot 1 000 px wide, 0.12 at 600 px and 0.065 at 1 500 px. The
+axis spans 0 to 1.15, so a gap of 0.090 is about 8% of the plot's height. The
+same dial raised later in the run left smaller gaps: up to 0.022 at 1 000 px
+when raised to 8% between 600 s and 672 s. Measured on 2026-11-22.
+
+<!-- not-restated: 8 % -->
 
 **The user chooses which compartment traces are drawn and how wide a window
 of the run the chart shows, and neither choice changes the run.** The two
@@ -2189,7 +2209,11 @@ value, and that each compartment's highest and lowest values between two
 columns are drawn
 (`test_a_peak_between_two_chart_columns_is_drawn_at_its_stored_value` and
 `test_every_compartments_highest_and_lowest_value_in_each_column_is_drawn` in
-`tests/integration/controller/test_controller_stored_states.py`). A preview
+`tests/integration/controller/test_controller_stored_states.py`). A third
+checks that a trough of the F_A/F_I ratio between two columns is drawn at its
+stored value
+(`test_a_trough_of_the_ratio_between_two_chart_columns_is_drawn_at_its_stored_value`
+in the same file). A preview
 is drawn by the same rule, so its peaks and troughs are drawn too. With
 sevoflurane at 2% for five minutes and the dial then turned off, a preview
 draws the alveolar peak 2 s later, the vessel-rich peak 63 s later and the
@@ -2460,6 +2484,8 @@ While two or more runs are drawn, each of these places names its run in text:
 6. The heading over each run's compartment schematic, taken from the name on
    the run's own panel.
 7. The heading over each run's agent cost panel, in the same way.
+8. The line above each run's row of dials in the setting controls view, in the
+   same way (`PL-CPF2`).
 
 With only one run drawn, the hover readout, the chart's advisory lines, the
 two record panels' headings and the banner show no run name.
@@ -2635,7 +2661,11 @@ application has, whatever the Workspace. Choosing a view shows it in that area.
 The exception is a Workspace pinned to a run that is not open. Each of its
 areas then says that the run is not open, in place of its view, until the
 reader removes the pin from the menu of the Workspace's tab.
-A view that needs more room than its area scrolls inside the area. The page
+A view that needs more room than its area scrolls inside the area. Three views
+never scroll: the concentration chart, the Parameters view and the Branch view.
+Their areas grow to hold all of the view, so the chart's plot, a run's dials or
+the branch control's caption cannot sit out of sight below the area's edge
+(`PL-D5J4`). The page
 grows past the window only where the window is too small for every view's least
 height or least width. So the reader sees the view itself, never only a notice
 that the area is
@@ -2666,6 +2696,19 @@ value, and no application can prevent that. The application can tell when one of
 its windows is minimized or hidden, but it has no reliable signal that a window
 is covered. It must never go on treating a value as shown once it can see that
 the value's window is minimized or hidden.
+
+**The marks are edited in a view, not in a window of their own** (project
+owner, 2026-11-21, ratified, over a window kept off the readouts, an exemption
+from this rule, and an editor during which every run waits). A learner edits
+marks while a run plays. The Bookmarks View sits in an area, and the
+unconditional region is outside every area, so editing a mark cannot cover a
+value this list requires on any platform. A separate window could cover the readouts, and on Linux the
+application cannot reliably keep it off them. Under Wayland's usual desktop
+shell, Qt ignores a request to place a top-level window and reports every
+window's position as (0, 0), so the application could neither place the
+window nor learn where the reader had moved it (Qt 6.12 documentation,
+"Window and Dialog Widgets", section "Wayland Peculiarities",
+https://doc.qt.io/qt-6/application-windows.html).
 
 **A separate window shows the invariant tier, not the whole set**
 (project owner, 2026-09-16, ratified - a recommendation put to them and agreed,
@@ -2746,6 +2789,12 @@ stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
 (`USE_DISCLAIMER_TEXT`) rather than one of this list's values, so that file
 does not declare it. The interpretation statement is
 `INTERPRETATION_DISCLAIMER_TEXT`.
+
+The marks editor is `MarkEditor`, in `app/qt_widgets.py`, and each copy of the
+Bookmarks View holds one. A test adds and removes marks with a run playing and
+checks that no window opens
+(`test_editing_a_mark_while_a_run_plays_opens_no_window`, in
+`tests/integration/simulation_view/test_simulation_view_comparison.py`).
 
 The division of this list into three parts is a first version (project owner,
 2026-09-15). The fixed unconditional region and the conditional remainder were
@@ -3386,7 +3435,7 @@ protocol or to a figure on its own.
 ### F_A/F_I as a displayed ratio
 
 **A second plot draws $`F_A/F_I`$.** The plot is a view of its own. Of the
-Workspaces supplied with the simulator, only Induction includes it, under the
+Workspaces supplied with the simulator, only Induction includes it, beside the
 compartment chart. In the others the reader shows it from an area's view
 chooser. The plot shows the modelled alveolar fraction divided by the modelled
 inspired fraction, on a fixed, dimensionless axis labelled from 0 to 1. It has
@@ -3891,7 +3940,8 @@ description of the "+" button at the end of the Workspace tabs. No contrast
 requirement measures a tooltip's colors.
 
 The dark-appearance test (`tests/integration/test_dark_appearance.py`) renders
-the dashboard, the bookmark editor and the new-case confirmation under the
+the dashboard, whose Bookmarks View holds the marks editor, and the new-case
+confirmation under the
 palette a dark host supplies. The dashboard it renders draws every registered
 kind of View. It
 fails on any content widget that resolves to that palette, and it checks the
@@ -3943,8 +3993,8 @@ alert-color decision does not depend on the mapping.
 
 **For developers.** `FocusRing` in `app/qt_widgets.py` draws the keyboard
 focus ring. `tests/integration/test_keyboard_focus.py` grabs every control
-that Tab reaches, in every kind of View and in both dialogs, with and without
-the focus, and fails where the two images match.
+that Tab reaches, in every kind of View and in the new-case question, with
+and without the focus, and fails where the two images match.
 
 ### The six compartment traces: what separates them
 
@@ -4120,7 +4170,7 @@ meet.
 
 In all six compartments, every modeled concentration and relative partial
 pressure is displayed to **0.01 percentage points**. The delivered-agent
-setting uses the same resolution, in the readout beside its slider and in the
+setting uses the same resolution, in the readout above its slider and in the
 label shown while the slider is dragged, so the setting and the values it
 produces are read at one scale. A positive value that would round to `0.00%`
 is displayed as `<0.01%`, so `0.00%` means only that no agent has arrived, as
@@ -4556,10 +4606,10 @@ covers, and so chooses the seconds per pixel (§ "The chart's time base").
 
 **Fresh gas flow, alveolar ventilation and cardiac output are displayed to
 0.1 L/min**, the resolution of the controls that set them. A slider and the
-readout beside it show one quantity, so each slider moves in steps of its
+readout above it show one quantity, so each slider moves in steps of its
 display resolution: 0.1 L/min for the three flows and 0.01 percentage points
 for the delivered dial. The value applied to the model is exactly the value
-printed beside the control. If a control could apply a value that its own label
+printed above the control. If a control could apply a value that its own label
 rounds away, a reader could not tell which value is the setting in force.
 
 **For developers.** The sliders are integer-valued. Three tests read each flow's resolution from
@@ -4896,7 +4946,7 @@ the formatter produces. The dashboard's tests (`tests/unit/test_dashboard_frame.
 follow the whole path: a real controller, a real step, and the string on the
 panel. The dashboard (`app/dashboard_frame.py`) reads the constant to set the
 delivered dial's slider position, so the value that the slider applies and the
-readout beside it cannot drift apart. Another test
+readout above it cannot drift apart. Another test
 (`tests/reference/test_coupled_dynamics.py`) restates the constant and checks it
 against the formatting module, because the ordering claim above is a property of
 the rounded values. Adding a decimal would change what that claim proves without
@@ -5440,7 +5490,11 @@ pattern, because those tell the six compartments apart.
    curves keep the width they have when the run is shown alone. The preview is
    then no wider than the other run's curve of the same compartment.
 4. **Timing.** The preview exists only while the handle is held. It appears at
-   the press and is gone from the frame drawn at release.
+   the press and is gone from the frame drawn at release. It also ends while the
+   handle is still held when the run starts over, on a Reset or an agent change,
+   and when a branch is opened or dropped, because its label would otherwise
+   name an agent or a run that is no longer shown (`PL-1WFW`). If the held
+   handle then moves, a new preview is drawn from the run on screen.
 
 **The preview comes from the same model and version as the run.** It starts from
 the run's state at its current time, as § "Each second has one stored state"
@@ -5454,12 +5508,25 @@ frame from the run's new current time.
 
 **A drag applies its value only when the handle is released.** The run records
 one setting change at that moment. Until then the run keeps the setting in force,
-and the value printed beside the slider is that setting. The value is applied
+and the value printed above the slider is that setting. The value is applied
 before the preview ends, so the frame drawn at release already shows the run
 under its new setting. A key press, one notch of the scroll wheel or a click on
 the slider away from its handle is a single input, so it applies at once and
 draws no preview. A handle released at the setting already in force applies
 nothing, and the run records no setting change.
+
+**A click on the slider away from its handle follows the platform's own
+convention** (`PL-57LD`). The simulator sets no style of its own, so Qt's style
+for the platform decides it. On macOS, and under Qt's Windows 11 style, a left
+click moves the handle to the pointer. Under Qt's Fusion style a left click
+moves the handle one step towards the pointer, and a middle click moves it to
+the pointer. Holding the left button down there repeats the step while it stays
+down. Each step and each jump is one input, so it is applied at once and
+draws no preview. Where the click moved the handle to the pointer, moving the
+pointer with the button still down is a drag, which previews until the release.
+A press on the handle itself applies nothing until the handle is dragged, on
+every platform, even where the press is off the handle's centre. The drag then
+moves the handle only as far as the pointer moves.
 
 **A stopped run accepts no new setting and draws no preview.** A run stops when
 it fails or reaches the end of the longest run the simulator supports.
@@ -5493,6 +5560,23 @@ value. The trial run then takes the new value through the same setter that
 applies a value to the run. The centred time window comes from
 `chart_time_base.preview_window`, and the wording of the off-scale notice from
 `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
+
+The platform's convention is the style hint `SH_Slider_AbsoluteSetButtons`.
+Qt's source at tag v6.11.2 sets it to the left and middle buttons in
+`qmacstyle_mac.mm`, to the left button in `qwindows11style.cpp`, and to the
+middle button in `qcommonstyle.cpp`, which Fusion inherits. For such a press,
+`QSlider.mousePressEvent` applies the value at the pointer and then marks the
+handle as held, which is the signal that starts a preview. `_SettingSlider` in
+`app/qt_widgets.py` therefore starts no preview for a press on the track, and
+puts the handle back where it was for a press on the handle. Qt then
+measures the drag from where the handle would have jumped to, so
+`_SettingSlider` measures that drag itself, from where the pointer pressed the
+handle. The tests in
+`tests/integration/simulation_view/test_simulation_view_controls.py` run both
+presses under Fusion and under a style that returns the macOS hints
+(`test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview`,
+`test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing`,
+`test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves`).
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel

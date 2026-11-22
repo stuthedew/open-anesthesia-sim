@@ -17,7 +17,6 @@ import pytest
 
 from anesthesia_sim.layout.exceptions import InvalidLayout
 from anesthesia_sim.layout.model import LayoutModel
-from anesthesia_sim.layout.shipped import shipped_workspace
 from anesthesia_sim.layout.sizing import (
     Floor,
     PixelSize,
@@ -32,7 +31,6 @@ from anesthesia_sim.layout.sizing import (
     split_sizes,
 )
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, areas_in
-from anesthesia_sim.layout.workspace import ShippedWorkspaceId
 
 _HANDLE_PX = 8
 _CHART = ViewKind("chart")
@@ -214,11 +212,34 @@ def test_a_too_small_area_is_drawn_again_once_the_extent_can_give_it_its_need() 
 def test_a_shipped_workspace_on_a_small_extent_names_its_too_small_areas_and_none_has_no_size() -> (
     None
 ):
-    model = shipped_workspace(ShippedWorkspaceId("induction")).layout
-    tree = model.windows[0].tree
-    # The induction Workspace is a row(0.75, 0.25) with two children: a
+    # The tree is the arrangement the Induction Workspace shipped with until
+    # `PL-D5J4`, written out here so the arithmetic below does not move when a
+    # shipped file does. It is a row(0.75, 0.25) with two children: a
     # column(0.6, 0.4) of Areas 1 and 2, and a column(0.34, 0.33, 0.33) of
     # Areas 3, 4 and 5. Each Area needs 300 by 300.
+    tree = Split(
+        Orientation.ROW,
+        (0.75, 0.25),
+        (
+            Split(
+                Orientation.COLUMN,
+                (0.6, 0.4),
+                (
+                    Area(AreaId(1), ViewKind("concentration_chart")),
+                    Area(AreaId(2), ViewKind("wash_in")),
+                ),
+            ),
+            Split(
+                Orientation.COLUMN,
+                (0.34, 0.33, 0.33),
+                (
+                    Area(AreaId(3), ViewKind("parameter_controls")),
+                    Area(AreaId(4), ViewKind("bookmarks")),
+                    Area(AreaId(5), ViewKind("branch")),
+                ),
+            ),
+        ),
+    )
     needs = _each(tree, PixelSize(300, 300))
     floors = _each(tree, PixelSize(60, 40))
     fit = settle(tree, PixelSize(508, 408), _HANDLE_PX, needs, _fixed(floors), kept=frozenset())

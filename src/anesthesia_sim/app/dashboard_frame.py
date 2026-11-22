@@ -524,12 +524,12 @@ MARK_STANDING_COMPARED_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyTyp
 # names.
 MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
 
-# The bookmark editor's own words. They are field labels rather than
+# The marks editor's own words. They are field labels rather than
 # sentences, which is the form in which `.claude/rules/ui-reader.md` asks a
 # specialist reader's screen to carry its meaning. "Compartment" and "Height"
 # say what the control sets. What a height on a given compartment does and
 # does not assert is stated in `docs/INTERFACE.md` § "MAC multiples as a display
-# unit", not in a paragraph in a dialog.
+# unit", not in a paragraph beside the form.
 # The branch control's words follow the marks' words, for the same reason.
 # Both offer instants of the *case* rather than of either run, so both are
 # panels of the dashboard rather than of a `RunView` (`docs/ARCHITECTURE.md`
@@ -716,9 +716,12 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
 
 
-BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
-EDIT_BOOKMARKS_LABEL: Final = "Edit bookmarks"
-CLOSE_BOOKMARKS_LABEL: Final = "Close"
+# The headings of the marks editor's two forms. They differ from the headings
+# of the two lists above the forms, because the Bookmarks View shows both, and
+# two identical headings would leave a reader unsure which one a row belongs
+# to. The wording is a placeholder (`PL-CHX0`).
+TIME_FORM_HEADING: Final = "Edit time bookmarks"
+TARGET_FORM_HEADING: Final = "Edit MAC targets"
 ADD_MARK_LABEL: Final = "Add"
 REMOVE_MARK_LABEL: Final = "Remove selected"
 INSTANT_FIELD_LABEL: Final = "Instant"
@@ -728,7 +731,7 @@ MARK_NAME_FIELD_LABEL: Final = "Name"
 MARK_NAME_PLACEHOLDER: Final = "Optional"
 # The unit in which an instant is entered, and the resolution of the entry.
 # The unit is seconds rather than the compound form the clock shows, because a
-# spin box states one unit and the compound form has three. The dialog
+# spin box states one unit and the compound form has three. The editor
 # restates the entered value in the compound form beside the control, so no
 # reader has to convert between them. The entry is a whole number of seconds,
 # because a run stands only on whole seconds (`core/simulation_step.py`).
@@ -736,7 +739,7 @@ INSTANT_ENTRY_SUFFIX: Final = " s"
 # The upper bound of the height control before an agent has been named. Every
 # shipped agent's vaporizer reaches at least this multiple of its own 1 MAC.
 # So this value is a lower bound on the real limit rather than a guess at it.
-# `BookmarkDialog.set_reachable_height` replaces it with the running agent's
+# `MarkEditor.set_reachable_height` replaces it with the running agent's
 # own limit the first time a frame is drawn.
 DEFAULT_MAXIMUM_TARGET_MAC: Final = 3.0
 
@@ -1367,7 +1370,7 @@ class ParameterControl:
             curve shows (`PL-71CF`).
         decimals: The display resolution at which the slider steps, taken from
             `formatting.py`. So the value applied to the model is exactly the
-            value printed beside the slider (`PL-25KS`, decision D4).
+            value printed above the slider (`PL-25KS`, decision D4).
 
     The range is not stored here. For two of the four controls, the range is
     instance state rather than a constant. The delivered dial's ceiling is the
@@ -1415,7 +1418,7 @@ def _setting_words(
 
     `setting_readouts` writes the slider from these words, and
     `preview_label` names a previewed value with them. So the label in the
-    plot and the readout beside the slider cannot word one setting two ways.
+    plot and the readout above the slider cannot word one setting two ways.
 
     Args:
         control: The control.
@@ -1490,9 +1493,8 @@ class SettingReadout:
         control: The setting that the control forwards.
         name: The name line.
         qualifier: The gloss line, or the empty string where there is none.
-            No spacer is drawn for a setting. These four panels have unequal
-            heights by design, because the delivered dial carries a MAC line
-            and the flow settings have no such conversion.
+            No spacer is drawn for a setting with no gloss, so the four
+            panels have unequal heights by design.
         unit: The unit of `value`.
         decimals: The display resolution at which the slider steps.
         minimum: The slider's lowest position, in `unit`: the lowest setting
@@ -1500,7 +1502,7 @@ class SettingReadout:
         maximum: The slider's highest position, in `unit`: the highest such
             setting.
         value: The setting in force, in `unit`.
-        value_text: The setting as the readout beside the slider prints it.
+        value_text: The setting as the readout above the slider prints it.
         secondary: The same setting in the second display unit, or the empty
             string for a setting with one unit. For the delivered dial it is
             the setting as a multiple of the agent's 1 MAC. That lets a reader

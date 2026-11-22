@@ -890,8 +890,8 @@ def test_a_border_is_in_the_tab_order_and_loses_its_line_with_the_focus(
 #: across a row inside a column.
 _SHIPPED_READING_ORDER = {
     "Default": ["Concentrations", "Parameters", "Bookmarks", "Branch"],
-    "Induction": ["Concentrations", "Wash-in", "Parameters", "Bookmarks", "Branch"],
-    "Maintenance": ["Concentrations", "Compartment schematic", "Parameters", "Bookmarks", "Branch"],
+    "Induction": ["Concentrations", "Parameters", "Wash-in", "Bookmarks", "Branch"],
+    "Maintenance": ["Concentrations", "Parameters", "Compartment schematic"],
 }
 
 

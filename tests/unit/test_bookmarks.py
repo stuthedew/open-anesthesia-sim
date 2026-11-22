@@ -220,7 +220,7 @@ def test_an_instant_already_marked_may_not_be_marked_again() -> None:
 
 
 def test_the_repeated_instant_refusal_is_pinned_whole() -> None:
-    """Pin the whole sentence that the bookmark dialog shows when an instant is marked twice.
+    """Pin the whole sentence that the marks editor shows when an instant is marked twice.
 
     The test above matches only "marked once", which would pass even with the
     instant missing from the message (`PL-79PK`). The matching MAC-target message

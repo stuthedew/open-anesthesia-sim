@@ -15,6 +15,7 @@ from anesthesia_sim.app.bookmarks import MacTarget
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX, RecordedQuantity, RecordedSeries
+from anesthesia_sim.app.wash_in import WASH_IN_DENOMINATOR_FLOOR_FRACTION
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
@@ -114,9 +115,9 @@ def test_a_chart_window_draws_stored_states_at_its_columns_its_ends_and_each_set
 ):
     """A window wider than its columns reads whole seconds, and no value between two of them.
 
-    Any other second it draws is one at which a compartment is above or below
-    both columns beside it. The tests of the overpressure run below check
-    those seconds.
+    Any other second it draws is one at which a compartment, or the F_A/F_I
+    ratio, is above or below both columns beside it. The tests of the
+    overpressure run below check those seconds.
     """
 
     expected = _states_stepped_in_core()
@@ -150,7 +151,34 @@ def test_a_chart_window_draws_stored_states_at_its_columns_its_ends_and_each_set
             or expected[int(second)][position]
             < min(expected[left_s][position], expected[right_s][position])
             for position in range(6)
-        ), second
+        ) or _ratio_outside(expected, int(second), left_s, right_s), second
+
+
+def _ratio(state: tuple[float, ...]) -> float | None:
+    """F_A/F_I at one stored state, formed here, or None below the smallest inspired fraction.
+
+    The circuit's fraction is first in a stored state and the alveolar
+    fraction second, as `SNAPSHOT_FIELD_POSITIONS` above writes them out.
+    """
+
+    inspired, alveolar = state[0], state[1]
+
+    return None if inspired < WASH_IN_DENOMINATOR_FLOOR_FRACTION else alveolar / inspired
+
+
+def _ratio_outside(
+    expected: list[tuple[float, ...]], second: int, left_s: int, right_s: int
+) -> bool:
+    """Whether the ratio at `second` lies outside each of the two columns' ratios that exist."""
+
+    ratio = _ratio(expected[second])
+
+    if ratio is None:
+        return False
+
+    ends = [end for end in (_ratio(expected[left_s]), _ratio(expected[right_s])) if end is not None]
+
+    return all(ratio > end for end in ends) or all(ratio < end for end in ends)
 
 
 def test_a_run_halts_on_the_second_whose_stored_state_first_reaches_a_marked_height() -> None:
@@ -546,14 +574,14 @@ def test_every_compartments_highest_and_lowest_value_in_each_column_is_drawn() -
     stepped in `core/`. For each compartment, the highest and the lowest of
     the points drawn in the stretch equal the highest and the lowest stored
     values in it. The chart adds at most two points to a stretch for each
-    compartment.
+    compartment and two for the F_A/F_I ratio.
     """
 
     expected = _overpressure_stepped_in_core()
     drawn = _drawn_states(_overpressure_in_the_controller(), 0.0, float(OVERPRESSURE_RUN_S), 5)
 
     assert set(OVERPRESSURE_COLUMNS_S) <= set(drawn)
-    assert len(drawn) <= len(OVERPRESSURE_COLUMNS_S) + 2 * 6 * (len(OVERPRESSURE_COLUMNS_S) - 1)
+    assert len(drawn) <= len(OVERPRESSURE_COLUMNS_S) + 2 * 7 * (len(OVERPRESSURE_COLUMNS_S) - 1)
 
     for left_s, right_s in itertools.pairwise(OVERPRESSURE_COLUMNS_S):
         stored = expected[left_s : right_s + 1]
@@ -566,6 +594,75 @@ def test_every_compartments_highest_and_lowest_value_in_each_column_is_drawn() -
             assert min(point[position] for point in points) == min(
                 state[position] for state in stored
             ), (left_s, position)
+
+
+RAISE_S = 160
+RAISE_RUN_S = 600
+# A window from 0 to 600 s in five columns has a column every 150 s, and the
+# chart also draws the second of the dial change.
+RAISE_COLUMNS_S = (0, 150, RAISE_S, 300, 450, RAISE_RUN_S)
+
+
+def _raise_stepped_in_core() -> list[tuple[float, ...]]:
+    """Return each second's state of the default case with the dial raised to 8% at 160 s."""
+
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent(AGENT))
+    states = [state.uptake_system.case_state()]
+
+    for second in range(1, RAISE_RUN_S + 1):
+        states.append(state.advance().state)
+
+        if second == RAISE_S:
+            state.uptake_system.set_delivered_concentration_percent(Percent(8.0))
+
+    return states
+
+
+def test_a_trough_of_the_ratio_between_two_chart_columns_is_drawn_at_its_stored_value() -> None:
+    """After the dial is raised, F_A/F_I falls to a trough between two columns, and it is drawn.
+
+    The inspired fraction rises faster than the alveolar one for some
+    seconds after the dial is raised at 160 s, so the ratio falls and then
+    recovers. Its trough falls before the next column at 300 s, at a second
+    where neither fraction turns. A chart that drew only the fractions'
+    turns drew the ratio above that trough (`PL-DN13`). The trough's second
+    and height are found here from a run stepped in `core/`, with the ratio
+    formed by the test.
+    """
+
+    expected = _raise_stepped_in_core()
+    stretch = range(RAISE_S + 1, 300)
+    trough_s = min(stretch, key=lambda second: expected[second][1] / expected[second][0])
+    trough = expected[trough_s][1] / expected[trough_s][0]
+
+    # The test is of a trough that no column draws, below both columns beside it.
+    assert trough_s not in RAISE_COLUMNS_S
+    assert trough < min(
+        expected[RAISE_S][1] / expected[RAISE_S][0], expected[300][1] / expected[300][0]
+    )
+
+    controller = SimulationController(agent_id=AGENT)
+    controller.start()
+
+    for second in range(1, RAISE_RUN_S + 1):
+        controller.advance()
+
+        if second == RAISE_S:
+            controller.set_delivered_concentration_percent(Percent(8.0))
+
+    window = controller.drawn_window(0.0, float(RAISE_RUN_S), 5)
+    quotients = dict(zip(window.times_s, window.wash_in_quotients(AGENT), strict=True))
+
+    assert set(RAISE_COLUMNS_S) <= set(quotients)
+    assert quotients[trough_s] == trough
+    assert (
+        min(
+            quotient
+            for second, quotient in quotients.items()
+            if RAISE_S <= second <= 300 and quotient is not None
+        )
+        == trough
+    )
 
 
 def test_a_window_with_a_column_on_every_second_draws_no_other_point() -> None:

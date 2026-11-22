@@ -964,7 +964,7 @@ def format_flow(flow_l_min: float) -> str:
     """Render a flow setting in litres per minute, at the slider's own resolution.
 
     There is one definition for the three flow settings rather than one per
-    display site. The readout beside a slider, the slider's own drag label
+    display site. The readout above a slider, the slider's own drag label
     and the control-input timeline are three renderings of one number. If two
     of them disagreed by half a litre a minute, that would be the same class
     of failure as a concentration shown at two resolutions. That is why

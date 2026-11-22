@@ -2848,6 +2848,56 @@ def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
     assert (hint.width(), hint.height()) == (608, 2 * need + AREA_HANDLE_WIDTH)
 
 
+_WRAPPED = ViewKind("wrapped_view")
+
+
+class _WrappedView(_TestView):
+    """The View of `_WRAPPED`: one long label that wraps, whose entry asks for the whole View."""
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__(context)
+        self.label = QLabel(" ".join(["A sentence long enough to wrap onto many lines."] * 8))
+        self.label.setWordWrap(True)
+        QVBoxLayout(self).addWidget(self.label)
+
+
+_WHOLE = registry(
+    RegisteredView(_VIEW, "Test view", _TestView),
+    RegisteredView(_WRAPPED, "Wrapped view", _WrappedView, minimum=PixelSize(60, 20), whole=True),
+)
+
+
+def test_a_view_that_asks_to_be_whole_gets_every_line_of_a_wrapped_label(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-D5J4`: an Area whose View asks to be whole holds every line of a label that wraps.
+
+    Qt's least size for a widget counts a wrapped label as one line. The
+    wrapped View has a small share under the test View, so its Area is held at
+    its need, and the container is narrow, so the label takes many lines. Its
+    Area must hold all of them, with no scroll bar. Before the fix the Area
+    was sized from the least size alone, and most of the label was below its
+    edge.
+    """
+
+    model = _layout(_column((0.95, 0.05), Area(AreaId(1), _VIEW), Area(AreaId(2), _WRAPPED)), 3)
+    container = AreaLayout(model, _REQUESTS, registered=_WHOLE, retired={})
+    container.resize(300, 800)
+    container.show()
+    application.processEvents()
+    shown.append(container)
+    container.follow_needs()
+    application.processEvents()
+    frame = container.frame(AreaId(2))
+    scroll = frame.view_scroll
+    (view,) = (built for built in _BUILT if isinstance(built, _WrappedView))
+    line = view.label.fontMetrics().lineSpacing()
+
+    assert scroll is not None
+    assert view.label.height() > 4 * line, "the label did not wrap onto many lines"
+    assert scroll.verticalScrollBar().maximum() == 0
+
+
 def test_the_least_size_is_what_the_views_need_even_where_their_areas_are_too_small(
     application: QApplication, hosts: list[QWidget]
 ) -> None:
