@@ -3,13 +3,16 @@ id: PL-SGBT
 title: The mutation check's comparison of a changed test reruns each mutant whose test module fails to import one at a time on one core: 238 reruns took over 20 minutes for one changed test in tests/unit/test_wash_in.py on 2026-11-11, 182 of them mutants of core/parameters.py
 priority: P2
 effort: S
-status: ready
+status: done
 classes: perf
 feature: tests-detect-wrong-values
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py
 deferred-from: v0.7.0 - present at the freeze, but no frozen entry remains for this gate to clear (bin/docket wave, 2026-11-22: 0 open entries this gate can clear), so it costs no remaining entry anything, and it has no connection to v0.7.0's Required scope, all of which has closed
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2247
 payoff: Each simulator branch's mutation check settles in minutes rather than spending twenty or more on one core.
+tests: tests/unit/test_diff_mutation.py::test_settle_reruns_the_mutants_at_once_on_every_worker
 recurrences: 2026-11-22 PL-WYDF
 ---
 
@@ -26,3 +29,7 @@ recurrences: 2026-11-22 PL-WYDF
 **Done when.** Settling the raised mutants no longer costs one whole-file run after another on one core. Either the reruns use every available core, or the mutants that fail only at import are settled without a run each. A test of `tools/diff_mutation.py` shows the chosen behaviour, and the item records the time of a rerun of the 2026-11-11 change.
 
 **Generator check.** A one-off. Nothing was misread: `settle` was written serial when few mutants raised, and `PL-R8HY` and `PL-19M4` widened the mutated files, which raised the count. No head's `misread:` covers a tool's run time.
+
+**Done 2026-11-22.** `settle` in `tools/diff_mutation.py` now looks up each raised mutant's test files and reruns them `RERUN_WORKERS` at a time, one worker for each processor. That is the number of workers mutmut 3.8.0 starts when nothing sets `max_children` (`_run` in `mutmut/__main__.py`, read in this session). Stryker's default is the same on a machine of four cores or fewer: "`cpuCoreCount <= 4? cpuCoreCount : cpuCoreCount - 1`" (https://stryker-mutator.io/docs/stryker-js/configuration/, § `concurrency`, read 2026-11-22). Threads are enough, because each worker only waits on a subprocess. Settling only the mutants that fail at import without a run was not taken: pytest's `-x` already stops such a run at collection, so its cost is the collection that would have to run anyway.
+
+The 2026-11-11 change was replayed on 2026-11-22 at this branch's head, in a four-core container: the same one-line change to `is_wash_in` and the deletion of `assert is_wash_in(0.0)` from `tests/unit/test_wash_in.py`. The whole `make mutate ARGS=--verdict` took 296 s with four workers and 369 s with one. Fewer mutants raise now than on 2026-11-11, because the comparison runs a changed test's own ids before its whole file (`PL-D59R`): 27 raised in each of the two compare runs, of 6,602 mutants. Settling them took 13.9 s and 14.2 s with four workers, against 49.6 s and 48.0 s with one. `tests/unit/test_diff_mutation.py::test_settle_reruns_the_mutants_at_once_on_every_worker` fails with `BrokenBarrierError` when `RERUN_WORKERS` is 1.
