@@ -631,7 +631,8 @@ class BreathingCircuitParameters:
     circuit_volume_l: CompartmentVolume
     # The flow this profile opens a run at, or `None` if it states none.
     # `None` means *this profile states no startup flow*, never *this machine
-    # has none*. No surveyed machine publishes a startup flow. A run built
+    # has none*. No source the machine survey reached gives a startup flow,
+    # and it read no manufacturer's manual. A run built
     # from a profile that states none opens instead at
     # `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN` in `core/circuit.py`, whose
     # docstring gives its authority (`PL-QW19`).
@@ -1296,8 +1297,9 @@ class _BreathingCircuitPayload(_StrictPayload):
 
     The field is also optional. Omitting it or writing `null` means *this
     profile states no startup flow*, never *this machine has none*
-    (`PL-QW19`). No surveyed machine publishes a startup flow
-    (`docs/machine-survey.md` § "(a2) Default fresh gas flow"). A required
+    (`PL-QW19`). No source the machine survey reached gives a startup flow
+    for any machine (`docs/machine-survey.md` § "(a2) Default fresh gas
+    flow"). A required
     field therefore left the author of a real profile three choices: invent a
     flow and a provenance row that cites nothing, copy this project's teaching
     default as if the manufacturer had stated it, or not add the machine. A

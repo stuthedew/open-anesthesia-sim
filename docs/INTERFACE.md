@@ -4775,6 +4775,7 @@ than quietly reduced to the derived precision.
 | The stored total | Millilitres of liquid | Refused | - | The conversion reads a store 5.8% high |
 | One compartment's amount | Millilitres of vapour | Two significant figures, none finer than 0.01 mL | 1% to 10% of the amount | The amounts' range, below |
 | One compartment's share of the agent held | Percent of the stored total | 0 | 1 percentage point | Kept as shipped, `PL-W51N`, below |
+<!-- derived: 5.8% from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The delivered total in millilitres of liquid is shown in whole millilitres.**
 The delivered agent is the dial times the flow times the time, and its
@@ -4842,6 +4843,8 @@ That error grows with the amount. At 17 mL of liquid it is already a whole step
 of 1 mL, and in a long run it is several steps. No number of decimals can make a
 figure with a known bias of several steps read correctly, so the stored total
 keeps litres of vapour, as the accounting panel shows it.
+<!-- derived: 5.8% from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 17 mL from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 The agent cost display is the only part of the simulator that converts an amount
 to liquid. It converts only the delivered agent, so no figure it shows carries
@@ -4849,6 +4852,7 @@ the 5.8 % error. It reads the delivered amount and the vapour-to-liquid ratio of
 the agent in use from the same moment of the run, so it cannot pair one agent's
 vapour with another agent's ratio. Using desflurane's ratio would misstate
 sevoflurane by about 13 %.
+<!-- derived: 5.8 % from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The simulator derives each agent's vapour-to-liquid ratio, as the first table
 in `docs/PARAMETERS.md` § "Agent amount" does.** It stores the liquid density and the molar mass,

@@ -892,8 +892,10 @@ flows. It puts the circuit time constant at 90 s: long enough for the machine
 lag to show as a distinct phase of the early rise, and short enough to resolve
 within the first minutes of a teaching run. The data file labels this a design
 rationale, not a measurement. **The default is also the flow a run starts at
-when a machine profile states none**, because no surveyed machine publishes a
-startup flow. The authority for that fallback is this rationale, not a source.
+when a machine profile states none**, because no source the survey reached
+gives a startup flow for any machine. The survey read no manufacturer's manual,
+so a profile for a real machine should look for its startup flow there. The
+authority for that fallback is this rationale, not a source.
 The rationale applies to the stored 6.0 L circuit. A smaller circuit gives a
 shorter lag at the same flow, as § "What real workstations hold" below
 computes.
@@ -978,9 +980,9 @@ sets out the consequence for modelling several machines.
 
 **A search for a published source of the default fresh gas flow found a
 recommendation, not a convention.** The survey looked for a startup fresh gas
-flow published by any machine in current clinical use, and found none
-(`docs/machine-survey.md` § "(a2)"). So the flow row still adopts no source,
-and no published startup convention appears to exist. Kalmar et al. conclude
+flow published by any machine in current clinical use, and no source it
+reached gives one (`docs/machine-survey.md` § "(a2)"). It read no
+manufacturer's manual. So the flow row still adopts no source. Kalmar et al. conclude
 that *"routine clinical practice using what historically is called 'low flow
 anaesthesia' (e.g. 2 L/min FGF) should be abandoned"* in favour of automated
 minimal-flow delivery (*J Clin Monit Comput* 2022;36(6):1601–1610,
@@ -1413,6 +1415,7 @@ unit only. It does not mean that any of the agent is physically at 20 °C and
 760 mmHg. $`M_x`$ is the equivalent gas volume of the agent stored in
 compartment $`x`$.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 24.055 L/mol from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **The reference condition matters only when an amount is converted out of the
 unit**, into moles, mass, or the millilitres of liquid that a vaporizer is filled
@@ -1424,6 +1427,7 @@ agent, or under `docs/INTERFACE.md` § "Minimum displayed outputs". The ideal-ga
 molar volume is 25.450 L/mol at
 37 °C, so declaring 37 °C instead would change each converted amount by a
 factor of 1.058.
+<!-- derived: 1.058 from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **Three reasons favour a 20 °C reference condition.**
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
@@ -1498,6 +1502,8 @@ factor of 1.058.
 <!-- provenance: data/agents/sevoflurane.json molar_mass_g_mol = 200.05 -->
 <!-- provenance: data/agents/isoflurane.json molar_mass_g_mol = 184.49 -->
 <!-- provenance: data/agents/desflurane.json molar_mass_g_mol = 168.04 -->
+<!-- derived: 5.5 % from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 5.47 mL from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 <!-- provenance: data/agents/sevoflurane.json liquid_density.measured_at_celsius = 20 -->
 <!-- provenance: data/agents/isoflurane.json liquid_density.measured_at_celsius = 20 -->
@@ -1812,6 +1818,8 @@ for the one patient that exists would have lengthened every time constant by
 computes the molar volumes at 37 °C and 20 °C from the constants in
 `core/liquid_agent.py`, and the 5.8 % and 5.5 % from their ratio.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 5.8 % from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 5.5 % from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **For developers.** `test_the_humidification_dilution_follows_from_the_water_vapour_pressure`
 computes the 713 mmHg, the 6.2 % and the 6.6 % from 47 mmHg and one

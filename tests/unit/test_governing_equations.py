@@ -46,6 +46,7 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.matrix_exponential import matrix_exponential
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
+from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -58,6 +59,7 @@ from anesthesia_sim.core.supported_ranges import (
     FreshGasFlow,
 )
 from anesthesia_sim.core.units import SECONDS_PER_MINUTE
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # These values are deliberately unlike each other and unlike the reference
 # adult's. Every volume, flow and coefficient below is distinct, so an entry
@@ -1115,3 +1117,84 @@ def test_require_canonical_state_refuses_more_agent_than_a_case_can_move(positio
         "14400.0 L that a case can deliver or exhaust at the fastest supported fresh gas "
         "flow over the supported run length"
     )
+
+
+def _fastest_time_constant_s(
+    system: AgentUptakeSystem,
+    fresh_gas_l_min: float,
+    ventilation_l_min: float,
+    cardiac_output_l_min: float,
+) -> float:
+    """Return the shortest time constant of the six concentrations at one setting, in seconds.
+
+    `docs/VERIFICATION.md` § "The alveolar gas equation in the code" defines it: each
+    eigenvalue of the 6×6 block of the system matrix has the time constant -1 / Re(lambda).
+    At a setting where every flow is zero, nothing changes, and the result is `inf`.
+    """
+
+    system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_l_min))
+    system.set_alveolar_ventilation(AlveolarVentilation(ventilation_l_min))
+    system.set_cardiac_output(CardiacOutput(cardiac_output_l_min))
+    fractions = FIRST_TISSUE_FRACTION + TISSUE_GROUP_COUNT
+    block = numpy.array(build_system_matrix(system.equation_settings()))[:fractions, :fractions]
+    decaying = [-1.0 / value.real for value in numpy.linalg.eigvals(block) if value.real < 0.0]
+    return min(decaying, default=inf)
+
+
+def test_the_fastest_time_constant_is_the_one_the_model_document_prints() -> None:
+    """The fastest process at any supported setting is isoflurane's 5.83 s, as printed.
+
+    `docs/MODEL.md` § "Time constants" says that the shortest time constant of any supported
+    setting is isoflurane's 5.83 s, at 10 L/min of fresh gas, 12 L/min of ventilation and
+    about 9.3 L/min of cardiac output. `docs/VERIFICATION.md` § "Control timing at the
+    one-second step" compares the step with it. The expected values are those printed
+    figures. The search follows `docs/VERIFICATION.md` § "The alveolar gas equation in the
+    code": a grid of 11 fresh gas flows, 13 ventilations and 21 cardiac outputs across the
+    supported ranges for each agent, then a golden-section search along cardiac output
+    within one grid spacing of the grid's fastest point. The figures are compared at the
+    precision the document prints them, so no tolerance is chosen.
+    """
+
+    found = []
+    for agent_id in AGENT_DATA_FILENAMES:
+        system = AgentUptakeSystem.for_agent(agent_id)
+        found.extend(
+            (
+                _fastest_time_constant_s(system, fresh_gas, ventilation, cardiac_output),
+                agent_id,
+                fresh_gas,
+                ventilation,
+                cardiac_output,
+            )
+            for fresh_gas in numpy.linspace(
+                MINIMUM_FRESH_GAS_FLOW_L_MIN, MAXIMUM_FRESH_GAS_FLOW_L_MIN, 11
+            ).tolist()
+            for ventilation in numpy.linspace(
+                MINIMUM_ALVEOLAR_VENTILATION_L_MIN, MAXIMUM_ALVEOLAR_VENTILATION_L_MIN, 13
+            ).tolist()
+            for cardiac_output in numpy.linspace(
+                MINIMUM_CARDIAC_OUTPUT_L_MIN, MAXIMUM_CARDIAC_OUTPUT_L_MIN, 21
+            ).tolist()
+        )
+    _, agent_id, fresh_gas, ventilation, grid_cardiac_output = min(found)
+
+    system = AgentUptakeSystem.for_agent(agent_id)
+    spacing = (MAXIMUM_CARDIAC_OUTPUT_L_MIN - MINIMUM_CARDIAC_OUTPUT_L_MIN) / 20
+    low = max(MINIMUM_CARDIAC_OUTPUT_L_MIN, grid_cardiac_output - spacing)
+    high = min(MAXIMUM_CARDIAC_OUTPUT_L_MIN, grid_cardiac_output + spacing)
+    ratio = (5**0.5 - 1) / 2
+    for _ in range(60):
+        left = high - ratio * (high - low)
+        right = low + ratio * (high - low)
+        if _fastest_time_constant_s(system, fresh_gas, ventilation, left) < (
+            _fastest_time_constant_s(system, fresh_gas, ventilation, right)
+        ):
+            high = right
+        else:
+            low = left
+    cardiac_output = (low + high) / 2
+    fastest_s = _fastest_time_constant_s(system, fresh_gas, ventilation, cardiac_output)
+
+    assert (agent_id, fresh_gas, ventilation) == ("isoflurane", 10.0, 12.0)
+    assert round(cardiac_output, 1) == 9.3
+    assert round(fastest_s, 2) == 5.83
