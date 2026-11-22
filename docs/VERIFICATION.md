@@ -1805,14 +1805,9 @@ two volunteer studies:
 
 <!-- not-restated: 2.0 % -->
 
-- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
-  Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
-  humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760,
-  doi:10.1213/00000539-199103000-00007.
-- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
-  Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
-  Anesthesiology 1991;74(3):489-98. PMID 2001028,
-  doi:10.1097/00000542-199103000-00017.
+The full citations of both papers, with a record of what was read in each, are
+in the reference list, `docs/references/README.md`
+§ "Yasuda et al. 1991 — the two human kinetics papers".
 
 Both papers report a second measured quantity on the same subjects, in the
 opposite direction. That quantity is $`F_A/F_{A0}`$ after five minutes of
@@ -2973,8 +2968,9 @@ The test runs two procedures for each of the three agents. The first recovers
 the alveolar volume by closed-circuit dilution. Lerou and Booij checked their
 own system model by simulating this measurement with helium (Lerou JG, Booij LH.
 Model-based administration of inhalation anaesthesia. 1. Developing a system
-model. *Br J Anaesth* 2001;86:12–28, doi:10.1093/bja/86.1.12; PMID 11575385,
-retrieved from PubMed and read at the abstract 2026-10-25). The circuit fills
+model. *Br J Anaesth* 2001;86:12–28, doi:10.1093/bja/86.1.12; PMID 11575385;
+read at full text on 2026-09-06, and checked at the abstract through PubMed on
+2026-10-25). The circuit fills
 while ventilation is stopped. Setting the fresh gas flow to zero then closes the
 circuit, and the lungs are ventilated from it with the cardiac output at zero.
 With no blood flow, the agent behaves as an insoluble tracer, like helium in the
@@ -3450,13 +3446,12 @@ their symbols do.
 
 The gas-phase symbols follow the inhaled-anesthetic literature:
 $`F_D \rightarrow F_I \rightarrow F_A`$. Symbols and the gas-phase cascade
-($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx and De Wolf (pp. 161-162). They
-attribute the $`F_D - F_I`$ gradient to rebreathing (p. 169) and the
+($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx and De Wolf (2008, pp. 161-162).
+They attribute the $`F_D - F_I`$ gradient to rebreathing (p. 169) and the
 $`F_I - F_A`$ gradient to uptake (p. 171), and describe the teaching role of
-the $`F_A/F_I`$ curve (p. 167) (Hendrickx JFA, De Wolf A. Special aspects of
-pharmacokinetics of inhalation anesthesia. In: Schüttler J, Schwilden H, eds.
-Modern Anesthetics. Handbook of Experimental Pharmacology 182. Springer,
-2008:159-186).
+the $`F_A/F_I`$ curve (p. 167). The chapter's full citation is in the reference
+list, `docs/references/README.md`
+§ "Schüttler & Schwilden 2008 — *Modern Anesthetics*".
 
 **The symbols for inspired and tissue fractions differ only in case.** $`F_I`$
 is the inspired fraction, and $`F_i`$ is tissue group $`i`$'s fraction. Where
