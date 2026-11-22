@@ -1584,18 +1584,31 @@ difference between two compartments' concentrations is as accurate as each
 concentration.
 
 **The $`4\times10^{-13}`$ limit leaves room for rounding that differs between
-computers, but not for the error of an approximate method.** It is sized on how much
-the model's own rounding can vary. It was set when a run could take a step of 0.1,
-0.05 or 0.025 s. Solving the five runs below at those three steps moved the model's
-result by more than its difference from the
-independent solution, and the limit was set above that spread. A run now takes one
-length of step, so the spread cannot be measured again, and the limit was kept. It is
-28 times the largest difference at the one-second step. Even the largest
+computers, but not for the error of an approximate method.** It is a chosen limit,
+not the bound on a run's rounding that `core/rounding.py` derives. That bound, for the
+runs at the corner of the supported settings, is larger than the loss of exactness
+that the test must catch, so a limit set at it would pass that loss. Two
+conditions set the chosen limit instead:
+
+1. It must fail the model's result with every concentration made 1e-11 too large, in
+   proportion. At the highest desflurane dial setting that moves a concentration by
+   $`1.8\times10^{-12}`$, four and a half times the limit.
+2. It must pass the rounding that differs between computers. The limit was set
+   when a run could take a step of 0.1, 0.05 or 0.025 s. Solving the five runs below
+   at those three steps moved the model's result by more than its difference from
+   the independent solution, and the limit was set above that spread. A run now
+   takes one length of step, so the spread cannot be measured again. It still covers
+   a one-second run. The derived bound grows with the number of steps and doubles
+   with each squaring that a step's calculation needs. A one-second step of these
+   runs needs two or three squarings and a 0.1 s step needed none, so each run's
+   bound in one-second steps is at most 0.8 times its bound in 0.1 s steps.
+<!-- not-restated: 0.05 -->
+
+Even the largest
 difference found is nine orders of magnitude smaller than the worst error of the
 earlier method, which solved the equations only approximately. The limit is still
 nearly nine orders of magnitude below the error of any method that does not solve
 the equations exactly, so the test fails as soon as such an error returns.
-<!-- not-restated: 0.05 -->
 
 **The earlier method was an operator split, which the exact step replaced in v0.4.4,
 released on 2026-09-06** (`PL-GS5X`). Within each step it solved the model's
@@ -1693,7 +1706,18 @@ absolute difference in fraction, taken as the largest over the whole run.
   spread between steps of 0.1 s, 0.05 s and 0.025 s, found without the independent
   solution, reached 1.07e-13. The limit is 3.7 times that spread and 6.8 times
   the largest difference at those steps, 5.89e-14. It is 28 times the largest
-  difference at the one-second step, 1.43e-14.
+  difference at the one-second step, 1.43e-14. That wider margin is not a reason
+  to tighten the limit, because the limit is set by the spread and not by the
+  difference. The spread still covers a one-second run by `run_rounding` in
+  `core/rounding.py`, which counts steps times $`2^{s}`$ for $`s`$ squarings. At the
+  envelope corner a one-second run takes 600 steps of three squarings, 4 800 by that
+  count, against 6 000 steps of none at 0.1 s (squarings counted 2026-11-22).
+- **The loss of exactness the limit must catch.** Making every concentration
+  of the model's result 1e-11 too large, in proportion, raises the largest difference
+  on the five runs to 1.81e-12 at the one-second step, and the limit fails it
+  (simulated 2026-11-22). The derived bound from `run_rounding` is $`1.1\times10^{-11}`$
+  to $`1.6\times10^{-11}`$ of a concentration's size on the three runs at the envelope
+  corner, so a limit set at that bound would pass this loss.
 - **Results for the five runs.** At the one-second step, the largest differences
   are 1.43e-14 for the *envelope corner*, 1.16e-14 for the *ventilator start*,
   6.13e-15 for the *unperfused load, then dial off*, 2.49e-15 for the *reference
@@ -1726,7 +1750,14 @@ absolute difference in fraction, taken as the largest over the whole run.
   set at the earlier step of 0.1 s, when the one-hour run reached 7.16e-14 and
   dividing the hour into steps of 0.1 s, 0.05 s and 0.025 s moved the
   model's result by up to 2.17e-13. The limit is 4.6 times that spread. The
-  test file records both tables.
+  spread still covers the hour in one-second steps, which takes two squarings a
+  step: 3 600 steps count 14 400 by `run_rounding`'s count, against 36 000 steps
+  of none at 0.1 s (squarings counted 2026-11-22). This limit catches a coarser
+  loss of exactness than the five runs' limit. These runs hold the dial at 5%, so
+  making every concentration 1e-11 too large, in proportion, moves the largest
+  difference to only 4.67e-13, which passes. At 2.2e-11 it reaches 1.02e-12, which
+  fails (simulated 2026-11-22). The five runs' limit catches the smaller loss.
+<!-- not-restated: 5 % -->
 - **When the largest difference falls.** With the earlier method it fell soon
   after a change: about 85 s into a wash-in at fixed settings, and about 13 s
   after a setting change. With the present method it falls wherever rounding

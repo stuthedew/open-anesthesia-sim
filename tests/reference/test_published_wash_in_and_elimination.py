@@ -296,16 +296,10 @@ blood:gas, vessel-rich or alveolar gas volume change that it detects today. The 
 fails if the gate starts detecting a change that the documentation says it
 cannot, so that the table is measured again rather than left stale.
 
-The two ratios respond to almost disjoint parts of the parameter set. Here is
-the movement per +10% in one coefficient, in each ratio's own published SD
-(2026-09-06):
-
-| Perturbed coefficient | Wash-in | Elimination |
-| --- | --- | --- |
-| Blood:gas | -0.57 to -0.64 | +0.09 to +0.17 |
-| Vessel-rich tissue:gas | -0.02 to -0.06 | +0.45 to +0.55 |
-| Muscle tissue:gas | -0.08 to -0.15 | -0.09 to -0.12 |
-| Fat tissue:gas | -0.00 | -0.00 |
+The two ratios respond to almost disjoint parts of the parameter set.
+`docs/VERIFICATION.md` § "Which stored values each ratio responds to" gives
+how far each ratio moves when one coefficient is raised by 10%, in that
+ratio's own published SD.
 
 Wash-in at 30 minutes is a blood:gas measurement that barely responds to the
 vessel-rich group, and elimination at five minutes is a vessel-rich
@@ -561,9 +555,10 @@ APPARATUS_DEAD_SPACE_L = 0.050
 # stored parameters. The diagnostic is run at the rates below, which span the
 # conventional range for a paralysed, mechanically ventilated, normocapnic
 # adult. **Yasuda measured minute ventilation and derived the alveolar
-# fraction from F_M = f_A * F_A + f_D * F_I. The numeric value is in the
-# methods text and is not held here** (`PL-ZDWL`). So the range below stands
-# in for it, and that range is an assumption of this diagnostic, not a datum.
+# fraction from F_M = f_A * F_A + f_D * F_I. Neither paper reports the
+# ventilation itself** (`docs/VERIFICATION.md` § "Desflurane's residual, and
+# why the parameter file was not changed"). So the range below stands in for
+# it, and that range is an assumption of this diagnostic, not a datum.
 
 
 @dataclass(frozen=True, slots=True)
@@ -2155,8 +2150,8 @@ def _cases(
 # Changes that the gate detects for every agent, measured on 2026-10-18 with
 # the early wash-in points included in the gate (`PL-R0NL`). The early points
 # set most of these edges. A blood:gas change fails the gate at x0.95 to x0.99
-# below and x1.05 to x1.10 above. So x1.10 is not used, because desflurane
-# passes it: desflurane's edge is x1.097. A vessel-rich tissue:gas change
+# below and x1.05 to x1.10 above. So x1.10 is not used, because it is too
+# close to desflurane's edge at x1.097. A vessel-rich tissue:gas change
 # fails the gate at x0.85 to x0.97 below and x1.11 to x1.55 above. An alveolar
 # gas volume change fails it at x1.19 to x1.33 above, at the 1-minute point.
 DETECTED_CHANGES = (
@@ -2764,9 +2759,9 @@ def test_no_measured_tissue_solubility_reaches_desflurane_s_published_eliminatio
     The test above leaves desflurane 2.33 published SD *below* its cohort's
     mean once the rebreathing circuit is gone. So desflurane washes out faster
     than the volunteers did, on the opposite side from every other row. The
-    module's own sensitivity table says that this ratio mainly measures the
-    vessel-rich tissue:gas coefficient (+0.45 to +0.55 published SD per
-    +10%). So the obvious explanation is that desflurane's vessel-rich
+    sensitivity table in `docs/VERIFICATION.md` § "Which stored values each
+    ratio responds to" shows that this ratio mainly measures the vessel-rich
+    tissue:gas coefficient. So the obvious explanation is that desflurane's vessel-rich
     coefficient is too low. This test rules that explanation out, and it is
     the reason `data/agents/desflurane.json` was not changed (`PL-73G7`).
 
@@ -2964,8 +2959,10 @@ def test_the_apparatus_dead_space_moves_every_cohort_together() -> None:
     already subtracts the apparatus. A comparison run at *their* alveolar
     ventilation must therefore not subtract it again. This model runs at 4.0
     L/min. The parameter file records that value as a convention with no
-    primary source behind it, and it is neither of those quantities.
-    `PL-ZDWL` tracks reading the value out of the methods text.
+    primary source behind it, and it is neither of those quantities. Neither
+    paper reports their ventilation, so no comparison can be run at it
+    (`docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter
+    file was not changed").
 
     This test runs the diagnostic open circuit, so the caveat on every other
     use of it applies here too. No setting of the shipped simulator can

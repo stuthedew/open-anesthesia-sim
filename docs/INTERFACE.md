@@ -4434,23 +4434,16 @@ leads the alveoli, and the alveoli lead the tissues.
 fit.
 
 When a reader compares two readouts, the simulator's calculation error could mislead them
-only by reversing which of the two is shown as higher. A test compared every pair of the
-six readouts at every time step, for all three agents, in every run that
-`docs/VERIFICATION.md` § "Independent-solution test" describes: 148 500 pairs of readings in all. The
-simulator's readings **never** disagreed with those of the independent solution about
-which compartment is higher, even where the gap was tiny (checked 2026-11-21).
-
-This result comes from runs on one computer platform and is not a guarantee.
-Because rounding to a fixed number of decimals never reverses the order of two
-values, the display can show two compartments in the wrong order only where the
-simulator and the independent solution put them in opposite order. Such a reversal needs
-a true gap smaller than the two compartments' calculation errors added together. In
-every run, the simulator's gap between any two compartments differed from the
-independent solution's by at most $`1.6\times10^{-14}`$ as a fraction, not a
-percent. A true gap is that small only in the moment when two compartments cross, so a
-reversal is arithmetically possible there. None of these runs was compared that close
-to a crossing: the smallest nonzero gap between two compartments at any compared instant
-was $`2.7\times10^{-11}`$.
+only by reversing which of the two is shown as higher. Rounding to a fixed number of
+decimals never reverses the order of two values, so the display can show two compartments
+in the wrong order only where the simulator and the independent solution put them in
+opposite order. Such a reversal needs a true gap smaller than the two compartments'
+calculation errors added together. `docs/VERIFICATION.md` § "Independent-solution test"
+holds each compartment's calculation error to at most $`4\times10^{-13}`$ as a fraction,
+not a percent, so a reversal needs a true gap below $`8\times10^{-13}`$. A true gap is
+that small only in the moment when two compartments cross, so a reversal is
+arithmetically possible there and nowhere else. The bound holds on any computer on which
+that section's test passes.
 
 **A gap that a reader works out from two readings can differ from the true gap by
 up to one count of the last displayed digit.** Each reading is rounded to that
@@ -4469,11 +4462,12 @@ a lower percent (`test_format_percent_preserves_order` in
 resolution and both sides of every value at which the last displayed digit changes.
 Together the two tests mean that no reversal can occur at a true gap above twice the
 first test's tolerance: $`8.0\times10^{-9}`$ counts of the last displayed digit. A
-third test makes the comparisons described above, reading each value through the
+third test compares every pair of the six readouts at every time step, for all three
+agents, in every run of the first test, reading each value through the
 interface's formatter (`test_displayed_ordering_reverses_only_at_a_crossing` in `tests/reference/test_coupled_dynamics.py`). It
 allows a reversal where the true gap is below the first two tests' threshold of
 $`8.0\times10^{-9}`$ counts, because one is possible at a crossing. It fails only when
-one of those tests fails, so it records the result and adds no evidence of its own.
+one of those tests fails, so it adds no evidence of its own.
 
 The claim about a gap's calculation error rests on one property of the model: within one
 time step, it updates every compartment from the values at the start of that step.
