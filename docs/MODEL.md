@@ -475,7 +475,6 @@ compiler may change the order in which their terms are summed.
 Every concentration that the model computes is a dimensionless
 partial-pressure-equivalent fraction. For example, $`F = 0.02`$ represents a 2%
 gas-phase concentration.
-<!-- not-restated: 2 % -->
 
 The vaporizer dial and MAC are given in percent of an atmosphere. The
 conversion between a fraction and a percent is:
@@ -536,9 +535,9 @@ The agent's MAC is stored as a `MacPercent`, a `Percent` that rejects zero when
 it is built. Every formatter that computes a MAC multiple accepts only that
 kind of percent as its divisor. No other lower limit is set on the MAC, so a MAC
 far below any real agent's would still give multiples too large to read. The
-shipped MACs are 1.2% to 6.0%.
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+shipped MACs at age 40 are 1.17% to 6.6%.
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 The rules that the fraction and percent types share with the flows are written
 once, in `core/checked_number.py` (`docs/INTERFACE.md` § "Supported input ranges"): what counts as a
@@ -733,7 +732,7 @@ symbol.
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless | `TissueGroup.perfusion_fraction` |
-| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_percent` |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC for a 40-year-old, from Mapleson's 1996 meta-analysis. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_at_age_40_percent` |
 | $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, read from the agent data files and stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, read from the agent data files | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
@@ -957,7 +956,6 @@ that time constant.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- not-restated: 2 % -->
 
 The simulator therefore labels that control "Fresh gas flow", with "common gas
 outlet" on the line below it. On a real machine, "Fresh gas flow" alone is the
@@ -1086,7 +1084,6 @@ At 4.0 L/min and the same dial, the vaporizer adds agent about thirteen times
 faster than at the 0.3 L/min that this patient's uptake would set.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
-<!-- not-restated: 2 % -->
 
 Closed-circuit operation is a property of the machine, and one coefficient
 switched by a condition is the wrong way to model it. The machine design in
@@ -1212,7 +1209,6 @@ $`Q = 5`$ L/min, $`V_A = 2.5`$ L and $`\dot V_A = 4`$ L/min.
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 1.6 percent from data/patients/reference_adult.json default_cardiac_output_l_min = 5, default_alveolar_ventilation_l_min = 4 -->
 <!-- derived: 1.6 percent from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
-<!-- not-restated: 2 % -->
 
 For sevoflurane, uptake removes 1.6% of the volume that ventilation brings into
 the alveoli. A fixed volume can ignore that, and this model does. For nitrous
@@ -1658,18 +1654,19 @@ future option that a user would turn on, with a run's default behaviour
 unchanged. The evidence above favours an option, because an option can state
 its own uncertainty where a model's default behaviour cannot.
 
-**The stored MAC that the MAC-multiple display divides by limits that
-display.** Each agent's stored MAC is tier 3 under `docs/PARAMETERS.md` § "Source hierarchy".
-`docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" gives its gap from Mapleson's age-40
-meta-analytic values, and how much the choice of MAC source alone shifts a
-sevoflurane-versus-desflurane comparison in MAC multiples. The shift is consistent within an agent and changes no curve's shape or
-timing. It rescales one agent's MAC axis against another's. The
-sevoflurane-versus-desflurane shift is larger than the confidence limits of
-Mapleson's values, so by Mapleson's meta-analysis two agents at one MAC each
-are not equipotent to that precision. The interface displays
-the divisor for this reason. `ROADMAP.md`'s planned-milestone item 30
-moves the MAC to Mapleson's age-40 values, and item 31 plans a
-primary-literature set of partition coefficients beside the stored one.
+**The MAC that the MAC-multiple display divides by is a 40-year-old's.** Each
+agent's stored MAC is Mapleson's meta-analytic MAC at age 40 (Br J Anaesth
+1996;76:179-185, PMID 8777094), tier 2 under `docs/PARAMETERS.md` § "Source hierarchy", with 95%
+confidence limits of about ±7% (±10% for
+desflurane). The reference adult has no age, so every run divides by that MAC.
+Mapleson's regression has MAC falling by about 6% per decade of age, so a
+patient older than 40 reaches 1 MAC at a lower concentration than the display
+assumes, and a younger patient at a higher one. The interface states the age
+beside the MAC for this reason. The choice of MAC changes no curve's shape or
+timing. It rescales one agent's MAC axis against another's.
+`ROADMAP.md`'s planned-milestone item 30 makes the MAC follow the patient's age
+once age is an input, and item 31 plans a primary-literature set of partition
+coefficients beside the stored one.
 
 **Two omissions limit the supported run length, and a third limits the late
 washout within it.** The first two are metabolism, in the list above, and the
@@ -2145,10 +2142,12 @@ is 6.6 % above the humidified one, which is 47/713. The alveolar equation
 carries $`\dot V_A(F_I - F_A)`$ with no such factor, so $`F_I`$ arrives
 undiluted.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- not-restated: 6.6 % -->
 
 **For developers.** `test_the_humidification_dilution_follows_from_the_water_vapour_pressure`
 computes the 713 mmHg, the 6.2 % and the 6.6 % from 47 mmHg and one
 atmosphere.
+<!-- not-restated: 6.6 % -->
 
 **The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
 47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
@@ -2221,7 +2220,6 @@ and nothing else in the simulator says so. The two pressures have no test yet
 (`PL-LP96`). The delivered-concentration control
 is a vaporizer dial, and this project's three agents are drawn from two
 classes of vaporizer that respond differently to falling ambient pressure.
-<!-- not-restated: 6 % -->
 
 **The real devices for sevoflurane and isoflurane are variable-bypass
 vaporizers.** This class includes the Dräger Vapor 2000, Sevotec 5, Isotec 5
@@ -2236,7 +2234,6 @@ approximation as
 $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$. Their worked example
 is isoflurane dialled to 2% at 101.3 kPa, which delivers 4.05% at 50 kPa.
 That is 2.026 kPa of isoflurane either way.
-<!-- not-restated: 2 % -->
 
 **The real devices for desflurane are gas–vapour blenders.** This class
 includes the Tec 6 and Tec 6 Plus. Desflurane needs it because it boils at
@@ -2378,7 +2375,7 @@ agreement does not hold:
 
 <!-- not-restated: 15 min -->
 
-<!-- not-restated: 18 %, 6 %, 5 % -->
+<!-- not-restated: 18 %, 5 % -->
 
 The brackets are the published interquartile ranges
 (*J Clin Monit Comput* 2022;36:1881), and they carry more of
@@ -2439,7 +2436,8 @@ patients is weakest.
 **For developers.** The inert circuit is `BreathingCircuit`. The directional
 checks in `tests/reference/test_sevo_patient.py` assert that a higher cardiac
 output slows the rise of $`F_A`$. The MAC-multiple display divides by each
-agent's tier-3 `mac_percent`, and the Datex-Ohmeda 1–18% range is desflurane's
+run's MAC from `mac_for_patient` (`core/mac.py`), which is the agent's tier-2
+`mac_at_age_40_percent`, and the Datex-Ohmeda 1–18% range is desflurane's
 `max_delivered_concentration_percent`. `reference_adult.json` carries both
 fat-flow comparisons. Its Heinonen et al. note gives both figures and the
 volume-to-mass conversion between them, and says
@@ -2649,7 +2647,7 @@ its value carries a `provenance:` or `derived:` marker. A figure that only
 coincides with one carries a `not-restated:` marker that lists it:
 
 ```text
-<!-- not-restated: 2 %, 0.05 -->
+<!-- not-restated: 0.05 -->
 ```
 
 The check never decides which kind a figure is. `2.5` appears in this document
@@ -2660,7 +2658,7 @@ where a reader trusts most. So the writer says which kind it is, and the check
 enforces only that somebody did. A marker covers only the values it names, in
 their units, so a marker for the 6 L circuit does not clear desflurane's 6%
 MAC in the same paragraph. The check reads:
-<!-- not-restated: 6 L, 6 % -->
+<!-- not-restated: 6 L -->
 
 - a unit written as a word, such as "seconds", and a time in milliseconds,
   minutes or hours, which it converts to seconds;

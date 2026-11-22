@@ -280,8 +280,9 @@ does through `importlib.resources`. It checks each file before it constructs
 `AgentParameters` / `ReferenceAdultParameters` /
 `BreathingCircuitParameters`, and § "Data files (`data/`)" lists what the check
 rejects. `app/controller.py`, `app/dashboard_frame.py` and `app/run_view.py`
-also call `load_agent_parameters`, for values such as the agent's name and its
-1 MAC. Each call reads and checks the file again. Nothing downstream derives
+also call `load_agent_parameters`, for values such as the agent's name. They
+take the agent's 1 MAC from `mac_for_patient` in `core/mac.py`, which builds it
+from the agent and the patient. Each call reads and checks the file again. Nothing downstream derives
 these values again.
 
 **Each simulation step**, `AgentUptakeSystem.advance()` advances the whole
