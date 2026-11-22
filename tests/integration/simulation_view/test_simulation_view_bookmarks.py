@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import ViewScroll
-from anesthesia_sim.app.bookmarks import MarkStanding, TimeBookmark
+from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     MARK_STANDING_COMPARED_TEXT,
@@ -33,7 +33,7 @@ from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import MARK_ROW_BULLET
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BOOKMARKS
 from anesthesia_sim.app.views import BookmarksView
-from anesthesia_sim.core.concentration import fraction_from_percent
+from anesthesia_sim.core.concentration import MacMultiple, fraction_from_percent
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.shipped import shipped_workspaces
 from anesthesia_sim.layout.tree import AreaId
@@ -758,3 +758,45 @@ def test_the_marks_editor_scrolls_inside_the_default_bookmarks_area_rather_than_
         bottom = control.mapTo(bookmarks, QPoint(0, control.height())).y()
         assert control.height() >= control.minimumSizeHint().height(), control
         assert bottom <= bookmarks.height(), control
+
+
+def test_a_frame_that_lists_the_same_marks_keeps_where_the_reader_scrolled_each_list(
+    application: QApplication,
+) -> None:
+    """A list longer than its box keeps its scroll position from one frame to the next.
+
+    Every frame redraws the lists while a run plays. A list that was emptied
+    and filled again on every frame, and then had its selected row set again,
+    scrolled back to that row each time. A reader with a row selected could
+    then not scroll the list while a run played (`PL-CHX0`). The test marks
+    more instants and heights than either box shows, selects the first row of
+    each list, scrolls both lists to the bottom, and draws another frame with
+    the same marks.
+    """
+
+    controller = SimulationController()
+
+    for minute in range(1, 13):
+        controller.add_time_bookmark(TimeBookmark(CaseInstant(60 * minute)))
+        controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.1 * minute)))
+
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    view.present(False)
+    _settle(application)
+    bars = [listing.verticalScrollBar() for listing in (editor.time_list, editor.target_list)]
+
+    assert all(bar.maximum() > 0 for bar in bars)
+
+    editor.time_list.setCurrentRow(0)
+    editor.target_list.setCurrentRow(0)
+
+    for bar in bars:
+        bar.setValue(bar.maximum())
+
+    scrolled = [bar.value() for bar in bars]
+    view.present(False)
+    _settle(application)
+
+    assert [bar.value() for bar in bars] == scrolled
+    assert [editor.time_list.currentRow(), editor.target_list.currentRow()] == [0, 0]

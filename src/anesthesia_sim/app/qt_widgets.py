@@ -2157,12 +2157,22 @@ def _entered_label(field: QLineEdit) -> str | None:
 def _refill(widget: QListWidget, rows: Sequence[str]) -> None:
     """Rewrite `widget`'s rows, leaving the selected position where it was.
 
+    A list whose rows have not changed is left alone. The dashboard calls this
+    function on every frame while a run plays. Setting the selected row again
+    after a rewrite scrolls the list back to that row, so a list rewritten on
+    every frame could not be scrolled (`PL-CHX0`).
+
     Qt clears the current row when the model empties, so the index is saved
     before the rewrite and set again afterwards, rather than trusted to
     survive it. When the list no longer has a row at the selected position,
     such as after a reader removes the last row, nothing is selected. That is
     what a reader expects of a list they have just shortened.
     """
+
+    shown = [widget.item(row).text() for row in range(widget.count())]
+
+    if shown == list(rows):
+        return
 
     selected = widget.currentRow()
 
