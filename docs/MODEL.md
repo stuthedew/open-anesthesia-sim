@@ -3427,12 +3427,18 @@ predates the survey, and was kept under the project owner's ruling of
 <!-- not-restated: 2 % -->
 
 **Volume is not the whole of the difference between machines**, as the survey
-found. Fukuda et al. moved only the fresh gas inlet, with the machine and the
-volume held fixed. The inspired/delivered ratio of both isoflurane and
-sevoflurane rose significantly at low flow (*J Anesth* 2006;20(4):268–73).
-That ratio, $`F_I/F_D`$, is what the circuit equation above computes, so a real
-machine changed it through a property this model does not represent: the layout
-of its internal gas paths. A future per-machine circuit volume
+found. Fukuda et al. moved the fresh gas inlet from beside the absorber to
+beside the patient (*J Anesth* 2006;20(4):268–73, read from its abstract).
+During low-flow anesthesia on two decoupling-style machines, the
+inspired/delivered ratio rose significantly for sevoflurane, and for isoflurane
+on the one machine where it was compared. A third machine showed no significant
+change. That ratio, $`F_I/F_D`$, is what the circuit equation above computes,
+so on two machines the inlet's position changed it through a property this
+model does not represent: the layout of its internal gas paths. The abstract
+does not say whether moving the inlet changed the circuit's volume. Shin et
+al.'s measurements show a difference at a known volume: the Perseus A500 and
+the Zeus IE have nearly the same assembled volume, 3.3 and 3.2 L, and their
+times to target still differed significantly. A future per-machine circuit volume
 (`circuit_volume_l`) will therefore reproduce only part of the difference
 between machines, and must not be described as reproducing all of it. The
 model will not fold that layout into an effective volume either, because that

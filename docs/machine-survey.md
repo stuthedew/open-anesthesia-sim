@@ -176,9 +176,8 @@ finding". Fukuda et al. had been cited for a rise in $`F_I/F_D`$ on every
 machine they studied and at a fixed circuit volume, and their abstract supports
 neither. Shin et al.'s reasons for the difference between the Perseus and the
 Zeus had been listed with two features that do not differ between them.
-`docs/MODEL.md` and `docs/machine-abstraction.md` still repeat the Fukuda
-claim, and `docs/machine-abstraction.md` also repeats the old list of Shin et
-al.'s reasons. `PL-4G3N` corrects both. The same day, `PL-8ZD7` narrowed a
+`PL-4G3N` corrected the same two claims where `docs/MODEL.md` and
+`docs/machine-abstraction.md` repeated them, on 2026-11-22. The same day, `PL-8ZD7` narrowed a
 third adopted claim that the check had missed: that no machine publishes a
 default fresh gas flow. `docs/MODEL.md` and the reference circle system's data
 file still repeat it, and `PL-Z843` corrects both.
