@@ -1019,12 +1019,14 @@ def readiness(
     )
 
 
-# What the plan says about the version a bump has arrived at, as three answers.
-# Two of them are the interesting ones, and they are opposite failures: the
-# number is spoken for, or the number is free but is not the one the plan is
-# waiting to cut.
+# What the plan says about the version a bump has arrived at, as four answers.
+# The number is free (`STANDS`); the plan names a different one to cut
+# (`PLANNED`); the plan has given the number to an unfinished milestone, so the
+# next patch is offered instead (`PATCH`); or no patch is free either
+# (`RESERVED`, and there is nothing to offer).
 STANDS = "stands"
 PLANNED = "planned"
+PATCH = "patch"
 RESERVED = "reserved"
 
 
@@ -1040,10 +1042,22 @@ class ReleaseOffer:
     milestone going out under its own name with most of it missing, which a
     tag makes permanent and a reader has no way to see through afterwards.
 
-    So this is the readiness answer with the plan folded in, as three
+    So this is the readiness answer with the plan folded in, as four
     outcomes: the number is free (`STANDS`), the plan names a different one to
-    cut (`PLANNED`), or the plan has already given the number to something it
-    has not finished (`RESERVED`, and there is nothing to offer).
+    cut (`PLANNED`), the plan has already given the number to something it has
+    not finished and the next patch is offered instead (`PATCH`), or no patch
+    is free either (`RESERVED`, and there is nothing to offer).
+
+    `PATCH` is the usual answer between milestones. A feature-classed item
+    makes the bump a minor one, and the next minor number is nearly always the
+    next milestone's. Before `PATCH` existed the offer stopped there and said
+    "No release to offer", and sessions read that as "no cut is due": 134
+    items piled up between v0.6.18 and v0.6.19 behind v0.7.0's open gate
+    (project owner, 2026-11-22, `PL-49J8`). Offering the patch follows the
+    common reading of a version below 1.0, in which the middle number marks a
+    breaking or boundary release and the last number takes additive changes
+    (Cargo Book, "SemVer Compatibility"; npm's semver documentation, caret
+    ranges); Semantic Versioning 2.0.0 item 4 lets anything change below 1.0.
 
     The reservation is read from the plan rather than from where the project
     stands in it. `wave` carries every version `ROADMAP.md` names ahead of the
@@ -1069,6 +1083,9 @@ class ReleaseOffer:
     #: "the workflow works", not "v0.2.8". Empty under `STANDS`, where neither
     #: is involved.
     milestone: str
+    #: Under `PATCH`, the version the bump arrived at, which the plan has given
+    #: to `milestone`. Empty under every other answer.
+    passed_over: str = ""
 
 
 def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
@@ -1140,10 +1157,43 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
     # releases that shape from whichever row the project stands on, and
     # `implement` is returned only where an `own_scope` counts open work, so
     # the word has something behind it wherever it is printed (`PL-J45M`).
+    #
+    # A reserved number is not the end of the answer. The next patch on the
+    # current track is offered in its place where it lies below every number
+    # the plan has spent, so cutting it strands no milestone below the version
+    # file. Where it does not, as when the plan gives the next patch itself to
+    # a milestone, nothing is offered, because skipping past that number would
+    # leave the milestone below the current version and uncuttable
+    # (`PL-SYG4`'s objection to skipping, which still applies there).
     held = reservation(suggested, plan)
-    if held is not None:
-        return ReleaseOffer(RESERVED, suggested, held.name)
-    return ReleaseOffer(STANDS, suggested, "")
+    if held is None:
+        return ReleaseOffer(STANDS, suggested, "")
+    patch = free_patch(ready.current_version, plan)
+    if patch is not None:
+        return ReleaseOffer(PATCH, patch, held.name, passed_over=suggested)
+    return ReleaseOffer(RESERVED, suggested, held.name)
+
+
+def free_patch(current: str, plan: Wave) -> str | None:
+    """The next patch after `current`, or `None` where it would strand a milestone.
+
+    The candidate is `current` with its last number raised by one. It is free
+    only where every version the plan reserves lies above it: a reserved
+    version at or below it would be either the candidate itself or a number a
+    later cut could no longer reach, since `bin/docket release` refuses a
+    version below the current one. It reads `plan.reserved`, the roadmap's own
+    list of spent numbers, so it holds for every milestone the roadmap places,
+    whichever is next. A version the file does not hold as three whole numbers
+    has no next patch, and `None` says so.
+    """
+    match = SEMVER_RE.match(current.strip())
+    if match is None:
+        return None
+    major, minor, patch = (int(part) for part in match.groups())
+    candidate = (major, minor, patch + 1)
+    if any(held.version <= candidate for held in plan.reserved):
+        return None
+    return "{}.{}.{}".format(*candidate)
 
 
 def reservation(version: str, plan: Wave | None) -> ReservedVersion | None:
