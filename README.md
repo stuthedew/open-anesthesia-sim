@@ -42,9 +42,10 @@ readers:
   extend a model whose every equation, constant and assumption is written down.
 
 What distinguishes it from a demonstration is that the whole chain is
-inspectable and reproducible. The governing equations, units, numerical method
-and known limitations are specified in
-[`docs/MODEL.md`](docs/MODEL.md); every parameter names its source *and the
+inspectable and reproducible. The governing equations, units and known
+limitations are specified in [`docs/MODEL.md`](docs/MODEL.md), and the
+numerical method in [`docs/VERIFICATION.md`](docs/VERIFICATION.md); every
+parameter names its source *and the
 strength of that source*; and a run is deterministic — the same inputs give the
 same run, sample for sample — so a curve can be reproduced, cited, and argued
 with.
