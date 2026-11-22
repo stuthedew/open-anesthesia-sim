@@ -438,13 +438,14 @@ implemented)" computes each step. The run's record of stored states holds one
 state for every second from the run's opening to the second it has reached.
 
 **A run also records its settings, and computes no state from them.** The
-settings are the four controls above, together with the patient and agent
+settings are the four controls that § "Runtime controls" names, together with
+the patient and agent
 parameters that the equations use. They are kept as *stretches*: a stretch
 holds one set of settings and the second at which it took effect. Flows are
 stored as they were set, in liters per minute (`docs/VERIFICATION.md` § "Time"
 explains why). The settings record says which settings were in force at a
-second, which is what a branch records as where it came from. The
-control-input timeline above is a third record, kept to show and group the
+second, which is what a branch records as where it came from. The control-input timeline (§ "The
+control-input timeline") is a third record, kept to show and group the
 changes.
 
 **A run of the supported length fits in memory.** A run of 24 h, the longest
@@ -863,7 +864,8 @@ The dashboard refuses a run that opens between two slider steps when it sets up 
 One test checks this for an opening ventilation or cardiac output
 (`test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused` in
 `tests/unit/test_dashboard_frame.py`). Three tests in the same file check the three cases of the
-fresh gas flow control described below:
+fresh gas flow control that § "The model's envelope and a machine's deliverable range are two
+claims" describes:
 `test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range`,
 `test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it` and
 `test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused`.
@@ -889,8 +891,9 @@ fails on purpose (`test_envelope_limits_match_the_supported_input_ranges` in
 the new limits. Update its limit constants, and the most that the exact step may differ from the
 independent solution (`EXACT_STEP_ORACLE_TOLERANCE`). Then re-derive every figure computed at the
 flow maxima: the fastest time constant in `docs/MODEL.md` § "Time constants" and `docs/VERIFICATION.md` § "Supported simulation step",
-the corner sweeps in `docs/VERIFICATION.md` § "The numerical envelope" and `tests/unit/test_numerical_envelope.py`, and
-the figures below.
+the corner sweeps in `docs/VERIFICATION.md` § "The numerical envelope" and
+`tests/unit/test_numerical_envelope.py`, and every figure in this document that a
+`provenance:` marker ties to one of the three flow maxima.
 
 Three tests stop a range from changing unnoticed. The first is the test above, which restates
 all six flow limits and fails if the model moves one. The second does the same for the displayed
@@ -1017,8 +1020,9 @@ change to the data.
 
 #### Supported run length
 
-A run is supported up to **24 hours of elapsed simulated time**. This is the same kind of
-limit as the four ranges above. Outside the supported span, the equations still solve exactly,
+A run is supported up to **24 hours of elapsed simulated time**. This is the same kind of limit
+as the four ranges in § "Supported input ranges". Outside the supported span, the equations
+still solve exactly,
 as § "Why a setting outside the ranges is refused" says of the flows. What stops at the boundary is
 the claim that the solution represents a patient.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -1161,8 +1165,9 @@ desflurane and near hour 13 for the others.
 <!-- not-restated: 2.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**The tail's departures from the published curves do not move the 24 hours.** The limit
-rests on the two omissions above growing past negligible over the span, and the departures
+**The tail's departures from the published curves do not move the 24 hours.** The limit rests on
+the two omissions, metabolism and the fat group's flow
+(§ "Why the limit is set where it is"), growing past negligible over the span, and the departures
 come from neither of them. In `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean
 curves", the metabolism bound accounts for about an eighth of the excess where the tail runs
 above the curves, and widens the gap where it runs below. The shortfall comes from the missing
@@ -1326,8 +1331,8 @@ other alveolar test (3.0 L and 5.0 L/min).
 <!-- not-restated: 5.0 L/min -->
 
 **Why neither gets a supported range.** A supported range describes an
-envelope that a run can be steered *within*. The four controls above each name
-an interval because a user can put the model anywhere in it. The verification
+envelope that a run can be steered *within*. The four controls in § "Supported input ranges"
+each name an interval because a user can put the model anywhere in it. The verification
 gates are what establish that the model represents a patient across that
 interval. Neither volume moves. The single shipped value is the whole of each
 volume's domain, and every reference measurement in `docs/MODEL.md` is made at
@@ -2782,7 +2787,7 @@ https://doc.qt.io/qt-6/application-windows.html).
 **A separate window shows the invariant tier, not the whole set**
 (project owner, 2026-09-16, ratified - a recommendation put to them and agreed,
 chosen over the two live readings `PL-W54S` had written, and reopenable on
-ordinary evidence per `CLAUDE.md`; the occlusion rule above is not, being the
+ordinary evidence per `CLAUDE.md`; the occlusion rule (§ "No required value may be covered") is not, being the
 safety requirement rather than the arrangement). Breaking an area out into a
 window of its own is the second half of `ROADMAP.md` planned-milestone item 34,
 and it is wanted but not yet scheduled (project owner, 2026-09-26). Such a
@@ -3371,7 +3376,7 @@ desflurane. All three are gaps from Mapleson's MAC, not from the MAC that each
 source used. Mapleson's 95% confidence limits are about ±7%, and ±10% for
 desflurane. Only sevoflurane's gap is larger than its limits, so the
 sevoflurane band probably sits too high, by about 11% if Mapleson is right. A
-band drawn too high teaches an earlier wake-up. In the washout run above, the
+band drawn too high teaches an earlier wake-up. In the washout run described earlier in this section, the
 vessel-rich trace crosses sevoflurane's drawn band centre of 0.68% at 6.55 min.
 It crosses 0.612%, the same fraction of Mapleson's 1.80%, at 7.30 min. The
 isoflurane and desflurane gaps are inside the limits, so Mapleson does not show
@@ -3444,7 +3449,7 @@ inspired fraction, on a fixed, dimensionless axis labelled from 0 to 1. It has
 its own time window (§ "The chart's time base"). The
 uptake literature is taught from this curve, and the wash-in figures a reader
 has seen show it. The plot can therefore be laid beside a published figure. The
-six compartment concentrations on the chart above cannot. A validation test
+six compartment concentrations on the concentration chart cannot. A validation test
 compares the plotted ratio with human measurements at 30 minutes, for all three
 agents in the simulator (`docs/VERIFICATION.md` § "Published wash-in and elimination validation test").
 The ratio is computed only for display, and no equation of the model uses it.
@@ -3572,7 +3577,8 @@ shipped agent
 (`test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-The allowance is sized from the 1% limit above, a clinical requirement, rather
+The allowance is sized from the 1% limit in condition 2 under "A point is
+drawn only inside two boundaries", a clinical requirement, rather
 than from the rounding (project owner, 2026-10-26, ratified, over 1e-9 sized
 from the rounding and over deriving the value in code). At a ratio of
 1 + 1e-6, agent leaves at a rate of alveolar ventilation times $`F_I`$ times
@@ -4606,7 +4612,8 @@ label.
 readouts'.** It plots the same percentages on a shared linear axis that runs
 from 0 to 3 ×MAC of the agent in use, and a second axis on the right shows the
 same position in MAC multiples. Its resolution is set by pixels rather than by
-decimals. Every number that the chart offers is shown at the resolutions above,
+decimals. Every number that the chart offers is shown at the resolutions that § "Why the readouts show two decimals" and
+§ "The MAC multiple's resolution" set,
 in the readout row and in the hover readout
 (§ "The chart's hover readout: what the tooltip may show", below). The fixed
 3 ×MAC range gives the MAC axis round labels in half-MAC steps for every agent,
@@ -4721,7 +4728,7 @@ four tests in `tests/unit/test_formatting.py` check it:
 #### Agent amounts in millilitres, and the cost
 
 **An agent amount's precision is derived for the amount in one unit, and does
-not carry over to another unit.** The derivation above is for litres of vapour.
+not carry over to another unit.** The derivation in § "The agent-accounting panel" is for litres of vapour.
 The agent cost display shows the delivered total in millilitres of liquid, and
 the compartment schematic shows each compartment's amount in millilitres of
 vapour, so each of those needs its own precision. An amount in a unit that has
@@ -4749,8 +4756,9 @@ the unit would see the model resolve a difference in one unit that it does not
 resolve in the other. One step of the litre display, 0.1 L of vapour, is
 0.55 mL of sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane
 at the 20 °C reference of `docs/MODEL.md` § "Agent amount". The smallest power of ten at or
-above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts at 24 h given
-above, 0.61 L of sevoflurane vapour, 0.62 L of isoflurane and 0.68 L of
+above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts
+at 24 h given in § "The agent-accounting panel", 0.61 L of sevoflurane vapour, 0.62 L of
+isoflurane and 0.68 L of
 desflurane, are 3.3, 3.2 and 3.2 mL of liquid. So at those settings one step of
 1 mL is about a third of an SD, and a step of 0.1 mL would be about a thirtieth.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -4962,7 +4970,7 @@ panel. The dashboard (`app/dashboard_frame.py`) reads the constant to set the
 delivered dial's slider position, so the value that the slider applies and the
 readout above it cannot drift apart. Another test
 (`tests/reference/test_coupled_dynamics.py`) restates the constant and checks it
-against the formatting module, because the ordering claim above is a property of
+against the formatting module, because the ordering claim in § "Comparing two readouts" is a property of
 the rounded values. Adding a decimal would change what that claim proves without
 changing anything the test reads, so changing the resolution means revising this
 section.
@@ -5069,7 +5077,7 @@ lies within 12 pixels (px) of the pointer, a distance called the hover radius.
 Where two runs' traces for one compartment lie close together, the pointer is
 within that radius of both. The percent axis tops out at 3 MAC for every agent,
 so the slow compartments lie close to zero (§ "MAC multiples as a display unit").
-Through the first hour of the cases measured below, the two runs' fat traces lie
+Through the first hour of the cases that `PL-JVHL` measured, the two runs' fat traces lie
 so close together that a pointer within the radius of one is within the radius of
 the other over most of the area from which either can be reached.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
@@ -5298,7 +5306,7 @@ the library's default
 
 #### Which lines on the chart show a hover readout
 
-The six compartment traces respond to a hover in the form above, unless the
+The six compartment traces respond to a hover in the form that § "What it shows" gives, unless the
 reader has hidden the compartment. The wash-in trace responds with a plain ratio,
 because $`F_A/F_I`$ is dimensionless and has neither a percent nor a MAC reading:
 
