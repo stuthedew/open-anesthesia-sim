@@ -235,7 +235,7 @@ AGENT_DISPLAY_NAMES: Final[Mapping[str, str]] = dict(AVAILABLE_AGENTS)
 #: The clock panel's index in the readout row. It is found from the table that
 #: the row is built from, not written as a literal position.
 _CLOCK_PANEL_INDEX: Final = next(
-    index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None
+    index for index, panel in enumerate(READOUT_PANELS) if panel.is_clock
 )
 
 #: The header badge's inset. It is narrower than the chip's inset, because the
@@ -1928,8 +1928,8 @@ class RunView(QWidget):
         }
 
         for panel, readout_panel in zip(self._readout_row.panels, READOUT_PANELS, strict=True):
-            if readout_panel.quantity is not None:
-                widgets[compartment_value(readout_panel.quantity)] = panel.value_label
+            if not readout_panel.is_clock:
+                widgets[compartment_value(readout_panel.compartment())] = panel.value_label
 
         return widgets
 

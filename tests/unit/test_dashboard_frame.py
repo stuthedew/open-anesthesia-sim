@@ -25,16 +25,19 @@ samples that the fixture wrote. The test then checks how the frame treats those
 samples, not where the sampler placed its columns.
 """
 
+import inspect
 import json
 import math
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from importlib.resources import files
+from pathlib import Path
 from typing import Any
 
 import pytest
 
+from anesthesia_sim.app import dashboard_frame
 from anesthesia_sim.app.bookmarks import (
     BookmarkSet,
     BookmarkStandings,
@@ -69,6 +72,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_UNIT_CAPTION,
     BRANCH_AGENT_LOCK_TEXT,
     COMPARING_AGENT_LOCK_TEXT,
+    COMPARTMENT_PANELS,
     CONTROL_MARK_LEGEND_LABEL,
     CONTROL_TIMELINE_CAPTION,
     CONTROL_TIMELINE_HEADING,
@@ -111,6 +115,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     WITHHELD_ACCOUNTING,
+    WITHHELD_MAC_MULTIPLE_TEXT,
     BookmarkPanel,
     BranchAtStake,
     ComparedRuns,
@@ -162,6 +167,7 @@ from anesthesia_sim.app.dashboard_frame import (
     unmarked_changes_lines,
     wash_in_state,
     wash_in_state_lines,
+    withheld_readouts,
 )
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
@@ -1545,6 +1551,54 @@ def test_the_playback_rate_is_drawn_under_the_clock_it_governs(rate: PlaybackRat
 
     assert clock.name == "Simulated time"
     assert clock.secondary == format_playback_rate(rate.multiplier)
+
+
+@pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES)
+def test_a_withheld_row_keeps_the_clock_s_playback_line(rate: PlaybackRate) -> None:
+    """The withheld row and the live row word the clock's second line alike (`PL-J791`)."""
+
+    withheld = withheld_readouts(rate)
+
+    assert withheld[0].secondary == format_playback_rate(rate.multiplier)
+    assert [readout.secondary for readout in withheld[1:]] == [WITHHELD_MAC_MULTIPLE_TEXT] * 6
+
+
+def test_only_the_first_panel_is_the_clock_and_the_rest_name_their_compartments() -> None:
+    """`ReadoutPanel` alone says which panel is the clock (`PL-J791`)."""
+
+    assert [panel.is_clock for panel in READOUT_PANELS] == [True, *[False] * 6]
+    assert [panel.compartment() for panel in COMPARTMENT_PANELS] == [
+        RecordedQuantity.CIRCUIT,
+        RecordedQuantity.ALVEOLAR,
+        RecordedQuantity.MIXED_VENOUS,
+        RecordedQuantity.VESSEL_RICH,
+        RecordedQuantity.MUSCLE,
+        RecordedQuantity.FAT,
+    ]
+    with pytest.raises(
+        ValueError,
+        match=re.escape("the 'Simulated time' panel is the clock and shows no compartment"),
+    ):
+        READOUT_PANELS[0].compartment()
+
+
+def test_no_module_under_app_asks_which_panel_is_the_clock_for_itself() -> None:
+    """Six places once asked `panel.quantity is None`, and a missed one fails nothing (`PL-J791`).
+
+    Only `ReadoutPanel` reads its own field to answer it.
+    """
+
+    app = Path(dashboard_frame.__file__).parent
+    owner = inspect.getsource(dashboard_frame.ReadoutPanel)
+    asking = []
+    for path in sorted(app.rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        if path.name == "dashboard_frame.py":
+            text = text.replace(owner, "")
+        if re.search(r"quantity is (not )?None", text):
+            asking.append(path.name)
+
+    assert asking == []
 
 
 def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour() -> None:
