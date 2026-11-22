@@ -1,0 +1,75 @@
+---
+id: PL-LRWK
+title: Decide how a new item picks its feature, and how features that belong together are found later
+status: untriaged
+feature: feature-registry
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/config.py, docs/features.toml, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/triage.md
+added: 2026-11-22
+---
+
+**Problem.** Decide how a new item picks its feature, and how features that belong together are found later
+
+The project owner asked, while `PL-Q3BN` built the feature registry and found
+about 58 near-duplicate feature names among 211: how should a session decide
+whether a new item joins an existing feature, starts a new one, or takes none,
+and how are items that belong together found after the fact? Research best
+practice and plan to implement it (project owner, 2026-11-22).
+
+**What was read, 2026-11-22.**
+
+1. Stack Overflow's tag guidance, "Best practices for tag lifecycle
+   management" (last updated 2022-11-02), read in full: "strive to use existing
+   tags as much as possible and only create new ones for unique topics", and
+   "Starting too granular results in tag 'sprawl'". Each tag's excerpt "should
+   include basic information about when to use the tag". Maintenance is
+   finding "opportunities for tag consolidation via merges and synonyms", with
+   one named owner; no cadence is given.
+2. Jeff Atwood, "Tag Folksonomy and Tag Synonyms", Stack Overflow Blog,
+   2010-08-01, read in full: a synonym silently remaps a non-preferred tag to
+   its master tag, and single-use tags older than six months were culled.
+3. Mario Barité, "Literary warrant", ISKO Encyclopedia of Knowledge
+   Organization, 2026, first third read verbatim: warrant is the
+   "justification for including terms in a knowledge organization system", and
+   the entry reports ANSI/NISO Z39.19-2005 (R2010), p. 6, using literary
+   warrant for that justification. Dewey's editorial rule considers a new
+   number once about twenty works need it. The standard itself could not be
+   read: NISO's site refuses automated fetching.
+4. Runeson, Alexandersson and Nyholm, "Detection of duplicate defect reports
+   using natural language processing", ICSE 2007, pp. 499-508,
+   doi:10.1109/ICSE.2007.32, abstract only: text similarity found "about 2/3 of
+   the duplicates", with little difference between variants.
+5. Laney, Barovic and Moin, "Automated Duplicate Bug Report Detection in Large
+   Open Bug Repositories", COMPSAC 2025, arXiv:2504.14797, most of the full
+   text: its related work reports that information-retrieval ranking beat
+   neural methods at producing a list of possible duplicates, while neural
+   classifiers did better at a yes-or-no decision.
+
+**What was measured, 2026-11-22**, with a plain word-overlap score (TF-IDF
+over each feature's item titles, name and description), in a scratch script:
+
+1. For 399 randomly chosen past items, leaving each out, the score ranked the
+   item's own feature first for 47%, in the top three for 73% and in the top
+   five for 82%.
+2. For the 58 merges `PL-Q3BN` drafted by hand, it ranked the chosen target in
+   the top three for 42 and the top five for 47. Its 40 most similar feature
+   pairs held 10 of the 58 and several pairs the hand list missed, such as
+   `owner-ask-refusals` and `review-hold`.
+
+So the score is good enough to suggest and too weak to decide, which is the
+split the duplicate-report literature draws.
+
+**Recommendation (the session's, for the owner to approve).**
+
+1. **At filing.** Join an existing feature when its description covers the
+   work. Start a new one only for a goal at least two items share, named for
+   what completes, with its description line. Give a lone finding no feature.
+   `bin/docket new` with no `--feature` prints the three features whose items
+   best match the title, as suggestions the session accepts or ignores.
+2. **Folded names redirect.** A merged name stays in the registry as
+   `old = { use = "new" }`, and `bin/docket new` and `check` answer "use new"
+   for it, as a Stack Overflow synonym does.
+3. **Later.** A new `bin/docket features --similar` lists the feature pairs
+   whose items overlap most, the open items with no feature that match a
+   feature or each other, and the open features with one item. It decides
+   nothing. The triage skill's grooming pass runs it and records each merge
+   it takes, and the release cut runs it once.
