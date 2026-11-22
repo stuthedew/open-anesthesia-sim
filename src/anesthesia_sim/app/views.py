@@ -1060,7 +1060,10 @@ class RunDials(QWidget):
         if isinstance(dials, NotBuilt):
             if self.controls is not None:
                 self._column.removeWidget(self.controls)
-                self.controls.setParent(None)
+                # The dials stay in this row until Qt deletes them. Taken out
+                # with `setParent(None)`, they became a window of their own,
+                # which Qt showed and gave the keyboard focus (`PL-81YL`).
+                self.controls.hide()
                 self.controls.deleteLater()
                 self.controls = None
 

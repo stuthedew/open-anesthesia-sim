@@ -38,8 +38,9 @@ from copy import copy
 from dataclasses import InitVar, dataclass, field
 from typing import TYPE_CHECKING, cast
 
+from anesthesia_sim.core.agent_simulation_validation import TotalsCompensation
 from anesthesia_sim.core.checked_record import require_state_by_name
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import (
@@ -85,6 +86,15 @@ class SimulationState:
     and `reset()` restarts it. A run built part-way with no `opening_record`
     stores no earlier second, and its record opens at `elapsed_s`.
     """
+    _resting_state: tuple[tuple[float, ...], TotalsCompensation] = field(
+        init=False, repr=False, compare=False
+    )
+    """The state the next step starts from, as the system held it when the run last stopped.
+
+    It is the system's case state and compensation terms, read when the run
+    opens, after each step and after a reset. `advance()` refuses to step
+    from a system that no longer holds it (`PL-DQWL`).
+    """
 
     def __post_init__(self, opening_record: StoredStates | None) -> None:
         """Open the run's stored states, from `opening_record` or from the system's own state.
@@ -102,6 +112,7 @@ class SimulationState:
             self.stored_states = StoredStates(
                 system.case_state(), self.elapsed_s, system.accounting_compensation()
             )
+            self._note_resting_state()
             return
 
         if not isinstance(opening_record, StoredStates):
@@ -125,12 +136,22 @@ class SimulationState:
         ):
             raise SimulationConfigurationError(
                 f"the uptake system does not stand at the state the opening record stores for "
-                f"{reached_s} s, so the run's next step would not continue that record: place "
-                "the system with AgentUptakeSystem.resume_at, and pass the record's last state "
-                "and its compensation terms (StoredStates.compensation_at)"
+                f"{reached_s} s, so the run's next step would not continue that record. A branch "
+                "places its system there with AgentUptakeSystem.resume_at, passing the record's "
+                "last state and its compensation terms (StoredStates.compensation_at). A run "
+                "that is copied or loaded is checked the same way, and it fails when its state "
+                "changed after its last step, for example when its circuit volume, its alveolar "
+                "gas volume or a compartment's contents changed"
             )
 
         self.stored_states = copy(opening_record)
+        self._note_resting_state()
+
+    def _note_resting_state(self) -> None:
+        """Record the state the run's next step starts from, as the system now holds it."""
+
+        system = self.uptake_system
+        self._resting_state = (system.case_state(), system.accounting_compensation())
 
     def __copy__(self) -> SimulationState:
         """Refuse a shallow copy, which would share the run's uptake system with the original.
@@ -359,9 +380,25 @@ class SimulationState:
         The record refuses only a state that the equations cannot be applied
         to, which a completed step does not produce.
 
+        A step starts only from the state the run last stopped at. If a
+        change between two steps moves that state, the next step is refused
+        (`PL-DQWL`). A volume change while the compartment holds agent is one
+        such change. The circuit keeps its agent when its volume changes, so
+        its inspired fraction changes too. The record would then hold a state
+        for the reached second that the next step did not start from, and a
+        branch or a copy opened there would start from a different state than
+        the run went on from. A control moves only the next step's inputs, so
+        it is accepted. So is a volume change while the compartment is empty,
+        because its fraction stays 0. The check compares the system's case
+        state and compensation terms with the ones it held when the run last
+        stopped, so it writes nothing.
+
         Raises:
             SimulationDomainLimitError: the run has reached the supported run
                 length.
+            SimulationExecutionError: the system's state has changed since
+                the run last stopped. Nothing was stepped, and every later step
+                is refused until `reset()`.
             SimulationNumericalError: `AgentUptakeSystem.advance()` could not
                 complete the step, and has rolled it back.
             SimulationConfigurationError: the record of stored states refused
@@ -370,6 +407,7 @@ class SimulationState:
         """
 
         require_supported_run_length(self.step_count)
+        self._require_the_state_it_stopped_at()
 
         state_before_step = self.uptake_system.capture_state()
         result = self.uptake_system.advance()
@@ -383,8 +421,28 @@ class SimulationState:
                 self.uptake_system.restore_state(state_before_step)
 
         self.step_count = StepCount(self.step_count + 1)
+        self._note_resting_state()
 
         return result
+
+    def _require_the_state_it_stopped_at(self) -> None:
+        """Refuse a step from a system whose state has changed since the run last stopped.
+
+        Raises:
+            SimulationExecutionError: the system's case state or compensation
+                terms differ from the ones it held when the run last stopped.
+        """
+
+        system = self.uptake_system
+
+        if (system.case_state(), system.accounting_compensation()) != self._resting_state:
+            raise SimulationExecutionError(
+                "the run's state or its agent accounting has changed since it stored its "
+                f"state for {self.stored_states.reached_s} s, so the next step would not "
+                "continue the record. A volume changed while its compartment held agent, a "
+                "write to a compartment's contents, or a step taken on the uptake system "
+                "directly does this. Reset the run or build a new one"
+            )
 
     def reset(self) -> None:
         """Clear dynamic state while preserving user settings.
@@ -400,6 +458,7 @@ class SimulationState:
             self.uptake_system.accounting_compensation(),
         )
         self.step_count = StepCount(0)
+        self._note_resting_state()
 
 
 def _require_count_the_record_reaches(step_count: object, stored_states: StoredStates) -> None:

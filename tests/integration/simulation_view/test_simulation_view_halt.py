@@ -1081,7 +1081,7 @@ def test_a_slot_that_raises_inside_the_halt_does_not_start_the_halt_again(
 
     monkeypatch.setattr(SimulationView, "_halt_every_run", tracking)
     view._chart_view_owed = True
-    monkeypatch.setattr(SimulationView, "_chart_in_view", refuse)
+    monkeypatch.setattr(SimulationView, "_kept_in_view", refuse)
     _take_fork(view, 60.0)
     _settle(application)
 

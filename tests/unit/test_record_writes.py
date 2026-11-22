@@ -276,6 +276,13 @@ WRITES: dict[str, dict[str, Write]] = {
         # count past the supported run length.
         "step_count": Write(CHECKED, SimulationState, lambda state: StepCount(1)),
         "stored_states": Write(ONCE, SimulationState),
+        "_resting_state": Write(
+            PRIVATE,
+            why=(
+                "Only the run's own methods write it: the constructor, advance and reset. "
+                "Each reads it from the run's uptake system."
+            ),
+        ),
     },
     "stored_states.StoredStates": {
         field: Write(

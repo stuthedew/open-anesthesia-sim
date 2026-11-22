@@ -276,6 +276,11 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
             yield InterfaceText(widget.itemText(index), seen and index == current)
 
 
+#: The Qt property that `SimulationView._order_focus` sets on each widget it
+#: places in Tab's order, so that a widget built since can be told apart.
+_TAB_ORDERED: Final = "placedInTabOrder"
+
+
 def _focusable_widgets(window: QWidget) -> list[QWidget]:
     """Return each widget under `window` that Tab can reach, in the widget tree's order.
 
@@ -288,10 +293,8 @@ def _focusable_widgets(window: QWidget) -> list[QWidget]:
     a selector's list of choices, is left out, because Tab does not move
     between windows.
 
-    The list comes from `findChildren`. Walking Qt's focus chain with
-    `nextInFocusChain` on every draw made one keyboard test crash inside a
-    chart's layout several steps later, and the cause is not yet known
-    (`PL-2D9Z`).
+    The list comes from `findChildren`, which returns the widgets in the
+    tree's order.
     """
 
     return [
@@ -852,9 +855,23 @@ class SimulationView(QWidget):
         self._focus_order_owed = True
 
     def _order_focus_if_owed(self) -> None:
-        """Set Tab's order where something has changed which widgets the dashboard holds."""
+        """Set Tab's order where something has changed which widgets the dashboard holds.
 
-        if self._focus_order_owed:
+        Three changes mark the order as stale: a run placed, a Workspace
+        change and a View replaced (`_owe_focus_order`). A View can also build
+        a control on any later draw, such as a run's dials built again after
+        a halt in which they could not be built. Qt puts a newly built widget
+        at the end of the window's focus chain, so that control would be
+        reached after every Area and border. So the widgets themselves are
+        read too: `_order_focus` marks each widget it places, and a focusable
+        widget without the mark was built since (`PL-81YL`). The mark is a
+        property of the Qt object, so a widget built where a deleted one stood
+        in memory does not carry it.
+        """
+
+        if self._focus_order_owed or any(
+            widget.property(_TAB_ORDERED) is None for widget in _focusable_widgets(self)
+        ):
             self._focus_order_owed = False
             self._order_focus()
 
@@ -892,6 +909,9 @@ class SimulationView(QWidget):
 
         for before, after in zip(order, order[1:], strict=False):
             QWidget.setTabOrder(before, after)
+
+        for widget in order:
+            widget.setProperty(_TAB_ORDERED, True)
 
     def showEvent(self, event: QShowEvent) -> None:
         """Give the first run's first control the focus when the dashboard is first shown.
@@ -1458,7 +1478,7 @@ class SimulationView(QWidget):
 
         The chart is the plot of the first Area that shows a concentration
         chart View, or the Areas themselves where no Area does
-        (`_chart_in_view`). After the press returns, the new run's widgets
+        (`_kept_in_view`). After the press returns, the new run's widgets
         reach their final size over several layout passes, and each pass
         moves the chart. So the page scrolls once now, and once more each time
         the page's height changes (`_follow_chart`). This continues until the
@@ -1470,10 +1490,33 @@ class SimulationView(QWidget):
         """
 
         self._chart_view_owed = True
-        self._page_scroll.ensureWidgetVisible(self._chart_in_view(), 0, 0)
+        self._page_scroll.ensureWidgetVisible(self._kept_in_view(), 0, 0)
 
-    def _chart_in_view(self) -> QWidget:
-        """The plot that `_keep_chart_in_view` keeps on screen, or the Areas where none is shown."""
+    def _kept_in_view(self) -> QWidget:
+        """Return the widget that `_keep_chart_in_view` keeps on screen.
+
+        That is the plot of the first Area that shows a concentration chart
+        View, or the Areas themselves where no Area does. Where the current
+        Workspace is pinned to one run, its Views draw no comparison. The
+        widget is then the first branch control on screen, because its
+        caption says where the comparison is (`COMPARISON_PINNED_AWAY_TEMPLATE`,
+        `PL-YQ5J`). Before that, the page scrolled to a chart hidden under the
+        pinned run's notice.
+        """
+
+        compared = self._compared_runs()
+
+        if compared is not None and compared.pinned_away is not None:
+            return next(
+                (
+                    view.panel
+                    for view in self._areas.views()
+                    if isinstance(view, BranchView)
+                    and view.panel is not None
+                    and view.panel.isVisibleTo(self)
+                ),
+                self._areas,
+            )
 
         return next(
             (view.chart for view in self._areas.views() if isinstance(view, ConcentrationView)),
@@ -1491,7 +1534,7 @@ class SimulationView(QWidget):
         """Bring the chart back into view after a pass of layout, while the page is holding it."""
 
         if self._chart_view_owed:
-            self._page_scroll.ensureWidgetVisible(self._chart_in_view(), 0, 0)
+            self._page_scroll.ensureWidgetVisible(self._kept_in_view(), 0, 0)
 
     def _restate_fork_panel(self) -> None:
         """Restate the branch offer from the case on a halt, and offer nothing if that raises.
@@ -1616,14 +1659,28 @@ class SimulationView(QWidget):
         )
 
     def _compared_runs(self) -> ComparedRuns | None:
-        """What the trunk and its branch are called while both are drawn, or None while one is."""
+        """What the trunk and its branch are called while both are open, or None while one is.
+
+        The result also names the run that the current Workspace is pinned
+        to, where that pin keeps the comparison off its Views. The Workspace
+        is read on every call, so a pin set or removed, or a switch of
+        Workspace, changes the result on the next tick (`PL-YQ5J`).
+        """
 
         if len(self._runs) < MAX_DISPLAYED_RUNS:
             return None
 
         trunk, branch = self._runs
+        workspace = self._workspaces.current
+        shown = workspace.shown_runs(self._open_runs())
+        pinned_away: str | None = None
 
-        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id))
+        if isinstance(shown, PinnedRunAbsent):
+            pinned_away = pinned_run_label(shown.pinned, self._run_identities.session)
+        elif workspace.pinned_run is not None:
+            pinned_away = run_label(workspace.pinned_run)
+
+        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id), pinned_away)
 
     # ---------------------------------------------------------- presenting
 
