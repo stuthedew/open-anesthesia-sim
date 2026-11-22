@@ -347,8 +347,9 @@ starting amount of the mass-balance check, and it restores them if the step fail
 **A run stops when a step drives an amount out of range.** No step can drive a
 fraction below zero (§ "Selected method (as implemented)"). Rounding can still carry a fraction
 just above 1 from a state already at 1, which no supported setting reaches. The length of the
-step does not cause this stop. A rejected setting leaves a run that can still be trusted, but a run
-stopped this way cannot be trusted.
+step does not cause this stop. A rejected setting leaves a run that can go on. A run stopped this
+way cannot go on, because the same step would fail again, but the last completed step that the
+screen keeps is still a real result, as the opening of this section says.
 
 The check that stops a run on an out-of-range amount is in `AgentUptakeSystem.advance()`, which
 raises `SimulationNumericalError`. Besides a fraction just above 1, it covers later model changes
@@ -3101,6 +3102,11 @@ Two safeguards protect against this misuse today:
    patient's compartment volumes and perfusion fractions, whatever the learner
    sets. The planned patient factors (`ROADMAP.md` planned-milestone item 30)
    will remove this safeguard.
+
+A learner can still set cardiac output or alveolar ventilation to a value
+measured in a real patient, because changing them is a core teaching feature.
+The run then shows the reference adult at that flow, not a prediction for that
+patient. Only the use statement guards against reading the run as one.
 
 The use statement is `USE_DISCLAIMER_TEXT` in `app/dashboard_frame.py`,
 and the reference adult is stored in `data/patients/reference_adult.json`. A test checks each
