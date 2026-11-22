@@ -3,8 +3,8 @@
 A Projects thread does not load the repository's `.claude/settings.json`, so
 none of its hooks run there. Claude Code's Projects documentation says plugins
 added in Project settings > Plugins "load into each new cloud thread"
-(https://code.claude.com/docs/en/claude-projects.md, § "Get skills, plugins,
-connectors, and tools into threads", read 2026-10-31), but it does not say
+(https://code.claude.com/docs/en/claude-projects.md, section "Get skills,
+plugins, connectors, and tools into threads", read 2026-10-31), but it does not say
 whether a plugin's hooks then run. This script is the test plugin's only hook.
 
 At session start it prints one line, which Claude Code adds to the session.

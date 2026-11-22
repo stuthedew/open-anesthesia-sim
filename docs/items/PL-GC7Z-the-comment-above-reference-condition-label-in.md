@@ -3,13 +3,16 @@ id: PL-GC7Z
 title: The #: comment above REFERENCE_CONDITION_LABEL in src/anesthesia_sim/app/display_units.py cites docs/MODEL.md's note 'One reference condition, where the model physically has two' without the section mark, the fourth citation of that note and the one PL-97S1 did not reach
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
-feature: repo-copy-edit
+feature: copy-editor
 touches: src/anesthesia_sim/app/display_units.py
 deferred-from: v0.7.0 - a new problem: the comment was written on 2026-11-13 by #2136 (44449552), which built Required-scope work (PL-RJN9, PL-HQPF), after the freeze
 added: 2026-11-16
+closed: 2026-11-22
+pr: 2211
 payoff: Every citation of the reference-condition note uses one form, so a reader or a search reaches the note from each of them and a rename cannot strand one.
+verify: ! grep -qF '(`docs/MODEL.md` § "Known limitations", "One reference condition' src/anesthesia_sim/app/display_units.py
 ---
 
 **Problem.** The #: comment above REFERENCE_CONDITION_LABEL in src/anesthesia_sim/app/display_units.py cites docs/MODEL.md's note 'One reference condition, where the model physically has two' without the section mark, the fourth citation of that note and the one PL-97S1 did not reach
@@ -40,3 +43,9 @@ that closed `PL-97S1`. So it is that item's stated remainder, not a fix that
 failed to hold. See also `PL-Q2DK` (a citation of a renamed `ROADMAP.md`
 heading): both are citations that the document check cannot test against the
 cited document's headings. No head's `misread:` states that fact.
+
+**Done 2026-11-22**, in `PL-LPCB`'s change, which made the document check read
+a `#:` comment. The comment above `REFERENCE_CONDITION_LABEL` now cites
+`docs/MODEL.md` § "One reference condition, where the model physically has
+two", under § "Known limitations", the form `core/liquid_agent.py` has, so a
+rename of the note's bold lead is refused here too.

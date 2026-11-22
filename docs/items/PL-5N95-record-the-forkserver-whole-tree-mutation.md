@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: done
 classes: infra
-feature: test-effectiveness-measurement
+feature: tests-detect-wrong-values
 milestone: v0.5.31
 touches: docs/mutation-testing.md
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science

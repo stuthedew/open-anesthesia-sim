@@ -34,6 +34,7 @@ docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing w
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket concurrent --in-scope --limit 4   # four that can run at once from the step's scope: the gate's entries while one is open
 docket feature halted-step   # progress on one feature
+docket feature --similar     # features that read alike, and items with none
 docket gate --feature x      # every open debt item, split by feature and lane: a freeze's first cut
 docket release v0.3.0        # verify, bump the version, write the notes
 docket delegable             # what a cheaper model may work, and what proves it
@@ -256,7 +257,7 @@ advisory, and a default branch missing work everyone believes landed. Observed
 2026-09-04 on `#284`, whose follow-up `#286` says it plainly — "that pull
 request merged at its first commit, so the behavior change pushed to the same
 branch afterwards never landed". The commit carried a rule the project owner
-had asked for in that session, so `CLAUDE.md` § "a behavior change takes effect
+had asked for in that session, so `CLAUDE.md` § "A behavior change takes effect
 in the session that asks for it" was quietly void.
 
 It surfaced only because that session happened to check the merge file by file.
@@ -4111,6 +4112,7 @@ recommendation_required_from = 2026-09-21   # a `needs-decision` brief
 minor_classes = ["feature"]
 retired_features = []              # feature names `check` refuses on an open
                                    # item; closed items keep theirs
+features_file = ""                 # the feature registry; empty = none
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
 code_paths = ["src", "tests"]      # what `docket trend` counts as code
@@ -4120,6 +4122,29 @@ notes_file = ""                    # a threads file `docket show` points into
 version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"
 ```
+
+### The feature registry
+
+`features_file` names a TOML file of `name = "description"` lines, one for each
+feature any item carries, relative to the project root. `docket status` prints
+each underway or unstarted feature's description on the line below it, and
+`docket feature` prints it below the feature's heading. `docket check` errors on
+an item whose feature the file does not list, closed items included, and on a
+listed name that no item carries. A write by `docket new` or `docket set` that
+would add either error is refused. So a new feature is a line in the registry
+first, then the item that carries it. A named file that is missing, or a line
+whose description is not a non-empty string, stops every command rather than
+being read as an empty registry (`PL-Q3BN`).
+
+A name merged into another stays as `old = { use = "new" }`. `docket new`
+refuses the folded name with the one to use, and `docket check` errors on an
+item that still carries it. `docket new` with no `--feature` prints the three
+listed features whose items, name and description share most of the title's
+words. `docket feature --similar` lists the feature pairs that read most
+alike, open items with no feature beside the feature each reads like, pairs of
+such items that declare a path in common, and open items alone in their
+feature. Both rank by weighted shared words and decide nothing; the
+measurement behind them is in `docket.feature_match` (`PL-LRWK`).
 
 ### Where the settings are resolved from, and why the run says so
 

@@ -209,6 +209,13 @@ known_classes = [
 # (`PL-S0MB`). Not a package default - it is empty there.
 retired_features = ["dev-tooling", "parallel-sessions", "queue-hygiene"]
 
+# The feature registry: every feature name an item carries, with one line on
+# what belongs in it. `bin/docket status` and `bin/docket feature` print the
+# line beside the name, and `bin/docket check` refuses an item whose feature is
+# not listed. A file of its own rather than a table here, because every new
+# feature adds a line and this file is one of the `gate_paths` (`PL-Q3BN`).
+features_file = "docs/features.toml"
+
 # The boundary CLAUDE.md's "two standards, deliberately unequal" already draws,
 # written down so `docket next workflow` and `docket next product` can act on
 # it. An item's `touches` decides its side: all inside means workflow, none
@@ -320,6 +327,7 @@ workflow_paths = [
   "docs/blind-review-findings.tsv",
   "docs/ci-runs.tsv",
   "docs/dead-ends.md",
+  "docs/features.toml",
   "docs/items",
   "docs/maintainer.md",
   "docs/model-review.md",

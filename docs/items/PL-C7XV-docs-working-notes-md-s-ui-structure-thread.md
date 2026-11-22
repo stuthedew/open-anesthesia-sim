@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
-feature: interface-pass-narrative
+feature: interface-pass-design-round
 milestone: v0.5.14
 touches: docs/WORKING_NOTES.md
 added: 2026-09-16

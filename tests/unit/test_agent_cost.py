@@ -358,7 +358,7 @@ def test_the_cost_is_the_delivered_liquid_times_the_bottle_price_over_the_bottle
 
 
 def test_the_cost_is_computed_from_the_unrounded_figures_not_the_ones_shown() -> None:
-    """Run `docs/MODEL.md`'s desflurane case, 6 % at 1 L/min for 60 min at USD 115.13 per 240 mL.
+    """Run `docs/INTERFACE.md`'s desflurane case: 6 % at 1 L/min for 60 min, USD 115.13 per 240 mL.
 
     The case is in § "A cost at the reader's price". The cost is 3600 mL of
     vapour divided by desflurane's unrounded vapour-to-liquid ratio, about
@@ -454,7 +454,7 @@ def test_a_price_refused_when_the_file_was_read_is_named_and_never_replaced() ->
 def test_no_cost_is_shown_where_one_cannot_be_trusted(
     bottle_price: float, bottle_volume_ml: float, liquid_ml: float | None, reason: str
 ) -> None:
-    """Each case that `docs/MODEL.md` lists shows its reason and no number.
+    """Each case that `docs/INTERFACE.md` lists shows its reason and no number.
 
     § "A cost at the reader's price", under "When no cost is shown", lists
     them.

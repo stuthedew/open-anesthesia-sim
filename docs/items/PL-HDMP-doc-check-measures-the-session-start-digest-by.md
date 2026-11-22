@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
-feature: resident-gauge-basis
+feature: instruction-staleness-audit
 milestone: v0.5.31
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.6.0 - captured after the freeze, and not safety or science

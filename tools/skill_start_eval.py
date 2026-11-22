@@ -8,7 +8,7 @@ queue workflow, and its body loads only when it starts. So this script measures
 the `docket` skill, and its answer is the evidence `PL-S2NL` and `PL-Z90G` wait
 on.
 
-**Method.** The Claude Code skills page, § "Evaluate and iterate on a skill"
+**Method.** The Claude Code skills page, section "Evaluate and iterate on a skill"
 (https://code.claude.com/docs/en/skills, read 2026-10-24), says to run each
 realistic prompt in a fresh session with the skill available, and again with it
 turned off through `skillOverrides`. `tools/skill_start_prompts.json` holds the

@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect
-feature: verify-command-meaning
+feature: verify-command-health
 milestone: v0.5.23
 touches: docs/items
 added: 2026-09-19

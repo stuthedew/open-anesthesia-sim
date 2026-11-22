@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
-feature: area-layout-sizing
+feature: interface-areas
 milestone: v0.6.12
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_adapter.py
 deferred-from: v0.7.0 - filed after the gate froze; a missing WARNING cue on a drag, with no clinical value or stored state at stake

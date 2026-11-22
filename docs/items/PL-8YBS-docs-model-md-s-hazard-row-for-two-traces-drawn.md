@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: docs
-feature: compartment-trace-legibility
+feature: chart-readout
 touches: docs/MODEL.md, docs/VERIFICATION.md
 added: 2026-09-26
 payoff: the authoritative specification states the fat-trace pixel figure with the dial it holds at, so no later session copies a 1 MAC measurement onward as true at every dial

@@ -2,7 +2,7 @@
 id: PL-VHPR
 title: docs/MODEL.md does not say whether the delivered concentration is a volume fraction or a partial-pressure fraction, nor at what ambient pressure
 status: dropped
-feature: delivery-semantics
+feature: model-spec-accuracy
 added: 2026-09-19
 closed: 2026-09-20
 reason: Overtaken before capture: PL-5K5C (#458, merged 2026-09-07) recorded the sea-level assumption and the vaporizer-class dependence of the delivered-concentration dial in docs/MODEL.md. Every clause of this item's Done-when is answered there - the 760 mmHg assumption and that every concentration is a fraction of it, the note saying a gas-phase fraction and a partial pressure are interchangeable at that pressure, and the split between variable-bypass (sevoflurane, isoflurane) and gas-vapour blender (desflurane, Tec 6 class) with the Datex-Ohmeda operator instruction quoted. Checked clause by clause at triage 2026-09-20; the capture looked under the wrong two sections.

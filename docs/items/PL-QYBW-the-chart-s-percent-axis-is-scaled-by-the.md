@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: ux, defect
-feature: compartment-trace-legibility
+feature: chart-readout
 milestone: v0.5.9
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py, ROADMAP.md
 added: 2026-09-19

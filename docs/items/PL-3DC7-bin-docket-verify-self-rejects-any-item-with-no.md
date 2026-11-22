@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: dropped
 classes: defect
-feature: verify-close-out
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
 closed: 2026-09-17

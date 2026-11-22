@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
-feature: verify-close-out
+feature: verify-false-reject
 milestone: v0.4.28
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-17

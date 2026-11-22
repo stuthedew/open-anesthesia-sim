@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: ready
 classes: safety
-feature: numbers-outside-their-valid-range
+feature: floating-point-domain
 touches: src/anesthesia_sim/core/rounding.py, tests/unit/test_rounding.py
 deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: test_rounding.py holds FLOW_FRACTION_TOLERANCE between four machine epsilons and the 0.002 error of De Wolf's printed fractions, which the loader refuses, and the cardiac-output allowance of one part in 10**9 is far below any transcription error, so no learner can see a wrong value now
 added: 2026-11-11

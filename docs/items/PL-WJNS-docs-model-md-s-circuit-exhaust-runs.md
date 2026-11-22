@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: science, docs
-feature: model-boundary-statements
+feature: model-spec-accuracy
 milestone: v0.4.35
 touches: docs/MODEL.md
 added: 2026-09-19

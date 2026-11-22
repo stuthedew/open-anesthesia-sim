@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: science, test
-feature: late-washout-evidence
+feature: validation-resolving-power
 milestone: v0.5.15
 touches: tests/reference, docs/MODEL.md, README.md, docs/references/README.md
 added: 2026-09-26

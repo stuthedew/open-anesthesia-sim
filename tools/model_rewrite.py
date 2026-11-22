@@ -787,7 +787,7 @@ def misattributed(
 
     `repoint` changes the path before the first quotation after it. A sentence
     that names one document and then two sections, such as "`docs/MODEL.md`
-    § "A" and § "B"", keeps one path for both, which is wrong when the move
+    § "Time" and § "Concentrations"", keeps one path for both, which is wrong when the move
     parted them (`PL-CTXZ`, found by both blind review passes). No rule says
     where the second path belongs in the sentence, so each is listed for a
     person to read. A mark with no document before it, inside the two

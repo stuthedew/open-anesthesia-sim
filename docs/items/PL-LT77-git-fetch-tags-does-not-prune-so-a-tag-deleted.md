@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
-feature: tag-error-names-its-cause
+feature: doc-consistency-checks
 milestone: v0.5.17
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07

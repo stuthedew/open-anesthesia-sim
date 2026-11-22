@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: dropped
 classes: defect, infra
-feature: verify-assertion-check
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 blocked-by: PL-4W2L
 added: 2026-09-19

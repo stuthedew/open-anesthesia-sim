@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, ux
-feature: platform-palette
+feature: chrome-colour-audit
 milestone: v0.5.4
 touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
 added: 2026-09-17
