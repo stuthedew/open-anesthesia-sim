@@ -30,6 +30,7 @@ enforced by an exact-string test.
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from math import floor
 from types import MappingProxyType
 from typing import Final
 
@@ -76,6 +77,7 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     DECIMAL_BASE,
     FLOW_DISPLAY_DECIMALS,
+    MAC_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
     format_agent_residual,
     format_agent_volume,
@@ -107,6 +109,7 @@ from anesthesia_sim.core.parameters import (
     load_agent_parameters,
     load_reference_adult_parameters,
 )
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -749,6 +752,34 @@ INSTANT_ENTRY_SUFFIX: Final = " s"
 # `MarkEditor.set_reachable_height` replaces it with the running agent's
 # own limit the first time a frame is drawn.
 DEFAULT_MAXIMUM_TARGET_MAC: Final = 2.5
+
+
+def height_entry_maximum_mac(reachable_mac: float) -> float:
+    """Return the highest height that the height control may offer, in multiples of MAC.
+
+    The control holds `MAC_DISPLAY_DECIMALS` decimals, and a spin box rounds
+    its maximum to the nearest value it can show. Rounding to nearest can
+    round up. Desflurane's 18% dial over its 6.6% MAC is 2.727 MAC, and the
+    control would then offer 2.73, a target that no desflurane run can cross
+    (`PL-LBVN`). This function rounds down instead, so every height the
+    control offers is one that the running agent can reach.
+
+    Rounding can leave a quotient just below the hundredth that it equals, so
+    the count of hundredths allows `WHOLE_COUNT_TOLERANCE` before it is
+    rounded down. Without the allowance, a reachable height of exactly
+    4.17 MAC that arrived as 4.169999999999999 would lose a hundredth.
+
+    Args:
+        reachable_mac: The agent's maximum delivered concentration as a
+            multiple of its own 1 MAC.
+
+    Returns:
+        `reachable_mac` rounded down to the control's resolution.
+    """
+
+    scale = DECIMAL_BASE**MAC_DISPLAY_DECIMALS
+    return floor(reachable_mac * scale + WHOLE_COUNT_TOLERANCE) / scale
+
 
 REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
 """Conditional text, which is where a sentence is appropriate.

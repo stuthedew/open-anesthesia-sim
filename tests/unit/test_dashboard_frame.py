@@ -132,6 +132,7 @@ from anesthesia_sim.app.dashboard_frame import (
     fork_offer,
     halt_disposition,
     halt_notice,
+    height_entry_maximum_mac,
     kept_fork_selection,
     mac_awake_caption,
     mac_reference_caption,
@@ -222,6 +223,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_adult_parameters,
     parse_breathing_circuit_parameters,
 )
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -3362,6 +3364,32 @@ def test_every_agent_reaches_the_default_target_ceiling(
     assert snapshot.max_delivered_concentration_percent == vaporizer_maximum_percent
     assert snapshot.agent_mac_percent == mac_at_age_40_percent
     assert vaporizer_maximum_percent / mac_at_age_40_percent >= DEFAULT_MAXIMUM_TARGET_MAC
+
+
+@pytest.mark.parametrize(
+    ("reachable_mac", "expected_maximum_mac"),
+    [
+        # Each vaporizer maximum over its agent's MAC, worked by hand: 8 / 1.8,
+        # 5 / 1.17 and 18 / 6.6. Desflurane's 2.727 would round to nearest as
+        # 2.73, which no desflurane run can reach (`PL-LBVN`).
+        (8.0 / 1.8, 4.44),
+        (5.0 / 1.17, 4.27),
+        (18.0 / 6.6, 2.72),
+        # Isoflurane at its former 1.2% MAC, 4.1667, which rounded up to 4.17.
+        (5.0 / 1.2, 4.16),
+        (DEFAULT_MAXIMUM_TARGET_MAC, 2.5),
+        # A value one float below 4.17 is 4.17 that rounding pushed down, not
+        # a height short of it.
+        (math.nextafter(4.17, 0.0), 4.17),
+    ],
+)
+def test_the_height_maximum_rounds_down_to_a_height_the_agent_can_reach(
+    reachable_mac: float, expected_maximum_mac: float
+) -> None:
+    maximum_mac = height_entry_maximum_mac(reachable_mac)
+
+    assert maximum_mac == pytest.approx(expected_maximum_mac)
+    assert maximum_mac <= reachable_mac + WHOLE_COUNT_TOLERANCE
 
 
 def test_a_target_names_its_compartment_and_its_height() -> None:

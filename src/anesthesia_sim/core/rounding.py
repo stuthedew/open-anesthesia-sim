@@ -357,11 +357,12 @@ that it equals exactly: 0.7 / 0.1 is 6.999999999999999. The
 rounding is a few times `MACHINE_EPSILON` of the quotient. A truly fractional
 quotient is far from every whole number: two and a half tick intervals, for an
 axis whose top is not a multiple of its interval. This allowance lies between
-the two. Two comparisons read it: the ticks on the chart's percent axis
-(`app/chart_frame.py`) and on its MAC axis (`app/formatting.py`'s
-`mac_axis_ticks`, `PL-LBVN`). Until `PL-SZ6G` the steps in one playback tick
-(`app/playback.py`) and the grid units in a chart spacing
-(`app/chart_time_base.py`) read it too. Playback now counts whole
+the two. Three comparisons read it: the ticks on the chart's percent axis
+(`app/chart_frame.py`), the ticks on its MAC axis (`app/formatting.py`'s
+`mac_axis_ticks`, `PL-LBVN`), and the highest height that the marks editor
+offers (`app/dashboard_frame.py`'s `height_entry_maximum_mac`). Until
+`PL-SZ6G` the steps in one playback tick (`app/playback.py`) and the grid
+units in a chart spacing (`app/chart_time_base.py`) read it too. Playback now counts whole
 milliseconds, and a chart spacing is a whole number of seconds, so neither
 needs an allowance.
 """
