@@ -2627,9 +2627,11 @@ application has, whatever the Workspace. Choosing a view shows it in that area.
 The exception is a Workspace pinned to a run that is not open. Each of its
 areas then says that the run is not open, in place of its view, until the
 reader removes the pin from the menu of the Workspace's tab.
-A view that needs more room than its area scrolls inside the area. The
-Parameters and Branch views never scroll: their areas grow to hold every row,
-so a run's dials cannot sit out of sight below the area's edge (`PL-D5J4`). The page
+A view that needs more room than its area scrolls inside the area. Three views
+never scroll: the concentration chart, the Parameters view and the Branch view.
+Their areas grow to hold all of the view, so the chart's plot, a run's dials or
+the branch control's caption cannot sit out of sight below the area's edge
+(`PL-D5J4`). The page
 grows past the window only where the window is too small for every view's least
 height or least width. So the reader sees the view itself, never only a notice
 that the area is

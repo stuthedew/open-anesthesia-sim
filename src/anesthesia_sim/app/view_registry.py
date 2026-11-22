@@ -166,9 +166,10 @@ class RegisteredView:
         whole: Whether the adapter holds the View's Area at the least height
             of the View's whole content where that is more than `minimum`,
             so the View never scrolls up and down inside its Area. A View
-            sets it where a row scrolled out of sight would mislead: the
-            Parameters View, whose rows are each run's dials, and the
-            Branch View, whose one row is its control (`PL-D5J4`).
+            sets it where a part scrolled out of sight would mislead: the
+            concentration chart's plot, the Parameters View's row of dials
+            for each run, and the Branch View's control or the caption that
+            replaces it (`PL-D5J4`).
 
     Raises:
         TypeError: `kind` is not a `ViewKind`, `title` is not a `str`,
@@ -389,6 +390,9 @@ _LEAST_HEIGHT_PX: Final = 110
 # `theme.CHART_LEAST_HEIGHT`, measured at 275 px with the offscreen font and
 # rounded up. So the chart's Area keeps the plot whole, and a neighbour gives
 # up the room (`PL-CBYS`, project owner, 2026-11-11: the long plot is kept).
+# While two runs are compared the rows above the plot are taller, so the
+# View's entry carries `whole`, and its Area grows to keep the plot whole then
+# too (`PL-D5J4`).
 _CHART_LEAST_HEIGHT_PX: Final = 280
 
 # The Parameters View's least height, which is one run's row of controls. The
@@ -398,14 +402,6 @@ _CHART_LEAST_HEIGHT_PX: Final = 280
 # Area at that height at every window size, and its neighbours take the rest.
 _CONTROLS_LEAST_HEIGHT_PX: Final = 110
 
-# The Branch View's least height, which is its heading and its one row of
-# controls. It was measured at 57 px with the offscreen font and rounded up.
-# It is less than `_LEAST_HEIGHT_PX`, so that the Maintenance Workspace can
-# show the View under the compartment schematic in a 768 px tall window
-# (`PL-D5J4`). The entry carries `whole`, so the Area grows when the View
-# shows more than its row.
-_BRANCH_LEAST_HEIGHT_PX: Final = 60
-
 #: Every View kind this build can draw, in the order the View chooser lists
 #: them. The titles and the minimum sizes are placeholders.
 REGISTERED: Final = registry(
@@ -414,6 +410,7 @@ REGISTERED: Final = registry(
         "Concentrations",
         ConcentrationView,
         minimum=PixelSize(420, _CHART_LEAST_HEIGHT_PX),
+        whole=True,
     ),
     RegisteredView(WASH_IN, "Wash-in", WashInView, minimum=PixelSize(300, _LEAST_HEIGHT_PX)),
     RegisteredView(
@@ -441,11 +438,7 @@ REGISTERED: Final = registry(
     ),
     RegisteredView(BOOKMARKS, "Bookmarks", BookmarksView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
     RegisteredView(
-        BRANCH,
-        FORK_HEADING,
-        BranchView,
-        minimum=PixelSize(220, _BRANCH_LEAST_HEIGHT_PX),
-        whole=True,
+        BRANCH, FORK_HEADING, BranchView, minimum=PixelSize(220, _LEAST_HEIGHT_PX), whole=True
     ),
 )
 

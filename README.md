@@ -102,7 +102,7 @@ While a case runs, the window shows the following.
   Workspaces include this View.
 - The branch View opens a second run from an earlier instant of the case. The
   second run is drawn beside the first, so you can change a setting and
-  compare the two. All three Workspaces include this View.
+  compare the two. The Default and Induction Workspaces include this View.
 - The agent accounting View shows the agent delivered, exhausted and stored,
   and any agent left unaccounted for. None of the three Workspaces includes
   this View.

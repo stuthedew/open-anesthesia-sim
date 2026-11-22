@@ -1,9 +1,12 @@
 ---
 id: PL-D5J4
 title: At 1366 by 768 the shipped Workspaces put each View's lesson below its Area's fold: Induction's wash-in curve, Maintenance's share bar and most of its schematic, and the Edit bookmarks button, while the Parameters Area has spare height
-status: untriaged
+status: done
 feature: interface-design-review
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2217
+tests: tests/integration/simulation_view/test_simulation_view_page.py::test_each_shipped_workspace_shows_its_lesson_whole_at_1366_by_768, tests/integration/simulation_view/test_simulation_view_page.py::test_the_parameters_area_shows_both_runs_dials_once_a_branch_is_taken, tests/integration/test_layout_adapter.py::test_a_view_that_asks_to_be_whole_gets_every_line_of_a_wrapped_label
 ---
 
 **Problem.** At 1366 by 768 the shipped Workspaces put each View's lesson below its Area's fold: Induction's wash-in curve, Maintenance's share bar and most of its schematic, and the Edit bookmarks button, while the Parameters Area has spare height
@@ -58,31 +61,38 @@ What changed, all of it placement and look, decided as placeholders:
    Maintenance leaves it beside the schematic at 1366 px: at 120 px and at
    100 px the page scrolled sideways there.
 2. The Parameters View's declared least height is 110 px, its row measured at
-   106 px, down from 160. The Branch View's is 60 px, its content measured at
-   57 px, down from the shared 110.
+   106 px, down from 160.
 3. Default: the chart at full height, and on the right Parameters (share 0.1,
    so held at its least height), Bookmarks and Branch. Induction: chart over
    Parameters on the left half, wash-in over Bookmarks beside Branch on the
-   right half. Maintenance: chart over Parameters on the left half, schematic
-   over Branch on the right half. Maintenance no longer shows the Bookmarks
-   View, because the schematic needs 379 px of the 488 and the Bookmarks View
-   needs 161 px to show its button. A reader brings it back with the View
-   chooser.
-4. The Parameters and Branch Views' registry entries set `whole`, so the
-   adapter holds each Area at its View's whole content height where that is
-   more than the declared least height (`area_layout._view_need`). Review
-   found that with a branch open the Parameters View shows two rows of dials
-   in 224 px, and a 110 px Area hid the second run's row in every Workspace.
-   Main had shown both rows at 1920 by 1080. With `whole`, the Area grows to
-   hold both rows; at 1366 by 768 the page may then grow and scroll, which is
-   the existing rule for a window too small for every View's need.
+   right half. Maintenance: chart over Parameters on the left half, and the
+   schematic alone on the right half. The schematic needs 418 px below its
+   header to show the share bar and the three lines under it that name each
+   segment, out of 461. So Maintenance no longer shows the Bookmarks View or
+   the Branch View. A reader brings either back with the View chooser.
+4. The concentration chart's, the Parameters View's and the Branch View's
+   registry entries set `whole`, so the adapter holds each Area at the View's
+   whole content height where that is more than the declared least height
+   (`area_layout._view_need`). The height counts every line of a wrapped label
+   at the width the View is drawn (`area_layout._least_height_at`, which
+   `ViewScroll._fit` now shares). A first review found that with a branch open
+   the Parameters View shows two rows of dials in 224 px, and a 110 px Area hid
+   the second run's row in every Workspace; main had shown both rows at 1920
+   by 1080. The chart's rows above its plot also grow with a second run, to
+   311 px, so at its 280 px least height its plot was cut. With `whole`, both
+   Areas grow. At 1920 by 1080 with a branch nothing but the two-run
+   schematic scrolls. At 1366 by 768 with a branch the page scrolls 150 px in
+   Default, 206 in Induction and 223 in Maintenance, which is the existing
+   rule for a window too small for every View's need; `PL-5J1X` asks whether
+   the sizing grows the page by more than the shortfall.
 
 Measured after, at 1366 by 768: the wash-in plot, the share bar and the Edit
 bookmarks button are wholly on screen in each Workspace that shows them; the
 shortest slider is 104 px (Default and Maintenance) and 128 px (Induction);
 the Parameters Area is 110 px below its header in every Workspace at both
-sizes. Still scrolled at 1366 by 768: the schematic's three lines under the
-share bar (52 px), and 3 px of the Induction Bookmarks View under its button.
+sizes. Still scrolled at 1366 by 768: 3 px of the Induction Bookmarks View
+under its button. The schematic in Maintenance is 461 px below its header
+and shows everything, the share lines included.
 The concentration chart in Induction and Maintenance is 316 px below its
 header, so its legend rows scroll in the box above the plot, as Induction's
 did before.
@@ -100,18 +110,22 @@ shown; `test_the_parameters_area_is_not_far_taller_than_its_controls` failed
 failed "assert 114 == 0" on this branch with `whole` set to `False` on both
 entries. `test_a_narrow_setting_card_keeps_its_slider_long_enough_to_drag`
 failed "cardiac_output, assert 88 >= 90" with the slider's least width
-removed. `test_an_entry_refuses_a_whole_flag_that_is_not_a_bool` and
-`test_only_the_parameters_and_branch_views_hold_their_whole_content` pin the
-new field.
+removed. `test_a_view_that_asks_to_be_whole_gets_every_line_of_a_wrapped_label`
+failed "assert 137 == 0" with `_view_need` reading only the least size. `test_an_entry_refuses_a_whole_flag_that_is_not_a_bool` and
+`test_only_the_chart_parameters_and_branch_views_hold_their_whole_content`
+pin the new field. The lesson test now also requires the share lines in
+Maintenance. Two blind review passes ran on the first commit; their findings
+are in the pull request body.
 
 Docs checked: `docs/INTERFACE.md` (four "readout beside its slider"
 sentences now say above, and § "F_A/F_I as a displayed ratio" now says the
-plot is beside the chart), `docs/INTERFACE.md` § on reachable Views (the Parameters and Branch Views
-never scroll), `docs/VERIFICATION.md` (one table row's "beside a dial" now
+plot is beside the chart), `docs/INTERFACE.md` § on reachable Views (the chart, the Parameters View and
+the Branch View never scroll), `docs/VERIFICATION.md` (one table row's "beside a dial" now
 says above; the row moved there from `docs/MODEL.md` on main), the
 docstrings and comments in `app/controller.py`, `app/dashboard_frame.py`,
 `app/display_units.py`, `app/formatting.py`, `app/qt_chart.py`,
-`app/qt_widgets.py` and `app/view_registry.py`, `README.md` (the bookmarks are in Default and Induction),
+`app/qt_widgets.py` and `app/view_registry.py`, `README.md` (the bookmarks and the branch control are in Default and
+Induction),
 `src/anesthesia_sim/data/workspaces/__init__.py` (each Workspace's
 arrangement), `docs/ARCHITECTURE.md` and `docs/interface-provenance.md` (no
 statement about the shipped arrangements or the card layout).

@@ -149,10 +149,11 @@ def test_an_entry_refuses_a_whole_flag_that_is_not_a_bool() -> None:
         RegisteredView(OLD, "Old", _factory, whole=1)  # type: ignore[arg-type]
 
 
-def test_only_the_parameters_and_branch_views_hold_their_whole_content() -> None:
-    """`PL-D5J4`: the two Views whose rows must never scroll out of sight grow their Areas."""
+def test_only_the_chart_parameters_and_branch_views_hold_their_whole_content() -> None:
+    """`PL-D5J4`: the three Views that must never scroll part of themselves out of sight."""
 
     assert {kind for kind, entry in REGISTERED.items() if entry.whole} == {
+        CONCENTRATION_CHART,
         PARAMETER_CONTROLS,
         BRANCH,
     }

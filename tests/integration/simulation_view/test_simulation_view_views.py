@@ -1112,8 +1112,6 @@ def test_the_bookmarks_and_the_branch_control_are_registered_under_their_kinds()
 
     An Area never gives a View less room than its declared minimum. Both
     minimums are placeholders, set by `PL-CBYS` from the room each Area has.
-    The Branch View's height was lowered to its content's by `PL-D5J4`, so the
-    Maintenance Workspace can show it under the compartment schematic.
     """
 
     bookmarks, branch = REGISTERED[BOOKMARKS], REGISTERED[BRANCH]
@@ -1125,7 +1123,7 @@ def test_the_bookmarks_and_the_branch_control_are_registered_under_their_kinds()
     assert BRANCH == "branch"
     assert branch.factory is BranchView
     assert branch.title == "Branch"
-    assert (branch.minimum.width_px, branch.minimum.height_px) == (220, 60)
+    assert (branch.minimum.width_px, branch.minimum.height_px) == (220, 110)
 
 
 def test_a_bookmarks_panel_built_between_frames_lists_the_marks_on_screen(

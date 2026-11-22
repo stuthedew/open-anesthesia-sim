@@ -291,12 +291,19 @@ _COMMON_SCREENS_PX = ((1366, 768), (1920, 1080))
 
 
 def _shipped_view_at(
-    application: QApplication, workspace: str, width_px: int, height_px: int
+    application: QApplication,
+    workspace: str,
+    width_px: int,
+    height_px: int,
+    *,
+    branched: bool = False,
 ) -> SimulationView:
     """A dashboard over the shipped Workspaces, on `workspace`, at 300 s of one run.
 
-    The dashboard draws a frame again after the switch, as its render timer
-    would, so the Views that the switch built show the run.
+    With `branched`, a branch is taken at 60 s in the Default Workspace,
+    which shows the branch control, before the switch to `workspace`. The
+    dashboard draws a frame again after the switch, as its render timer
+    would, so the Views that the switch built show the runs.
     """
 
     from anesthesia_sim.layout.shipped import shipped_workspaces
@@ -311,6 +318,12 @@ def _shipped_view_at(
     view.show()
     application.processEvents()
     view.present(False)
+
+    if branched:
+        _take_fork(view, 60.0)
+        _settle(application)
+        assert len(view.runs) == 2
+
     view.tab_strip.activate(view.workspaces.position_of(WorkspaceName(workspace)))
     _settle(application)
     view.present(False)
@@ -359,15 +372,15 @@ def test_no_shipped_workspace_scrolls_the_page(
 def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
     """`PL-CBYS`: the compartment schematic on a laptop is shown whole, by scrolling its own Area.
 
-    In the Maintenance Workspace at 1366 by 768 the schematic's Area holds the
-    containers and the share bar, and is shorter than the lines under the
-    bar. The View stays shown, with no notice in its place, and its Area's
+    In the Maintenance Workspace at 1366 by 768, with a branch open, the
+    schematic shows one drawing for each run, and the two are taller than its
+    Area. The View stays shown, with no notice in its place, and its Area's
     scroll bar covers the height the View does not get. The concentration plot
     is wholly on screen in its own Area. Until `PL-D5J4` the wash-in chart in
-    Induction was the View that scrolled at this size.
+    Induction was the View that scrolled at this size with one run.
     """
 
-    view = _shipped_view_at(application, "Maintenance", 1366, 768)
+    view = _shipped_view_at(application, "Maintenance", 1366, 768, branched=True)
     areas = view.layout_container
     (schematic,) = (area for area in areas.model.areas() if area.view == COMPARTMENT_SCHEMATIC)
     frame = areas.frame(schematic.id)
@@ -390,21 +403,22 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
 
 
 #: What each shipped Workspace must show whole at 1366 by 768 (`PL-D5J4`). The
-#: wash-in curve is Induction's lesson and the share bar is Maintenance's
-#: (`PL-PR1W`). The Edit bookmarks button opens the bookmarks editor, in each
-#: Workspace that shows the bookmarks.
+#: wash-in curve is Induction's lesson. The share bar is Maintenance's
+#: (`PL-PR1W`), with the lines under it that name each segment, so that no
+#: segment is told apart by colour alone. The Edit bookmarks button opens the
+#: bookmarks editor, in each Workspace that shows the bookmarks.
 _LESSONS_WHOLE_AT_1366: dict[str, frozenset[str]] = {
     "Default": frozenset({"Edit bookmarks"}),
     "Induction": frozenset({"wash-in plot", "Edit bookmarks"}),
-    "Maintenance": frozenset({"share bar"}),
+    "Maintenance": frozenset({"share bar", "share lines"}),
 }
 
 
 def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
-    """The shown wash-in plot, share bar and Edit bookmarks button, by name, where each is shown."""
+    """The shown wash-in plot, share bar, share lines and Edit bookmarks button, by name."""
 
     from anesthesia_sim.app.dashboard_frame import EDIT_BOOKMARKS_LABEL
-    from anesthesia_sim.app.qt_schematic import ShareBar
+    from anesthesia_sim.app.qt_schematic import RunSchematic
 
     found: dict[str, QWidget] = {}
 
@@ -412,9 +426,10 @@ def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
         if wash_in.isVisible():
             found["wash-in plot"] = wash_in.chart
 
-    for bar in view.findChildren(ShareBar):
-        if bar.isVisible():
-            found["share bar"] = bar
+    for schematic in view.findChildren(RunSchematic):
+        if schematic.isVisible():
+            found["share bar"] = schematic.share_bar
+            found["share lines"] = schematic.share_text
 
     for button in view.findChildren(QPushButton):
         if button.isVisible() and button.text() == EDIT_BOOKMARKS_LABEL:
@@ -430,12 +445,12 @@ def test_each_shipped_workspace_shows_its_lesson_whole_at_1366_by_768(
     """`PL-D5J4`: a Workspace named for a task shows that task's View whole on a laptop screen.
 
     Before the fix, at 1366 by 768, Induction's wash-in curve started at its
-    Area's lower edge, Maintenance's share bar was below the schematic's Area,
-    and the Edit bookmarks button was cut by the Bookmarks Area's lower edge
-    in all three Workspaces. Each widget must be shown, and wholly inside
-    every scroll box around it, without the reader scrolling. The set of
-    widgets each Workspace must show is written out, so a Workspace cannot
-    pass by leaving its lesson out.
+    Area's lower edge, Maintenance's share bar and the lines under it were
+    below the schematic's Area, and the Edit bookmarks button was cut by the
+    Bookmarks Area's lower edge in all three Workspaces. Each widget must be
+    shown, and wholly inside every scroll box around it, without the reader
+    scrolling. The set of widgets each Workspace must show is written out, so
+    a Workspace cannot pass by leaving its lesson out.
     """
 
     view = _shipped_view_at(application, workspace, 1366, 768)
@@ -486,11 +501,7 @@ def test_the_parameters_area_shows_both_runs_dials_once_a_branch_is_taken(
     and the whole of the View is inside it.
     """
 
-    view = _shipped_view_at(application, workspace, width_px, height_px)
-    _take_fork(view, 60.0)
-    _settle(application)
-    view.present(False)
-    _settle(application)
+    view = _shipped_view_at(application, workspace, width_px, height_px, branched=True)
     areas = view.layout_container
     (parameters,) = (area for area in areas.model.areas() if area.view == PARAMETER_CONTROLS)
     scroll = areas.frame(parameters.id).view_scroll
@@ -672,8 +683,8 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
     """`PL-CBYS`: splitting one Area does not scroll a View in another Area back to its top.
 
     Each rebuild of the layout gives every View a new frame and a new scroll
-    box. In the Maintenance Workspace at 1366 by 768 the compartment
-    schematic scrolls inside its Area. Before the fix, a reader who had
+    box. In the Maintenance Workspace at 1366 by 768, with a branch open, the
+    compartment schematic scrolls inside its Area. Before the fix, a reader who had
     scrolled such a View to the end found it back at the top after splitting a
     different Area, though the same View was kept. Before `PL-CBYS` the scroll
     sat inside the View and moved with it.
@@ -681,7 +692,7 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
 
     from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
 
-    view = _shipped_view_at(application, "Maintenance", 1366, 768)
+    view = _shipped_view_at(application, "Maintenance", 1366, 768, branched=True)
     areas = view.layout_container
     (scrolled,) = (area for area in areas.model.areas() if area.view == COMPARTMENT_SCHEMATIC)
     kept = areas.frame(scrolled.id).content

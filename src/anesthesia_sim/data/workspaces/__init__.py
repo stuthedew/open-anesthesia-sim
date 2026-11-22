@@ -22,12 +22,13 @@ it take the rest (`PL-4JCC`). The shares are placeholders.
   concentration as a fraction of the circuit concentration. It changes fastest
   in the first minutes.
 - `maintenance.json` - the concentration chart over the parameter controls on
-  the left half, and the compartment schematic over the branch control on the
-  right half. During maintenance, the agent moves into muscle and fat while the
-  tensions in those tissues stay low. The schematic's share bar is where a
-  learner sees that (`PL-PR1W`). The schematic needs most of a 768 px window's
-  height to show its share bar, so this Workspace leaves out the bookmarks. A
-  reader brings them back with the View chooser. The wash-in chart, whose
+  the left half, and the compartment schematic on the right half at full
+  height. During maintenance, the agent moves into muscle and fat while the
+  tensions in those tissues stay low. The schematic's share bar, and the lines
+  under it that name each segment's share, are where a learner sees that
+  (`PL-PR1W`). They need nearly all of a 768 px window's height, so this
+  Workspace leaves out the bookmarks and the branch control. A reader brings
+  either back with the View chooser. The wash-in chart, whose
   lesson is the first minutes, stays in Induction. The choice of which
   Workspace holds the schematic is a placeholder.
 

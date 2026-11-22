@@ -6,7 +6,7 @@
       "name": "Maintenance",
       "origin": "shipped:maintenance",
       "layout": {
-        "next_area_id": 5,
+        "next_area_id": 4,
         "windows": [
           {
             "tree": {
@@ -34,21 +34,8 @@
                   ]
                 },
                 {
-                  "split": "column",
-                  "sizes": [
-                    0.85,
-                    0.15
-                  ],
-                  "children": [
-                    {
-                      "area": 3,
-                      "view": "compartment_schematic"
-                    },
-                    {
-                      "area": 4,
-                      "view": "branch"
-                    }
-                  ]
+                  "area": 3,
+                  "view": "compartment_schematic"
                 }
               ]
             }

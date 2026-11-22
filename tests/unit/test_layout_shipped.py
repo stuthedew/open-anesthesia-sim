@@ -140,9 +140,9 @@ def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_ch
     tensions in those tissues stay low, and the schematic's share bar is where
     that shows. So the schematic takes the place that the wash-in chart had. The
     wash-in chart, whose lesson is the first minutes, stays in Induction. The
-    schematic shares its column with the branch control alone, so that its share
-    bar is on screen in a 768 px tall window (`PL-D5J4`). The parameter controls
-    sit under the chart.
+    schematic has the right half to itself, so that its share bar and the lines
+    naming each segment are on screen in a 768 px tall window (`PL-D5J4`). The
+    parameter controls sit under the chart.
     """
 
     tree = shipped_workspace(ShippedWorkspaceId("maintenance")).layout.windows[0].tree
@@ -156,12 +156,8 @@ def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_ch
         CHART,
         PARAMETERS,
     ]
-    assert isinstance(second, Split)
-    assert second.orientation is Orientation.COLUMN
-    assert [child.view for child in second.children if isinstance(child, Area)] == [
-        SCHEMATIC,
-        BRANCH,
-    ]
+    assert isinstance(second, Area)
+    assert second.view == SCHEMATIC
 
 
 def test_induction_opens_its_concentration_chart_on_the_15_minute_window() -> None:

@@ -1459,21 +1459,29 @@ class AreaLayout(QWidget):
         View, and the reader scrolls the View up and down where its content is
         taller than the Area (`ViewScroll`). Where the entry carries `whole`,
         the height is instead the larger of that minimum and the least height
-        of the View's content, so the View never scrolls up and down
-        (`PL-D5J4`). Its width is the larger of the
-        declared minimum width and the least width Qt would hold the View's
-        widget to, with room beside the View for the scroll bar. So a View is
-        never scrolled sideways, and a row of controls is never cut off at the
-        Area's edge.
+        of the View's content at the width the View is drawn, so the View
+        never scrolls up and down (`PL-D5J4`). That height counts every line
+        of a label that wraps, as `ViewScroll` does when it sizes the View. An
+        Area that has not been drawn yet measures it at the View's least
+        width, where a wrapped label takes the most lines. Its width is the
+        larger of the declared minimum width and the least width Qt would hold
+        the View's widget to, with room beside the View for the scroll bar. So
+        a View is never scrolled sideways, and a row of controls is never cut
+        off at the Area's edge.
         """
 
         kind, view = self._views[area_id]
         entry = self._registered[kind]
         declared = entry.minimum
-        content_width, content_height = _least_size(_widget(view))
+        widget = _widget(view)
+        content_width, _ = _least_size(widget)
         scroll = self._frames[area_id].view_scroll
         assert scroll is not None, "an Area that holds a View holds it in a scroll box"
-        height = max(declared.height_px, content_height) if entry.whole else declared.height_px
+        height = declared.height_px
+
+        if entry.whole:
+            drawn_width = max(scroll.viewport().width(), content_width)
+            height = max(height, _least_height_at(widget, drawn_width))
 
         return PixelSize(max(declared.width_px, content_width + scroll.bar_width()), height)
 
@@ -2407,14 +2415,9 @@ class ViewScroll(QScrollArea):
             return
 
         room = self.viewport().size()
-        least_width, least_height = _least_size(view)
+        least_width, _ = _least_size(view)
         width = max(room.width(), least_width)
-        layout = view.layout()
-
-        if layout is not None and layout.hasHeightForWidth():
-            least_height = max(least_height, layout.totalMinimumHeightForWidth(width))
-
-        view.resize(width, max(room.height(), least_height))
+        view.resize(width, max(room.height(), _least_height_at(view, width)))
 
         if self._kept_position is not None and self.isVisible():
             # The View's resize above has set the scroll range for this size.
@@ -3096,6 +3099,24 @@ def _least_size(widget: QWidget) -> tuple[int, int]:
     hint = widget.minimumSizeHint()
 
     return (widget.minimumWidth() or hint.width(), widget.minimumHeight() or hint.height())
+
+
+def _least_height_at(widget: QWidget, width_px: int) -> int:
+    """Return the least height that holds all of `widget`'s content when it is `width_px` wide.
+
+    A label that wraps takes more lines in a narrower widget, and the widget's
+    minimum size hint counts it as one line. So where the widget's layout has
+    a height that depends on its width, this is the larger of that height and
+    the height `_least_size` reads.
+    """
+
+    _, least_height = _least_size(widget)
+    layout = widget.layout()
+
+    if layout is not None and layout.hasHeightForWidth():
+        least_height = max(least_height, layout.totalMinimumHeightForWidth(width_px))
+
+    return least_height
 
 
 def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
