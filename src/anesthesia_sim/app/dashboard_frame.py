@@ -250,15 +250,17 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # (`halt_disposition`), but this one has two readers. The core's message names
 # the exception class and prints every total in e-notation under its code name,
 # such as `absolute_error=1.000000e+00 L`, which is for a developer reading the
-# log (`RunView.halt` logs it). The learner gets plain words: what happened,
-# that it is a fault in the simulator and not a change in the patient, and,
-# through the banner's own exit, what to do next. The rejected step's amounts
-# are on the accounting panel beside the banner, so the banner does not repeat
-# them (`PL-TWZY`). The wording is a placeholder.
+# log (`RunView.halt` logs it, and `main.open_failure_log` keeps the log in a
+# file). The learner gets plain words: what happened, that it is a fault in the
+# simulator and not a change in the patient, and, through the banner's own
+# exit, what to do next. The check fails when the amounts are out of balance by
+# more than rounding allows, which can be less than the 0.1 L the panel's
+# amounts are shown to. So the banner says what a failed check means, that agent
+# was created or lost, and does not claim that the amounts on the panel fail to
+# add up (`PL-TWZY`). The wording is a placeholder.
 ACCOUNTING_FAILURE_REASON_TEXT: Final = (
-    "the agent accounting check failed: in the rejected step, the agent delivered, "
-    "exhausted and stored did not add up. This is a fault in the simulator, not a change "
-    "in the patient"
+    "the agent accounting check failed: the rejected step created or lost anesthetic agent. "
+    "This is a fault in the simulator, not a change in the patient"
 )
 # The failure banner that `run_presentation.halted_run` gives before any frame of the
 # stopped run has been drawn. At that point the chart and the readouts still show

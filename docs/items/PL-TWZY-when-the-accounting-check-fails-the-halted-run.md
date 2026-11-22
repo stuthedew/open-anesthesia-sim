@@ -6,12 +6,12 @@ effort: S
 status: done
 classes: ux
 feature: interface-design-review
-touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, docs/INTERFACE.md, tests/integration/simulation_view/test_simulation_view_run_stops_itself.py, tests/unit/test_dashboard_frame.py, tests/integration/approved_interface_strings.json
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/formatting.py, docs/INTERFACE.md, tests/integration/simulation_view/test_simulation_view_run_stops_itself.py, tests/integration/test_failure_log.py, tests/unit/test_dashboard_frame.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
 closed: 2026-11-22
 pr: 2259
 payoff: a learner whose run halts on a failed accounting check reads why in plain words
-tests: tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals
+tests: tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals, tests/integration/test_failure_log.py::test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory
 ---
 
 **Problem.** When the accounting check fails, the halted-run notice shows core's developer message to the learner, with e-notation and code names such as absolute_error=
@@ -79,8 +79,24 @@ them. The wording is a placeholder, and it changes what a halt tells a
 learner, so its pull request records the owner's read.
 
 `dashboard_frame.shown_failure_reason` chooses the words for every failure
-banner. `RunView.halt` logs every failure with its traceback at error level.
-Python's logging prints it to standard error when no handler is set.
+banner. `RunView.halt` logs each run's first failure with its traceback at
+error level. `main.open_failure_log` writes the package's error records to
+`failures.log` in the reader's data directory, beside `workspaces.json`, as
+well as to standard error, so the record survives a launch with no terminal.
+
+**Blind review, 2026-11-22.** Pass 1: F1 should-fix, fixed. The first wording
+said the delivered, exhausted and stored amounts "did not add up", but the
+check fails at a residual far below the 0.1 L the panel shows, so the panel's
+amounts can look balanced. The banner now says what a failed check means: the
+rejected step created or lost agent. F2 optional, fixed: the residual
+formatter's docstring still said the banner printed the signed amount. F3
+optional, rejected: an accounting error raised with no check of the right type
+still shows the developer's message, but no code raises one, and `PL-XWCH`
+covers every banner that shows a raw message. Pass 2: F1 should-fix, fixed:
+the log reached standard error only, so a launch from an icon lost it; the
+failure log file was added. F2 optional, fixed: a run halted twice logged
+twice, the second time with a cause the run had not recorded; a run now logs
+its first failure only, under its name.
 
 **Regression test run before the fix.** With `src/` stashed,
 `uv run pytest -q "tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals"`

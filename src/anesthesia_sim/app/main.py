@@ -55,12 +55,25 @@ dashboard receives what was loaded and the store, so that a change of
 preference, such as the agent cost View's unit, is saved and survives a
 restart. Where there is no directory, the session uses the default
 preferences, and the agent cost View says that a change will not be kept.
+
+**A failure that stops a run is also written to a file in the same directory**
+(`PL-TWZY`). The halt banner words a failure for the learner, and leaves out
+the exception's own message where that message is written for a developer. So
+`open_failure_log` sends the log records of `anesthesia_sim` to
+`failures.log` beside `workspaces.json`, as well as to standard error, where
+Python prints them when nothing else is set. A learner who opened the
+application from an icon has no terminal, and the file keeps the record for
+whoever looks into the fault. The file is capped in size, and one older file
+is kept.
 """
 
+import logging
 import os
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from PySide6.QtCore import QStandardPaths
 from PySide6.QtWidgets import QApplication, QMainWindow
@@ -184,6 +197,56 @@ def open_preferences(standard_location: str, environment: Mapping[str, str]) -> 
     return LaunchPreferences(store.load(), store)
 
 
+FAILURE_LOG_NAME = "failures.log"
+"""The file that a launch's failure records are written to, in the reader's data directory."""
+
+FAILURE_LOG_MAX_BYTES = 1_000_000
+"""The size at which the failure log is moved aside and a new one started.
+
+A failure that repeats on every tick could otherwise fill the disk. One
+megabyte holds a few hundred failures with their tracebacks.
+"""
+
+
+def open_failure_log(standard_location: str, environment: Mapping[str, str]) -> Path | None:
+    """Write the package's error records to `failures.log` in the reader's data directory.
+
+    The handler is added to the `anesthesia_sim` logger, so every module's
+    logger under it reaches the file. The file is moved aside to
+    `failures.log.1` when it reaches `FAILURE_LOG_MAX_BYTES`, and a new one is
+    started.
+
+    Args:
+        standard_location: As `open_workspaces` takes it.
+        environment: As `open_workspaces` takes it.
+
+    Returns:
+        The file's path, or None where neither the override nor the platform
+        names a directory. The records then reach standard error only.
+    """
+
+    try:
+        directory = user_data_directory(standard_location, environment)
+    except LayoutRefused:
+        return None
+
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / FAILURE_LOG_NAME
+    handler = RotatingFileHandler(
+        path, maxBytes=FAILURE_LOG_MAX_BYTES, backupCount=1, encoding="utf-8"
+    )
+    handler.setLevel(logging.ERROR)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
+    package = logging.getLogger("anesthesia_sim")
+    package.addHandler(handler)
+    # Python's last-resort handler prints to standard error only while no
+    # handler is set anywhere on the way up. With the file's handler added,
+    # standard error is added back explicitly.
+    package.addHandler(logging.StreamHandler())
+
+    return path
+
+
 def open_dashboard(
     case: BranchedCase, standard_location: str, environment: Mapping[str, str]
 ) -> SimulationView:
@@ -228,11 +291,11 @@ def main() -> None:
     app.setOrganizationName(APP_ORGANIZATION_NAME)
     app.setApplicationName(APP_DISPLAY_NAME)
     declare_application_colours(app)
-    view = open_dashboard(
-        BranchedCase(SimulationController()),
-        QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation),
-        os.environ,
+    data_location = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.AppDataLocation
     )
+    open_failure_log(data_location, os.environ)
+    view = open_dashboard(BranchedCase(SimulationController()), data_location, os.environ)
     window = QMainWindow()
     window.setWindowTitle(APP_DISPLAY_NAME)
     window.setCentralWidget(view)

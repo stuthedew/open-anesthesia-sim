@@ -1658,11 +1658,19 @@ class RunView(QWidget):
 
         disposition, reason = halt_disposition(error)
 
-        if disposition is HaltDisposition.FAILURE:
+        if disposition is HaltDisposition.FAILURE and not self.controller.has_failed:
             # The banner may word a failure for the learner and leave out the
             # exception's own message (`shown_failure_reason`), so the full
             # message and its traceback are logged for a developer (`PL-TWZY`).
-            _LOG.error("The run stopped on a failure: %s", reason, exc_info=error)
+            # A run keeps its first failure (`SimulationController.fail`), so
+            # only that one is logged. A later one would name a cause that the
+            # run's record does not.
+            _LOG.error(
+                "%s stopped on a failure: %s",
+                run_label(self.run_id),
+                reason,
+                exc_info=error,
+            )
 
         if in_frame:
             self.controller.record_failed_frame(reason)
