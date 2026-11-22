@@ -983,8 +983,8 @@ curves on the plot (`PL-G3K7`). Halting every run rewrites the branch controls
 from the case, so a failed trunk offers no branch from where it stands
 (`SimulationView._halt_every_run`, `PL-MMNX`). It also rewrites the bookmark
 standings from each run's controller, so a mark that the failed run will never
-reach is not listed as still to come (`PL-YHR3`). Every copy of both panels, and
-the marks editor with the bookmark panels, are rewritten from one list
+reach is not listed as still to come (`PL-YHR3`). Every copy of both panels,
+each bookmark panel with the marks editor inside it, is rewritten from one list
 (`SimulationView.halt_restatements`). A test fails on any dashboard control
 that is not covered by a run, a listed panel or a named exemption, so a panel
 added later is checked without anyone having to remember it
@@ -1369,10 +1369,13 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   axis, a legend, a reference, and the compartment selection. A chart's time
   window belongs to that chart View alone (`PL-L59K`). A control that asks one
   question of the whole case, rather than of either run, also belongs to
-  `SimulationView`. The bookmark editor is the worked example (`PL-LPLD`). It
+  `SimulationView`. The marks editor is the worked example (`PL-LPLD`). It
   writes each mark to every displayed run, so that the copies the controllers
-  hold stay equal. The branch control is the second example (`PL-VKJW`). The
-  instants it offers are the trunk's keyframes, the marks the trunk has
+  hold stay equal. The editor sits in the Bookmarks View rather than in a
+  window, and the dashboard keeps what the reader has entered in it, so every
+  copy of the View shows the same entry (`PL-CHX0`). The branch control is the
+  second example (`PL-VKJW`). The instants it offers are the trunk's
+  keyframes, the marks the trunk has
   passed, and the instant at which the paused trunk stands. A copy of it in
   each run would give a branch a control that could
   only refuse. The bookmarks and the branch control are shown in Views. The

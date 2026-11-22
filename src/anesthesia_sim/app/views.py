@@ -1037,10 +1037,13 @@ class _CasePanelView[W: QWidget](QWidget):
 
 
 class BookmarksView(_CasePanelView[BookmarksPanel]):
-    """The case's marked instants and marked heights, with the button that opens their editor.
+    """The case's marked instants and marked heights, with the forms that add and remove them.
 
     Every Area that shows this View lists the same marks, because the marks
-    belong to the case (`PL-9YPR`).
+    belong to the case (`PL-9YPR`). The marks are edited here rather than in a
+    window, so no window opens over the readouts while a run plays (`PL-CHX0`).
+    Every copy of the forms shows the same entry, because the dashboard keeps
+    it (`MarkEntry`).
 
     Args:
         context: What the View is built from.

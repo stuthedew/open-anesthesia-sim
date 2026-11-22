@@ -153,7 +153,15 @@ from anesthesia_sim.app.preferences import (
     refusals_notice,
     unsaved_preferences_notice,
 )
-from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    BookmarksPanel,
+    ForkPanel,
+    MarkEditor,
+    MarkEntry,
+    MarkForm,
+    MarkRefusal,
+    styled_label,
+)
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.stylesheets import page_stylesheet, scroll_area_stylesheet
@@ -535,13 +543,19 @@ class SimulationView(QWidget):
         # to make one failure impossible: two runs compared at two different
         # heights because a learner typed one of them twice.
         #
-        # A bookmarks View shows the marks, and each one asks for a copy of
-        # the panel (`build_bookmarks_panel`). This list holds the copies that
-        # Qt has not destroyed, and `_marks_shown` holds what they were last
-        # written, or None where the lists are withdrawn (`PL-9YPR`).
+        # A bookmarks View shows the marks and the editor that changes them,
+        # and each one asks for a copy of the panel (`build_bookmarks_panel`).
+        # This list holds the copies that Qt has not destroyed, and
+        # `_marks_shown` holds what they were last written, or None where the
+        # lists are withdrawn (`PL-9YPR`). The editor's entry, its refusal and
+        # the bound on its height control are kept here rather than in a copy,
+        # so every copy shows the same and a copy built later shows them too
+        # (`PL-CHX0`).
         self._bookmarks_panels: list[BookmarksPanel] = []
         self._marks_shown: BookmarkPanel | None = None
-        self._bookmark_dialog: BookmarkDialog | None = None
+        self._mark_entry: MarkEntry | None = None
+        self._mark_refusal: MarkRefusal | None = None
+        self._reachable_height_mac: float | None = None
 
         # The copies of the panel where a branch is taken, one for each branch
         # View, with the offer and the selected point they were last written.
@@ -901,8 +915,7 @@ class SimulationView(QWidget):
         The questions are a run's Reset or new-case question and the Workspace
         strip's question. Each blocks the Pause button of every run while it
         is open, so a question about one run holds them all
-        (`RunView.hold_while`). The bookmark editor is not modal and holds
-        nothing.
+        (`RunView.hold_while`).
         """
 
         return self._tabs.question is not None or any(run.asks_a_question for run in self._runs)
@@ -1814,7 +1827,7 @@ class SimulationView(QWidget):
         the halt path, where an exception would escape the halt gate that started the halt
         and reach the toolkit. If the panel cannot be restated, it is hidden rather than
         left showing the last frame's rows. The editor's lists and their Remove buttons
-        are hidden too, so the two places that list the marks agree (`PL-F5KT`).
+        are hidden with it, so the two places that list the marks agree (`PL-F5KT`).
         """
 
         controllers = tuple(run.controller for run in self._runs)
@@ -1830,9 +1843,6 @@ class SimulationView(QWidget):
 
             for marks in self._bookmarks_panels:
                 marks.withdraw()
-
-            if self._bookmark_dialog is not None:
-                self._bookmark_dialog.withdraw()
 
     def _refresh_bookmarks(
         self, bookmarks: BookmarkSet, standings: Sequence[BookmarkStandings], reference: RunSettings
@@ -1902,23 +1912,28 @@ class SimulationView(QWidget):
             ),
         )
         self._marks_shown = panel
+        self._reachable_height_mac = mac_multiple(
+            fraction_from_percent(reference.max_delivered_concentration_percent),
+            reference.agent_mac_percent,
+        )
 
         for marks in self._bookmarks_panels:
             marks.set_panel(panel)
+            marks.editor.set_reachable_height(self._reachable_height_mac)
 
-        if self._bookmark_dialog is None:
-            return
-
-        self._bookmark_dialog.set_panel(panel)
-        self._bookmark_dialog.set_reachable_height(
-            mac_multiple(
-                fraction_from_percent(reference.max_delivered_concentration_percent),
-                reference.agent_mac_percent,
-            )
-        )
+        if self._bookmarks_panels:
+            # A shorter list can drop a selected row, and the bound can lower
+            # the height, without the reader editing anything. The copies all
+            # agree, so the entry kept for a copy built later is read back
+            # from the first. A dropped row then stays dropped there too.
+            self._mark_entry = self._bookmarks_panels[0].editor.entry()
 
     def build_bookmarks_panel(self) -> BookmarksPanel:
-        """Build a copy of the two lists of marks for a View, showing the marks listed now.
+        """Build a copy of the marks and their editor for a View, showing the marks listed now.
+
+        The copy's editor shows the entry, the refusal and the bound on the
+        height control that the other copies show, so that a copy built after
+        a switch of Workspace shows what the reader left (`PL-CHX0`).
 
         Returns:
             The copy, which this dashboard writes on every frame and restates
@@ -1927,42 +1942,48 @@ class SimulationView(QWidget):
         """
 
         panel = _case_copy(self._bookmarks_panels, BookmarksPanel())
-        panel.edit_button.clicked.connect(self._open_bookmark_dialog)
+        editor = panel.editor
+        editor.add_time_button.clicked.connect(partial(self._add_time_bookmark, editor))
+        editor.remove_time_button.clicked.connect(partial(self._remove_time_bookmark, editor))
+        editor.add_target_button.clicked.connect(partial(self._add_mac_target, editor))
+        editor.remove_target_button.clicked.connect(partial(self._remove_mac_target, editor))
 
         if self._marks_shown is None:
             panel.withdraw()
         else:
             panel.set_panel(self._marks_shown)
 
+        if self._reachable_height_mac is not None:
+            editor.set_reachable_height(self._reachable_height_mac)
+
+        if self._mark_entry is not None:
+            editor.set_entry(self._mark_entry)
+
+        editor.show_refusal(self._mark_refusal)
+        editor.entry_edited.connect(partial(self._follow_mark_entry, editor))
+
         return panel
 
     @halt_gate
-    def _open_bookmark_dialog(self) -> None:
-        """Show the editor, building it the first time it is asked for.
+    def _follow_mark_entry(self, editor: MarkEditor) -> None:
+        """Keep what the reader entered in `editor`, and show it in every other copy.
 
-        One dialog lasts for the life of the dashboard, rather than one for
-        each opening. So a reader who closes it and opens it again finds their
-        selection where they left it. The dialog is non-modal, for the reasons
-        that `BookmarkDialog` states, so it is shown with `show()`. Qt's
-        `QDialog.open()` makes a dialog window-modal whatever modality it had.
-        When the editor was shown that way, it blocked every run's Pause button
-        while the runs went on stepping (blind review of `PL-TPBH`).
+        Each copy of the editor is built for one Area, and the reader edits one
+        copy at a time. The dashboard keeps the entry, as it keeps the branch
+        control's selected point (`_handle_fork_point_chosen`). So two Areas
+        that show the Bookmarks View never show two different entries, and the
+        Add and Remove buttons of every copy act on the same values.
         """
 
-        if self._bookmark_dialog is None:
-            dialog = BookmarkDialog(self)
-            dialog.add_time_button.clicked.connect(self._add_time_bookmark)
-            dialog.remove_time_button.clicked.connect(self._remove_time_bookmark)
-            dialog.add_target_button.clicked.connect(self._add_mac_target)
-            dialog.remove_target_button.clicked.connect(self._remove_mac_target)
-            self._bookmark_dialog = dialog
+        self._mark_entry = editor.entry()
 
-        self.present(False)
-        self._bookmark_dialog.show()
-        self._bookmark_dialog.raise_()
-        self._bookmark_dialog.activateWindow()
+        for marks in self._bookmarks_panels:
+            if marks.editor is not editor:
+                marks.editor.set_entry(self._mark_entry)
 
-    def _apply_to_every_run(self, edit: Callable[[SimulationController], None]) -> None:
+    def _apply_to_every_run(
+        self, edit: Callable[[SimulationController], None], form: MarkForm
+    ) -> None:
         """Make one change to every displayed run, or have the first of them refuse it.
 
         The marks belong to the case. A mark added to one run and refused by
@@ -1984,109 +2005,93 @@ class SimulationView(QWidget):
 
         Args:
             edit: What to do to one run.
+            form: The editor's form whose button asked for the change. A
+                refusal is shown under that form.
         """
 
-        self._bookmarks_notice(None)
+        self._show_mark_refusal(None)
 
         try:
             for run in self._runs:
                 edit(run.controller)
         except SimulationConfigurationError as error:
-            self._bookmarks_notice(refused_setting_notice(error))
+            self._show_mark_refusal(MarkRefusal(form, refused_setting_notice(error)))
 
         self.present(False)
 
-    def _bookmarks_notice(self, text: str | None) -> None:
-        """Say why an edit was refused, in the dialog the reader is looking at."""
+    def _show_mark_refusal(self, refusal: MarkRefusal | None) -> None:
+        """Show why an edit was refused under its form, in every copy of the editor."""
 
-        if self._bookmark_dialog is not None:
-            self._bookmark_dialog.notice.set_notice(text)
+        self._mark_refusal = refusal
+
+        for marks in self._bookmarks_panels:
+            marks.editor.show_refusal(refusal)
 
     @halt_gate
-    def _add_time_bookmark(self) -> None:
-        """Mark the instant the form describes, on every run."""
-
-        dialog = self._bookmark_dialog
-
-        if dialog is None:
-            return
+    def _add_time_bookmark(self, editor: MarkEditor) -> None:
+        """Mark the instant that `editor`'s form describes, on every run."""
 
         try:
-            bookmark = dialog.entered_time_bookmark()
+            bookmark = editor.entered_time_bookmark()
         except SimulationConfigurationError as error:
-            self._bookmarks_notice(refused_setting_notice(error))
+            self._show_mark_refusal(MarkRefusal(MarkForm.TIMES, refused_setting_notice(error)))
 
             return
 
-        self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark))
-        dialog.clear_entry()
+        self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark), MarkForm.TIMES)
+        editor.clear_entry()
 
     @halt_gate
-    def _remove_time_bookmark(self) -> None:
-        """Unmark the selected instant, on every run.
+    def _remove_time_bookmark(self, editor: MarkEditor) -> None:
+        """Unmark the instant selected in `editor`, on every run.
 
         The marks are read from the trunk's snapshot. If the trunk's snapshot rejects
         a value, the read raises, and the gate halts every run with the halt on
         screen (`PL-F2T2`).
         """
 
-        dialog = self._bookmark_dialog
-
-        if dialog is None:
-            return
-
         marks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.time_bookmarks
-        index = dialog.selected_time_index()
+        index = editor.selected_time_index()
 
         if not 0 <= index < len(marks):
-            self._bookmarks_notice(REMOVE_NOTHING_SELECTED_TEXT)
+            self._show_mark_refusal(MarkRefusal(MarkForm.TIMES, REMOVE_NOTHING_SELECTED_TEXT))
 
             return
 
         selected = marks[index]
-        self._apply_to_every_run(lambda run: run.remove_time_bookmark(selected))
+        self._apply_to_every_run(lambda run: run.remove_time_bookmark(selected), MarkForm.TIMES)
 
     @halt_gate
-    def _add_mac_target(self) -> None:
-        """Mark the height the form describes, on every run."""
-
-        dialog = self._bookmark_dialog
-
-        if dialog is None:
-            return
+    def _add_mac_target(self, editor: MarkEditor) -> None:
+        """Mark the height that `editor`'s form describes, on every run."""
 
         try:
-            target = dialog.entered_mac_target()
+            target = editor.entered_mac_target()
         except SimulationConfigurationError as error:
-            self._bookmarks_notice(refused_setting_notice(error))
+            self._show_mark_refusal(MarkRefusal(MarkForm.TARGETS, refused_setting_notice(error)))
 
             return
 
-        self._apply_to_every_run(lambda run: run.add_mac_target(target))
-        dialog.clear_entry()
+        self._apply_to_every_run(lambda run: run.add_mac_target(target), MarkForm.TARGETS)
+        editor.clear_entry()
 
     @halt_gate
-    def _remove_mac_target(self) -> None:
-        """Unmark the selected height, on every run, reading the marks from the trunk's snapshot.
+    def _remove_mac_target(self, editor: MarkEditor) -> None:
+        """Unmark the height selected in `editor`, on every run, reading the marks from the trunk.
 
         A refusing snapshot halts every run, as in `_remove_time_bookmark`.
         """
 
-        dialog = self._bookmark_dialog
-
-        if dialog is None:
-            return
-
         marks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.mac_targets
-        index = dialog.selected_target_index()
+        index = editor.selected_target_index()
 
         if not 0 <= index < len(marks):
-            self._bookmarks_notice(REMOVE_NOTHING_SELECTED_TEXT)
+            self._show_mark_refusal(MarkRefusal(MarkForm.TARGETS, REMOVE_NOTHING_SELECTED_TEXT))
 
             return
 
         selected = marks[index]
-        self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
+        self._apply_to_every_run(lambda run: run.remove_mac_target(selected), MarkForm.TARGETS)
 
     def halt_for_slot(self, error: Exception) -> None:
         """Halt every run for an exception that one of this view's slots raised.
@@ -2383,18 +2388,13 @@ class SimulationView(QWidget):
         """Every dashboard panel that offers an action on a run, with what restates it on a halt.
 
         `_halt_every_run` restates each one, so this tuple is the one list of them
-        (`PL-5JTH`). The bookmark editor is listed with the bookmark panel once it has
-        been built, because one restatement writes both.
+        (`PL-5JTH`). Each copy of the bookmark panel holds its own marks editor, so the
+        one restatement writes the lists and the editor together.
         """
-
-        bookmarks: tuple[QWidget, ...] = tuple(self._bookmarks_panels)
-
-        if self._bookmark_dialog is not None:
-            bookmarks = (*bookmarks, self._bookmark_dialog)
 
         return (
             HaltRestatement(tuple(self._fork_panels), self._restate_fork_panel),
-            HaltRestatement(bookmarks, self._restate_bookmark_panel),
+            HaltRestatement(tuple(self._bookmarks_panels), self._restate_bookmark_panel),
         )
 
     # -------------------------------------------------------------- timing

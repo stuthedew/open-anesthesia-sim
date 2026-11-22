@@ -55,6 +55,10 @@ of the case, not an input to it. A run that halts at its marks computes exactly
 the values that an unmarked run computes, element for element. The only thing a mark changes is when
 the run stops.
 
+**The marks are added and removed in the Bookmarks View**, below the lists of
+marks and each run's standing on them. No window opens to edit a mark
+(§ "What this list requires once the layout is the reader's").
+
 **The run halts on the simulation step that crossed a mark, at every playback
 rate.** Every step is tested for a crossing. At the faster rates, a halt is
 finer than anything a learner can do while the run plays. A setting changed
@@ -1518,9 +1522,7 @@ agent starts a new case, and the questions from the Workspace strip. While one
 is open, the user cannot press Pause on any run. A run that was running
 resumes at the same playback rate, and a paused run stays paused. The wait
 changes nothing in a run, so each run follows the same course as if the user
-had answered at once, as `docs/MODEL.md` § "The reproducibility guarantee" requires. The
-bookmark editor does not block the window, so runs go on as usual while it is
-open.
+had answered at once, as `docs/MODEL.md` § "The reproducibility guarantee" requires.
 
 **For developers.** Runs with nothing to lose get no question because a
 question asked when nothing is at stake teaches the user to answer it without
@@ -1581,8 +1583,8 @@ guarantees that both runs share the following:
   settings at the fork.
 - **The bookmarks.** A bookmark marks an instant or a height on a curve, and a
   run halts when it reaches one. The branch opens with the trunk's bookmarks.
-  While the comparison is shown, the bookmark editor writes each bookmark that
-  is added or removed to both runs, so the two runs always hold the same
+  While the comparison is shown, each bookmark that is added or removed in the
+  Bookmarks View is written to both runs, so the two runs always hold the same
   bookmarks. Each run has its own standing on each bookmark.
 - **The time frame.** Both runs count time from induction. The chart anchors
   both to induction rather than to either run's own start, so the two traces
@@ -2659,6 +2661,19 @@ its windows is minimized or hidden, but it has no reliable signal that a window
 is covered. It must never go on treating a value as shown once it can see that
 the value's window is minimized or hidden.
 
+**The marks are edited in a view, not in a window of their own** (project
+owner, 2026-11-21, ratified, over a window kept off the readouts, an exemption
+from this rule, and an editor during which every run waits). A learner edits
+marks while a run plays. The Bookmarks View sits in an area, and the
+unconditional region is outside every area, so editing a mark cannot cover a
+value this list requires on any platform. A separate window could cover the readouts, and on Linux the
+application cannot reliably keep it off them. Under Wayland's usual desktop
+shell, Qt ignores a request to place a top-level window and reports every
+window's position as (0, 0), so the application could neither place the
+window nor learn where the reader had moved it (Qt 6.12 documentation,
+"Window and Dialog Widgets", section "Wayland Peculiarities",
+https://doc.qt.io/qt-6/application-windows.html).
+
 **A separate window shows the invariant tier, not the whole set**
 (project owner, 2026-09-16, ratified - a recommendation put to them and agreed,
 chosen over the two live readings `PL-W54S` had written, and reopenable on
@@ -2738,6 +2753,12 @@ stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
 (`USE_DISCLAIMER_TEXT`) rather than one of this list's values, so that file
 does not declare it. The interpretation statement is
 `INTERPRETATION_DISCLAIMER_TEXT`.
+
+The marks editor is `MarkEditor`, in `app/qt_widgets.py`, and each copy of the
+Bookmarks View holds one. A test adds and removes marks with a run playing and
+checks that no window opens
+(`test_editing_a_mark_while_a_run_plays_opens_no_window`, in
+`tests/integration/simulation_view/test_simulation_view_comparison.py`).
 
 The division of this list into three parts is a first version (project owner,
 2026-09-15). The fixed unconditional region and the conditional remainder were
@@ -3874,7 +3895,8 @@ description of the "+" button at the end of the Workspace tabs. No contrast
 requirement measures a tooltip's colors.
 
 The dark-appearance test (`tests/integration/test_dark_appearance.py`) renders
-the dashboard, the bookmark editor and the new-case confirmation under the
+the dashboard, whose Bookmarks View holds the marks editor, and the new-case
+confirmation under the
 palette a dark host supplies. The dashboard it renders draws every registered
 kind of View. It
 fails on any content widget that resolves to that palette, and it checks the

@@ -44,6 +44,8 @@ can reach is declared on the palette instead, by
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
+from enum import Enum
 from math import ceil
 from typing import Final
 
@@ -76,21 +78,18 @@ from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.dashboard_frame import (
     ADD_MARK_LABEL,
-    BOOKMARK_DIALOG_TITLE,
-    CLOSE_BOOKMARKS_LABEL,
     COMPARTMENT_FIELD_LABEL,
     DEFAULT_MAXIMUM_TARGET_MAC,
-    EDIT_BOOKMARKS_LABEL,
     FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
     INSTANT_ENTRY_SUFFIX,
     INSTANT_FIELD_LABEL,
-    MAC_TARGET_HEADING,
     MARK_NAME_FIELD_LABEL,
     MARK_NAME_PLACEHOLDER,
     REMOVE_MARK_LABEL,
     TAKE_FORK_LABEL,
-    TIME_BOOKMARK_HEADING,
+    TARGET_FORM_HEADING,
+    TIME_FORM_HEADING,
     BookmarkPanel,
     ForkOffer,
     ForkPoint,
@@ -120,7 +119,6 @@ from anesthesia_sim.app.stylesheets import (
     slider_stylesheet,
 )
 from anesthesia_sim.app.theme import (
-    BOOKMARK_DIALOG_WIDTH,
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
@@ -1315,40 +1313,37 @@ class MarkListingLabel(QWidget):
 
 
 class BookmarksPanel(QWidget):
-    """The case's two collections of marks, with the control that opens the editor.
+    """The case's two collections of marks, and below them the editor that changes them.
 
     Each Area that holds a `views.BookmarksView` shows its own copy of this
-    panel (`PL-9YPR`).
-
-    The panel is read-only. Marks are created and removed in
-    `BookmarkDialog`. So the panel in front of the reader while a case runs
-    shows what is marked, and offers nothing that a mis-click could use to
-    change a run.
+    panel (`PL-9YPR`). The two lists come first, so an Area too short for the
+    whole panel shows what is marked before it shows the forms. The forms are
+    in the same View rather than in a window of their own, so no window opens
+    over the readouts when a reader edits a mark (`PL-CHX0`).
 
     Attributes:
-        times: The marked instants.
-        targets: The marked heights.
-        edit_button: Opens the dialog; `clicked` is connected by the view.
+        times: The marked instants, with each run's standing on each.
+        targets: The marked heights, with each run's standing on each.
+        editor: The forms in which the reader adds and removes marks. The
+            view connects their buttons.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.times = MarkListingLabel()
         self.targets = MarkListingLabel()
-        self.edit_button = QPushButton(EDIT_BOOKMARKS_LABEL)
-        self.edit_button.setStyleSheet(outlined_button_stylesheet())
+        self.editor = MarkEditor()
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_SECTION_SPACING)
         column.addWidget(self.times)
         column.addWidget(self.targets)
-        actions = QHBoxLayout()
-        actions.addWidget(self.edit_button)
-        actions.addStretch(1)
-        column.addLayout(actions)
+        column.addWidget(self.editor)
 
     def set_panel(self, panel: BookmarkPanel) -> None:
-        """Draw both collections from one tick's result, and show them again if withdrawn.
+        """Draw both collections and the editor's lists from one tick's result.
+
+        Each list that a halt withdrew is shown again.
 
         Args:
             panel: `dashboard_frame.bookmark_panel`'s result this tick.
@@ -1358,22 +1353,24 @@ class BookmarksPanel(QWidget):
         self.targets.set_listing(panel.targets)
         self.times.show()
         self.targets.show()
+        self.editor.set_panel(panel)
 
     def withdraw(self) -> None:
-        """Hide both lists of marks, because the halt could not work out their standings.
+        """Hide every list of marks, because the halt could not work out their standings.
 
         A mark's standing says whether the run has reached it. The halt path calls this
         method when restating the panel raised an exception
-        (`SimulationView._restate_bookmark_panel`). The rows on screen come from the
-        last frame. On a failed run, a row that still shows a mark as still to come is
-        a stale claim. The halt restates the panel to remove that claim (`PL-YHR3`). The
-        button that opens the editor stays on screen. The editor hides its own lists at
-        the same moment (`BookmarkDialog.withdraw`). The next call to `set_panel` shows
-        both lists again.
+        (`SimulationView._restate_bookmark_panel`). The rows on screen come from the last
+        frame. On a failed run, a row that still shows a mark as still to come is a stale
+        claim. The halt restates the panel to remove that claim (`PL-YHR3`). The editor
+        hides its own lists and Remove buttons at the same moment (`MarkEditor.withdraw`),
+        and keeps its forms on screen. The next call to `set_panel` shows every list
+        again.
         """
 
         self.times.hide()
         self.targets.hide()
+        self.editor.withdraw()
 
 
 class ForkPanel(QWidget):
@@ -1613,29 +1610,85 @@ def _form_grid(*rows: tuple[QWidget | None, ...]) -> QGridLayout:
     return grid
 
 
-class BookmarkDialog(QDialog):
-    """The dialog in which the reader creates, lists and removes both kinds of mark.
+class MarkForm(Enum):
+    """One of the marks editor's two forms."""
 
-    One dialog serves both kinds of mark. The reference simulator uses that
+    TIMES = "times"
+    TARGETS = "targets"
+
+
+@dataclass(frozen=True, slots=True)
+class MarkRefusal:
+    """Why an edit of the marks was refused, and the form in which it was made.
+
+    Attributes:
+        form: The form whose button the reader pressed.
+        text: What the refusal says.
+    """
+
+    form: MarkForm
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
+class MarkEntry:
+    """What the reader has entered in the marks editor's two forms, and which rows are selected.
+
+    The dashboard keeps the last entry and writes it into every copy of the
+    editor (`MarkEditor.set_entry`). So two Areas that show the Bookmarks View
+    show the same entry. A copy built after a switch of Workspace shows the
+    entry that the reader left there (`PL-CHX0`).
+
+    Attributes:
+        instant_s: The instant to mark, in whole seconds.
+        time_name: The text of the time bookmark's name field.
+        compartment_row: The selected row of the compartment selector.
+        height_mac: The height, in multiples of the running agent's 1 MAC.
+        target_name: The text of the target's name field.
+        time_row: The selected row of the list of time bookmarks, or -1 for none.
+        target_row: The selected row of the list of targets, or -1 for none.
+    """
+
+    instant_s: int
+    time_name: str
+    compartment_row: int
+    height_mac: float
+    target_name: str
+    time_row: int
+    target_row: int
+
+
+class MarkEditor(QWidget):
+    """The two forms in which the reader creates and removes both kinds of mark.
+
+    The editor sits in the Bookmarks View, below the two lists of marks. Each
+    Area that shows that View holds its own copy (`BookmarksPanel`). The
+    editor opens no window. A window could cover the readouts that
+    `docs/INTERFACE.md` § "Minimum displayed outputs" requires while a run
+    plays, and on Wayland the application can neither place a window nor find
+    out where the reader has dragged it. An Area cannot cover those readouts,
+    because the layout keeps them in a region outside every Area (`PL-CHX0`).
+
+    One editor serves both kinds of mark. The reference simulator uses that
     shape, and `PL-LPLD` was scoped on it. Both forms are visible at once,
     and each has its own add button. A tab or a kind selector would turn the
     choice of which kind is being added into a mode. The two collections also
     have different fields, not the same fields under a different kind, so a
     shared form would have nothing in common to hold.
 
-    The dialog is non-modal, and it is shown with `show()` rather than
-    `open()` or `exec()`. Both of those make a dialog modal, and `exec()`
-    would also block a test that drives it. It is non-modal deliberately. A run
-    may be playing, and a modal window over a moving chart would lock the
-    reader out of the transport controls with a window about something else.
+    **Each form shows its refusal directly under its buttons.** In the
+    Default Workspace at 1366 by 768 pixels the Bookmarks Area is about 150
+    pixels tall, so the View scrolls. One refusal below both forms would be
+    out of sight of the button that was pressed. So the Add and Remove
+    buttons share a row, and the form's notice is the row below them.
 
-    **The surface is declared as a palette**, and the six input controls are
-    drawn from the same palette (`PL-RKRY`). Their fills, the spin boxes'
-    steppers, the lists' rows and scrollbars and the compartment popup all
-    paint from palette roles. Under a dark host appearance they were drawn
-    near-black inside this light dialog. A one-rule stylesheet on the dialog
-    was what stopped them inheriting the dialog's colours.
-    `declare_interface_colours` gives the reasoning and the roles.
+    **Each input control declares its own colours, as a palette**
+    (`PL-RKRY`). Their fills, the spin boxes' steppers, and the lists' rows
+    and scroll bars paint from palette roles. The View that holds the editor
+    declares its surface with a stylesheet, and a stylesheet on a parent makes
+    the controls under it take the application palette rather than the
+    parent's. So each control declares the roles itself
+    (`declare_interface_colours`).
 
     **The height a target may be set to is bounded by the running agent.**
     The bound is here rather than on `MacTarget`, because it belongs to the
@@ -1649,29 +1702,33 @@ class BookmarkDialog(QDialog):
     is computed from do.
 
     Attributes:
+        entry_edited: Emitted when a field or a list's selection changes,
+            unless `set_entry` wrote the change. The dashboard connects it and
+            writes the new entry into every other copy of the editor.
         instant_spin: The instant to mark, in seconds.
         instant_preview: That instant in the compound form the clock uses, so
             that no reader has to convert between the entry and the display.
         time_label_edit: The optional name for a time bookmark.
         add_time_button: Adds the time bookmark. The view connects its
             `clicked` signal.
-        time_list: The marked instants, selectable for removal.
         remove_time_button: Removes the selected instant.
+        time_notice: Why the last edit of the time bookmarks was refused,
+            hidden when there is nothing to say.
+        time_list: The marked instants, selectable for removal.
         compartment_combo: The compartment whose value a target is compared
             against.
         height_spin: The height, in multiples of the running agent's 1 MAC.
         target_label_edit: The optional name for a target.
         add_target_button: Adds the target.
-        target_list: The marked heights, selectable for removal.
         remove_target_button: Removes the selected target.
-        notice: Why an add was refused, hidden when there is nothing to say.
+        target_notice: Why the last edit of the targets was refused.
+        target_list: The marked heights, selectable for removal.
     """
+
+    entry_edited = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle(BOOKMARK_DIALOG_TITLE)
-        declare_interface_colours(self)
-        self.setMinimumWidth(BOOKMARK_DIALOG_WIDTH)
 
         self.instant_spin = QSpinBox()
         self.instant_spin.setRange(0, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
@@ -1683,10 +1740,12 @@ class BookmarkDialog(QDialog):
         self.time_label_edit = QLineEdit()
         self.time_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_time_button = QPushButton(ADD_MARK_LABEL)
-        self.time_list = QListWidget()
         self.remove_time_button = QPushButton(REMOVE_MARK_LABEL)
+        self.time_notice = NoticeLabel()
+        self.time_list = QListWidget()
 
         self.compartment_combo = QComboBox()
+        self.compartment_combo.setStyleSheet(selector_stylesheet())
 
         for quantity in COMPARTMENT_QUANTITIES:
             self.compartment_combo.addItem(trace_style(quantity).label, userData=quantity.value)
@@ -1698,17 +1757,22 @@ class BookmarkDialog(QDialog):
         self.target_label_edit = QLineEdit()
         self.target_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_target_button = QPushButton(ADD_MARK_LABEL)
-        self.target_list = QListWidget()
         self.remove_target_button = QPushButton(REMOVE_MARK_LABEL)
+        self.target_notice = NoticeLabel()
+        self.target_list = QListWidget()
 
         for listing in (self.time_list, self.target_list):
             listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
 
-        self.notice = NoticeLabel()
-        self.close_button = QPushButton(CLOSE_BOOKMARKS_LABEL)
-        self.close_button.setDefault(True)
-        self.close_button.setStyleSheet(filled_button_stylesheet())
-        self.close_button.clicked.connect(self.accept)
+        for control in (
+            self.instant_spin,
+            self.time_label_edit,
+            self.time_list,
+            self.height_spin,
+            self.target_label_edit,
+            self.target_list,
+        ):
+            declare_interface_colours(control)
 
         for button in (
             self.add_time_button,
@@ -1716,8 +1780,15 @@ class BookmarkDialog(QDialog):
             self.add_target_button,
             self.remove_target_button,
         ):
-            button.setAutoDefault(False)
             button.setStyleSheet(outlined_button_stylesheet())
+
+        self.instant_spin.valueChanged.connect(self.entry_edited)
+        self.time_label_edit.textChanged.connect(self.entry_edited)
+        self.time_list.currentRowChanged.connect(self.entry_edited)
+        self.compartment_combo.currentIndexChanged.connect(self.entry_edited)
+        self.height_spin.valueChanged.connect(self.entry_edited)
+        self.target_label_edit.textChanged.connect(self.entry_edited)
+        self.target_list.currentRowChanged.connect(self.entry_edited)
 
         self._build_layout()
         self.set_reachable_height(DEFAULT_MAXIMUM_TARGET_MAC)
@@ -1726,43 +1797,42 @@ class BookmarkDialog(QDialog):
         """Lay the two forms out one above the other, each over its own list."""
 
         column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_SECTION_SPACING)
 
-        times_heading = styled_label(TIME_BOOKMARK_HEADING, color=INK, bold=True)
+        times_heading = styled_label(TIME_FORM_HEADING, color=INK, bold=True)
         instant_name = styled_label(INSTANT_FIELD_LABEL, color=MUTED)
         time_label_name = styled_label(MARK_NAME_FIELD_LABEL, color=MUTED)
-        column.addLayout(
-            _form_grid(
-                (times_heading, times_heading, times_heading),
-                (instant_name, self.instant_spin, self.instant_preview),
-                (time_label_name, self.time_label_edit, self.time_label_edit),
-                (None, self.add_time_button, None),
-                (self.time_list, self.time_list, self.time_list),
-                (None, self.remove_time_button, None),
-            )
+        times_form = _form_grid(
+            (times_heading, times_heading, times_heading),
+            (instant_name, self.instant_spin, self.instant_preview),
+            (time_label_name, self.time_label_edit, self.time_label_edit),
+            (None, self.add_time_button, self.remove_time_button),
+            (self.time_notice, self.time_notice, self.time_notice),
+            (self.time_list, self.time_list, self.time_list),
         )
 
-        targets_heading = styled_label(MAC_TARGET_HEADING, color=INK, bold=True)
+        targets_heading = styled_label(TARGET_FORM_HEADING, color=INK, bold=True)
         compartment_name = styled_label(COMPARTMENT_FIELD_LABEL, color=MUTED)
         height_name = styled_label(HEIGHT_FIELD_LABEL, color=MUTED)
         target_label_name = styled_label(MARK_NAME_FIELD_LABEL, color=MUTED)
-        column.addLayout(
-            _form_grid(
-                (targets_heading, targets_heading, targets_heading),
-                (compartment_name, self.compartment_combo, self.compartment_combo),
-                (height_name, self.height_spin, None),
-                (target_label_name, self.target_label_edit, self.target_label_edit),
-                (None, self.add_target_button, None),
-                (self.target_list, self.target_list, self.target_list),
-                (None, self.remove_target_button, None),
-            )
+        targets_form = _form_grid(
+            (targets_heading, targets_heading, targets_heading),
+            (compartment_name, self.compartment_combo, self.compartment_combo),
+            (height_name, self.height_spin, None),
+            (target_label_name, self.target_label_edit, self.target_label_edit),
+            (None, self.add_target_button, self.remove_target_button),
+            (self.target_notice, self.target_notice, self.target_notice),
+            (self.target_list, self.target_list, self.target_list),
         )
 
-        column.addWidget(self.notice)
-        actions = QHBoxLayout()
-        actions.addStretch(1)
-        actions.addWidget(self.close_button)
-        column.addLayout(actions)
+        for form in (times_form, targets_form):
+            # The field names keep the width they need, and the two columns of
+            # controls share the rest. A wide Area then widens the controls
+            # rather than the gap between a name and its field.
+            form.setColumnStretch(1, 1)
+            form.setColumnStretch(2, 1)
+            column.addLayout(form)
 
     def _refresh_instant_preview(self, seconds: int) -> None:
         """Restate the entered instant in the form the clock and the axis use."""
@@ -1784,9 +1854,9 @@ class BookmarkDialog(QDialog):
     def set_panel(self, panel: BookmarkPanel) -> None:
         """Redraw both lists from one tick's result, keeping each selection.
 
-        The rows are the same strings the panel beside the chart draws, from
-        the same `dashboard_frame` call, so a reader moving between the two
-        is reading one listing in two places rather than two listings.
+        The rows are the strings that the lists above the editor draw, from the
+        same `dashboard_frame` call. So the editor and those lists are one
+        listing in two places rather than two listings.
 
         Args:
             panel: `dashboard_frame.bookmark_panel`'s result this tick.
@@ -1801,12 +1871,12 @@ class BookmarkDialog(QDialog):
     def withdraw(self) -> None:
         """Hide both lists and their Remove buttons, because the standings could not be worked out.
 
-        A mark's standing says whether the run has reached it. The halt path calls this
-        method together with `BookmarksPanel.withdraw`, when restating the marks raised an
-        exception (`SimulationView._restate_bookmark_panel`). The rows come from the last
-        frame. On a failed run, a row that still lists a mark as still to come is a stale
-        claim. The panel beside the chart has already hidden the same rows (`PL-F5KT`).
-        The rows are hidden rather than cleared, because Remove selects a mark by its row.
+        A mark's standing says whether the run has reached it. `BookmarksPanel.withdraw`
+        calls this method when a halt could not restate the marks
+        (`SimulationView._restate_bookmark_panel`). The rows come from the last frame. On
+        a failed run, a row that still lists a mark as still to come is a stale claim.
+        The lists above the editor hide the same rows at the same moment (`PL-F5KT`). The
+        rows are hidden rather than cleared, because Remove selects a mark by its row.
         Each Remove button is hidden with its list, so the reader cannot remove a mark
         through a row they cannot see. The two forms stay on screen. The next call to
         `set_panel` shows the lists and buttons again.
@@ -1824,6 +1894,70 @@ class BookmarkDialog(QDialog):
             self.target_list,
             self.remove_target_button,
         )
+
+    def show_refusal(self, refusal: MarkRefusal | None) -> None:
+        """Show why the last edit was refused under the form it was made in, and clear the other.
+
+        Args:
+            refusal: The last refusal, or None where the last edit was accepted.
+        """
+
+        for form, notice in (
+            (MarkForm.TIMES, self.time_notice),
+            (MarkForm.TARGETS, self.target_notice),
+        ):
+            notice.set_notice(
+                refusal.text if refusal is not None and refusal.form is form else None
+            )
+
+    def entry(self) -> MarkEntry:
+        """Return what the two forms hold now, with the selected row of each list."""
+
+        return MarkEntry(
+            instant_s=self.instant_spin.value(),
+            time_name=self.time_label_edit.text(),
+            compartment_row=self.compartment_combo.currentIndex(),
+            height_mac=self.height_spin.value(),
+            target_name=self.target_label_edit.text(),
+            time_row=self.time_list.currentRow(),
+            target_row=self.target_list.currentRow(),
+        )
+
+    def set_entry(self, entry: MarkEntry) -> None:
+        """Write `entry` into the two forms without emitting `entry_edited`.
+
+        The dashboard calls this method to copy what the reader entered in one
+        copy of the editor into the others. Each field's signals are blocked,
+        so that the copy is not mistaken for the reader editing this one. The
+        height control keeps its own range, so a height above the running
+        agent's reach is held at that reach, as a typed one is.
+
+        Args:
+            entry: The entry to show.
+        """
+
+        fields: tuple[QWidget, ...] = (
+            self.instant_spin,
+            self.time_label_edit,
+            self.time_list,
+            self.compartment_combo,
+            self.height_spin,
+            self.target_label_edit,
+            self.target_list,
+        )
+        blockers = [QSignalBlocker(field) for field in fields]
+        self.instant_spin.setValue(entry.instant_s)
+        self.time_label_edit.setText(entry.time_name)
+        self.time_list.setCurrentRow(entry.time_row)
+        self.compartment_combo.setCurrentIndex(entry.compartment_row)
+        self.height_spin.setValue(entry.height_mac)
+        self.target_label_edit.setText(entry.target_name)
+        self.target_list.setCurrentRow(entry.target_row)
+
+        for blocker in blockers:
+            blocker.unblock()
+
+        self._refresh_instant_preview(self.instant_spin.value())
 
     def selected_time_index(self) -> int:
         """Which marked instant is selected, or -1 for none."""

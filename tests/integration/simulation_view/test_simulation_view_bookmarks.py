@@ -9,6 +9,7 @@ import pytest
 from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app.area_layout import ViewScroll
 from anesthesia_sim.app.bookmarks import MarkStanding, TimeBookmark
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
@@ -23,12 +24,16 @@ from anesthesia_sim.app.dashboard_frame import (
     run_label,
 )
 from anesthesia_sim.app.formatting import format_elapsed, mac_multiple
-from anesthesia_sim.app.qt_widgets import MarkListingLabel
+from anesthesia_sim.app.qt_widgets import MarkEditor, MarkListingLabel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import MARK_ROW_BULLET
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BOOKMARKS
 from anesthesia_sim.app.views import BookmarksView
 from anesthesia_sim.core.concentration import fraction_from_percent
 from anesthesia_sim.core.supported_ranges import CaseInstant
+from anesthesia_sim.layout.shipped import shipped_workspaces
+from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
     FIRST_RUN,
     SECOND_RUN,
@@ -36,9 +41,10 @@ from tests.integration.simulation_view.simulation_view_support import (
     _branched_case,
     _case_view,
     _halted_branch_view,
+    _mark_editor,
     _marks_panel,
-    _opened_bookmark_dialog,
     _real_step_failure,
+    _settle,
     _shown_view,
     _take_fork,
 )
@@ -51,41 +57,41 @@ def test_a_dashboard_opens_with_both_collections_listed_as_empty(application: QA
     assert _marks_panel(view).targets.text() == NO_MAC_TARGETS_TEXT
 
 
-def test_an_instant_entered_in_the_dialog_is_listed_beside_the_chart(
+def test_an_instant_entered_in_the_editor_is_listed_with_the_marks(
     application: QApplication,
 ) -> None:
     view = _shown_view(application, SimulationController())
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.time_label_edit.setText("intubation")
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.time_label_edit.setText("intubation")
+    editor.add_time_button.click()
 
     assert "intubation" in _marks_panel(view).times.text()
-    assert dialog.time_list.count() == 1
+    assert editor.time_list.count() == 1
 
 
 def test_the_entered_instant_is_restated_in_the_form_the_clock_uses(
     application: QApplication,
 ) -> None:
-    # The spin box states one unit and the clock states three, so the dialog
+    # The spin box states one unit and the clock states three, so the editor
     # carries the conversion rather than leaving it to the reader.
     view = _shown_view(application, SimulationController())
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
 
-    assert dialog.instant_preview.text() == format_elapsed(600)
+    assert editor.instant_preview.text() == format_elapsed(600)
 
 
-def test_a_target_entered_in_the_dialog_names_its_compartment_and_height(
+def test_a_target_entered_in_the_editor_names_its_compartment_and_height(
     application: QApplication,
 ) -> None:
     view = _shown_view(application, SimulationController())
-    dialog = _opened_bookmark_dialog(view)
-    dialog.compartment_combo.setCurrentIndex(
-        dialog.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
+    editor = _mark_editor(view)
+    editor.compartment_combo.setCurrentIndex(
+        editor.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
     )
-    dialog.height_spin.setValue(0.8)
-    dialog.add_target_button.click()
+    editor.height_spin.setValue(0.8)
+    editor.add_target_button.click()
 
     listed = _marks_panel(view).targets.text()
 
@@ -98,9 +104,9 @@ def test_the_compartment_picker_offers_the_six_drawn_compartments_and_no_ratio(
     # `WASH_IN_RATIO` is a quotient rather than a concentration, so a multiple
     # of MAC of it is not a quantity the model holds.
     view = _shown_view(application, SimulationController())
-    dialog = _opened_bookmark_dialog(view)
+    editor = _mark_editor(view)
     offered = [
-        dialog.compartment_combo.itemData(row) for row in range(dialog.compartment_combo.count())
+        editor.compartment_combo.itemData(row) for row in range(editor.compartment_combo.count())
     ]
 
     assert offered == [quantity.value for quantity in COMPARTMENT_QUANTITIES]
@@ -115,18 +121,18 @@ def test_the_height_control_stops_at_what_the_running_agent_can_reach(
     # control refuses such a target rather than reporting it afterwards.
     controller = SimulationController()
     view = _shown_view(application, controller)
-    dialog = _opened_bookmark_dialog(view)
+    editor = _mark_editor(view)
     snapshot = controller.snapshot()
     reachable = mac_multiple(
         fraction_from_percent(snapshot.max_delivered_concentration_percent),
         snapshot.agent_mac_percent,
     )
 
-    assert dialog.height_spin.maximum() == pytest.approx(reachable)
+    assert editor.height_spin.maximum() == pytest.approx(reachable)
 
-    dialog.height_spin.setValue(reachable * 2.0)
+    editor.height_spin.setValue(reachable * 2.0)
 
-    assert dialog.height_spin.value() == pytest.approx(reachable)
+    assert editor.height_spin.value() == pytest.approx(reachable)
 
 
 def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
@@ -138,9 +144,9 @@ def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
     first = SimulationController()
     second = SimulationController()
     view = _shown_view(application, first, second)
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
 
     assert first.snapshot().bookmarks == second.snapshot().bookmarks
     assert len(first.snapshot().bookmarks.time_bookmarks) == 1
@@ -152,14 +158,14 @@ def test_every_displayed_run_carries_the_same_marks_after_an_add_and_a_removal(
     first = SimulationController()
     second = SimulationController()
     view = _shown_view(application, first, second)
-    dialog = _opened_bookmark_dialog(view)
+    editor = _mark_editor(view)
 
     for instant_s in (120, 600):
-        dialog.instant_spin.setValue(instant_s)
-        dialog.add_time_button.click()
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
 
-    dialog.time_list.setCurrentRow(0)
-    dialog.remove_time_button.click()
+    editor.time_list.setCurrentRow(0)
+    editor.remove_time_button.click()
 
     assert first.snapshot().bookmarks == second.snapshot().bookmarks
     assert [mark.instant_s for mark in first.snapshot().bookmarks.time_bookmarks] == [600.0]
@@ -170,25 +176,25 @@ def test_removing_with_nothing_selected_says_so_and_removes_nothing(
 ) -> None:
     controller = SimulationController()
     view = _shown_view(application, controller)
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.add_time_button.click()
-    dialog.time_list.setCurrentRow(-1)
-    dialog.remove_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
+    editor.time_list.setCurrentRow(-1)
+    editor.remove_time_button.click()
 
-    assert dialog.notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+    assert editor.time_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
     assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
 
 
 def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplication) -> None:
     controller = SimulationController()
     view = _shown_view(application, controller)
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.add_time_button.click()
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
+    editor.add_time_button.click()
 
-    notice = dialog.notice.notice()
+    notice = editor.time_notice.notice()
 
     assert notice is not None
     assert "marked once" in notice
@@ -219,23 +225,23 @@ def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplica
     _take_fork(view, 60.0)
     trunk, branch = (run.controller for run in view.runs)
 
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
 
     assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
     assert len(branch.snapshot().bookmarks.time_bookmarks) == 1
 
-    dialog.compartment_combo.setCurrentIndex(
-        dialog.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
+    editor.compartment_combo.setCurrentIndex(
+        editor.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
     )
-    dialog.height_spin.setValue(0.8)
-    dialog.add_target_button.click()
+    editor.height_spin.setValue(0.8)
+    editor.add_target_button.click()
 
     assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
 
-    dialog.time_list.setCurrentRow(0)
-    dialog.remove_time_button.click()
+    editor.time_list.setCurrentRow(0)
+    editor.remove_time_button.click()
 
     assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
     assert branch.snapshot().bookmarks.time_bookmarks == ()
@@ -253,10 +259,10 @@ def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplic
     first = SimulationController()
     second = SimulationController()
     view = _shown_view(application, first, second)
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.add_time_button.click()
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
+    editor.add_time_button.click()
 
     assert first.snapshot().bookmarks == second.snapshot().bookmarks
 
@@ -268,25 +274,25 @@ def test_a_name_field_is_cleared_after_a_mark_is_added_and_the_value_is_not(
     # stays. A reused name would give two marks the same name, so the name is
     # cleared.
     view = _shown_view(application, SimulationController())
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.time_label_edit.setText("intubation")
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.time_label_edit.setText("intubation")
+    editor.add_time_button.click()
 
-    assert dialog.time_label_edit.text() == ""
-    assert dialog.instant_spin.value() == 600
+    assert editor.time_label_edit.text() == ""
+    assert editor.instant_spin.value() == 600
 
 
-def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication) -> None:
+def test_the_editor_and_the_lists_above_it_show_one_set_of_rows(application: QApplication) -> None:
     # Both read `dashboard_frame.bookmark_panel`, so a reader moving between
     # them is reading one listing in two places.
     view = _shown_view(application, SimulationController())
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(600)
-    dialog.time_label_edit.setText("intubation")
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.time_label_edit.setText("intubation")
+    editor.add_time_button.click()
 
-    listed = [dialog.time_list.item(row).text() for row in range(dialog.time_list.count())]
+    listed = [editor.time_list.item(row).text() for row in range(editor.time_list.count())]
 
     assert _marks_panel(view).times.text() == "\n".join(listed)
 
@@ -414,14 +420,14 @@ def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplicatio
     # the branch's. Fat at 0.8 xMAC is out of reach of either run here. So
     # each mark is left outstanding on the trunk, while the branch has an
     # answer for it.
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(90)
-    dialog.add_time_button.click()
-    dialog.compartment_combo.setCurrentIndex(
-        dialog.compartment_combo.findData(RecordedQuantity.FAT.value)
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(90)
+    editor.add_time_button.click()
+    editor.compartment_combo.setCurrentIndex(
+        editor.compartment_combo.findData(RecordedQuantity.FAT.value)
     )
-    dialog.height_spin.setValue(0.8)
-    dialog.add_target_button.click()
+    editor.height_spin.setValue(0.8)
+    editor.add_target_button.click()
 
     trunk.halt(_real_step_failure())
     view.present(False)
@@ -478,3 +484,229 @@ def test_the_bookmark_panel_is_placed_inside_its_bookmarks_view(application: QAp
 
     assert bookmarks.isAncestorOf(marks)
     assert marks.isVisibleTo(view)
+
+
+# ------------------------------------------- the editor, in more than one Area
+
+
+def _editors(view: SimulationView) -> list[MarkEditor]:
+    """Every Area's copy of the marks editor, in the order the layout lists the Views."""
+
+    panels = [v.panel for v in view.layout_container.views() if isinstance(v, BookmarksView)]
+
+    return [panel.editor for panel in panels if panel is not None]
+
+
+def _show_bookmarks_in_two_areas(application: QApplication, view: SimulationView) -> None:
+    """Show the bookmarks View in the accounting Area as well as in its own Area."""
+
+    view.layout_container.choose_view(AreaId(2), BOOKMARKS)
+    _settle(application)
+    view.present(False)
+
+
+def test_every_copy_of_the_marks_editor_shows_one_entry_and_acts_on_it(
+    application: QApplication,
+) -> None:
+    """Two Areas show the marks editor, and what the reader enters in one shows in both.
+
+    The marks are edited in the Bookmarks View since `PL-CHX0`, and each Area
+    that shows that View holds its own copy of the editor. The dashboard keeps
+    the entry, as it keeps the branch control's selected point (`PL-9YPR`). So
+    the two copies never show two different entries, and the Add button of
+    either copy adds what both of them show.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    _show_bookmarks_in_two_areas(application, view)
+    first, second = _editors(view)
+
+    first.instant_spin.setValue(900)
+    first.time_label_edit.setText("incision")
+
+    assert (second.instant_spin.value(), second.time_label_edit.text()) == (900, "incision")
+    assert second.instant_preview.text() == "15m"
+
+    second.add_time_button.click()
+
+    assert controller.bookmarks.time_bookmarks == (TimeBookmark(CaseInstant(900), "incision"),)
+    assert [editor.time_label_edit.text() for editor in (first, second)] == ["", ""]
+
+    for instant_s in (300, 1200):
+        first.instant_spin.setValue(instant_s)
+        first.add_time_button.click()
+
+    second.time_list.setCurrentRow(2)
+
+    assert first.time_list.currentRow() == 2
+
+    first.remove_time_button.click()
+
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [900.0, 300.0]
+
+
+def test_a_refusal_shows_in_every_copy_under_the_form_that_was_used(
+    application: QApplication,
+) -> None:
+    """A refused edit is explained under its own form, in every Area that shows the editor.
+
+    The Bookmarks Area of the Default Workspace is about 150 pixels tall at
+    1366 by 768, so the View scrolls. A refusal is shown under the form whose
+    button was pressed, so that it is in view of that button (`PL-CHX0`). The
+    next edit replaces it, in either form.
+    """
+
+    view = _shown_view(application, SimulationController())
+    _show_bookmarks_in_two_areas(application, view)
+    first, second = _editors(view)
+    first.instant_spin.setValue(600)
+    first.add_time_button.click()
+    second.add_time_button.click()
+
+    for editor in (first, second):
+        notice = editor.time_notice.notice()
+        assert notice is not None
+        assert "marked once" in notice
+        assert editor.target_notice.notice() is None
+
+    second.target_list.setCurrentRow(-1)
+    second.remove_target_button.click()
+
+    for editor in (first, second):
+        assert editor.time_notice.notice() is None
+        assert editor.target_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+
+
+def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_left(
+    application: QApplication,
+) -> None:
+    """A copy of the editor built after its Area showed another View shows what the reader left.
+
+    A switch of Workspace, or of an Area's View, deletes the View's copy and
+    builds a new one. The editor was a window that lasted for the life of the
+    dashboard, so a reader who closed it found their entry where they had left
+    it. The dashboard keeps the entry and the refusal for the same reason
+    (`PL-CHX0`).
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    (editor,) = _editors(view)
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
+    editor.add_time_button.click()
+    editor.instant_spin.setValue(1500)
+    editor.time_label_edit.setText("emergence")
+    editor.compartment_combo.setCurrentIndex(
+        editor.compartment_combo.findData(RecordedQuantity.FAT.value)
+    )
+    editor.time_list.setCurrentRow(0)
+    refusal = editor.time_notice.notice()
+    assert refusal is not None
+
+    view.layout_container.choose_view(AreaId(5), AGENT_ACCOUNTING)
+    _settle(application)
+    assert _editors(view) == []
+
+    view.layout_container.choose_view(AreaId(5), BOOKMARKS)
+    _settle(application)
+    view.present(False)
+    (rebuilt,) = _editors(view)
+
+    assert rebuilt is not editor
+    assert rebuilt.instant_spin.value() == 1500
+    assert rebuilt.instant_preview.text() == "25m"
+    assert rebuilt.time_label_edit.text() == "emergence"
+    assert rebuilt.compartment_combo.currentData() == RecordedQuantity.FAT.value
+    assert rebuilt.time_list.currentRow() == 0
+    assert rebuilt.time_notice.notice() == refusal
+
+
+def test_a_rebuilt_bookmarks_view_does_not_select_a_row_the_reader_lost(
+    application: QApplication,
+) -> None:
+    """A row that a removal deselected stays deselected in a copy of the editor built later.
+
+    Removing the last of three rows leaves nothing selected, because that row
+    is gone. If the dashboard still kept the old selection, a copy built after
+    a third mark was added would select the new third row, and its Remove
+    button would remove a mark the reader never chose (`PL-CHX0`).
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    (editor,) = _editors(view)
+
+    for instant_s in (300, 600, 900):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    editor.time_list.setCurrentRow(2)
+    editor.remove_time_button.click()
+
+    assert editor.time_list.currentRow() == -1
+
+    # The third mark is added through the controller, so that no field of the
+    # editor changes and nothing but a frame can update the kept entry.
+    controller.add_time_bookmark(TimeBookmark(CaseInstant(1200)))
+    view.present(False)
+    view.layout_container.choose_view(AreaId(5), AGENT_ACCOUNTING)
+    _settle(application)
+    view.layout_container.choose_view(AreaId(5), BOOKMARKS)
+    _settle(application)
+    view.present(False)
+    (rebuilt,) = _editors(view)
+
+    assert rebuilt.time_list.count() == 3
+    assert rebuilt.time_list.currentRow() == -1
+
+
+def test_the_marks_editor_scrolls_inside_the_default_bookmarks_area_rather_than_clipping(
+    application: QApplication,
+) -> None:
+    """At 1366 by 768 the Default Workspace's Bookmarks Area scrolls the forms, and clips none.
+
+    The Area is about 150 pixels tall there, and the two forms need several
+    times that (`PL-CHX0`). Every View in an Area too short for it scrolls in
+    the Area's box (`area_layout.ViewScroll`, `PL-CBYS`). So the View is drawn
+    at least as tall as its content needs, each control of the editor is given
+    at least the height it asks for, and the box can scroll to the last of
+    them.
+    """
+
+    view = _shown_view(
+        application,
+        SimulationController(),
+        width_px=1366,
+        height_px=768,
+        workspaces=shipped_workspaces(),
+    )
+    _settle(application)
+    view.present(False)
+    bookmarks = next(v for v in view.layout_container.views() if isinstance(v, BookmarksView))
+    box = bookmarks.parentWidget()
+    box = None if box is None else box.parentWidget()
+    assert isinstance(box, ViewScroll)
+    editor = _mark_editor(view)
+    controls = (
+        editor.instant_spin,
+        editor.time_label_edit,
+        editor.add_time_button,
+        editor.time_list,
+        editor.compartment_combo,
+        editor.height_spin,
+        editor.target_label_edit,
+        editor.add_target_button,
+        editor.remove_target_button,
+        editor.target_list,
+    )
+
+    assert box.viewport().height() < bookmarks.height()
+    assert box.verticalScrollBar().maximum() >= bookmarks.height() - box.viewport().height()
+    assert bookmarks.height() >= bookmarks.minimumSizeHint().height()
+
+    for control in controls:
+        bottom = control.mapTo(bookmarks, QPoint(0, control.height())).y()
+        assert control.height() >= control.minimumSizeHint().height(), control
+        assert bottom <= bookmarks.height(), control

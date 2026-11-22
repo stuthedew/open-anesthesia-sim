@@ -30,7 +30,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _case_view,
     _fork_panel,
     _halted_trunk_case,
-    _opened_bookmark_dialog,
+    _mark_editor,
     _paused_run_with_history,
     _read_the_alveolar_quotient_as,
     _select_agent,
@@ -97,11 +97,11 @@ def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt(
     controller.add_time_bookmark(time_mark)
     controller.add_mac_target(target)
     view = _shown_view(application, controller)
-    dialog = _opened_bookmark_dialog(view)
+    editor = _mark_editor(view)
     listing, remove = (
-        (dialog.time_list, dialog.remove_time_button)
+        (editor.time_list, editor.remove_time_button)
         if kind == "time"
-        else (dialog.target_list, dialog.remove_target_button)
+        else (editor.target_list, editor.remove_target_button)
     )
     listing.setCurrentRow(0)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)

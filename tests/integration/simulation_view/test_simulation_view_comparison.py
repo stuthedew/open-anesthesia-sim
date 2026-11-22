@@ -9,8 +9,8 @@ a run.
 import re
 
 import pytest
-from PySide6.QtCore import QPoint, Qt
-from PySide6.QtWidgets import QAbstractSlider, QApplication, QScrollArea
+from PySide6.QtCore import QPoint
+from PySide6.QtWidgets import QAbstractSlider, QApplication, QScrollArea, QWidget
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
@@ -35,8 +35,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _case_view,
     _concentration,
     _fork_panel,
-    _marks_panel,
-    _opened_bookmark_dialog,
+    _mark_editor,
     _paused_run_with_history,
     _select_agent,
     _set_fresh_gas_flow,
@@ -476,27 +475,50 @@ def test_a_running_run_holds_while_a_workspace_question_is_open(application: QAp
     assert _ten_tick_advance_s(run) == tick_s != 0
 
 
-def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplication) -> None:
-    """The bookmark editor leaves Pause reachable, so the runs go on (`PL-TPBH` blind review).
+def _shown_windows(application: QApplication) -> set[int]:
+    """Every top-level window that is on screen now, by the identity of its widget."""
 
-    `QDialog.open()` makes a dialog window-modal. The editor was shown that
-    way, so it blocked every Pause button while the runs went on stepping,
-    which is the defect `PL-TPBH` removes for the questions. The editor is
-    meant to be non-modal, so it is now shown with `show()`.
+    return {id(widget) for widget in application.topLevelWidgets() if widget.isVisible()}
+
+
+def test_editing_a_mark_while_a_run_plays_opens_no_window(application: QApplication) -> None:
+    """A mark is added and removed with the run playing, and no window opens over the readouts.
+
+    The marks editor was a window. While a run played it could cover the
+    delivered concentration and four of the six compartment readouts, and on
+    Wayland the application could neither place it nor find out where the
+    reader had dragged it (`PL-CHX0`). The editor's fields are now in the
+    Bookmarks View, inside an Area. So the only window on screen after the
+    edits is the dashboard's own, and the run goes on and can be paused, as it
+    could while the old editor was open (`PL-TPBH` blind review).
     """
 
     controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
-
-    _marks_panel(view).edit_button.click()
     _settle(application)
-    dialog = view._bookmark_dialog
-    assert dialog is not None
-    assert dialog.isVisible()
-    assert not dialog.isModal()
-    assert dialog.windowModality() is Qt.WindowModality.NonModal
+    before = _shown_windows(application)
+
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(600)
+    editor.time_label_edit.setText("intubation")
+    editor.add_time_button.click()
+    editor.compartment_combo.setCurrentIndex(
+        editor.compartment_combo.findData(RecordedQuantity.ALVEOLAR.value)
+    )
+    editor.height_spin.setValue(0.8)
+    editor.add_target_button.click()
+    editor.time_list.setCurrentRow(0)
+    editor.remove_time_button.click()
+    _settle(application)
+
+    assert controller.bookmarks.time_bookmarks == ()
+    assert len(controller.bookmarks.mac_targets) == 1
+    assert _shown_windows(application) == before
+    assert id(view.window()) in before
+    assert [w for w in view.findChildren(QWidget) if w.isWindow() and w.isVisible()] == []
+    assert run.is_running
     assert _ten_tick_advance_s(run) > 0
 
     run._pause_button.click()
@@ -766,9 +788,9 @@ def test_a_mark_added_after_a_fork_reaches_both_runs(application: QApplication) 
 
     view = _case_view(application, _branched_case())
     _take_fork(view, 60.0)
-    dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(300)
-    dialog.add_time_button.click()
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(300)
+    editor.add_time_button.click()
 
     marked = [run.snapshot().bookmarks.time_bookmarks for run in view.runs]
 
