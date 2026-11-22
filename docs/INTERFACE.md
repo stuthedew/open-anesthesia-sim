@@ -2447,7 +2447,8 @@ in `tests/integration/simulation_view/test_simulation_view_readouts.py`, closes
 that gap for the unconditional part of the list. It walks the set that
 `app/unconditional_set.py` declares, finds each value's widget through
 `RunView.unconditional_widgets`, and checks that the widget is shown and reads
-the run's value.
+the run's value. For a compartment it reads the multiple of 1 MAC beside the
+percent.
 
 ### Every value and what qualifies it come from one step
 

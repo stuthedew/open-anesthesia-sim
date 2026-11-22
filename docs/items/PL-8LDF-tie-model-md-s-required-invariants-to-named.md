@@ -10,7 +10,7 @@ touches: docs/MODEL.md, tools/doc_check.py
 added: 2026-08-25
 closed: 2026-11-22
 pr: 2248
-tests: tests/integration/controller/test_controller_running.py::test_pause_stops_simulated_time_and_the_stored_state
+tests: tests/integration/controller/test_controller_running.py::test_pause_stops_simulated_time_and_the_stored_state, tests/unit/test_governing_equations.py::test_a_zero_flow_is_a_zero_rate_and_needs_no_branch
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed; the re-scope below holds.** §
@@ -58,3 +58,5 @@ is expected to be needed nowhere.
 **Checked 2026-11-22** against `d4e8200`: still applies. `docs/VERIFICATION.md` § "Required invariants" has 21 bullets and none names a test. `BOUND_FAMILIES` in `tools/doc_check.py` lists the hazard table, § "Minimum displayed outputs" and § "Required tests", but not § "Required invariants". `PL-6PPZ` (the move of the six verification sections to a new document) moves this section and is in flight, so the annotation pass should land after it and edit the new document.
 
 **Closed 2026-11-22.** Each of the 21 entries of `docs/VERIFICATION.md` § "Required invariants" names the tests that hold it, and the section joins `BOUND_FAMILIES` in `tools/doc_check.py` as a list family of tests. Every named test was read before it was named, and each asserts its entry directly. One entry had no test that did: `test_pause_blocks_advancement` checks a run that never started, so a pause that still stepped a running run would pass it. `test_pause_stops_simulated_time_and_the_stored_state` now starts a run, pauses it after ten steps and asks for ten more. Wrong claims found: none. Files checked for statements this changed: `docs/VERIFICATION.md` § "What the documentation check confirms, and what only a review finds" (it said the invariants were not yet checked, and is corrected), `docs/ARCHITECTURE.md`, `docs/apparatus.md` and `README.md` (no mention).
+
+**Blind review, 2026-11-22.** Both passes found named tests that held their entry only at a lower layer. The run-length entry named a test of the guard function alone, and now names `test_the_step_past_the_supported_run_length_is_refused`, which takes the step. The Reset entry now also names `test_reset_preserves_all_user_settings`, which presses the controller's Reset. The zero-fresh-gas entry's test checked only the delivered counter, so a circuit still fed at zero flow would have passed it. `test_a_zero_flow_is_a_zero_rate_and_needs_no_branch` now also checks that the circuit's inflow term is zero.

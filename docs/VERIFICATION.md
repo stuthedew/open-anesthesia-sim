@@ -1362,7 +1362,9 @@ The controls do only what they say:
 - Pause stops simulated time from advancing
   (`test_pause_stops_simulated_time_and_the_stored_state`);
 - Reset clears dynamic state while preserving settings
-  (`test_reset_preserves_settings_and_clears_dynamic_state`); and
+  (`test_reset_preserves_settings_and_clears_dynamic_state` for the simulation
+  state, and `test_reset_preserves_all_user_settings` for the Reset a learner
+  presses); and
 - a delivered concentration above the agent's vaporizer maximum is refused, not
   capped (`test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum`).
 
@@ -1389,7 +1391,7 @@ The time steps keep these conditions:
 - a caller cannot ask for a step of another length, and a step that would take
   a run past the supported run length is refused
   (`test_a_run_cannot_be_asked_for_a_step_of_another_length` and
-  `test_the_step_that_would_cross_the_boundary_is_refused`); and
+  `test_the_step_past_the_supported_run_length_is_refused`); and
 - a step that cannot be completed leaves simulated time and dynamic state
   exactly as the last completed step left them
   (`test_a_failed_step_leaves_every_dynamic_value_bit_identical`).

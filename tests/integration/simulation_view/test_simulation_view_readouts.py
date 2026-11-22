@@ -37,7 +37,7 @@ from anesthesia_sim.app.unconditional_set import (
     unconditional_set,
 )
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
-from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -80,8 +80,9 @@ def test_every_minimum_displayed_output_reads_its_value_from_its_widget(
     The run is isoflurane, with the dial set to 2.0% at the start and to 1.5% at
     60 s, paused at 150 s and then halted at the supported run length, so that
     the halt reason, a changed setting and a dial away from 1 MAC are all on
-    screen. The expected concentrations come from a fresh `AgentUptakeSystem`
-    given the same settings and steps, not from the controller or the view.
+    screen. The expected concentrations, in percent and as a multiple of 1 MAC,
+    come from a fresh `AgentUptakeSystem` given the same settings and steps,
+    not from the controller or the view.
     The expected 1 MAC is read from the agent's data file. The other expected
     texts are written out here.
     """
@@ -128,17 +129,26 @@ def test_every_minimum_displayed_output_reads_its_value_from_its_widget(
         UnconditionalValue.DELIVERED_CONCENTRATION: (
             lambda text: text == "Delivered 1.50% (1.28 ×MAC)"
         ),
-        UnconditionalValue.ONE_MAC: lambda text: text == f"1 MAC isoflurane (age 40) = {mac_percent}%",
+        UnconditionalValue.ONE_MAC: lambda text: (
+            text == f"1 MAC isoflurane (age 40) = {mac_percent}%"
+        ),
+        # The dial was set to 2.0% before the run started and to 1.5% at 60 s.
+        # The record joins the two into one adjustment from the agent's opening
+        # 1 MAC of 1.17% to 1.50%, spanning 0 s to 1 min.
         UnconditionalValue.CONTROL_INPUT_RECORD: (
-            lambda text: "Delivered\xa0agent" in text and "1.50%" in text
+            lambda text: (
+                "0s–1m\xa0· Delivered\xa0agent\xa01.17%\xa0-> 1.50%\xa0(2\xa0settings)" in text
+            )
         ),
     }
+    mac = MacPercent(mac_percent)
     for value, fraction in fractions.items():
-        shown = format_percent(Fraction(fraction))
-        expected[value] = lambda text, shown=shown: text == shown
+        shown = (format_percent(Fraction(fraction)), format_mac_multiple(Fraction(fraction), mac))
+        expected[value] = lambda text, shown=shown: text == " ".join(shown)
 
     view = _shown_view(application, controller)
     widgets = view.runs[0].unconditional_widgets()
+    readouts = view.runs[0]._readout_row.panels
     required = unconditional_set(INHALED_AGENT).values
 
     assert set(expected) == set(required)
@@ -147,7 +157,15 @@ def test_every_minimum_displayed_output_reads_its_value_from_its_widget(
     for value in required:
         widget = widgets[value]
         labels = [widget] if isinstance(widget, QLabel) else widget.findChildren(QLabel)
-        text = " ".join(label.text() for label in labels if isinstance(label, QLabel))
+        # A compartment's widget is its percent label. The same readout carries
+        # the multiple of 1 MAC on its second line, so that is read beside it.
+        if value in fractions:
+            labels += [panel.secondary_label for panel in readouts if panel.value_label is widget]
+        text = " ".join(
+            label.text()
+            for label in labels
+            if isinstance(label, QLabel) and label.isVisibleTo(view)
+        )
 
         assert widget.isVisibleTo(view), f"{value} has a widget that is not shown"
         assert expected[value](text), f"{value} reads {text!r}"
