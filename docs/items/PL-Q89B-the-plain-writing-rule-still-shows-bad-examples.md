@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: prose-quality
+milestone: v0.6.19
 touches: .claude/rules/plain-writing.md
 deferred-from: v0.7.0 - its problem is new since the freeze and no release schedules it, so it is deferred on the terms of § "Deferring to the next gate"; not safety or science
 added: 2026-11-14

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, defect
 feature: every-view-in-run-state-tests
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/test_failed_start_over.py
 added: 2026-11-11
 closed: 2026-11-11

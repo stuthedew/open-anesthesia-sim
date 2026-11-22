@@ -3,6 +3,7 @@ id: PL-S64T
 title: docs/MODEL.md § Known limitations says a learner would expect desflurane to wash out faster than Yasuda's volunteers did, and at the default settings the simulator draws it washing out slower
 status: done
 feature: model-spec-accuracy
+milestone: v0.6.19
 touches: docs/MODEL.md, docs/items/PL-1B8B-docs-model-md-s-sources-for-the-notes-above.md
 added: 2026-11-21
 closed: 2026-11-21

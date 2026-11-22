@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.19
 touches: src/anesthesia_sim/data/agents
 added: 2026-11-09
 closed: 2026-11-16

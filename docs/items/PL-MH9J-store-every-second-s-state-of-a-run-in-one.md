@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: refactor, safety
 feature: run-computed-one-way
+milestone: v0.6.19
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md, docs/INTERFACE.md, docs/ARCHITECTURE.md, .claude/rules/run-is-its-definition.md
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - filed 2026-11-21, after the gate froze, as the build of the design the owner chose in PL-7CY5; each of the four pull requests leaves main releasable, so the release does not wait for the feature to finish

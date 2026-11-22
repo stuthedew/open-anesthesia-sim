@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.19
 touches: docs/MODEL.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): the sentence became false with 26eb4e39 (#1932), the milestone's own agent cost View
 added: 2026-11-05

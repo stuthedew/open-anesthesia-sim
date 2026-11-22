@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, test
 feature: interface-matches-its-spec
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/qt_agent_price.py, docs/INTERFACE.md, tests/integration/simulation_view/simulation_view_support.py, tests/integration/simulation_view/test_simulation_view_foreground.py, tests/integration/test_dark_appearance.py
 added: 2026-11-21
 closed: 2026-11-21

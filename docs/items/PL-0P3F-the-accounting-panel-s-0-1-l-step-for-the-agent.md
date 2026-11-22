@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, science
 feature: model-claims-held-by-tests
+milestone: v0.6.19
 touches: docs/INTERFACE.md, tests/integration/test_parameter_uncertainty.py
 added: 2026-11-04
 closed: 2026-11-14

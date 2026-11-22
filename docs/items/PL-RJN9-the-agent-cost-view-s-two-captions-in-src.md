@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: one-source-of-truth
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/display_units.py, tests/unit/test_agent_cost.py, tests/unit/test_display_units.py
 added: 2026-11-07
 closed: 2026-11-11

@@ -4588,8 +4588,9 @@ displayed to 0.1 L, so that the three amounts read at one scale.
 <!-- not-restated: 2.5 L -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**A residual line such as `<1e-13 L` means that the residual is less than
-10⁻¹³ L.** The `<` means the same as it does on the amounts. A residual of exactly
+**A residual line shows the power of ten that the residual is less than, such
+as `<10⁻¹³ L`.** The exponent is written in superscript digits rather than in
+e-notation. The `<` means the same as it does on the amounts. A residual of exactly
 zero reads `0 L`. A residual that passes its check is the rounding left over from
 summing the initial, delivered, exhausted and stored amounts. Its digits and its
 sign are set by the order in which the arithmetic ran, not by anything modelled.
@@ -5312,7 +5313,7 @@ because $`F_A/F_I`$ is dimensionless and has neither a percent nor a MAC reading
 
 ```
 Modelled sevoflurane · 20m8s
-Wash-in F_A/F_I (alveolar / modelled circuit)
+Wash-in FA/FI (alveolar / modelled circuit)
 0.71
 ```
 

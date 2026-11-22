@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: standing-weight
+milestone: v0.6.19
 touches: docs/items/PL-LY24-count-for-each-of-the-13-checks-that-guard-the.md, docs/ci-runs.tsv, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, docs/items/PL-6LJS-the-pull-request-title-check-and-the-pull.md, docs/items/PL-BBTV-tools-model-home-check-py-refuses-a-model-name.md, docs/items/PL-C3K1-tools-rules-paths-check-py-keeps-the-apparatus.md, docs/items/PL-KGPR-decide-which-of-the-13-checks-on-the-workflow-s.md
 added: 2026-11-20
 closed: 2026-11-21

@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.6.19
 touches: docs/resident-instructions.md, tools/doc_quotes.toml
 deferred-from: v0.7.0 - a new problem, not present at the freeze: the drift job first failed on 2026-11-09; apparatus documentation, so the release does not wait on it
 added: 2026-11-10

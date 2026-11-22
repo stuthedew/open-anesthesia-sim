@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: standing-weight
+milestone: v0.6.19
 touches: CLAUDE.md, .claude/rules/instruction-writing.md, .claude/rules/citation-drift.md, .claude/skills/docket/modes/start.md, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/picking.md, docs/resident-instructions.md, tools/config_home_check.py
 deferred-from: v0.7.0 - the move changes how sessions are instructed, not the schematic, so the release does not wait on it
 added: 2026-11-21

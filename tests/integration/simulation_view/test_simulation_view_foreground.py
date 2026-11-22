@@ -1,6 +1,7 @@
 """The dashboard, driven headless against real runs.
 
-These tests cover that every control declares its own foreground colour.
+These tests cover that every control declares its own foreground colour, and that
+every selector draws its own arrow.
 
 `simulation_view_support.py` describes the whole suite.
 """
@@ -25,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app import theme
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.qt_widgets import ForkPanel
+from anesthesia_sim.app.qt_widgets import ForkPanel, SelectorComboBox
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
 from tests.integration.simulation_view.simulation_view_support import (
@@ -411,3 +412,32 @@ def test_no_control_kind_is_exempted_from_declaring_a_foreground_without_cause(
         "these kinds declare a foreground now, so their exemption is stale - remove "
         f"the entry: {now_declaring}"
     )
+
+
+def test_every_selector_in_every_view_draws_its_own_arrow(application: QApplication) -> None:
+    """A combo box draws its own arrow exactly when its style sheet hides the platform's button.
+
+    The selector style sheets stop the platform drawing a drop-down button,
+    and `SelectorComboBox` draws the arrow instead (`PL-9389`). A plain combo
+    box given one of those sheets would show no arrow at all, so a reader
+    could not tell that it opens a list. A `SelectorComboBox` without one of
+    those sheets would draw its arrow over the platform's, and show two. The
+    walk covers every registered View and the run controls above the Areas.
+    """
+
+    combo_boxes = _every_view(application).findChildren(QComboBox)
+    hidden_button = [
+        widget for widget in combo_boxes if "QComboBox::drop-down" in widget.styleSheet()
+    ]
+
+    assert len(hidden_button) >= 5, "the walk did not reach the selectors"
+    assert [
+        type(widget).__name__
+        for widget in hidden_button
+        if not isinstance(widget, SelectorComboBox)
+    ] == []
+    assert [
+        type(widget).__name__
+        for widget in combo_boxes
+        if isinstance(widget, SelectorComboBox) and widget not in hidden_button
+    ] == []

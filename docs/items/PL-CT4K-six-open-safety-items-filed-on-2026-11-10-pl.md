@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.6.19
 touches: ROADMAP.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, src/anesthesia_sim/core/liquid_agent.py, docs/items/PL-LHCL-a-number-in-core-is-known-to-be-inside-its.md, docs/items/PL-GJ1W-nothing-states-in-one-place-how-far-a-computed.md
 added: 2026-11-11
 closed: 2026-11-16

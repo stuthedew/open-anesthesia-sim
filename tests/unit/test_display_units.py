@@ -102,7 +102,7 @@ def test_the_formatters_write_the_members_labels() -> None:
     assert MAC_UNIT_SUFFIX == " ×MAC"
     assert format_agent_volume(12.34) == "12.3 L"
     assert format_agent_residual(0.0) == "0 L"
-    assert format_agent_residual(3e-13) == "<1e-12 L"
+    assert format_agent_residual(3e-13) == "<10⁻¹² L"
     assert format_agent_residual(float("inf")) == "inf L"
 
 

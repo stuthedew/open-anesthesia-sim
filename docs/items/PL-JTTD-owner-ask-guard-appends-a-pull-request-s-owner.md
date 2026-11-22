@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: owner-ask-by-state
+milestone: v0.6.19
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 deferred-from: v0.7.0 - a new problem: owner_ask_guard began appending to every thread message with a4f1c1f5 (2026-11-04), after the freeze
 added: 2026-11-04

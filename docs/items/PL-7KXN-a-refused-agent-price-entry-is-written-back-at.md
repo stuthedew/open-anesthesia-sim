@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: interface-matches-its-spec
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/qt_agent_price.py, src/anesthesia_sim/app/agent_cost.py, docs/INTERFACE.md, docs/ARCHITECTURE.md, tests/unit/test_preferences.py, tests/integration/test_agent_cost_view.py, tests/integration/test_view_contract.py, tests/integration/test_layout_adapter.py, tests/integration/test_layout_keyboard.py
 added: 2026-11-21
 closed: 2026-11-21

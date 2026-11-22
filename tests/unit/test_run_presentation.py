@@ -527,7 +527,7 @@ def test_a_halt_after_a_rejected_accounting_step_shows_that_step_s_check(
         KeptValues(state.case, frame.values),
     )
 
-    assert shown.values.accounting.amounts.splitlines()[3] == "Unaccounted: <1e+01 L"
+    assert shown.values.accounting.amounts.splitlines()[3] == "Unaccounted: <10¹ L"
     assert shown.values.accounting != frame.values.accounting
     assert shown.values.accounting != WITHHELD_ACCOUNTING
     assert (shown.values.schematic == WITHHELD_SCHEMATIC) is started_over

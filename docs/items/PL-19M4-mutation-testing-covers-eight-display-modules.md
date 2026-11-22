@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety, test
 feature: one-source-of-truth
+milestone: v0.6.19
 touches: pyproject.toml, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, tests/unit/test_bookmarks.py, tests/unit/test_chart_frame.py, docs/apparatus.md, ROADMAP.md, .claude/skills/docket/modes/close-out.md, subprojects/docket/README.md
 added: 2026-11-11
 closed: 2026-11-14

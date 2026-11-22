@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: window-is-the-frame
+milestone: v0.6.19
 touches: ROADMAP.md, docs/interface-provenance.md
 added: 2026-11-11
 closed: 2026-11-11

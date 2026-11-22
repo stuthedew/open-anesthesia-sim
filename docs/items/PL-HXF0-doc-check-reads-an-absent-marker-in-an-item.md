@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.19
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 deferred-from: v0.7.0 - a new problem: at the freeze _marked_span was the only scope rule and every marker used it; the disagreement began when 5ec0ee9b (2026-10-25 06:17) added _marked_scope, after the freeze
 added: 2026-11-03

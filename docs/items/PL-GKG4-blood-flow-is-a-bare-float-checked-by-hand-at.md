@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: defect, safety
+milestone: v0.6.19
 touches: src/anesthesia_sim/core, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md
 deferred-from: v0.7.0 - present at the freeze and not on the frozen list; found by the 2026-11-10 audit; not live: checked 2026-11-10, all three places that take a blood flow refuse a negative or non-finite one, so no wrong value is computed now
 added: 2026-11-10

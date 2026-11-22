@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: copy-editor
+milestone: v0.6.19
 touches: src/anesthesia_sim/core/liquid_agent.py, ROADMAP.md
 added: 2026-11-09
 closed: 2026-11-16

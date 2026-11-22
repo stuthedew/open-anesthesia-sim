@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: standing-weight
+milestone: v0.6.19
 touches: docs/items
 added: 2026-11-20
 closed: 2026-11-20

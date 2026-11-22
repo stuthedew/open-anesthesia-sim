@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: standing-weight
+milestone: v0.6.19
 touches: subprojects/docket/src/docket/done.py, subprojects/docket/tests/test_done.py, subprojects/docket/tests/test_portability.py, subprojects/docket/README.md
 added: 2026-11-21
 closed: 2026-11-21

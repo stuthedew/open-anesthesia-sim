@@ -118,6 +118,15 @@ DATA_TREE = Path(DATA_DIR)
 #: format` rewrites a `\uXXXX` escape into the literal character, and a literal
 #: U+00A0 in this file would be invisible to a reader and indistinguishable
 #: from the space beside it. A number is legible, greppable and stable.
+# How the superscript characters that write a residual's power of ten were seen.
+_RESIDUAL_EXPONENT_SEEN = (
+    " - the exponent of the accounting panel's residual lines, which "
+    "`format_agent_residual` in app/formatting.py writes as `<10⁻¹³ L` (PL-8V6L). Seen in "
+    "the Qt build (PySide6 6.11.2, offscreen, the container's Inter, 2026-11-22) through "
+    "app/qt_widgets.styled_label at device pixel ratios 1 and 2, in every exponent from "
+    "-20 to 1, as a raised small figure of one height with no replacement box."
+)
+
 CONFIRMED: dict[int, str] = {
     0x00A0: (
         "NO-BREAK SPACE - EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE in "
@@ -140,11 +149,14 @@ CONFIRMED: dict[int, str] = {
         "container's Inter, 2026-10-18) in the MAC-awake band line and its legend row "
         "(PL-TMSN)."
     ),
+    0x00B2: "SUPERSCRIPT TWO" + _RESIDUAL_EXPONENT_SEEN,
+    0x00B3: "SUPERSCRIPT THREE" + _RESIDUAL_EXPONENT_SEEN,
     0x00B7: (
         "MIDDLE DOT - first seen in the Flutter client's control-change list (PL-8XPQ, "
         "2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the container's "
         "Inter, 2026-10-18) in the control-change list (PL-TMSN)."
     ),
+    0x00B9: "SUPERSCRIPT ONE" + _RESIDUAL_EXPONENT_SEEN,
     0x00D7: (
         "MULTIPLICATION SIGN - first seen in the Flutter client's MAC-multiple readout "
         "(PL-8XPQ, 2026-09-04). Seen in the Qt build (PySide6 6.11.2, offscreen, the "
@@ -168,6 +180,14 @@ CONFIRMED: dict[int, str] = {
         "DejaVu Sans at 12 px, which holds the glyph itself, and looked at beside the "
         "confirmed middle dot it must not be mistaken for (PL-FPY2, 2026-09-22)."
     ),
+    0x2070: "SUPERSCRIPT ZERO" + _RESIDUAL_EXPONENT_SEEN,
+    0x2074: "SUPERSCRIPT FOUR" + _RESIDUAL_EXPONENT_SEEN,
+    0x2075: "SUPERSCRIPT FIVE" + _RESIDUAL_EXPONENT_SEEN,
+    0x2076: "SUPERSCRIPT SIX" + _RESIDUAL_EXPONENT_SEEN,
+    0x2077: "SUPERSCRIPT SEVEN" + _RESIDUAL_EXPONENT_SEEN,
+    0x2078: "SUPERSCRIPT EIGHT" + _RESIDUAL_EXPONENT_SEEN,
+    0x2079: "SUPERSCRIPT NINE" + _RESIDUAL_EXPONENT_SEEN,
+    0x207B: "SUPERSCRIPT MINUS" + _RESIDUAL_EXPONENT_SEEN,
 }
 
 

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: projects-trial
+milestone: v0.6.19
 touches: .claude/hooks/thread_hooks.py, tests/unit/test_thread_hooks.py, docs/maintainer.md, .claude/skills/docket/modes/coordinator.md, docs/apparatus.md
 deferred-from: v0.7.0 - a new problem: the setup entry it fails in came in with #1848 (50939e38, 2026-10-25, PL-X6VN), after the freeze
 added: 2026-11-14

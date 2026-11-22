@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: standing-weight
+milestone: v0.6.19
 touches: CLAUDE.md, .claude/rules/instruction-writing.md, .claude/rules/plain-writing.md, .claude/skills/pull-request/SKILL.md, .claude/skills/docket/modes/coordinator.md, .claude/skills/docket/modes/start.md, .claude/skills/run-the-app/SKILL.md, docs/resident-instructions.md
 deferred-from: v0.7.0 - the move changes how sessions are instructed, not the schematic, so the release does not wait on it
 added: 2026-11-21
