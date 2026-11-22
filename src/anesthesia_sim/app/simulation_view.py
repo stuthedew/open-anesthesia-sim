@@ -1458,7 +1458,7 @@ class SimulationView(QWidget):
 
         The chart is the plot of the first Area that shows a concentration
         chart View, or the Areas themselves where no Area does
-        (`_chart_in_view`). After the press returns, the new run's widgets
+        (`_kept_in_view`). After the press returns, the new run's widgets
         reach their final size over several layout passes, and each pass
         moves the chart. So the page scrolls once now, and once more each time
         the page's height changes (`_follow_chart`). This continues until the
@@ -1470,10 +1470,33 @@ class SimulationView(QWidget):
         """
 
         self._chart_view_owed = True
-        self._page_scroll.ensureWidgetVisible(self._chart_in_view(), 0, 0)
+        self._page_scroll.ensureWidgetVisible(self._kept_in_view(), 0, 0)
 
-    def _chart_in_view(self) -> QWidget:
-        """The plot that `_keep_chart_in_view` keeps on screen, or the Areas where none is shown."""
+    def _kept_in_view(self) -> QWidget:
+        """Return the widget that `_keep_chart_in_view` keeps on screen.
+
+        That is the plot of the first Area that shows a concentration chart
+        View, or the Areas themselves where no Area does. Where the current
+        Workspace is pinned to one run, its Views draw no comparison. The
+        widget is then the first branch control on screen, because its
+        caption says where the comparison is (`COMPARISON_PINNED_AWAY_TEMPLATE`,
+        `PL-YQ5J`). Before that, the page scrolled to a chart hidden under the
+        pinned run's notice.
+        """
+
+        compared = self._compared_runs()
+
+        if compared is not None and compared.pinned_away is not None:
+            return next(
+                (
+                    view.panel
+                    for view in self._areas.views()
+                    if isinstance(view, BranchView)
+                    and view.panel is not None
+                    and view.panel.isVisibleTo(self)
+                ),
+                self._areas,
+            )
 
         return next(
             (view.chart for view in self._areas.views() if isinstance(view, ConcentrationView)),
@@ -1491,7 +1514,7 @@ class SimulationView(QWidget):
         """Bring the chart back into view after a pass of layout, while the page is holding it."""
 
         if self._chart_view_owed:
-            self._page_scroll.ensureWidgetVisible(self._chart_in_view(), 0, 0)
+            self._page_scroll.ensureWidgetVisible(self._kept_in_view(), 0, 0)
 
     def _restate_fork_panel(self) -> None:
         """Restate the branch offer from the case on a halt, and offer nothing if that raises.
@@ -1616,14 +1639,28 @@ class SimulationView(QWidget):
         )
 
     def _compared_runs(self) -> ComparedRuns | None:
-        """What the trunk and its branch are called while both are drawn, or None while one is."""
+        """What the trunk and its branch are called while both are open, or None while one is.
+
+        The result also names the run that the current Workspace is pinned
+        to, where that pin keeps the comparison off its Views. The Workspace
+        is read on every call, so a pin set or removed, or a switch of
+        Workspace, changes the result on the next tick (`PL-YQ5J`).
+        """
 
         if len(self._runs) < MAX_DISPLAYED_RUNS:
             return None
 
         trunk, branch = self._runs
+        workspace = self._workspaces.current
+        shown = workspace.shown_runs(self._open_runs())
+        pinned_away: str | None = None
 
-        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id))
+        if isinstance(shown, PinnedRunAbsent):
+            pinned_away = pinned_run_label(shown.pinned, self._run_identities.session)
+        elif workspace.pinned_run is not None:
+            pinned_away = run_label(workspace.pinned_run)
+
+        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id), pinned_away)
 
     # ---------------------------------------------------------- presenting
 
