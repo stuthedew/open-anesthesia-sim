@@ -199,7 +199,7 @@ def test_a_filing_the_closing_pull_request_added_is_not_a_reentry() -> None:
             fixed,
             _item("PL-0SM1", date(2026, 8, 25), reenters=("PL-FXD0",), filed_pr="900"),
             _item("PL-0LT1", date(2026, 8, 26), reenters=("PL-FXD0",), filed_pr="912"),
-            _item("PL-0UN1", date(2026, 8, 27), reenters=("PL-FXD0",)),
+            _item("PL-0NP1", date(2026, 8, 27), reenters=("PL-FXD0",)),
         ],
         CONFIG,
         today=date(2026, 8, 31),
