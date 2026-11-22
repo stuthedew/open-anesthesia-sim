@@ -31,13 +31,8 @@ from pathlib import Path
 
 import pytest
 
-from anesthesia_sim.core.liquid_agent import (
-    CELSIUS_ZERO_K,
-    MOLAR_GAS_CONSTANT_J_MOL_K,
-    REFERENCE_MOLAR_VOLUME_L_MOL,
-    STANDARD_ATMOSPHERE_PA,
-    liquid_volume_ml,
-)
+from anesthesia_sim.core import liquid_agent
+from anesthesia_sim.core.liquid_agent import liquid_volume_ml
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE
 
@@ -223,9 +218,14 @@ def _places(value: float, printed: str) -> str:
 def _molar_volume_l_mol(celsius: float) -> float:
     """V_m = R T / p at one standard atmosphere, in litres per mole."""
 
-    kelvin = celsius + CELSIUS_ZERO_K
+    kelvin = celsius + liquid_agent.CELSIUS_ZERO_K
 
-    return MOLAR_GAS_CONSTANT_J_MOL_K * kelvin / STANDARD_ATMOSPHERE_PA * LITRES_PER_CUBIC_METRE
+    return (
+        liquid_agent.MOLAR_GAS_CONSTANT_J_MOL_K
+        * kelvin
+        / liquid_agent.STANDARD_ATMOSPHERE_PA
+        * LITRES_PER_CUBIC_METRE
+    )
 
 
 def _vapour_ml_per_liquid_ml(density_g_ml: float, molar_mass_g_mol: float, celsius: float) -> float:
@@ -258,7 +258,7 @@ def test_the_agent_amount_section_prints_what_its_inputs_give() -> None:
         r"each converted amount by a factor of (\d\.\d+)"
     )
     assert _places(at_20, printed_20) == printed_20
-    assert at_20 == pytest.approx(REFERENCE_MOLAR_VOLUME_L_MOL, rel=1e-12)
+    assert at_20 == pytest.approx(liquid_agent.REFERENCE_MOLAR_VOLUME_L_MOL, rel=1e-12)
     assert _places(at_37, printed_37) == printed_37
     assert _places(at_37 / at_20, factor) == factor
 
