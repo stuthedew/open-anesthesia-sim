@@ -1345,7 +1345,7 @@ patient, so it does not contradict the physiological argument below.
 
 The two volumes have different sources. The alveolar gas volume is a patient parameter of
 2.5 L, read from `data/patients/reference_adult.json`. The provenance table in `docs/PARAMETERS.md` lists it,
-and the paragraphs before that table give the FRC measurement it is compared with. The circuit volume is a *machine*
+and § "The reference patient's parameters" there gives the FRC measurement it is compared with. The circuit volume is a *machine*
 parameter of 6.0 L, read from `data/machines/reference_circle_system.json`. That is a third
 kind of parameter file, beside the agent and patient files, because the breathing system
 belongs to neither. The same table lists the circuit volume, and the note after the table
@@ -1358,8 +1358,8 @@ them.** `AlveolarCompartment` has no default for its gas volume or its ventilati
 `BreathingCircuit` has none for its volume or its vaporizer maximum. Every shipped run is
 built by `AgentUptakeSystem.for_agent()`, which reads the values from the agent, patient
 and machine files and passes them on. The fresh gas flow keeps a default for a machine
-profile that states no startup flow (`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the
-authority for a value" gives its reason, its constant and its tests).
+profile that states no startup flow (`docs/PARAMETERS.md` § "The circuit volume and the default fresh gas flow" gives its
+reason, its constant and its tests).
 `test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
 `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` check that a shipped run
 gets the file's values. The serious failure would be a change that stopped `for_agent()`
