@@ -26,7 +26,12 @@ from anesthesia_sim.app.bookmarks import (
     MarkStanding,
     TimeBookmark,
 )
-from anesthesia_sim.app.chart_time_base import drawn_seconds, extreme_seconds, grid_spacing_s
+from anesthesia_sim.app.chart_time_base import (
+    drawn_seconds,
+    extreme_seconds,
+    extreme_seconds_with_gaps,
+    grid_spacing_s,
+)
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_UNITS,
     ControlChange,
@@ -51,6 +56,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
+from anesthesia_sim.app.wash_in import wash_in_ratio
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import (
     Fraction,
@@ -3746,6 +3752,16 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> int:
     return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0
 
 
+#: Where the inspired and the alveolar fraction stand among the series that
+#: `_with_extremes` is given, which follow `FRACTION_STATE_NAMES`.
+_INSPIRED_SERIES = [index for index, _ in FRACTION_STATE_NAMES].index(
+    COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
+)
+_ALVEOLAR_SERIES = [index for index, _ in FRACTION_STATE_NAMES].index(
+    COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
+)
+
+
 def _with_extremes(
     first_s: int,
     last_s: int,
@@ -3761,13 +3777,22 @@ def _with_extremes(
     both draw through this function, so a prediction and the run that
     follows it are drawn by one rule.
 
+    The F_A/F_I ratio is searched the same way, as a seventh series
+    (`PL-DN13`). It can turn at a second where neither of its two fractions
+    does. After the dial is raised, the inspired fraction rises faster than
+    the alveolar one, so the ratio falls for some seconds and then recovers.
+    The ratio is formed at every second by `wash_in.wash_in_ratio`, which
+    `DrawnWindow.wash_in_quotients` also forms it by, and it has no value at
+    a second whose inspired fraction is too small to divide by
+    (`chart_time_base.extreme_seconds_with_gaps`).
+
     Args:
         first_s: The window's first second.
         last_s: The window's last second.
         drawn_s: The seconds already chosen, ascending, with both ends.
-        fractions: One series for each compartment, each holding that
-            compartment's fraction at every second from `first_s` to
-            `last_s`.
+        fractions: One series for each compartment, in the order of
+            `FRACTION_STATE_NAMES`, each holding that compartment's fraction
+            at every second from `first_s` to `last_s`.
 
     Returns:
         The seconds to draw, ascending, each once.
@@ -3780,6 +3805,14 @@ def _with_extremes(
 
     for series in fractions:
         extremes_s |= extreme_seconds(first_s, series, drawn_s)
+
+    ratios = [
+        wash_in_ratio(alveolar, inspired)
+        for inspired, alveolar in zip(
+            fractions[_INSPIRED_SERIES], fractions[_ALVEOLAR_SERIES], strict=True
+        )
+    ]
+    extremes_s |= extreme_seconds_with_gaps(first_s, ratios, drawn_s)
 
     return tuple(CaseInstant(second) for second in sorted(extremes_s.union(drawn_s)))
 

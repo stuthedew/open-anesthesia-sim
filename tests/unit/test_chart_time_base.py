@@ -25,6 +25,7 @@ from anesthesia_sim.app.chart_time_base import (
     ChartTimeBase,
     drawn_seconds,
     extreme_seconds,
+    extreme_seconds_with_gaps,
     fit_to_run,
     fitted_window,
     following_window,
@@ -384,3 +385,39 @@ def test_neighbouring_drawn_seconds_have_nothing_between_them_to_search() -> Non
     assert extreme_seconds(100, TRACE_FROM_100_S, tuple(range(100, 113))) == set()
     assert extreme_seconds(100, TRACE_FROM_100_S, (100,)) == set()
     assert extreme_seconds(100, TRACE_FROM_100_S, ()) == set()
+
+
+def test_a_trace_with_a_value_at_every_second_is_searched_as_extreme_seconds_searches_it() -> None:
+    drawn = (100, 105, 112)
+
+    assert extreme_seconds_with_gaps(100, TRACE_FROM_100_S, drawn) == {103, 107}
+    assert extreme_seconds_with_gaps(100, TRACE_FROM_100_S, drawn) == extreme_seconds(
+        100, TRACE_FROM_100_S, drawn
+    )
+
+
+def test_a_second_with_no_value_is_neither_returned_nor_compared_with() -> None:
+    """A second with no value is left out of the search, and no value stands in for it (`PL-DN13`).
+
+    Each trace below holds one value for each second from 0 s to 6 s, with
+    the stretch's ends drawn at 0 s and 6 s.
+    """
+
+    # A gap inside: the trough of 1.0 at 4 s is below both ends, and the
+    # second with no value at 2 s is never returned.
+    assert extreme_seconds_with_gaps(0, (5.0, 4.0, None, 3.0, 1.0, 2.0, 6.0), (0, 6)) == {4}
+    # The left end has no value. The lowest value inside, 2.0 at 1 s, is
+    # compared with the right end alone, and the highest, 7.0 at 5 s, too.
+    assert extreme_seconds_with_gaps(0, (None, 2.0, 3.0, 4.0, 5.0, 7.0, 6.0), (0, 6)) == {1, 5}
+    # A value inside that is below the one end with a value, but not above
+    # it, adds only the low second.
+    assert extreme_seconds_with_gaps(0, (None, 2.0, 3.0, 4.0, 5.0, 5.5, 6.0), (0, 6)) == {1}
+
+
+def test_a_stretch_whose_ends_have_no_value_returns_its_highest_and_lowest_inside() -> None:
+    assert extreme_seconds_with_gaps(0, (None, 0.3, 0.9, None, 0.1, 0.5, None), (0, 6)) == {2, 4}
+
+
+def test_a_stretch_with_no_value_inside_returns_nothing() -> None:
+    assert extreme_seconds_with_gaps(0, (1.0, None, None, None, 2.0), (0, 4)) == set()
+    assert extreme_seconds_with_gaps(0, (None, None, None, None, None), (0, 4)) == set()

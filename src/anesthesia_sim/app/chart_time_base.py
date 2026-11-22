@@ -58,6 +58,7 @@ __all__ = [
     "ChartTimeBase",
     "drawn_seconds",
     "extreme_seconds",
+    "extreme_seconds_with_gaps",
     "fit_to_run",
     "fitted_window",
     "following_window",
@@ -499,6 +500,63 @@ def extreme_seconds(first_s: int, values: Sequence[float], drawn_s: Sequence[int
         lowest = min(inside)
 
         if lowest < left and lowest < right:
+            found.add(left_s + 1 + inside.index(lowest))
+
+    return found
+
+
+def extreme_seconds_with_gaps(
+    first_s: int, values: Sequence[float | None], drawn_s: Sequence[int]
+) -> set[int]:
+    """Return what `extreme_seconds` returns, for a trace that has no value at some seconds.
+
+    The F_A/F_I ratio has no value at a second whose inspired fraction is
+    below the smallest one the display resolves (`wash_in.wash_in_ratio`).
+    Its turns between two columns are drawn by the rule of `extreme_seconds`,
+    with one more rule for such a second (`PL-DN13`). **A second with no
+    value is left out of the search.** It is never returned, and an end of a
+    stretch that has no value is not compared with. So a value inside a
+    stretch is returned where it lies outside each end that has a value.
+    Where neither end has one, the highest and the lowest values inside are
+    both returned. No value is put in place of a missing one.
+
+    The six fractions have a value at every second, so they are searched by
+    `extreme_seconds`. That search reads each stretch at the speed of the
+    stored arrays, and this one does not.
+
+    Args:
+        first_s: The second of `values[0]`.
+        values: The trace's value at each second from `first_s`, one entry
+            per second, or `None` at a second where it has no value.
+        drawn_s: The seconds already drawn, ascending, each within `values`.
+
+    Returns:
+        The seconds to draw as well, as `extreme_seconds` returns them.
+    """
+
+    found: set[int] = set()
+
+    for left_s, right_s in itertools.pairwise(drawn_s):
+        if right_s - left_s < 2:
+            continue
+
+        ends = [
+            end for end in (values[left_s - first_s], values[right_s - first_s]) if end is not None
+        ]
+        inside = values[left_s - first_s + 1 : right_s - first_s]
+        present = [value for value in inside if value is not None]
+
+        if not present:
+            continue
+
+        highest = max(present)
+
+        if all(highest > end for end in ends):
+            found.add(left_s + 1 + inside.index(highest))
+
+        lowest = min(present)
+
+        if all(lowest < end for end in ends):
             found.add(left_s + 1 + inside.index(lowest))
 
     return found

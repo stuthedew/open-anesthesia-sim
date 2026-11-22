@@ -1943,9 +1943,25 @@ measured 2026-11-21). Predicting every
 second to the right edge of a 12-hour axis took 0.26 s, so a drag on a dial
 stuttered. The preview now takes about 0.03 s on any axis.
 
-The F_A/F_I plot still draws one value for each column. It divides the two
-fractions at each drawn second, and the ratio can turn at a second where
-neither fraction does (`PL-DN13`).
+**The F_A/F_I plot draws the ratio's own peaks and troughs between two columns
+too** (`PL-DN13`). The ratio can turn at a second where neither fraction does.
+After the dial is raised, the inspired fraction rises faster than the alveolar
+one, so the ratio falls for some seconds and then recovers. So the chart also
+draws the second at which the ratio is highest and the second at which it is
+lowest between two columns, by the rule it uses for a compartment. A second
+whose inspired fraction is too small to divide by has no ratio. That second is
+left out of the search, and a column with no ratio is not compared with.
+
+A plot that drew the ratio only at its columns and at the fractions' turns
+could draw it above its trough. With the default sevoflurane patient on the
+twelve-hour time base, the dial was raised to 8% at each second from 30 s to
+102 s in turn. The largest gap between the drawn line and the trough was 0.090
+of the ratio on a plot 1 000 px wide, 0.12 at 600 px and 0.065 at 1 500 px. The
+axis spans 0 to 1.15, so a gap of 0.090 is about 8% of the plot's height. The
+same dial raised later in the run left smaller gaps: up to 0.022 at 1 000 px
+when raised to 8% between 600 s and 672 s. Measured on 2026-11-22.
+
+<!-- not-restated: 8 % -->
 
 **The user chooses which compartment traces are drawn and how wide a window
 of the run the chart shows, and neither choice changes the run.** The two
@@ -2191,7 +2207,11 @@ value, and that each compartment's highest and lowest values between two
 columns are drawn
 (`test_a_peak_between_two_chart_columns_is_drawn_at_its_stored_value` and
 `test_every_compartments_highest_and_lowest_value_in_each_column_is_drawn` in
-`tests/integration/controller/test_controller_stored_states.py`). A preview
+`tests/integration/controller/test_controller_stored_states.py`). A third
+checks that a trough of the F_A/F_I ratio between two columns is drawn at its
+stored value
+(`test_a_trough_of_the_ratio_between_two_chart_columns_is_drawn_at_its_stored_value`
+in the same file). A preview
 is drawn by the same rule, so its peaks and troughs are drawn too. With
 sevoflurane at 2% for five minutes and the dial then turned off, a preview
 draws the alveolar peak 2 s later, the vessel-rich peak 63 s later and the

@@ -403,7 +403,8 @@ drawn seconds are anchored to an absolute grid measured from the case's zero,
 rather than to their position within the window. So a window that follows the
 run keeps every column it had and gains at most one (`drawn_seconds` in
 `app/chart_time_base.py`). Between two columns the chart also draws the second
-of each compartment's peak and trough (`extreme_seconds`, PL-BLZJ).
+of each compartment's peak and trough (`extreme_seconds`, PL-BLZJ), and of the
+F_A/F_I ratio's (`extreme_seconds_with_gaps`, PL-DN13).
 
 The chart-frame module (`app/chart_frame.py`) is the layer above the drawn
 window. It holds the rule of one column per pixel, with that rule's
