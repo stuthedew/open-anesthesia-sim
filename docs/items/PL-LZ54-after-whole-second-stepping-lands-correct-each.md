@@ -11,6 +11,7 @@ blocked-by: PL-Z6C8
 deferred-from: v0.7.0 - a new problem: the passages describe the 0.1 s step and the chart as they were before work done after the freeze, the whole-second stepping build (#2180, d4e8200c) among it, and PL-5FMC (#2181) listed them
 added: 2026-11-21
 closed: 2026-11-22
+pr: 2246
 payoff: A contributor reading the interface specification about the step, the chart and branching reads what the code now does, not what the 0.1 s step did.
 verify: grep -qF 'The caption and the trace are computed separately' docs/INTERFACE.md
 ---

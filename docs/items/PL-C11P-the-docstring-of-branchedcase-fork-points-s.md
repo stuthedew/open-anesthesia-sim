@@ -6,6 +6,7 @@ feature: run-computed-one-way
 touches: src/anesthesia_sim/app/controller.py
 added: 2026-11-22
 closed: 2026-11-22
+pr: 2246
 verify: ! grep -qF 'rejects any other instant' src/anesthesia_sim/app/controller.py
 ---
 
