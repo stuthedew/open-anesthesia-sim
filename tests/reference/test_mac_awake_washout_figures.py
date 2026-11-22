@@ -1,10 +1,10 @@
-"""The washout figures that `docs/MODEL.md` prints for the MAC-awake band match the model.
+"""The washout figures that `docs/INTERFACE.md` prints for the MAC-awake band match the model.
 
 `docs/INTERFACE.md` § "MAC-awake as a chart reference" gives one emergence
 measured on the model. Sevoflurane runs for 3 hours at the opening vaporizer
 dial setting of 2.0% and the default fresh gas flow of 4 L/min. Then the
 vaporizer is turned off and the fresh gas flow is raised to 10 L/min. The
-section prints six figures from that run, and a learner takes them as what the
+section prints figures from that run, and a learner takes them as what the
 model does. They depend on the partition coefficients, the volumes, the
 ventilation, the cardiac output and the protocol. Before `PL-PTDZ`, no test
 checked them. A parameter change would have left the specification teaching a
@@ -61,6 +61,7 @@ class Washout:
 
     maintenance_alveolar_percent: float
     maintenance_alveolar_mac: float
+    maintenance_vessel_rich_mac: float
     band_centre_percent: float
     alveolar_crossing_min: float
     vessel_rich_crossing_min: float
@@ -78,6 +79,7 @@ class PrintedFigures:
     washout_fresh_gas_flow_l_min: str
     maintenance_alveolar_percent: str
     maintenance_alveolar_mac: str
+    maintenance_vessel_rich_mac: str
     alveolar_crossing_min: str
     vessel_rich_crossing_min: str
     crossing_ratio: str
@@ -128,6 +130,7 @@ def _printed() -> PrintedFigures:
         rf"The vaporizer was then turned off and the fresh gas flow raised to {whole} L/min", text
     )
     percent, mac = _one(rf"alveolar fraction only to {number}%, or {number} MAC", text)
+    (vessel_rich_mac,) = _one(rf"the vessel-rich trace reached only {number} MAC", text)
     (alveolar,) = _one(rf"alveolar trace crosses the band's centre at {number} min", text)
     vessel_rich, ratio = _one(
         rf"vessel-rich trace crosses it at {number} min, {number} times later", text
@@ -148,6 +151,7 @@ def _printed() -> PrintedFigures:
         washout_fresh_gas_flow_l_min=washout_flow,
         maintenance_alveolar_percent=percent,
         maintenance_alveolar_mac=mac,
+        maintenance_vessel_rich_mac=vessel_rich_mac,
         alveolar_crossing_min=alveolar,
         vessel_rich_crossing_min=vessel_rich,
         crossing_ratio=ratio,
@@ -232,6 +236,7 @@ def washout() -> Washout:
         system.advance()
 
     alveolar_fraction = system.alveoli.partial_pressure_fraction
+    vessel_rich_fraction = system.patient.vessel_rich.partial_pressure_fraction
     system.set_delivered_concentration_percent(Percent(0.0))
     system.set_fresh_gas_flow(FreshGasFlow(float(printed.washout_fresh_gas_flow_l_min)))
     crossings = _crossing_min(
@@ -250,6 +255,7 @@ def washout() -> Washout:
     return Washout(
         maintenance_alveolar_percent=alveolar_fraction * 100.0,
         maintenance_alveolar_mac=alveolar_fraction * 100.0 / mac_percent,
+        maintenance_vessel_rich_mac=vessel_rich_fraction * 100.0 / mac_percent,
         band_centre_percent=band_centre * 100.0,
         alveolar_crossing_min=crossings["alveolar"],
         vessel_rich_crossing_min=crossings["vessel_rich"],
@@ -272,6 +278,10 @@ FIGURES: dict[str, Callable[[Washout, PrintedFigures], tuple[float, str]]] = {
     "maintenance alveolar MAC": lambda w, p: (
         w.maintenance_alveolar_mac,
         p.maintenance_alveolar_mac,
+    ),
+    "maintenance vessel-rich MAC": lambda w, p: (
+        w.maintenance_vessel_rich_mac,
+        p.maintenance_vessel_rich_mac,
     ),
     "alveolar crossing": lambda w, p: (w.alveolar_crossing_min, p.alveolar_crossing_min),
     "vessel-rich crossing": lambda w, p: (w.vessel_rich_crossing_min, p.vessel_rich_crossing_min),
