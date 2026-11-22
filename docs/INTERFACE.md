@@ -847,7 +847,8 @@ interface. The module's docstring says where each flow is stored and checked aga
 `core/blood_flow.py` holds the perfusion fraction and the blood flow. A record restored from a
 pickle or a copy runs its constructor's checks (`core/checked_record.py`). Each compartment
 checks a field as it is written, in its `__setattr__`, and its `restore_state` says why a
-rollback bypasses that check. The dial is checked against the vaporizer maximum by
+rollback bypasses that check. A new cardiac output written onto a built patient is refused, and
+the refusal names `set_cardiac_output`, so that cardiac output has one way in. The dial is checked against the vaporizer maximum by
 `require_within_vaporizer_maximum` in `core/validation.py`, from both the circuit and the
 settings record (`UptakeEquationSettings` in `core/governing_equations.py`). The docstrings of
 `SimulationController.reset` and `SimulationController._record_control_change` say how the
@@ -1379,8 +1380,9 @@ Reset pauses the simulation and keeps the user's selected settings. It also:
 
 **Reset on a branch returns it to the point where it was taken from its parent
 run, rather than to zero.** The branch's simulation time, state and
-accounting go back to the fork, because a branch never held the case's induction
-(§ "What this requires of a branch"). Its timeline of control inputs then holds
+accounting go back to the fork, because that is where the branch began. The
+states it holds before the fork are a copy of its parent's (§ "What this
+requires of a branch"). Its timeline of control inputs then holds
 the entries that the branch first opened with, followed by each setting that
 Reset kept and that differs from the one the branch opened under.
 
@@ -1847,10 +1849,9 @@ substance (`test_a_drawn_window_refuses_another_substance` in
 
 Every point that a chart trace draws is a state the
 run reached, at the instant where it is drawn. The interface never interpolates, smooths,
-averages or otherwise makes up a plotted value. The model computes each point
-from the run's definition, which gives the run's state at any instant directly,
-by formula. No stored series of values lies behind a trace, so none can disagree
-with it. The values that a chart draws are for display only, and the program
+averages or otherwise makes up a plotted value. Each point is the state that
+the run stored for that second, which is the state the readouts showed at that
+second. The values that a chart draws are for display only, and the program
 prevents their use for anything else (§ "Each second has one stored state" above).
 
 **The chart draws the run's state at one instant for each pixel boundary of
@@ -2110,9 +2111,11 @@ screen shows the delivered rate.
 
 **For developers.** A chart draws from a window of states (`DrawnWindow` in
 `app/run_series.py`), one for each instant that a frame plots. The controller
-evaluates them from the run's definition (`SimulationController.drawn_window`,
-`core/run_definition.py`). Keeping no stored samples of the run is a decision
-(project owner, 2026-09-05, recorded here when the sample store was deleted).
+reads each of them from the run's stored states (`SimulationController.drawn_window`,
+`SimulationState.stored_states`), so a point on a trace is the value that the
+readout showed at that second (`PL-MH9J`). Whole-second steps brought in the
+stored states, which replaced the earlier design of keeping no stored samples
+and computing each point from the run's definition (project owner, 2026-09-05).
 
 Each state carries its substance's six compartment values, as fractions of one
 atmosphere, under stable identifiers (`RecordedQuantity`). A trace addresses one
@@ -2169,8 +2172,8 @@ Each control change is a drawn instant because the run has a kink there: the
 derivative of the circuit fraction is discontinuous. Without a drawn instant
 there, the interpolation error at that instant would scale as O(h), in
 proportion to the spacing h between drawn instants, rather than as O(h²), in
-proportion to its square. The stored state drawn at a control change is a
-keyframe, not one propagated from an earlier instant.
+proportion to its square. The state drawn at a control change is the one that
+the run stored for that second, like every other drawn state.
 
 The pixel in the one-pixel guarantee is a logical pixel of the plot, the
 resolution at which the axis is ruled and labelled.

@@ -1641,8 +1641,8 @@ class SimulationController:
         keyframe that starts the stretch before `instant_s`, as every branch's
         does. `_open_at` does this. `docs/INTERFACE.md` § "What this requires
         of a branch" states the rule: a branch records as its provenance the
-        stretch that ran up to its fork, which nothing the trunk later does at
-        the fork can replace.
+        stretch that ran up to its fork. For a fork after the case's opening,
+        nothing the trunk later does at the fork can replace that stretch.
 
         **The branch runs under the change made at `instant_s`, and records
         that change in its own timeline** (`PL-ZR49`). A keyframe is a setting
