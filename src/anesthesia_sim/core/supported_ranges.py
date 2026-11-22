@@ -341,8 +341,8 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # it a run may go.
 #
 # **This is a declared envelope, not a discovered cliff**, exactly as
-# `docs/INTERFACE.md` § "What a setting outside the range costs" says of the three
-# intervals above. Nothing breaks at hour 25, and the equations solve as
+# `docs/INTERFACE.md` § "Why a setting outside the ranges is refused" says of
+# the three intervals above. Nothing breaks at hour 25, and the equations solve as
 # exactly there as anywhere else. What stops at the boundary is the claim that
 # the solution represents a patient. Moving the boundary is a safety-critical
 # change and takes the same work as widening those intervals: argue the wider

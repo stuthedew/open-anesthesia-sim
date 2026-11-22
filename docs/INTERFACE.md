@@ -11,6 +11,11 @@ model that computes the displayed values.
 
 ## Runtime controls
 
+This section names the four controls and says when a change to one acts. Its
+subsections then say how a run halts on a mark, what a run records, how a
+branch is taken from a run, and the range over which each control is
+supported.
+
 Four settings are the model's only inputs. Each can be changed during a run
 without resetting the model's state:
 
@@ -43,6 +48,14 @@ produce different runs. `docs/VERIFICATION.md` § "Supported simulation step" qu
 **For developers.** § "Interface boundary" sets the constraints on the
 interface's own settings. `docs/VERIFICATION.md` § "The reproducibility guarantee" rules out treating
 the playback rate as a model input.
+
+The tests check that a run reaches the same definition at every playback rate
+(`test_a_run_reaches_the_same_definition_at_every_playback_rate` in
+`tests/integration/test_sevo_controller.py`). They also check that a change of
+ventilation or of cardiac output leaves the stored agent where it was
+(`test_changing_ventilation_preserves_alveolar_agent` in
+`tests/unit/test_alveolar.py` and `test_changing_output_preserves_stored_agent`
+in `tests/unit/test_patient.py`).
 
 ### Halting on a marked crossing
 
@@ -139,6 +152,46 @@ trunk, the run that branches are taken from.** When the trunk halted at a
 target's exact height on readings that it carries forward step by step, a branch
 opened on the halting step could show that target as still running.
 
+**For developers.** A crossing is decided from the two states that the run
+stored for the ends of the step: the second before and the second the step
+reached (`SimulationController._step_ending_here`, § "Each second has one
+stored state"). Each end has one reading, so the run, a branch and a later
+review of the halt all decide from the same two numbers.
+
+The height band (`HEIGHT_BAND` in `core/rounding.py`) is there because a steady
+compartment's reading moves in its last digit from step to step. Its docstring
+gives the measurement that showed this. A marked instant needs no reading,
+because whether a step crosses it depends only on the step's two seconds.
+
+The tests are in `tests/unit/test_bookmarks.py` unless another file is named. A
+halt lands on the same step at 1x and at 300x
+(`test_a_halt_lands_on_the_same_step_at_1x_and_at_300x`) and leaves the run
+paused on the crossing step
+(`test_a_halt_leaves_the_run_paused_on_the_crossing_step`). An unmarked run
+takes the same trajectory as one that halted
+(`test_an_unmarked_run_takes_the_same_trajectory_as_one_that_halted`). The
+status does not read as the learner's own pause
+(`test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` in
+`tests/unit/test_dashboard_frame.py`). A halt can show one display count past a
+circuit target and many past an alveolar one
+(`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past`
+and
+`test_an_alveolar_target_can_halt_many_counts_past_its_mark_when_ventilation_resumes`
+in `tests/integration/controller/test_controller_bookmarks.py`). A target is
+crossed in either direction
+(`test_a_target_halts_on_every_crossing_in_either_direction`), once by a run
+that settles on it
+(`test_a_run_that_settles_exactly_on_a_target_halts_once_and_then_advances`),
+and never by leaving its height
+(`test_a_target_is_not_crossed_by_leaving_its_height_in_either_direction`). A
+reading on either edge of the band is inside it
+(`test_a_reading_exactly_on_the_lower_edge_of_the_band_is_inside_it` and
+`test_a_reading_exactly_on_the_upper_edge_of_the_band_is_inside_it`). A branch
+opened on a halting step agrees with the trunk
+(`test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk`).
+
+#### What a mark's row reports
+
 **The state of a mark is one of six outcomes.** Each of the last four has its
 own wording, because a reader would otherwise mistake it for one of the others.
 
@@ -207,7 +260,7 @@ own wording, because a reader would otherwise mistake it for one of the others.
   could not draw. The run's status word and banner report the error, because
   it is the run's last event. So such a run shows the error in its status, and
   the supported run length on the row of each mark that it did not reach
-  (`test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_its_place`).
+  (`test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_its_place` in `tests/integration/controller/test_controller_supported_length.py`).
 
 **Time bookmarks and MAC targets are reported in different words.** A run's
 clock only moves forward, and it never goes below the instant the run began. So
@@ -233,28 +286,13 @@ every time the row is drawn, so it survives a rewind. "Reached" would have to
 be withdrawn, and failing to withdraw it would leave a displayed value quietly
 wrong.
 
-**For developers.** Nothing marked enters a governing equation, opens a segment
-or moves a keyframe.
-
-A crossing is decided from the two states that the run stored for the ends of
-the step: the second before and the second the step reached
-(`SimulationController._step_ending_here`, § "Each second has one stored
-state"). Each end has one reading, so the run, a branch and a later review of
-the halt all decide from the same two numbers.
-
-The height band (`HEIGHT_BAND` in `core/rounding.py`) is there because a steady
-compartment's reading moves in its last digit from step to step. When
-crossings were tested at the exact height, a run with no ventilation and a
-target on the circuit at 1.00 ×MAC of a 1 MAC dial halted 965 times in ten
-minutes (2026-11-01, when a run stepped every 0.1 s). A marked instant needs
-no reading, because whether a step crosses it depends only on the step's two
-seconds.
-
 ### The control-input record
 
-The record lists each change to a control that the model runs under.
-§ "The control-input timeline" below explains what the record is for, what it
-shows and why it takes this form.
+A run keeps three records. The control-input timeline lists each change to a
+control that the model ran under, and is what the learner sees. The stored
+states hold the state of every second the run has reached. The settings record
+holds the settings in force at each second. The subsections below say what
+each record holds and what it is for.
 
 #### The control-input timeline
 
@@ -318,7 +356,8 @@ because each chart has its own time window (§ "The chart's time base").
 **The timeline itself has no limit.** The limits above apply only to what is
 shown. Capping the timeline would lose the settings needed to reproduce the run.
 Dropping the oldest entries would remove the start of the case, which is the
-part a learner returns to.
+part a learner returns to. The timeline can be unlimited because it grows with
+the number of settings changed, not with the length of the run.
 
 **For developers.** Each control is recorded under a fixed name from the
 clinical vocabulary: `fresh_gas_flow`, `delivered`, `alveolar_ventilation` and
@@ -360,24 +399,35 @@ and its documents say what each limit does but not why it is that number
 (`PL-DR1Z`, `PL-N8G4`). The comment beside each limit says what changing it
 would do.
 
-Capping the timeline would not bound memory use, because the run itself holds
-one stretch and one keyframe for each accepted change and has no limit either
-(§ "A run stores the state of every second it reaches").
+Grouping the entries for display is recomputed only when the timeline changes
+(`AdjustmentGrouping` in `app/control_timeline.py`). `PL-1PSX` holds the
+measurements of how fast the timeline grew and what grouping it cost.
 
-The timeline can be unlimited because it grows with the number of settings
-changed, not with the length of the run. Until a drag was recorded only on its
-release (`PL-5B1N`), each drag added at most one entry per simulation step,
-however fast the slider reported. The number of entries per real second then
-depended on the tick rather than on simulated time, so it was the same at every
-playback multiplier. On 2026-09-14, under `PL-1PSX`, continuous dragging gave
-ten entries per real second at 1×, 5×, 20×, 60× and 300× alike, and a drag made
-while the run was paused gave one entry. Grouping the entries for display costs
-0.9 ms per frame at a thousand entries and 8.8 ms at ten thousand, against a
-200 ms frame. The grouping is recomputed only when the timeline changes. At a
-hundred thousand entries it would cost half a frame. Reaching that many took
-about three hours of unbroken dragging under the old behaviour, and the
-timeline would then be smaller than 9 MB.
-<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
+The tests are in
+`tests/integration/controller/test_controller_control_timeline.py` unless
+another file is named. A change is stamped with the instant it took effect
+(`test_a_recorded_change_is_stamped_with_the_instant_it_took_effect`), and the
+dial is recorded as the percent dialled
+(`test_the_control_timeline_records_the_vaporizer_percent_as_dialled`). A value
+equal to the one in place, or a refused one, records nothing
+(`test_a_setting_equal_to_the_one_in_place_records_nothing` and
+`test_a_refused_setting_records_nothing`), and changes within one step collapse
+to what the model integrated
+(`test_changes_within_one_step_collapse_to_what_the_model_integrated`).
+Each input the interface declares on one control is an adjustment of its own
+(`test_declared_steps_of_one_control_at_three_instants_are_three_adjustments`),
+changes with no input declared between them are one adjustment
+(`test_unannounced_steps_of_one_control_at_three_instants_are_one_adjustment`),
+and a drag reads as one act (`test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw`
+in `tests/unit/test_control_timeline.py`). The recorded timeline reproduces the
+run step for step (`test_the_recorded_timeline_reproduces_the_run_step_for_step`
+in `tests/integration/test_control_timeline_replay.py`). The screen says that a
+control mark is an input and not a measurement
+(`test_the_screen_says_a_control_mark_is_an_input_not_a_measurement` in
+`tests/integration/simulation_view/test_simulation_view_whole_interface.py`). A
+chart leaves its oldest marks unmarked when it has more than it can show
+(`test_marks_beyond_the_pool_are_the_oldest_left_unmarked` in
+`tests/integration/test_qt_chart.py`).
 
 #### A run stores the state of every second it reaches
 
@@ -390,13 +440,14 @@ implemented)" computes each step. The run's record of stored states holds one
 state for every second from the run's opening to the second it has reached.
 
 **A run also records its settings, and computes no state from them.** The
-settings are the four controls above, together with the patient and agent
+settings are the four controls that § "Runtime controls" names, together with
+the patient and agent
 parameters that the equations use. They are kept as *stretches*: a stretch
 holds one set of settings and the second at which it took effect. Flows are
 stored as they were set, in liters per minute (`docs/VERIFICATION.md` § "Time"
 explains why). The settings record says which settings were in force at a
-second, which is what a branch records as where it came from. The
-control-input timeline above is a third record, kept to show and group the
+second, which is what a branch records as where it came from. The control-input timeline (§ "The
+control-input timeline") is a third record, kept to show and group the
 changes.
 
 **A run of the supported length fits in memory.** A run of 24 h, the longest
@@ -409,6 +460,12 @@ compensation terms of its two running totals take 1.4 MB more (measured
 `core/stored_states.py`, and the settings record is `RunDefinition` in
 `core/run_definition.py`. The memory figures are measured in the docstring of
 `core/stored_states.py`.
+
+Each second returns the state stored for it bit for bit
+(`test_each_second_returns_the_state_stored_for_it_bit_for_bit` in
+`tests/unit/test_stored_states.py`), and a recorded setting gives back what was
+set (`test_a_recorded_setting_round_trips_to_what_was_set` in
+`tests/unit/test_run_definition.py`).
 
 #### Each second has one stored state
 
@@ -440,8 +497,30 @@ percent readout resolves. A predicted state is never stored, compared or
 branched from.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
-**What this requires of a branch.** The roadmap asks that a branched run
-reproduce its parent exactly, not merely within a tolerance (`ROADMAP.md` item
+**For developers.** The readouts and the chart show the state stored for each
+second
+(`test_the_readouts_and_the_chart_show_the_state_stored_for_each_second`), a run
+halts on the second whose stored state first reaches a marked height
+(`test_a_run_halts_on_the_second_whose_stored_state_first_reaches_a_marked_height`),
+and a branch steps on from its parent's state at the fork
+(`test_a_branch_stores_its_parents_state_at_the_fork_and_steps_on_from_it`).
+These three are in
+`tests/integration/controller/test_controller_stored_states.py`. A run cannot
+open between two seconds
+(`test_an_opening_that_is_not_a_whole_second_cannot_be_built` in
+`tests/unit/test_run_definition.py`). Each predicted second matches the second
+the run stepped (`test_each_predicted_second_matches_the_second_the_run_stepped`
+and `test_a_prediction_at_chosen_seconds_matches_the_seconds_the_run_stepped` in
+`tests/unit/test_prediction.py`).
+
+### What this requires of a branch
+
+The first run of a case is the **trunk**. A **branch** continues it in another
+way from an instant that the trunk passed through, and that instant is the
+**fork**. This document also calls the trunk the branch's parent. A branch is
+never taken from another branch.
+
+The roadmap asks that a branched run reproduce its parent exactly, not merely within a tolerance (`ROADMAP.md` item
 12). A branch holds a copy of its parent's stored states up to the fork. It
 steps on from the state stored for the fork, together with the compensation
 terms of the running totals stored beside it. So while no setting differs,
@@ -450,6 +529,16 @@ delivered and exhausted totals included. A branch can be taken at any whole
 second its parent has reached: at a control change, at a mark, or wherever a
 paused run stands. Taking a branch records nothing on the parent, so marking a
 run or branching from it never changes the parent's later states.
+
+**So no divergence is left over to bound, and there is nothing to show a
+learner.** The roadmap's definition of done for v0.5.0 asks this document for
+"the bound on any divergence that could not be eliminated" (`ROADMAP.md`). A
+branch and its parent hold the same stored state at every second they share,
+until a setting differs. The one computed value is the preview, and it is only
+drawn. A bound of zero drawn on screen would tell a learner there is something
+to watch where there is nothing. § "What a branch comparison asserts, and what
+it does not" says what a comparison of the two drawn runs may claim, and the
+zero bound is one of those claims.
 
 **A branch's simulated time is the case's time, measured from induction.** It
 continues the parent's time rather than restarting at the fork. This one time
@@ -463,6 +552,8 @@ zero would place the patient at the wrong point on the uptake curve, on the
 clock, the control marks and the axis at once. That is the correct value shown
 under the wrong patient context, which the project's safety-critical standard
 (`CLAUDE.md`) counts as a failure in its own right.
+
+#### The settings a branch runs under
 
 **A branch taken where a run is paused or stopped runs under the settings the
 dials show there, and records the settings the run had on its way there as
@@ -532,6 +623,8 @@ state, and the branch did run under those settings from there. Its own
 timeline still states them, as its copy of the trunk's changes made before
 Start.
 
+#### Returning to a mark, and branching where a run is paused
+
 **Returning to a mark the run has already passed is a branch taken at the
 mark's second.** Consider a learner paused at three hours who marks the
 one-hour point and goes back to it. The run stored a state for that second, so
@@ -591,15 +684,7 @@ step left for a branch to take. A run that stands at its opening is refused,
 because it has recorded nothing to branch from. A branch at the opening is
 taken from the "From" selector's opening entry instead.
 
-**So no divergence is left over to bound, and there is nothing to show a
-learner.** The roadmap's definition of done for v0.5.0 asks this document for
-"the bound on any divergence that could not be eliminated" (`ROADMAP.md`). A
-branch and its parent hold the same stored state at every second they share,
-until a setting differs. The one computed value is the preview, and it is only
-drawn. A bound of zero drawn on screen would tell a learner there is something
-to watch where there is nothing. § "What a branch comparison asserts, and what
-it does not" says what a comparison of the two drawn runs may claim, and the
-zero bound is one of those claims.
+#### How a branch is drawn
 
 **A branch's chart starts at the fork.** The branch holds its parent's states
 before the fork, but it did not live through them. Every fork therefore
@@ -635,6 +720,8 @@ that second.
 **At the columns they share, a branch and its parent draw the same values in
 every digit** while no setting differs, because each draws the states it
 stored.
+
+#### The code and tests behind branching
 
 **For developers.** The three ways of branching are
 `SimulationController.resumed_at()` at a stored second,
@@ -714,7 +801,7 @@ and 5.0 L/min, both on a step, so the refusal changes nothing that the simulator
 
 **The maxima for fresh gas flow, ventilation and cardiac output come from no source.** Each was
 chosen as the edge of the settings that the interface offers and that two tests cover
-(§ "What a setting outside the range costs").
+(§ "Why a setting outside the ranges is refused").
 
 **Zero is a supported setting on every control, deliberately.** There are three reasons, and
 the third decides it:
@@ -752,207 +839,42 @@ replaced. A later change to one fraction of a built group would run neither chec
 leave tissue flows that no longer sum to the cardiac output. A change to a
 fraction is therefore refused.
 
-**For developers.** Each flow is its own subclass of `float`, declared with its range in
-`core/supported_ranges.py`: `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`. Only a
-type's constructor runs the range check, and nothing else produces a value of the type. A flow
-is therefore checked once, when its value is made, not where it is stored or used. A flow
-outside its range raises a `SimulationConfigurationError`, so a script, a notebook and a test
-meet the same error as the interface. The error marks a refused argument, which
-`docs/VERIFICATION.md` § "Step atomicity" distinguishes from a step that broke down.
+**For developers.** The checks behind these requirements are in `core/`, and each module's
+docstrings explain them. Each flow is a checked type, a subclass of `float` declared with its
+range in `core/supported_ranges.py` (`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`).
+Only its constructor checks the range, and a flow outside it raises
+`SimulationConfigurationError`, so a script, a notebook and a test meet the same refusal as the
+interface. The module's docstring says where each flow is stored and checked again by type.
+`core/checked_number.py` says what every checked type may be built from, and
+`core/blood_flow.py` holds the perfusion fraction and the blood flow. A record restored from a
+pickle or a copy runs its constructor's checks (`core/checked_record.py`). Each compartment
+checks a field as it is written, in its `__setattr__`, and its `restore_state` says why a
+rollback bypasses that check. A new cardiac output written onto a built patient is refused, and
+the refusal names `set_cardiac_output`, so that cardiac output has one way in. The dial is checked against the vaporizer maximum by
+`require_within_vaporizer_maximum` in `core/validation.py`, from both the circuit and the
+settings record (`UptakeEquationSettings` in `core/governing_equations.py`). The docstrings of
+`SimulationController.reset` and `SimulationController._record_control_change` say how the
+controller refuses or undoes a setting that the settings record refuses.
 
-A flow is kept from one step to the next, and it can enter the simulation five ways: through a
-setter of the agent uptake system (`AgentUptakeSystem`), through the setter of the compartment
-that holds it, through that compartment's constructor, through the settings record
-(`UptakeEquationSettings`), or by assignment straight onto the compartment's field. The run's
-definition (`RunDefinition`) is built from the settings record, and keeps each change as a new
-record. Every field and argument that holds a flow requires the type, in the compartments, the
-settings record, the application's snapshot and the setters that feed them. A plain `float`
-passed to any of the five ways in is refused, whatever its value, with a `TypeError` that names
-the type to build. So no way in has to remember the check. The control timeline's fields are
-declared as plain `float` and are not checked, so a setting read back from it is rebuilt as its
-type. Arithmetic on a flow
-returns a plain `float`, so a value calculated from a flow is never taken as checked.
-
-A tissue group's perfusion fraction and its blood flow have checked types too, in
-`core/blood_flow.py`. The perfusion fraction (`PerfusionFraction`) is checked as above 0 and at
-most 1 when it is created. The blood flow (`BloodFlow`) is created only by multiplying a
-`CardiacOutput` by a `PerfusionFraction`, and it has no check of its own. Until these types
-existed, three places each checked a blood flow by hand as finite and not negative, and each
-accepted a flow that no supported cardiac output can give.
-
-**A checked record loaded from a saved file runs its constructor's checks.** Python restores a
-pickled or copied frozen dataclass through `__setstate__`, which by default writes each saved
-value straight into its field without running `__post_init__`. Instead, each frozen record in
-`core/` that checks its fields when it is built rebuilds itself from the saved values through
-`restore_through_checks` in `core/checked_record.py`. These include the settings
-records for the uptake equations and for a tissue group's equations, a run's keyframes
-(`Keyframe`), the breathing circuit's state and the parameter records. A saved value that the
-constructor would refuse is therefore refused on load, at every pickle protocol and by
-`copy.copy` and `copy.deepcopy`, with the constructor's own exception. The rebuild catches a wrong
-saved value. It does not protect against a pickle made to attack, because a pickle can call any
-importable function. Nothing in `src/` loads a pickle yet. A run definition (`RunDefinition`), the
-patient's compartments and the parameter payloads that the data files load into do not yet check
-their values on load. A saved record also holds its values in field order, without their names, so
-a record saved before its fields were reordered would load each value into the wrong field wherever
-the value still passes that field's checks (`PL-HXNL`).
-
-**A value assigned straight onto a flow field is refused at the assignment.** In `src/`, the
-type checker (`mypy`) refuses `circuit.fresh_gas_flow_l_min = 1000.0`, and the compartments' own
-methods write the field only from a checked flow. A plain `float` can still arrive from code
-that the type checker does not cover, such as a notebook, a test or a value typed `Any`. If the
-check came any later, the snapshot that the display reads would already have copied the value,
-and the readouts would have shown it. So the flow's check (`require_*`) runs in the `__setattr__`
-of the circuit, the alveolar compartment and the patient's compartments (`BreathingCircuit`,
-`AlveolarCompartment`, `PatientCompartments`). The write is refused with the same `TypeError` and
-message as the other ways in, and the field keeps its previous value. For a flow, the write checks
-the type. The fresh gas flow's write also checks the flow against the machine's range
-(§ "The model's envelope and a machine's deliverable range are two claims"). The dataclass
-constructor, `dataclasses.replace`, a copy and a pickle all write through `__setattr__`, so the
-compartments' constructors run no check of their own. A copy and a pickle write through it
-because each compartment is a `slots=True` dataclass, which they restore one field at a time. A
-`__dict__` would be updated without calling `__setattr__`.
-
-**Every checked type but `BloodFlow` is built from an `int` or a `float` and nothing else, with
-no sign at zero.** `BloodFlow` is built from a `CardiacOutput` and a `PerfusionFraction`, and it
-refuses a number. One file states what every other checked type is built from
-(`core/checked_number.py`), and `FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`,
-`PerfusionFraction`, `Fraction`, `Percent` and `CaseInstant` all build through it. They accept
-an `int` or a `float`, subclasses included, so a NumPy double passes. A `bool`, a `Decimal` or a
-string is refused with a `TypeError` that names the value and
-its type, before any comparison reads it. So is a value already built as another checked type,
-such as a `StepCount` or a `CaseInstant` passed to a flow's constructor, because such a value is
-a swapped argument. Minus zero is stored as zero, so a readout never shows `-0.0 L/min`. The
-range check is one chained comparison against both ends, ends included, except that a perfusion
-fraction must be above 0. A NaN fails both
-halves, and an infinity fails one. An `int` too large for a `float` is compared exactly and
-refused as outside the range, in the setting's own words. The step count (`StepCount`) refuses
-anything that is not an `int` in the same way, with a `TypeError`.
-
-Two more checks refuse a `bool`, a `Decimal` or a string, for each amount, flow and step that
-they check: the checks for a positive and for a non-negative finite number
-(`require_positive_finite`, `require_nonnegative_finite` in `core/validation.py`). The
-simulation step is built through the first of them. These two checks do not refuse a value
-built as another checked type, and they leave minus zero as it is. They refuse an `int` too
-large for a `float` by name, as outside what a `float` can hold, before `isfinite` reads it,
-because they have no supported range to compare it against.
-
-**The circuit and the settings record compare the vaporizer dial with its maximum through one
-shared check.** The delivered concentration has the same five ways in as a flow. Its bound is
-the maximum of the agent's vaporizer, not a constant of the model, so no type can carry it.
-Only a record that holds both the dial and the maximum can check one against the other. The
-circuit (`BreathingCircuit`) holds both. The settings record (`UptakeEquationSettings`) carries
-the maximum (`max_delivered_concentration_percent`) beside the dial, as a required field with no
-default. Each record's constructor refuses a dial above the maximum through
-`require_within_vaporizer_maximum` in `core/validation.py`. So both records refuse in the same
-words, and the rule is written once. Both accept zero, which is the vaporizer off, and the maximum
-itself. The settings record and the uptake system also refuse a dial above 99%, through
-`require_within_input_ceiling` in `core/supported_ranges.py`. No shipped vaporizer reaches 99%.
-The uptake system's settings method reads the maximum off the circuit
-(`AgentUptakeSystem.equation_settings()`), so each stretch of a run records the limit that its
-dial was set under. The propagator cache key carries the maximum with the rest of the record,
-although the matrix never reads the maximum.
-
-A tissue group's blood flow is computed in one place (`TissueGroup.blood_flow_l_min_at`). Each
-compartment is given its blood flow, rather than storing it, when it computes its time constant
-or takes a step (`time_constant_s`, `advance()`), as $`Q_i`$ is given to
-$`\tau_i = V_i\lambda_{i:b}/Q_i`$. So every flow follows the cardiac output through
-`set_cardiac_output`, a copy, `dataclasses.replace` and a pickle, and a copy made at another
-output leaves the original's flows unchanged. A tissue group is given a `BloodFlow`, and the
-venous pool is given the cardiac output. Each refuses a plain `float`, whatever its value, with
-a `TypeError` that names the type to build. A tissue group is given the blood:gas coefficient as
-well as its flow, so that it keeps no copy that could disagree with the coefficient
-(`docs/MODEL.md` § "How much agent each compartment holds"). A new cardiac output written onto the field of a built patient is
-refused, and the refusal names `set_cardiac_output`, so that cardiac output has one way in.
-Writing the value that the field already holds is accepted.
-
-A tissue group refuses a second write of its perfusion fraction (`TissueGroup`), and the refusal
-says to build a new patient with the new fractions. A tissue group written onto a built patient
-is refused unless the fractions, with the replacement in place, still sum to 1. A copy or a
-pickle writes the fraction once, onto a new object, so it is accepted. Neither a tissue group nor
-the patient lets a field be deleted, because a write after the deletion would bypass both checks.
-
-The settings record also refuses tissue flows that do not sum to the cardiac output. Only a
-fraction forced past its check, with `object.__setattr__`, can reach that refusal. At the next
-step, the method that advances the simulation (`advance()`) raises the refusal as a
-`SimulationNumericalError`, as it does for every check that fails inside a step. Through the
-simulation controller (`SimulationController`), the same refusal comes before that step begins,
-as a `SimulationConfigurationError`. The controller finds that the simulation's settings no longer
-match the run's definition, and builds the settings record to report why before it takes the step.
-At Reset, the controller refuses before it clears anything (`SimulationController.reset()`), and
-the interface halts the run. A setting change that the record refuses is undone, so the
-compartment, the run's definition and the timeline keep the previous setting. No setting change
-repairs such a fraction (§ "Reset behavior"). Putting the fractions back, or building a new
-patient, is the only repair.
-
-Code in `app/` changes settings only through the simulation controller, which saves the whole
-settings record at each change. Before each step, in the method that advances the run
-(`SimulationController.advance()`), the controller compares the current settings key
-(`AgentUptakeSystem.settings_key()`) with the key saved with the last settings record.
-
-The agent selector and the sliders read the snapshot only inside handlers guarded by the halt
-gate (`halt_gate` in `app/halt_gate.py`). A halt resets the selector from the run's settings
-record, because the selector would otherwise read the agent from the refused snapshot. If a halt
-comes before the screen is redrawn, every withheld value is hidden before the dials are written,
-because writing a dial can raise an exception.
-
-**The alveolar and tissue agent amounts are checked against the compartment's capacity when
-they are written.** The check runs in `__setattr__`, as a flow's check does. The partial
-pressure setter (`set_partial_pressure_fraction`) takes a checked `Fraction`, so no setter can
-store an amount greater than the capacity. An assignment onto the field could, and the resulting
-partial pressure above one atmosphere would be refused only two layers later, when the
-controller's snapshot built the `Fraction` (`SimulationController.snapshot()`). Whether an
-amount fits the volume that holds it is for the compartment to check, not for either value alone
-(`.claude/rules/core-domain.md`). So the alveolar compartment and each tissue group check it
-where the amount is stored. They check the constructor, the setter and a direct assignment
-alike, in the constructor's own words, and the field keeps its previous value.
-
-The one write that bypasses this check is a rollback, which puts back what the compartment held
-when the step began (`restore_state`). A rollback that could raise would replace the step's own
-error. It would also leave later compartments still holding the failed step (`docs/VERIFICATION.md` § "Step
-atomicity"). Only a write that bypasses the capacity's own check can shrink a capacity below a
-held amount, because each value is checked first by its own write. The rollback leaves that case
-to the snapshot, whose amount-over-capacity fraction refuses it visibly. No supported setting
-makes such a write. The tests reach a refusing snapshot by replacing the fraction that the
-snapshot reads.
-
-**Every checked field of the five run records goes through its constructor's checks when it
-is written.** The five are the circuit, the alveolar compartment, each tissue group, the venous
-pool and the validator (`BreathingCircuit`, `AlveolarCompartment`, `TissueGroup`,
-`VenousBloodCompartment`, `AgentSimulationValidator`). Each checks every field in `__setattr__`,
-the constructor's own writes included. So no constructor runs a check of its own, and nothing is
-written when a value is refused. A relation between two fields is checked by whichever field is
-written second. There are four such relations: the dial against the vaporizer's maximum, the
-fresh gas flow against the machine's range, the machine's range against the model's supported
-range, and each compartment's agent amount against its capacity. A volume or a partition
-coefficient too small for the agent that the compartment holds is therefore refused, as the
-circuit's volume setter (`set_circuit_volume`) refuses a circuit volume too small for its agent
-(`require_room_for_the_agent_held` in `core/validation.py`).
-
-The circuit stores its agent as a fraction of its volume. So a circuit volume assigned directly,
-bypassing the volume setter, cannot overfill the circuit, and is not refused. Instead the agent
-amount changes with the volume, and the circuit gains or loses agent that no flow carried. The
-next step then halts on the mismatch that the mass-balance check finds (`docs/VERIFICATION.md` § "Mass-balance
-identity"), and the step is rolled back.
-
-The venous pool's rollback bypasses its check, for the same reason as the alveolar and tissue
-rollback. The circuit and the validator roll back through their checks. Those checks cannot
-refuse a saved state (`capture_state()`), because nothing that the saved values are checked
-against can have changed since.
+The control timeline's fields are declared as plain `float` and are not checked, so a setting
+read back from it is rebuilt as its type. Nothing in `src/` loads a pickle yet, and a run
+definition (`RunDefinition`), the patient's compartments and the parameter payloads that the
+data files load into do not yet check their values on load. If a halt comes before the screen
+is redrawn, every withheld value is hidden before the dials are written, because writing a dial
+can raise an exception.
 
 The dashboard refuses a run that opens between two slider steps when it sets up its controls.
 One test checks this for an opening ventilation or cardiac output
 (`test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused` in
 `tests/unit/test_dashboard_frame.py`). Three tests in the same file check the three cases of the
-fresh gas flow control described below:
+fresh gas flow control that § "The model's envelope and a machine's deliverable range are two
+claims" describes:
 `test_the_fresh_gas_flow_control_narrows_to_a_declared_machine_range`,
 `test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it` and
 `test_an_opening_fresh_gas_flow_off_the_slider_grid_is_refused`.
 
 The zero-ventilation, zero-cardiac-output and zero-tissue-flow tests in `docs/VERIFICATION.md` § "Required tests"
 specify how the equations behave at zero flow.
-
-The flow maxima began as the interface sliders' maxima, before the model declared any range.
-Nothing in the equations breaks at 10.01 L/min, because the calculation is exact at any flow.
 
 **The supported ranges are the verification domain: the settings over which the model is checked
 against an independent solution.** The test in `docs/VERIFICATION.md` § "Independent-solution test" runs its
@@ -972,8 +894,9 @@ fails on purpose (`test_envelope_limits_match_the_supported_input_ranges` in
 the new limits. Update its limit constants, and the most that the exact step may differ from the
 independent solution (`EXACT_STEP_ORACLE_TOLERANCE`). Then re-derive every figure computed at the
 flow maxima: the fastest time constant in `docs/MODEL.md` § "Time constants" and `docs/VERIFICATION.md` § "Supported simulation step",
-the corner sweeps in `docs/VERIFICATION.md` § "The numerical envelope" and `tests/unit/test_numerical_envelope.py`, and
-the figures below.
+the corner sweeps in `docs/VERIFICATION.md` § "The numerical envelope" and
+`tests/unit/test_numerical_envelope.py`, and every figure in this document that a
+`provenance:` marker ties to one of the three flow maxima.
 
 Three tests stop a range from changing unnoticed. The first is the test above, which restates
 all six flow limits and fails if the model moves one. The second does the same for the displayed
@@ -998,7 +921,7 @@ length (`require_compartment_step` in `core/supported_ranges.py`).
 <!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 <!-- provenance: core/supported_ranges.py MINIMUM_COMPARTMENT_STEP_S = 0.001 -->
 
-#### What a setting outside the range costs
+#### Why a setting outside the ranges is refused
 
 **The simulator refuses a setting outside the ranges, because neither its code nor its model has
 been checked there.** The ranges are the model's **verification domain**. Across them, its results
@@ -1010,6 +933,10 @@ Outside the ranges, the simulator must refuse rather than show a plausible-looki
 exactly for a cardiac output of 1000 L/min, the model's equations would give a precise answer to a
 question that physiology does not ask, and nothing on the display would invite doubt. Such a
 cardiac output is not a patient, and the equations were never proposed to describe one.
+
+**For developers.** The smallest value above each maximum is refused
+(`test_rejects_the_smallest_value_above_the_maximum` in
+`tests/unit/test_supported_ranges.py`).
 
 #### The model's envelope and a machine's deliverable range are two claims
 
@@ -1096,9 +1023,10 @@ change to the data.
 
 #### Supported run length
 
-A run is supported up to **24 hours of elapsed simulated time**. This is the same kind of
-limit as the four ranges above. Outside the supported span, the equations still solve exactly,
-as "What a setting outside the range costs" says of the flows. What stops at the boundary is
+A run is supported up to **24 hours of elapsed simulated time**. This is the same kind of limit
+as the four ranges in § "Supported input ranges". Outside the supported span, the equations
+still solve exactly,
+as § "Why a setting outside the ranges is refused" says of the flows. What stops at the boundary is
 the claim that the solution represents a patient.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -1128,6 +1056,8 @@ shares the 24 hours its parent was using, and its elapsed time carries on from t
 the branch was taken. A branch taken at 23 h has one hour left.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
+##### What happens when a run reaches the limit
+
 **Reaching the limit is not a failure, and the interface may not present it as one.** The
 step past the limit is refused before it begins, so a run that stops there ends on a
 completed step inside the supported span. Every displayed value is therefore a real solution
@@ -1136,6 +1066,8 @@ there. Reset starts a new run. Describing a correct model as a broken one mislea
 surely as the reverse. It spends the interface's one signal for a real fault, and it teaches
 a reader to discount that signal. The interface must not present the stop as a pause either.
 Start is refused, because a resumed run's first step would be refused again.
+
+##### Why the limit is set where it is
 
 **What bounds the run length is what this model omits.** The first omission is metabolism,
 which this model does not have (`docs/MODEL.md` § "Known limitations"). The second is the fat group's flow.
@@ -1147,39 +1079,6 @@ missing metabolism is no longer negligible, and neither is the fat group's flow*
 (`docs/VERIFICATION.md` § "Published wash-in and elimination validation test"). A run beyond the limit therefore
 displays a trace whose slow component is increasingly the two omissions rather than the
 model.
-
-**Inside the limit, the washout tail already lacks its largest measured term, and the
-displayed number does not say so.** Every washout that the two Yasuda papers fitted needed
-five compartments. Their authors took the fourth to be fat filled by diffusion from the
-well-perfused tissue beside it. This model has no such route. The fourth compartment
-carries the largest term in the measured curve over most of the supported span: from about
-1.8 to 3.1 hours after a 30-minute administration until about 20.7 to 29.4 hours. The
-intertissue-diffusion note under `docs/MODEL.md` § "Known limitations" has the coefficients and the
-arithmetic. All else equal, a tail without that store falls faster than the measured one
-from about the third hour of elimination. Measured against the published mean curves over
-the whole supported run, the shipped tail does so (`docs/VERIFICATION.md` § "The first 24 hours of elimination
-against the published mean curves"). It runs about a third below the curves from about the
-seventh hour until about the twenty-first. For desflurane it runs below them by half, from
-3.4 to 15.3 hours. In the hours before that, it runs a fifth to a half above them, while
-the rebreathing circuit and the muscle group's slow return hold it up. At 23.5 hours of
-elimination it runs above them again, by 12 to 24%, or by a factor of 2.1 for desflurane.
-That is because this model's fat group returns more agent than the fitted fat term. In
-that subsection's open-circuit run, which has no rebreathing, the tissue return alone falls
-after the first hour as low as a third to a half of the mean curve, near hour 8 for
-desflurane and near hour 13 for the others.
-<!-- not-restated: 2.1 -->
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-
-**The tail's departures from the published curves do not move the 24 hours.** The limit
-rests on the two omissions above growing past negligible over the span, and the departures
-come from neither of them. In `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean
-curves", the metabolism bound accounts for about an eighth of the excess where the tail runs
-above the curves, and widens the gap where it runs below. The shortfall comes from the missing
-fourth compartment, which is as present in the first hour as in the last, so shortening the
-span would not remove it. Extending the span would add the late excess, which is still growing
-at 24 hours. The limit therefore certifies how closely the late tail follows a measured washout
-inside the span only as far as the comparison with the published mean curves goes.
-<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Sevoflurane is the agent for which the missing metabolism matters most, so it is the agent
 that constrains this limit. For sevoflurane, 2% to 5% of the absorbed dose is metabolized,
@@ -1244,6 +1143,44 @@ through an anesthetic-conserving device, which is exactly the regime in which th
 wrong. Supporting it needs a model extension, metabolism first. Raising this limit without
 that extension would produce the plausible-looking wrong values that this document exists to
 prevent.
+
+##### The washout tail inside the limit
+
+**Inside the limit, the washout tail already lacks its largest measured term, and the
+displayed number does not say so.** Every washout that the two Yasuda papers fitted needed
+five compartments. Their authors took the fourth to be fat filled by diffusion from the
+well-perfused tissue beside it. This model has no such route. The fourth compartment
+carries the largest term in the measured curve over most of the supported span: from about
+1.8 to 3.1 hours after a 30-minute administration until about 20.7 to 29.4 hours. The
+intertissue-diffusion note under `docs/MODEL.md` § "Known limitations" has the coefficients and the
+arithmetic. All else equal, a tail without that store falls faster than the measured one
+from about the third hour of elimination. Measured against the published mean curves over
+the whole supported run, the shipped tail does so (`docs/VERIFICATION.md` § "The first 24 hours of elimination
+against the published mean curves"). It runs about a third below the curves from about the
+seventh hour until about the twenty-first. For desflurane it runs below them by half, from
+3.4 to 15.3 hours. In the hours before that, it runs a fifth to a half above them, while
+the rebreathing circuit and the muscle group's slow return hold it up. At 23.5 hours of
+elimination it runs above them again, by 12 to 24%, or by a factor of 2.1 for desflurane.
+That is because this model's fat group returns more agent than the fitted fat term. In
+that subsection's open-circuit run, which has no rebreathing, the tissue return alone falls
+after the first hour as low as a third to a half of the mean curve, near hour 8 for
+desflurane and near hour 13 for the others.
+<!-- not-restated: 2.1 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+**The tail's departures from the published curves do not move the 24 hours.** The limit rests on
+the two omissions, metabolism and the fat group's flow
+(§ "Why the limit is set where it is"), growing past negligible over the span, and the departures
+come from neither of them. In `docs/VERIFICATION.md` § "The first 24 hours of elimination against the published mean
+curves", the metabolism bound accounts for about an eighth of the excess where the tail runs
+above the curves, and widens the gap where it runs below. The shortfall comes from the missing
+fourth compartment, which is as present in the first hour as in the last, so shortening the
+span would not remove it. Extending the span would add the late excess, which is still growing
+at 24 hours. The limit therefore certifies how closely the late tail follows a measured washout
+inside the span only as far as the comparison with the published mean curves goes.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
+##### The code and tests behind the run length
 
 **For developers.** The limit is declared as `MAXIMUM_ELAPSED_SIMULATION_TIME_S` in
 `core/supported_ranges.py`. Widening it is a safety-critical change on the same terms as
@@ -1330,6 +1267,27 @@ may catch a `SimulationDomainLimitError` on some other path, such as a setting. 
 recorded as the reason, and it takes precedence over the reason derived from the run.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
+The limit is 24 hours (`test_the_supported_run_length_is_twenty_four_hours` in
+`tests/unit/test_supported_ranges.py`), and the step that would cross it is
+refused (`test_the_step_that_would_cross_the_boundary_is_refused`, in the same
+file). Stopping there is not a failure
+(`test_stopping_at_the_supported_run_length_is_not_a_failure` in
+`tests/integration/controller/test_controller_supported_length.py`), and the
+notice does not describe one
+(`test_the_supported_run_length_notice_does_not_describe_a_failure` in
+`tests/unit/test_dashboard_frame.py`). A run standing on the limit reads as
+stopped from the step that arrives there
+(`test_a_run_standing_on_the_supported_run_length_reads_as_stopped_from_the_arriving_step`),
+and no branch can be taken where it stands
+(`test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_stands`),
+both in `tests/integration/controller/test_controller_supported_length.py`. The
+step count and the case instant bound the same span
+(`test_the_step_count_and_the_case_instant_bound_the_same_span`), and a `float`
+is refused as a case instant whatever it holds
+(`test_a_float_is_refused_as_a_case_instant_whatever_it_holds`), both in
+`tests/unit/test_supported_ranges.py`.
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
 #### What is not bounded this way
 
 The two gas volumes, of the breathing circuit and of the alveolar compartment, are **fixed
@@ -1361,22 +1319,23 @@ built by `AgentUptakeSystem.for_agent()`, which reads the values from the agent,
 and machine files and passes them on. The fresh gas flow keeps a default for a machine
 profile that states no startup flow (`docs/PARAMETERS.md` § "The circuit volume and the default fresh gas flow" gives its
 reason, its constant and its tests).
-`test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
-`test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` check that a shipped run
-gets the file's values. The serious failure would be a change that stopped `for_agent()`
+`test_for_agent_builds_the_circuit_at_the_machine_file_s_values` in `tests/unit/test_circuit.py`
+and `test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` in
+`tests/unit/test_alveolar.py` check that a shipped run gets the file's values. The serious failure would be a change that stopped `for_agent()`
 reading a file. Every row of the provenance table in `docs/PARAMETERS.md` for those values would
 then silently describe a file that the model no longer uses. So each of the four values is also checked with a file that
 states a different value, and that run fails if `for_agent()` stops passing the value on.
 For the machine file the tests are
 `test_for_agent_builds_the_circuit_at_a_changed_machine_file_volume` (3.3 L) and
-`test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow` (2.0 L/min). For the
-patient file the test is `test_for_agent_builds_the_alveoli_at_changed_patient_file_values`
-(3.0 L and 5.0 L/min).
+`test_a_profile_stating_its_startup_flow_opens_the_run_at_that_flow` (2.0 L/min), both in
+`tests/unit/test_circuit.py`. For the patient file the test is
+`test_for_agent_builds_the_alveoli_at_changed_patient_file_values`, in the same file as the
+other alveolar test (3.0 L and 5.0 L/min).
 <!-- not-restated: 5.0 L/min -->
 
 **Why neither gets a supported range.** A supported range describes an
-envelope that a run can be steered *within*. The four controls above each name
-an interval because a user can put the model anywhere in it. The verification
+envelope that a run can be steered *within*. The four controls in § "Supported input ranges"
+each name an interval because a user can put the model anywhere in it. The verification
 gates are what establish that the model represents a patient across that
 interval. Neither volume moves. The single shipped value is the whole of each
 volume's domain, and every reference measurement in `docs/MODEL.md` is made at
@@ -1422,10 +1381,10 @@ Reset pauses the simulation and keeps the user's selected settings. It also:
   start again from a clean state.
 
 **Reset on a branch returns it to the point where it was taken from its parent
-run, rather than to zero.** A branch is a run taken from a point in a parent
-run, and that point is called the fork. The branch's simulation time, state and
-accounting go back to the fork, because a branch never held the case's induction
-(§ "Each second has one stored state"). Its timeline of control inputs then holds
+run, rather than to zero.** The branch's simulation time, state and
+accounting go back to the fork, because that is where the branch began. The
+states it holds before the fork are a copy of its parent's (§ "What this
+requires of a branch"). Its timeline of control inputs then holds
 the entries that the branch first opened with, followed by each setting that
 Reset kept and that differs from the one the branch opened under.
 
@@ -1470,6 +1429,25 @@ perfusion fraction is written in a way that bypasses its guard (`PL-HQF5`,
 the same record. It reports a failed step rather than a refused setting, because
 a run whose record cannot be built is not worth continuing.
 
+The tests check that Reset keeps every user setting
+(`test_reset_preserves_all_user_settings` in
+`tests/integration/test_sevo_controller.py`), pauses the run
+(`test_reset_pauses_and_clears_concentration_history`), clears a failure
+(`test_reset_clears_a_failure_and_restores_a_startable_session`), both in
+`tests/integration/controller/test_controller_running.py`, and clears the
+control-input timeline (`test_reset_clears_the_control_timeline_with_the_run` in
+`tests/integration/controller/test_controller_control_timeline.py`). A branch's
+Reset returns it to its fork
+(`test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero` in
+`tests/integration/controller/test_controller_branching.py`). A refused Reset
+leaves the run exactly as it was
+(`test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was` in
+`tests/integration/controller/test_controller_run_definition.py`), halts it
+visibly (`test_a_reset_the_core_refuses_halts_the_run_visibly`), and names no
+setting as the way out
+(`test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart`), both
+in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`.
+
 ## Agent-change behavior
 
 Changing the running agent must begin a new run. Switching between volatile
@@ -1480,6 +1458,13 @@ do everything Reset does, and rebuild every compartment with the new agent's
 parameters. It must also set the delivered concentration to 1 MAC of the new
 agent rather than keep the old agent's percentage, because the same percentage
 is a different clinical depth for each agent.
+
+**For developers.** An agent change starts the run definition over
+(`test_changing_agent_starts_the_run_definition_over` in
+`tests/integration/controller/test_controller_run_definition.py`) and sets the
+dial to the new agent's 1 MAC
+(`test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac` in
+`tests/integration/controller/test_controller_setup.py`).
 
 ## Discarding a run, and the questions that guard it
 
@@ -1503,8 +1488,8 @@ change agent without one.
 
 **Pressing a run's Reset confirms discarding that run, and no other run**
 (project owner, 2026-10-18, ratified, over extending it to every run the press
-takes with it, `PL-W5WX`). A branch is a run taken from another run, the trunk,
-at a moment called its fork. The display draws each branch beside its trunk.
+takes with it, `PL-W5WX`). The display draws each branch beside its trunk
+(§ "What this requires of a branch" defines the trunk, a branch and its fork).
 Pressing the trunk's Reset also discards every branch, because a branch cannot
 outlive its trunk. When a branch has run past its fork, or has had a control
 change since then, the trunk's Reset says what that branch holds and asks before
@@ -1562,9 +1547,8 @@ structure makes the reason easy to see.
 
 ### What is compared, and what the two runs share
 
-**A comparison shows two managements of one case.** The first run is the
-**trunk**. A **branch** continues it in another way from an instant that the
-trunk passed through, and that instant is the **fork**.
+**A comparison shows two managements of one case:** the trunk, and a branch
+taken from it at its fork (§ "What this requires of a branch").
 
 **The display shows at most two runs.** While two are shown, another branch is
 refused rather than replacing the one on screen. No branch is compared with
@@ -1597,13 +1581,6 @@ guarantees that both runs share the following:
   both to induction rather than to either run's own start, so the two traces
   are compared at the same instants.
 
-**Everything that either run records after the fork is what its learner did to
-it**, for three reasons. Taking a branch leaves the trunk unchanged. The
-branch's record of setting changes opens with copies of the trunk's changes at
-the fork, and holds none of the trunk's earlier changes. A reset branch keeps
-those copies and can record the learner's settings after them
-(§ "Reset behavior").
-
 **For developers.** The architecture document describes a branch's structure
 (`docs/ARCHITECTURE.md` § "What a branch is, and what it shares with its
 parent").
@@ -1611,7 +1588,7 @@ parent").
 The roadmap leaves a third run and a comparison of two branches out of scope
 for v0.5.0 (`ROADMAP.md` § "Explicitly out of scope for v0.5.0"). A test checks
 that another branch is refused while two runs are shown
-(`test_a_second_fork_is_refused_while_two_runs_are_shown`).
+(`test_a_second_fork_is_refused_while_two_runs_are_shown` in `tests/integration/simulation_view/test_simulation_view_branch_control.py`).
 
 The code enforces what the two runs share as follows:
 
@@ -1619,41 +1596,50 @@ The code enforces what the two runs share as follows:
   `src/anesthesia_sim/data/patients/reference_adult.json`. Two tests check that
   a branch carries the trunk's patient and agent
   (`test_a_branch_is_the_agent_and_patient_its_parent_was`,
-  `test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork`).
+  `test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork` in `tests/integration/controller/test_controller_branching.py`).
 - A branch refuses an agent change outright (`set_agent`,
-  `test_a_branch_cannot_change_its_agent_out_from_under_the_case`). On the
+  `test_a_branch_cannot_change_its_agent_out_from_under_the_case` in `tests/integration/controller/test_controller_branching.py`). On the
   trunk, the agent selector is locked
-  (`test_the_trunks_selector_is_locked_while_two_runs_are_shown`). Changing
+  (`test_the_trunks_selector_is_locked_while_two_runs_are_shown` in `tests/integration/simulation_view/test_simulation_view_comparison.py`). Changing
   the agent begins a new run (§ "Agent-change behavior"), so an agent change
   during a comparison would end one of the two runs rather than vary it.
 - Exact reproducibility is not guaranteed across model versions or platforms
   (`docs/VERIFICATION.md` § "The reproducibility guarantee"), and the two runs of a comparison always
   share one model version and one platform.
 - The circuit volume is a build-time parameter with no live setter
-  (`test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter`).
+  (`test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter` in `tests/integration/controller/test_controller_running.py`).
   It is applied to a branch before any state is.
 - Every run takes the one step that the core defines (`SIMULATION_STEP_S`), so
   a branch cannot step differently from its trunk. A test checks that a branch
   steps to where its trunk stepped
-  (`test_a_branch_steps_to_where_its_parent_stepped`). A fork instant is a
+  (`test_a_branch_steps_to_where_its_parent_stepped` in `tests/integration/controller/test_controller_branching.py`). A fork instant is a
   `CaseInstant`, which is built only from a whole number of seconds, and a
   fork instant that was not built as one is refused
-  (`test_a_fork_instant_not_built_as_a_case_instant_is_refused`).
+  (`test_a_fork_instant_not_built_as_a_case_instant_is_refused` in `tests/integration/controller/test_controller_branching.py`).
 - A test checks the replayed settings
-  (`test_a_branch_inherits_its_parent_s_settings_at_the_fork`).
+  (`test_a_branch_inherits_its_parent_s_settings_at_the_fork` in `tests/integration/controller/test_controller_branching.py`).
 - A test checks that a branch carries the trunk's bookmarks
-  (`test_a_branch_opens_carrying_the_marks_of_the_case_it_continues`).
+  (`test_a_branch_opens_carrying_the_marks_of_the_case_it_continues` in `tests/integration/controller/test_controller_bookmarks.py`).
 - Each column of the chart stands for an instant at which it draws a value. A
   test checks that a branch uses the trunk's columns
-  (`test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from`). A
+  (`test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from` in `tests/integration/controller/test_controller_branching.py`). A
   fork at a bookmark adds at most one column, the fork itself
-  (`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`).
+  (`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork` in `tests/integration/controller/test_controller_marks.py`).
 
-In the code, a run's record of setting changes is its control timeline. Two
-tests check what a branch's control timeline opens with and that forking leaves
+#### What differs between the two runs
+
+**Everything that either run records after the fork is what its learner did to
+it**, for three reasons. Taking a branch leaves the trunk unchanged. The
+branch's record of setting changes opens with copies of the trunk's changes at
+the fork, and holds none of the trunk's earlier changes. A reset branch keeps
+those copies and can record the learner's settings after them
+(§ "Reset behavior").
+
+**For developers.** In the code, a run's record of setting changes is its
+control timeline. Two tests check what a branch's control timeline opens with and that forking leaves
 the trunk untouched
 (`test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline`,
-`test_forking_leaves_the_trunk_untouched`).
+`test_forking_leaves_the_trunk_untouched` in `tests/integration/controller/test_controller_branching.py`).
 
 Each entry that a reset branch keeps states a setting in force from the fork
 on, so a reset does not change what can cause a difference after the fork.
@@ -1678,10 +1664,10 @@ diverge, in which direction, how quickly, and whether they converge again.
 
 **For developers.** The tests check equality through the controller, at each
 stored second and at the drawn columns
-(`test_a_branch_reproduces_its_parent_at_every_instant_they_share`,
-`test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`), and
+(`test_a_branch_reproduces_its_parent_at_every_instant_they_share` in `tests/integration/controller/test_controller_branching.py`,
+`test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share` in `tests/integration/controller/test_controller_bookmarks.py`), and
 for a branch taken at any whole second
-(`test_a_branch_at_any_whole_second_holds_its_trunks_states_up_to_that_second`).
+(`test_a_branch_at_any_whole_second_holds_its_trunks_states_up_to_that_second` in `tests/integration/controller/test_controller_stored_states.py`).
 
 ### Neither run is a prediction for a patient
 
@@ -1731,6 +1717,13 @@ first is about variability.
 - **"twelve minutes"**: a duration read between two curves inherits every
   limitation of the model that drew them, and this model does not claim to get
   a difference in emergence time right to the minute (`docs/MODEL.md` § "Comparing two runs").
+
+**For developers.** The dashboard carries the educational disclaimer
+(`test_the_dashboard_carries_the_educational_disclaimer` in
+`tests/integration/simulation_view/test_simulation_view_two_runs.py`), and the
+disclaimer says what the tool is not
+(`test_the_educational_disclaimer_says_what_the_tool_is_not` in
+`tests/unit/test_dashboard_frame.py`).
 
 ### What the interface may assert about a comparison
 
@@ -1848,12 +1841,19 @@ names the substance itself, so the user need not carry it over from the agent
 selector. A compartment value and the trace beside it always name the same
 substance.
 
-**What the chart draws.** Every point that a chart trace draws is a state the
+**For developers.** The readout row names the substance its numbers belong to
+(`test_the_readout_row_names_the_substance_its_numbers_belong_to` in
+`tests/unit/test_dashboard_frame.py`), and a drawn window refuses another
+substance (`test_a_drawn_window_refuses_another_substance` in
+`tests/integration/controller/test_controller_run_definition.py`).
+
+### What the chart draws
+
+Every point that a chart trace draws is a state the
 run reached, at the instant where it is drawn. The interface never interpolates, smooths,
-averages or otherwise makes up a plotted value. The model computes each point
-from the run's definition, which gives the run's state at any instant directly,
-by formula. No stored series of values lies behind a trace, so none can disagree
-with it. The values that a chart draws are for display only, and the program
+averages or otherwise makes up a plotted value. Each point is the state that
+the run stored for that second, which is the state the readouts showed at that
+second. The values that a chart draws are for display only, and the program
 prevents their use for anything else (§ "Each second has one stored state" above).
 
 **The chart draws the run's state at one instant for each pixel boundary of
@@ -1969,6 +1969,8 @@ same dial raised later in the run left smaller gaps: up to 0.022 at 1 000 px
 when raised to 8% between 600 s and 672 s. Measured on 2026-11-22.
 
 <!-- not-restated: 8 % -->
+
+### What the reader chooses: traces, window and playback rate
 
 **The user chooses which compartment traces are drawn and how wide a window
 of the run the chart shows, and neither choice changes the run.** The two
@@ -2107,11 +2109,15 @@ to 300× delivered 99.0 to 99.9% of its setting over 8 to 30 s. On a computer
 that loses ticks, the run plays slower than the label says, and nothing on
 screen shows the delivered rate.
 
+### The code and tests behind the interface boundary
+
 **For developers.** A chart draws from a window of states (`DrawnWindow` in
 `app/run_series.py`), one for each instant that a frame plots. The controller
-evaluates them from the run's definition (`SimulationController.drawn_window`,
-`core/run_definition.py`). Keeping no stored samples of the run is a decision
-(project owner, 2026-09-05, recorded here when the sample store was deleted).
+reads each of them from the run's stored states (`SimulationController.drawn_window`,
+`SimulationState.stored_states`), so a point on a trace is the value that the
+readout showed at that second (`PL-MH9J`). Whole-second steps brought in the
+stored states, which replaced the earlier design of keeping no stored samples
+and computing each point from the run's definition (project owner, 2026-09-05).
 
 Each state carries its substance's six compartment values, as fractions of one
 atmosphere, under stable identifiers (`RecordedQuantity`). A trace addresses one
@@ -2168,8 +2174,8 @@ Each control change is a drawn instant because the run has a kink there: the
 derivative of the circuit fraction is discontinuous. Without a drawn instant
 there, the interpolation error at that instant would scale as O(h), in
 proportion to the spacing h between drawn instants, rather than as O(h²), in
-proportion to its square. The stored state drawn at a control change is a
-keyframe, not one propagated from an earlier instant.
+proportion to its square. The state drawn at a control change is the one that
+the run stored for that second, like every other drawn state.
 
 The pixel in the one-pixel guarantee is a logical pixel of the plot, the
 resolution at which the axis is ruled and labelled.
@@ -2248,7 +2254,7 @@ with no error. The bound is set by time: one step took about 53 microseconds
 when measured on 2026-10-26, so 1 000 steps take about half of the 100 ms tick.
 The fastest offered rate, 300×, takes 30 steps per tick. A test checks the grid
 of instants that a change can reach at each rate
-(`test_the_control_grid_at_each_rate_is_the_one_two_documents_publish`).
+(`test_the_control_grid_at_each_rate_is_the_one_two_documents_publish` in `tests/unit/test_playback.py`).
 <!-- provenance: app/playback.py MAXIMUM_STEPS_PER_TICK = 1000 -->
 <!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
@@ -2417,6 +2423,18 @@ computed when the plot is drawn.
 The documentation check reads the list of required outputs (`docs/VERIFICATION.md` § "How this document is held to the tree"), and fails when an entry names nothing that backs
 it, or names a test that does not exist.
 
+The tests that the list names are in `tests/unit/test_dashboard_frame.py`, with
+five exceptions.
+`test_the_interface_says_which_trace_the_band_is_read_against` and
+`test_the_wash_in_plot_says_what_its_denominator_is` are in
+`tests/integration/simulation_view/test_simulation_view_whole_interface.py`.
+`test_a_recorded_change_is_marked_on_the_chart_at_its_own_time` is in
+`tests/integration/simulation_view/test_simulation_view_charts.py`.
+`test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line` is in
+`tests/unit/test_chart_frame.py`, and
+`test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s` is in
+`tests/integration/test_qt_chart.py`.
+
 ### Every value and what qualifies it come from one step
 
 Where the screen shows a value with what qualifies it, both come from a single
@@ -2486,6 +2504,20 @@ group to describe the step that the scenario names. It also requires every other
 screen element to be listed with the reason it belongs to no group. On a
 dashboard that holds no case to branch, the banner names Reset alone.
 
+Every value on screen and its qualifiers come from one state
+(`test_every_value_and_its_qualifiers_on_screen_come_from_one_state` in
+`tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`). A
+Reset or an agent change that fails after it has cleared the run withholds every
+value (`test_a_reset_that_raises_after_clearing_the_run_withholds_every_value`
+and
+`test_an_agent_change_that_raises_after_rebuilding_the_run_withholds_every_value`
+in `tests/integration/test_failed_start_over.py`). A failed step leaves every
+displayed value unchanged
+(`test_a_failed_step_leaves_every_displayed_value_bit_identical`), and a stopped
+run refuses every setting
+(`test_a_stopped_run_refuses_every_setting_and_records_nothing`), both in
+`tests/integration/controller/test_controller_running.py`.
+
 ### Naming the run in a comparison
 
 While two or more runs are drawn, each of these places names its run in text:
@@ -2497,7 +2529,7 @@ While two or more runs are drawn, each of these places names its run in text:
    the readout's first line (§ "The hover and the run it belongs to"). With
    several, each value line gives its run's name. The readout reports every run
    inside the hover radius, so a small pointer movement cannot swap which run is
-   read (§ "Where more than one trace answers").
+   read (§ "When more than one trace is within reach").
 3. The three advisory lines inside a chart: the wash-in state, the off-scale
    notice, and the count of control changes the chart could not mark. They
    stack one line per run.
@@ -2562,7 +2594,7 @@ never show another run in its place, and the simulation is left untouched.
 Where an earlier session placed the pinned run, the areas and the menu of the
 Workspace's tab call it "a run from an earlier session" and give no number,
 because a run that is open now can carry the same number
-(`test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown`).
+(`test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown` in `tests/integration/test_workspace_tabs.py`).
 The reader sets and removes a pin from the menu of the Workspace's tab
 (`PL-2KXB`).
 
@@ -2601,6 +2633,12 @@ qualifies, as the timeline's "Settings only — not a measurement." does for
 control marks. The statement is not on the chart because people stop reading a
 repeated disclaimer.
 
+The statement is checked by
+`test_the_interface_says_the_readouts_are_model_outputs_not_measurements` in
+`tests/unit/test_dashboard_frame.py` and by
+`test_the_readouts_say_they_are_model_outputs_beside_the_values` in
+`tests/integration/simulation_view/test_simulation_view_readouts.py`.
+
 ### What this list requires once the layout is the reader's
 
 Since v0.6.0, the reader can add, resize and remove the interface's areas, the
@@ -2617,6 +2655,8 @@ Hiding a compartment trace is safe because its value stays in the numeric
 readouts. A layout that could remove the readouts would make every show/hide
 control that this document permits unsafe at once, while the chart still
 behaved exactly as documented.
+
+#### The unconditional values
 
 **A value is unconditional when a reader could misread the run's other
 displayed numbers without it.** Nothing may cover such a value. The set is
@@ -2648,6 +2688,8 @@ number of lines, and states how many earlier ones it leaves out
 (§ "The control-input timeline"). The record gives the facts, and the marks
 place them against the curve.
 
+#### Where the unconditional values sit on screen
+
 **The unconditional values sit outside the areas.** Each run's unconditional
 values are in one band across the top of the dashboard, the unconditional
 region. The setting controls are a view that an area holds like any other view,
@@ -2673,6 +2715,8 @@ readout heading row stays in view with the line and the region, at any window
 height and through any scrolling. This is what "always" means in the paragraphs
 on the alert colour in § "Color contrast, and the standard this interface is
 held to".
+
+#### Values that must stay reachable
 
 **The agent accounting must stay reachable, though not always visible.** It
 consists of cumulative agent delivered, cumulative agent exhausted, total agent
@@ -2704,6 +2748,8 @@ menu. Every layout has at least one area, so a chooser always offers the
 accounting view. None of the Workspaces supplied with the simulator includes the
 accounting view, so the chooser is how a reader reaches it.
 
+#### Values required only with their chart
+
 **Conditional values are required only on a chart or plot that is shown.** A
 concentration chart shows the MAC-awake band, the 1 MAC line and the marks of
 control changes. It also states how much simulated time it shows, and whether
@@ -2711,6 +2757,8 @@ that span was chosen or fits the run. An $`F_A/F_I`$ plot shows its equilibrium
 line and states where the ratio is not defined. These references exist so that a
 trace is never read without its clinical anchor. Where no trace is drawn there
 is nothing to anchor, so leaving the chart out loses nothing.
+
+#### No required value may be covered
 
 **No value this list requires may be covered while the application treats it
 as shown.** This occlusion rule applies to a panel drawn over the dashboard, a
@@ -2739,10 +2787,12 @@ window nor learn where the reader had moved it (Qt 6.12 documentation,
 "Window and Dialog Widgets", section "Wayland Peculiarities",
 https://doc.qt.io/qt-6/application-windows.html).
 
+#### What a separate window shows
+
 **A separate window shows the invariant tier, not the whole set**
 (project owner, 2026-09-16, ratified - a recommendation put to them and agreed,
 chosen over the two live readings `PL-W54S` had written, and reopenable on
-ordinary evidence per `CLAUDE.md`; the occlusion rule above is not, being the
+ordinary evidence per `CLAUDE.md`; the occlusion rule (§ "No required value may be covered") is not, being the
 safety requirement rather than the arrangement). Breaking an area out into a
 window of its own is the second half of `ROADMAP.md` planned-milestone item 34,
 and it is wanted but not yet scheduled (project owner, 2026-09-26). Such a
@@ -2781,6 +2831,8 @@ doi:10.1001/jamanetworkopen.2020.19652). That is the invariant tier's argument
 in another clinical setting: context carried in the frame of the view, not
 assumed from elsewhere on the screen.
 
+#### When two runs are shown
+
 **While two runs are shown, every readout names its run, and all six
 compartments keep their readouts for both runs** (`PL-1XPX`). A required value
 must not leave the display with the curve that draws it. That applies to the
@@ -2811,6 +2863,8 @@ the heading line above the block: the substance, the agent's 1 MAC, and the
 version and model. They are the same for both runs because a second run must use
 the first run's agent, and a branch's MAC is checked against its trunk's when
 the branch is opened (`PL-QLZ5`).
+
+#### The code and tests behind the layout requirements
 
 **For developers.** The unconditional tiers and the control-input record are
 stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
@@ -2850,20 +2904,13 @@ this application does. Take the structure, and leave out any way to hide the
 region, such as Focus Mode. Say so wherever a reader would otherwise assume
 that the whole precedent was copied.
 
-Before the region and the line were fixed outside the scrolling part
-(`PL-NNML`), the whole page scrolled. At 1366 px wide, the page was 1087 px tall
-in the Default Workspace and 1505 px in Induction and Maintenance (measured
-offscreen, 2026-10-20). In a 700 or 900 px window, the disclaimer line was
-therefore below the visible part, and scrolling down to it moved the region off
-the top.
-
 A test checks that the unconditional region and the disclaimer line stay in view
 in windows 700, 900 and 1100 px tall, in each supplied Workspace
-(`test_the_region_and_the_use_disclaimer_stay_in_the_viewport`). The region and
+(`test_the_region_and_the_use_disclaimer_stay_in_the_viewport` in `tests/integration/simulation_view/test_simulation_view_two_runs.py`). The region and
 the line must also stay in view through the scroll to the concentration chart
 that happens when a branch is taken (`PL-562Z`). Another test checks that the
 dashboard shows the line
-(`test_the_dashboard_carries_the_educational_disclaimer`).
+(`test_the_dashboard_carries_the_educational_disclaimer` in `tests/integration/simulation_view/test_simulation_view_two_runs.py`).
 
 The view chooser is built in `app/area_layout.py`. The view registry marks the
 accounting view as required to be reachable (`required_reachable`, in
@@ -2953,6 +3000,8 @@ clinical situations.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 <!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
 
+#### What a MAC multiple means
+
 **What a MAC multiple means depends on the compartment.** MAC is defined for the
 *alveolar* (end-tidal) concentration at one atmosphere in a nominal
 40-year-old. It is the population ED50 for immobility in response to a
@@ -2995,6 +3044,40 @@ source of each agent's 1 MAC, how far it is from the primary literature, and
 what that gap means for comparing agents.
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
 
+**For developers.** The display code converts percent to MAC multiples in
+`app/formatting.py`, outside the model's code in `core/`. It takes the agent's
+1 MAC as an argument. Each snapshot of the simulation's state carries that 1 MAC
+beside the concentrations it scales and the agent it belongs to
+(`SimulationSnapshot.agent_mac_percent`). The display code therefore cannot pair
+one agent's concentrations with another agent's 1 MAC.
+
+Both units are shown because a unit selector would make the axis unit a mode,
+and a chart read under the wrong assumed unit is a misreading that no
+disclaimer catches. The agent's 1 MAC is shown because the project's rules
+(`CLAUDE.md`) require a clinically meaningful displayed value to be traceable to
+the transformation that produced it. The display carries no text explaining MAC
+because its reader, an anesthesia provider, knows what MAC is defined against,
+and a dozen lines of text between the reader and the plot cost more than they
+gave (`PL-6580`).
+
+The stored 1 MAC (`mac_percent`) is a tier-3 value under
+`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a value".
+Mapleson 1996 is in the `sources` list of each agent's data file as the source
+for the fall in MAC with age.
+
+The multiple carries the multiplication sign
+(`test_format_mac_multiple_carries_the_multiplication_sign` in
+`tests/unit/test_formatting.py`), every compartment can be read in MAC multiples
+(`test_every_compartment_is_readable_in_mac_multiples` in
+`tests/unit/test_dashboard_frame.py`), and the 1 MAC value stays on screen
+(`test_the_1_mac_value_stays_on_screen_where_the_rows_above_the_plot_scroll` in
+`tests/integration/simulation_view/test_simulation_view_page.py`). The MAC axis
+and the references follow the agent
+(`test_the_mac_axis_and_references_follow_the_agent` in
+`tests/integration/simulation_view/test_simulation_view_charts.py`).
+
+#### The chart's fixed MAC axis
+
 **The chart's vertical range is set in MAC, and fixed.** For every agent, the
 axis runs from 0 to a ceiling of **3 ×MAC** of the agent in use, with a gridline
 every half MAC. A given MAC multiple is therefore drawn at the same height under
@@ -3028,28 +3111,7 @@ holds. The compartment schematic shows that amount (§ "The compartment schemati
 heights, amounts and share bar assert").
 <!-- not-restated: 1.3 -->
 
-**For developers.** The display code converts percent to MAC multiples in
-`app/formatting.py`, outside the model's code in `core/`. It takes the agent's
-1 MAC as an argument. Each snapshot of the simulation's state carries that 1 MAC
-beside the concentrations it scales and the agent it belongs to
-(`SimulationSnapshot.agent_mac_percent`). The display code therefore cannot pair
-one agent's concentrations with another agent's 1 MAC.
-
-Both units are shown because a unit selector would make the axis unit a mode,
-and a chart read under the wrong assumed unit is a misreading that no
-disclaimer catches. The agent's 1 MAC is shown because the project's rules
-(`CLAUDE.md`) require a clinically meaningful displayed value to be traceable to
-the transformation that produced it. The display carries no text explaining MAC
-because its reader, an anesthesia provider, knows what MAC is defined against,
-and a dozen lines of text between the reader and the plot cost more than they
-gave (`PL-6580`).
-
-The stored 1 MAC (`mac_percent`) is a tier-3 value under
-`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a value".
-Mapleson 1996 is in the `sources` list of each agent's data file as the source
-for the fall in MAC with age.
-
-The vertical range is fixed because an axis that grew to fit a trace would
+**For developers.** The vertical range is fixed because an axis that grew to fit a trace would
 redraw a rising curve smaller partway through a lesson, and a reader would take
 that change of shape for something the model did.
 
@@ -3076,6 +3138,17 @@ sits exactly at the ceiling. This matters for isoflurane, whose ceiling,
 3 × 1.2, is 3.5999999999999996 in binary floating point.
 <!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+The ceiling is scaled by the agent's MAC and leaves room above 1 MAC
+(`test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled` and
+`test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpressure`
+in `tests/unit/test_formatting.py`). A trace above the axis is reported on the
+run that drew it
+(`test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it` in
+`tests/integration/simulation_view/test_simulation_view_readouts.py`), and a
+trace exactly at the ceiling is not
+(`test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale` in
+`tests/unit/test_dashboard_frame.py`).
 
 ### The chart's time base
 
@@ -3108,7 +3181,7 @@ on the plot is therefore a fixed multiple of its rate of change. A window that
 widened continuously with the run would rescale every slope while the rates
 stayed the same. That would misrepresent rate of rise, the one quantity by which
 uptake and distribution are taught. The vertical axis has a fixed range for the
-same reason (see the section above).
+same reason (§ "The chart's vertical range is set in MAC, and fixed").
 
 **The gridlines follow from the width.** Each width on the ladder sets the
 interval at which gridlines and labels fall, so that the axis holds four to six
@@ -3153,9 +3226,6 @@ module does arithmetic on simulated time. It reads no simulation state and
 imports no interface toolkit, so the widths and gridline intervals can be read,
 cited and tested without loading the interface.
 
-Each drawn point is evaluated from the run's definition, under the constraint
-that § "Interface boundary" places on a plotted trace.
-
 Each width on the ladder is at least half again as wide as the one below it, so
 one step up or down visibly changes the view.
 
@@ -3182,6 +3252,20 @@ The roadmap for v0.6.0 asks for a time base per chart (`ROADMAP.md`
 Each chart's notices describe its own window, because a notice naming a clipped
 trace that the chart does not draw would be false for that chart. Charts with
 the same time-base setting are drawn from one frame.
+
+The tests in `tests/integration/simulation_view/test_simulation_view_charts.py`
+check that a time base changes nothing the run recorded
+(`test_choosing_a_time_base_changes_nothing_the_run_recorded`) and makes the
+window exactly as wide as chosen
+(`test_selecting_a_time_base_makes_the_window_exactly_that_wide`). Those in
+`tests/unit/test_chart_time_base.py` check that each width is ruled into four to
+six intervals (`test_every_rung_is_ruled_into_between_four_and_six_intervals`),
+that fitting always contains the run (`test_fitting_a_run_always_contains_it`),
+and that a chosen width is held at every point of a run
+(`test_a_chosen_width_is_held_exactly_at_every_point_of_a_run`). Each chart
+names only the clipped traces its own window shows
+(`test_each_chart_names_only_the_clipped_traces_its_own_window_shows` in
+`tests/integration/test_run_surfaces.py`).
 
 ### MAC-awake as a chart reference
 
@@ -3252,95 +3336,16 @@ rebreathing keeps the inspired fraction below the dial (`PL-39KH`). In the
 trace did. This shortfall happens in real patients too, and it is worth
 teaching.
 
-**The trace that the band is read against decides which published MAC-awake
-value is correct.** Katoh et al. determined sevoflurane and isoflurane MAC-awake
-by a slow, equilibrated washout and by a fast one, and the two methods disagree.
-Slow washout gave 0.34 of MAC for sevoflurane and 0.31 for isoflurane, against
-0.22 for both by fast washout. Katoh attributes the disagreement to
-end-tidal-to-arterial and arterial-to-cerebral anesthetic differences. This
-model represents those differences as the gap between the alveolar and
-vessel-rich traces. The stored values are the slow-washout ones, and they belong
-against the vessel-rich trace.
-<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
-<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
-
-Katoh also estimated the brain concentration at awakening. That estimate is not
-a measurement, because cerebral concentration cannot be sampled in these
-patients. The abstract says the brain concentrations were "calculated with
-end-tidal anesthetic concentrations", and the title calls them "predicted".
-So they come from Katoh's own model of brain uptake (`PL-YDRT`), which treats
-the brain as one well-mixed compartment perfused by arterial blood. Katoh's
-equation 1 (p. 1013) is:
-
-$$
-\frac{dP_{Brain}}{dt} = \frac{CBF \cdot \lambda_{B/G} \cdot (P_{Art} - P_{Brain})}{V_{Brain} \cdot \lambda_{T/G}}
-$$
-
-This is the perfusion-limited form that `docs/MODEL.md` § "Tissue groups" uses for
-each tissue group. Katoh's compartment is the brain alone, though, while this
-model's vessel-rich group pools the brain with the heart, liver, kidney and
-viscera.
-
-Katoh computed every patient's flow and volume from the same formulas. Cerebral
-blood flow $`CBF`$ is 14.3% of a cardiac output set by a cardiac index of
-3.5 L/min/m², so it scales with body surface area. Brain volume $`V_{Brain}`$
-is 21 mL/kg, so it scales with body weight. The brain's time constant therefore
-varied a little from patient to patient. The coefficients were the same for
-everyone. The blood:gas coefficient $`\lambda_{B/G}`$ is 0.63 for sevoflurane
-and 1.36 for isoflurane, and the brain:gas coefficient $`\lambda_{T/G}`$ is
-1.15 and 2.09.
-
-During fast washout, Katoh's calculated brain concentration at first eye opening
-does not differ significantly from the slow-washout values, under either of two
-estimates of the arterial partial pressure. Katoh did not measure that pressure.
-Equation 2 sets it equal to the end-tidal value. Equation 3 (p. 1016) corrects
-the end-tidal value for 20% dead-space gas, as
-$`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. During fast washout, the calculated
-brain concentration at first eye opening was 0.30 of MAC for sevoflurane and
-0.26 for isoflurane under equation 2 (Table 1, p. 1014).
-Under equation 3 it was 0.34 and 0.30 (Table 3, p. 1016). The abstract quotes
-the equation 3 figures and calls them
-"nearly equal to MAC-Awake obtained by slow alveolar washout". So the stored
-values and the choice of the vessel-rich trace rest on a modelled estimate that
-agrees with an equilibrated measurement. That is weaker evidence than a direct
-measurement of the brain would be.
-
-<!-- not-restated: 0.34 -->
-
-**The MAC-awake fractions for isoflurane, sevoflurane and desflurane were not
-determined by one method.** Katoh's slow-washout arm is *descending*. Chortkoff
-and Song et al. both determined desflurane MAC-awake by *ascending* stepwise
-equilibration. All of these are equilibrated determinations, not fast-washout
-ones, so all three fractions belong against the vessel-rich trace. But ascending
-and descending determinations are not interchangeable, and no descending-washout
-MAC-awake for desflurane was found. The three fractions (0.31 isoflurane, 0.34
-sevoflurane, 0.36 desflurane) sit in a narrow range. Each agent still carries
-its own value rather than one fraction covering all three. Isoflurane and
-sevoflurane were each measured in Katoh's slow-washout arm, and their fractions
-differ. Desflurane's was determined by the other method, so a shared fraction
-would mix ascending and descending determinations.
-<!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
-<!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
-
-<!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
+**All three stored MAC-awake fractions belong against the vessel-rich
+trace**, because each was determined at equilibrium, not by fast washout.
+`docs/PARAMETERS.md` § "The MAC-awake fractions" records how the sources were
+read, and why each agent keeps its own fraction.
 
 **The band is drawn at a fraction of the stored MAC.** MAC-awake is stored as
-that fraction, never as a percent of one atmosphere. Each source expresses
-MAC-awake as a ratio to MAC, and Katoh does so explicitly, "as a ratio to
-age-adjusted MAC". A published *percent*, by contrast, is tied to whichever MAC
-its own population was measured against. Desflurane shows the risk. Chortkoff's
-MAC-awake of 2.60% is 36% of a MAC of about 7.25%, Rampil's figure for ages
-18-30. The stored MAC equals Rampil's figure for ages 31-65, 6.0%. Dividing 2.60% by
-6.0% would give 0.433 instead of the published 0.36, so the band would be drawn
-20% too high and crossed too soon. Storing the fraction avoids that error. The
-chart's MAC axis is also scaled by the stored MAC, so the band sits at its
-published fraction on that axis. For desflurane, storing the fraction allows an
-independent check. The band's centre is 0.36 of the stored 6.0%, or 2.16%, and
-Song et al. measured 2.17% in the non-jaundiced control arm of a population that
-Rampil's 31-65 year MAC describes.
-
-<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
-<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
+that fraction, never as a percent of one atmosphere. The chart's MAC axis is
+also scaled by the stored MAC, so the band sits at its published fraction on
+that axis. `docs/PARAMETERS.md` § "The MAC-awake fractions" says why a
+published percent would draw the band too high.
 
 **The *absolute height* of the MAC-awake band and the 1 MAC line inherits every
 limitation of the stored MAC.** The MAC-awake fractions come from primary
@@ -3359,7 +3364,8 @@ three are:
 2. drawing the slow-washout value against a fast-washout alveolar trace, where
    0.22 would be the matching figure;
 3. dividing a published MAC-awake percent by a MAC other than the one its
-   population was measured against, as in the desflurane example above.
+   population was measured against, as in the desflurane example in
+   `docs/PARAMETERS.md` § "The MAC-awake fractions".
 
 A learner who takes away any of these errors carries into practice the belief
 that a patient is more awake than they are.
@@ -3375,41 +3381,18 @@ desflurane. All three are gaps from Mapleson's MAC, not from the MAC that each
 source used. Mapleson's 95% confidence limits are about ±7%, and ±10% for
 desflurane. Only sevoflurane's gap is larger than its limits, so the
 sevoflurane band probably sits too high, by about 11% if Mapleson is right. A
-band drawn too high teaches an earlier wake-up. In the washout run above, the
+band drawn too high teaches an earlier wake-up. In the washout run described earlier in this section, the
 vessel-rich trace crosses sevoflurane's drawn band centre of 0.68% at 6.55 min.
 It crosses 0.612%, the same fraction of Mapleson's 1.80%, at 7.30 min. The
 isoflurane and desflurane gaps are inside the limits, so Mapleson does not show
 either band to be off. Song et al.'s measurement also agrees with the drawn
-desflurane band.
+desflurane band (`docs/PARAMETERS.md` § "The MAC-awake fractions").
 <!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
 
 The comparison with Katoh's own MAC at age 40 points the same way as the
 Mapleson one: the band sits slightly high, so it teaches a slightly early
-wake-up (`PL-P319`). Katoh's fractions are ratios to each patient's
-age-adjusted MAC, which comes from two linear equations on p. 1013. For
-isoflurane it is 1.43 − 0.0061 × age (yr) percent, and for sevoflurane
-2.56 − 0.0156 × age (yr) percent. The paper cites four MAC studies for the
-equations but does not say how the equations were derived from those studies.
-At age 40 the equations give 1.94% for sevoflurane and 1.19% for isoflurane.
-The stored MAC is 3.3% above Katoh's for sevoflurane and 1.2% above it for
-isoflurane, so the band sits above Katoh's own age-40 awakening concentration
-by the same proportions. The drawn centres are 0.68% sevoflurane and 0.372%
-isoflurane, against 0.658% and 0.368% from Katoh's fractions times Katoh's
-age-40 MAC. Both differences are much less than the standard deviation of
-Katoh's fractions, 0.05 of MAC. Katoh's slow-washout patients themselves woke
-at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
-(Table 1, p. 1014). Those figures are lower than the band mostly because the
-patients were older, with mean ages of 45.9 and 45.1 years, so they are not a
-like-for-like check of the band. The band is drawn on a single adult MAC whose
-source states no age, and which lies close to Katoh's MAC at the age the
-paragraph above uses.
-<!-- not-restated: 0.36 -->
-<!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
-<!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
-<!-- derived: 3.3% from data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- derived: 1.2% from data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
-<!-- derived: 0.372 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_percent = 1.2 -->
+wake-up. `docs/PARAMETERS.md` § "The MAC-awake fractions" gives the
+comparison.
 
 **For developers.** No governing equation in the model's code (`core/`) uses
 MAC-awake or the stored MAC (`mac_percent`). `core/parameters.py` gives the
@@ -3471,7 +3454,7 @@ inspired fraction, on a fixed, dimensionless axis labelled from 0 to 1. It has
 its own time window (§ "The chart's time base"). The
 uptake literature is taught from this curve, and the wash-in figures a reader
 has seen show it. The plot can therefore be laid beside a published figure. The
-six compartment concentrations on the chart above cannot. A validation test
+six compartment concentrations on the concentration chart cannot. A validation test
 compares the plotted ratio with human measurements at 30 minutes, for all three
 agents in the simulator (`docs/VERIFICATION.md` § "Published wash-in and elimination validation test").
 The ratio is computed only for display, and no equation of the model uses it.
@@ -3574,7 +3557,7 @@ See `docs/VERIFICATION.md` § "Published wash-in and elimination validation test
 `app/wash_in.py`, a module that contains nothing else. Unit tests cover both
 (`tests/unit/test_wash_in.py`). The ratio is no part of a run's definition. A
 test checks that the plotted ratio is the quantity that the validation compares
-(`test_the_displayed_ratio_is_the_quantity_this_file_validates`).
+(`test_the_displayed_ratio_is_the_quantity_this_file_validates` in `tests/reference/test_published_wash_in_and_elimination.py`).
 
 Both plots take their control marks from the run's one record of setting
 changes. The marks are computed once for each time window
@@ -3599,7 +3582,8 @@ shipped agent
 (`test_a_zero_cardiac_output_steady_state_is_not_read_as_elimination`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
-The allowance is sized from the 1% limit above, a clinical requirement, rather
+The allowance is sized from the 1% limit in condition 2 under "A point is
+drawn only inside two boundaries", a clinical requirement, rather
 than from the rounding (project owner, 2026-10-26, ratified, over 1e-9 sized
 from the rounding and over deriving the value in code). At a ratio of
 1 + 1e-6, agent leaves at a rate of alveolar ventilation times $`F_I`$ times
@@ -3680,6 +3664,8 @@ held down. The ring shows only when the keyboard moved the focus, as the
 platform's own focus marks do. A plot takes no key, so Tab does not stop on it.
 <!-- provenance: app/theme.py FOCUS_RING_WIDTH = 2 -->
 
+#### Minimum contrast for text and graphics
+
 Two criteria carry most of the weight:
 
 - **SC 1.4.3, Contrast (Minimum)**, requires 4.5:1 for text. Every readout,
@@ -3706,6 +3692,8 @@ Two criteria carry most of the weight:
 
 <!-- not-restated: 4.5 -->
 
+#### Where the chart goes beyond AA
+
 The interface goes beyond AA in two places:
 
 - **Chart traces can be told apart from each other, which WCAG does not
@@ -3724,6 +3712,17 @@ The interface goes beyond AA in two places:
   models only normal color vision cannot show that for a reader with
   dichromacy.
 
+The excuse for lines that overlap little comes from the Understanding document
+for SC 1.4.11, read on 2026-09-07 in a copy the project owner supplied
+(`PL-JX0Z`). Its line-graph example (Figure 38) says: *"The lines should have
+3:1 contrast against their background, but as there is little overlap with
+other lines they do not need to contrast with each other or the graduated
+lines."* Its "Graphical Objects" section makes each line in a graph a graphical
+object in its own right. Citing the Gestalt "law of continuity", it lets
+**minor** overlaps between lines be ignored.
+
+#### The exempt gridline grey
+
 **The gridline grey is exempt from SC 1.4.11** (project owner, 2026-09-27,
 ratified, over darkening the grey to 3:1; `PL-HKTB`). It colors the plot's
 gridlines, the axis lines, the line under each Area's header and the sliders'
@@ -3735,6 +3734,23 @@ compartment's current value, and hovering over any drawn point shows its exact
 value. The line under an Area's header sits between the header's menu and the
 View's own heading, which already mark the boundary. The groove is the edge of
 a slider whose handle and filled track identify it.
+
+The gridline grey's exemption (`GRIDLINE`) rests on the Understanding document
+for SC 1.4.11. The document's line-graph example does ask 3:1 of a chart's
+"background lines for the values", but in that example the gridlines are how a
+value is perceived at all. Under the heading "Required for understanding", the
+document says the criterion does not apply when "a graphic with text embedded
+or overlaid conveys the same information, such as labels and values on a
+chart". This chart passes the criterion's own test: imagine the gridlines
+invisible, and ask whether the chart is still understood. The criterion's
+paragraph on boundaries is what excuses the groove.
+
+Darkening the grey was refused because of the chart's visual order, in which a
+gridline sits below a reference line and a reference line below a trace. A
+gridline at 3:1 would be 87% as dark as the lightest trace (3.43:1), and that
+order would collapse. Line widths of 1 / 1.5 / 2-3 px also carry that order.
+
+#### How the ratios are measured, and why the window is always light
 
 **The contrast ratios are computed from the interface's own colors**, with
 WCAG 2.2's definitions of relative luminance and contrast ratio, each time the
@@ -3757,6 +3773,12 @@ color pairs that nothing has measured. A disabled control still takes its
 colors from the computer's setting, apart from two disabled states that the
 interface declares in the muted color: the label of an unavailable transport
 button, and an unavailable menu entry. That color's contrast is checked too.
+
+Supporting dark appearance would mean measuring every requirement again on a
+second pair of surfaces, and choosing all six trace colors again under four
+vision models.
+
+#### Color as a cue: agent colors and the alert color
 
 **Color is never the only cue.** SC 1.4.1 (Level A) requires this. Telling a
 running simulation from a halted one is safety-critical. The status words
@@ -3828,6 +3850,15 @@ priority by color together with a flash rate. This interface has no indicator
 lamp, filled banner, flashing element or priority tier, so the convention has
 nothing to apply to.
 
+The alert-color decision applies to every element added to the interface. An
+indicator-shaped element could still appear, and it must not arrive with a
+monitor's priority palette.
+
+IEC 60601-1-8's mapping of priority to color could not be established from a
+primary source, and the secondary sources disagree. Three independent reports
+give the low-priority color as cyan, as blue, and as "green or blue". The
+alert-color decision does not depend on the mapping.
+
 The disclaimer settles the question against the convention. The alert color
 marks a line that is on screen *always*, while a monitor's alarm colors carry
 meaning because they are absent until something is wrong. A permanent element
@@ -3848,6 +3879,8 @@ alert color. Coloring a correct model's declared boundary as a fault would
 teach a reader to distrust a sound number. § "Supported run length" gives the
 rest of the argument.
 
+#### The code and tests behind the color requirements
+
 **For developers.** The contrast check (`tools/contrast_check.py`) runs in
 `make check`. It reads the color constants from `app/theme.py`, which contains
 every one of them. A second check (`check_colors_live_in_the_theme`) keeps them
@@ -3865,10 +3898,6 @@ whichever color contrasts more. Shortfalls are listed in a second table
 check reports an error when a listed shortfall starts passing, so a fix cannot
 leave its listing behind.
 
-Measuring text on the panel alone once hid a shortfall, fixed in `PL-X0RG`.
-The label color gave 4.28:1 on the panel and 3.98:1 on the page, where the
-run-status word is drawn.
-
 A color needs two constants when its use as a graphic wants a shade too light
 for text, because text needs 4.5:1 and a graphic 3:1. The accent color is the
 only such case. The sliders' active track uses `ACCENT`, and "Running" and
@@ -3877,16 +3906,7 @@ The muted, ink and alert colors each serve both roles with one constant,
 because each meets 4.5:1.
 <!-- not-restated: 4.5 -->
 
-The excuse for lines that overlap little comes from the Understanding document
-for SC 1.4.11, read on 2026-09-07 in a copy the project owner supplied
-(`PL-JX0Z`). Its line-graph example (Figure 38) says: *"The lines should have
-3:1 contrast against their background, but as there is little overlap with
-other lines they do not need to contrast with each other or the graduated
-lines."* Its "Graphical Objects" section makes each line in a graph a graphical
-object in its own right. Citing the Gestalt "law of continuity", it lets
-**minor** overlaps between lines be ignored.
-
-Because the criterion does not require pairwise separation, the contrast check
+Because SC 1.4.11 does not require pairwise separation, the contrast check
 reports the contrast between every pair of traces without failing on it. It
 enforces the 3:1 minimum against the panel, which the criterion does require.
 
@@ -3898,28 +3918,6 @@ color that fails its minimum is listed as a shortfall. The checks that
 `make check` runs count the exempt uses into the contrast report line.
 They refuse an exempt name that `app/theme.py` does not define, and a color
 that is both required and exempt on one surface.
-
-The gridline grey's exemption (`GRIDLINE`) rests on the Understanding document
-for SC 1.4.11. The document's line-graph example does ask 3:1 of a chart's
-"background lines for the values", but in that example the gridlines are how a
-value is perceived at all. Under the heading "Required for understanding", the
-document says the criterion does not apply when "a graphic with text embedded
-or overlaid conveys the same information, such as labels and values on a
-chart". This chart passes the criterion's own test: imagine the gridlines
-invisible, and ask whether the chart is still understood. The criterion's
-paragraph on boundaries excuses the groove, because the slider's handle and
-filled track already identify the control. The line under an Area's header is
-not required for understanding, because the header's menu and the View's own
-heading already mark the boundary.
-
-Darkening the grey was refused because of the chart's visual order, in which a
-gridline sits below a reference line and a reference line below a trace. A
-gridline at 3:1 would be 87% as dark as the lightest trace (3.43:1), and that
-order would collapse. Line widths of 1 / 1.5 / 2-3 px also carry that order.
-
-Supporting dark appearance would mean measuring every requirement again on a
-second pair of surfaces, and choosing all six trace colors again under four
-vision models.
 
 A declared color reaches the screen by one of three mechanisms. Most of the
 interface is drawn by stylesheets, all composed in one module
@@ -4011,16 +4009,7 @@ meet the interface's contrast target, which the contrast check enforces. The
 ISO 5360 agent colors stay as they are, because they identify an agent and
 carry no urgency.
 
-The alert-color decision applies to every element added to the interface. An
-indicator-shaped element could still appear, and it must not arrive with a
-monitor's priority palette.
-
-IEC 60601-1-8's mapping of priority to color could not be established from a
-primary source, and the secondary sources disagree. Three independent reports
-give the low-priority color as cyan, as blue, and as "green or blue". The
-alert-color decision does not depend on the mapping.
-
-**For developers.** `FocusRing` in `app/qt_widgets.py` draws the keyboard
+`FocusRing` in `app/qt_widgets.py` draws the keyboard
 focus ring. `tests/integration/test_keyboard_focus.py` grabs every control
 that Tab reaches, in every kind of View and in the new-case question, with
 and without the focus, and fails where the two images match.
@@ -4210,9 +4199,9 @@ value can be trusted to its last digit as a prediction about a patient
 (`docs/MODEL.md` § "Known limitations").
 
 **For developers.** One test enforces the display resolution
-(`test_format_percent_uses_the_documented_display_resolution`), and another
+(`test_format_percent_uses_the_documented_display_resolution` in `tests/unit/test_formatting.py`), and another
 enforces the `<0.01%` form
-(`test_format_percent_marks_a_value_below_the_resolution`).
+(`test_format_percent_marks_a_value_below_the_resolution` in `tests/unit/test_formatting.py`).
 
 #### Why the readouts show two decimals
 
@@ -4280,19 +4269,6 @@ run, and it does not set the number of decimals. No displayed value is a
 prediction for a patient (`docs/MODEL.md` § "Known limitations"), and the table
 above measures how far a patient's value could lie from the one shown.
 
-**For developers.** One test module holds every figure in this section that
-comes from changing a coefficient by one SD
-(`tests/integration/test_parameter_uncertainty.py`). The table and its ordering
-are held by
-`test_one_sd_of_each_coefficient_displaces_the_readouts_as_the_table_states`,
-the SDs by `test_the_relative_sds_are_those_the_section_states`, and the range
-of a third of a count to ninety counts by
-`test_one_sd_is_a_third_of_a_count_to_ninety_counts_of_the_last_digit`. The
-whole-run counts of 12 and 40 are the table's last column in counts.
-`test_each_tissue_coefficient_s_sd_is_the_sd_of_the_coefficient_the_model_stores`
-fails if an SD is taken from a row whose mean the stored coefficient does not
-match, as the brain:blood SDs were.
-
 **Legibility sets the lower limit on decimals: one decimal hides the slow
 compartments' wash-in, which is the reason for displaying them.** At one decimal
 the sevoflurane and isoflurane fat fractions read `0.0%` for the whole hour
@@ -4302,7 +4278,8 @@ minutes with desflurane, 8.5 minutes with sevoflurane and 14.8 minutes with
 isoflurane. At two decimals, at 1 MAC with default flows, muscle first shows a
 nonzero value at 57, 126 and 191 seconds and fat at 237, 782 and 1478 seconds,
 for desflurane, sevoflurane and isoflurane in that order. Three tests check
-these figures against the model:
+these figures against the model, all in
+`tests/reference/test_displayed_precision_figures.py`:
 `test_the_fat_fractions_at_one_hour_match_the_model`,
 `test_the_one_decimal_erasure_times_match_the_model` and
 `test_the_first_nonzero_two_decimal_readings_match_the_model`.
@@ -4361,6 +4338,19 @@ lower limit above. The negative concentrations that the model cannot hold
 include minus zero (`docs/VERIFICATION.md` § "Concentrations"). No value of the `Fraction` type can be
 negative, and the formatter is the code that refuses a negative value.
 
+One test module holds every figure in this section that
+comes from changing a coefficient by one SD
+(`tests/integration/test_parameter_uncertainty.py`). The table and its ordering
+are held by
+`test_one_sd_of_each_coefficient_displaces_the_readouts_as_the_table_states`,
+the SDs by `test_the_relative_sds_are_those_the_section_states`, and the range
+of a third of a count to ninety counts by
+`test_one_sd_is_a_third_of_a_count_to_ninety_counts_of_the_last_digit`. The
+whole-run counts of 12 and 40 are the table's last column in counts.
+`test_each_tissue_coefficient_s_sd_is_the_sd_of_the_coefficient_the_model_stores`
+fails if an SD is taken from a row whose mean the stored coefficient does not
+match, as the brain:blood SDs were.
+
 #### The MAC multiple's resolution
 
 **The MAC readout shows the MAC multiple in steps of 0.01 MAC.** One step is 0.02
@@ -4369,7 +4359,7 @@ at least the percent readout's 0.01 percentage points, because the MAC multiple 
 calculated from the percent concentration and can be no more precise than it. The two
 readouts round separately, so the MAC readout can occasionally change while the percent
 readout stays the same.
-`test_the_mac_step_in_percentage_points_matches_each_stored_mac` checks the three
+`test_the_mac_step_in_percentage_points_matches_each_stored_mac` in `tests/reference/test_displayed_precision_figures.py` checks the three
 per-agent figures against each agent's stored MAC.
 <!-- not-restated: 0.06 -->
 
@@ -4386,10 +4376,10 @@ update. Divided by the agent's MAC in percent (`mac_percent`), 0.01 percentage
 points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane.
 The MAC resolution is the finest power of ten at or above the coarsest of these,
 isoflurane's 0.0083. A test repeats this arithmetic for every shipped agent
-(`test_the_mac_resolution_is_derived_from_the_percent_resolution`) and fails if
+(`test_the_mac_resolution_is_derived_from_the_percent_resolution` in `tests/unit/test_formatting.py`) and fails if
 adding an agent or changing the percent resolution would make the MAC readout finer
 than the percent readout supports. Another test checks the `<0.01 ×MAC` form
-(`test_format_mac_multiple_marks_a_value_below_the_resolution`).
+(`test_format_mac_multiple_marks_a_value_below_the_resolution` in `tests/unit/test_formatting.py`).
 
 #### What the model keeps that the display rounds
 
@@ -4406,7 +4396,7 @@ in the model's code (`core/`) rounds. The snapshot fields that the interface
 reads are raw fractions. The figure of nine orders of magnitude applies to the
 exact method that the simulator uses. A test runs the model twice, with delivered
 concentrations that differ by an amount four orders of magnitude smaller than
-the display resolution (`test_the_model_keeps_precision_the_display_throws_away`).
+the display resolution (`test_the_model_keeps_precision_the_display_throws_away` in `tests/unit/test_formatting.py`).
 The two runs must reach different states and must still look identical on the
 display.
 
@@ -4417,7 +4407,7 @@ except possibly while the two cross.** The interface therefore adds no warning o
 marker when readouts are compared. Where seven panels fit, the six compartment readouts
 and the clock sit in one row, so that the readouts can be read *in order*: the circuit
 leads the alveoli, and the alveoli lead the tissues.
-§ "The readout row's width condition" below says what happens when seven panels do not
+§ "How the readout row fits the window's width" below says what happens when seven panels do not
 fit.
 
 When a reader compares two readouts, the simulator's calculation error could mislead them
@@ -4449,7 +4439,7 @@ gap less accurate than either reading. The interface shows no gap between two re
 as higher. Each covers one half of the path from the model to the readout and can
 fail on its own. The first bounds the simulator's calculation error against the
 independent solution
-(`test_exact_step_matches_the_independent_solution_everywhere`). The second checks
+(`test_exact_step_matches_the_independent_solution_everywhere` in `tests/reference/test_coupled_dynamics.py`). The second checks
 that the interface's formatter, `format_percent`, never shows a higher fraction as
 a lower percent (`test_format_percent_preserves_order` in
 `tests/unit/test_formatting.py`). It covers the "<0.01%" reading below the display
@@ -4457,7 +4447,7 @@ resolution and both sides of every value at which the last displayed digit chang
 Together the two tests mean that no reversal can occur at a true gap above twice the
 first test's tolerance: $`8.0\times10^{-9}`$ counts of the last displayed digit. A
 third test makes the comparisons described above, reading each value through the
-interface's formatter (`test_displayed_ordering_reverses_only_at_a_crossing`). It
+interface's formatter (`test_displayed_ordering_reverses_only_at_a_crossing` in `tests/reference/test_coupled_dynamics.py`). It
 allows a reversal where the true gap is below the first two tests' threshold of
 $`8.0\times10^{-9}`$ counts, because one is possible at a crossing. It fails only when
 one of those tests fails, so it records the result and adds no evidence of its own.
@@ -4474,7 +4464,11 @@ and someone scanning the row would misjudge a value by a factor of ten. This
 reason comes from how the row is read, so it applies however the simulator
 computes the values.
 
-#### The readout row's width condition
+**For developers.** The six readouts share one formatter, whose resolution is
+checked by `test_format_percent_uses_the_documented_display_resolution` in
+`tests/unit/test_formatting.py`.
+
+#### How the readout row fits the window's width
 
 **The readout row's width decides how many panels share a line.** Every panel
 takes exactly one column. The panels sit seven across wherever all seven columns
@@ -4541,12 +4535,12 @@ font that the interface draws with, so the code fixes no pixel width that
 another font or display scale would make wrong. The step-down widths above are
 in logical pixels, for the tests' offscreen font. One test reads those widths
 from the row instead of asserting them
-(`test_the_readout_row_reflows_where_its_panels_stop_fitting`). Another enforces
+(`test_the_readout_row_reflows_where_its_panels_stop_fitting` in `tests/integration/test_qt_widgets.py`). Another enforces
 the column count and each panel's one-column span
-(`test_every_readout_reserves_a_qualifier_line_and_an_equal_column`).
+(`test_every_readout_reserves_a_qualifier_line_and_an_equal_column` in `tests/integration/test_qt_widgets.py`).
 
 A test checks that the readouts' region stays outside the Areas
-(`test_no_unconditional_value_sits_inside_the_layout_container`). The region
+(`test_no_unconditional_value_sits_inside_the_layout_container` in `tests/integration/simulation_view/test_simulation_view_branch_display.py`). The region
 (`SimulationView.unconditional_region`) gives 0.82 of its width to a left column
 for the readouts and 0.18 to a right column for the control-change record. These
 are the shares that the chart panel's Area and the sidebar's Area had in the
@@ -4569,7 +4563,7 @@ With the tests' font, a 1366 px window gives the region 1334 px (measured
 79 px more than the 1005 px that seven across needs. Two tests check that a
 1366 px window opens the row seven across, with one run and in compare mode
 (`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` and
-`test_two_runs_share_one_readout_block_whose_values_name_their_runs`). A 1280 px
+`test_two_runs_share_one_readout_block_whose_values_name_their_runs` in `tests/integration/simulation_view/test_simulation_view_readouts.py`). A 1280 px
 window gives the region 1248 px. The left column takes at least its share,
 1014 px. With the font in the container where the tests were written, that is
 9 px more than seven across needs. With the font on the CI runner, seven across
@@ -4578,7 +4572,7 @@ needs 1068 px and the row gets 1060 px, so it opens on four (both measured
 where seven fit and four across otherwise, with one run and with two
 (`test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns`
 and
-`test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_or_four_columns`).
+`test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_or_four_columns` in `tests/integration/simulation_view/test_simulation_view_readouts.py`).
 The left
 column cannot narrow below the transport row's minimum width, which includes
 the version label. So below about 1366 px a longer version string widens the
@@ -4609,7 +4603,7 @@ run at it, `24 hours`.
 § "The chart's time base" explains the time-axis label form, why it differs
 from the clock's, and why the span is written in words.
 
-**For developers.** The clock and the stamps use the time axis's form
+The clock and the stamps use the time axis's form
 because all three are on screen together. A control mark stamped `5400 s` on
 an axis reading `1h30m` would leave the reader to convert between the two by
 hand. At the supported 24-hour run length, a clock in seconds would read
@@ -4623,7 +4617,8 @@ label.
 readouts'.** It plots the same percentages on a shared linear axis that runs
 from 0 to 3 ×MAC of the agent in use, and a second axis on the right shows the
 same position in MAC multiples. Its resolution is set by pixels rather than by
-decimals. Every number that the chart offers is shown at the resolutions above,
+decimals. Every number that the chart offers is shown at the resolutions that § "Why the readouts show two decimals" and
+§ "The MAC multiple's resolution" set,
 in the readout row and in the hover readout
 (§ "The chart's hover readout: what the tooltip may show", below). The fixed
 3 ×MAC range gives the MAC axis round labels in half-MAC steps for every agent,
@@ -4644,8 +4639,8 @@ rounds away, a reader could not tell which value is the setting in force.
 **For developers.** The sliders are integer-valued. Three tests read each flow's resolution from
 its control's label (`test_fresh_gas_flow_slider_forwards_value_to_controller`,
 `test_alveolar_ventilation_slider_forwards_value_to_controller` and
-`test_cardiac_output_slider_forwards_value_to_controller`), and a fourth
-enforces the slider steps (`test_the_slider_steps_at_the_display_resolution`).
+`test_cardiac_output_slider_forwards_value_to_controller` in `tests/integration/simulation_view/test_simulation_view_controls.py`), and a fourth
+enforces the slider steps (`test_the_slider_steps_at_the_display_resolution` in `tests/integration/test_qt_widgets.py`).
 Those steps come from the number of decimals displayed for concentration and
 for flow (`CONCENTRATION_DISPLAY_DECIMALS` and `FLOW_DISPLAY_DECIMALS`), so
 those two counts decide which settings can reach the model. A change to either
@@ -4705,10 +4700,10 @@ such as `1.000000e+00 L`.
 worth between about four SDs, for isoflurane at 1 h, and a seventh of an SD, for
 desflurane at 24 h. At each agent's dial maximum with 10 L/min it falls to a
 twenty-first to a twenty-eighth of an SD at 24 h.
-`test_the_run_totals_litre_step_at_each_agent_s_dial_maximum` computes every
+`test_the_run_totals_litre_step_at_each_agent_s_dial_maximum` in `tests/integration/test_parameter_uncertainty.py` computes every
 shift in this subsection. A constant stores the amounts' decimal count (`AGENT_AMOUNT_DISPLAY_PRECISION`),
 a function formats them (`format_agent_volume`), and a test checks both
-(`test_agent_amounts_precision`).
+(`test_agent_amounts_precision` in `tests/unit/test_formatting.py`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -4727,17 +4722,18 @@ every form.
 
 The residual line's power of ten is computed from the residual's exact
 floating-point value. A function formats the line (`format_agent_residual`), and
-four tests check it: `test_format_agent_residual_prints_the_power_of_ten_it_lies_below`,
+four tests in `tests/unit/test_formatting.py` check it:
+`test_format_agent_residual_prints_the_power_of_ten_it_lies_below`,
 `test_format_agent_residual_drops_the_sign_the_rounding_chose`,
 `test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten` and
 `test_format_agent_residual_reads_zero_as_zero`. A fifth test uses the pair
 `5.601e-14 L` and `5.609e-14 L`, which the two versions printed for one sample
-(`test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws`).
+(`test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws`, in the same file).
 
 #### Agent amounts in millilitres, and the cost
 
 **An agent amount's precision is derived for the amount in one unit, and does
-not carry over to another unit.** The derivation above is for litres of vapour.
+not carry over to another unit.** The derivation in § "The agent-accounting panel" is for litres of vapour.
 The agent cost display shows the delivered total in millilitres of liquid, and
 the compartment schematic shows each compartment's amount in millilitres of
 vapour, so each of those needs its own precision. An amount in a unit that has
@@ -4765,8 +4761,9 @@ the unit would see the model resolve a difference in one unit that it does not
 resolve in the other. One step of the litre display, 0.1 L of vapour, is
 0.55 mL of sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane
 at the 20 °C reference of `docs/MODEL.md` § "Agent amount". The smallest power of ten at or
-above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts at 24 h given
-above, 0.61 L of sevoflurane vapour, 0.62 L of isoflurane and 0.68 L of
+above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts
+at 24 h given in § "The agent-accounting panel", 0.61 L of sevoflurane vapour, 0.62 L of
+isoflurane and 0.68 L of
 desflurane, are 3.3, 3.2 and 3.2 mL of liquid. So at those settings one step of
 1 mL is about a third of an SD, and a step of 0.1 mL would be about a thirtieth.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -4845,8 +4842,9 @@ the Gas Man Workbook's Exercises 14-1 and 14-2 with the derived ratio. Those
 costs must match the book's, allowing for rounding to the cent and for Gas
 Man's constant, which is rounded to a whole millilitre.
 
-**For developers.** One test repeats the litre-to-millilitre conversion for every shipped agent from
-the stored molar mass and density
+**For developers.** Four tests in `tests/unit/test_formatting.py` check the
+liquid amounts. One repeats the litre-to-millilitre conversion for every
+shipped agent from the stored molar mass and density
 (`test_the_exhausted_total_in_millilitres_of_liquid_claims_no_more_than_in_litres`).
 Another computes each agent's largest supported total and its SD from the stored
 densities
@@ -4910,7 +4908,7 @@ can differ between patients by many steps of its label. At most, in
 isoflurane's muscle at 3 h 34 min, which holds 993 mL, one SD is 28 steps of
 10 mL. Two tests hold these figures
 (`test_one_sd_shifts_each_compartment_s_amount_by_the_share_the_section_states`
-and `test_a_two_figure_amount_s_finest_step_is_a_twenty_eighth_of_an_sd`).
+and `test_a_two_figure_amount_s_finest_step_is_a_twenty_eighth_of_an_sd` in `tests/integration/test_parameter_uncertainty.py`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 10 mL -->
 
@@ -4921,7 +4919,7 @@ compartment reads as holding all of the agent while another holds some. In a
 desflurane run, the circuit holds more than 99.5% of the agent for about the
 first second. One SD of a coefficient moves a compartment's share by at most 13
 percentage points, in isoflurane's muscle at 8 h 43 min
-(`test_one_sd_moves_a_compartment_s_share_by_at_most_thirteen_percentage_points`). So
+(`test_one_sd_moves_a_compartment_s_share_by_at_most_thirteen_percentage_points` in `tests/integration/test_parameter_uncertainty.py`). So
 a share can differ between patients by up to 13 steps of 1 percentage point.
 
 **For developers.** A compartment's amount needs a precision of its own. At the
@@ -4929,7 +4927,7 @@ run totals' 0.1 L, venous blood reads below resolution for a whole hour at 1 MAC
 with every agent the simulator offers, and so do the alveoli with sevoflurane
 and isoflurane. Desflurane's alveoli read 0.1 L from about two minutes. These
 figures are checked by
-`test_the_amounts_below_the_run_totals_step_match_the_model`.
+`test_the_amounts_below_the_run_totals_step_match_the_model` in `tests/reference/test_displayed_precision_figures.py`.
 
 The readouts' uniform resolution does not carry over to the amounts either,
 because neither of its two reasons applies to them. The uncertainty that the
@@ -4977,7 +4975,7 @@ panel. The dashboard (`app/dashboard_frame.py`) reads the constant to set the
 delivered dial's slider position, so the value that the slider applies and the
 readout above it cannot drift apart. Another test
 (`tests/reference/test_coupled_dynamics.py`) restates the constant and checks it
-against the formatting module, because the ordering claim above is a property of
+against the formatting module, because the ordering claim in § "Comparing two readouts" is a property of
 the rounded values. Adding a decimal would change what that claim proves without
 changing anything the test reads, so changing the resolution means revising this
 section.
@@ -5050,6 +5048,17 @@ The instant that the box prints is exact, because every drawn instant is a whole
 number of seconds (`SimulationController.drawn_window`, `PL-T5NJ`). The box rounds
 nothing (`_hover_instant` in `app/chart_frame.py`).
 
+The box reads as this section shows
+(`test_the_hover_reads_as_the_specification_shows`), every number in it is the
+formatter's at the snapshot's own divisor
+(`test_every_hover_number_is_the_formatter_s_at_the_snapshot_s_own_divisor`),
+and its instant is at the clock's resolution
+(`test_the_hover_states_the_instant_at_the_clock_s_own_resolution`). These are
+in `tests/unit/test_chart_frame.py`. On screen, the box states the agent, the
+compartment and both units
+(`test_the_hover_readout_states_the_agent_compartment_and_both_units` in
+`tests/integration/simulation_view/test_simulation_view_readouts.py`).
+
 #### The hover and the run it belongs to
 
 **While more than one run is drawn, the first line of the hover box names the run.
@@ -5073,7 +5082,7 @@ lies within 12 pixels (px) of the pointer, a distance called the hover radius.
 Where two runs' traces for one compartment lie close together, the pointer is
 within that radius of both. The percent axis tops out at 3 MAC for every agent,
 so the slow compartments lie close to zero (§ "MAC multiples as a display unit").
-Through the first hour of the cases measured below, the two runs' fat traces lie
+Through the first hour of the cases that `PL-JVHL` measured, the two runs' fat traces lie
 so close together that a pointer within the radius of one is within the radius of
 the other over most of the area from which either can be reached.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
@@ -5105,29 +5114,18 @@ The run name appears on the same condition as the difference in line width
 between runs: the code that styles each run's trace (`run_trace_style`) widens
 none until a second run exists.
 
-The table gives the share of the axis on which both runs' points for one
-compartment lie inside the hover radius. The figures come from simulating the
-branched case on the reference adult on 2026-09-17, with the branch's management
-at the fork varied. The 60-minute axis was 900 px wide and 360 px tall, a scale of
-4.00 s and 0.0167% per pixel. The percent axis had its shipped top
-(`CHART_AXIS_TOP_MAC`). At the time, the hover followed the nearest-point rule:
-it reported the single drawn point nearest the pointer across every run
-(`nearest_trace_point`).
+Naming the run showed which run the box reported, but did not make it report
+the trace the reader aimed at. § "When more than one trace is within reach" gives the
+rule that replaced reporting the single nearest point, and `PL-JVHL` holds the
+measurements behind the change.
 
-| Branch's management at the fork | Alveolar | Fat |
-| --- | ---: | ---: |
-| doubled to 2 MAC | 1.6% | 100% |
-| raised to 1.25 MAC | 8.5% | 100% |
-| vaporizer turned off | 1.6% | 100% |
+The box names the run only while more than one is drawn
+(`test_the_hover_names_the_run_only_while_more_than_one_is_drawn`), and a
+compared box refuses to name one agent over another run's value
+(`test_a_compared_hover_refuses_to_name_one_agent_over_another_run_s_value`),
+both in `tests/unit/test_chart_frame.py`.
 
-Of the hovers that could report either run, 83.3–95.3% would print different text
-for the alveolar compartment and 43.8–81.4% for fat. Naming the run showed which
-run the nearest-point rule chose, but did not make the box report the trace the
-reader aimed at. Moving the pointer 2 px changed which run the box reported on
-75.4–99.9% of the fat axis. § "Where more than one trace answers" gives the rule
-that replaced the nearest-point rule (`PL-JVHL`).
-
-#### Where more than one trace answers
+#### When more than one trace is within reach
 
 **The hover readout's box reports every run whose drawn point is inside the hover
 radius, with one value line per run** (project owner, 2026-09-19, ratified, over
@@ -5188,6 +5186,21 @@ run arrive and leave. The box holds at most four value lines on a two-run chart,
 which draws at most two compartments. On a single-run chart it can hold six, as
 it does at the run's opening, where all six traces start together.
 
+**For developers.** Two functions produce the forms above that list several runs or compartments
+(`chart_frame.format_compared_trace_hover` and
+`chart_frame.format_compared_wash_in_hover`), and their numbers come from
+`app/formatting.py` like every other number in the box. The unit tests in
+`tests/unit/test_chart_frame.py` contain both worked examples above verbatim.
+They also contain the fat and muscle cases behind the decisions to report every
+run and every compartment in reach.
+
+The rules weighed before this one, and the scans behind reporting every run in
+reach (`PL-JVHL`) and every compartment in reach (`PL-0RZ0`), are in those
+items. `PL-QYBW` holds the measured case for a logarithmic axis, which was not
+built.
+
+#### The instant each value is reported at
+
 **The pointer's position along the time axis sets the instant reported, and the
 hover radius decides only which traces are in reach** (`PL-1K9G`, 2026-09-22). The
 chart draws each run as columns of points: one column every 4 s on a 60-minute
@@ -5204,134 +5217,14 @@ differ by up to one column, and the printed form shows the difference. One
 instant above several values would claim that they are simultaneous when they may
 not be.
 
-**For developers.** Five targeting rules were scored on the branched case, with
-alveolar and fat displayed, a pair that the limit on a two-run chart's
-compartments allows (`COMPARED_COMPARTMENT_CAP`). The score is the share of hovers
-whose reported run changed after a 2 px move, among hovers with both runs inside
-the radius before and after the move. It counts hovers that could go either way,
-so it cannot be compared with the 75.4–99.9% figure under
-§ "The hover and the run it belongs to", which is a share of axis columns.
-
-| Targeting rule | fat, 2 MAC | fat, 1.25 MAC | fat, vaporizer off |
-| --- | ---: | ---: | ---: |
-| the single globally nearest drawn point | 9.2% | 9.0% | 9.2% |
-| nearest trace measured along its length | 9.2% | 9.0% | 9.2% |
-| the pointer inside a run's own band, 2 px or 4 px | 9.2% | 9.0% | 9.2% |
-| distance, near-ties broken toward the trunk | 0.0% | 0.0% | 0.0% |
-| every run inside the radius is reported | 0.0% | 0.0% | 0.0% |
-
-The first three rules score the same to the digit, for two reasons in this
-chart's geometry. First, the trace is drawn at about one sample per 4 s against
-a 12 px radius, so the pointer's distance to the polyline and to the nearest
-vertex differ by a fraction of a pixel. Nearest along the length would differ
-from nearest drawn point only on a sparse, steep trace. Second, both runs' fat
-points lie inside the radius over 94.5–98.0% of the hoverable area, so a band
-rule must break its tie by the nearest-point rule it was meant to replace,
-exactly where the reported run flips.
-
-Breaking near-ties toward the trunk scores 0.0%, as reporting every run does, but
-was refused for its costs. A tie window keeps the boundary between the runs and
-adds a second one, where the pointer leaves the window. Among axis columns with
-both runs in reach on the alveolar trace of the 1.25 MAC case, it raises the share
-on which the reported run flips from 58.5% to 98.4%. It also makes the branch's
-value unreachable wherever the two runs' traces lie inside the window, which is
-most of the fat trace. A value that a reader cannot reach is worse than one that
-is hard to aim at.
-
-Before every compartment in reach was reported (`PL-0RZ0`), the nearest drawn point
-picked the compartment, on the reasoning that a reader aims at a trace. The
-crowding near zero defeats that reasoning. Two or more compartments lie inside the
-radius over 15.2–45.7% of the two-run chart's hoverable area, and over 37.0% of
-the single-run chart's. Across pairs of pointer positions 2 px apart with more
-than one compartment in reach, the compartment reported changed on 6.6–13.6% of
-pairs. On 99.9% of those, the box printed a different number, by a median of
-17.1–17.9× for muscle against fat. At a change, the two nearest points were a
-median 0.9 px apart, and all were within 2 px.
-
-| Chart | Compartments | Two or more in reach | 2 px flips the compartment |
-| --- | --- | ---: | ---: |
-| one run | all six | 37.0% | 12.7% |
-| two runs, vaporizer off | muscle + fat | 45.7% | 7.5% |
-| two runs, 1.25 MAC | muscle + fat | 19.1% | 9.2% |
-| two runs, 1.25 MAC | mixed venous + vessel rich | 29.4% | 6.6% |
-| two runs, 2 MAC | alveolar + fat | 0.5% | 13.6% |
-
-The nearest-point rule never made a value unreachable, which matters because the
-tie-break above was refused partly for doing so. Across the same cases, every
-compartment was reported on 98% or more of the axis columns where it is drawn.
-The worst was muscle on the single-run chart, unreported on 2.0% of its columns.
-<!-- not-restated: 2.0 % -->
-
-Reporting every trace in reach was affordable because the box stays short. One
-compartment alone is in reach on 54.3–99.5% of hovers across these cases, and
-63.0% on the single-run chart. The box carries one value line on 21–93% of hovers.
-
-A logarithmic axis fixed from 0.001 to 3 MAC would put two runs' fat traces
-23–75 px apart, but it has three costs. It draws below the 0.01-point resolution
-of § "Displayed precision". It is a display mode on a chart of clinical values.
-When this was decided, it would also have arrived ahead of the v0.6.0 View
-contract, which decides where a View's own settings live. Its strongest use, the
-washout tail, is a candidate for
-the catalogue of views (planned-milestone item 36) rather than a mode on this
-chart.
-<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-
-Before the pointer's time alone set the instant (`PL-1K9G`), each trace reported
-its own drawn point nearest the pointer in both dimensions, so on a sloped trace
-the pointer's height chose the column. The scan behind that change covered the
-branched case, and a two-hour single run on its fitted 2-hour axis and on the
-12-hour axis, where a dial change draws a near-vertical step. It tried every pixel
-of height at four sub-pixel phases per column, and its selection was checked
-against the shipped function before any number was kept. The whole scan is in
-`PL-1K9G`.
-
-| Chart | Boxes holding 2+ of one run's readings that mixed instants | Spread, median / max | A vertical 2 px move changed the instant / the printed value |
-| --- | ---: | ---: | ---: |
-| one run, 60 min | 70.1% | 16 s / 72 s | 44.9% / 35.1% |
-| two runs, mixed venous + vessel-rich | 88.3–94.7% | 12–16 s / 32–52 s | 50.6–62.8% / 36.9–52.8% |
-| two runs, muscle + fat | 13.0–16.8% | 4 s / 4 s | 3.0–5.4% / 0.3–0.8% |
-| one run, 12 h axis | 84.5% | 288 s / 912 s | 37.3% / 33.3% |
-
-<!-- not-restated: 13.0 -->
-
-Mixed instants matter because adjacent columns often print different values. On
-the 60-minute axis, the share of adjacent columns that differ is 44.0–93.3% on the
-circuit, alveolar, mixed venous and vessel-rich traces, against 3.3–16.0% on
-muscle and 0.7–1.3% on fat. Under the old rule, a sloped trace's nearest point
-could lie as far to the side as the radius reaches, which is almost ten minutes
-on the 12-hour axis. Two readings in one box were up to fifteen minutes apart
-there.
-
-The alternative to testing reach at the instant the pointer sets was to keep the
-old reach and report the point at that instant. Like the chosen rule, that would
-have made the instant depend on time alone, and it would have kept every value
-that the old rule reported. But where the chosen rule reports nothing, the
-alternative would have reported a point a median 13.5 px and up to 42.5 px from
-the pointer on the 60-minute axis, and up to 146 px on the 12-hour axis. The dot
-and the box would then hang on a value the reader is nowhere near.
-
-The chosen rule's cost comes beside a steep segment, where a pointer level with a
-point several columns along no longer reports that point. Even so, the chosen
-rule keeps 84–100% of the area over which the old rule reported each trace on the
-60-minute and 2-hour axes, and 45–54% for the four fast compartments on the
-12-hour axis. It reports nothing the old rule did not, and leaves no drawn
-instant unreachable.
-
-On the wash-in plot, the old rule let 23.9–44.4% of vertical 2 px moves change a
-box's instant. No box there mixed instants, because the plot draws one trace per
-run. The plot treats a run's stretches as one set of drawn instants.
-
-Two functions produce the forms above that list several runs or compartments
-(`chart_frame.format_compared_trace_hover` and
-`chart_frame.format_compared_wash_in_hover`), and their numbers come from
-`app/formatting.py` like every other number in the box. Two more collect the
-traces within reach at the instant that the pointer's time sets
-(`nearest_trace_point` and `nearest_wash_in_point`), and the first of them skips
-hidden compartments. The unit tests in `tests/unit/test_chart_frame.py` contain
-both worked examples above verbatim. They also contain the fat and muscle cases
-behind the decisions to report every run and every compartment in reach, and the
-geometry behind the decision that the pointer's time alone sets the instant
-(`test_every_compartment_of_one_run_answers_at_one_instant`).
+**For developers.** Two functions collect the traces within reach at the instant
+that the pointer's time sets (`nearest_trace_point` and `nearest_wash_in_point`),
+and the first of them skips hidden compartments. The unit tests in
+`tests/unit/test_chart_frame.py` also contain the geometry behind the decision
+that the pointer's time alone sets the instant
+(`test_every_compartment_of_one_run_answers_at_one_instant`). The rules weighed
+before this one, and the scan behind letting the pointer's time alone set the
+instant, are in `PL-1K9G`.
 
 #### Resolution: the readouts' derivation applies unchanged
 
@@ -5363,6 +5256,11 @@ how long, where it explains its lower limit. Those minutes are the slow-compartm
 wash-in that the chart exists to show. `<0.01%` says what is known. A number there
 would claim a resolution the model does not have, on the compartment where a reader
 is least able to notice.
+
+**For developers.** The box keeps the readout row's below-resolution forms and
+glosses
+(`test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses`
+in `tests/unit/test_chart_frame.py`).
 
 #### What a chart library prints instead, measured
 
@@ -5406,9 +5304,14 @@ seconds.
 - Three significant figures give two decimals at `1.54`, three at `0.262` and six at
   `0.000656`.
 
-#### Which series answer a hover, and which do not
+The rendered box reports the drawn state through this project's formatters, not
+the library's default
+(`test_the_hover_reports_the_drawn_state_through_the_formatters` in
+`tests/integration/test_qt_chart.py`).
 
-The six compartment traces respond to a hover in the form above, unless the
+#### Which lines on the chart show a hover readout
+
+The six compartment traces respond to a hover in the form that § "What it shows" gives, unless the
 reader has hidden the compartment. The wash-in trace responds with a plain ratio,
 because $`F_A/F_I`$ is dimensionless and has neither a percent nor a MAC reading:
 
@@ -5442,7 +5345,14 @@ than a division sign because every non-ASCII character that reaches a reader mus
 first have been rendered and seen (`tools/glyph_check.py`), and the division sign
 has not been.
 
-#### When it answers
+The references answer no hover, and clear space answers none
+(`test_the_references_answer_no_hover_and_clear_space_answers_none` in
+`tests/integration/test_qt_chart.py`). A hidden trace and a preview answer no
+hover either (`test_a_hidden_trace_answers_no_hover` and
+`test_the_hover_never_answers_from_a_preview` in
+`tests/unit/test_chart_frame.py`).
+
+#### When the hover readout appears
 
 The box appears whenever the pointer is over a trace, whether the run is playing
 or paused. At high playback speed its value moves with the run, as every other
@@ -5482,6 +5392,12 @@ Besides removing the box, leaving the plot discards any pointer move still waiti
 to be handled. A box left at the last point the pointer crossed would recompute
 its value every frame. While a run played, that value would climb with the run
 like a live readout, for an instant that nobody is looking at (`PL-LTKL`).
+
+The box answers while the run is playing
+(`test_the_hover_answers_while_the_run_is_playing`), and hides when the pointer
+leaves
+(`test_the_hover_hides_when_the_pointer_leaves_and_a_later_frame_does_not_bring_it_back`),
+both in `tests/integration/test_qt_chart.py`.
 
 ### A preview of an unapplied setting
 
@@ -5582,7 +5498,7 @@ the second of each peak and trough between two columns. After that,
 `predicted_states_at` predicts each grid second and the right edge from the one
 before. The controller keeps the last predicted window and draws it again while
 none of its inputs change. `test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only`
-in `tests/unit/test_chart_frame.py` checks the split. A branch is a run taken from another run. The preview's settings are
+in `tests/unit/test_chart_frame.py` checks the split. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial
 run is rebuilt from the settings in force and checked to match the run in every
 value. The trial run then takes the new value through the same setter that
@@ -5631,14 +5547,7 @@ measured, because the reader supplies it. Every other value the interface shows
 today is modelled. A cost is a modelled amount times that price, so a wrong
 price makes a correct amount lead to a wrong conclusion.
 
-**The project ships no price.** Until the reader sets a price, the readout says
-that no price is set, and it shows no cost. A shipped price goes stale, and it
-differs from one institution to the next. Gas Man shows both problems. Its
-default price for isoflurane is $20.47 for a 100 mL bottle (Philip JH,
-*Workbook for Gas Man*, Appendix C, printed p. 171). The book calls its
-defaults "USA bottle volume and bottle cost as of March 5, 2008" (printed
-p. 105). Chapter 14 gives $78.00 per 100 mL bottle "on March 5, 2008" (printed
-p. 141).
+#### What the cost readout shows
 
 **A cost is never shown alone.** Beside it, the readout shows six things:
 
@@ -5697,6 +5606,38 @@ used to compute the cost, and neither is today's date. When two runs are
 compared, each run's cost uses the price of its own agent. A cost is never added
 to, or subtracted from, a cost in another currency.
 
+**When no cost is shown.** The readout shows no cost, and says why, in each of
+these four cases:
+
+- no price is set for the agent;
+- the stored price was refused when the simulator read its preferences file.
+  No default replaces it, and the readout says that no valid price is set for
+  the agent. The View names each refused entry, and under that notice it offers
+  to discard them all. The reader confirms the discard first, because it cannot
+  be undone
+  (`test_the_reader_can_discard_refused_entries_and_the_next_launch_names_none`
+  in `tests/integration/test_agent_cost_view.py`);
+- the price per millilitre is not a positive finite number, or the cost is not
+  finite, which extreme entries can cause, such as a bottle price of 10 to the
+  power 308 for a 0.5 mL bottle; or
+- the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
+
+The readout never shows a cost of zero in place of one of these cases. Nor does
+it show a cost left over from an earlier instant, another agent or an earlier
+price. When the price changes, the readout redraws the cost at once, whether or
+not the run is advancing.
+
+#### Setting a price
+
+**The project ships no price.** Until the reader sets a price, the readout says
+that no price is set, and it shows no cost. A shipped price goes stale, and it
+differs from one institution to the next. Gas Man shows both problems. Its
+default price for isoflurane is $20.47 for a 100 mL bottle (Philip JH,
+*Workbook for Gas Man*, Appendix C, printed p. 171). The book calls its
+defaults "USA bottle volume and bottle cost as of March 5, 2008" (printed
+p. 105). Chapter 14 gives $78.00 per 100 mL bottle "on March 5, 2008" (printed
+p. 141).
+
 **The simulator keeps at most one price for each agent, and the price records
 five things:**
 
@@ -5720,8 +5661,9 @@ because a new price saved under the stored date would be shown as older than it
 is. Typing the stored price again moves the date back. A date that the reader
 edits is kept, whatever they type afterwards. The date field therefore always
 shows the date that the form saves
-(`test_a_price_typed_over_a_stored_one_is_dated_at_the_day_of_entry`,
-`test_a_date_the_reader_edits_is_kept_for_a_price_typed_over_a_stored_one`).
+(`test_a_price_typed_over_a_stored_one_is_dated_at_the_day_of_entry` and
+`test_a_date_the_reader_edits_is_kept_for_a_price_typed_over_a_stored_one`, both
+in `tests/integration/test_agent_cost_view.py`).
 
 **The form takes the price per bottle, and the simulator derives the price per
 millilitre** (decided by `PL-VJZK` on 2026-10-26, over asking for a price per
@@ -5761,25 +5703,7 @@ is refused rather than guessed at, because "1,250" could mean 1250 or 1.25.
 and the readout goes on showing the cost at the price already stored, with
 that price beside it.
 
-**When no cost is shown.** The readout shows no cost, and says why, in each of
-these four cases:
-
-- no price is set for the agent;
-- the stored price was refused when the simulator read its preferences file.
-  No default replaces it, and the readout says that no valid price is set for
-  the agent. The View names each refused entry, and under that notice it offers
-  to discard them all. The reader confirms the discard first, because it cannot
-  be undone
-  (`test_the_reader_can_discard_refused_entries_and_the_next_launch_names_none`);
-- the price per millilitre is not a positive finite number, or the cost is not
-  finite, which extreme entries can cause, such as a bottle price of 10 to the
-  power 308 for a 0.5 mL bottle; or
-- the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
-
-The readout never shows a cost of zero in place of one of these cases. Nor does
-it show a cost left over from an earlier instant, another agent or an earlier
-price. When the price changes, the readout redraws the cost at once, whether or
-not the run is advancing.
+#### The code and tests behind the cost readout
 
 **For developers.** `app/agent_cost.py` computes every line of the cost readout
 and reads the price that the reader typed (`PL-1P15`). The agent cost View is
@@ -5966,7 +5890,7 @@ total of stored agent (`stored_agent_l`).
 Each spelling of an amount's unit is defined once, in `app/display_units.py`
 (`DisplayUnit`). Whoever writes the first View to print a spelling adds it
 there. Every View reads its spellings from that file and defines none of
-its own (`test_no_agent_amount_unit_is_spelled_outside_the_units_module`). The
+its own (`test_no_agent_amount_unit_is_spelled_outside_the_units_module` in `tests/unit/test_display_units.py`). The
 agent-accounting panel's caption and the "L" beside each of its amounts are
 one member of that file.
 
