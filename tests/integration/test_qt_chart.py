@@ -1070,6 +1070,58 @@ def test_each_dashed_pen_paints_its_dash_pattern(application: QApplication) -> N
         assert runs[:whole] == [round(length) for length in pattern] * (whole // len(pattern))
 
 
+def test_the_time_axis_title_states_the_window_and_breaks_only_after_a_comma(
+    application: QApplication,
+) -> None:
+    """`PL-K4CZ`: the time axis's title states the window, on one line where the axis has room.
+
+    The window had a line of its own above the plot, which took the plot's
+    height at 1366 by 768. On a narrow plot the title breaks after a comma,
+    so the span keeps its unit, and it is one line again once the plot is
+    wide.
+    """
+
+    chart = ConcentrationChart()
+    window = "15 minutes shown, centred on now during the preview"
+    chart.show_time_window(window)
+    chart.resize(1200, 400)
+    chart.show()
+    application.processEvents()
+
+    assert chart.time_axis_title == "simulated time, " + window
+    assert chart.time_axis_lines == (chart.time_axis_title,)
+
+    chart.resize(300, 400)
+    application.processEvents()
+    lines = chart.time_axis_lines
+
+    assert len(lines) > 1
+    assert all(line.endswith(",") for line in lines[:-1])
+    assert any("15 minutes shown," in line for line in lines)
+    assert " ".join(lines) == chart.time_axis_title
+    assert chart.axis_titles()[1] == chart.time_axis_title
+
+    chart.resize(1200, 400)
+    application.processEvents()
+
+    assert chart.time_axis_lines == (chart.time_axis_title,)
+
+    # A new title with as many lines as the old one is centred again under
+    # the plot, and not left where the old, shorter title began.
+    chart.show_time_window("15 minutes shown")
+    application.processEvents()
+
+    assert chart.time_axis_lines == ("simulated time, 15 minutes shown",)
+    assert abs(chart.time_axis_title_offset_px) <= 1
+
+    chart.show_time_window(window)
+    application.processEvents()
+
+    assert len(chart.time_axis_lines) == 1
+    assert abs(chart.time_axis_title_offset_px) <= 1
+    chart.close()
+
+
 def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wrap(
     application: QApplication,
 ) -> None:

@@ -879,9 +879,15 @@ FIT_RUN_LABEL: Final = "Fit run"
 # plot showing fifteen minutes and showing twelve hours makes two different
 # claims about what a flat trace means. Under "Fit run" the caption says both
 # that the whole run is drawn and how wide the plot had to be to draw it. The
-# selector then names only the rule, and this line is the only one that names
-# the resulting width.
+# selector then names only the rule, and the caption is the only text that
+# names the resulting width. The caption is written into the time axis's
+# title.
 CHART_HEADING: Final = "Agent concentration and relative partial pressure over time"
+# The time axis's title states the window after the axis's name, so the
+# window takes no line of its own above the plot (`PL-K4CZ`). A narrow plot
+# breaks the title after a comma, and so never between a span and its unit.
+TIME_AXIS_TITLE: Final = "simulated time"
+TIME_AXIS_TITLE_TEMPLATE: Final = f"{TIME_AXIS_TITLE}, {{window}}"
 FITTED_TIME_AXIS_CAPTION_TEMPLATE: Final = "whole run so far, {span} shown"
 CHOSEN_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown"
 # While a setting is previewed, the window keeps its width and slides so that

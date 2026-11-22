@@ -149,13 +149,11 @@ def test_the_two_plots_share_one_frame_while_they_show_the_same_window(
     assert frame is not None
     assert frame is not _concentration(view).chart.frame
     assert frame.time_base == time_base_for_span(43200.0)
-    assert format_time_base(43200.0) in wash_in.time_axis_caption.text()
+    assert format_time_base(43200.0) in wash_in.chart.time_axis_title
 
 
-def test_the_time_axis_caption_on_screen_states_the_span_and_the_mode(
-    application: QApplication,
-) -> None:
-    """The width is a mode (`PL-012`), so the caption says which and how wide."""
+def test_the_time_axis_title_states_the_span_and_the_mode(application: QApplication) -> None:
+    """The width is a mode (`PL-012`), so the time axis's title says which and how wide."""
 
     controller = SimulationController()
     controller.start()
@@ -164,16 +162,15 @@ def test_the_time_axis_caption_on_screen_states_the_span_and_the_mode(
     frame = _concentration(view).chart.frame
     assert frame is not None
 
-    assert "whole run so far" in _concentration(view).time_axis_caption.text()
-    assert (
-        f"{format_time_base(frame.time_base.span_s)} shown"
-        in _concentration(view).time_axis_caption.text()
-    )
-    assert "simulated seconds" not in _concentration(view).time_axis_caption.text()
+    title = _concentration(view).chart.time_axis_title
+
+    assert "whole run so far" in title
+    assert f"{format_time_base(frame.time_base.span_s)} shown" in title
+    assert "simulated seconds" not in title
 
     _select_time_base(view, "7200.0")
 
-    assert _concentration(view).time_axis_caption.text() == "2 hours shown"
+    assert _concentration(view).chart.time_axis_title == "simulated time, 2 hours shown"
 
 
 def test_choosing_a_time_base_changes_nothing_the_run_recorded(application: QApplication) -> None:
@@ -269,7 +266,7 @@ def test_a_chart_s_window_returns_with_the_chart_after_its_area_shows_another_vi
 
     assert _chosen_time_base(view) == time_base_for_span(1800.0)
     assert _concentration(view).time_base_selector.currentData() == "1800.0"
-    assert format_time_base(1800.0) in _concentration(view).time_axis_caption.text()
+    assert format_time_base(1800.0) in _concentration(view).chart.time_axis_title
 
 
 def test_reset_leaves_the_selected_time_base_alone(application: QApplication) -> None:

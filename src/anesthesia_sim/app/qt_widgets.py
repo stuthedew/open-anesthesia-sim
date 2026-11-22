@@ -417,6 +417,140 @@ def _with_declared_roles(existing: QPalette) -> QPalette:
     return palette
 
 
+def _clauses(words: str) -> list[str]:
+    """Return `words` cut after each word that ends in a comma or a semicolon."""
+
+    clauses = [""]
+
+    for word in words.split(" "):
+        clauses[-1] = f"{clauses[-1]} {word}" if clauses[-1] else word
+
+        if word.endswith((",", ";")):
+            clauses.append("")
+
+    return [clause for clause in clauses if clause]
+
+
+def clause_lines(words: str, metrics: QFontMetrics, width: int) -> list[str]:
+    """Return `words` as lines that each fit in `width` px, broken only after a clause.
+
+    A clause ends at a word that ends in a comma or a semicolon. A clause
+    wider than `width` on its own still takes one line, because a break
+    inside it could part a value from its unit.
+
+    Args:
+        words: The words on one line.
+        metrics: The metrics of the font that the words are drawn in.
+        width: The width each line should fit in, in px.
+
+    Returns:
+        The lines, in order.
+    """
+
+    lines: list[str] = []
+
+    for clause in _clauses(words):
+        if lines and metrics.horizontalAdvance(f"{lines[-1]} {clause}") <= width:
+            lines[-1] = f"{lines[-1]} {clause}"
+        else:
+            lines.append(clause)
+
+    return lines
+
+
+class ClauseWrappingLabel(QLabel):
+    """Words that keep to one line where there is room, and break only after a clause.
+
+    The words break only at a space after a comma or a semicolon. So a value
+    keeps its unit, and a range keeps both its edges, on one line: the
+    MAC-awake entry never ends a line on "0.58–" or between "±1" and "SD".
+    Qt's own word wrap breaks at any space, and it also wraps at a width it
+    guesses, even in a row wide enough for one line. This label asks for its
+    one-line width instead. A `FlowLayout` row gives an entry narrower than
+    that its own width and the height its lines need there, and the label
+    breaks only as many clauses onto new lines as that width needs.
+
+    `text()` returns the words as broken at the current width. `words()`
+    returns them on one line, and the dashboard's walk over what is on
+    screen reads that, so a narrow View states the same text as a wide one.
+
+    Args:
+        text: The words on one line.
+        color: The value of a `theme.py` colour name, for the words.
+    """
+
+    def __init__(self, text: str, *, color: str) -> None:
+        super().__init__(text)
+        self._words = text
+        self.setStyleSheet(foreground_stylesheet(color))
+
+    def setText(self, text: str) -> None:  # Qt spells this in camelCase.
+        # A chart View rewrites its legend on every frame. Unchanged words
+        # leave the layout alone, as `QLabel.setText` does.
+        if text == self._words:
+            return
+
+        self._words = text
+        super().setText(self._lines_at(self.width() - self._extra_px()))
+        self.updateGeometry()
+
+    def words(self) -> str:
+        """The words on one line, as the entry states them wherever it is laid out."""
+
+        return self._words
+
+    def _lines_at(self, width: int) -> str:
+        """Return the words with a line break after each clause that does not fit in `width`."""
+
+        return "\n".join(clause_lines(self._words, self.fontMetrics(), width))
+
+    def _extra_px(self) -> int:
+        margins = self.contentsMargins()
+
+        return margins.left() + margins.right() + 2 * self.margin()
+
+    def _height_of(self, text: str) -> int:
+        margins = self.contentsMargins()
+        rows = text.count("\n") + 1
+
+        return (
+            rows * self.fontMetrics().lineSpacing()
+            + margins.top()
+            + margins.bottom()
+            + 2 * self.margin()
+        )
+
+    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
+        return True
+
+    def heightForWidth(self, width: int) -> int:  # Qt spells this in camelCase.
+        return self._height_of(self._lines_at(width - self._extra_px()))
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        # One pixel more than the text's advance, so the layout's rounding
+        # cannot leave the words a fraction too narrow and break them.
+        width = self.fontMetrics().horizontalAdvance(self._words) + 1 + self._extra_px()
+
+        return QSize(width, self._height_of(self._words))
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        # The height is one line's. A layout widens an item's size hint to its
+        # minimum, so the height of the narrowest layout here would be
+        # reserved at every width. The height at a given width is
+        # `heightForWidth`'s.
+        metrics = self.fontMetrics()
+        widest = max(metrics.horizontalAdvance(clause) for clause in _clauses(self._words))
+
+        return QSize(widest + 1 + self._extra_px(), self._height_of(self._words))
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
+        super().resizeEvent(event)
+        lines = self._lines_at(self.width() - self._extra_px())
+
+        if lines != self.text():
+            super().setText(lines)
+
+
 class FlowLayout(QLayout):
     """A row of items that wraps onto further lines when the width runs out.
 

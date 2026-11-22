@@ -125,8 +125,7 @@
   "inspired",
   "litres of vapour",
   "millilitres of liquid",
-  "simulated time",
-  "whole run so far, # minute shown",
+  "simulated time, whole run so far, # minute shown",
   " ",
   "×MAC"
  ],
@@ -260,8 +259,7 @@
   "inspired",
   "litres of vapour",
   "millilitres of liquid",
-  "simulated time",
-  "whole run so far, # minutes shown",
+  "simulated time, whole run so far, # minutes shown",
   " ",
   "×MAC"
  ],
@@ -394,8 +392,7 @@
   "inspired",
   "litres of vapour",
   "millilitres of liquid",
-  "simulated time",
-  "whole run so far, ## minutes shown",
+  "simulated time, whole run so far, ## minutes shown",
   " ",
   "×MAC"
  ],
@@ -529,8 +526,7 @@
   "inspired",
   "litres of vapour",
   "millilitres of liquid",
-  "simulated time",
-  "whole run so far, # minutes shown",
+  "simulated time, whole run so far, # minutes shown",
   " ",
   "×MAC"
  ],
@@ -664,8 +660,7 @@
   "inspired",
   "litres of vapour",
   "millilitres of liquid",
-  "simulated time",
-  "whole run so far, # minutes shown",
+  "simulated time, whole run so far, # minutes shown",
   " ",
   "×MAC"
  ]

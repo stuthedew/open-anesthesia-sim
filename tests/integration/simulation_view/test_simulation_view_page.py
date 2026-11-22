@@ -380,10 +380,13 @@ def test_the_concentration_plot_takes_half_its_area_on_a_laptop(application: QAp
     """`PL-K4CZ`: in the Default Workspace at 1366 by 768, the plot has at least half the Area.
 
     Before the fix the 1 MAC and MAC-awake values had a line each above the
-    legend, as well as an entry each in it. The plot widget was then 209 px
-    of a 488 px Area, and the rows that explain the plot took more height
-    than the plot. Each entry now states its value. Every row above the plot
-    is still on screen, because the box that holds them does not scroll.
+    legend, as well as an entry each in it, and the window shown had a line
+    of its own. The plot widget was then 209 px of a 488 px Area, and the
+    rows that explain the plot took more height than the plot. Each entry now
+    states its value, and the time axis's title states the window. Every row
+    above the plot is still on screen, because the box that holds them does
+    not scroll. The share depends on the font: the test machines draw with a
+    wider one than the development container, and the bar holds on both.
     """
 
     view = _shipped_view_at(application, "Default", 1366, 768)
@@ -638,3 +641,24 @@ def test_the_page_scrolls_only_where_the_window_is_too_small_for_every_view(
         frame = areas.frame(area.id)
         assert frame.view_scroll is not None, f"Area {area.id} shows a notice"
         assert frame.content.isVisible(), f"Area {area.id} hides its View behind a notice"
+
+
+def test_the_screen_walk_reads_the_mac_awake_entry_whole_where_its_words_wrap(
+    application: QApplication,
+) -> None:
+    """`PL-K4CZ`: the MAC-awake entry states the same words in a narrow window as in a wide one.
+
+    The entry breaks its words after a clause where its row is narrow, so its
+    label's text holds line breaks. The walk over what is on screen reads the
+    words on one line, so a check that a value is on screen does not depend
+    on the window's width.
+    """
+
+    view = _shipped_view_at(application, "Default", 1000, 768)
+    legend = _concentration(view).legend
+    words = legend.band_mark.label
+    (band,) = (label for label in legend.findChildren(QLabel) if "MAC-awake" in label.text())
+
+    assert "\n" in band.text()
+    assert words in view.visible_strings()
+    assert band.text() not in view.visible_strings()

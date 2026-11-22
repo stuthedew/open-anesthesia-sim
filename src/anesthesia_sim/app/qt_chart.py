@@ -51,6 +51,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from html import escape
 from math import ceil
 from typing import Any, Final, cast
 
@@ -71,12 +72,12 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QBrush,
     QColor,
+    QFontMetrics,
     QImage,
     QMouseEvent,
     QPainter,
     QPaintEvent,
     QPen,
-    QResizeEvent,
 )
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -131,6 +132,8 @@ from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     ONE_MAC_LINE_LEGEND_NAME,
     ONE_MAC_LINE_LEGEND_TEMPLATE,
+    TIME_AXIS_TITLE,
+    TIME_AXIS_TITLE_TEMPLATE,
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
     compared_trace_legend_label,
@@ -138,7 +141,13 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_chart_time_label, format_time_base
-from anesthesia_sim.app.qt_widgets import FlowLayout, SelectorComboBox, declare_interface_colours
+from anesthesia_sim.app.qt_widgets import (
+    ClauseWrappingLabel,
+    FlowLayout,
+    SelectorComboBox,
+    clause_lines,
+    declare_interface_colours,
+)
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.stylesheets import foreground_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
@@ -1021,7 +1030,7 @@ class ConcentrationChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", DisplayUnit.CONCENTRATION.axis_title, color=MUTED)
-        item.setLabel("bottom", "simulated time", color=MUTED)
+        self._time_title = _TimeAxisTitle(item)
         item.showAxis("right")
         item.getAxis("right").setLabel(DisplayUnit.MAC_MULTIPLE.axis_title, color=MUTED)
 
@@ -1286,7 +1295,35 @@ class ConcentrationChart(QWidget):
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the chart's axes, so a walk over the whole interface finds them."""
 
-        return _axis_titles(self._plot)
+        return _axis_titles(self._plot, self._time_title.words)
+
+    def show_time_window(self, window: str) -> None:
+        """Write the window the plot shows into the time axis's title.
+
+        Args:
+            window: What `dashboard_frame.time_axis_caption` says of the
+                frame just drawn.
+        """
+
+        self._time_title.show(window)
+
+    @property
+    def time_axis_title(self) -> str:
+        """The time axis's title on one line, however the axis breaks it."""
+
+        return self._time_title.words
+
+    @property
+    def time_axis_lines(self) -> tuple[str, ...]:
+        """The time axis's title as the axis draws it, one line at a time."""
+
+        return self._time_title.lines
+
+    @property
+    def time_axis_title_offset_px(self) -> float:
+        """How far the title's centre is from the time axis's centre, in px."""
+
+        return self._time_title.offset_px
 
     def painted(self) -> QImage:
         """The chart as painted, so a test can check what is on screen."""
@@ -1461,7 +1498,7 @@ class WashInChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", WASH_IN_RATIO_NAME, color=MUTED)
-        item.setLabel("bottom", "simulated time", color=MUTED)
+        self._time_title = _TimeAxisTitle(item)
         # The axis is fixed rather than fitted to the data. It is labelled at
         # its own gridlines, at its own resolution, as `docs/INTERFACE.md`
         # § "F_A/F_I as a displayed ratio" specifies.
@@ -1679,7 +1716,35 @@ class WashInChart(QWidget):
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the plot's axes, so a walk over the whole interface finds them."""
 
-        return _axis_titles(self._plot)
+        return _axis_titles(self._plot, self._time_title.words)
+
+    def show_time_window(self, window: str) -> None:
+        """Write the window the plot shows into the time axis's title.
+
+        Args:
+            window: What `dashboard_frame.time_axis_caption` says of the
+                frame just drawn.
+        """
+
+        self._time_title.show(window)
+
+    @property
+    def time_axis_title(self) -> str:
+        """The time axis's title on one line, however the axis breaks it."""
+
+        return self._time_title.words
+
+    @property
+    def time_axis_lines(self) -> tuple[str, ...]:
+        """The time axis's title as the axis draws it, one line at a time."""
+
+        return self._time_title.lines
+
+    @property
+    def time_axis_title_offset_px(self) -> float:
+        """How far the title's centre is from the time axis's centre, in px."""
+
+        return self._time_title.offset_px
 
     def painted(self) -> QImage:
         """The plot as painted, so a test can check what is on screen."""
@@ -1758,12 +1823,87 @@ class WashInChart(QWidget):
         return self._hover.shown_box()
 
 
-def _axis_titles(plot: Any) -> tuple[str, ...]:
-    """The non-empty axis titles of a plot, in left, bottom, right order."""
+def _axis_titles(plot: Any, time_title: str) -> tuple[str, ...]:
+    """The non-empty axis titles of a plot, in left, bottom, right order.
+
+    The time axis's title is given on one line, as `_TimeAxisTitle.words`
+    states it. The axis itself may hold it broken across lines.
+    """
 
     item = plot.getPlotItem()
-    titles = (str(item.getAxis(name).labelText) for name in ("left", "bottom", "right"))
-    return tuple(title for title in titles if title)
+    left, right = (str(item.getAxis(name).labelText) for name in ("left", "right"))
+    return tuple(title for title in (left, time_title, right) if title)
+
+
+class _TimeAxisTitle:
+    """The title of a plot's time axis, which names the axis and states the window shown.
+
+    The window had a line of its own above the plot, which took the plot's
+    height at 1366 by 768 (`PL-K4CZ`). The title keeps to one line where the
+    axis is wide enough. On a narrower axis it breaks after a comma, as the
+    MAC-awake legend entry does, so a span never loses its unit. The title is
+    broken again whenever the axis changes width.
+
+    Args:
+        item: The plot whose bottom axis is the time axis.
+    """
+
+    def __init__(self, item: Any) -> None:
+        self._item = item
+        self._axis = item.getAxis("bottom")
+        self._words = TIME_AXIS_TITLE
+        self._lines: tuple[str, ...] = ()
+        self._width = -1.0
+        self._axis.geometryChanged.connect(self._refit)
+        self._write()
+
+    @property
+    def words(self) -> str:
+        """The title on one line."""
+
+        return self._words
+
+    @property
+    def lines(self) -> tuple[str, ...]:
+        """The title as the axis draws it, one line at a time."""
+
+        return self._lines
+
+    @property
+    def offset_px(self) -> float:
+        """How far the title's centre is from the axis's centre, in px."""
+
+        label = self._axis.label
+        centre = label.pos().x() + label.boundingRect().width() / 2
+
+        return float(centre - self._axis.size().width() / 2)
+
+    def show(self, window: str) -> None:
+        """Name the axis and state `window` after the name."""
+
+        words = TIME_AXIS_TITLE_TEMPLATE.format(window=window)
+
+        if words != self._words:
+            self._words = words
+            self._write()
+
+    def _refit(self) -> None:
+        # Writing the title changes the axis's height and never its width, so
+        # this runs once for each new width and does not loop.
+        if self._axis.size().width() != self._width:
+            self._write()
+
+    def _write(self) -> None:
+        self._width = self._axis.size().width()
+        label = self._axis.label
+        room = int(self._width - 2 * label.document().documentMargin())
+        self._lines = tuple(clause_lines(self._words, QFontMetrics(label.font()), room))
+        title = "<br>".join(escape(line) for line in self._lines)
+        self._item.setLabel("bottom", title, color=MUTED)
+        # pyqtgraph centres the title only when the axis is resized, and a new
+        # title with as many lines as the old one does not resize it. The
+        # axis's own resize handler places the title again.
+        self._axis.resizeEvent()
 
 
 def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
@@ -2188,8 +2328,8 @@ class TraceLegend(QWidget):
         self._one_mac_label = _legend_label(
             ONE_MAC_LINE_LEGEND_TEMPLATE.format(reference=ONE_MAC_LINE_LEGEND_NAME)
         )
-        self._band_label = _WrappingLegendLabel(
-            MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference=MAC_AWAKE_BAND_LEGEND_NAME)
+        self._band_label = ClauseWrappingLabel(
+            MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference=MAC_AWAKE_BAND_LEGEND_NAME), color=INK
         )
         layout.addLayout(
             _legend_row(
@@ -2624,104 +2764,3 @@ def _legend_label(text: str) -> QLabel:
     label.setStyleSheet(foreground_stylesheet(INK))
 
     return label
-
-
-class _WrappingLegendLabel(QLabel):
-    """Legend words that keep to one line where the row has room, and break only after a clause.
-
-    The words break only at a space after a comma or a semicolon. So a value
-    keeps its unit, and a range keeps both its edges, on one line: the
-    MAC-awake entry never ends a line on "0.58–" or between "±1" and "SD".
-    Qt's own word wrap breaks at any space, and it also wraps at a width it
-    guesses, even in a row wide enough for one line. This label asks for its
-    one-line width instead. A `FlowLayout` row gives an entry narrower than
-    that its own width and the height its lines need there, and the label
-    breaks only as many clauses onto new lines as that width needs.
-    """
-
-    def __init__(self, text: str) -> None:
-        super().__init__(text)
-        self._words = text
-        self.setStyleSheet(foreground_stylesheet(INK))
-
-    def setText(self, text: str) -> None:  # Qt spells this in camelCase.
-        self._words = text
-        super().setText(self._lines_at(self.width() - self._extra_px()))
-        self.updateGeometry()
-
-    def words(self) -> str:
-        """The words on one line, as the entry states them wherever it is laid out."""
-
-        return self._words
-
-    def _clauses(self) -> list[str]:
-        """Return the words cut after each word that ends in a comma or a semicolon."""
-
-        clauses = [""]
-
-        for word in self._words.split(" "):
-            clauses[-1] = f"{clauses[-1]} {word}" if clauses[-1] else word
-
-            if word.endswith((",", ";")):
-                clauses.append("")
-
-        return [clause for clause in clauses if clause]
-
-    def _lines_at(self, width: int) -> str:
-        """Return the words with a line break after each clause that does not fit in `width`."""
-
-        metrics = self.fontMetrics()
-        lines: list[str] = []
-
-        for clause in self._clauses():
-            if lines and metrics.horizontalAdvance(f"{lines[-1]} {clause}") <= width:
-                lines[-1] = f"{lines[-1]} {clause}"
-            else:
-                lines.append(clause)
-
-        return "\n".join(lines)
-
-    def _extra_px(self) -> int:
-        margins = self.contentsMargins()
-
-        return margins.left() + margins.right() + 2 * self.margin()
-
-    def _height_of(self, text: str) -> int:
-        margins = self.contentsMargins()
-        rows = text.count("\n") + 1
-
-        return (
-            rows * self.fontMetrics().lineSpacing()
-            + margins.top()
-            + margins.bottom()
-            + 2 * self.margin()
-        )
-
-    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
-        return True
-
-    def heightForWidth(self, width: int) -> int:  # Qt spells this in camelCase.
-        return self._height_of(self._lines_at(width - self._extra_px()))
-
-    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        # One pixel more than the text's advance, so the layout's rounding
-        # cannot leave the words a fraction too narrow and break them.
-        width = self.fontMetrics().horizontalAdvance(self._words) + 1 + self._extra_px()
-
-        return QSize(width, self._height_of(self._words))
-
-    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
-        # The height is one line's. A layout widens an item's size hint to its
-        # minimum, so the height of the narrowest layout here would be
-        # reserved at every width. The height at a given width is
-        # `heightForWidth`'s.
-        widest = max(self.fontMetrics().horizontalAdvance(clause) for clause in self._clauses())
-
-        return QSize(widest + 1 + self._extra_px(), self._height_of(self._words))
-
-    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
-        super().resizeEvent(event)
-        lines = self._lines_at(self.width() - self._extra_px())
-
-        if lines != self.text():
-            super().setText(lines)

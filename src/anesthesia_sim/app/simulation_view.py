@@ -153,7 +153,13 @@ from anesthesia_sim.app.preferences import (
     refusals_notice,
     unsaved_preferences_notice,
 )
-from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    BookmarkDialog,
+    BookmarksPanel,
+    ClauseWrappingLabel,
+    ForkPanel,
+    styled_label,
+)
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.stylesheets import page_stylesheet, scroll_area_stylesheet
@@ -237,7 +243,9 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
     if isinstance(widget, QDialog):
         yield InterfaceText(widget.windowTitle(), seen)
 
-    if isinstance(widget, QLabel | QAbstractButton):
+    if isinstance(widget, ClauseWrappingLabel):
+        yield InterfaceText(widget.words(), seen)
+    elif isinstance(widget, QLabel | QAbstractButton):
         yield InterfaceText(widget.text(), seen)
 
     if isinstance(widget, QAbstractButton) and widget.accessibleName():

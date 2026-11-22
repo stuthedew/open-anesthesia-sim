@@ -3041,8 +3041,8 @@ keeps doubling the width. Early in a run, it can also use widths narrower than
 any the reader can choose.
 
 **Every axis label carries its own unit, and each chart states its width.** A
-label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. Beside the plot, the chart
-names the width in words. It says whether the reader chose the width, or it is
+label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. The time axis's title names
+the width in words, after "simulated time". It says whether the reader chose the width, or it is
 the whole run so far, or the window is centred on the current time for a
 preview.
 
