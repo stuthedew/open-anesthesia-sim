@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/PARAMETERS.md
 blocked-by: PL-48MX
 deferred-from: v0.7.0 - not present at the freeze: the sentence came with cfd4a4b61 on 2026-11-09, and every displayed value is correct

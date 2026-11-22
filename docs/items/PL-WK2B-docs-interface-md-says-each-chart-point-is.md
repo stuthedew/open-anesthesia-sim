@@ -3,6 +3,7 @@ id: PL-WK2B
 title: docs/INTERFACE.md says each chart point is computed by formula from the run's definition and that no stored series lies behind a trace, but the chart reads the run's stored states
 status: done
 feature: interface-matches-its-spec
+milestone: v0.6.20
 touches: docs/INTERFACE.md
 added: 2026-11-22
 closed: 2026-11-22

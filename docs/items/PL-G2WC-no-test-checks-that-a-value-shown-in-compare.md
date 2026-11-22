@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: every-view-in-run-state-tests
+milestone: v0.6.20
 touches: tests/integration
 deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; not live: checked 2026-11-10, the audit found no value shown under the wrong run, and the gap is that no test would catch one
 added: 2026-11-10

@@ -3,6 +3,7 @@ id: PL-K4CZ
 title: At 1366 by 768 the concentration chart's legend and reference lines take more of its Area than the plot does: the plot widget is 228 px tall of a 480 px Area in Default and 120 px in Induction
 status: done
 feature: interface-design-review
+milestone: v0.6.20
 added: 2026-11-22
 closed: 2026-11-22
 pr: 2218

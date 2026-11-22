@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux, defect
 feature: window-is-the-frame
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_rendering.py
 deferred-from: v0.7.0 - a new problem: #2134 (PL-CBYS, 2026-11-13) let the plot shrink to 160 px after the freeze; at 0947408 it was never shorter than 360 px, so the hover box always fitted above or below the point
 added: 2026-11-14

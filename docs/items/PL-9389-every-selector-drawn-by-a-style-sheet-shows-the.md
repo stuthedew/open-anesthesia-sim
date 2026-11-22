@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: interface-design-review
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/stylesheets.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/run_view.py, tests
 deferred-from: v0.7.0 - captured after the freeze; a drawing defect in the selectors, and no displayed value is wrong
 added: 2026-11-22

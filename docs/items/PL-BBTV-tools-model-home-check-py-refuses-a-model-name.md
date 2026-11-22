@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: standing-weight
+milestone: v0.6.20
 touches: tools/model_home_check.py, tests/unit/test_model_home_check.py
 deferred-from: v0.7.0 - a new problem: tools/model_home_check.py was added by PL-0XDM (#1791, 2b8a3e8f, 2026-10-25) after the freeze; a workflow check that changes nothing a learner sees
 added: 2026-11-21

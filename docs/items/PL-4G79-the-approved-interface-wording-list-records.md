@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety, test
 feature: presentation-safety
+milestone: v0.6.20
 touches: tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json
 deferred-from: v0.7.0 - not live: checked 2026-11-22, the gap is in the approval test and no wrong or misleading notice wording is known on screen; the forbidden-phrase checks in tests/integration/simulation_view/ still hold these notices
 added: 2026-11-11

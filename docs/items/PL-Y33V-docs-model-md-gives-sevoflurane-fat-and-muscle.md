@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/MODEL.md, docs/INTERFACE.md, docs/VERIFICATION.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): the conflicting modal time constants came with 9ed29de4 (#1909)
 added: 2026-11-05

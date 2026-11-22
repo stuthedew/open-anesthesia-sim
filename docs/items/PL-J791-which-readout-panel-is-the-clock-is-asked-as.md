@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/run_presentation.py, tests/unit/test_dashboard_frame.py
 deferred-from: v0.7.0 - captured after the freeze; every displayed value is correct, and one of the six copies came with PL-RF2S after it
 added: 2026-11-11

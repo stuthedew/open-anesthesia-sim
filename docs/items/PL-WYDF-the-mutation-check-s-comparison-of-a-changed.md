@@ -3,6 +3,7 @@ id: PL-WYDF
 title: The mutation check's comparison of a changed test with its base version gives no answer when the base tests reach none of the mutated code, so verify refuses a branch that weakened nothing
 status: done
 feature: verify-false-reject
+milestone: v0.6.20
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py
 added: 2026-11-22
 closed: 2026-11-22

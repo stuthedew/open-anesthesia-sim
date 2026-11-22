@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety, ux
 feature: every-view-in-run-state-tests
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/run_surfaces.py, tests/integration/simulation_view
 added: 2026-11-11
 closed: 2026-11-22

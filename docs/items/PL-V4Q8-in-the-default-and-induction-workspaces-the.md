@@ -3,6 +3,7 @@ id: PL-V4Q8
 title: In the Default and Induction Workspaces the four parameter dials are 43 to 85 px long at every window size, because their four cards share one row at their least width while the Parameters Area has spare room
 status: done
 feature: interface-design-review
+milestone: v0.6.20
 added: 2026-11-22
 closed: 2026-11-22
 pr: 2217

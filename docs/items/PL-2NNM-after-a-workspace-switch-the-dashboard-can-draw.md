@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: window-is-the-frame
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/area_layout.py, tests/integration/simulation_view/test_simulation_view_page.py
 deferred-from: v0.7.0 - present-or-not unmeasured, deferred on a stated reason: the squeeze lasts a few passes of the event loop after a Workspace switch and then settles, no value is misread in it, and the area-sizing work it follows is finished
 added: 2026-11-14

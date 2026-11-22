@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: interface-design-review
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/formatting.py, tools/glyph_check.py, docs/INTERFACE.md, tests
 added: 2026-11-22
 closed: 2026-11-22

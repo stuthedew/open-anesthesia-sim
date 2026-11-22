@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: interface-design-review
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/workspace_tabs.py, src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_keyboard.py
 deferred-from: v0.7.0 - captured after the freeze; keyboard focus only, and no displayed value is wrong
 added: 2026-11-22

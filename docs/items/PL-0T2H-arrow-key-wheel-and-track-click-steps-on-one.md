@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: interface-matches-its-spec
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/chart_frame.py, docs/INTERFACE.md, tests/integration/controller/test_controller_control_timeline.py
 blocked-by: PL-Z6C8
 deferred-from: v0.7.0 - filed on 2026-11-21, after the gate froze; it builds after the whole-second stepping work, which changes when a setting takes effect

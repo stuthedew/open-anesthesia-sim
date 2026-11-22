@@ -3,6 +3,7 @@ id: PL-D5J4
 title: At 1366 by 768 the shipped Workspaces put each View's lesson below its Area's fold: Induction's wash-in curve, Maintenance's share bar and most of its schematic, and the Edit bookmarks button, while the Parameters Area has spare height
 status: done
 feature: interface-design-review
+milestone: v0.6.20
 added: 2026-11-22
 closed: 2026-11-22
 pr: 2217

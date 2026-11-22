@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: src/anesthesia_sim/app, src/anesthesia_sim/core, src/anesthesia_sim/data/workspaces/__init__.py, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/sevoflurane.json, tests, tools/contrast_check.py, docs/ARCHITECTURE.md, docs/machine-abstraction.md
 deferred-from: v0.7.0 - a new problem: these mentions became wrong when #2109 (6446f927, 2026-11-13, PL-CTXZ) moved the interface sections out of docs/MODEL.md after the freeze, and PL-CTXZ is closed, so there is no open entry to pair it with
 added: 2026-11-11

@@ -7,6 +7,7 @@ effort: L
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/, tools/, src/anesthesia_sim/, tests/, .claude/rules/, README.md, ROADMAP.md
 blocked-by: PL-FWR6
 added: 2026-11-11

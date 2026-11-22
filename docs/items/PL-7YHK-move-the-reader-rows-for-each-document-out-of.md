@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: model-md-structure
+milestone: v0.6.20
 touches: .claude/rules/plain-writing.md, .claude/rules/document-readers.md, tools/new_prose.py, tests/unit/test_new_prose.py, docs/resident-instructions.md
 added: 2026-11-22
 closed: 2026-11-22

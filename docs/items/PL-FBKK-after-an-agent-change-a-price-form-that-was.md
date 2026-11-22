@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: every-view-in-run-state-tests
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/qt_agent_price.py, tests/integration/test_agent_cost_view.py
 deferred-from: v0.7.0 - a new problem: the price form came in with PL-1P15 (#1939, 7baae320, 2026-11-02), work building v0.7.0 after the freeze; not safety or science, and no price or cost the View shows changes
 added: 2026-11-11
