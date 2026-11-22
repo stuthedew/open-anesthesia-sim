@@ -3,12 +3,15 @@ id: PL-CPF2
 title: While two runs are compared, the setting controls View shows two rows of dials and neither row names its run
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety, ux
 feature: every-view-in-run-state-tests
 touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/run_surfaces.py, tests/integration/simulation_view
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2214
 payoff: while two runs are compared, a learner reads each dial setting against the run it belongs to
+tests: tests/integration/simulation_view/test_simulation_view_views.py::test_each_row_of_dials_names_its_run_while_two_are_drawn_and_only_then
 reenters: PL-GTH6
 ---
 
@@ -34,3 +37,5 @@ an open item decided that the rows stay unnamed.
 **Done when.** While two runs are compared, each row of dials names its run, with the name that the chart's legend and the other panels use. A test shows both names with two runs displayed, and no name with one.
 
 **Generator check.** The fact misread is which run a displayed value belongs to once two runs are shown, which `PL-GTH6`'s `misread:` states. `PL-GTH6` closed on 2026-10-25 and this was filed on 2026-11-11, so it is an instance of that head's fact filed after the head closed, recorded as a re-entry of `PL-GTH6`.
+
+**Done 2026-11-22.** While two runs are drawn, each row of dials carries the run's name above it (`RunDials.name_text`); with one run drawn the name is hidden. Docs checked: `docs/INTERFACE.md` (updated where the dials are described), `docs/ARCHITECTURE.md` and `README.md` (no statement about the dial rows, by `grep -n -i "row of dials\|dial row"`).

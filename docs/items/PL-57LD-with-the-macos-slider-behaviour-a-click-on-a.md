@@ -3,12 +3,15 @@ id: PL-57LD
 title: With the macOS slider behaviour, a click on a slider's track applies the setting and then draws it as a preview labelled 'not applied', and a press on the handle away from its centre applies a change before any drag
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/simulation_view/test_simulation_view_controls.py, docs/INTERFACE.md
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2214
 payoff: A learner on a Mac who clicks a setting slider sees either an applied change or a labelled preview, never an applied value marked not applied.
+tests: tests/integration/simulation_view/test_simulation_view_controls.py::test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview, tests/integration/simulation_view/test_simulation_view_controls.py::test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing, tests/integration/simulation_view/test_simulation_view_controls.py::test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves
 ---
 
 **Problem.** With the macOS slider behaviour, a click on a slider's track applies the setting and then draws it as a preview labelled 'not applied', and a press on the handle away from its centre applies a change before any drag
@@ -102,3 +105,5 @@ With the macOS hints, a press on the handle 3 px to the right of its centre, rel
 **Answered 2026-11-22 (project owner, 2026-11-22, ratified, over a Mac test before deciding).** The owner asked that each item needing him be settled by standard practice. A slider follows the host platform's own track-click convention, which Qt's style for each platform encodes: on macOS a left click on the track moves the handle to the pointer, and under Fusion it steps one page. The source read on 2026-11-21 and quoted above shows this for `qmacstyle_mac.mm` and `qcommonstyle.cpp` at tag v6.11.2. Overriding the platform's hint would make the simulator behave unlike every other slider on a Mac. What is wrong is the preview label. A click on the track is a single input on either platform, so it applies at once and draws no preview, and a press on the handle applies nothing until the handle moves. The Mac check is no longer needed to decide the item: the fix and its test cover the macOS hints whether or not the owner's Mac shows the jump, so the item stays on Gate 3's frozen list.
 
 **Done when, as answered.** Under a proxy style that returns the macOS hints, a click on the track applies the value at the pointer and draws no preview, and a press on the handle off its centre, released without moving, applies nothing. The same test under Fusion shows a one-page step with no preview. `docs/INTERFACE.md` § "A preview of an unapplied setting" states both platforms' track click.
+
+**Done 2026-11-22.** A click on a slider's track is one input on every platform: it applies at once and draws no preview, and the platform's own convention for which button jumps and which steps is kept (`_SettingSlider` in `app/qt_widgets.py`). A press on the handle applies nothing until a drag, and the drag is measured from where the handle was pressed, so a 1 px movement after an off-centre press moves the setting no further than Fusion's own grab does. Docs checked: `docs/INTERFACE.md` § "A preview of an unapplied setting" (rewritten, with its developer note), `ParameterSlider`'s docstring (corrected for Fusion's repeating step), `docs/ARCHITECTURE.md` (one stale sentence said a drag records several settings; it now says a drag applies once, at the release) and `README.md` (no mention of a slider, by `grep -n -i "slider"`). Left for later: PL-M3H5 (a key press while the handle is held applies but stays labelled "not applied").

@@ -435,9 +435,10 @@ toolkit loaded. § "Package map" gives each one's role. `app/formatting.py`
 uses the resolutions that `docs/INTERFACE.md` § "Displayed precision" derives.
 
 `app/control_timeline.py` reads a control record that is faithful to the run,
-in which a drag of one slider appears as several settings. So collapsing that
-drag into one displayed act is a claim about what the user did, not a tidier
-rendering of what the model saw.
+in which a run of key presses or held steps on one slider appears as several
+settings. A drag applies once, at the release. So collapsing such a run into
+one displayed act is a claim about what the user did, not a tidier rendering
+of what the model saw.
 
 In `app/wash_in.py`, the wash-in quotient has a domain. It is undefined before
 any agent reaches the circuit, and above 1 it stops being a wash-in fraction.
