@@ -271,3 +271,26 @@ was not changed", `docs/machine-survey.md`, `docs/machine-abstraction.md`,
 advisory, on `docs/resident-instructions.md`, which this branch does not
 touch. `make check` passes: 12,240 tests passed and 3 were skipped, and
 coverage of `core/` is 100%.
+
+*Replayed 2026-11-22* onto `PL-48MX`'s final commit, after its two blind
+reviews. The one conflict was in `docs/PARAMETERS.md`. This branch's text was
+kept, and each of `PL-48MX`'s later fixes to the same lines was applied to it
+where the line survives. Most of those fixes re-pointed a citation that this
+branch had already re-pointed the same way. The cardiac-output paragraph's
+`provenance:` marker was added again.
+
+*Subheadings in § "The evidence behind the known limitations".* The second
+blind review of `PL-48MX` found passages there that read as the end of a
+section they no longer follow. The section now has nine subheadings. Seven
+take the name of the `docs/MODEL.md` limitation whose evidence they hold, in
+that document's order. "Desflurane's washout through the circle system" holds
+the note on the four tests behind `docs/MODEL.md` § "Elimination at five
+minutes: does not agree", and "The tests and code behind this section" holds
+the two notes that close it. Two pointers that said "the note below" and "the
+note above" now name § "The fat group's blood flow". Each citation in this
+document of a `docs/MODEL.md` section with one of these names already named
+`docs/MODEL.md`, so none now resolves to the new heading by mistake.
+
+*`PL-XLDN` closes here.* Its sentence, "which is the second of the three
+rules below", was in `U0461`, which this branch cuts (cut 3 above). No
+sentence in the document points at the three rules by position.

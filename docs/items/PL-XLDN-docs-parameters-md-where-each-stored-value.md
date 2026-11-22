@@ -3,14 +3,16 @@ id: PL-XLDN
 title: docs/PARAMETERS.md § 'Where each stored value comes from' says a measurement beside a tier-3 number does not source it, 'which is the second of the three rules below', but the three rules are above it, in § 'Source hierarchy'
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: docs/PARAMETERS.md
 blocked-by: PL-48MX
 deferred-from: v0.7.0 - not present at the freeze: the sentence came with cfd4a4b61 on 2026-11-09, and every displayed value is correct
 added: 2026-11-10
+closed: 2026-11-22
 payoff: a clinician following the pointer to the sourcing rule finds it
+verify: ! grep -qF 'second of the three rules below' docs/PARAMETERS.md
 ---
 
 **Problem.** docs/PARAMETERS.md § 'Where each stored value comes from' says a measurement beside a tier-3 number does not source it, 'which is the second of the three rules below', but the three rules are above it, in § 'Source hierarchy'
@@ -42,3 +44,9 @@ fixed in passing.
 **Generator check.** A one-off: a pointer by position that a restructure moved. Naming the rule by its words removes the position.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. `docs/MODEL.md` line 2810 still reads "which is the second of the three rules below", and the list that opens "Three rules apply to an entry under `sources`:" is still above it, at line 2714. The blocker `PL-48MX` is still open, and two earlier stages of the split of `docs/MODEL.md` must finish before it can start.
+
+**Closed 2026-11-22 by `PL-N83Z`** (the sorting of `docs/PARAMETERS.md` by
+reader). That item cuts the paragraph that held the sentence, because reason 1
+in § "Source hierarchy", § "Where this project stands", the machine-rows
+paragraph and the format section each state its fact. A search of
+`docs/PARAMETERS.md` for "rules below" and "rules above" finds nothing.

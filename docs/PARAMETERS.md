@@ -1422,6 +1422,8 @@ This section keeps the evidence, the sources and the tests behind those
 statements that the clinician's text leaves out, in the order of the
 limitations.
 
+### Desflurane's washout through the circle system
+
 **For developers.** Four tests in
 `tests/reference/test_published_wash_in_and_elimination.py` pin the figures of
 `docs/MODEL.md` § "Elimination at five minutes: does not agree".
@@ -1436,6 +1438,8 @@ at 10 L/min, and
 it with the circuit removed.
 
 <!-- not-restated: 10 L/min -->
+
+### Cardiac output and flow distribution are fixed
 
 **The anesthetic's effect on cardiac output and the perfusion fractions is
 not modeled, because the human volunteer data do not describe a relationship
@@ -1478,13 +1482,15 @@ with dose and does not change with time, which the studies above do not show.
 Teaching one would be worse than holding the flow fixed and saying so. The
 case for modeling regional flow is weaker still. The measurements this project
 could find of how anesthesia redistributes flow between the vessel-rich,
-muscle and fat groups are largely from animals. The note below on the fat
-group's perfusion gives what the human record supports, even at rest.
+muscle and fat groups are largely from animals. § "The fat group's blood
+flow" below gives what the human record supports, even at rest.
 
 `ROADMAP.md`'s planned-milestone item 35 carries an automatic coupling from the
 agent to the flow as a possible future option that a user would turn on, with a run's default behaviour
 unchanged. The evidence above favours an option, because an option can state
 its own uncertainty where a model's default behaviour cannot.
+
+### The fat group's blood flow
 
 These are the figures behind the fat flows that `docs/MODEL.md` § "The fat
 group's blood flow" gives from the two Yasuda 1991 papers.
@@ -1505,7 +1511,9 @@ repeats this arithmetic.
 <!-- derived: 54 for isoflurane from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
 <!-- derived: 31 for desflurane from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, blood_gas_partition_coefficient = 0.42 -->
 
-**Two cautions keep this a limitation rather than a missing parameter.** The
+### Intertissue diffusion: the missing fourth compartment
+
+**Two cautions keep the missing intertissue route a limitation rather than a missing parameter.** The
 first is that the route and its size rest on different evidence. The route has
 been measured outside Eger's group. In two dogs after 80 minutes of halothane,
 perirenal fat sampled against the kidney held 20 and 35 times the
@@ -1531,7 +1539,7 @@ no straightforward way, and conclude that correlating them with tissue volumes
 and blood flows "should be done with care, if at all" (*Modern Anesthetics*,
 pp. 165–66).
 
-The second caution is that the fat-perfusion note above leaves the direction
+The second caution is that § "The fat group's blood flow" above leaves the direction
 of the fat group's own error unsettled. On its PET reading, the fat group
 already holds too much agent, which acts against this omission. On its washout
 reading, the fat group holds about what the fitted fat group would. Nothing
@@ -1613,7 +1621,9 @@ for a stored value:
   private reference corpus. The Workbook is tier 3 and the chapter is tier 2, and
   `docs/references/README.md` carries their entries.
 
-A third published set agrees less well. Baker and Farmery's 2011 review
+### The tissue:gas coefficients are carried as exact
+
+A third published set of tissue coefficients agrees less well. Baker and Farmery's 2011 review
 prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986 beside
 the set that matches this model (*Compr Physiol* 2011;1:572, Table 2). On the tissue:blood scale,
 that set puts sevoflurane's fat coefficient at 71.7, 37% above this model's
@@ -1642,6 +1652,9 @@ Fiserova-Bergerova and Diaz 1986 was read as its PubMed abstract only (PMID
 citation is in `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter file was not
 changed".
 
+### One 70 kg adult
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+
 The cardiac output is kept at a fixed 5.0 L/min, rather than scaled with the
 patient's weight, for a structural reason. A time constant is
 $`V_i \lambda_{i:b} / Q_i`$, and this model stores compartment volumes as
@@ -1659,6 +1672,8 @@ Half of the scaling is therefore worse than none of it. Adopting the relation
 for the one patient that exists would have lengthened every time constant by
 3.30% and changed nothing else.
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
+
+### Amounts held in the body, and dry alveoli
 
 **For developers.** `test_the_reference_condition_gap_is_the_ratio_of_molar_volumes`
 computes the molar volumes at 37 °C and 20 °C from the constants in
@@ -1702,6 +1717,8 @@ These figures were computed on 2026-09-19, at the parameters stored then,
 against the published means and standard deviations. The table's factor is
 712.88/760, from the computed 47.12 mmHg.
 
+### Altitude
+
 **No altitude correction factor is stored, and the $`1/P`$ form in `docs/MODEL.md` § "Altitude" must
 not become one.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the
 dilute-vapour limit of the flow-splitting physics. The fuller form is
@@ -1730,7 +1747,7 @@ rather than from the $`1/P`$ shortcut, and would owe each agent's SVP a source
 of its own. None is stored today.
 <!-- not-restated: 20 °C -->
 
-**Sources for the notes above.** None of them is the authority for a stored
+**Sources for the altitude notes above.** None of them is the authority for a stored
 value:
 
 - Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
@@ -1744,7 +1761,7 @@ value:
   it is not the source for that behaviour.
 - Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
   1993;76:1338–1341. Primary. It is the source of the flow-ratio mechanism
-    quoted in `docs/MODEL.md` § "Altitude", which appears in the abstract.
+  quoted in `docs/MODEL.md` § "Altitude", which appears in the abstract.
 - James MF, White JF. Anesthetic considerations at moderate altitude. *Anesth
   Analg* 1984;63:1097–1105. Primary. It is the source of the case for
   reasoning in partial pressures rather than percentages at altitude, and of
@@ -1752,7 +1769,7 @@ value:
   class only.
 - Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
   © 2000 Datex-Ohmeda Division, Instrumentarium Corp. A manufacturer
-    statement, quoted in `docs/MODEL.md` § "Altitude". It also gives a 1–18% concentration range, whose upper
+  statement, quoted in `docs/MODEL.md` § "Altitude". It also gives a 1–18% concentration range, whose upper
   end is the 18% that this model stores as desflurane's maximum delivered
   concentration. Read in full.
   **Owner-attested**: see the note below.
@@ -1786,6 +1803,8 @@ Nothing stored depends on any of them. A reader who wants to verify one has to
 reach the document itself.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
+### The tests and code behind this section
+
 **For developers.** The inert circuit is `BreathingCircuit`. The directional
 checks in `tests/reference/test_sevo_patient.py` assert that a higher cardiac
 output slows the rise of $`F_A`$. The MAC-multiple display divides by each
@@ -1811,7 +1830,7 @@ clinician and names no test. The paragraphs above name the tests behind most of
 its figures. These tests compute the rest:
 
 1. `test_the_muscle_group_equilibrates_in_the_minutes_printed`: the muscle
-      group's 85 to 135 minutes, in `docs/MODEL.md` § "Intertissue diffusion: the missing fourth
+   group's 85 to 135 minutes, in `docs/MODEL.md` § "Intertissue diffusion: the missing fourth
    compartment".
 2. `test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`:
    the hours over which the missing fourth compartment is the largest term of
@@ -1819,7 +1838,7 @@ its figures. These tests compute the rest:
 3. `test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed` and
    `test_yasudas_fat_spreads_are_the_percents_printed`: how far the stored
    coefficients sit from Yasuda, Targ and Eger's means, and how widely their fat
-      measurements spread, in `docs/MODEL.md` § "The tissue:gas coefficients are carried as
+   measurements spread, in `docs/MODEL.md` § "The tissue:gas coefficients are carried as
    exact".
 
 The lung store's share of the fast pool, the fat fractions of 13 to 20% and
