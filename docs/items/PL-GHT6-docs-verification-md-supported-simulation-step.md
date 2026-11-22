@@ -54,3 +54,11 @@ comparison, so the sentence cannot drift again when a stored value changes.
 Found while replaying `PL-LBVN` (the MAC at age 40) onto the verification
 document's new home; not fixed there because a defect in
 `docs/VERIFICATION.md` is filed rather than fixed in place.
+
+**Duplicate of `PL-3MMJ`**, recorded 2026-11-22. `PL-3MMJ` (filed on pull
+request #2222, the clinician's rewrite of `docs/MODEL.md`) is the same
+finding. Whichever of #2222 and #2223 merges second drops its copy as a
+duplicate of the other and keeps the more current figures. This branch's
+figures, at Mapleson's MAC at age 40, are a case-opening timing error of
+7.3e-2 percentage points against one-SD shifts of 9.0e-2 (blood:gas), 9.9e-1
+(muscle), 5.4e-2 (vessel-rich) and 4.0e-2 (fat).
