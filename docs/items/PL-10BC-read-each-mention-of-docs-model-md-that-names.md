@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: model-md-structure
-touches: src/anesthesia_sim/app, src/anesthesia_sim/core, src/anesthesia_sim/data/workspaces/__init__.py, tests, tools/contrast_check.py, docs/ARCHITECTURE.md, docs/machine-abstraction.md
+touches: src/anesthesia_sim/app, src/anesthesia_sim/core, src/anesthesia_sim/data/workspaces/__init__.py, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/sevoflurane.json, tests, tools/contrast_check.py, docs/ARCHITECTURE.md, docs/machine-abstraction.md
 deferred-from: v0.7.0 - a new problem: these mentions became wrong when #2109 (6446f927, 2026-11-13, PL-CTXZ) moved the interface sections out of docs/MODEL.md after the freeze, and PL-CTXZ is closed, so there is no open entry to pair it with
 added: 2026-11-11
 closed: 2026-11-22
@@ -57,5 +57,7 @@ The line numbers are from `e278a80`.
 - the `sources` notes in `src/anesthesia_sim/data/`, which are stored strings and not comments. Three of them point at the wrong section, as the next paragraph says.
 
 **Found and not fixed.** The `sources` notes of `data/agents/sevoflurane.json`, `isoflurane.json` and `desflurane.json` say that `docs/MODEL.md` "Known limitations" carries the 22% displacement of a cross-agent comparison at 1 MAC. `docs/MODEL.md` states it under § "MAC multiples", and `docs/PARAMETERS.md` § "The stored MAC" gives the evidence. In the same way, `data/patients/reference_adult.json` says that `docs/MODEL.md`'s "Known limitations" says that the cardiac-output relation is not a measured cardiac output. `docs/MODEL.md` says it under § "The reference adult".
+
+*Data-file notes, 2026-11-22.* The four notes above were re-pointed by PL-48MX in #2222 (dfbf18f9). Two more notes, in `data/agents/sevoflurane.json` and `isoflurane.json`, said that `docs/MODEL.md` requires the MAC-awake band to be read against the vessel-rich trace. That requirement is in `docs/INTERFACE.md` § "MAC-awake as a chart reference", and both notes now name it. The `_run_name` docstring in `app/simulation_view.py`, which #2229 rewrote, keeps its pointer to `docs/INTERFACE.md` § "Naming the run in a comparison".
 
 **Documents checked.** Every heading cited by the branch was compared, character for character, with the headings of `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md` and `docs/PARAMETERS.md`. `grep -rn 'MODEL.md' src tests tools/contrast_check.py docs/ARCHITECTURE.md docs/machine-abstraction.md` was read line by line.
