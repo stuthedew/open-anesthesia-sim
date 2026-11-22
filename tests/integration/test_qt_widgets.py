@@ -18,7 +18,7 @@ The widgets render on Qt's `offscreen` platform, which `tests/conftest.py` selec
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QEvent, QRect, QSize, Qt
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QPalette
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
@@ -1106,6 +1106,85 @@ def test_a_refusal_shows_under_the_form_it_belongs_to_and_clears_the_other(
 
     assert editor.time_notice.isHidden() is True
     assert editor.target_notice.isHidden() is True
+
+
+def _wheel_down(widget: QWidget) -> None:
+    """Turn the mouse wheel one notch towards the reader over `widget`'s centre.
+
+    The event enters through the window, as a real wheel's does. Qt offers an
+    ignored wheel event to the widget's parents only when it came from the
+    window system, so an event sent straight to the widget could not show
+    whether the page scrolls.
+    """
+
+    window = widget.window().windowHandle()
+    assert window is not None
+    centre = widget.mapTo(widget.window(), widget.rect().center())
+    QTest.wheelEvent(window, QPointF(centre), QPoint(0, -120))
+
+
+def test_a_mouse_wheel_over_an_unfocused_field_scrolls_the_area_and_changes_no_mark(
+    application: QApplication,
+) -> None:
+    """A wheel notch over the instant, the compartment or the height scrolls past it.
+
+    The editor sits in an Area that scrolls. Qt's combo box and spin boxes
+    change their value on a wheel event even without focus. A reader scrolling
+    past them would then change the instant, the compartment or the height
+    without seeing it, in every copy of the editor, and the next Add would mark
+    a value the reader did not choose. So each of the three takes the wheel only
+    once a click or the keyboard has given it focus, as the agent cost View's
+    selectors do (`PL-B396`, `PL-8FSN`). The expected values are the ones
+    written into the editor here, not read back from it.
+    """
+
+    editor = MarkEditor()
+    editor.set_entry(
+        MarkEntry(
+            instant_s=600,
+            time_name="",
+            compartment_row=2,
+            height_mac=1.0,
+            target_name="",
+            time_row=-1,
+            target_row=-1,
+        )
+    )
+    scroll = QScrollArea()
+    scroll.setWidget(editor)
+    scroll.setWidgetResizable(True)
+    scroll.resize(400, 120)
+    scroll.show()
+    application.processEvents()
+    bar = scroll.verticalScrollBar()
+    entered = editor.entry()
+    # Showing the window gives its first control focus. The name field takes
+    # it here, so that none of the three fields under test has it.
+    editor.time_label_edit.setFocus()
+    application.processEvents()
+
+    try:
+        for field in (editor.instant_spin, editor.compartment_combo, editor.height_spin):
+            scroll.ensureWidgetVisible(field)
+            application.processEvents()
+            before = bar.value()
+
+            assert field.hasFocus() is False
+
+            _wheel_down(field)
+            application.processEvents()
+
+            assert (
+                editor.instant_spin.value(),
+                editor.compartment_combo.currentIndex(),
+                editor.height_spin.value(),
+            ) == (600, 2, 1.0)
+            assert bar.value() > before
+            assert field.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    finally:
+        scroll.close()
+
+    assert editor.entry() == entered
 
 
 # ------------------------------------------------------------- the window

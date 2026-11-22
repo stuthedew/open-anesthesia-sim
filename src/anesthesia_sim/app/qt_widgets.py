@@ -49,16 +49,8 @@ from enum import Enum
 from math import ceil
 from typing import Final
 
-from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
-from PySide6.QtGui import (
-    QColor,
-    QFont,
-    QFontMetrics,
-    QMouseEvent,
-    QPalette,
-    QResizeEvent,
-    QWheelEvent,
-)
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QMouseEvent, QPalette, QResizeEvent
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -1861,6 +1853,9 @@ class MarkEditor(QWidget):
         for listing in (self.time_list, self.target_list):
             listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
 
+        for field in (self.instant_spin, self.compartment_combo, self.height_spin):
+            wheel_only_with_focus(field)
+
         for control in (
             self.instant_spin,
             self.time_label_edit,
@@ -2181,47 +2176,67 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
     return QRect(left, top, width, height)
 
 
-class FocusedComboBox(QComboBox):
-    """A combo box that a mouse wheel changes only once it has focus.
+class _WheelOnlyWithFocus(QObject):
+    """An event filter that hands a wheel event to the widget's parent while the widget lacks focus.
 
-    Qt's combo box changes its item on a wheel event even without focus, and
-    emits `activated` as if the reader had picked. The Areas sit in a page
-    that scrolls. So a reader scrolling past the agent cost View would change
-    its unit, or the agent whose price is shown, without meaning to
-    (`PL-B396`). A click or the keyboard gives the
-    selector focus, and the wheel then works as usual.
+    `wheel_only_with_focus` installs one on each widget it is given.
+    """
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if (
+            event.type() is QEvent.Type.Wheel
+            and isinstance(watched, QWidget)
+            and not watched.hasFocus()
+        ):
+            # Ignoring the event makes Qt offer it to each parent in turn, so
+            # the scroll area that holds the widget scrolls instead.
+            event.ignore()
+            return True
+
+        return False
+
+
+def wheel_only_with_focus(widget: QWidget) -> None:
+    """Make `widget` change its value on a mouse wheel only once it has focus.
+
+    Qt's combo box, spin boxes and date field change their value on a wheel
+    event even without focus. The Areas sit in a page that scrolls, and a View
+    taller than its Area scrolls inside it. So a reader scrolling past such a
+    control would change its value without meaning to, and often without seeing
+    the change (`PL-B396`, `PL-8FSN`, `PL-CHX0`). Once the control has this
+    filter, a wheel over it scrolls whatever holds it. A click or the keyboard
+    gives the control focus, and the wheel then works as usual.
+
+    The focus policy becomes `StrongFocus`. A spin box's default policy,
+    `WheelFocus`, would give the control focus on the first wheel event and
+    so let that event change it.
+    """
+
+    widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+    widget.installEventFilter(_WheelOnlyWithFocus(widget))
+
+
+class FocusedComboBox(QComboBox):
+    """A combo box that a mouse wheel changes only once it has focus (`wheel_only_with_focus`).
+
+    Without it, a wheel over the agent cost View's selectors would change the
+    unit, or the agent whose price is shown, and emit `activated` as if the
+    reader had picked (`PL-B396`).
     """
 
     def __init__(self) -> None:
         super().__init__()
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        if not self.hasFocus():
-            event.ignore()
-            return
-
-        super().wheelEvent(event)
+        wheel_only_with_focus(self)
 
 
 class FocusedDateEdit(QDateEdit):
-    """A date field that a mouse wheel changes only once it has focus.
+    """A date field that a mouse wheel changes only once it has focus (`wheel_only_with_focus`).
 
-    Qt's date field steps its date on a wheel event even without focus, as its
-    combo box does (`FocusedComboBox`). The price form sits in a View that
-    scrolls. So a reader scrolling past the form would change the date of a
-    price without meaning to, and the form would then keep that date as one the
-    reader chose (`PL-8FSN`). A click or the keyboard gives the field focus,
-    and the wheel then works as usual.
+    Without it, a wheel over the price form would step the date of a price,
+    and the form would then keep that date as one the reader chose
+    (`PL-8FSN`).
     """
 
     def __init__(self) -> None:
         super().__init__()
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        if not self.hasFocus():
-            event.ignore()
-            return
-
-        super().wheelEvent(event)
+        wheel_only_with_focus(self)
