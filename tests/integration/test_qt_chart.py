@@ -736,12 +736,37 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
     # other five traces, so each readout shows that point alone. The instants
     # differ, so the readouts differ too.
     count = len(run.times_s)
-    earlier, third, later = count // 4, 3 * count // 5, 3 * count // 4
 
     def pixel(index: int) -> QPoint:
         return QPoint(
             *chart.plot_pixel(run.times_s[index], run.percents(RecordedQuantity.CIRCUIT)[index])
         )
+
+    def own_column(index: int) -> int:
+        """Return the nearest index whose point is more than a pixel from each neighbour.
+
+        Columns are rounded down to whole seconds, so two neighbouring points
+        can be a pixel or less apart. A pointer cannot tell them apart, and
+        which of them the hover names then depends on the platform's fonts,
+        which move the plot's left edge.
+        """
+
+        for offset in range(count):
+            for candidate in (index - offset, index + offset):
+                if (
+                    0 < candidate < count - 1
+                    and pixel(candidate - 1).x() + 1 < pixel(candidate).x()
+                    and pixel(candidate).x() + 1 < pixel(candidate + 1).x()
+                ):
+                    return candidate
+
+        raise AssertionError("no point is more than a pixel from each neighbour")
+
+    earlier, third, later = (
+        own_column(count // 4),
+        own_column(3 * count // 5),
+        own_column(3 * count // 4),
+    )
 
     def answer(index: int) -> str:
         return format_trace_hover(run, RecordedQuantity.CIRCUIT, index, 1)
