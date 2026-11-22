@@ -58,5 +58,12 @@ typesets the ratio with subscripts and quotes none of the changed strings.
 `docs/MODEL.md` and `README.md` quote none of them. Checked by searching each
 for "F_A/F_I (solid)", "Now: F_A", "Equilibrium, F_A" and "Wash-in: F_A".
 
+The independent review found one string the search missed. `docs/INTERFACE.md`
+§ "Which series answer a hover, and which do not" quoted the hover readout as
+"Wash-in F_A/F_I (alveolar / modelled circuit)". It now quotes "Wash-in FA/FI",
+and `test_the_wash_in_view_writes_its_fractions_with_subscripts` holds the
+hover label to that example. A search of the three documents for "Wash-in F"
+finds no other quotation.
+
 **Generator check.** A one-off: every changed string was written in one
 change, before the names had one home.

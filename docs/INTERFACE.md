@@ -5313,7 +5313,7 @@ because $`F_A/F_I`$ is dimensionless and has neither a percent nor a MAC reading
 
 ```
 Modelled sevoflurane · 20m8s
-Wash-in F_A/F_I (alveolar / modelled circuit)
+Wash-in FA/FI (alveolar / modelled circuit)
 0.71
 ```
 

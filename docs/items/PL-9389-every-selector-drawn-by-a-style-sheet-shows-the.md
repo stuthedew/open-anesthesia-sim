@@ -66,4 +66,6 @@ platform button is a `SelectorComboBox`.
 **Generator check.** One cause, six selectors: two style sheets that style the
 frame and leave the button to the platform. Both carry the rule now, and
 `test_every_selector_in_every_view_draws_its_own_arrow` fails a selector built
-with either sheet that does not draw its arrow. Not a generator of other items.
+with either sheet that does not draw its arrow. Since the independent review,
+it also fails a `SelectorComboBox` built without one of the sheets, which
+would draw its arrow over the platform's. Not a generator of other items.

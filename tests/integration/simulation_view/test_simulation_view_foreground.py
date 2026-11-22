@@ -415,22 +415,29 @@ def test_no_control_kind_is_exempted_from_declaring_a_foreground_without_cause(
 
 
 def test_every_selector_in_every_view_draws_its_own_arrow(application: QApplication) -> None:
-    """Each combo box whose style sheet hides the platform's button is one that draws an arrow.
+    """A combo box draws its own arrow exactly when its style sheet hides the platform's button.
 
     The selector style sheets stop the platform drawing a drop-down button,
     and `SelectorComboBox` draws the arrow instead (`PL-9389`). A plain combo
     box given one of those sheets would show no arrow at all, so a reader
-    could not tell that it opens a list. The walk covers every registered
-    View and the run controls above the Areas.
+    could not tell that it opens a list. A `SelectorComboBox` without one of
+    those sheets would draw its arrow over the platform's, and show two. The
+    walk covers every registered View and the run controls above the Areas.
     """
 
-    selectors = [
-        widget
-        for widget in _every_view(application).findChildren(QComboBox)
-        if "QComboBox::drop-down" in widget.styleSheet()
+    combo_boxes = _every_view(application).findChildren(QComboBox)
+    hidden_button = [
+        widget for widget in combo_boxes if "QComboBox::drop-down" in widget.styleSheet()
     ]
 
-    assert len(selectors) >= 5, "the walk did not reach the selectors"
+    assert len(hidden_button) >= 5, "the walk did not reach the selectors"
     assert [
-        type(widget).__name__ for widget in selectors if not isinstance(widget, SelectorComboBox)
+        type(widget).__name__
+        for widget in hidden_button
+        if not isinstance(widget, SelectorComboBox)
+    ] == []
+    assert [
+        type(widget).__name__
+        for widget in combo_boxes
+        if isinstance(widget, SelectorComboBox) and widget not in hidden_button
     ] == []

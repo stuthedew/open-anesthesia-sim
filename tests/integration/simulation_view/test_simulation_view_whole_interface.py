@@ -11,6 +11,7 @@ import pytest
 from PySide6.QtGui import QAccessible, QColor
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app.chart_frame import WASH_IN_HOVER_LABEL
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import INTERPRETATION_DISCLAIMER_TEXT
 from anesthesia_sim.app.formatting import format_mac_awake_reference, format_mac_reference
@@ -217,6 +218,10 @@ def test_the_wash_in_view_writes_its_fractions_with_subscripts(application: QApp
     assert "F<sub>A</sub>/F<sub>I</sub>" in strings, "the walk did not reach the axis title"
     assert spoken.startswith("Now: FA/FI = "), spoken
     assert "<" not in spoken, spoken
+    # The hover readout is plain text, so it writes the ratio as the abstract
+    # does. The expected line is the example in `docs/INTERFACE.md` § "Which
+    # series answer a hover, and which do not".
+    assert WASH_IN_HOVER_LABEL == "Wash-in FA/FI (alveolar / modelled circuit)"
 
 
 def test_the_screen_says_a_control_mark_is_an_input_not_a_measurement(
