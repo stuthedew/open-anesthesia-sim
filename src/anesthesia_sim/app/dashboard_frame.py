@@ -611,13 +611,15 @@ COMPARING_FORK_LOCK_TEMPLATE: Final = (
 # taken there opens in no Area of it, so the lock caption, which is the text
 # the Branch View shows at once in place of the control that was pressed,
 # also says why the comparison is not drawn and how to draw it (`PL-YQ5J`).
-# It is a status message in the sense of WCAG 2.2 Success Criterion 4.1.3: it
-# reports the result of the press without moving the learner. The dashboard
-# does not switch to another Workspace instead. Pressing "Branch" asks for a
-# branch, not for a different Workspace, and the WCAG Understanding document
-# for Success Criterion 3.2.2 holds a change of context appropriate "only when
-# it is clear that such a change will happen in response to the user's
-# action". The sentence is worked out from the pin on every tick, so it goes
+# It reports the result of the press without moving the learner, which WCAG
+# 2.2 Success Criterion 4.1.3 calls a status message. Nothing announces it to
+# a screen reader yet: screen-reader support is planned and not yet built
+# (`docs/INTERFACE.md`), so the caption meets the criterion's intent for a
+# sighted reader only. The dashboard does not switch to another Workspace
+# instead. Pressing "Branch" asks for a branch, not for a different
+# Workspace, and the WCAG Understanding document for Success Criterion 3.2.2
+# holds a change of context appropriate "only when it is clear that such a
+# change will happen in response to the user's action". The sentence is worked out from the pin on every tick, so it goes
 # as soon as the learner unpins the Workspace or switches to another one.
 COMPARISON_PINNED_AWAY_TEMPLATE: Final = (
     "This Workspace is pinned to {pinned}, so it does not draw this comparison. "

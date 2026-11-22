@@ -2614,8 +2614,10 @@ Run 2."). The learner stays in the Workspace they chose. The sentence goes as
 soon as the Workspace is unpinned or the reader switches to another Workspace.
 The interface does not switch the Workspace itself, because the press asked
 for a branch and not for another Workspace. WCAG 2.2 Success Criterion 4.1.3
-treats a result shown without moving the reader as a status message, and the
-Understanding document for Success Criterion 3.2.2 holds a change of context
+treats a result shown without moving the reader as a status message. Nothing
+announces this one to a screen reader yet, because screen-reader support is
+planned and not yet a commitment (§ "Color contrast, and the standard this
+interface is held to"). The Understanding document for Success Criterion 3.2.2 holds a change of context
 appropriate "only when it is clear that such a change will happen in response
 to the user's action"
 (`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`

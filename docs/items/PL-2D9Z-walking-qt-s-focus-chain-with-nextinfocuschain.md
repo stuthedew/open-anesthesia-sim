@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: interface-design-review
-touches: pyproject.toml, uv.lock, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_layout_keyboard.py, docs/ARCHITECTURE.md
+touches: pyproject.toml, README.md, uv.lock, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_layout_keyboard.py, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - captured after the freeze; the shipped code does not walk the focus chain, so no reader can reach the crash
 added: 2026-11-22
 closed: 2026-11-22
@@ -120,6 +120,14 @@ editing at the time, and it passed on its own afterwards). The dashboard keeps
 `findChildren`, which already returns the tree's order, and the docstring of
 `_focusable_widgets` no longer says the cause is unknown.
 
+**The cost: macOS 13 is dropped.** The blind review found that 6.12.0's macOS
+wheels for both packages are tagged `macosx_14_0`, where 6.11.2's were
+`macosx_13_0`, and neither package ships a source distribution. Qt's page for
+macOS (https://doc.qt.io/qt-6/macos.html, read 2026-11-22) says Qt 6.12
+supports macOS 14.4 or later. The floor is kept, because the alternative is a
+binding with a known memory fault. `README.md` § "Running it" now names macOS
+14.4, and `pyproject.toml` says why beside the floor.
+
 **Regression test.**
 `tests/integration/test_layout_keyboard.py::test_layout_operations_survive_a_walk_of_the_focus_chain_on_every_draw`
 swaps the dashboard's widget list for the walk of the focus chain and runs every
@@ -131,9 +139,9 @@ ended with "Fatal Python error: Segmentation fault" and exit status 139. On
 **Documents checked.** `docs/ARCHITECTURE.md` names 6.11.2 in two dated
 measurements. Both were checked again on 6.12.0: `readelf -d` lists the same
 shared objects for `libQt6Gui.so.6`, and both wheels declare the same licence
-with no licence file. Each sentence now gives both dates. `docs/INTERFACE.md`
+with no licence file. Each sentence now gives both dates. `README.md` now names
+the macOS version that Qt 6.12 needs. `docs/INTERFACE.md`
 names 6.11.2 twice, as the version that a measurement of window visibility and
 a reading of Qt's slider source were made on. Both are dated statements about
-that version, and neither depends on the upgrade. `README.md`,
-`docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md` and
+that version, and neither depends on the upgrade. `docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md` and
 `CONTRIBUTING.md` name no PySide6 version.

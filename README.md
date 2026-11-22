@@ -245,7 +245,9 @@ Building from source needs:
   (`libglib2.0-0`). For a minimal
   container, which may lack them, `docs/ARCHITECTURE.md` § "Dependencies" has
   the measured list of what the wheels expect from the system.
-- **On macOS and Windows, nothing extra.**
+- **On macOS, version 14.4 or later**, which Qt 6.12 requires
+  (https://doc.qt.io/qt-6/macos.html). Nothing else is needed.
+- **On Windows, nothing extra.**
 
 ```bash
 git clone https://github.com/stuthedew/open-anesthesia-sim.git

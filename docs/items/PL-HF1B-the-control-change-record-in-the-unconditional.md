@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_v
 added: 2026-10-25
 payoff: a learner always sees that older control changes are missing from the record, instead of a list that seems to end
 verify: grep -rq 'def test_every_unconditional_value_lies_inside_its_scroll_viewport' tests/integration/simulation_view/
+recurrences: 2026-11-22 PL-RXR8
 ---
 
 **Problem.** `record_scroll` has an Ignored vertical size policy, so it is only as tall as the run rows beside it (`app/simulation_view.py`). The list is newest first. The overflow note is placed after the 12 listed entries, and it appears only when the list is already full. So whenever the note appears, it is below the viewport. Both runs' records stack in this one scroller. The guard `_require_unconditional_values` checks ancestry only. `test_no_unconditional_value_sits_inside_the_layout_container` checks `isAncestorOf` and `isVisible()` (`tests/integration/simulation_view/`). A widget scrolled out of view passes both checks.
