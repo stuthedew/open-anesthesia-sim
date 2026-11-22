@@ -747,192 +747,28 @@ replaced. A later change to one fraction of a built group would run neither chec
 leave tissue flows that no longer sum to the cardiac output. A change to a
 fraction is therefore refused.
 
-**For developers.** Each flow is its own subclass of `float`, declared with its range in
-`core/supported_ranges.py`: `FreshGasFlow`, `AlveolarVentilation` and `CardiacOutput`. Only a
-type's constructor runs the range check, and nothing else produces a value of the type. A flow
-is therefore checked once, when its value is made, not where it is stored or used. A flow
-outside its range raises a `SimulationConfigurationError`, so a script, a notebook and a test
-meet the same error as the interface. The error marks a refused argument, which
-`docs/VERIFICATION.md` § "Step atomicity" distinguishes from a step that broke down.
+**For developers.** The checks behind these requirements are in `core/`, and each module's
+docstrings explain them. Each flow is a checked type, a subclass of `float` declared with its
+range in `core/supported_ranges.py` (`FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`).
+Only its constructor checks the range, and a flow outside it raises
+`SimulationConfigurationError`, so a script, a notebook and a test meet the same refusal as the
+interface. The module's docstring says where each flow is stored and checked again by type.
+`core/checked_number.py` says what every checked type may be built from, and
+`core/blood_flow.py` holds the perfusion fraction and the blood flow. A record restored from a
+pickle or a copy runs its constructor's checks (`core/checked_record.py`). Each compartment
+checks a field as it is written, in its `__setattr__`, and its `restore_state` says why a
+rollback bypasses that check. The dial is checked against the vaporizer maximum by
+`require_within_vaporizer_maximum` in `core/validation.py`, from both the circuit and the
+settings record (`UptakeEquationSettings` in `core/governing_equations.py`). The docstrings of
+`SimulationController.reset` and `SimulationController._record_control_change` say how the
+controller refuses or undoes a setting that the settings record refuses.
 
-A flow is kept from one step to the next, and it can enter the simulation five ways: through a
-setter of the agent uptake system (`AgentUptakeSystem`), through the setter of the compartment
-that holds it, through that compartment's constructor, through the settings record
-(`UptakeEquationSettings`), or by assignment straight onto the compartment's field. The run's
-definition (`RunDefinition`) is built from the settings record, and keeps each change as a new
-record. Every field and argument that holds a flow requires the type, in the compartments, the
-settings record, the application's snapshot and the setters that feed them. A plain `float`
-passed to any of the five ways in is refused, whatever its value, with a `TypeError` that names
-the type to build. So no way in has to remember the check. The control timeline's fields are
-declared as plain `float` and are not checked, so a setting read back from it is rebuilt as its
-type. Arithmetic on a flow
-returns a plain `float`, so a value calculated from a flow is never taken as checked.
-
-A tissue group's perfusion fraction and its blood flow have checked types too, in
-`core/blood_flow.py`. The perfusion fraction (`PerfusionFraction`) is checked as above 0 and at
-most 1 when it is created. The blood flow (`BloodFlow`) is created only by multiplying a
-`CardiacOutput` by a `PerfusionFraction`, and it has no check of its own. Until these types
-existed, three places each checked a blood flow by hand as finite and not negative, and each
-accepted a flow that no supported cardiac output can give.
-
-**A checked record loaded from a saved file runs its constructor's checks.** Python restores a
-pickled or copied frozen dataclass through `__setstate__`, which by default writes each saved
-value straight into its field without running `__post_init__`. Instead, each frozen record in
-`core/` that checks its fields when it is built rebuilds itself from the saved values through
-`restore_through_checks` in `core/checked_record.py`. These include the settings
-records for the uptake equations and for a tissue group's equations, a run's keyframes
-(`Keyframe`), the breathing circuit's state and the parameter records. A saved value that the
-constructor would refuse is therefore refused on load, at every pickle protocol and by
-`copy.copy` and `copy.deepcopy`, with the constructor's own exception. The rebuild catches a wrong
-saved value. It does not protect against a pickle made to attack, because a pickle can call any
-importable function. Nothing in `src/` loads a pickle yet. A run definition (`RunDefinition`), the
-patient's compartments and the parameter payloads that the data files load into do not yet check
-their values on load. A saved record also holds its values in field order, without their names, so
-a record saved before its fields were reordered would load each value into the wrong field wherever
-the value still passes that field's checks (`PL-HXNL`).
-
-**A value assigned straight onto a flow field is refused at the assignment.** In `src/`, the
-type checker (`mypy`) refuses `circuit.fresh_gas_flow_l_min = 1000.0`, and the compartments' own
-methods write the field only from a checked flow. A plain `float` can still arrive from code
-that the type checker does not cover, such as a notebook, a test or a value typed `Any`. If the
-check came any later, the snapshot that the display reads would already have copied the value,
-and the readouts would have shown it. So the flow's check (`require_*`) runs in the `__setattr__`
-of the circuit, the alveolar compartment and the patient's compartments (`BreathingCircuit`,
-`AlveolarCompartment`, `PatientCompartments`). The write is refused with the same `TypeError` and
-message as the other ways in, and the field keeps its previous value. For a flow, the write checks
-the type. The fresh gas flow's write also checks the flow against the machine's range
-(§ "The model's envelope and a machine's deliverable range are two claims"). The dataclass
-constructor, `dataclasses.replace`, a copy and a pickle all write through `__setattr__`, so the
-compartments' constructors run no check of their own. A copy and a pickle write through it
-because each compartment is a `slots=True` dataclass, which they restore one field at a time. A
-`__dict__` would be updated without calling `__setattr__`.
-
-**Every checked type but `BloodFlow` is built from an `int` or a `float` and nothing else, with
-no sign at zero.** `BloodFlow` is built from a `CardiacOutput` and a `PerfusionFraction`, and it
-refuses a number. One file states what every other checked type is built from
-(`core/checked_number.py`), and `FreshGasFlow`, `AlveolarVentilation`, `CardiacOutput`,
-`PerfusionFraction`, `Fraction`, `Percent` and `CaseInstant` all build through it. They accept
-an `int` or a `float`, subclasses included, so a NumPy double passes. A `bool`, a `Decimal` or a
-string is refused with a `TypeError` that names the value and
-its type, before any comparison reads it. So is a value already built as another checked type,
-such as a `StepCount` or a `CaseInstant` passed to a flow's constructor, because such a value is
-a swapped argument. Minus zero is stored as zero, so a readout never shows `-0.0 L/min`. The
-range check is one chained comparison against both ends, ends included, except that a perfusion
-fraction must be above 0. A NaN fails both
-halves, and an infinity fails one. An `int` too large for a `float` is compared exactly and
-refused as outside the range, in the setting's own words. The step count (`StepCount`) refuses
-anything that is not an `int` in the same way, with a `TypeError`.
-
-Two more checks refuse a `bool`, a `Decimal` or a string, for each amount, flow and step that
-they check: the checks for a positive and for a non-negative finite number
-(`require_positive_finite`, `require_nonnegative_finite` in `core/validation.py`). The
-simulation step is built through the first of them. These two checks do not refuse a value
-built as another checked type, and they leave minus zero as it is. They refuse an `int` too
-large for a `float` by name, as outside what a `float` can hold, before `isfinite` reads it,
-because they have no supported range to compare it against.
-
-**The circuit and the settings record compare the vaporizer dial with its maximum through one
-shared check.** The delivered concentration has the same five ways in as a flow. Its bound is
-the maximum of the agent's vaporizer, not a constant of the model, so no type can carry it.
-Only a record that holds both the dial and the maximum can check one against the other. The
-circuit (`BreathingCircuit`) holds both. The settings record (`UptakeEquationSettings`) carries
-the maximum (`max_delivered_concentration_percent`) beside the dial, as a required field with no
-default. Each record's constructor refuses a dial above the maximum through
-`require_within_vaporizer_maximum` in `core/validation.py`. So both records refuse in the same
-words, and the rule is written once. Both accept zero, which is the vaporizer off, and the maximum
-itself. The settings record and the uptake system also refuse a dial above 99%, through
-`require_within_input_ceiling` in `core/supported_ranges.py`. No shipped vaporizer reaches 99%.
-The uptake system's settings method reads the maximum off the circuit
-(`AgentUptakeSystem.equation_settings()`), so each stretch of a run records the limit that its
-dial was set under. The propagator cache key carries the maximum with the rest of the record,
-although the matrix never reads the maximum.
-
-A tissue group's blood flow is computed in one place (`TissueGroup.blood_flow_l_min_at`). Each
-compartment is given its blood flow, rather than storing it, when it computes its time constant
-or takes a step (`time_constant_s`, `advance()`), as $`Q_i`$ is given to
-$`\tau_i = V_i\lambda_{i:b}/Q_i`$. So every flow follows the cardiac output through
-`set_cardiac_output`, a copy, `dataclasses.replace` and a pickle, and a copy made at another
-output leaves the original's flows unchanged. A tissue group is given a `BloodFlow`, and the
-venous pool is given the cardiac output. Each refuses a plain `float`, whatever its value, with
-a `TypeError` that names the type to build. A tissue group is given the blood:gas coefficient as
-well as its flow, so that it keeps no copy that could disagree with the coefficient
-(`docs/MODEL.md` § "How much agent each compartment holds"). A new cardiac output written onto the field of a built patient is
-refused, and the refusal names `set_cardiac_output`, so that cardiac output has one way in.
-Writing the value that the field already holds is accepted.
-
-A tissue group refuses a second write of its perfusion fraction (`TissueGroup`), and the refusal
-says to build a new patient with the new fractions. A tissue group written onto a built patient
-is refused unless the fractions, with the replacement in place, still sum to 1. A copy or a
-pickle writes the fraction once, onto a new object, so it is accepted. Neither a tissue group nor
-the patient lets a field be deleted, because a write after the deletion would bypass both checks.
-
-The settings record also refuses tissue flows that do not sum to the cardiac output. Only a
-fraction forced past its check, with `object.__setattr__`, can reach that refusal. At the next
-step, the method that advances the simulation (`advance()`) raises the refusal as a
-`SimulationNumericalError`, as it does for every check that fails inside a step. Through the
-simulation controller (`SimulationController`), the same refusal comes before that step begins,
-as a `SimulationConfigurationError`. The controller finds that the simulation's settings no longer
-match the run's definition, and builds the settings record to report why before it takes the step.
-At Reset, the controller refuses before it clears anything (`SimulationController.reset()`), and
-the interface halts the run. A setting change that the record refuses is undone, so the
-compartment, the run's definition and the timeline keep the previous setting. No setting change
-repairs such a fraction (§ "Reset behavior"). Putting the fractions back, or building a new
-patient, is the only repair.
-
-Code in `app/` changes settings only through the simulation controller, which saves the whole
-settings record at each change. Before each step, in the method that advances the run
-(`SimulationController.advance()`), the controller compares the current settings key
-(`AgentUptakeSystem.settings_key()`) with the key saved with the last settings record.
-
-The agent selector and the sliders read the snapshot only inside handlers guarded by the halt
-gate (`halt_gate` in `app/halt_gate.py`). A halt resets the selector from the run's settings
-record, because the selector would otherwise read the agent from the refused snapshot. If a halt
-comes before the screen is redrawn, every withheld value is hidden before the dials are written,
-because writing a dial can raise an exception.
-
-**The alveolar and tissue agent amounts are checked against the compartment's capacity when
-they are written.** The check runs in `__setattr__`, as a flow's check does. The partial
-pressure setter (`set_partial_pressure_fraction`) takes a checked `Fraction`, so no setter can
-store an amount greater than the capacity. An assignment onto the field could, and the resulting
-partial pressure above one atmosphere would be refused only two layers later, when the
-controller's snapshot built the `Fraction` (`SimulationController.snapshot()`). Whether an
-amount fits the volume that holds it is for the compartment to check, not for either value alone
-(`.claude/rules/core-domain.md`). So the alveolar compartment and each tissue group check it
-where the amount is stored. They check the constructor, the setter and a direct assignment
-alike, in the constructor's own words, and the field keeps its previous value.
-
-The one write that bypasses this check is a rollback, which puts back what the compartment held
-when the step began (`restore_state`). A rollback that could raise would replace the step's own
-error. It would also leave later compartments still holding the failed step (`docs/VERIFICATION.md` § "Step
-atomicity"). Only a write that bypasses the capacity's own check can shrink a capacity below a
-held amount, because each value is checked first by its own write. The rollback leaves that case
-to the snapshot, whose amount-over-capacity fraction refuses it visibly. No supported setting
-makes such a write. The tests reach a refusing snapshot by replacing the fraction that the
-snapshot reads.
-
-**Every checked field of the five run records goes through its constructor's checks when it
-is written.** The five are the circuit, the alveolar compartment, each tissue group, the venous
-pool and the validator (`BreathingCircuit`, `AlveolarCompartment`, `TissueGroup`,
-`VenousBloodCompartment`, `AgentSimulationValidator`). Each checks every field in `__setattr__`,
-the constructor's own writes included. So no constructor runs a check of its own, and nothing is
-written when a value is refused. A relation between two fields is checked by whichever field is
-written second. There are four such relations: the dial against the vaporizer's maximum, the
-fresh gas flow against the machine's range, the machine's range against the model's supported
-range, and each compartment's agent amount against its capacity. A volume or a partition
-coefficient too small for the agent that the compartment holds is therefore refused, as the
-circuit's volume setter (`set_circuit_volume`) refuses a circuit volume too small for its agent
-(`require_room_for_the_agent_held` in `core/validation.py`).
-
-The circuit stores its agent as a fraction of its volume. So a circuit volume assigned directly,
-bypassing the volume setter, cannot overfill the circuit, and is not refused. Instead the agent
-amount changes with the volume, and the circuit gains or loses agent that no flow carried. The
-next step then halts on the mismatch that the mass-balance check finds (`docs/VERIFICATION.md` § "Mass-balance
-identity"), and the step is rolled back.
-
-The venous pool's rollback bypasses its check, for the same reason as the alveolar and tissue
-rollback. The circuit and the validator roll back through their checks. Those checks cannot
-refuse a saved state (`capture_state()`), because nothing that the saved values are checked
-against can have changed since.
+The control timeline's fields are declared as plain `float` and are not checked, so a setting
+read back from it is rebuilt as its type. Nothing in `src/` loads a pickle yet, and a run
+definition (`RunDefinition`), the patient's compartments and the parameter payloads that the
+data files load into do not yet check their values on load. If a halt comes before the screen
+is redrawn, every withheld value is hidden before the dials are written, because writing a dial
+can raise an exception.
 
 The dashboard refuses a run that opens between two slider steps when it sets up its controls.
 One test checks this for an opening ventilation or cardiac output
