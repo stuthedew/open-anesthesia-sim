@@ -2,6 +2,7 @@
 id: PL-PXTT
 title: A held arrow key on a playing run sends one auto-repeated key event after another, and since PL-0T2H each that takes effect at a new instant opens an adjustment of its own, so one held key can fill the chart's 24 marks and the list's 12 lines and push the learner's earlier marks off both
 status: done
+milestone: v0.6.20
 added: 2026-11-22
 closed: 2026-11-22
 pr: 2228

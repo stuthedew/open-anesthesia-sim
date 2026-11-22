@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/MODEL.md, docs/VERIFICATION.md, docs/INTERFACE.md, docs/items/PL-KXRB-the-interface-s-labels-spell-modelled-vapour.md
 added: 2026-11-08
 closed: 2026-11-22

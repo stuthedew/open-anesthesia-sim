@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: tests/unit/test_agent_simulation_validation.py
 added: 2026-11-16
 closed: 2026-11-22

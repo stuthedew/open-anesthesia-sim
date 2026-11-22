@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.6.20
 touches: pyproject.toml, .github/workflows/drift.yml, uv.lock
 deferred-from: v0.7.0 - a new problem: PL-GLFS (#2159, 69eb6d3d, 2026-11-13) moved the pins to 3.15 after the freeze and left the floor at 3.14; at 0947408 every pin was 3.14
 added: 2026-11-14

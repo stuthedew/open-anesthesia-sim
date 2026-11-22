@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: model-md-structure
+milestone: v0.6.20
 touches: docs/VERIFICATION.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): 7ca66f0b (#1947) removed the operator split's explanation and left the term
 added: 2026-11-05

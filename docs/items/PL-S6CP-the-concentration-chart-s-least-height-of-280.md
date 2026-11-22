@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux, defect
 feature: window-is-the-frame
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/views.py, tests/integration/test_layout_safety.py
 deferred-from: v0.7.0 - a new problem: #2134 (PL-CBYS, 2026-11-13) set the 280 px least height after the freeze; at 0947408 the chart's least height was 300 px and the page scrolled instead
 added: 2026-11-14

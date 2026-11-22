@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, ux
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/stylesheets.py, src/anesthesia_sim/app/run_view.py, tests/integration/test_keyboard_focus.py
 deferred-from: v0.7.0 - captured after the freeze; no displayed value is wrong, and it belongs with the interface pass rather than the schematic
 added: 2026-11-11

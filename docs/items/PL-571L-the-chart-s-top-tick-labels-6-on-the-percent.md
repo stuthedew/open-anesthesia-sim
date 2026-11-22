@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, ux
+milestone: v0.6.20
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
 deferred-from: v0.7.0 - captured after the freeze; the axis values are correct and the other tick labels are whole, and it belongs with the interface pass rather than the schematic
 added: 2026-11-09

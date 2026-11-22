@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-claims-held-by-tests
+milestone: v0.6.20
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 deferred-from: v0.7.0 - a new problem: check_untied_restatements came with 5ec0ee9b (2026-10-25 06:17), after the freeze
 added: 2026-11-02

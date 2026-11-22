@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: regex-review
+milestone: v0.6.20
 touches: tools/doc_check.py, subprojects/docket/src/docket/checks.py
 deferred-from: v0.7.0 - present at the freeze, but a workflow check with no connection to anything on the frozen list or in v0.7.0 Required scope, and it changes nothing a learner sees
 added: 2026-11-16
