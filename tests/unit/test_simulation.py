@@ -801,7 +801,7 @@ def test_a_run_whose_circuit_volume_changed_after_its_last_step_cannot_be_copied
     state.uptake_system.circuit.set_circuit_volume(CompartmentVolume(9.0))
 
     with pytest.raises(
-        SimulationConfigurationError, match="circuit volume, its alveolar gas volume"
+        SimulationConfigurationError, match="its circuit volume, its alveolar gas volume"
     ):
         rebuild(state)
 

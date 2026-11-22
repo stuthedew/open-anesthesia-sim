@@ -1371,9 +1371,10 @@ def wash_in_stretches(
     state of the run, which the measurement did not cover. The ratio is also
     not continuous in general. `BreathingCircuit.set_circuit_volume`
     conserves the agent in the circuit while it changes the volume that the
-    agent is divided by. So a circuit volume doubled between two steps halves
-    F_I and doubles the ratio. No interface control does that today, but a
-    rule that holds only because a slider is missing is not one to rely on.
+    agent is divided by, so a circuit volume doubled between two steps would
+    halve F_I and double the ratio. A run refuses its next step after such a
+    change while the circuit holds agent (`SimulationState.advance`), but the
+    plot does not rely on a refusal elsewhere to bound what it draws.
     So a crossing column above the ceiling is not drawn, and the stretch
     ends where it would have ended without the extension. The column is not
     clamped to the ceiling or interpolated onto it. It is simply a point

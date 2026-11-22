@@ -3,7 +3,7 @@ id: PL-DQWL
 title: A circuit volume changed between two steps leaves the run's uptake system off the state its record stores for the second it has reached, so a deep copy or a pickle of that run is refused with a message that names resume_at, and a branch opened at that second would start from a different circuit fraction than the parent now holds; the app offers no mid-run volume control yet (found at blind review of PL-HXNL)
 status: done
 feature: replay-findings
-touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py, docs/INTERFACE.md
+touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py, docs/INTERFACE.md, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_record_writes.py
 added: 2026-11-22
 closed: 2026-11-22
 pr: 2244
@@ -88,6 +88,27 @@ matching check is. The second design above answers each: it writes nothing,
 raises `SimulationExecutionError`, and the docs now say what it enforces and
 name the controller's check for the rest.
 
+**Blind review, two passes, on the second design.** Pass 1 F1 (optional):
+the sentence added to `docs/INTERFACE.md` said the controller refuses a step
+after any settings change it did not record, but a control change through the
+controller adopts the whole settings record, a directly written volume
+included. Fixed: the sentence now says the controller refuses a step when the
+core's settings differ from the ones it last recorded, and the adoption is
+filed as `PL-S8FM`. Pass 1 F2 (optional): a copy of a run opened from a system
+whose amounts were written directly can be refused before its first step,
+with a message that names a change that never happened. Fixed in part: the
+message now says "for example". Placing the system at its stored state when
+the run opens removed the refusal but broke a failed-step test, so the rest is
+filed as `PL-P5W1`. Pass 1 F3 (optional): the step's refusal named only a
+volume or contents change, although it also compares the agent accounting.
+Fixed: the message names the accounting and a step taken on the uptake system
+directly. Pass 2 F1 (optional): `docs/INTERFACE.md`'s paragraph on the
+F_A/F_I crossing ceiling, and the matching docstring in `app/chart_frame.py`,
+still said a circuit volume doubled between two steps doubles the ratio on the
+chart. Fixed: both now say a run refuses that step while the circuit holds
+agent, and the ceiling keeps its margin for a drawn column that lands on a
+later state.
+
 **What the check costs.** It reads the case state (1.2 µs) and the
 compensation terms (0.6 µs) twice per step, measured in this container on
 2026-11-22 as the minimum of ten runs of 2 000 calls. That is about 4 µs a
@@ -109,4 +130,6 @@ opened from a system already holding agent.
 fixed, unchanged), `docs/INTERFACE.md` § "What is not bounded this way" (one
 sentence added on the run's refusal and the controller's), `docs/VERIFICATION.md`
 § "Step atomicity" (about a rollback inside a step, which this does not
-change), `docs/ARCHITECTURE.md` (no line describes this check).
+change), `docs/INTERFACE.md`'s paragraph on the F_A/F_I crossing ceiling and
+`app/chart_frame.py`'s matching docstring (both corrected),
+`docs/ARCHITECTURE.md` (no line describes this check).

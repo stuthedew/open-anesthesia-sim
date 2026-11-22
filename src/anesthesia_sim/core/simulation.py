@@ -139,8 +139,9 @@ class SimulationState:
                 f"{reached_s} s, so the run's next step would not continue that record. A branch "
                 "places its system there with AgentUptakeSystem.resume_at, passing the record's "
                 "last state and its compensation terms (StoredStates.compensation_at). A run "
-                "that is copied or loaded fails this check when its circuit volume, its alveolar "
-                "gas volume or a compartment's contents changed after its last step"
+                "that is copied or loaded is checked the same way, and it fails when its state "
+                "changed after its last step, for example when its circuit volume, its alveolar "
+                "gas volume or a compartment's contents changed"
             )
 
         self.stored_states = copy(opening_record)
@@ -436,10 +437,11 @@ class SimulationState:
 
         if (system.case_state(), system.accounting_compensation()) != self._resting_state:
             raise SimulationExecutionError(
-                "the run's state has changed since it stored its state for "
-                f"{self.stored_states.reached_s} s, so the next step would not continue the "
-                "record: a volume or a compartment's contents changed between two steps. "
-                "Reset the run or build a new one"
+                "the run's state or its agent accounting has changed since it stored its "
+                f"state for {self.stored_states.reached_s} s, so the next step would not "
+                "continue the record. A volume changed while its compartment held agent, a "
+                "write to a compartment's contents, or a step taken on the uptake system "
+                "directly does this. Reset the run or build a new one"
             )
 
     def reset(self) -> None:
