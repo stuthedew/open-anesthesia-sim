@@ -2963,6 +2963,7 @@ expression of uncertainty in measurement*, § 7.2.6). The Joint Commission's
 the value reported. The line then reads as the 1 MAC gridline's axis label
 does. The dial and the percent readouts keep two decimals, because they show a
 setting and a computed concentration at the dial's step.
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
 <!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
