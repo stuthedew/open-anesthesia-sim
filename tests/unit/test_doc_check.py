@@ -13545,7 +13545,7 @@ def test_a_section_mark_naming_words_that_are_no_heading_is_refused(tmp_path: Pa
 
 
 def test_a_mark_after_a_document_and_a_comma_is_held_to_its_headings(tmp_path: Path) -> None:
-    """A Markdown document's `` `doc.md`, § "X" `` is that document's section.
+    """In a Markdown document, a mark after a document and a comma names that document's section.
 
     `QUOTED_SOURCE_RE` takes one connective and `check_citations` left a mark
     after a code-spanned source to it, so nothing read this form (`PL-LPCB`,

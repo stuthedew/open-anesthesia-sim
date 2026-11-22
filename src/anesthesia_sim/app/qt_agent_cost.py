@@ -18,7 +18,7 @@ from anesthesia_sim.app.agent_cost import DeliveredShown, cost_shown
 from anesthesia_sim.app.compartment_schematic import instant_line
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import Preferences
-from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.qt_widgets import style_label, styled_label
 from anesthesia_sim.app.theme import (
     INK,
     METRIC_NAME_SIZE,
@@ -82,6 +82,8 @@ class RunAgentCost(QWidget):
             column.addWidget(line)
 
         self._name = name
+        # The cost line was built in the value style.
+        self._cost_is_reason = False
         self._preferences = Preferences()
         self._shown = shown
         self.show_delivered(shown)
@@ -127,6 +129,19 @@ class RunAgentCost(QWidget):
         self.caption_text.setText(caption)
         self.cost_label_text.setText(cost.label)
         self.cost_text.setText(cost.cost)
+        # A reason that no cost is shown is a sentence, not a figure, so it is
+        # drawn at the size of the line above it rather than as a value
+        # (`PL-PZD9`). The panel is written on every frame, so the label is
+        # restyled only when it changes between the two.
+        if cost.is_reason != self._cost_is_reason:
+            self._cost_is_reason = cost.is_reason
+            style_label(
+                self.cost_text,
+                color=INK,
+                size_px=METRIC_NAME_SIZE if cost.is_reason else METRIC_VALUE_SIZE,
+                bold=not cost.is_reason,
+                wrap=True,
+            )
 
         for line, text in (
             (self.working_text, cost.working),

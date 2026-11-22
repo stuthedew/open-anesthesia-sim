@@ -887,15 +887,14 @@ CHOSEN_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown"
 # it does show (`PL-5B1N`).
 PREVIEW_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown, centred on now during the preview"
 
-# The wash-in section. "Modelled, not measured" is its own line rather than
-# the end of a paragraph. The safety standard requires those three words, and
-# at the end of a long sentence nobody reads them (`PL-F9TQ`).
+# The wash-in section. It says that its values are modelled with
+# `INTERPRETATION_DISCLAIMER_TEXT`, on a line of its own rather than at the end
+# of a paragraph, where nobody reads it (`PL-F9TQ`, `PL-T8DF`).
 WASH_IN_HEADING: Final = "Wash-in: F_A/F_I, alveolar as a fraction of the modelled circuit"
 WASH_IN_DENOMINATOR_TEXT: Final = (
     "F_I = modelled circuit, not the vaporizer dial — a rise across a control mark "
     "can be the denominator moving, not uptake"
 )
-WASH_IN_MODELLED_TEXT: Final = "Modelled, not measured"
 WASH_IN_TRACE_LEGEND_LABEL: Final = "F_A/F_I (solid)"
 EQUILIBRIUM_LEGEND_LABEL: Final = "Equilibrium, F_A = F_I (wide dash)"
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
