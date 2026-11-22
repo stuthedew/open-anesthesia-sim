@@ -26,3 +26,5 @@ payoff: a learner sets each unit once, in the app's Settings, and every View sho
 5. `docs/INTERFACE.md` says where units are set, and what happens to prices already saved in another currency. The building session decides that and records it here.
 
 **Generator check.** A one-off: work the owner asked for, with no fact misread behind it.
+
+**A limit on which units Settings holds** (found 2026-11-22 by the localization research thread, `PL-SRP7`). A region's default is unsafe for some clinical units. CLDR's unit preferences give pounds as the United States unit for a person's weight, and NCC MERP's recommendation adopted 2018-10-25, "Recommendations to Weigh Patients and Document Metric Weights", says screens should list or prompt for weight in metric units only. So a patient's weight and any drug amount never follow the region and never appear in Settings. Settings holds only units that are in real use in more than one form, each with its regional default cited. The agent cost View's liquid unit and the currency are the two this item covers today. The NCC MERP source has not been read in this session; the building session reads it before citing it.
