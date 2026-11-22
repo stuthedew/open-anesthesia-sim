@@ -3,12 +3,14 @@ id: PL-BHD7
 title: Four checks in tools/doc_check.py refuse prose by guessing its meaning from words - a "not yet" under the timeline, a word of refusal beside a host, and the two frozen-list entry counts - where the apparatus standard makes the judgment half an advisory; decide which stay errors
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: regex-review
 touches: tools/doc_check.py, subprojects/docket/src/docket/checks.py
 deferred-from: v0.7.0 - present at the freeze, but a workflow check with no connection to anything on the frozen list or in v0.7.0 Required scope, and it changes nothing a learner sees
 added: 2026-11-16
+closed: 2026-11-22
+pr: 2224
 payoff: a correct sentence under the timeline or beside a host name is no longer refused for one word, so sessions stop rewording true sentences to pass a check
 reenters: PL-GPJ7
 ---
@@ -66,3 +68,27 @@ that reader as an error and record the count here.
 **Done when.** Each of the four readers either raises an advisory rather than an error, or stays an error with this item recording how many correct sentences it has refused across its history and why that count keeps it.
 
 **Generator check.** The fact misread is whether a sentence makes the claim a hard gate checks, when the gate recognises it by wording, which `PL-GPJ7`'s `misread:` states. `PL-GPJ7` closed on 2026-09-26, and readers 1 and 2 were added after it, by `PL-CLW5` (closed 2026-10-06) and `PL-0B22` (closed 2026-10-24). So this is an instance of that head's fact filed after the head closed, recorded as a re-entry of `PL-GPJ7`.
+
+**Result, counted 2026-11-22: all four readers stay errors.** The item asked
+for the number of correct sentences each reader has refused, from the items
+filed against it and the commits that reworded a sentence to pass it.
+
+1. `NOT_YET_RE` (a "not yet" under `ROADMAP.md` § "The timeline"): 0. No item
+   other than `PL-0B22`, which added it, and this one names it or
+   `check_timeline_status` (`grep -l` over `docs/items/`). A rewording made to
+   pass it happens on a branch before its commit, so `main`'s history cannot
+   show one. It reads one section only, whose rows state a milestone's
+   status, so the place fixes the meaning, as it does for readers 3 and 4.
+2. `HOST_REFUSAL_RE` (a refusal word beside a host): 0 for the words it still
+   reads. `PL-79DP` counted 139 sentences on 2026-10-12 that named a host
+   beside a word this reader read. The only false refusals were 2 sentences
+   whose word was "block", meaning a block of text, and `PL-79DP` moved
+   "block" and "blocks" to an advisory. The words left, such as "blocked",
+   "refused" and "unreachable", refused no correct sentence in that count.
+3. `ENTRY_COUNT_RE` and 4. `NOT_DELEGABLE_COUNT_RE`: 0. Of the 28 items that
+   name `check_gate_counts` or either pattern, none reports a correct count
+   that either reader refused. The ones about the check report a count it
+   could not reach (`PL-4RHP`) or faults in the reader of a gate group's
+   heading (`PL-L0K3`, `PL-V7CG`, `PL-VQBY`).
+
+A count of zero keeps each as an error, as § "Recommendation" said it would.

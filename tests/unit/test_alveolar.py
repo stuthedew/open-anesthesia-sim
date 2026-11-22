@@ -34,7 +34,8 @@ def test_rejects_agent_amount_above_alveolar_capacity() -> None:
         SimulationConfigurationError,
         match=(
             r"^alveolar agent_amount_l of 2.6 L is more than the 2.5 L the alveolar compartment "
-            r'holds at a partial pressure of one atmosphere \(docs/MODEL.md, "Gas compartments"\)$'
+            r"holds at a partial pressure of one atmosphere \(docs/MODEL.md, "
+            r'"How much agent each compartment holds"\)$'
         ),
     ):
         AlveolarCompartment(
@@ -69,7 +70,7 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
     refused = (
         rf"^alveolar agent_amount_l of {re.escape(repr(past_capacity))} L is more than the "
         r"2.5 L the alveolar compartment holds at a partial pressure of one atmosphere "
-        r'\(docs/MODEL.md, "Gas compartments"\)$'
+        r'\(docs/MODEL.md, "How much agent each compartment holds"\)$'
     )
 
     with pytest.raises(SimulationConfigurationError, match=refused):
@@ -141,7 +142,7 @@ def test_an_agent_amount_past_capacity_is_refused_at_the_write() -> None:
             SimulationConfigurationError,
             r"^gas_volume_l of 0.5 is too small for the 0.625 L of agent the alveolar "
             r"compartment holds: it would leave room for 0.5 L at a partial pressure of one "
-            r'atmosphere \(docs/MODEL.md, "Gas compartments"\)$',
+            r'atmosphere \(docs/MODEL.md, "How much agent each compartment holds"\)$',
             id="volume-under-the-agent-held",
         ),
         pytest.param(
@@ -207,7 +208,8 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
     alveoli.set_partial_pressure_fraction(Fraction(0.25))
     refused = (
         r"^alveolar agent_amount_l of 0.625 L is more than the 0.5 L the alveolar compartment "
-        r'holds at a partial pressure of one atmosphere \(docs/MODEL.md, "Gas compartments"\)$'
+        r"holds at a partial pressure of one atmosphere \(docs/MODEL.md, "
+        r'"How much agent each compartment holds"\)$'
     )
 
     with pytest.raises(SimulationConfigurationError, match=refused):

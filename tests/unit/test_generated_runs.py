@@ -270,7 +270,7 @@ def _held_agent_l(settings_now: UptakeEquationSettings, state: tuple[float, ...]
     Each gas compartment holds its volume times its fraction. The venous pool
     holds its volume times the blood:gas coefficient times its fraction. Each
     tissue holds its volume times its tissue:gas coefficient times its fraction
-    (`docs/MODEL.md` § "Governing equations"). This is computed here and not
+    (`docs/MODEL.md` § "Equations"). This is computed here and not
     read from the system under test.
     """
 

@@ -1846,7 +1846,7 @@ def test_a_unit_with_no_derived_precision_is_refused() -> None:
     would the amount of agent in the alveoli, for sevoflurane and isoflurane.
     The table has no entry for the stored total in millilitres of liquid,
     because converting the stored total to liquid gives a figure 5.8% too high
-    (`docs/MODEL.md` § "Known limitations"). When the stored total is 17 mL of
+    (`docs/MODEL.md` § "Units and symbols"). When the stored total is 17 mL of
     liquid, that error is already one whole display step of 1 mL.
     """
 

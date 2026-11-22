@@ -296,7 +296,7 @@ in binary, and their sum takes two rounded additions, so a correct set can sum
 to 1 with an error of a few times `MACHINE_EPSILON`. This allowance is about
 4 500 times `MACHINE_EPSILON`. It must stay far below a transcription error:
 the fractions that De Wolf et al. print sum to 0.998, and the loader refuses
-them (`docs/MODEL.md` § "Tissue groups"). The value dates from v0.1.0, and no
+them (`docs/MODEL.md` § "Blood flow to the tissue groups"). The value dates from v0.1.0, and no
 record says why it is 1e-12 and not another number between those two.
 """
 

@@ -2772,6 +2772,39 @@ def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
             yield found.group("number"), unit
 
 
+def _wrapped_figure(
+    prose: list[str], index: int, skipped: frozenset[int] | set[int]
+) -> list[tuple[str, str | None]]:
+    """The figure whose number ends line `index` and whose unit opens the next line, if any.
+
+    A paragraph may break its line between a number and its unit, as "2.5" and
+    then "L". Read one line at a time, that figure has no unit on the first
+    line and no number on the second, so it was never asked about (`PL-LPV0`).
+    The line and the next one are joined by a space and read with
+    `PROSE_FIGURE_RE`, after the line's grouped thousands are joined as
+    `_untied_figures` joins them. So a number after a letter or a comma, or in
+    e-notation, is still read as no figure. Only a figure whose number ends the
+    first line and whose unit is on the second is returned. A blank next line
+    ends the paragraph, so it joins nothing. Three forms are not joined: a list
+    joined by slashes, a math span, and a grouped number split by the break
+    itself.
+    """
+    following = index + 1
+    if following >= len(prose) or following in skipped:
+        return []
+    head = prose[following].lstrip()
+    if not head:
+        return []
+    line = GROUPED_NUMBER_RE.sub(lambda found: found.group().replace(" ", ""), prose[index])
+    line = line.rstrip()
+    joined = f"{line} {head}"
+    return [
+        (match.group("number"), unit)
+        for match in PROSE_FIGURE_RE.finditer(joined)
+        if match.end("number") == len(line) and (unit := match.group("unit")) is not None
+    ]
+
+
 #: A figure a `not-restated:` marker lists, such as `4 L/min` or `0.65`.
 # regex: a figure in a `not-restated:` marker is a flat token, a number and an optional unit.
 LISTED_FIGURE_RE = re.compile(r"^(?P<number>\d+(?:\.\d+)?)(?:[ \u00a0]?×?(?P<unit>\S+))?$")
@@ -3089,7 +3122,9 @@ def check_untied_restatements(root: Path, report: Report) -> None:
     thousands, such as "86 400 s", is read whole (`PL-TCD3`). It does not read
     any other number in a math span, a figure in a code span, or a number in
     e-notation, such as "1e-12 L". A restatement written in one of those forms
-    is not checked. It reads a line at a time,
+    is not checked. A figure whose number ends one line and whose unit opens
+    the next, such as "2.5" and then "L", is read as one figure on the first
+    line (`_wrapped_figure`, `PL-LPV0`). Otherwise it reads a line at a time,
     so a math span split across two lines gives it no figure. That form never
     passes, though: the split span renders as literal text, and
     `check_math_delimiters` refuses it until it is joined onto one line, where
@@ -3112,7 +3147,10 @@ def check_untied_restatements(root: Path, report: Report) -> None:
             if index in fenced or index in hidden:
                 continue
             raw = INLINE_COMMENT_RE.sub("", lines[index])
-            for written, unit in _untied_figures(line, raw):
+            for written, unit in [
+                *_untied_figures(line, raw),
+                *_wrapped_figure(prose, index, fenced | hidden),
+            ]:
                 figure = _prose_figure(written, unit)
                 matching = [home for home in homes if _matches(figure, home, written)]
                 if not matching:
@@ -4101,8 +4139,8 @@ class EntityKind:
     #: `check_named_tests` for a test name - so this never becomes a second
     #: resolver that could disagree with the first.
     names: Callable[[str], bool]
-    #: The fixed form that `docs/MODEL.md` § "How this document is held to the
-    #: tree" sets for a missing test. The words in front of it are the
+    #: The fixed form that `docs/VERIFICATION.md` § "How this document is held
+    #: to the tree" sets for a missing test. The words in front of it are the
     #: sentence's own; this parenthesis is what makes a declared absence
     #: distinguishable from a forgotten link by a script rather than by a
     #: reader.
@@ -4126,7 +4164,7 @@ TEST_ENTITY = _entity_kind("test", _names_a_test)
 class BoundFamily:
     """A heading that promises one assertion per member, and what each owes.
 
-    `docs/MODEL.md` § "How this document is held to the tree": where a
+    `docs/VERIFICATION.md` § "How this document is held to the tree": where a
     heading promises one assertion per member, every member names its entity or
     carries the declared-none form. The table is what turns that sentence into
     a decidable question, one family at a time.
@@ -4329,10 +4367,9 @@ def _holds_its_figures(member: str) -> bool:
 #: absence it may declare is a test still owed.
 FIGURE_ENTITY = _entity_kind("test", _holds_its_figures)
 
-#: How a note for developers opens. `.claude/rules/plain-writing.md` sends a
-#: `docs/MODEL.md` section's test names and numerical detail to a paragraph
-#: that opens this way, so that the paragraphs a clinician reads need not
-#: carry them.
+#: How a note for developers opens. `.claude/rules/sources-and-docstrings.md`
+#: sends a section's test names and numerical detail to a paragraph that opens
+#: this way, so that the paragraphs a clinician reads need not carry them.
 DEVELOPER_NOTE_OPENING = "**For developers.**"
 
 
@@ -4689,8 +4726,8 @@ BOUND_FAMILIES = (
         ),
     ),
     BoundFamily(
-        document=MODEL,
-        heading="Known limitations",
+        document=PARAMETERS,
+        heading="The evidence behind the known limitations",
         level=2,
         kind=FIGURE_ENTITY,
         members=_numeric_paragraph_members,

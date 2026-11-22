@@ -196,7 +196,7 @@ class RunSettings(RunStatus):
     read for a run whose `snapshot()` raises. `dashboard_frame.setting_readouts`
     accepts it, and that lets `run_presentation.halted_run` build every dial from
     the values the run holds. Without it, a dial dragged into a halt kept
-    the value from before the drag printed beside it, because no frame
+    the value from before the drag printed above it, because no frame
     followed to rewrite it (`PL-85LJ`). `RunRecord` extends this class, and
     `SimulationSnapshot` extends `RunRecord`, so a frame that drew reads the
     settings from the snapshot it drew from.
@@ -1650,7 +1650,7 @@ class SimulationController:
         Third, elapsed time stays one multiplication: `(k + n)` steps times the
         step length. Here `k` is the number of steps up to the fork, and `n` is
         the number of steps the branch has taken since. Elapsed time is not the
-        fork instant plus the branch's own elapsed time. `docs/MODEL.md`
+        fork instant plus the branch's own elapsed time. `docs/VERIFICATION.md`
         § "Simulated time is a count of steps, not a running total" states the
         rule against that sum.
 
@@ -3144,24 +3144,23 @@ class SimulationController:
     def begin_control_adjustment(self) -> None:
         """Declare that the changes that follow are a new user adjustment.
 
-        The interface calls this when a drag begins. Without it, a slider
-        dragged twice would be indistinguishable from one dragged once. Both
-        arrive as a series of changes to the same control, and only the input
-        device knows where one action ended and the next began. Inferring the
-        boundary from the timing of the entries would need a threshold. No
-        threshold survives the playback multiplier that v0.4.0 adds, because
-        the same drag spans more simulated time the faster the run is played.
+        The interface calls this at the start of each input on a slider: a
+        press on it, a key press that is not a held key's repeat, and a wheel
+        notch (`_SettingSlider` in `app/qt_widgets.py`). Without it, the steps
+        of one dial would be indistinguishable from one another. All arrive as
+        a series of changes to the same control, and only the input device
+        knows where one input ended and the next began. Inferring the boundary
+        from the timing of the entries would need a threshold. No threshold
+        survives the playback multiplier, because the same input spans more
+        simulated time the faster the run is played.
 
         This method records nothing on its own and changes no simulation
         state. It only closes whichever adjustment is open, so the next change
-        starts a new one. A change that arrives with no adjustment open, such
-        as a programmatic call or a test, therefore becomes an adjustment of
-        its own. A key press, a wheel notch or a click on a slider's track
-        calls nothing here, so it joins the adjustment that is open on the
-        same control, however much simulated time has passed since.
-        `PL-0T2H` (one adjustment for each step of a dial) changes that. The
-        grouping degrades safely, rather than wrongly, when this method is
-        never called.
+        starts a new one. A held key's repeats call nothing here, so they join
+        the adjustment that the key's first press opened, and the record shows
+        the hold as one adjustment over an interval (`PL-PXTT`). A change that
+        arrives with no adjustment open, such as a programmatic call or a test,
+        becomes an adjustment of its own.
         """
 
         self._open_adjustment_control = None
@@ -3325,6 +3324,12 @@ class SimulationController:
         (`RunRecord.opened_with`).
         """
 
+        # A change joins the open adjustment when it is to the same control
+        # and the interface has declared no new input since the last change.
+        # The interface declares each press on a slider, each key press that
+        # is not a held key's repeat and each wheel notch, so each of those is
+        # an adjustment of its own, and a held key is one (`docs/INTERFACE.md`
+        # § "The control-input timeline", `PL-0T2H`, `PL-PXTT`).
         if control is not self._open_adjustment_control:
             self._adjustment_count += 1
             self._open_adjustment_control = control

@@ -276,6 +276,11 @@ def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> 
     families = tuple(
         dataclasses.replace(family, document=doc_check.MODEL)
         if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
+        # `PL-48MX` moved the numeric paragraphs that the family reads from
+        # `docs/MODEL.md` § "Known limitations" to a section of
+        # `docs/PARAMETERS.md`. The fixture keeps them under the old heading.
+        else dataclasses.replace(family, document=doc_check.MODEL, heading="Known limitations")
+        if family.document == doc_check.PARAMETERS
         else family
         for family in doc_check.BOUND_FAMILIES
     )
@@ -1027,6 +1032,41 @@ def test_a_figure_that_cannot_restate_a_stored_value_is_not_asked_about(
     root = _with_step(_repo(tmp_path, model=_model_with(prose)))
 
     assert _untied(root) == []
+
+
+def test_a_figure_whose_unit_opens_the_next_line_is_asked_about(tmp_path: Path) -> None:
+    """A number at a line's end and its unit at the next line's start are one figure (`PL-LPV0`)."""
+    root = _with_step(
+        _repo(tmp_path, model=_model_with("The run advances one step every 0.1\ns, as stored."))
+    )
+
+    (untied,) = _untied(root)
+    assert "0.1 s equals core/thing.py STEP_S = 0.1" in untied
+
+
+def test_a_number_ending_a_paragraph_joins_no_unit_from_the_next(tmp_path: Path) -> None:
+    """A blank line ends the paragraph, so a unit after it belongs to nothing above."""
+    root = _with_step(
+        _repo(tmp_path, model=_model_with("The ratio was 0.1\n\ns are counted below."))
+    )
+
+    assert _untied(root) == []
+
+
+@pytest.mark.parametrize(
+    ("line", "following", "expected"),
+    [
+        ("lasts 86 400", "s in all", [("86400", "s")]),
+        ("a limit of 9.6e-12", "s", []),
+        ("version v2", "L", []),
+        ("listed 1,5", "L", []),
+    ],
+)
+def test_a_figure_split_across_lines_is_read_as_one_line_reads_it(
+    line: str, following: str, expected: list[tuple[str, str]]
+) -> None:
+    """Grouped thousands join. E-notation, or a number after a letter or comma, is no figure."""
+    assert doc_check._wrapped_figure([line, following], 0, set()) == expected
 
 
 def test_a_not_restated_marker_clears_a_figure_that_only_coincides(tmp_path: Path) -> None:
@@ -11485,7 +11525,7 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             tmp_path,
             (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8"),
         ),
-        ">=3.14",
+        ">=3.15",
     ),
     # Markdown's paragraph, read by the soft break every `GAP` reader takes:
     # neither a placeholder nor a code span opens a block that ends it.
@@ -11714,20 +11754,22 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     # The Symbols table `core_vocabulary_check` resolves, read by the same
     # table reader (`PL-FBWD`).
     "vocabulary symbols, a row inside a comment is none": (
-        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}<!--\n| b | B | - | `X.b` |\n-->\n"),
+        lambda _: _symbol_rows(f"### Symbols\n\n{SYMBOLS}<!--\n| b | B | - | `X.b` |\n-->\n"),
         [(5, "a")],
     ),
     "vocabulary symbols, a second table after a blank line is not this one": (
-        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}\n{SYMBOLS}"),
+        lambda _: _symbol_rows(f"### Symbols\n\n{SYMBOLS}\n{SYMBOLS}"),
         [(5, "a")],
     ),
     "vocabulary symbols, a row without its leading pipe": (
-        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}b | B | - | `X.b`\n"),
+        lambda _: _symbol_rows(f"### Symbols\n\n{SYMBOLS}b | B | - | `X.b`\n"),
         [(5, "a"), (6, "b")],
     ),
-    "vocabulary symbols, the table under a setext heading": (
+    # The table is a level-three subsection since `PL-48MX`, which a setext
+    # heading cannot be, so a level-two setext heading of the same name is not it.
+    "vocabulary symbols, a level-two setext heading is not the section": (
         lambda _: _symbol_rows(f"Symbols\n-------\n\n{SYMBOLS}"),
-        [(6, "a")],
+        [],
     ),
     # `docs/dead-ends.md`, an entry at a time through docket's list walker (`PL-F5B9`).
     "dead ends, a title wrapped onto an indented line": (

@@ -53,13 +53,14 @@ from anesthesia_sim.app.area_layout import (
     ViewChooser,
     _AreaHandle,
 )
-from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
+from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
+from anesthesia_sim.app.run_presentation import ShownFrame, ValuesStanding, shown_drawn
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.theme import (
     AREA_HANDLE_LINE_WIDTH,
@@ -367,15 +368,20 @@ def test_a_refused_layout_leaves_no_widget_behind(application: QApplication) -> 
     widget built before the refusal would still exist at this point. Such a
     widget is destroyed only once nothing holds that traceback. That can happen
     during another test, which is how a test worker crashed on `main`.
+
+    It looks only for widgets that did not exist before the refusal. A count
+    of every widget also changed when another test's widget was destroyed
+    meanwhile, which failed a pull request that left nothing behind
+    (`PL-F4T4`).
     """
 
     model = LayoutModel((Window(_area(1)), Window(_area(2))), AreaId(3))
-    before = len(QApplication.allWidgets())
+    before = set(QApplication.allWidgets())
 
     with pytest.raises(ValueError, match="draws one window, and the layout holds 2") as refused:
         AreaLayout(model, _REQUESTS, registered=_REGISTERED)
 
-    assert len(QApplication.allWidgets()) == before
+    assert [widget for widget in QApplication.allWidgets() if widget not in before] == []
     del refused
 
 
@@ -1041,19 +1047,21 @@ def test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone(
 
 def _frames(
     windows: tuple[ChartTimeBase | None, ...],
-) -> tuple[dict[ChartTimeBase | None, ChartFrame], SimulationSnapshot, CompartmentSelection]:
-    """Return a frame for each of `windows` from one unstarted run, as the dashboard does."""
+) -> tuple[dict[ChartTimeBase | None, ShownFrame], CompartmentSelection]:
+    """Return a frame drawn for each of `windows` from one unstarted run, as the dashboard does."""
 
     controller = SimulationController()
     snapshot = controller.snapshot()
     selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
     inputs = [RunInput(run_label(RunId(SessionToken("0" * 32), 1)), controller, snapshot, ())]
     frames = {
-        window: assemble_chart_frame(inputs, window, selection.shown, plot_width_px=400.0)
+        window: shown_drawn(
+            assemble_chart_frame(inputs, window, selection.shown, plot_width_px=400.0), selection
+        )
         for window in windows
     }
 
-    return frames, snapshot, selection
+    return frames, selection
 
 
 def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
@@ -1064,7 +1072,7 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _OTHER), _area(3)), 4)
     container = _show_with(application, shown, model)
     zoomed = time_base_for_span(900.0)
-    frames, snapshot, selection = _frames((None, zoomed))
+    frames, selection = _frames((None, zoomed))
 
     for setting, view in enumerate(_BUILT):
         view.setting = setting
@@ -1074,11 +1082,10 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
 
     assert container.owes_a_frame
 
-    container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+    container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert [view.ticks[0].frame for view in _BUILT] == [frames[None], None, frames[zoomed]]
-    assert all(view.ticks[0].snapshots == (snapshot,) for view in _BUILT)
     assert all(view.ticks[0].selection is selection for view in _BUILT)
     assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
     assert _REFRESHED == _BUILT
@@ -1100,35 +1107,36 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
-    frames, snapshot, selection = _frames((None,))
+    frames, selection = _frames((None,))
     _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
 
     with pytest.raises(KeyError):
-        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+        container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
 
 
-def test_a_tick_with_no_frame_reaches_every_view_and_carries_no_frame_and_no_snapshots(
+def test_a_tick_with_no_frame_reaches_every_view_and_carries_each_window_s_frame_as_shown(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """Every View is handed a tick when no frame was drawn, even a View that asks for a frame.
+    """Every View is handed a tick when no frame was drawn, a chart with its window's frame.
 
     The dashboard hands such a tick on a halt, when no frame can be
-    assembled (`PL-RF2S`). A View that asks for a window still gets this
-    tick, although a tick with frames refuses a View whose frame it lacks.
+    assembled (`PL-RF2S`). Each window's frame in it is kept or withheld, and
+    a View that asks for a window gets that window's.
     """
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
-    _, _, selection = _frames((None,))
-    _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
+    _, selection = _frames((None,))
+    zoomed = time_base_for_span(900.0)
+    _BUILT[1].request = FrameRequest(zoomed, 300.0)
+    withheld = ShownFrame(ValuesStanding.WITHHELD, None, selection)
 
     case = _NoCase()
 
-    container.refresh(None, (), (), selection, _PREFERENCES, case)
+    container.refresh({zoomed: withheld}, (), selection, _PREFERENCES, case)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1]
-    assert [view.ticks[0].frame for view in _BUILT] == [None, None]
-    assert [view.ticks[0].snapshots for view in _BUILT] == [(), ()]
+    assert [view.ticks[0].frame for view in _BUILT] == [None, withheld]
     assert all(view.ticks[0].selection is selection for view in _BUILT)
     assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
     assert all(view.ticks[0].case is case for view in _BUILT)
@@ -1148,12 +1156,12 @@ def test_a_tick_with_no_frame_reaches_every_view_though_one_raises(
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
     container = _show_with(application, shown, model)
-    _, _, selection = _frames((None,))
+    _, selection = _frames((None,))
     _BUILT[0].failure = RuntimeError("the first View could not show the tick")
     _BUILT[1].failure = RuntimeError("the second View could not show the tick")
 
     with pytest.raises(RuntimeError, match="the first View could not show the tick"):
-        container.refresh(None, (), (), selection, _PREFERENCES, _NoCase())
+        container.refresh({}, (), selection, _PREFERENCES, _NoCase())
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert _REFRESHED == _BUILT
@@ -1170,28 +1178,13 @@ def test_a_tick_with_a_frame_stops_at_the_first_view_that_raises(
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
     container = _show_with(application, shown, model)
-    frames, snapshot, selection = _frames((None,))
+    frames, selection = _frames((None,))
     _BUILT[1].failure = RuntimeError("the second View could not draw the frame")
 
     with pytest.raises(RuntimeError, match="the second View could not draw the frame"):
-        container.refresh(frames, (snapshot,), (), selection, _PREFERENCES, _NoCase())
+        container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 0]
-
-
-def test_a_tick_with_no_frame_is_refused_snapshots(
-    application: QApplication, shown: list[AreaLayout]
-) -> None:
-    """A tick with no frame that is given snapshots is refused, and no View is handed anything."""
-
-    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
-    container = _show_with(application, shown, model)
-    _, snapshot, selection = _frames((None,))
-
-    with pytest.raises(ValueError, match="carries no snapshots, and 1 were given"):
-        container.refresh(None, (snapshot,), (), selection, _PREFERENCES, _NoCase())
-
-    assert [len(view.ticks) for view in _BUILT] == [0, 0]
 
 
 def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(
@@ -2846,6 +2839,56 @@ def test_the_least_size_of_the_layout_is_the_sum_of_what_its_areas_need(
     assert container.minimum_extent() == PixelSize(608, 2 * need + AREA_HANDLE_WIDTH)
     hint = container.minimumSizeHint()
     assert (hint.width(), hint.height()) == (608, 2 * need + AREA_HANDLE_WIDTH)
+
+
+_WRAPPED = ViewKind("wrapped_view")
+
+
+class _WrappedView(_TestView):
+    """The View of `_WRAPPED`: one long label that wraps, whose entry asks for the whole View."""
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__(context)
+        self.label = QLabel(" ".join(["A sentence long enough to wrap onto many lines."] * 8))
+        self.label.setWordWrap(True)
+        QVBoxLayout(self).addWidget(self.label)
+
+
+_WHOLE = registry(
+    RegisteredView(_VIEW, "Test view", _TestView),
+    RegisteredView(_WRAPPED, "Wrapped view", _WrappedView, minimum=PixelSize(60, 20), whole=True),
+)
+
+
+def test_a_view_that_asks_to_be_whole_gets_every_line_of_a_wrapped_label(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-D5J4`: an Area whose View asks to be whole holds every line of a label that wraps.
+
+    Qt's least size for a widget counts a wrapped label as one line. The
+    wrapped View has a small share under the test View, so its Area is held at
+    its need, and the container is narrow, so the label takes many lines. Its
+    Area must hold all of them, with no scroll bar. Before the fix the Area
+    was sized from the least size alone, and most of the label was below its
+    edge.
+    """
+
+    model = _layout(_column((0.95, 0.05), Area(AreaId(1), _VIEW), Area(AreaId(2), _WRAPPED)), 3)
+    container = AreaLayout(model, _REQUESTS, registered=_WHOLE, retired={})
+    container.resize(300, 800)
+    container.show()
+    application.processEvents()
+    shown.append(container)
+    container.follow_needs()
+    application.processEvents()
+    frame = container.frame(AreaId(2))
+    scroll = frame.view_scroll
+    (view,) = (built for built in _BUILT if isinstance(built, _WrappedView))
+    line = view.label.fontMetrics().lineSpacing()
+
+    assert scroll is not None
+    assert view.label.height() > 4 * line, "the label did not wrap onto many lines"
+    assert scroll.verticalScrollBar().maximum() == 0
 
 
 def test_the_least_size_is_what_the_views_need_even_where_their_areas_are_too_small(

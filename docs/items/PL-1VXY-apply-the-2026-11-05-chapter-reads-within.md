@@ -7,7 +7,7 @@ status: blocked
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md
-blocked-by: PL-48MX
+blocked-by: PL-N83Z, PL-4H8Q, PL-SY7G
 added: 2026-11-07
 payoff: each section of MODEL.md reads in the order its reader needs, so a qualifying paragraph comes before the value it qualifies, and the line edit can start
 verify: ! grep -qF 'milestone (v0.1.0) must demonstrate' docs/MODEL.md
@@ -70,7 +70,7 @@ structure-read sweep of 2026-11-05. It is not a defect with a cause of its own.
 to split `docs/MODEL.md` by reader (`PL-P3GZ`). The text this item edits
 moves to three new documents (`PL-CTXZ`, `PL-6PPZ`, `PL-FWR6`), and what is
 left is replaced by the description the owner accepted (`PL-48MX`). So this
-item waits on `PL-48MX`. The three items that then sort each document
+item waited on `PL-48MX`, which closed on 2026-11-22. The three items that sort each document
 (`PL-SY7G`, `PL-4H8Q`, `PL-N83Z`) apply this item's findings for the
 sections they hold, and the session that applies the last of them closes
 this item.

@@ -10,16 +10,17 @@ reads the code under test.
 The first is a closed form. With alveolar ventilation at zero, no agent moves
 from the circuit to the alveoli, so the circuit fills from empty as
 $`M_C(t) = V_C F_D (1 - e^{-t \\dot V_F / V_C})`$ and every other compartment
-stays empty (`docs/MODEL.md` § "Governing equations").
+stays empty (`docs/MODEL.md` § "Equations").
 
 The second is the coupled six-state solution that
 `tests/reference/test_coupled_dynamics.py` integrates with its own fourth-order
 Runge-Kutta method. Its fractions at 60 s and 600 s are transcribed below from
 that module's `PINNED_REFERENCE_STATES`, which pins them to the oracle and not
 to the shipped solver. Each expected amount is that fraction times the
-compartment's capacity, written out from `docs/MODEL.md` § "Agent amount" with
-the parameter loaders' values. The test modules do not import one another, so
-the twelve states are restated here rather than imported.
+compartment's capacity, written out from `docs/MODEL.md` § "How much agent
+each compartment holds" with the parameter loaders' values. The test modules
+do not import one another, so the twelve states are restated here rather than
+imported.
 
 **What the comparison can detect.** The tolerance is one part in a billion of
 the amount. The shipped step matches the oracle's fractions to within 1e-12
@@ -119,8 +120,8 @@ ORACLE_FRACTIONS: dict[tuple[str, int], tuple[float, ...]] = {
 def _capacities_l(agent_id: str) -> tuple[float, ...]:
     """Return each compartment's capacity, the amount per unit partial-pressure fraction.
 
-    Each capacity is written out from `docs/MODEL.md` § "Agent amount", in the
-    oracle's state order: $`V_C`$, $`V_A`$, $`V_v \\lambda_{b:g}`$, and
+    Each capacity is written out from `docs/MODEL.md` § "How much agent each
+    compartment holds", in the oracle's state order: $`V_C`$, $`V_A`$, $`V_v \\lambda_{b:g}`$, and
     $`V_i \\lambda_{i:b} \\lambda_{b:g}`$ for each tissue group. Only the
     parameter loaders are read.
     """

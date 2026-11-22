@@ -50,9 +50,10 @@ instead of showing the View (`layout/sizing.py`). The declared height is the
 least height in which the View is worth showing, and it may be less than the
 View's content needs. In an Area shorter than the content, the reader scrolls
 the View up and down inside the Area (`area_layout.ViewScroll`, `PL-CBYS`).
-The width a View needs is the larger of the declared width and the least
-width of the View's widget, so no View is scrolled sideways. The shipped
-sizes are placeholders.
+An entry that sets `whole` needs the height of its whole content instead,
+so its View never scrolls (`PL-D5J4`). The width a View needs is the larger
+of the declared width and the least width of the View's widget, so no View is
+scrolled sideways. The shipped sizes are placeholders.
 """
 
 from __future__ import annotations
@@ -64,6 +65,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.dashboard_frame import FORK_HEADING
+from anesthesia_sim.app.theme import CHART_LEAST_HEIGHT
 from anesthesia_sim.app.view_contract import ViewFactory
 from anesthesia_sim.app.views import (
     AccountingView,
@@ -162,11 +164,18 @@ class RegisteredView:
             shorter Area, and never in an Area narrower than the larger of
             this width and the least width of the View's widget (`PL-K285`,
             `PL-CBYS`).
+        whole: Whether the adapter holds the View's Area at the least height
+            of the View's whole content where that is more than `minimum`,
+            so the View never scrolls up and down inside its Area. A View
+            sets it where a part scrolled out of sight would mislead: the
+            concentration chart's plot, the Parameters View's row of dials
+            for each run, and the Branch View's control or the caption that
+            replaces it (`PL-D5J4`).
 
     Raises:
         TypeError: `kind` is not a `ViewKind`, `title` is not a `str`,
-            `factory` cannot be called, `required_reachable` is not a
-            `bool`, or `minimum` is not a `PixelSize`.
+            `factory` cannot be called, `required_reachable` or `whole` is
+            not a `bool`, or `minimum` is not a `PixelSize`.
         ValueError: `title` is empty or only spaces.
     """
 
@@ -175,6 +184,7 @@ class RegisteredView:
     factory: ViewFactory
     required_reachable: bool = False
     minimum: PixelSize = NO_DECLARED_MINIMUM
+    whole: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.kind, ViewKind):
@@ -202,6 +212,12 @@ class RegisteredView:
             raise TypeError(
                 f"the View of kind {self.kind!r} declares a minimum that is not a PixelSize: "
                 f"{type(self.minimum).__name__}"
+            )
+
+        if not isinstance(self.whole, bool):
+            raise TypeError(
+                "whether a View's Area holds its whole content is a bool, not "
+                f"{type(self.whole).__name__}"
             )
 
 
@@ -370,16 +386,23 @@ def required_kinds(
 # 110 px the column needs 477 px.
 _LEAST_HEIGHT_PX: Final = 110
 
-# The concentration chart's least height. It is the height of the View's
-# heading, the first two rows above the plot and the plot at
-# `theme.CHART_LEAST_HEIGHT`, measured at 275 px with the offscreen font and
-# rounded up. So the chart's Area keeps the plot whole, and a neighbour gives
-# up the room (`PL-CBYS`, project owner, 2026-11-11: the long plot is kept).
-_CHART_LEAST_HEIGHT_PX: Final = 280
+# The concentration chart declares only its plot's least height. Its entry
+# carries `whole`, so its Area is held at the least height of the View's whole
+# content, read from the View's own layout: the heading, the key, every
+# advisory shown above the plot and the plot (`PL-D5J4`). The chart's Area so
+# keeps the plot whole, and a neighbour gives up the room (`PL-CBYS`, project
+# owner, 2026-11-11: the long plot is kept). The Area grows while an advisory
+# or a second run's notice is shown. Keeping room for every advisory all the
+# time would leave the plot unmoved, but Induction at 1366 by 768 with two
+# runs has no room to spare for it (`PL-S6CP`, project owner, 2026-11-22,
+# ratified).
 
-# The Parameters View's least height, which is one run's row of controls. A
-# row of sliders cut off at the Area's edge reads as a row with no values.
-_CONTROLS_LEAST_HEIGHT_PX: Final = 160
+# The Parameters View's least height, which is one run's row of controls. The
+# row was measured at 106 px with the offscreen font and rounded up (`PL-4JCC`).
+# The View's entry carries `whole`, so its Area also grows to hold a second
+# run's row. A shipped Workspace that gives the View a small share holds its
+# Area at that height at every window size, and its neighbours take the rest.
+_CONTROLS_LEAST_HEIGHT_PX: Final = 110
 
 #: Every View kind this build can draw, in the order the View chooser lists
 #: them. The titles and the minimum sizes are placeholders.
@@ -388,7 +411,8 @@ REGISTERED: Final = registry(
         CONCENTRATION_CHART,
         "Concentrations",
         ConcentrationView,
-        minimum=PixelSize(420, _CHART_LEAST_HEIGHT_PX),
+        minimum=PixelSize(420, CHART_LEAST_HEIGHT),
+        whole=True,
     ),
     RegisteredView(WASH_IN, "Wash-in", WashInView, minimum=PixelSize(300, _LEAST_HEIGHT_PX)),
     RegisteredView(
@@ -396,6 +420,7 @@ REGISTERED: Final = registry(
         "Parameters",
         ParameterControlsView,
         minimum=PixelSize(220, _CONTROLS_LEAST_HEIGHT_PX),
+        whole=True,
     ),
     RegisteredView(
         AGENT_ACCOUNTING,
@@ -414,7 +439,9 @@ REGISTERED: Final = registry(
         AGENT_COST, "Agent cost", AgentCostView, minimum=PixelSize(320, _LEAST_HEIGHT_PX)
     ),
     RegisteredView(BOOKMARKS, "Bookmarks", BookmarksView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
-    RegisteredView(BRANCH, FORK_HEADING, BranchView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
+    RegisteredView(
+        BRANCH, FORK_HEADING, BranchView, minimum=PixelSize(220, _LEAST_HEIGHT_PX), whole=True
+    ),
 )
 
 #: The View kinds `docs/INTERFACE.md` § "Minimum displayed outputs" requires to

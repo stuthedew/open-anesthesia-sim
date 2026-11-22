@@ -12,7 +12,7 @@ adopted.
 It prints, and never checks or edits the prose. That is the project owner's
 decision of 2026-09-13, recorded on `PL-9LXK`: a tool editing the paragraph
 would be guessing at its rounding and its phrasing, and the counts rule in
-`docs/MODEL.md` § "How this document is held to the tree" says a count no check
+`docs/VERIFICATION.md` § "How this document is held to the tree" says a count no check
 holds is read from the tool that prints it.
 
 The link from a stored value to its source is each entry's `authority_for`

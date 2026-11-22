@@ -3,13 +3,16 @@ id: PL-24SN
 title: After a Workspace is renamed, or Split is chosen from an Area's chooser with the keyboard, the focus leaves the reader's place and lands on the page's scroll area
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: interface-design-review
 touches: src/anesthesia_sim/app/workspace_tabs.py, src/anesthesia_sim/app/area_layout.py, tests/integration/test_layout_keyboard.py
 deferred-from: v0.7.0 - captured after the freeze; keyboard focus only, and no displayed value is wrong
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2226
 payoff: after a rename or a Split the focus stays where the reader is working
+tests: tests/integration/test_layout_keyboard.py::test_a_workspace_named_from_the_keyboard_keeps_the_focus_on_its_tab, tests/integration/test_layout_keyboard.py::test_a_split_chosen_from_the_keyboard_gives_the_focus_to_the_new_area_s_chooser
 ---
 
 **Problem.** Two keyboard actions leave the focus somewhere the reader did
@@ -37,3 +40,5 @@ presses, as `tests/integration/test_layout_keyboard.py` does.
 **Done when.** A test renames a Workspace with the keyboard and finds the
 focus on its tab, and a test splits an Area from its chooser and finds the
 focus on the new Area's chooser.
+
+**Documentation checked on 2026-11-22**, each passage that names a changed module, for a statement the change made untrue: `docs/ARCHITECTURE.md`, `docs/INTERFACE.md`, `docs/interface-provenance.md`, `ROADMAP.md` and `.claude/rules/ui-areas.md`. None needed a change.

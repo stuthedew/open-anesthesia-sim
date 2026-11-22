@@ -64,7 +64,7 @@ class PatientCompartments:
 
         Each tissue group's blood flow is its perfusion fraction of the
         cardiac output, and the venous pool's flow is the whole cardiac output
-        (`docs/MODEL.md` § "Tissue groups"). No compartment stores a flow.
+        (`docs/MODEL.md` § "Blood flow to the tissue groups"). No compartment stores a flow.
         Each flow is formed from this patient's own cardiac output wherever it
         is read (`TissueGroup.blood_flow_l_min_at`, `PL-HQF5`). So the cardiac
         output is the one stored copy, and the only relation left to check is
@@ -199,7 +199,8 @@ class PatientCompartments:
                         f"{value.blood_gas_partition_coefficient} was refused. The patient "
                         f"holds {self.blood_gas_partition_coefficient}, and every tissue "
                         "group's tissue:blood coefficient is formed from it (docs/MODEL.md, "
-                        '"Blood compartments"): build a new system for another agent'
+                        '"How much agent each compartment holds"): build a new system for '
+                        "another agent"
                     )
 
             super().__setattr__(name, value)
@@ -319,7 +320,7 @@ class PatientCompartments:
         """The mixed-venous partial-pressure-equivalent fraction $`F_v`$.
 
         This is not the venous *concentration*, which is this fraction times
-        $`\\lambda_{b:g}`$. `docs/MODEL.md` § "Concentrations" explains why
+        $`\\lambda_{b:g}`$. `docs/VERIFICATION.md` § "Concentrations" explains why
         every compartment here is stated as a partial-pressure-equivalent
         fraction.
         """

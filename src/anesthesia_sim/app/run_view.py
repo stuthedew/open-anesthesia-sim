@@ -235,7 +235,7 @@ AGENT_DISPLAY_NAMES: Final[Mapping[str, str]] = dict(AVAILABLE_AGENTS)
 #: The clock panel's index in the readout row. It is found from the table that
 #: the row is built from, not written as a literal position.
 _CLOCK_PANEL_INDEX: Final = next(
-    index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None
+    index for index, panel in enumerate(READOUT_PANELS) if panel.is_clock
 )
 
 #: The header badge's inset. It is narrower than the chip's inset, because the
@@ -320,6 +320,8 @@ class RunView(QWidget):
         *,
         run_id: RunId,
         branch_control: Callable[[], bool],
+        name: Callable[[RunId], str | None],
+        charts_withheld: Callable[[], bool],
     ) -> None:
         """Build one run's controls and readouts from its first snapshot.
 
@@ -331,7 +333,18 @@ class RunView(QWidget):
                 run has a branch control on screen now. A dashboard with no
                 case never has one, and a dashboard with a case has one only
                 while an Area shows it. The banner names a branch only then
-                (`_branch_offered`).
+                (`presentation`).
+            name: Returns what the run with the given identity is called
+                now, or None while it is the only run displayed. The dashboard decides it, because
+                how many runs are displayed is the dashboard's fact. It is
+                read each time a presentation is built, so the name travels
+                in the presentation with the run's values (`PL-RF2S`). A run
+                is named exactly when another run is displayed, so the name
+                also says whether runs are being compared.
+            charts_withheld: Returns whether the dashboard's charts withhold
+                their frame on a tick that draws none. A halt's banner then
+                says so, rather than saying that the charts show the last
+                frame (`run_presentation.RunPanelState.charts_withheld`).
 
         Raises:
             TypeError: If `run_id` is not a `RunId`.
@@ -344,6 +357,7 @@ class RunView(QWidget):
         self.controller = controller
         self.run_id = run_id
         self._branch_control = branch_control
+        self._charts_withheld = charts_withheld
         snapshot = controller.snapshot()
 
         # The reason the last setting change did not take effect, or None if
@@ -362,6 +376,10 @@ class RunView(QWidget):
         # than in the controller for the same reason: nothing about the
         # simulation changes until the drag is released.
         self._preview: PreviewRequest | None = None
+        # The run's name when the preview was pressed. The preview's label
+        # names the run, so the preview ends once the run's name changes
+        # (`preview`, `PL-1WFW`).
+        self._preview_name: str | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
         self._owed_time = OwedSimulatedTime()
         self._adjustment_grouping = AdjustmentGrouping()
@@ -390,11 +408,14 @@ class RunView(QWidget):
         # `None` until the first write. The dashboard draws a frame whenever
         # the controller's record differs from it (`owes_a_frame`).
         self._written_record: RunRecord | None = None
-        # Whether a second run is on the chart. The dashboard writes it
-        # through `set_comparing`, because how many runs are displayed is the
-        # dashboard's fact and not this view's. The transport uses it as the
-        # third reason that the chip may replace an agent selector.
-        self._comparing = False
+        # What this run is called now, read from the dashboard each time a
+        # presentation is built.
+        self._name = name
+        # Whether the heading's values are folded into the transport row,
+        # which they are while runs are compared. `show_presentation` folds
+        # or unfolds them when a presentation's name says the run set changed
+        # (`_fold_heading_into_transport`).
+        self._folded = False
         # The run whose readout heading also states this run's substance and
         # 1 MAC. It is set while this run's readouts are drawn in that run's
         # panels (`show_readings_of`). Both runs use one agent, so the one
@@ -409,19 +430,10 @@ class RunView(QWidget):
         # and must not take an agent's colour. The label is hidden while one
         # run is displayed. Then nothing is ambiguous, and a name would be
         # permanent text repeating what the single panel already says.
-        #
-        # `set_run_name` is deliberately not named for a chart or a run. Every
-        # view will owe an area a name in its own header
-        # (`.claude/rules/ui-areas.md`, `PL-TH35`). So the method has a name
-        # that the next view could use too.
+        # `show_presentation` writes it from the presentation's name, in the
+        # same call as the run's values (`PL-RF2S`).
         self._run_name_text = styled_label("", color=INK, bold=True)
         self._run_name_text.setHidden(True)
-        # The name is stored beside the label because the banner needs it too.
-        # The banner is written on a path that has no frame to read the name
-        # from (`run_presentation.halted_run`). Reading the name back from the widget would
-        # make the banner's attribution depend on a label's text, which is a
-        # display detail.
-        self._run_name: str | None = None
         self._status_text = styled_label("", color=MUTED, bold=True)
         emphasised(
             self._status_text, status_word(snapshot, stopped_on_mark=snapshot.stopped_on_mark)
@@ -560,7 +572,8 @@ class RunView(QWidget):
         # The control-change panel's heading. It is an instance label rather
         # than a widget built inside `_lay_out_control_record`, because it has
         # to gain and lose this run's name as the dashboard's set of runs
-        # changes. `set_run_name` is the one writer of that name (`PL-C3GS`).
+        # changes. `show_presentation` writes the name from the presentation
+        # (`PL-C3GS`, `PL-RF2S`).
         self._control_timeline_heading_text = styled_label(
             CONTROL_TIMELINE_HEADING, color=INK, bold=True
         )
@@ -655,7 +668,16 @@ class RunView(QWidget):
 
     @property
     def preview(self) -> PreviewRequest | None:
-        """The setting a reader is dragging on this run, for the chart to preview, or `None`."""
+        """The setting a reader is dragging on this run, for the chart to preview, or `None`.
+
+        A preview held while the run's name changes ends here, because its
+        label names the run by the name it had at the press (`PL-1WFW`).
+        Ending it draws nothing. The frame that the change to the run set
+        requires draws the run without it.
+        """
+
+        if self._preview is not None and self._preview_name != self._name(self.run_id):
+            self._preview = None
 
         return self._preview
 
@@ -716,14 +738,25 @@ class RunView(QWidget):
                 is raised when `drawn` is None.
         """
 
+        name = self._name(self.run_id)
+        comparing = name is not None
         state = RunPanelState(
             run_id=self.run_id,
-            name=self._run_name,
+            name=name,
             case=self._case,
             playback_rate=self._playback_rate,
             is_branch=self._is_branch,
-            comparing=self._comparing,
-            branch_offered=self._branch_offered,
+            comparing=comparing,
+            # A branch can be offered in the stopped run's banner only while
+            # an Area shows the branch control, so that the banner never sends
+            # a learner to a control that the screen does not show. None can
+            # be taken while two runs are compared, because `fork_offer` locks
+            # the branch control then, and none from a run whose
+            # `fork_refusal` gives a reason: a branch, or a trunk whose
+            # dashboard failed.
+            branch_offered=self._branch_control()
+            and not comparing
+            and self.controller.fork_refusal is None,
             rejected_setting_notice=self._rejected_setting_notice,
             refused_reset_notice=self._refused_reset_notice,
             pending_agent_name=(
@@ -731,6 +764,12 @@ class RunView(QWidget):
                 if self._new_case_dialog is None or self._pending_agent_id is None
                 else AGENT_DISPLAY_NAMES[self._pending_agent_id]
             ),
+            reset_question=(
+                None
+                if self._reset_dialog is None or self._reset_question is None
+                else self._reset_question()
+            ),
+            charts_withheld=self._charts_withheld(),
         )
 
         if drawn is None:
@@ -739,6 +778,16 @@ class RunView(QWidget):
             return halted_run(record, self.adjustments(record), state, self._kept)
 
         return drawn_run(drawn, self.adjustments(drawn), state)
+
+    @property
+    def case(self) -> int:
+        """How many times the run has started over, by a Reset or an agent change.
+
+        The dashboard compares it with the cases its kept frames were drawn
+        from (`run_presentation.kept_frames_match`).
+        """
+
+        return self._case
 
     def show_presentation(self, presentation: RunPresentation) -> None:
         """Write every widget of this run from one presentation, as their only writer.
@@ -810,6 +859,7 @@ class RunView(QWidget):
 
         statement = presentation.statement
         self._apply_agent_color_scheme(statement.agent_id)
+        self._show_name(presentation.name)
         self._write_transport(statement.transport)
 
         with QSignalBlocker(self._agent_dropdown):
@@ -840,12 +890,42 @@ class RunView(QWidget):
         if presentation.new_case is not None and self._new_case_dialog is not None:
             self._new_case_dialog.show_question(presentation.new_case)
 
-        if drawn:
-            self._restate_reset_question()
+        if presentation.reset_question is not None and self._reset_dialog is not None:
+            self._reset_dialog.show_question(presentation.reset_question)
 
         for part in (one_mac, presentation.dials):
             if isinstance(part, NotBuilt):
                 raise part.error
+
+    def _show_name(self, name: str | None) -> None:
+        """Write this run's name on its own panel, from the presentation that holds its values.
+
+        The run is named in its transport row, on its readouts and in its
+        control-change heading, and the heading's values fold into the
+        transport row while runs are compared. The name is written by the
+        same call as the run's values, from the same presentation, so this
+        panel cannot name the run beside another run's values (`PL-RF2S`).
+        The dashboard draws a frame, or halts, after every change to its run
+        set. So the name changes on the frame on which a branch appears or
+        is dropped (`PL-C3GS`, `PL-TSZM`).
+
+        Args:
+            name: What the run is called, or None while it is the only run
+                displayed.
+        """
+
+        folded = name is not None
+
+        if folded != self._folded:
+            self._fold_heading_into_transport(folded)
+            self._folded = folded
+
+        self._run_name_text.setText(name or "")
+        self._run_name_text.setHidden(name is None)
+        self._readout_row.set_run_name(name)
+        self._control_timeline_heading_text.setText(
+            compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
+        )
 
     def show_halt(self) -> None:
         """Write this run from its controller's record, when no frame can be drawn.
@@ -887,61 +967,26 @@ class RunView(QWidget):
         being compared. The method reads `opened_from` from the controller
         each time rather than caching it at construction. Whether a run is a
         branch is the controller's fact to state, and nothing here would
-        learn of a change to it.
+        learn of a change to it. Runs are compared exactly while this run is
+        named (`name` in the constructor).
 
         Args:
-            status: The run's status this tick. It is either the snapshot that
-                a frame drew from, or the controller's bare status when no
-                frame is involved.
+            status: The run's status, which is the controller's bare status
+                when no frame is involved.
 
         Returns:
             What `dashboard_frame.transport` returns for this run.
         """
 
-        return transport(status, is_branch=self._is_branch, comparing=self._comparing)
+        return transport(
+            status, is_branch=self._is_branch, comparing=self._name(self.run_id) is not None
+        )
 
     @property
     def _is_branch(self) -> bool:
         """Whether this run was opened from another, read live from the controller."""
 
         return self.controller.opened_from is not None
-
-    @property
-    def _branch_offered(self) -> bool:
-        """Whether a branch can be taken from this run now, for the stopped run's banner.
-
-        None can be taken while the dashboard has no branch control on screen:
-        it was built with no case, or no Area shows the branch View. The
-        banner must not send a learner to a control that the screen does not
-        show. None can be taken while two runs are compared,
-        because `fork_offer` locks the branch control then. None can be taken
-        from a run whose `fork_refusal` gives a reason: a branch, or a trunk
-        whose dashboard failed. Otherwise the control offers at least the
-        run's opening.
-        """
-
-        return (
-            self._branch_control() and not self._comparing and self.controller.fork_refusal is None
-        )
-
-    def set_comparing(self, comparing: bool) -> None:
-        """Record whether a second run is on the chart, and rewrite the transport at once.
-
-        The dashboard calls this method whenever its set of runs changes. So
-        a selector that a fork locks is locked from the frame on which the
-        branch appears, not from the next tick. The method also moves the
-        values that each run states once into the run's own transport row,
-        or moves them back (`_fold_heading_into_transport`).
-
-        Args:
-            comparing: Whether more than one run is displayed.
-        """
-
-        if comparing != self._comparing:
-            self._fold_heading_into_transport(comparing)
-
-        self._comparing = comparing
-        self._write_transport(self._transport_lock(self.controller.status()))
 
     def _fold_heading_into_transport(self, folded: bool) -> None:
         """Give each compared run one line, or give a lone run its two lines back.
@@ -1125,9 +1170,9 @@ class RunView(QWidget):
         """Close any open adjustment, so that the changes that follow start a new one.
 
         The dashboard calls this method when a View says that the reader
-        pressed one of this run's dials. It does not go through
+        began an input on one of this run's dials. It does not go through
         `_apply_setting`, because it records nothing and changes no state.
-        Without it, two drags of one dial would be one adjustment on the
+        Without it, two inputs on one dial would be one adjustment on the
         record.
         """
 
@@ -1156,10 +1201,14 @@ class RunView(QWidget):
         except SimulationConfigurationError:
             self._preview = None
         else:
+            self._preview_name = self._name(self.run_id)
             self._preview = PreviewRequest(
                 setting,
                 preview_label(
-                    control, value, self.controller.settings().agent_display_name, self._run_name
+                    control,
+                    value,
+                    self.controller.settings().agent_display_name,
+                    self._preview_name,
                 ),
             )
 
@@ -1276,34 +1325,6 @@ class RunView(QWidget):
         dialog.finished.connect(dialog.deleteLater)
         self._reset_dialog = dialog
         dialog.open()
-
-    def _restate_reset_question(self) -> None:
-        """Rewrite an open Reset question from the runs as they stand now.
-
-        The trunk's Reset question names each branch it discards and the
-        instant that branch has run to. Before `PL-TPBH`, a branch went on
-        stepping while the question was open. So a question written only once,
-        when it opened, understated the branch work that the reader was about
-        to discard (`PL-WM5P`). Every run now holds while the question is open
-        (`hold_while`), so the figures do not change. The question is still
-        rewritten on each frame. That costs one callback per frame, and it
-        keeps the question true to the runs even if a later change lets a run
-        move while a question is open. The dashboard's `ask_before_reset`
-        callback reads every branch's controller.
-
-        If the callback now returns no question, the dialog is left as it
-        is. That case does not arise, because a branch's work only grows
-        while the question is open. Closing the dialog under the reader
-        would also be a surprise.
-        """
-
-        if self._reset_dialog is None or self._reset_question is None:
-            return
-
-        question = self._reset_question()
-
-        if question is not None:
-            self._reset_dialog.show_question(question)
 
     @halt_gate
     def _handle_reset_finished(self, result: int) -> None:
@@ -1776,54 +1797,6 @@ class RunView(QWidget):
 
         return row
 
-    def set_run_name(self, name: str | None) -> None:
-        """Name this view in its own header, its readouts and its control-change panel, or not.
-
-        The dashboard decides the name by applying `dashboard_frame.run_label`
-        to `run_id`. So this panel and the chart's legend call one run by the
-        same name. A legend entry reading "Run 2" identifies a curve only if
-        something that holds that run's settings also says "Run 2".
-
-        **This method is the one writer of this run's name on its own
-        panel.** That is why the control-change heading is written here
-        rather than in `show_presentation`. What a run is called changes
-        when the dashboard's set of runs changes, and at no other time.
-        `SimulationView._place_run` renames every run the moment a branch is
-        placed. So the heading names the run on the frame on which the
-        branch appears, before any chart frame is drawn (`PL-C3GS`).
-
-        The name is *stored* here as well as drawn, because every
-        presentation carries it (`presentation`). The notice banner is named
-        from it. That banner sits in a column that the runs share, and it is
-        written on a path that has no frame to read a run count from
-        (`PL-TSZM`). The Views name the accounting panel, the schematic and
-        the agent cost panel from it too, on the tick that follows the
-        change to the run set. None of these is written here, because
-        `show_presentation` and the Views write them from the presentation
-        that the change to the run set brings.
-
-        A preview held while the name changes ends here, because its label
-        names the run by the name it had at the press (`PL-1WFW`). Ending it
-        draws nothing. The frame that the change to the run set requires
-        draws the run without it.
-
-        Args:
-            name: What to call the view, or `None` for no name. A lone run
-                gets `None`, because there is no other run to tell it apart
-                from.
-        """
-
-        if name != self._run_name:
-            self._preview = None
-
-        self._run_name = name
-        self._run_name_text.setText(name or "")
-        self._run_name_text.setHidden(name is None)
-        self._readout_row.set_run_name(name)
-        self._control_timeline_heading_text.setText(
-            compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
-        )
-
     def build_notice(self) -> QWidget:
         """The banner for a halted run or a refused setting, placed above every value."""
 
@@ -1928,8 +1901,8 @@ class RunView(QWidget):
         }
 
         for panel, readout_panel in zip(self._readout_row.panels, READOUT_PANELS, strict=True):
-            if readout_panel.quantity is not None:
-                widgets[compartment_value(readout_panel.quantity)] = panel.value_label
+            if not readout_panel.is_clock:
+                widgets[compartment_value(readout_panel.compartment())] = panel.value_label
 
         return widgets
 

@@ -578,7 +578,7 @@ class TestMain:
     ) -> None:
         """The asymmetry, pinned end-to-end so widening the tree cannot pass quietly.
 
-        `docs/MODEL.md` "The reproducibility guarantee" permits the interface
+        `docs/VERIFICATION.md` "The reproducibility guarantee" permits the interface
         its wall clock - what it forbids is a tick's real duration reaching the
         run - so a boundary that failed here would be enforcing a rule the
         design does not hold.
@@ -649,6 +649,6 @@ def test_an_older_interpreter_is_named(
     monkeypatch.undo()
     assert status == 2
     assert capsys.readouterr().out == (
-        "import_boundary_check.py: this check parses src/, which needs Python 3.14 or newer, "
+        "import_boundary_check.py: this check parses src/, which needs Python 3.15 or newer, "
         "and this is Python 3.13. Run it as: uv run python tools/import_boundary_check.py\n"
     )

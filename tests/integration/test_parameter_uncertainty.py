@@ -201,10 +201,10 @@ def _run(
     """Return the samples of one run, with `coefficient` moved by `sign` SDs.
 
     Each amount is the compartment's capacity times its partial pressure
-    fraction, as `docs/MODEL.md` § "Agent amount" defines it: the volume for a
-    gas space, and the volume times the tissue:gas or blood:gas coefficient for
-    blood and tissue. The capacities are worked out here from the equation
-    settings rather than read from the compartments.
+    fraction, as `docs/MODEL.md` § "How much agent each compartment holds"
+    defines it: the volume for a gas space, and the volume times the tissue:gas
+    or blood:gas coefficient for blood and tissue. The capacities are worked out
+    here from the equation settings rather than read from the compartments.
     """
 
     factor = 1.0

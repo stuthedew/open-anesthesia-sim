@@ -102,12 +102,13 @@ published data rather than against the code's own claims.
 `.claude/rules/plain-writing.md` decides how every text is worded. These are
 the parts of it that apply only with one of these files open (`PL-GDN7`).
 
-**Where the rest goes.** Decision history goes in the item. In `docs/MODEL.md`,
-detail of the numerical method goes in a note for developers at the end of its
-section, a paragraph that opens with "**For developers.**" (`PL-TZ7R`). The
-numerical method itself is specified in `docs/VERIFICATION.md` (`PL-6PPZ`).
-That note may name the tests for the paragraphs directly above it
-(`PL-W8FL`). State a model
+**Where the rest goes.** Decision history goes in the item. `docs/MODEL.md` is
+written for a clinician and holds no note for developers (`PL-48MX`). The
+numerical method, and the tests that hold the model to its statements, go in
+`docs/VERIFICATION.md` (`PL-6PPZ`). A stored value's source and the evidence
+behind a limitation go in `docs/PARAMETERS.md`, which may end a section with a
+note for developers, a paragraph that opens with "**For developers.**" and may
+name the tests for the paragraphs above it (`PL-W8FL`). State a model
 limitation only where it could change what a clinician concludes from a
 displayed value (`PL-BS6N`). `docs/INTERFACE.md` ends a section with the same
 note for developers, for the tests and code behind its requirements.
@@ -135,7 +136,7 @@ without being told. Leave out what the signature, the body or a named type
 already shows.
 
 "Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
-L/min. `docs/MODEL.md` § "Tissue groups" defines it. The group stores no flow
+L/min. `docs/MODEL.md` § "Blood flow to the tissue groups" defines it. The group stores no flow
 of its own, so no write can leave its flow out of step with the cardiac output
 (`PL-HQF5`). Raises: TypeError: `cardiac_output_l_min` was not built as a
 `CardiacOutput` (`core/supported_ranges.py`)."

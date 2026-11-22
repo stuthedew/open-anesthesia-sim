@@ -251,7 +251,7 @@ def test_a_refused_dial_setting_is_pinned_whole() -> None:
 
     assert str(refusal.value) == (
         "delivered_concentration_percent of 150.0 is outside 0 to 100, the range a percent "
-        'of one atmosphere takes (docs/MODEL.md, "Concentrations")'
+        'of one atmosphere takes (docs/VERIFICATION.md, "Concentrations")'
     )
 
 
@@ -269,7 +269,7 @@ def test_a_refused_compartment_fraction_is_pinned_whole() -> None:
 
     assert str(refusal.value) == (
         "alveolar partial_pressure_fraction of 1.0000001 is outside 0 to 1, the range a "
-        'fraction of one atmosphere takes (docs/MODEL.md, "Concentrations")'
+        'fraction of one atmosphere takes (docs/VERIFICATION.md, "Concentrations")'
     )
 
 
@@ -662,7 +662,7 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     assert str(as_a_fraction.value) == (
         "inspired_partial_pressure_fraction of 0.0 was not built as Fraction, it is float: "
         "build it as Fraction(...) where it is computed, which checks it against 0 to 1 once "
-        '(docs/MODEL.md, "Concentrations")'
+        '(docs/VERIFICATION.md, "Concentrations")'
     )
 
     with pytest.raises(TypeError) as as_a_percent:
@@ -671,7 +671,7 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     assert str(as_a_percent.value) == (
         "delivered_concentration_percent of 2.0 was not built as Percent, it is float: build "
         "it as Percent(...) where it is set, which checks it against 0 to 100 once "
-        '(docs/MODEL.md, "Concentrations")'
+        '(docs/VERIFICATION.md, "Concentrations")'
     )
 
     with pytest.raises(TypeError, match="^alveolar partial_pressure_fraction of 0.0 was not built"):
@@ -756,7 +756,8 @@ def test_fraction_from_percent_refuses_a_bare_float() -> None:
 
     assert str(refused.value) == (
         "percent of 50.0 was not built as Percent, it is float: build it as Percent(...) "
-        'where it is set, which checks it against 0 to 100 once (docs/MODEL.md, "Concentrations")'
+        "where it is set, which checks it against 0 to 100 once "
+        '(docs/VERIFICATION.md, "Concentrations")'
     )
 
     with pytest.raises(TypeError, match="^percent of 50 was not built as Percent, it is int"):
@@ -792,7 +793,7 @@ def test_percent_from_fraction_refuses_a_bare_float() -> None:
     assert str(refused.value) == (
         "fraction of 0.5 was not built as Fraction, it is float: build it as Fraction(...) "
         "where it is computed, which checks it against 0 to 1 once "
-        '(docs/MODEL.md, "Concentrations")'
+        '(docs/VERIFICATION.md, "Concentrations")'
     )
 
     with pytest.raises(TypeError, match="^fraction of 0.5 was not built as Fraction, it is float"):

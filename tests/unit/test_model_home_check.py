@@ -52,6 +52,24 @@ def test_an_open_item_naming_a_model_is_refused(tmp_path: Path) -> None:
     assert found.startswith("docs/items/PL-B7K2-open.md: names claude-fable-5-1;")
 
 
+def test_an_open_item_citing_a_guide_named_for_a_model_passes(tmp_path: Path) -> None:
+    """A model id inside a cited web address is part of the address, not a choice (`PL-BBTV`)."""
+    guides = (
+        "See <https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/"
+        "prompting-claude-sonnet-5> and (https://platform.claude.com/docs/en/"
+        "build-with-claude/prompt-engineering/prompting-claude-fable-5).\n"
+    )
+    root = _tree(tmp_path, {"docs/items/PL-B7K2-open.md": OPEN_ITEM + guides})
+    assert problems(root) == []
+
+
+def test_a_model_id_beside_a_web_address_is_still_refused(tmp_path: Path) -> None:
+    text = "Read https://platform.claude.com/docs/en/models then run `claude-fable-5-1`.\n"
+    root = _tree(tmp_path, {"docs/items/PL-B7K2-open.md": OPEN_ITEM + text})
+    (found,) = problems(root)
+    assert found.startswith("docs/items/PL-B7K2-open.md: names claude-fable-5-1;")
+
+
 def test_records_tests_and_the_home_may_name_any_model(tmp_path: Path) -> None:
     root = _tree(
         tmp_path,

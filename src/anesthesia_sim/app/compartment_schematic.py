@@ -28,7 +28,7 @@ from typing import Final
 from anesthesia_sim.app.chart_frame import percent_axis_ticks
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
-    READOUT_PANELS,
+    COMPARTMENT_PANELS,
     WIDEST_COMPARTMENT_VALUE,
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_ELAPSED_TIME_TEXT,
@@ -85,7 +85,7 @@ __all__ = [
 #: the readout row's order, read from the readout panels so the two cannot
 #: disagree.
 CONTAINER_ORDER: Final[tuple[RecordedQuantity, ...]] = tuple(
-    panel.quantity for panel in READOUT_PANELS if panel.quantity is not None
+    panel.compartment() for panel in COMPARTMENT_PANELS
 )
 
 #: The line over each run's schematic: the run's name while runs are compared,
@@ -143,7 +143,7 @@ OFF_SCALE_LINE_TEMPLATE: Final = (
 #: formatter that prints amounts writes both texts. The View also widens a
 #: column for any label wider than these, so that no label is clipped.
 WIDEST_LABELS: Final[tuple[str, ...]] = (
-    *(panel.name for panel in READOUT_PANELS if panel.quantity is not None),
+    *(panel.name for panel in COMPARTMENT_PANELS),
     WIDEST_COMPARTMENT_VALUE,
     format_compartment_amount(1e-9),
     format_compartment_amount(88.0),
@@ -204,22 +204,18 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
     top_percent = chart_axis_top_percent(snapshot.agent_mac_percent)
     readings: list[ContainerReading] = []
 
-    for panel in READOUT_PANELS:
-        if panel.quantity is None:
-            continue
-
-        fraction = compartment_fraction(snapshot, panel.quantity)
+    for panel in COMPARTMENT_PANELS:
+        quantity = panel.compartment()
+        fraction = compartment_fraction(snapshot, quantity)
         percent = percent_from_fraction(fraction)
         readings.append(
             ContainerReading(
-                quantity=panel.quantity,
+                quantity=quantity,
                 name=panel.name,
                 fill=min(percent / top_percent, 1.0),
                 off_scale=above_the_axis_top(percent, top_percent),
                 tension=format_percent(fraction),
-                amount=format_compartment_amount(
-                    snapshot.compartment_agent_amounts.of(panel.quantity)
-                ),
+                amount=format_compartment_amount(snapshot.compartment_agent_amounts.of(quantity)),
             )
         )
 
@@ -374,13 +370,12 @@ def share_segments(snapshot: SimulationSnapshot) -> tuple[ShareSegment, ...] | N
 
     return tuple(
         ShareSegment(
-            quantity=panel.quantity,
+            quantity=panel.compartment(),
             name=panel.name,
-            share=(share := snapshot.compartment_agent_amounts.of(panel.quantity) / total),
+            share=(share := snapshot.compartment_agent_amounts.of(panel.compartment()) / total),
             text=format_compartment_share(share),
         )
-        for panel in READOUT_PANELS
-        if panel.quantity is not None
+        for panel in COMPARTMENT_PANELS
     )
 
 
@@ -466,15 +461,14 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
     WITHHELD_ELAPSED_TIME_TEXT,
     tuple(
         ContainerReading(
-            quantity=panel.quantity,
+            quantity=panel.compartment(),
             name=panel.name,
             fill=0.0,
             off_scale=False,
             tension=WITHHELD_CONCENTRATION_TEXT,
             amount=WITHHELD_AMOUNT_TEXT,
         )
-        for panel in READOUT_PANELS
-        if panel.quantity is not None
+        for panel in COMPARTMENT_PANELS
     ),
     (),
     None,

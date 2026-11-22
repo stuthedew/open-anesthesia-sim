@@ -20,7 +20,7 @@ from collections.abc import Iterator
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QPalette
+from PySide6.QtGui import QColor, QFontMetrics, QKeyEvent, QPalette, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -89,6 +89,7 @@ from anesthesia_sim.app.theme import (
     MUTED,
     PANEL,
     PANEL_RADIUS,
+    PARAMETER_SLIDER_LEAST_LENGTH,
     WARNING,
 )
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
@@ -558,10 +559,10 @@ def _settings() -> tuple[SettingReadout, ...]:
     return setting_readouts(SimulationController().snapshot())
 
 
-def test_the_value_applied_to_the_model_is_exactly_the_value_printed_beside_the_slider(
+def test_the_value_applied_to_the_model_is_exactly_the_value_printed_above_the_slider(
     application: QApplication,
 ) -> None:
-    """A slider position and the readout beside it are one number (`PL-25KS`, D4)."""
+    """A slider position and the readout above it are one number (`PL-25KS`, D4)."""
 
     for setting in _settings():
         control = ParameterSlider(setting)
@@ -582,6 +583,26 @@ def test_the_value_applied_to_the_model_is_exactly_the_value_printed_beside_the_
             assert emitted == [slider_value(position, setting.decimals)], setting.control
             assert control.value() == emitted[0]
             assert _printed_value(setting, control.value()) == control.value(), setting.control
+
+
+def test_a_narrow_setting_card_keeps_its_slider_long_enough_to_drag(
+    application: QApplication,
+) -> None:
+    """`PL-V4Q8`: no card is laid out narrow enough to shorten its slider below the least length.
+
+    A slider spread over its whole range in a few dozen pixels moves several
+    steps for each pixel the pointer moves. Each card's least width must hold
+    a slider of `PARAMETER_SLIDER_LEAST_LENGTH`, so the layout that places the
+    card never gives the slider less.
+    """
+
+    for setting in _settings():
+        control = ParameterSlider(setting)
+        control.show()
+        control.resize(control.minimumSizeHint())
+        application.processEvents()
+
+        assert control.slider.width() >= PARAMETER_SLIDER_LEAST_LENGTH, setting.control
 
 
 def test_the_slider_steps_at_the_display_resolution(application: QApplication) -> None:
@@ -631,15 +652,81 @@ def test_driving_a_slider_from_the_snapshot_emits_no_change(application: QApplic
     assert control.value_label.text() == fresh_gas_flow.value_text
 
 
-def test_a_slider_press_declares_an_adjustment(application: QApplication) -> None:
+def _wheel_event(slider: QWidget, phase: Qt.ScrollPhase) -> QWheelEvent:
+    """One wheel event of one notch, 120 units, upward, at the slider's centre."""
+
+    centre = QPointF(slider.width() / 2, slider.height() / 2)
+
+    return QWheelEvent(
+        centre,
+        slider.mapToGlobal(centre),
+        QPoint(),
+        QPoint(0, 120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        phase,
+        False,
+    )
+
+
+def _key_event(*, repeat: bool) -> QKeyEvent:
+    """A Right-arrow press, marked as a held key's repeat or not."""
+
+    return QKeyEvent(
+        QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier, "", repeat
+    )
+
+
+def test_each_input_on_a_slider_declares_one_adjustment(application: QApplication) -> None:
+    """A press, a key press, a wheel notch and the start of a swipe each declare an adjustment.
+
+    A held key's repeats and a swipe's later events declare none.
+
+    `docs/INTERFACE.md` § "The control-input timeline" makes each input an
+    adjustment of its own, and a held key or a swipe one input (`PL-0T2H`,
+    `PL-PXTT`).
+    """
+
     control = ParameterSlider(_settings()[0])
-    started: list[None] = []
-    control.adjustment_started.connect(lambda: started.append(None))
+    control.resize(400, control.sizeHint().height())
+    slider = control.slider
+    started: list[str] = []
+    inputs = (
+        ("press", lambda: QTest.mouseClick(slider, Qt.MouseButton.LeftButton)),
+        ("key", lambda: QApplication.sendEvent(slider, _key_event(repeat=False))),
+        ("repeat", lambda: QApplication.sendEvent(slider, _key_event(repeat=True))),
+        (
+            "notch",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.NoScrollPhase)
+            ),
+        ),
+        (
+            "swipe begins",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollBegin)
+            ),
+        ),
+        (
+            "swipe moves",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollUpdate)
+            ),
+        ),
+        (
+            "swipe coasts",
+            lambda: QApplication.sendEvent(
+                slider, _wheel_event(slider, Qt.ScrollPhase.ScrollMomentum)
+            ),
+        ),
+    )
 
-    control.slider.setSliderDown(True)
-    control.slider.setSliderDown(False)
+    for name, send in inputs:
+        control.adjustment_started.connect(lambda name=name: started.append(name))
+        send()
+        control.adjustment_started.disconnect()
 
-    assert started == [None]
+    assert started == ["press", "key", "notch", "swipe begins"]
 
 
 def test_a_dragged_thumb_previews_until_release_and_then_applies_once(

@@ -520,6 +520,13 @@ def _plot(background: str) -> Any:
         axis.setPen(pg.mkPen(GRIDLINE))
         axis.setTextPen(pg.mkPen(MUTED))
 
+    # Each axis's range ends at a labelled tick, and a label is centred on its
+    # tick. With pyqtgraph's 1 px top margin, the top label's upper half fell
+    # outside the widget and was cut off, so a "6" could read as a "0"
+    # (`PL-571L`). Half a line of the plot's font above the plot keeps it whole.
+    top_px = ceil(QFontMetrics(plot.font()).height() / 2)
+    item.layout.setContentsMargins(1, max(1, top_px), 1, 1)
+
     return plot
 
 
@@ -711,7 +718,13 @@ class _HoverReadout:
         # (`PL-9BVQ`). A plot shorter than the box's height on both sides of
         # the anchor, as a View at its least height can leave it, gets the box
         # with its top at the plot's top, so the box stays inside the plot
-        # where the plot is at least as tall as the box (`PL-CBYS`).
+        # where the plot is at least as tall as the box (`PL-CBYS`). There the
+        # box is almost as tall as the plot. Beside the anchor it hid the curve
+        # on that side, which is what the value is read against, so it goes to
+        # the far edge of the plot instead, on the side away from the anchor
+        # (`PL-YJ7N`). A box wider than the room between that edge and the
+        # anchor would lie over the hovered point there, so it stays beside the
+        # anchor, where it never covers the point.
         anchor = target.anchor
         past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
         box_height_px = self._box_height_px()
@@ -726,8 +739,17 @@ class _HoverReadout:
             self._text.setAnchor((horizontal, 0))
             self._text.setPos(anchor.time_s, anchor.value)
         else:
-            self._text.setAnchor((horizontal, 0))
-            self._text.setPos(anchor.time_s, self._top_value())
+            # Past the middle the anchor is in the right half, so the box takes
+            # the left edge, and the other way round.
+            far_side = 0 if past_middle else 1
+            far_edge = x_range[far_side]
+
+            if self._box_width_px() <= self._width_between_px(far_edge, anchor.time_s):
+                self._text.setAnchor((far_side, 0))
+                self._text.setPos(far_edge, self._top_value())
+            else:
+                self._text.setAnchor((horizontal, 0))
+                self._text.setPos(anchor.time_s, self._top_value())
 
         self._dot.show()
         # This uses `setVisible` rather than `show`. `show` goes straight to
@@ -745,6 +767,17 @@ class _HoverReadout:
         top = self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).top()
 
         return float(anchor.y() - top)
+
+    def _width_between_px(self, first_time_s: float, second_time_s: float) -> float:
+        """Return how many pixels lie between two times on the plot's horizontal axis."""
+
+        view_box = self._plot.getPlotItem().getViewBox()
+        first, second = (
+            self._plot.mapFromScene(view_box.mapViewToScene(QPointF(time_s, 0.0))).x()
+            for time_s in (first_time_s, second_time_s)
+        )
+
+        return float(abs(second - first))
 
     def _plot_height_px(self) -> float:
         """Return the plot's height in pixels, between its top and bottom axes."""
@@ -768,6 +801,11 @@ class _HoverReadout:
         """
 
         return float(self._text.boundingRect().height())
+
+    def _box_width_px(self) -> float:
+        """Return the box's width in pixels, for the text it now holds, read as its height is."""
+
+        return float(self._text.boundingRect().width())
 
     def hide(self) -> None:
         self._dot.hide()
@@ -1103,6 +1141,8 @@ class ConcentrationChart(QWidget):
         self._grid.place(frame.tick_times_s, [position for position, _ in frame.percent_ticks])
         self._one_mac_line.setPos(frame.one_mac_percent)
         self._band.setRegion(frame.mac_awake_band_percent)
+        self._one_mac_line.show()
+        self._band.show()
 
         while len(self._runs) < len(frame.runs):
             self._runs.append(_RunItems(item, RunIndex(len(self._runs))))
@@ -1155,9 +1195,30 @@ class ConcentrationChart(QWidget):
         self._frame = frame
         self._refresh_hover()
 
+    def withhold(self) -> None:
+        """Empty the plot: no trace, no mark and no clinical reference, until the next frame.
+
+        A frame is withheld when the run has started over, or a run was
+        removed, since the last frame that drew (`run_presentation.ShownFrame`).
+        The traces, the 1 MAC line and the MAC-awake band of that frame
+        describe a run that is gone, or another agent, so none of them stays
+        on the plot. The axes lose their labels and gridlines too. The percent
+        labels fall at multiples of the agent's 1 MAC, and the time labels
+        and the time axis's title describe the window of a run that is gone.
+        """
+
+        for items in self._runs:
+            items.hide()
+
+        self._one_mac_line.hide()
+        self._band.hide()
+        _clear_axes(self._plot.getPlotItem(), self._grid, self._time_title, ("left", "right"), ())
+        self._frame = None
+        self._refresh_hover()
+
     @property
     def frame(self) -> ChartFrame | None:
-        """The frame last drawn, or `None` before the first."""
+        """The frame last drawn, or `None` before the first and after `withhold`."""
 
         return self._frame
 
@@ -1297,6 +1358,11 @@ class ConcentrationChart(QWidget):
         """The ticks one axis is labelled at, as (position, label)."""
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
+
+    def tick_label_rects(self, name: str) -> tuple[tuple[str, QRectF], ...]:
+        """Each tick label one axis paints, with its box in the pixels of `painted`."""
+
+        return _tick_label_rects(self._plot, name)
 
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the chart's axes, so a walk over the whole interface finds them."""
@@ -1489,7 +1555,7 @@ class WashInChart(QWidget):
 
     The plot is a View of its own, and it keeps its own time window
     (`PL-L59K`). It shows the compartment chart's alveolar and circuit traces
-    as one number, so the Induction Workspace places it under that chart.
+    as one number, so the Induction Workspace places it beside that chart.
     While the two plots show the same window, they draw the same `ChartFrame`
     (`AreaLayout.frame_requests`), so they show the same instants.
     """
@@ -1596,9 +1662,30 @@ class WashInChart(QWidget):
         self._frame = frame
         self._refresh_hover()
 
+    def withhold(self) -> None:
+        """Empty the plot until the next frame, as `ConcentrationChart.withhold` does.
+
+        The F_A/F_I axis keeps its labels and gridlines, because they do not
+        depend on the run or the agent. The time axis loses its labels, its
+        gridlines and the window in its title.
+        """
+
+        for items in self._runs:
+            items.hide()
+
+        _clear_axes(
+            self._plot.getPlotItem(),
+            self._grid,
+            self._time_title,
+            (),
+            [position for position, _ in wash_in_axis_ticks()],
+        )
+        self._frame = None
+        self._refresh_hover()
+
     @property
     def frame(self) -> ChartFrame | None:
-        """The frame last drawn, or `None` before the first."""
+        """The frame last drawn, or `None` before the first and after `withhold`."""
 
         return self._frame
 
@@ -1718,6 +1805,11 @@ class WashInChart(QWidget):
         """The ticks one axis is labelled at, as (position, label)."""
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
+
+    def tick_label_rects(self, name: str) -> tuple[tuple[str, QRectF], ...]:
+        """Each tick label one axis paints, with its box in the pixels of `painted`."""
+
+        return _tick_label_rects(self._plot, name)
 
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the plot's axes, so a walk over the whole interface finds them."""
@@ -1884,6 +1976,13 @@ class _TimeAxisTitle:
 
         return float(centre - self._axis.size().width() / 2)
 
+    def clear(self) -> None:
+        """Name the axis alone, with no window, as before the first frame."""
+
+        if self._words != TIME_AXIS_TITLE:
+            self._words = TIME_AXIS_TITLE
+            self._write()
+
     def show(self, window: str) -> None:
         """Name the axis and state `window` after the name."""
 
@@ -1912,6 +2011,37 @@ class _TimeAxisTitle:
         self._axis.resizeEvent()
 
 
+def _clear_axes(
+    item: Any,
+    grid: _GridLines,
+    title: _TimeAxisTitle,
+    value_axes: Sequence[str],
+    value_rules: Sequence[float],
+) -> None:
+    """Take the labels and gridlines of a withheld frame off a plot's axes.
+
+    The time axis always loses its labels, its gridlines and the window in its
+    title, because they describe the window of the frame that was withheld.
+
+    Args:
+        item: The plot.
+        grid: The plot's gridlines.
+        title: The time axis's title.
+        value_axes: The names of the value axes whose labels came from the
+            withheld frame, such as "left" and "right". Each loses its labels.
+        value_rules: Where the horizontal gridlines stay, because no frame
+            placed them. Every other horizontal gridline is hidden.
+    """
+
+    item.getAxis("bottom").setTicks([[]])
+
+    for name in value_axes:
+        item.getAxis(name).setTicks([[]])
+
+    grid.place((), value_rules)
+    title.clear()
+
+
 def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
     """The major ticks an axis was given, as (position, label)."""
 
@@ -1921,6 +2051,23 @@ def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
         return ()
 
     return tuple((float(position), str(label)) for position, label in ticks[0])
+
+
+def _tick_label_rects(plot: Any, name: str) -> tuple[tuple[str, QRectF], ...]:
+    """Each tick label one axis paints, with its box in the widget's pixels."""
+
+    axis = plot.getPlotItem().getAxis(name)
+    image = QImage(1, 1, QImage.Format.Format_ARGB32)
+    painter = QPainter(image)
+    painter.setFont(plot.font())
+    try:
+        _, _, texts = axis.generateDrawSpecs(painter)
+    finally:
+        painter.end()
+    transform = plot.viewportTransform()
+    return tuple(
+        (str(text), QRectF(transform.mapRect(axis.mapRectToScene(rect)))) for rect, _, text in texts
+    )
 
 
 def _render(widget: QWidget) -> QImage:
@@ -2429,7 +2576,7 @@ class TraceLegend(QWidget):
         run set, and the owner already has to draw the frame that shows the
         change. When the change was announced from here, the cap that a
         second run brings drew that frame too early. It drew it from inside
-        `SimulationView._rename_runs`, before the wash-in legend or either
+        the dashboard's method that renamed the runs, before the wash-in legend or either
         run had been told there were two runs. The fork that caused the cap
         then drew its own frame.
 

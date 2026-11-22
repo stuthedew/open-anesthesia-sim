@@ -1,10 +1,12 @@
 ---
 id: PL-GHT6
 title: docs/VERIFICATION.md § Supported simulation step says the case opening's one-second timing error is smaller than one SD of any partition coefficient, but its 7.3e-2 pp exceeds the vessel-rich (5.4e-2 pp) and fat (4.0e-2 pp) first-hour shifts that INTERFACE.md tabulates
-status: untriaged
+status: dropped
 feature: model-claims-held-by-tests
 touches: docs/VERIFICATION.md
 added: 2026-11-22
+closed: 2026-11-22
+reason: duplicate of PL-3MMJ (docs/VERIFICATION.md says a one-second-late control change moves a reading less than one SD of any partition coefficient), the same finding from the PL-48MX review; PL-3MMJ merged first in #2222, and its brief now carries this item's figures from after PL-LBVN, so nothing is lost
 ---
 
 **Problem.** `docs/VERIFICATION.md` claims that a one-second delay in an

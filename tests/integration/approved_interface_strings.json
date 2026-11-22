@@ -74,6 +74,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #.#% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #.#% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -95,6 +96,7 @@
   "None marked",
   "None set",
   "Not defined: no agent has reached the circuit yet.",
+  "Nothing is plotted, because no frame could be drawn for this chart.",
   "Parameters",
   "Pause",
   "Paused",
@@ -175,6 +177,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: #m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -217,6 +220,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #.#% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #.#% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -237,6 +241,7 @@
   "No settings changed yet in this run.",
   "None marked",
   "None set",
+  "Nothing is plotted, because no frame could be drawn for this chart.",
   "Now: F<sub>A</sub>/F<sub>I</sub> = #.##",
   "Parameters",
   "Pause",
@@ -317,6 +322,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: ##m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -359,6 +365,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #.#% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #.#% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -379,6 +386,7 @@
   "No settings changed yet in this run.",
   "None marked",
   "None set",
+  "Nothing is plotted, because no frame could be drawn for this chart.",
   "Now: F<sub>A</sub>/F<sub>I</sub> = #.##",
   "Parameters",
   "Pause",
@@ -460,6 +468,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: #m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -503,6 +512,7 @@
   "Fill height is tension, on the concentration chart's scale: # to ##.#% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #.#% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -523,6 +533,7 @@
   "No settings changed yet in this run.",
   "None marked",
   "None set",
+  "Nothing is plotted, because no frame could be drawn for this chart.",
   "Now: F<sub>A</sub>/F<sub>I</sub> = #.##",
   "Parameters",
   "Pause",
@@ -603,6 +614,7 @@
   "Bottle price",
   "Bottle volume (mL of liquid)",
   "Branch",
+  "Branch here: #m",
   "Branch point (vertical, solid)",
   "Cardiac output",
   "Circuit",
@@ -645,6 +657,7 @@
   "Fill height is tension, on the concentration chart's scale: # to #.##% of # atm (# ×MAC).\nMarks stand at the chart's gridlines, every #.###% of # atm (#.# ×MAC).\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
   "Fresh gas flow",
+  "From",
   "Height",
   "Instant",
   "Isoflurane",
@@ -666,6 +679,7 @@
   "No settings changed yet in this run.",
   "None marked",
   "None set",
+  "Nothing is plotted, because no frame could be drawn for this chart.",
   "Now: F<sub>A</sub>/F<sub>I</sub> = #.##",
   "Parameters",
   "Pause",
@@ -707,5 +721,178 @@
   "simulated time, whole run so far, # minutes shown",
   " ",
   "×MAC"
+ ],
+ "setting changed": [
+  "#m##s",
+  "#m##s–#m##s · Delivered agent #.##% -> #.##% (# settings)\n#m · Fresh gas flow #.# L/min -> #.# L/min"
+ ],
+ "marks set": [
+  "##m – the decision point",
+  "Alveolar #.## ×MAC",
+  "•"
+ ],
+ "stopped on a mark": [
+  "#m – induction · passed",
+  "#m, on your mark",
+  "Branch here: #m, stopped on your mark",
+  "Paused — stopped on your mark",
+  "Share of the agent the run holds:\nCircuit ##%, Alveolar ##%, Mixed venous <#%,\nVessel-rich group #%, Muscle #%, Fat <#%.",
+  "•"
+ ],
+ "mark reached": [
+  "Alveolar #.## ×MAC · reached",
+  "•"
+ ],
+ "marks on compared runs": [
+  "##s – check · Run # passed · Run # before this branch opened",
+  "##s, on your mark",
+  "#m##s",
+  "#m##s · Run # not reached before the simulation error · Run # passed",
+  "#m · Delivered agent #.##% -> #.##%\n#m · Fresh gas flow #.# L/min -> #.# L/min",
+  "#m · Fresh gas flow #.# L/min -> #.# L/min",
+  "Agent accounting validation — Run #",
+  "Alveolar #.## ×MAC · Run # not reached before the simulation error · Run # reached",
+  "Alveolar (long dash), Run #",
+  "Circuit (solid), Run #",
+  "Control changes — Run #",
+  "F<sub>A</sub>/F<sub>I</sub> (solid), Run #",
+  "Fat #.## ×MAC · Run # not reached before the simulation error · Run # not yet",
+  "Locked to the case",
+  "Locked while comparing",
+  "One comparison at a time. Run #'s Reset ends it and starts the case over; Run #'s Reset only returns Run # to where it branched.",
+  "Paused — stopped on your mark",
+  "Run #",
+  "Run # — Now: F<sub>A</sub>/F<sub>I</sub> = #.##",
+  "Run #: Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/VERIFICATION.md, \"Concentrations\"). The values shown are the last completed step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "Two runs are shown, so the chart draws at most # compartments at once. Every compartment's value is in the readouts above, for both runs.",
+  "•"
+ ],
+ "price set": [
+  "# mL of liquid x USD #.#### per mL of liquid",
+  "Rounded, so the figures may not multiply exactly.",
+  "USD #.##",
+  "Your price: USD ### for ### mL of liquid, as of ####-##-##."
+ ],
+ "setting refused": [
+  "Setting refused — delivered_concentration_percent exceeds the vaporizer maximum (##% requested, #% maximum). The simulation is unchanged and still running its previous setting."
+ ],
+ "supported run length reached": [
+  "##m – late · not reached within the supported run length",
+  "Fat #.## ×MAC · not reached within the supported run length",
+  "Simulation stopped — this run reached the supported run length of ## hours. This model leaves out metabolism, and its fat flow is uncertain. How far the slow part of the trace can stray from a patient grows as a run goes on, so the model is not claimed to represent a patient past this span. The values shown are the last completed step, inside the supported span. Reset to start a new run.",
+  "Stopped — supported run length reached",
+  "•"
+ ],
+ "halt after an agent change": [
+  "Above the top of the plot: Circuit. The axis stops at #.## ×MAC and these traces are cut off there — their values are in the readouts above, which are not clipped.",
+  "Changing agent starts a new case. This model does not simulate switching between volatile agents, so a run cannot be continued under a different one.",
+  "Delivered: —\nExhausted: —\nStored: —\nUnaccounted: —\nAbsolute error: —",
+  "Discard and start desflurane",
+  "Fresh gas flow, alveolar ventilation and cardiac output carry over. Delivered desflurane starts at that agent's own # MAC.",
+  "Keep the sevoflurane case",
+  "No frame has been drawn since the run started over.",
+  "Simulation stopped — RuntimeError: this frame could not be assembled. No frame has been drawn since the run started over: the readouts and the charts are withheld, and the run itself stands at its last completed step. Reset to start a new run.",
+  "Start a new desflurane case?",
+  "Stopped — simulation error",
+  "The current sevoflurane case — ##m of simulated time, # recorded control change — will be discarded along with its chart history. This cannot be undone.",
+  "simulated time",
+  "—",
+  "— ×MAC",
+  "—%",
+  "—, reference adult (alveolar, wide dash)",
+  "—; population, read against vessel-rich trace"
+ ],
+ "halt after an agent change, dials unwritable": [
+  "Delivered —% (— ×MAC)",
+  "Delivered: —\nExhausted: —\nStored: —\nUnaccounted: —\nAbsolute error: —",
+  "No frame has been drawn since the run started over.",
+  "Simulation stopped — RuntimeError: this frame could not be assembled. No frame has been drawn since the run started over: the readouts and the charts are withheld, and the run itself stands at its last completed step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "simulated time",
+  "—",
+  "— ×MAC",
+  "—%",
+  "—, reference adult (alveolar, wide dash)",
+  "—; population, read against vessel-rich trace"
+ ],
+ "dial write refused after the cards": [
+  "Delivered —% (— ×MAC)",
+  "Simulation stopped — ValueError: this control can offer no setting. The values shown are the last completed step. Reset to start a new run.",
+  "Stopped — simulation error"
+ ],
+ "dial moved on a failed run": [
+  "Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/VERIFICATION.md, \"Concentrations\"). The values shown are the last completed step. Setting refused — the cardiac output setting cannot be changed on a stopped run, because no step will run under a new one. Reset to start a new run, which keeps every setting.",
+  "Stopped — simulation error"
+ ],
+ "dial moved at the supported run length": [
+  "Simulation stopped — this run reached the supported run length of ## hours. This model leaves out metabolism, and its fat flow is uncertain. How far the slow part of the trace can stray from a patient grows as a run goes on, so the model is not claimed to represent a patient past this span. The values shown are the last completed step, inside the supported span. Setting refused — the cardiac output setting cannot be changed on a stopped run, because no step will run under a new one. To try a different setting, branch at an earlier instant, where each dial starts at what it was set to then, or Reset to start a new run, which keeps every setting.",
+  "Stopped — supported run length reached"
+ ],
+ "accounting halt": [
+  "A step failed this check and was rolled back. The amounts below are that step's.",
+  "Delivered: ##.# L\nExhausted: ##.# L\nStored: ##.# L\nUnaccounted: <##^ L\nAbsolute error: <##^ L",
+  "Simulation stopped — AgentSimulationValidationError: Agent accounting validation failed, so the step was rejected and rolled back. The rejected step's totals: unaccounted=#.######e+## L, absolute_error=#.######e+## L, relative_error=#.######e-##, initial=#.######e+## L, delivered=#.######e+## L, exhausted=#.######e+## L, currently_stored=#.######e+## L. The values shown are the last completed step, except the agent accounting panel, which shows the rejected step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "Validation failed"
+ ],
+ "accounting halt, no frame drawn": [
+  "A step failed this check and was rolled back. The amounts below are that step's.",
+  "Delivered: ##.# L\nExhausted: ##.# L\nStored: ##.# L\nUnaccounted: <##^ L\nAbsolute error: <##^ L",
+  "Simulation stopped — AgentSimulationValidationError: Agent accounting validation failed, so the step was rejected and rolled back. The rejected step's totals: unaccounted=#.######e+## L, absolute_error=#.######e+## L, relative_error=#.######e-##, initial=#.######e+## L, delivered=#.######e+## L, exhausted=#.######e+## L, currently_stored=#.######e+## L. No frame of the stopped run could be drawn: the readouts and every chart that still has a plot show the last frame drawn before it stopped. The run itself stands at its last completed step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "Validation failed"
+ ],
+ "halt after a Reset, no frame drawn": [
+  "Delivered: —\nExhausted: —\nStored: —\nUnaccounted: —\nAbsolute error: —",
+  "No frame has been drawn since the run started over.",
+  "Simulation stopped — RuntimeError: this frame could not be assembled. No frame has been drawn since the run started over: the readouts and the charts are withheld, and the run itself stands at its last completed step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "simulated time",
+  "—",
+  "— ×MAC",
+  "—%",
+  "—, reference adult (alveolar, wide dash)",
+  "—; population, read against vessel-rich trace"
+ ],
+ "frame after a Reset that followed an accounting halt": [],
+ "frame after an agent change that followed an accounting halt": [
+  "Changing agent starts a new case. This model does not simulate switching between volatile agents, so a run cannot be continued under a different one.",
+  "Discard and start desflurane",
+  "Fresh gas flow, alveolar ventilation and cardiac output carry over. Delivered desflurane starts at that agent's own # MAC.",
+  "Keep the sevoflurane case",
+  "Start a new desflurane case?",
+  "The current sevoflurane case — #m of simulated time, # recorded control changes — will be discarded along with its chart history. This cannot be undone."
+ ],
+ "halt after a frame drawn for a new agent": [
+  "Changing agent starts a new case. This model does not simulate switching between volatile agents, so a run cannot be continued under a different one.",
+  "Discard and start desflurane",
+  "Fresh gas flow, alveolar ventilation and cardiac output carry over. Delivered desflurane starts at that agent's own # MAC.",
+  "Keep the sevoflurane case",
+  "Simulation stopped — RuntimeError: this frame could not be assembled. No frame of the stopped run could be drawn: the readouts and every chart that still has a plot show the last frame drawn before it stopped. The run itself stands at its last completed step. Reset to start a new run.",
+  "Start a new desflurane case?",
+  "Stopped — simulation error",
+  "The current sevoflurane case — ##m of simulated time, # recorded control change — will be discarded along with its chart history. This cannot be undone."
+ ],
+ "halt after frames drawn later than the first": [
+  "Simulation stopped — RuntimeError: this frame could not be assembled. No frame of the stopped run could be drawn: the readouts and every chart that still has a plot show the last frame drawn before it stopped. The run itself stands at its last completed step. Reset to start a new run.",
+  "Stopped — simulation error"
+ ],
+ "halt after a branch is taken, no frame drawn": [
+  "Agent accounting validation — Run #",
+  "Alveolar (long dash), Run #",
+  "Circuit (solid), Run #",
+  "Control changes — Run #",
+  "F<sub>A</sub>/F<sub>I</sub> (solid), Run #",
+  "Locked to the case",
+  "Locked while comparing",
+  "No unaccounted agent detected.",
+  "One comparison at a time. Run #'s Reset ends it and starts the case over; Run #'s Reset only returns Run # to where it branched.",
+  "Run #",
+  "Run #: Simulation stopped — RuntimeError: this frame could not be assembled. No frame of the stopped run could be drawn: the readouts show the last frame drawn before it stopped, the charts are withheld, and the run itself stands at its last completed step. Reset to start a new run.",
+  "Stopped — simulation error",
+  "simulated time",
+  "—, reference adult (alveolar, wide dash)",
+  "—; population, read against vessel-rich trace"
  ]
 }

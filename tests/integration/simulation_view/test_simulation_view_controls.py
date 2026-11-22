@@ -9,7 +9,8 @@ import re
 from enum import Enum
 
 import pytest
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
+from PySide6.QtGui import QKeyEvent, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -288,13 +289,13 @@ def test_cardiac_output_slider_forwards_value_to_controller(application: QApplic
     assert _dials(run)._cardiac_output_slider.value_label.text() == "6.5 L/min"
 
 
-def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
+def test_the_sliders_declare_an_adjustment_boundary_when_an_input_begins(
     application: QApplication,
 ) -> None:
-    """Without the boundary, two turns of one dial would be recorded as one adjustment.
+    """Without the boundary, two inputs on one dial would be recorded as one adjustment.
 
-    Each slider's press is wired to the boundary, so a second act on the
-    same control after a press is a second adjustment. The test observes this
+    Each slider's announced input is wired to the boundary, so a second act
+    on the same control after an input begins is a second adjustment. The test observes this
     through the controller rather than by inspecting the connection, because
     PySide6 does not expose the connection.
     """
@@ -312,7 +313,7 @@ def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins(
         controller.advance()
 
         control: ParameterSlider = getattr(_dials(run), slider_name)
-        control.slider.sliderPressed.emit()
+        control.slider.input_started.emit()
         controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
         assert {change.adjustment for change in controller.snapshot().control_timeline} == {1, 2}, (
@@ -362,6 +363,161 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
     assert controller.record().control_timeline[0].new_value == 4.0
     assert _concentration(view).chart.control_mark_times(0) == (pytest.approx(released_at_s),)
     assert _wash_in(view).chart.control_mark_times(0) == (pytest.approx(released_at_s),)
+
+
+class _Input(Enum):
+    """One discrete input on a slider, each of which is an adjustment of its own."""
+
+    KEY = "arrow key"
+    WHEEL = "wheel notch"
+    TRACK = "click on the track"
+
+
+def _scroll_up(slider: QSlider, phase: Qt.ScrollPhase) -> None:
+    """Send the slider one wheel event of one notch, 120 units, upward, in the given phase."""
+
+    centre = QPointF(slider.width() / 2, slider.height() / 2)
+    notch = QWheelEvent(
+        centre,
+        slider.mapToGlobal(centre),
+        QPoint(),
+        QPoint(0, 120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        phase,
+        False,
+    )
+    QApplication.sendEvent(slider, notch)
+
+
+def _step_up(slider: QSlider, step: _Input) -> None:
+    """Step a Fusion-styled slider up by one count with one input of the given kind."""
+
+    if step is _Input.KEY:
+        QTest.keyClick(slider, Qt.Key.Key_Right)
+    elif step is _Input.WHEEL:
+        _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+    else:
+        track_end = QPoint(slider.width() - 1, slider.height() // 2)
+        QTest.mouseClick(
+            slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end
+        )
+
+
+@pytest.mark.parametrize("step", list(_Input), ids=[step.value for step in _Input])
+def test_each_step_of_a_dial_at_a_new_instant_is_marked_and_listed(
+    application: QApplication, step: _Input
+) -> None:
+    """Three steps of one dial, at 10 s, 40 s and 100 s, give three marks and three lines.
+
+    `docs/INTERFACE.md` § "The control-input timeline" makes each key press,
+    wheel notch and click on the track an adjustment of its own. Before
+    `PL-0T2H` the three steps were joined into one adjustment, so both charts
+    marked only 10 s, and a later step changed the curves with no mark. Under
+    Fusion each input steps the flow by one count, 0.1 L/min.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+    slider.setFocus()
+
+    for elapsed_s in (10, 40, 100):
+        _advance(controller, elapsed_s - controller.snapshot().elapsed_s)
+        _step_up(slider, step)
+
+    view.present(False)
+
+    timeline = controller.record().control_timeline
+    assert [change.elapsed_s for change in timeline] == [10, 40, 100]
+    assert [change.new_value for change in timeline] == pytest.approx([4.1, 4.2, 4.3])
+    assert len(run._control_timeline_text.text().splitlines()) == 3
+    assert _concentration(view).chart.control_mark_times(0) == (10.0, 40.0, 100.0)
+    assert _wash_in(view).chart.control_mark_times(0) == (10.0, 40.0, 100.0)
+
+
+def test_a_held_arrow_key_is_one_adjustment_and_the_next_press_another(
+    application: QApplication,
+) -> None:
+    """A key held from 10 s to 100 s is marked once, and a fresh press at 130 s again.
+
+    Qt sends a held key as one press followed by repeats, each marked as a
+    repeat. Were each repeat at a new instant an adjustment, one held key on a
+    playing run could fill the chart's marks and push the earlier ones off
+    (`PL-PXTT`). The list shows the hold as one line over its interval.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    slider.setFocus()
+
+    for elapsed_s, repeat in ((10, False), (40, True), (100, True)):
+        _advance(controller, elapsed_s - controller.snapshot().elapsed_s)
+        QApplication.sendEvent(
+            slider,
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key.Key_Right, Qt.KeyboardModifier.NoModifier, "", repeat
+            ),
+        )
+
+    _advance(controller, 30)
+    QTest.keyClick(slider, Qt.Key.Key_Right)
+    view.present(False)
+
+    timeline = controller.record().control_timeline
+    assert [change.elapsed_s for change in timeline] == [10, 40, 100, 130]
+    assert [change.adjustment for change in timeline] == [1, 1, 1, 2]
+    # The list puts the newest adjustment first, and joins each value to its
+    # unit with a no-break space.
+    lines = run._control_timeline_text.text().replace("\N{NO-BREAK SPACE}", " ").splitlines()
+    assert lines == [
+        "2m10s · Fresh gas flow 4.3 L/min -> 4.4 L/min",
+        "10s–1m40s · Fresh gas flow 4.0 L/min -> 4.3 L/min (3 settings)",
+    ]
+    assert _concentration(view).chart.control_mark_times(0) == (10.0, 130.0)
+    assert _wash_in(view).chart.control_mark_times(0) == (10.0, 130.0)
+
+
+def test_a_trackpad_swipe_is_one_adjustment_and_the_next_swipe_another(
+    application: QApplication,
+) -> None:
+    """A swipe that begins at 10 s and coasts to 100 s is marked once, and the next swipe again.
+
+    A trackpad sends one event that begins the swipe, then updates, then
+    momentum after the fingers lift. Were each event at a new instant an
+    adjustment, one swipe on a playing run could fill the chart's marks, as a
+    held key could (`PL-PXTT`). Each event here moves the flow one count.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+
+    for elapsed_s, phase in (
+        (10, Qt.ScrollPhase.ScrollBegin),
+        (40, Qt.ScrollPhase.ScrollUpdate),
+        (100, Qt.ScrollPhase.ScrollMomentum),
+        (130, Qt.ScrollPhase.ScrollBegin),
+    ):
+        _advance(controller, elapsed_s - controller.snapshot().elapsed_s)
+        _scroll_up(slider, phase)
+
+    view.present(False)
+
+    timeline = controller.record().control_timeline
+    assert [change.elapsed_s for change in timeline] == [10, 40, 100, 130]
+    assert [change.adjustment for change in timeline] == [1, 1, 1, 2]
+    assert _concentration(view).chart.control_mark_times(0) == (10.0, 130.0)
+    assert _wash_in(view).chart.control_mark_times(0) == (10.0, 130.0)
 
 
 # --------------------------------------- a press on a slider, on each platform

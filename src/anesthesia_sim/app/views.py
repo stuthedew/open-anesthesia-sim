@@ -35,9 +35,15 @@ longer names that run.
 Each chart View holds its own time window, set from its own control and
 saved in its state (`PL-L59K`). So a chart writes the lines that depend on its
 window, such as which traces are above the axis, from its own frame, one line
-per run. A tick with no frame gives a chart nothing to draw. The chart then
-leaves its plot, legend and captions as they are, and only deletes the lines
-of the runs that the tick no longer names.
+per run. On a tick that draws no frame, the tick gives each chart the last
+frame drawn for its window as kept or as withheld (`run_presentation.ShownFrame`).
+A chart that already shows the kept frame changes nothing. A chart that does
+not yet show it, such as one chosen while no frame can be drawn, draws it,
+unless the frame was sampled for a narrower plot. A withheld frame empties the
+plot, the clinical references, the axis labels and the lines, and says why
+(`dashboard_frame.WITHHELD_FRAME_TEXT`, `PL-RF2S`). So does a chart that holds
+no frame and is handed none, and a kept frame too coarse for its plot
+(`_withholds`).
 
 These classes compute nothing that a reader interprets. Every caption comes
 from `app/dashboard_frame.py`, or for the schematic from
@@ -79,6 +85,8 @@ from anesthesia_sim.app.dashboard_frame import (
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
+    WITHHELD_FRAME_TEXT,
+    WITHHELD_REFERENCE_TEXT,
     SettingReadout,
     compared_panel_heading,
     compartment_cap_notice,
@@ -110,7 +118,12 @@ from anesthesia_sim.app.qt_widgets import (
     ForkPanel,
     styled_label,
 )
-from anesthesia_sim.app.run_presentation import NotBuilt, RunPresentation
+from anesthesia_sim.app.run_presentation import (
+    NotBuilt,
+    RunPresentation,
+    ShownFrame,
+    ValuesStanding,
+)
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.stylesheets import (
     clear_scroll_area_stylesheet,
@@ -528,6 +541,83 @@ class _KeyScroll(QScrollArea):
         self.updateGeometry()
 
 
+def _withholds(shown: ShownFrame | None, drawn: ChartFrame | None, width_px: float) -> bool:
+    """Whether a chart shows the withheld state on this tick: an empty plot that says why.
+
+    A withheld frame is always withheld. A kept frame is withheld from a
+    chart in two more cases (blind review of `PL-RF2S`, pass 3):
+
+    1. No frame was kept for the chart's window, and the chart holds no
+       frame, as when it was chosen during a halt. Left as built, it would
+       show a 1 MAC line and band at 0 and default numbers under its axis
+       titles.
+    2. The chart does not show the kept frame yet, and that frame was
+       sampled for a narrower plot than this one. Drawn here, its chords
+       would be wider than a pixel (`PL-GS3R`). The frame sampled while no
+       chart is shown is the narrowest.
+
+    A chart that holds a frame and is handed no kept frame for its window
+    keeps its plot, and its control names the window that plot shows
+    (`PL-G3K7`).
+
+    Args:
+        shown: The tick's frame for the chart's window, or None.
+        drawn: The frame the chart shows now, or None.
+        width_px: The width of the chart's plot, in logical pixels.
+    """
+
+    if shown is None or shown.standing is ValuesStanding.DRAWN:
+        return False
+
+    if shown.standing is ValuesStanding.WITHHELD:
+        return True
+
+    if shown.frame is None:
+        return drawn is None
+
+    return shown.frame is not drawn and width_px > shown.frame.plot_width_px
+
+
+def _frame_to_draw(shown: ShownFrame | None, drawn: ChartFrame | None) -> ChartFrame | None:
+    """Return the frame a chart must draw from `shown`, or None where it draws nothing.
+
+    A frame drawn this tick is always drawn. A kept frame is drawn only by a
+    chart that does not already show it, such as one chosen while no frame
+    can be drawn. So a dial dragged between two render ticks, which hands
+    every View the runs with no frame, leaves the plots as they are until the
+    render tick draws (`PL-018`, `PL-R2YM`).
+
+    Args:
+        shown: The tick's frame for the chart's window.
+        drawn: The frame the chart shows now, or None.
+    """
+
+    if shown is None or shown.frame is None:
+        return None
+
+    if shown.standing is ValuesStanding.KEPT and shown.frame is drawn:
+        return None
+
+    return shown.frame
+
+
+def _withheld_frame_notice() -> QLabel:
+    """Return the line a chart shows, hidden until its frame is withheld."""
+
+    notice = styled_label(
+        WITHHELD_FRAME_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
+    )
+    notice.setHidden(True)
+
+    return notice
+
+
+def _shown_run_names(runs: tuple[RunPresentation, ...]) -> tuple[str, ...]:
+    """Return what each of `runs` is called in a chart's legend, from its identity."""
+
+    return tuple(run_label(run.run_id) for run in runs)
+
+
 class ConcentrationView(QWidget):
     """The concentration chart, with everything a reader needs to read it.
 
@@ -583,6 +673,7 @@ class ConcentrationView(QWidget):
         )
         self.capped_traces_text.setHidden(True)
         self.state_notice = _state_notice(self._window.notice_text)
+        self.withheld_text = _withheld_frame_notice()
         self.off_scale = _RunLines(WARNING, italic=True)
         self.unmarked_changes = _RunLines(MUTED, italic=True)
 
@@ -595,6 +686,7 @@ class ConcentrationView(QWidget):
         column.addLayout(heading)
         column.addWidget(self.state_notice)
         column.addWidget(_KeyScroll((self.legend,)))
+        column.addWidget(self.withheld_text)
         column.addWidget(self.hidden_traces_text)
         column.addWidget(self.capped_traces_text)
         column.addWidget(self.off_scale.holder)
@@ -606,18 +698,26 @@ class ConcentrationView(QWidget):
 
         The legend and the time-base control are told what the plot drew only
         after the plot has drawn it. So where drawing fails, they go on naming
-        what is still on the plot (`PL-G3K7`). The MAC-awake line comes from
-        the reference run, because the frame carries the band's edges and not
-        the published fraction that they were drawn from.
+        what is still on the plot (`PL-G3K7`). The 1 MAC line's and the
+        MAC-awake band's entries are written from the frame that placed them.
 
-        A tick with no frame draws nothing, and the View still owes its first
-        frame after one. The lines of the runs that the tick no longer names
-        are deleted, and everything else stays as the last frame wrote it.
+        A kept frame that the plot already shows changes nothing, apart from
+        deleting the lines of runs that the tick no longer names. A withheld
+        frame empties the plot and the references, deletes every run's
+        lines, names the runs the tick holds now, and shows why
+        (`run_presentation.shown_without_a_frame`). A kept frame is withheld
+        in the same way in the cases that `_withholds` names.
         """
 
-        frame = tick.frame
+        shown = tick.frame
 
-        if frame is None:
+        if _withholds(shown, self.chart.frame, self.chart.plot_width_px()):
+            self._withhold(tick)
+            return
+
+        frame = _frame_to_draw(shown, self.chart.frame)
+
+        if frame is None or shown is None:
             self.off_scale.drop_absent(tick.runs)
             self.unmarked_changes.drop_absent(tick.runs)
             return
@@ -625,21 +725,33 @@ class ConcentrationView(QWidget):
         self.chart.draw(frame)
         self._drawn = True
         self._window.drew(frame)
+        self.withheld_text.setHidden(True)
         # Show the run names before the selection. Then, when the legend is told
         # about a second run's curves, it already knows what that run is called
         # (`PL-7Z84`).
         self.legend.show_run_names(tuple(run.label for run in frame.runs))
-        self.legend.show_selection(tick.selection)
+        self.legend.show_selection(shown.selection)
         self.chart.show_time_window(time_axis_caption(frame))
-        self.legend.show_references(
-            mac_reference_caption(frame), mac_awake_caption(tick.snapshots[0])
-        )
+        self.legend.show_references(mac_reference_caption(frame), mac_awake_caption(frame))
         self.hidden_traces_text.setHidden(not no_traces_shown(frame))
         cap_notice = compartment_cap_notice(frame)
         self.capped_traces_text.setText(cap_notice or "")
         self.capped_traces_text.setHidden(cap_notice is None)
         self.off_scale.show(tick.runs, off_scale_lines(frame))
         self.unmarked_changes.show(tick.runs, unmarked_changes_lines(frame))
+
+    def _withhold(self, tick: ViewTick) -> None:
+        """Empty the plot, the references and the lines, and say why."""
+
+        self.chart.withhold()
+        self.withheld_text.setHidden(False)
+        self.legend.show_run_names(_shown_run_names(tick.runs))
+        self.legend.show_selection(tick.selection)
+        self.legend.show_references(WITHHELD_REFERENCE_TEXT, WITHHELD_REFERENCE_TEXT)
+        self.hidden_traces_text.setHidden(True)
+        self.capped_traces_text.setHidden(True)
+        self.off_scale.drop_absent(())
+        self.unmarked_changes.drop_absent(())
 
     @property
     def owes_a_frame(self) -> bool:
@@ -690,6 +802,7 @@ class WashInView(QWidget):
         self.legend = WashInLegend()
         self.time_base_selector = self._window.selector
         self.state_notice = _state_notice(self._window.notice_text)
+        self.withheld_text = _withheld_frame_notice()
         self.states = _RunLines(MUTED, italic=False)
         self.unmarked_changes = _RunLines(MUTED, italic=True)
 
@@ -714,6 +827,7 @@ class WashInView(QWidget):
                 (styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True), self.legend)
             )
         )
+        column.addWidget(self.withheld_text)
         column.addWidget(self.states.holder)
         column.addWidget(self.unmarked_changes.holder)
         column.addWidget(self.chart, 1)
@@ -721,12 +835,25 @@ class WashInView(QWidget):
     def refresh(self, tick: ViewTick) -> None:
         """Draw the tick's frame, then write the legend, the control and the lines from it.
 
-        A tick with no frame draws nothing, and the View still owes its first
-        frame after one. The lines of the runs that the tick no longer names
-        are deleted, and everything else stays as the last frame wrote it.
+        A kept frame and a withheld one are handled as `ConcentrationView.refresh`
+        handles them. Each run's state line is written from the frame alone,
+        which holds that run's reading beside its name (`wash_in_state_lines`).
         """
 
-        frame = tick.frame
+        shown = tick.frame
+
+        if _withholds(shown, self.chart.frame, self.chart.plot_width_px()):
+            self.chart.withhold()
+            self.withheld_text.setHidden(False)
+
+            if tick.runs:
+                self.legend.show_run_names(_shown_run_names(tick.runs))
+
+            self.states.drop_absent(())
+            self.unmarked_changes.drop_absent(())
+            return
+
+        frame = _frame_to_draw(shown, self.chart.frame)
 
         if frame is None:
             self.states.drop_absent(tick.runs)
@@ -736,9 +863,10 @@ class WashInView(QWidget):
         self.chart.draw(frame)
         self._drawn = True
         self._window.drew(frame)
+        self.withheld_text.setHidden(True)
         self.legend.show_run_names(tuple(run.label for run in frame.runs))
         self.chart.show_time_window(time_axis_caption(frame))
-        self.states.show(tick.runs, wash_in_state_lines(frame, tick.snapshots))
+        self.states.show(tick.runs, wash_in_state_lines(frame))
         self.unmarked_changes.show(tick.runs, unmarked_changes_lines(frame))
 
     @property

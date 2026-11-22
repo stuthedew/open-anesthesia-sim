@@ -83,7 +83,7 @@ def test_the_derived_ratio_is_within_half_a_percent_of_gas_mans_20_celsius_const
     within that rounding: 182.8 against 183, and 195.8 against 196. Desflurane
     is 209.7 against 209, a difference of 0.35 %, which is more than rounding
     explains. The Workbook does not give the density it used, so the remaining
-    0.1 % is recorded rather than explained (`docs/MODEL.md` § "Agent amount").
+    0.1 % is recorded rather than explained (`docs/PARAMETERS.md` § "Agent amount").
 
     This test detects an error of more than about 0.5 % in the ratio. That
     includes every error that the comparison with Biro detects.

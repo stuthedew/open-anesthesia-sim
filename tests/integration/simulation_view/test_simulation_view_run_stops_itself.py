@@ -905,7 +905,9 @@ _STATES_THE_RECORD = (
 #: both directions, as `FRAME_WIDGETS` is. So a widget added to `RunView` later
 #: fails the test below until it is put in a group or listed here.
 UNGROUPED_WIDGETS: dict[str, str] = {
-    "_run_name_text": "names the run while a second run is drawn, from `set_run_name`",
+    "_run_name_text": (
+        "names the run while a second run is drawn, from the name its presentation carries"
+    ),
     "_status_text": _STATES_THE_RECORD,
     "_notice_text": (
         "the banner, which says which step the values on screen describe. `notice` and "
@@ -1572,6 +1574,38 @@ def _a_halt_after_frames_drawn_later_than_the_first(
     }
 
 
+def _a_halt_after_a_branch_is_taken_that_no_frame_draws(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> tuple[RunView, _GroupReadings]:
+    """Return a trunk that a frame drew at 600 s, then a branch taken while no frame draws.
+
+    The trunk has not started over, so its readouts and the accounting panel keep
+    the frame at 600 s. The charts withhold that frame, because it drew the trunk
+    alone, and the trunk's banner says so rather than saying that the charts show
+    the last frame (blind review of `PL-RF2S`'s third pull request).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600)
+    controller.pause()
+    view = _case_view(application, BranchedCase(controller))
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _fork_panel(view).here_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert controller.has_failed is True
+    step = _fresh_run(600).snapshot()
+
+    return view.runs[0], {
+        "readouts": _readouts_of(step),
+        "settings": _settings_of(step),
+        "accounting": _accounting_of(step),
+    }
+
+
 _ONE_STATE_SCENARIOS: Final[
     Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], tuple[RunView, _GroupReadings]]]
 ] = {
@@ -1595,6 +1629,9 @@ _ONE_STATE_SCENARIOS: Final[
     "halt after a frame drawn for a new agent": _a_halt_after_a_frame_drawn_for_a_new_agent,
     "halt after frames drawn later than the first": (
         _a_halt_after_frames_drawn_later_than_the_first
+    ),
+    "halt after a branch is taken, no frame drawn": (
+        _a_halt_after_a_branch_is_taken_that_no_frame_draws
     ),
 }
 
@@ -1672,8 +1709,13 @@ def test_an_accounting_view_chosen_after_each_scenario_shows_the_same_step(
     chosen, first = (v for v in dashboard.layout_container.views() if isinstance(v, AccountingView))
 
     assert chosen is not first
-    assert [_accounting_reading(panel) for panel in chosen.panels] == [expected["accounting"]]
-    assert [_accounting_reading(panel) for panel in first.panels] == [expected["accounting"]]
+    # A scenario with a branch shows a panel per run. The scenario's own run is
+    # the one whose step the expected panel states.
+    place = dashboard.runs.index(run)
+
+    for view in (chosen, first):
+        assert len(view.panels) == len(dashboard.runs)
+        assert _accounting_reading(view.panels[place]) == expected["accounting"]
 
 
 def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting(
@@ -1888,8 +1930,9 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
     This test covers a halt when no frame has been drawn since the run started over.
     Until the adversarial review of `PL-J5GC`, the banner said that the chart and
     the readouts showed the last frame drawn before the run stopped. That frame
-    belongs to the run before the restart, and the readouts are withheld. The
-    chart still shows it, because only a frame writes the chart.
+    belongs to the run before the restart, so the readouts are withheld. Since
+    `PL-RF2S`'s third pull request the charts withhold that frame too, and the
+    banner says so.
     """
 
     run, _ = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -1897,9 +1940,8 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
     banner = run._notice_text.notice()
     assert banner is not None
     assert (
-        "No frame has been drawn since the run started over: the readouts are withheld, "
-        "the chart still shows the run before it started over, and the run itself stands at "
-        "its last completed step."
+        "No frame has been drawn since the run started over: the readouts and the charts "
+        "are withheld, and the run itself stands at its last completed step."
     ) in banner
 
 

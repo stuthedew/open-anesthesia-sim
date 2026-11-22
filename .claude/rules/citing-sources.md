@@ -221,7 +221,7 @@ record through PubMed.
 The body comes back as plain prose, so `MAC_awake` reads as `MAC` and `ETCO2`
 as `ETCO`. Take a number from that text; do not take the symbol the number
 belongs to from it — check the symbol against the abstract, the metadata, or
-`docs/MODEL.md` § "Symbols", which is where getting it wrong reaches a reader.
+`docs/VERIFICATION.md` § "Symbols", which is where getting it wrong reaches a reader.
 
 ## Record the route and the depth, in the note itself
 

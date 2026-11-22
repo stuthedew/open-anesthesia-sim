@@ -147,12 +147,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
-from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
-from anesthesia_sim.app.run_presentation import RunPresentation
+from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
     menu_stylesheet,
@@ -323,12 +321,17 @@ class AreaOperation:
         result: The layout that choosing the entry would make, or None if the
             entry is unavailable.
         refusal: Why the entry is unavailable, or "" if it is available.
+        focus: The Area whose View chooser takes the keyboard focus once the
+            layout is drawn, or None to leave the focus to Qt. A split names
+            the Area it makes, because it rebuilds the Area whose chooser held
+            the focus (`PL-24SN`).
     """
 
     label: str
     group: str | None
     result: LayoutModel | None
     refusal: str = ""
+    focus: AreaId | None = None
 
     @property
     def available(self) -> bool:
@@ -554,8 +557,7 @@ class AreaLayout(QWidget):
 
     def refresh(
         self,
-        frames: Mapping[ChartTimeBase | None, ChartFrame] | None,
-        snapshots: tuple[SimulationSnapshot, ...],
+        frames: Mapping[ChartTimeBase | None, ShownFrame],
         runs: tuple[RunPresentation, ...],
         selection: CompartmentSelection,
         preferences: PreferencesInForce,
@@ -563,53 +565,47 @@ class AreaLayout(QWidget):
     ) -> None:
         """Hand every View one tick, in the reading order of their Areas.
 
-        With `frames`, each View is handed the frame for the window it asked
-        for. With None, no frame was drawn, and every View is handed a tick
-        that carries no frame and no snapshots.
+        Each View is handed the frame for the window it asked for. On a tick
+        that drew, every frame is drawn. On a tick that drew none, each is
+        kept or withheld (`run_presentation.shown_without_a_frame`).
 
-        A View that raises on a tick with a frame stops the tick there. The
-        caller halts every run, and the halt hands every View a tick with no
-        frame. A View that raises on a tick with no frame does not stop the
-        tick. On a halt that tick is the only thing that tells a View which
-        runs are left and what each one shows. If it stopped at the first
-        View that raised, each View after it would go on showing a run that
-        was removed, or the settings from before the halt (`PL-RF2S`).
+        A View that raises on a tick that drew stops the tick there. The
+        caller halts every run, and the halt hands every View a tick that
+        draws no frame. A View that raises on a tick that drew no frame does
+        not stop the tick. On a halt that tick is the only thing that tells a
+        View which runs are left and what each one shows. If it stopped at
+        the first View that raised, each View after it would go on showing a
+        run that was removed, or the settings from before the halt
+        (`PL-RF2S`).
 
         Args:
-            frames: The tick's frames, one for each window that
-                `frame_requests` returned, or None when no frame was drawn.
-            snapshots: As `ViewTick` carries them.
+            frames: The tick's frame for each window that `frame_requests`
+                returned.
             runs: As `ViewTick` carries them.
             selection: As `ViewTick` carries it.
             preferences: As `ViewTick` carries them.
             case: As `ViewTick` carries it.
 
         Raises:
-            ValueError: `frames` is None and `snapshots` is not empty. No
-                View is handed anything.
             KeyError: A View asks for a window that `frames` does not hold.
             Exception: Whatever a View raises while it is handed the tick.
-                On a tick with a frame, the Views after it are handed
-                nothing, and the caller halts every run. On a tick with no
-                frame, every View is handed the tick and the Areas are
-                settled, and then the first exception is raised.
+                On a tick that drew, the Views after it are handed nothing,
+                and the caller halts every run. On a tick that drew no frame,
+                every View is handed the tick and the Areas are settled, and
+                then the first exception is raised.
         """
 
-        if frames is None and snapshots:
-            raise ValueError(
-                f"a tick with no frame carries no snapshots, and {len(snapshots)} were given"
-            )
-
+        drew = any(shown.standing is ValuesStanding.DRAWN for shown in frames.values())
         first_error: Exception | None = None
 
         for _, view in tuple(self._views.values()):
             request = view.frame_request()
-            frame = None if request is None or frames is None else frames[request.time_base]
+            frame = None if request is None else frames[request.time_base]
 
             try:
-                view.refresh(ViewTick(frame, snapshots, runs, selection, preferences, case))
+                view.refresh(ViewTick(frame, runs, selection, preferences, case))
             except Exception as raised:
-                if frames is not None:
+                if drew:
                     raise
 
                 first_error = first_error or raised
@@ -779,6 +775,9 @@ class AreaLayout(QWidget):
             raise ValueError(f"{operation.label!r} is unavailable: {operation.refusal}")
 
         self._apply(operation.result)
+
+        if operation.focus is not None:
+            self._frames[operation.focus].chooser.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def borders(self, area_id: AreaId) -> tuple[AreaBorder, ...]:
         """Return one "Resize" submenu entry for each border of the Area `area_id`.
@@ -1062,13 +1061,12 @@ class AreaLayout(QWidget):
         try:
             split, new_id = self._model.split(area_id, orientation, _MENU_SPLIT_AT)
         except LayoutRefused:
-            # `_attempt` below states the model's own refusal.
-            pass
-        else:
-            if not self._parts_hold_the_floor(split, area_id, new_id, orientation, halves):
-                return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
+            return AreaOperation(label, None, None, _NOT_EXPRESSIBLE_TEXT)
 
-        return _attempt(label, None, partial(_split_layout, self._model, area_id, orientation))
+        if not self._parts_hold_the_floor(split, area_id, new_id, orientation, halves):
+            return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
+
+        return AreaOperation(label, None, split, focus=new_id)
 
     def _parts_hold_the_floor(
         self,
@@ -1487,22 +1485,34 @@ class AreaLayout(QWidget):
         Its height is the minimum height that the View's registry entry
         declares (`app/view_registry.py`). An Area with that height shows its
         View, and the reader scrolls the View up and down where its content is
-        taller than the Area (`ViewScroll`). Its width is the larger of the
-        declared minimum width and the least width Qt would hold the View's
-        widget to, with room beside the View for the scroll bar. So a View is
-        never scrolled sideways, and a row of controls is never cut off at the
-        Area's edge.
+        taller than the Area (`ViewScroll`). Where the entry carries `whole`,
+        the height is instead the larger of that minimum and the least height
+        of the View's content, so the View never scrolls up and down
+        (`PL-D5J4`). That height counts every line of a label that wraps, as
+        `ViewScroll` does when it sizes the View, at the Area's least width,
+        where a wrapped label takes the most lines. It is measured there, and
+        not at the width the Area is drawn, so the need does not depend on the
+        last layout and one settle gives the same sizes as the next. Its width is the
+        larger of the declared minimum width and the least width Qt would hold
+        the View's widget to, with room beside the View for the scroll bar. So
+        a View is never scrolled sideways, and a row of controls is never cut
+        off at the Area's edge.
         """
 
         kind, view = self._views[area_id]
-        declared = self._registered[kind].minimum
-        content_width, _ = _least_size(_widget(view))
+        entry = self._registered[kind]
+        declared = entry.minimum
+        widget = _widget(view)
+        content_width, _ = _least_size(widget)
         scroll = self._frames[area_id].view_scroll
         assert scroll is not None, "an Area that holds a View holds it in a scroll box"
+        height = declared.height_px
 
-        return PixelSize(
-            max(declared.width_px, content_width + scroll.bar_width()), declared.height_px
-        )
+        if entry.whole:
+            least_width = max(declared.width_px, content_width)
+            height = max(height, _least_height_at(widget, least_width))
+
+        return PixelSize(max(declared.width_px, content_width + scroll.bar_width()), height)
 
     def _lay_out(self, splitter: _AreaSplitter) -> None:
         """Give `splitter`'s children the sizes that the last settle worked out for its split."""
@@ -2435,14 +2445,9 @@ class ViewScroll(QScrollArea):
             return
 
         room = self.viewport().size()
-        least_width, least_height = _least_size(view)
+        least_width, _ = _least_size(view)
         width = max(room.width(), least_width)
-        layout = view.layout()
-
-        if layout is not None and layout.hasHeightForWidth():
-            least_height = max(least_height, layout.totalMinimumHeightForWidth(width))
-
-        view.resize(width, max(room.height(), least_height))
+        view.resize(width, max(room.height(), _least_height_at(view, width)))
 
         if self._kept_position is not None and self.isVisible():
             # The View's resize above has set the scroll range for this size.
@@ -3126,6 +3131,24 @@ def _least_size(widget: QWidget) -> tuple[int, int]:
     return (widget.minimumWidth() or hint.width(), widget.minimumHeight() or hint.height())
 
 
+def _least_height_at(widget: QWidget, width_px: int) -> int:
+    """Return the least height that holds all of `widget`'s content when it is `width_px` wide.
+
+    A label that wraps takes more lines in a narrower widget, and the widget's
+    minimum size hint counts it as one line. So where the widget's layout has
+    a height that depends on its width, this is the larger of that height and
+    the height `_least_size` reads.
+    """
+
+    _, least_height = _least_size(widget)
+    layout = widget.layout()
+
+    if layout is not None and layout.hasHeightForWidth():
+        least_height = max(least_height, layout.totalMinimumHeightForWidth(width_px))
+
+    return least_height
+
+
 def _structural_minimum(frame: AreaFrame) -> tuple[int, int]:
     """Return the smallest width and height that hold an Area's header and one line of a notice.
 
@@ -3167,9 +3190,3 @@ def _same_place(first: Rectangle, second: Rectangle) -> bool:
             (first.bottom, second.bottom),
         )
     )
-
-
-def _split_layout(model: LayoutModel, area_id: AreaId, orientation: Orientation) -> LayoutModel:
-    """The layout a split from the menu makes: the Area cut halfway across."""
-
-    return model.split(area_id, orientation, _MENU_SPLIT_AT)[0]

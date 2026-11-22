@@ -181,7 +181,6 @@ class TissueGroup:
                         self.tissue_gas_partition_coefficient,
                         getattr(self, "agent_amount_l", None),
                         compartment,
-                        "Tissue compartments",
                     )
             elif name == "perfusion_fraction":
                 require_perfusion_fraction(field, value)
@@ -207,7 +206,6 @@ class TissueGroup:
                     value,
                     getattr(self, "agent_amount_l", None),
                     compartment,
-                    "Tissue compartments",
                 )
 
                 if hasattr(self, "tissue_gas_partition_coefficient"):
@@ -221,9 +219,7 @@ class TissueGroup:
                     )
             elif name == "agent_amount_l":
                 require_nonnegative_finite(field, value)
-                require_within_the_capacity(
-                    field, value, self.capacity_l, compartment, "Tissue compartments"
-                )
+                require_within_the_capacity(field, value, self.capacity_l, compartment)
 
             super().__setattr__(name, value)
 
@@ -249,7 +245,7 @@ class TissueGroup:
     def capacity_l(self) -> float:
         """Equivalent gas capacity at a tissue fraction of one, $`V_i\\lambda_{i:g}`$.
 
-        `docs/MODEL.md` § "Tissue compartments" defines it. The stored
+        `docs/MODEL.md` § "How much agent each compartment holds" defines it. The stored
         coefficient is tissue:gas rather than tissue:blood, so the capacity is
         one multiplication. The tissue:blood coefficient is derived from the
         stored one below, rather than the other way round.
@@ -322,7 +318,7 @@ class TissueGroup:
         """Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in L/min.
 
         The flow is the group's perfusion fraction of the cardiac output
-        (`docs/MODEL.md` § "Tissue groups"). `BloodFlow` forms the product, and
+        (`docs/MODEL.md` § "Blood flow to the tissue groups"). `BloodFlow` forms the product, and
         this is the only place in a run that builds one (`core/blood_flow.py`).
         The group stores no flow of its own, so no write can leave its flow out
         of step with the cardiac output (`PL-HQF5`). Its callers pass the
@@ -340,8 +336,8 @@ class TissueGroup:
     ) -> float:
         """Return the perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
 
-        `docs/MODEL.md` § "Tissue uptake and return" defines it. That section
-        also gives the zero-flow case, for which this method returns `inf`. An
+        `docs/MODEL.md` § "Tissue groups" defines it. `docs/MODEL.md` § "The four controls"
+        gives the zero-flow case, for which this method returns `inf`. An
         unperfused tissue exchanges nothing, so it never reaches equilibrium.
         The method also returns `inf` where the flow is above zero but so small
         that the quotient is larger than any `float`. The largest tissue the
@@ -408,7 +404,7 @@ class TissueGroup:
         package docstring in `core/__init__.py` explains the distinction.
         `core/exponential_approach.py` holds the formula that advances the amount.
         That formula is exact at zero flow, so this method needs no separate branch
-        for zero flow. `docs/MODEL.md` § "Tissue uptake and return" gives the
+        for zero flow. `docs/MODEL.md` § "Tissue groups" gives the
         equation.
 
         The blood flow and the blood:gas coefficient are arguments, as they are for

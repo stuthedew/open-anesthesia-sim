@@ -98,11 +98,11 @@ is safe alone.
 While a case runs, the window shows the following.
 
 - The bookmarks View lists the instants and the MAC multiples you marked, and
-  opens the editor that adds and removes them. All three Workspaces include
-  this View.
+  opens the editor that adds and removes them. The Default and Induction
+  Workspaces include this View.
 - The branch View opens a second run from an earlier instant of the case. The
   second run is drawn beside the first, so you can change a setting and
-  compare the two. All three Workspaces include this View.
+  compare the two. The Default and Induction Workspaces include this View.
 - The agent accounting View shows the agent delivered, exhausted and stored,
   and any agent left unaccounted for. None of the three Workspaces includes
   this View.
@@ -171,7 +171,7 @@ anesthesia**. A multiple of *N* means that a compartment's partial pressure
 equals *N* times the alveolar concentration that would be 1 MAC in a population.
 
 The full list is in `docs/MODEL.md` § "Known limitations" and
-§ "Model boundary", with the simplifications behind each item. For what the
+§ "What the model represents", with the simplifications behind each item. For what the
 simulator models today and what is planned next, see [`ROADMAP.md`](ROADMAP.md).
 
 ## How the model is checked

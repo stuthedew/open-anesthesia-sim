@@ -16,14 +16,17 @@ import json
 from collections.abc import Iterator
 from dataclasses import fields, is_dataclass, replace
 from importlib.resources import files
-from typing import NoReturn
+from typing import Any, NoReturn, cast
 
 import pytest
 
 from anesthesia_sim.app import run_presentation
 from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED
 from anesthesia_sim.app.bookmarks import TimeBookmark
+from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
+from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.compartment_schematic import WITHHELD_SCHEMATIC
+from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
@@ -32,6 +35,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_ELAPSED_TIME_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
+    new_case_question,
 )
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.app.run_presentation import (
@@ -40,12 +44,19 @@ from anesthesia_sim.app.run_presentation import (
     RunPanelState,
     RunPresentation,
     RunValues,
+    ShownFrame,
     ValuesStanding,
     drawn_run,
     drawn_values,
     halted_run,
+    kept_frames,
+    kept_frames_match,
+    kept_on_a_halt,
+    shown_drawn,
+    shown_without_a_frame,
     withheld_values,
 )
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.concentration import Percent
@@ -56,9 +67,12 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.parameters import parse_breathing_circuit_parameters
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant
-from anesthesia_sim.layout.run_identity import RunIdentities
+from anesthesia_sim.layout.run_identity import RunId, RunIdentities
 
-_RUN_ID = RunIdentities().mint()
+_IDENTITIES = RunIdentities()
+_RUN_ID = _IDENTITIES.mint()
+_SECOND_RUN_ID = _IDENTITIES.mint()
+_THIRD_RUN_ID = _IDENTITIES.mint()
 _AGENT_NAMES = ("sevoflurane", "desflurane", "isoflurane")
 _CLOCK_INDEX = next(index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None)
 #: The delivered line of a run whose dials cannot be built, written out by hand.
@@ -80,6 +94,8 @@ def _state(**changes: object) -> RunPanelState:
         rejected_setting_notice=None,
         refused_reset_notice=None,
         pending_agent_name=None,
+        reset_question=None,
+        charts_withheld=False,
     )
 
     return replace(state, **changes)  # type: ignore[arg-type]
@@ -480,6 +496,90 @@ def test_a_halt_s_banner_says_the_run_started_over_only_when_it_did() -> None:
     assert "started over" not in same_run.notice
 
 
+def test_a_halt_s_banner_says_the_charts_are_withheld_only_when_they_are() -> None:
+    """A run that has not started over names the withheld charts, and keeps its readouts.
+
+    The expected sentences are written out by hand. A run that has started
+    over says that the readouts and the charts are withheld whether or not
+    the flag is set, because its readouts describe the discarded run (blind
+    review of `PL-RF2S`'s third pull request, pass 1 F1).
+    """
+
+    controller = _run_at(90)
+    state = _state()
+    frame = _drawn(controller, state)
+    controller.fail("the frame could not be drawn")
+    kept = KeptValues(state.case, frame.values)
+
+    charts_kept = _halted(controller, state, kept)
+    charts_withheld = _halted(controller, replace(state, charts_withheld=True), kept)
+    started_over = _halted(
+        controller, replace(state, case=state.case + 1, charts_withheld=True), kept
+    )
+
+    assert charts_kept.notice is not None
+    assert charts_withheld.notice is not None
+    assert started_over.notice is not None
+    assert "the readouts and every chart that still has a plot show the last frame" in (
+        charts_kept.notice
+    )
+    assert (
+        "the readouts show the last frame drawn before it stopped, the charts are withheld"
+        in charts_withheld.notice
+    )
+    assert "the readouts and the charts are withheld" in started_over.notice
+    assert charts_withheld.standing is ValuesStanding.KEPT
+    assert charts_withheld.values == charts_kept.values
+
+
+def test_a_halt_keeps_the_frames_only_while_none_shows_a_preview() -> None:
+    """A halt drops every kept frame once one of them shows a held dial's preview.
+
+    A halted run refuses every setting, so a preview drawn before the halt
+    predicts a future the run cannot reach. With no preview the frames are
+    kept as they are, and with nothing kept there is nothing to keep.
+    """
+
+    trunk = _run_at(90)
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 2)
+    frame = _frame_of(trunk, "Run 1")
+    kept = kept_frames({None: frame}, (_drawn(trunk, _state()),), selection)
+    # Any value stands for a preview here: the rule asks only whether one is drawn.
+    previewing = replace(frame, runs=(replace(frame.runs[0], preview=cast(Any, object())),))
+    kept_with_a_preview = replace(kept, frames={None: frame, TIME_BASE_LADDER[0]: previewing})
+
+    assert kept_on_a_halt(kept) is kept
+    assert kept_on_a_halt(kept_with_a_preview) is None
+    assert kept_on_a_halt(None) is None
+
+
+@pytest.mark.parametrize(
+    ("cases", "match"),
+    [
+        pytest.param(((_RUN_ID, 0), (_SECOND_RUN_ID, 0)), True, id="the same runs"),
+        pytest.param(((_RUN_ID, 1), (_SECOND_RUN_ID, 0)), False, id="a run started over"),
+        pytest.param(((_SECOND_RUN_ID, 0), (_RUN_ID, 0)), False, id="another order"),
+        pytest.param(((_RUN_ID, 0),), False, id="a run removed"),
+        pytest.param(
+            ((_RUN_ID, 0), (_SECOND_RUN_ID, 0), (_THIRD_RUN_ID, 0)), False, id="a run added"
+        ),
+    ],
+)
+def test_kept_frames_match_only_the_runs_they_were_drawn_from(
+    cases: tuple[tuple[RunId, int], ...], match: bool
+) -> None:
+    """The one rule that keeps a chart's frame and words the banner compares runs and cases."""
+
+    trunk = _run_at(90)
+    branch = _run_at(60)
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 2)
+    drawn = (_drawn(trunk, _state()), _drawn(branch, _state(run_id=_SECOND_RUN_ID)))
+    kept = kept_frames({None: _frame_of(trunk, "Run 1")}, drawn, selection)
+
+    assert kept_frames_match(kept, cases) is match
+    assert kept_frames_match(None, cases) is False
+
+
 def test_a_halt_restates_the_playback_rate_the_reader_chose_on_the_halted_run() -> None:
     """A rate chosen after the last frame reaches the clock's playback line (`PL-P58M`)."""
 
@@ -662,3 +762,114 @@ def test_dials_refused_by_the_core_are_carried_like_any_other_refusal(
     assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
     assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
     assert shown.statement.transport.start_enabled is False
+
+
+# --- the open Reset question ---------------------------------------------------------
+
+
+def test_a_drawn_run_carries_the_open_reset_question_and_a_halt_carries_none() -> None:
+    """The Reset question travels in the value of a drawn frame, as the new-case question does.
+
+    Before, the panel asked the dashboard for the question again after it had
+    written each drawn frame, on a path of its own (`PL-RF2S`). A halted run
+    does not step, so the question shown at the last frame is still true.
+    """
+
+    controller = _run_at(90)
+    question = new_case_question(controller.snapshot(), "Desflurane", 0)
+    state = _state(reset_question=question)
+    kept = KeptValues(0, drawn_values(controller.snapshot(), PlaybackRate(1)))
+
+    assert _drawn(controller, state).reset_question is question
+    assert _drawn(controller, _state()).reset_question is None
+    assert _halted(controller, state, kept).reset_question is None
+
+
+# --- a chart's frame on a tick that draws none ---------------------------------------
+
+
+def _frame_of(controller: SimulationController, label: str) -> ChartFrame:
+    """Return the frame one tick would draw for one run, under "Fit run"."""
+
+    snapshot = controller.snapshot()
+
+    return assemble_chart_frame(
+        (RunInput(label, controller, snapshot, ()),),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=400.0,
+    )
+
+
+def test_a_frame_drawn_this_tick_is_shown_as_drawn_with_its_selection() -> None:
+    frame = _frame_of(_run_at(90), "Run 1")
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
+
+    assert shown_drawn(frame, selection) == ShownFrame(ValuesStanding.DRAWN, frame, selection)
+
+
+def test_the_last_frame_is_kept_while_every_run_is_the_one_it_drew() -> None:
+    """With the same runs in the same order, none started over, the frame and its selection stay."""
+
+    controller = _run_at(90)
+    frame = _frame_of(controller, "Run 1")
+    drawn_with = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 1)
+    in_force = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
+    runs = (_drawn(controller, _state()),)
+    kept = kept_frames({None: frame}, runs, drawn_with)
+
+    shown = shown_without_a_frame(
+        kept, None, (_halted(controller, _state(), _kept(runs)),), in_force
+    )
+
+    assert shown == ShownFrame(ValuesStanding.KEPT, frame, drawn_with)
+
+
+def test_a_kept_window_with_no_frame_keeps_whatever_the_plot_shows() -> None:
+    """A window the last tick drew no frame for is kept with no frame, so the plot is left alone."""
+
+    controller = _run_at(90)
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
+    runs = (_drawn(controller, _state()),)
+    kept = kept_frames({None: _frame_of(controller, "Run 1")}, runs, selection)
+
+    shown = shown_without_a_frame(kept, TIME_BASE_LADDER[0], runs, selection)
+
+    assert shown == ShownFrame(ValuesStanding.KEPT, None, selection)
+
+
+@pytest.mark.parametrize(
+    "now",
+    [
+        pytest.param("started over", id="a run started over"),
+        pytest.param("removed", id="a run was removed"),
+        pytest.param("added", id="a run was added"),
+        pytest.param("never drawn", id="no frame was ever drawn"),
+    ],
+)
+def test_the_last_frame_is_withheld_once_the_runs_are_not_the_ones_it_drew(now: str) -> None:
+    """A frame of a discarded run, a removed run or another run set never stays on the plot."""
+
+    trunk = _run_at(90)
+    branch = _run_at(60)
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 2)
+    trunk_state = _state()
+    branch_state = _state(run_id=_SECOND_RUN_ID)
+    drawn = (_drawn(trunk, trunk_state), _drawn(branch, branch_state))
+    kept = kept_frames({None: _frame_of(trunk, "Run 1")}, drawn, selection)
+    runs = {
+        "started over": (_halted(trunk, replace(trunk_state, case=1), _kept(drawn)), drawn[1]),
+        "removed": drawn[:1],
+        "added": (*drawn, _drawn(_run_at(30), _state(run_id=_THIRD_RUN_ID))),
+        "never drawn": drawn,
+    }[now]
+
+    shown = shown_without_a_frame(None if now == "never drawn" else kept, None, runs, selection)
+
+    assert shown == ShownFrame(ValuesStanding.WITHHELD, None, selection)
+
+
+def _kept(runs: tuple[RunPresentation, ...]) -> KeptValues:
+    """The values the first of `runs` drew, kept for its case 0."""
+
+    return KeptValues(0, runs[0].values)
