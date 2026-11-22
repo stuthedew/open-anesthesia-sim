@@ -607,11 +607,12 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
 
     Each block below is one equation of `docs/MODEL.md` § "Governing
     equations" or `docs/VERIFICATION.md` § "Conservation of agent mass",
-    written in the symbols of `docs/MODEL.md`. The blocks follow the order of the state vector, so the venous
-    balance comes before the tissue balances, and the two totals come last. The
-    comment above each block is the equation, and each line under the comment
-    writes one of its terms as one matrix entry. `docs/VERIFICATION.md` § "Selected
-    method (as implemented)" describes the step for which this matrix is
+    written in the symbols of `docs/MODEL.md`. The blocks follow the order of
+    the state vector, so the venous balance comes before the tissue balances,
+    and the two totals come last. The comment above each block is the
+    equation, and each line under the comment writes one of its terms as one
+    matrix entry. `docs/VERIFICATION.md` § "Selected method (as implemented)"
+    describes the step for which this matrix is
     assembled, and names this module as the source of $`A`$.
 
     Each citation uses the section-mark form, and quotes the section title
