@@ -197,8 +197,8 @@ def test_a_volume_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() ->
     `set_circuit_volume` accepts for the circuit. `dataclasses.replace`
     builds a new compartment, whose constructor writes the volume before the
     amount. So the amount's write is the one that refuses there. A copy and a
-    pickle restore the fields one at a time through `__setattr__`, in the
-    same order. So a volume planted by bypassing the guard is refused when
+    pickle run the same constructor (`core/checked_record.py`), so their
+    writes come in the same order. So a volume planted by bypassing the guard is refused when
     either is made (`PL-19Y0`).
     """
 

@@ -36,8 +36,9 @@ intention. Callers use `uptake_system.circuit` (PL-006).
 
 from copy import copy
 from dataclasses import InitVar, dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
+from anesthesia_sim.core.checked_record import require_state_by_name
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.stored_states import StoredStates
@@ -131,6 +132,64 @@ class SimulationState:
 
         self.stored_states = copy(opening_record)
 
+    def __copy__(self) -> SimulationState:
+        """Refuse a shallow copy, which would share the run's uptake system with the original.
+
+        A copy gets a record of stored states of its own, because its
+        constructor copies the opening record. If it shared the original's
+        system, stepping either run would move the system under the other,
+        and the other's next step would store a state from the wrong time
+        without any check failing. `copy.deepcopy` copies the system too.
+
+        Raises:
+            TypeError: always.
+        """
+
+        raise TypeError(
+            "a run cannot be copied shallowly, because the copy would share its uptake system "
+            "with the original: use copy.deepcopy"
+        )
+
+    def __getstate__(self) -> dict[str, object]:
+        """Return the run's system, step count and stored states by name, for a pickle or a copy."""
+
+        return {
+            "uptake_system": self.uptake_system,
+            "step_count": self.step_count,
+            "stored_states": self.stored_states,
+        }
+
+    def __setstate__(self, state: object) -> None:
+        """Restore the run through its constructor, with its stored states as the opening record.
+
+        A run built part-way with an opening record is checked as a branch is:
+        the record must end at the step count's second, and the system must
+        stand at the record's last state and its compensation terms. A
+        restored run passes the same checks (`PL-HXNL`). So a saved step count
+        that does not match the saved states, or a system that does not stand
+        where the record ends, is refused rather than continued.
+
+        Raises:
+            TypeError: `state` is not a dict holding exactly the run's three
+                field names (`require_state_by_name`), or a value has the wrong
+                type.
+            SimulationConfigurationError: the constructor refuses the saved
+                values.
+        """
+
+        by_name = require_state_by_name(
+            self, state, ("uptake_system", "step_count", "stored_states")
+        )
+
+        # The constructor checks each value's type, in `__setattr__` for the
+        # system and the count and in `__post_init__` for the record.
+        SimulationState.__init__(
+            self,
+            uptake_system=cast("AgentUptakeSystem", by_name["uptake_system"]),
+            step_count=cast("StepCount", by_name["step_count"]),
+            opening_record=cast("StoredStates", by_name["stored_states"]),
+        )
+
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # Hidden from `mypy` on purpose. When a class defines `__setattr__`,
         # `mypy` lets code assign any attribute name, typed by the method's
@@ -166,10 +225,8 @@ class SimulationState:
             `advance()` rejects the next step from there.
 
             `dataclasses.replace`, a copy and a pickle also write through this
-            method. A copy and a pickle do so because this is a `slots=True`
-            dataclass. They restore the state of such a dataclass one field at
-            a time through `__setattr__`. For a class with a `__dict__`, they
-            would update the `__dict__` directly and bypass `__setattr__`.
+            method, because each of them runs the constructor. `__setstate__`
+            says how a copy and a pickle do so.
 
             The uptake system is written once, when the state is built. The
             count says how far that system has been advanced. If another
@@ -186,8 +243,8 @@ class SimulationState:
             second, so each of their writes passes. A count written by any
             other caller would leave a second with no stored state, or a
             stored state past the clock, and is refused. The record itself is
-            accepted only where it reaches the count the state holds. A copy
-            and a pickle restore the count before the record, so both pass.
+            accepted only where it reaches the count the state holds. The
+            constructor writes the count before the record, so both pass.
 
             Raises:
                 TypeError: `name` is `step_count` and `value` was not built as
@@ -201,7 +258,8 @@ class SimulationState:
                     and the state already has one. Or the stored states do not
                     reach the count the state holds.
                 TypeError: `name` is `stored_states` and the value is not a
-                    `StoredStates`.
+                    `StoredStates`, or `name` is `uptake_system` and the value is
+                    not an `AgentUptakeSystem`.
             """
 
             if name == "step_count":
@@ -210,12 +268,18 @@ class SimulationState:
 
                 if hasattr(self, "stored_states"):
                     _require_count_the_record_reaches(value, self.stored_states)
-            elif name == "uptake_system" and hasattr(self, name):
-                raise SimulationConfigurationError(
-                    "the run's uptake system cannot be replaced once the run's state is "
-                    "built, because the step count says how far that system has been "
-                    "advanced: build a new state for the new system"
-                )
+            elif name == "uptake_system":
+                if hasattr(self, name):
+                    raise SimulationConfigurationError(
+                        "the run's uptake system cannot be replaced once the run's state is "
+                        "built, because the step count says how far that system has been "
+                        "advanced: build a new state for the new system"
+                    )
+
+                if not isinstance(value, AgentUptakeSystem):
+                    raise TypeError(
+                        f"uptake_system has type {type(value).__name__}, not AgentUptakeSystem"
+                    )
             elif name == "stored_states":
                 if hasattr(self, name):
                     raise SimulationConfigurationError(

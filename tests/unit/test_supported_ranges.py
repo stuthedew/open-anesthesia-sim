@@ -517,9 +517,9 @@ def test_a_bare_float_written_onto_a_compartment_is_refused_at_the_write(control
     by assignment alike. The type is all that the write checks, so the setter
     alone checks its own relations, such as the machine's range and the tissue
     flows. The constructor, `dataclasses.replace`, a copy and a pickle all
-    write through the same `__setattr__`. A copy and a pickle do so because the
-    compartment is a `slots=True` dataclass whose state is restored one field
-    at a time. So each of the four refuses a bare float smuggled past the
+    write through the same `__setattr__`. A copy and a pickle do so because
+    they run the constructor (`core/checked_record.py`). So each of the four
+    refuses a bare float smuggled past the
     guard, before the patient's `__post_init__` can touch a tissue flow.
     """
 
