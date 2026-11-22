@@ -2777,7 +2777,9 @@ def _untied_figures(prose: str, raw: str) -> Iterator[tuple[str, str | None]]:
 LINE_END_NUMBER_RE = re.compile(r"(?<![\d.])(?P<number>\d+(?:\.\d+)?)\s*$")
 
 
-def _wrapped_figure(prose: list[str], index: int, skipped: set[int]) -> list[tuple[str, str | None]]:
+def _wrapped_figure(
+    prose: list[str], index: int, skipped: set[int]
+) -> list[tuple[str, str | None]]:
     """The figure whose number ends line `index` and whose unit opens the next line, if any.
 
     A paragraph may break its line between a number and its unit, as "2.5" and
@@ -2798,7 +2800,8 @@ def _wrapped_figure(prose: list[str], index: int, skipped: set[int]) -> list[tup
     return [
         (written, unit)
         for match in PROSE_FIGURE_RE.finditer(joined)
-        if match.start() == 0 and (written := match.group("number")) == number
+        if match.start() == 0
+        and (written := match.group("number")) == number
         and (unit := match.group("unit")) is not None
     ]
 
@@ -3145,7 +3148,10 @@ def check_untied_restatements(root: Path, report: Report) -> None:
             if index in fenced or index in hidden:
                 continue
             raw = INLINE_COMMENT_RE.sub("", lines[index])
-            for written, unit in [*_untied_figures(line, raw), *_wrapped_figure(prose, index, fenced | hidden)]:
+            for written, unit in [
+                *_untied_figures(line, raw),
+                *_wrapped_figure(prose, index, fenced | hidden),
+            ]:
                 figure = _prose_figure(written, unit)
                 matching = [home for home in homes if _matches(figure, home, written)]
                 if not matching:

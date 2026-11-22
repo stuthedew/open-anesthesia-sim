@@ -91,7 +91,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 
 from docket.config import load as load_config  # noqa: E402
-from docket.model import Item, parse_item  # noqa: E402
+from docket.model import Item, parse_item, pr_number  # noqa: E402
 from docket.store import read_items  # noqa: E402
 
 # `GitUnanswered` is docket's, raised for a ref git did not read and for a
@@ -99,7 +99,6 @@ from docket.store import read_items  # noqa: E402
 from docket.vcs import GitUnanswered as GitUnanswered  # noqa: E402
 from docket.vcs import _items_at, default_base, head_branch, leading_ids, read_git  # noqa: E402
 
-from docket.model import pr_number  # noqa: E402
 from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
 
 #: The store, where `docket.toml` puts it, as docket reads it (`PL-WCHF`).
@@ -209,13 +208,18 @@ def carried_by_other_pulls(closing: dict[str, Item], number: int) -> dict[str, i
     if found is None:
         return {}
     still_open = {pull.number for pull in found}
-    return {identifier: recorded for identifier, recorded in others.items() if recorded in still_open}
+    return {
+        identifier: recorded for identifier, recorded in others.items() if recorded in still_open
+    }
 
 
 def report_left_out(check: str, carried: dict[str, int]) -> None:
     """Say which closures another open pull request carries, so leaving them out is not silent."""
     for identifier, recorded in sorted(carried.items()):
-        print(f"{check}: {identifier} records #{recorded}, which is still open, so it is that pull request's closure")
+        print(
+            f"{check}: {identifier} records #{recorded}, which is still open, "
+            "so it is that pull request's closure"
+        )
 
 
 def _branch() -> str | None:

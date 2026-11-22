@@ -141,10 +141,14 @@ def main() -> int:
     owed = {identifier: pr for identifier, pr in closing.items() if pr != str(number)}
     if owed:
         at_head = closed_items_at(head)
-        carried = carried_by_other_pulls({identifier: at_head[identifier] for identifier in owed}, number)
+        carried = carried_by_other_pulls(
+            {identifier: at_head[identifier] for identifier in owed}, number
+        )
         report_left_out("pr-record", carried)
         owed = {identifier: pr for identifier, pr in owed.items() if identifier not in carried}
-        closing = {identifier: pr for identifier, pr in closing.items() if identifier not in carried}
+        closing = {
+            identifier: pr for identifier, pr in closing.items() if identifier not in carried
+        }
     if not closing:
         print("pr-record: every closure here is another open pull request's; no number is owed")
         return 0

@@ -61,9 +61,13 @@ def _forge(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _open_pulls(monkeypatch: pytest.MonkeyPatch, answer: tuple[int, ...] | None) -> None:
     """Make the forge answer that these pull requests are open, or that it could not be asked."""
-    pulls = None if answer is None else tuple(
-        PullRequest(number=number, title="T", head=f"branch-{number}", base="main")
-        for number in answer
+    pulls = (
+        None
+        if answer is None
+        else tuple(
+            PullRequest(number=number, title="T", head=f"branch-{number}", base="main")
+            for number in answer
+        )
     )
     monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda slug, head=None: pulls)
 
@@ -126,7 +130,10 @@ def test_a_closure_recording_another_number_is_refused(
 def test_a_stacked_branch_owes_no_number_for_the_lower_pull_request_s_closure(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A branch built on #1049's branch holds #1049's closure, and #1049 is still open (`PL-6LJS`)."""
+    """A branch built on #1049's branch holds #1049's closure, and #1049 is still open.
+
+    `PL-6LJS`.
+    """
     _install(
         monkeypatch,
         base={

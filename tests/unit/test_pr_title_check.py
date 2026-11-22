@@ -62,7 +62,10 @@ def _install(monkeypatch: pytest.MonkeyPatch, **refs: dict[str, str]) -> None:
 def test_a_stacked_branch_need_not_name_the_lower_pull_request_s_closure(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A branch built on #1049's branch holds #1049's closure, and #1049 is still open (`PL-6LJS`)."""
+    """A branch built on #1049's branch holds #1049's closure, and #1049 is still open.
+
+    `PL-6LJS`.
+    """
     lower = "---\nid: PL-K7QX\ntitle: T\nstatus: done\npr: 1049\n---\n"
     own = "---\nid: PL-B2C3\ntitle: T\nstatus: done\npr: 1050\n---\n"
     _install(

@@ -13,8 +13,9 @@ second copy of that fact, and it goes stale the way that item did.
 `claude-`, a family name, and version numbers. A tracked file may name one only
 if it is `docket.toml`, a record or a test, or is registered in `COPIES` with
 the reason it may. An id inside a web address is part of a cited page's address,
-not a choice of model, so the check does not read web addresses. A record states what happened, such as the session ledger,
-a worker run or a closed item, so it is history rather than a choice. An open
+not a choice of model, so the check does not read web addresses. A record states
+what happened, such as the session ledger, a worker run or a closed item, so it
+is history rather than a choice. An open
 item is read as instructions, so it is held to the rule: that is where the
 stale model was. A test's expected value is meant to be independent of the
 code it checks.
