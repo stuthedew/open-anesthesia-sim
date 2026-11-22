@@ -7,9 +7,11 @@ Each one is drawn from the `ViewTick` that the adapter, `app/area_layout.py`,
 hands it on every frame (`PL-TH35`).
 
 - `ConcentrationView` is the concentration chart with its time-base control,
-  captions, reference values, legend and advisories.
+  legend and advisories. The legend states the 1 MAC and MAC-awake values,
+  and the time axis's title states the window shown.
 - `WashInView` is the F_A/F_I plot with its time-base control, captions,
-  legend, per-run state lines and advisories.
+  legend, per-run state lines and advisories. Its time axis's title states
+  the window shown too.
 - `AccountingView` is every displayed run's mass-balance panel. `docs/INTERFACE.md`
   § "Minimum displayed outputs" requires it to stay reachable in every layout,
   which the registry enforces.
@@ -463,9 +465,9 @@ def _bare_column(view: QWidget) -> QVBoxLayout:
 class _KeyScroll(QScrollArea):
     """Holds the rows a reader reads a plot with, and scrolls them where the View is too short.
 
-    The rows are a chart View's statement of the window shown, its reference
-    values and its legend. The box asks for the height that the rows need at
-    the width the box has, and takes no more. In a View too short for the rows
+    The rows are the lines that qualify a chart View's plot, and its legend.
+    The box asks for the height that the rows need at the width the box has,
+    and takes no more. In a View too short for the rows
     and the plot, the box is squeezed to `theme.CHART_KEY_LEAST_HEIGHT`. The
     reader then scrolls the rows inside the box, and the plot keeps its place
     under them (`PL-CBYS`).
@@ -529,18 +531,20 @@ class _KeyScroll(QScrollArea):
 class ConcentrationView(QWidget):
     """The concentration chart, with everything a reader needs to read it.
 
-    The View holds the heading and the time-base control, the statement of
-    the window shown, the 1 MAC and MAC-awake reference values, and the
-    legend. It also holds advisories that appear only when they apply. Above
-    the plot, a line for each run names that run's traces that are above the
-    axis, and another says how many of its control changes in the window
-    could not be marked. Then comes the plot itself. Everything above the
+    The View holds the heading and the time-base control, and the legend.
+    The legend's entries for the 1 MAC line and the MAC-awake band state
+    their values, and the time axis's title states the window shown
+    (`PL-K4CZ`). It also
+    holds advisories that appear only when they apply. Above the plot, a
+    line for each run names that run's traces that are above the axis, and
+    another says how many of its control changes in the window could not be
+    marked. Then comes the plot itself. Everything above the
     plot is a label, a legend entry or a reference value rather than a
     sentence (`PL-6580`, `PL-F9TQ`).
 
     In an Area too short for all of that, the plot shrinks to
-    `theme.CHART_LEAST_HEIGHT`. The statement of the window, the reference
-    values and the legend then scroll in a box of their own above the plot
+    `theme.CHART_LEAST_HEIGHT`. The legend then scrolls in a box of its own
+    above the plot
     (`_KeyScroll`). The advisories stay outside the box, so a reader sees one
     as soon as it applies (`PL-CBYS`).
 
@@ -566,9 +570,6 @@ class ConcentrationView(QWidget):
         self.legend = TraceLegend()
         self.legend.compartment_requested.connect(context.requests.compartment)
         self.time_base_selector = self._window.selector
-        self.time_axis_caption = styled_label("", color=MUTED)
-        self.mac_reference_text = styled_label("", color=MUTED)
-        self.mac_awake_reference_text = styled_label("", color=MUTED)
         self.hidden_traces_text = styled_label(
             NO_TRACES_SHOWN_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
@@ -593,16 +594,7 @@ class ConcentrationView(QWidget):
         heading.addWidget(self.time_base_selector)
         column.addLayout(heading)
         column.addWidget(self.state_notice)
-        column.addWidget(
-            _KeyScroll(
-                (
-                    self.time_axis_caption,
-                    self.mac_reference_text,
-                    self.mac_awake_reference_text,
-                    self.legend,
-                )
-            )
-        )
+        column.addWidget(_KeyScroll((self.legend,)))
         column.addWidget(self.hidden_traces_text)
         column.addWidget(self.capped_traces_text)
         column.addWidget(self.off_scale.holder)
@@ -638,9 +630,10 @@ class ConcentrationView(QWidget):
         # (`PL-7Z84`).
         self.legend.show_run_names(tuple(run.label for run in frame.runs))
         self.legend.show_selection(tick.selection)
-        self.time_axis_caption.setText(time_axis_caption(frame))
-        self.mac_reference_text.setText(mac_reference_caption(frame))
-        self.mac_awake_reference_text.setText(mac_awake_caption(tick.snapshots[0]))
+        self.chart.show_time_window(time_axis_caption(frame))
+        self.legend.show_references(
+            mac_reference_caption(frame), mac_awake_caption(tick.snapshots[0])
+        )
         self.hidden_traces_text.setHidden(not no_traces_shown(frame))
         cap_notice = compartment_cap_notice(frame)
         self.capped_traces_text.setText(cap_notice or "")
@@ -666,8 +659,8 @@ class WashInView(QWidget):
     """The F_A/F_I plot, with its heading, its window, what it shows, its legend and lines per run.
 
     In an Area too short for all of it, the plot shrinks to
-    `theme.WASH_IN_CHART_LEAST_HEIGHT`, and the rows from the statement of the
-    window to the legend scroll in a box above the plot, as the concentration
+    `theme.WASH_IN_CHART_LEAST_HEIGHT`, and the rows from the line that says
+    what the plot shows to the legend scroll in a box above the plot, as the concentration
     chart's do (`_KeyScroll`). The line that says its values are model
     outputs is the View's `pinned_row`: its Area shows it above the box that scrolls the View, so
     the words are on screen wherever any part of the plot is (`PL-26BZ`).
@@ -696,7 +689,6 @@ class WashInView(QWidget):
         self.chart = WashInChart()
         self.legend = WashInLegend()
         self.time_base_selector = self._window.selector
-        self.time_axis_caption = styled_label("", color=MUTED)
         self.state_notice = _state_notice(self._window.notice_text)
         self.states = _RunLines(MUTED, italic=False)
         self.unmarked_changes = _RunLines(MUTED, italic=True)
@@ -719,11 +711,7 @@ class WashInView(QWidget):
         self.pinned_row = _panel_row(self.modelled_label, _WASH_IN_PINNED_ROW_NAME)
         column.addWidget(
             _KeyScroll(
-                (
-                    self.time_axis_caption,
-                    styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True),
-                    self.legend,
-                )
+                (styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True), self.legend)
             )
         )
         column.addWidget(self.states.holder)
@@ -749,7 +737,7 @@ class WashInView(QWidget):
         self._drawn = True
         self._window.drew(frame)
         self.legend.show_run_names(tuple(run.label for run in frame.runs))
-        self.time_axis_caption.setText(time_axis_caption(frame))
+        self.chart.show_time_window(time_axis_caption(frame))
         self.states.show(tick.runs, wash_in_state_lines(frame, tick.snapshots))
         self.unmarked_changes.show(tick.runs, unmarked_changes_lines(frame))
 

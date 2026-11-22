@@ -2293,11 +2293,12 @@ entry are the tests that check whether the output is drawn on the display.
   § "MAC multiples as a display unit" for what the multiple asserts and why both
   units are shown;
 - the running agent's population MAC-awake, drawn on the chart as a band. The
-  band was derived from two numbers. Its label gives the first, MAC-awake as a
-  fraction of the agent's 1 MAC, with the percent that the fraction comes to
-  and the band's two edges in percent. The line of text above the label gives
-  the second, that 1 MAC in percent. The band's legend entry names the trace
-  to read the band against. A visually distinct line on the chart
+  band was derived from two numbers. The band's legend entry gives the first,
+  MAC-awake as a fraction of the agent's 1 MAC, with the percent that the
+  fraction comes to and the band's two edges in percent. The 1 MAC line's
+  legend entry, just before it, gives the second, that 1 MAC in percent. The
+  band's legend entry also names the trace to read the band against. A
+  visually distinct line on the chart
   marks the agent's nominal 1 MAC
   (`test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from`,
   `test_the_interface_says_which_trace_the_band_is_read_against`,
@@ -3044,8 +3045,8 @@ keeps doubling the width. Early in a run, it can also use widths narrower than
 any the reader can choose.
 
 **Every axis label carries its own unit, and each chart states its width.** A
-label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. Beside the plot, the chart
-names the width in words. It says whether the reader chose the width, or it is
+label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. The time axis's title names
+the width in words, after "simulated time". It says whether the reader chose the width, or it is
 the whole run so far, or the window is centred on the current time for a
 preview.
 
