@@ -1636,6 +1636,25 @@ def test_a_compared_hover_answers_for_every_run_in_reach_however_many_there_are(
     assert [line.split()[1] for line in target.readout.splitlines()[2:]] == ["1", "2", "3"]
 
 
+def test_the_frame_refuses_two_runs_whose_mac_is_stated_for_different_ages() -> None:
+    """Two runs on one agent still need one MAC and one age, because they share one MAC axis.
+
+    Every run uses the reference adult today, so the second run's age is
+    written into its snapshot here. Once a patient's age is an input, two
+    compared runs could differ in it, and the second run's traces would be
+    read against the first run's 1 MAC line and age without this check.
+    """
+
+    first = _input(_run(10))
+    older = _input(_run(10), run_index=1)
+    older = replace(older, snapshot=replace(older.snapshot, agent_mac_age_years=70))
+
+    with pytest.raises(ValueError, match=r"same MAC for the same age.*at age 40.*at age 70"):
+        assemble_chart_frame(
+            [first, older], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        )
+
+
 def test_a_compared_hover_refuses_to_name_one_agent_over_another_run_s_value() -> None:
     """The agent is named once, above the values, so the runs must share it.
 

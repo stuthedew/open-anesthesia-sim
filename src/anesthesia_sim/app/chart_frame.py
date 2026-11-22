@@ -1054,12 +1054,13 @@ def assemble_chart_frame(
     Raises:
         ValueError: If the width is negative or not finite (see
             `chart_columns`), if no run is given, or if the runs are not all
-            on one agent. A chart that every run shares draws one ×MAC ruler,
-            one MAC-awake band and one 1 MAC line. All three are the agent's
-            own published values. With two agents on one axis, one run's
-            traces would be read against the other agent's divisor. That is a
-            correct number under the wrong label, which `CLAUDE.md`'s
-            safety-critical standard treats as a failure of the value.
+            on one agent, or do not all state the same MAC for the same age.
+            A chart that every run shares draws one ×MAC ruler, one MAC-awake
+            band and one 1 MAC line with its age. With two agents, or two
+            patients' MACs, on one axis, one run's traces would be read against
+            the other run's divisor. That is a correct number under the wrong
+            label, which `CLAUDE.md`'s safety-critical standard treats as a
+            failure of the value.
         SimulationConfigurationError: If a drawn compartment value is outside
             0 to 1, and the error then names the compartment. It is also
             raised if the axis top is above 100% of an atmosphere, which
@@ -1083,6 +1084,15 @@ def assemble_chart_frame(
         raise ValueError(
             "every run on the chart must be on the same agent, because they share one MAC "
             f"axis and one set of clinical references; given {', '.join(sorted(agent_ids))}"
+        )
+
+    macs = {(run.snapshot.agent_mac_percent, run.snapshot.agent_mac_age_years) for run in runs}
+
+    if len(macs) > 1:
+        stated = ", ".join(f"{percent}% at age {age}" for percent, age in sorted(macs))
+        raise ValueError(
+            "every run on the chart must divide by the same MAC for the same age, because "
+            f"they share one MAC axis and one 1 MAC line; given {stated}"
         )
 
     reference = runs[0].snapshot
