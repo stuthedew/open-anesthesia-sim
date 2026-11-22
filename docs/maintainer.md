@@ -554,7 +554,9 @@ opening lines of the ask. Every ask has one form, which carries what
    you would not see from the option alone, such as what else it changes or
    breaks, the follow-on work it opens, and whether it can be undone;
 5. why the choice is yours rather than the session's;
-6. what was already checked, where anything was.
+6. what was already checked, where anything was, including what the research
+   on current best practice found and its sources (project owner, 2026-11-22,
+   `PL-W7HW`).
 
 Each part is printed on its own line, in that order, with the question and
 each part's label in bold (project owner,
