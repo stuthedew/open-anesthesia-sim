@@ -1011,12 +1011,12 @@ The interface draws tension and almost nothing else. The concentration chart
 and the readouts give each compartment's partial pressure, in % atm and as a
 MAC multiple. So the slow compartments look empty while they hold most of the
 agent. The table below was measured on this model, with sevoflurane held at a
-1 MAC dial, for the reference adult at the shipped defaults:
+1 MAC dial of 1.80%, for the reference adult at the shipped defaults:
 
 | At | Muscle: tension, share of stored agent | Fat: tension, share of stored agent |
 | --- | --- | --- |
-| 60 min | 0.50% atm, 49% | 0.03% atm, 20% |
-| 180 min | 1.16% atm, 54% | 0.11% atm, 30% |
+| 60 min | 0.45% atm, 49% | 0.03% atm, 20% |
+| 180 min | 1.05% atm, 54% | 0.10% atm, 30% |
 
 Fat's trace sits within a few pixels of zero on the chart for that whole time.
 `PL-H5DV` measured the same pattern for all three agents, and the hours that
@@ -2508,26 +2508,23 @@ surface today. So this paragraph names an intended surface, not an
 existing one.
 
 *MAC moves to the Mapleson MAC40 basis (project owner, 2026-09-02).* The
-move comes in the release that adds age. Today the simulator takes MAC
-(`mac_percent`) from the flat Gas Man values that the agent files carry:
-sevoflurane 2.0, isoflurane 1.2 and desflurane 6.0. The MAC40 values below
-differ from these, so the displayed MAC changes at every age, *including*
-40. The move is therefore a parameter-set change that needs a provenance
-row and a release note, not a new input field. It lands after MAC
-multiples become a display unit (`PL-DHV7`), because an age-adjusted MAC
-with no MAC unit to show it in changes nothing a learner sees.
+stored MAC made this move ahead of age, in v0.7.0 (`PL-LBVN`, project owner,
+2026-11-14). Each agent file now stores the MAC at age 40 from Mapleson's
+meta-analysis (Br J Anaesth 1996;76(2):179-85): sevoflurane 1.80%,
+isoflurane 1.17% and desflurane 6.6%. Every 1 MAC line on screen names the
+age that its value belongs to, as in "1 MAC sevoflurane (age 40) = 1.80%".
 
-Nickalls and Mapleson (Br J Anaesth 2003;91(2):170-4) is already cited in
-all three agent files (`data/agents/*.json`). Each file has a note
-recording that the paper is *not* used, because this model has no age
-parameter. This change puts the paper to use. Nickalls and Mapleson's
-meta-analysis has log10 MAC falling linearly, and in parallel for every
-inhaled agent, at about 6% per decade for age >= 1 year. MAC is expressed
-relative to its value at 40 years. MAC40 is reported as 1.17% isoflurane,
-1.80% sevoflurane and 6.60% desflurane. Confirm these figures against the
-primary paper when this is scoped, rather than copying them from here.
-That is the provenance standard that every other parameter in `data/`
-must meet.
+What this item still adds is the adjustment for age. When age becomes an
+input, the MAC that divides every MAC multiple, the 1 MAC line and the
+dial's opening setting all follow the patient's age (`PL-8F9D`). The same
+paper gives the equation: MAC(age) = MAC at 40 × 10^(−0.00269 × (age − 40)),
+a fall of about 6% per decade for every agent. A patient of any age other
+than 40 then sees a different MAC, so the change needs a release note.
+
+Nickalls and Mapleson (Br J Anaesth 2003;91(2):170-4) is also cited in all
+three agent files, and is not adopted. Its age charts are drawn from the
+1996 meta-analysis, so it is not a second, independent source for these
+values.
 
 *Two questions are left for scoping: how body composition acts on the
 model, and how the simulator responds to an edited body composition that
