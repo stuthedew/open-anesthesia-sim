@@ -133,11 +133,44 @@ def test_the_height_control_stops_at_what_the_running_agent_can_reach(
         snapshot.agent_mac_percent,
     )
 
-    assert editor.height_spin.maximum() == pytest.approx(reachable)
+    # Sevoflurane's 8% maximum over its 1.80% MAC is 4.444 MAC. The control
+    # holds two decimals, so it stops at 4.44, which a run can still reach.
+    assert reachable == pytest.approx(8.0 / 1.8)
+    assert editor.height_spin.maximum() == pytest.approx(4.44)
+    assert editor.height_spin.maximum() <= reachable
 
     editor.height_spin.setValue(reachable * 2.0)
 
-    assert editor.height_spin.value() == pytest.approx(reachable)
+    assert editor.height_spin.value() == pytest.approx(4.44)
+
+
+def test_the_height_control_rounds_its_maximum_down_for_desflurane(
+    application: QApplication,
+) -> None:
+    """The control offers no height above what desflurane's vaporizer can reach (`PL-LBVN`).
+
+    Desflurane's 18% maximum over its 6.6% MAC is 2.727 MAC, worked here by
+    hand. A spin box rounds its maximum to the nearest value it can show, which
+    is 2.73, so the control used to offer a target that no desflurane run can
+    cross. It now stops at 2.72.
+    """
+
+    controller = SimulationController(agent_id="desflurane")
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    snapshot = controller.snapshot()
+    reachable = mac_multiple(
+        fraction_from_percent(snapshot.max_delivered_concentration_percent),
+        snapshot.agent_mac_percent,
+    )
+
+    assert reachable == pytest.approx(18.0 / 6.6)
+    assert editor.height_spin.maximum() == pytest.approx(2.72)
+    assert editor.height_spin.maximum() <= reachable
+
+    editor.height_spin.setValue(reachable)
+
+    assert editor.height_spin.value() == pytest.approx(2.72)
 
 
 def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
@@ -409,9 +442,9 @@ def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
 
     view = _halted_branch_view(application)
 
-    # The crossing lies between 114.6 s and 114.7 s (`_halted_branch_view`), and
+    # The crossing lies between 109 s and 110 s (`_halted_branch_view`), and
     # the run stops on the first whole second after it.
-    assert view.runs[1].snapshot().elapsed_s == 115
+    assert view.runs[1].snapshot().elapsed_s == 110
     assert view.runs[1].is_running is False
 
     listed = _marks_panel(view).targets.text()

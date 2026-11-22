@@ -127,13 +127,15 @@ _AGENT_ID = "sevoflurane"
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 #: The run that the hover-box test uses to reach the plot's edges. Sevoflurane
-#: is dialled to 8%, its maximum delivered concentration, for twenty minutes,
-#: and the run is drawn in the 15-minute width. A chosen width follows the run,
-#: so its newest points sit at the right edge. At 8% the circuit and alveolar
-#: traces climb to the top of the axis, where there is no room above a point
-#: for the box. The right edge and the top of the axis are the two places
-#: where the box flips.
-_INDUCTION_DIAL_PERCENT = 8.0
+#: is dialled to 7.2%, four times its 1.80% MAC, for twenty minutes, and the
+#: run is drawn in the 15-minute width. A chosen width follows the run, so its
+#: newest points sit at the right edge. At 4 MAC the circuit and alveolar
+#: traces climb to the top of the 3 MAC axis, where there is no room above a
+#: point for the box. The right edge and the top of the axis are the two
+#: places where the box flips. The dial was 8% while the stored MAC was 2.0%.
+#: The model is linear in the dial, so 7.2% puts every trace at the height,
+#: in MAC, that 8% did then.
+_INDUCTION_DIAL_PERCENT = 7.2
 _INDUCTION_S = 1200.0
 _FOLLOWING_WIDTH_S = 15 * 60
 

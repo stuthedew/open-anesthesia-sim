@@ -35,7 +35,7 @@ from anesthesia_sim.core.supported_ranges import AlveolarVentilation, FreshGasFl
 
 FRESH_GAS_FLOW_L_MIN = 8.0
 SECONDS_PER_MINUTE = 60
-SEVOFLURANE_MAC_PERCENT = load_agent_parameters("sevoflurane").mac_percent
+SEVOFLURANE_MAC_PERCENT = load_agent_parameters("sevoflurane").mac_at_age_40_percent
 # The concentration chart's axis is 3 MAC of the running agent for every agent
 # (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 # share bar assert").
@@ -161,7 +161,7 @@ def _run(agent_id: str, seconds: int) -> SimulationController:
 
     controller = SimulationController(agent_id=agent_id)
     controller.set_delivered_concentration_percent(
-        Percent(load_agent_parameters(agent_id).mac_percent)
+        Percent(load_agent_parameters(agent_id).mac_at_age_40_percent)
     )
     controller.start()
 
@@ -294,7 +294,7 @@ def test_each_container_is_marked_at_the_chart_s_gridlines(agent_id: str) -> Non
 
     controller = SimulationController(agent_id=agent_id)
     snapshot = controller.snapshot()
-    half_mac = 0.5 * load_agent_parameters(agent_id).mac_percent
+    half_mac = 0.5 * load_agent_parameters(agent_id).mac_at_age_40_percent
 
     assert scale_marks(snapshot) == pytest.approx([sixth / 6 for sixth in range(1, 6)])
     assert f"every {half_mac:g}% of 1 atm (0.5 ×MAC)" in scale_caption(snapshot)

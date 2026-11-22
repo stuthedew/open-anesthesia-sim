@@ -3,12 +3,15 @@ id: PL-LBVN
 title: Gas Man's released settings file holds MAC 2.1% sevoflurane and 1.1% isoflurane; we store De Wolf's 2.0% and 1.2%. Decide which MAC values to store
 priority: P1
 effort: L
-status: ready
+status: done
 classes: safety, science
 feature: gas-man-open-source
-touches: src/anesthesia_sim/data/agents, src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, tests
+touches: src/anesthesia_sim/data/agents, src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, tests, docs/items/PL-8F9D-when-patient-age-becomes-an-input-roadmap.md
 added: 2026-11-14
+closed: 2026-11-22
+pr: 2223
 payoff: Every MAC multiple a learner reads is divided by a published MAC for a stated age, the same age for all three agents, so comparing agents at 1 MAC is no longer off by about 22% and age-adjusted MAC can follow without changing any reader.
+tests: tests/unit/test_mac.py::test_the_reference_adult_s_mac_is_mapleson_s_mac_at_age_40, tests/unit/test_chart_frame.py::test_the_frame_refuses_two_runs_whose_mac_is_stated_for_different_ages, tests/reference/test_control_resolution.py::test_the_control_resolution_tolerance_table, tests/integration/controller/test_controller_branching.py::test_a_branch_rebuilt_under_another_mac_is_refused
 ---
 
 **Problem.** Gas Man's released settings file holds MAC 2.1% sevoflurane and 1.1% isoflurane; we store De Wolf's 2.0% and 1.2%. Decide which MAC values to store
@@ -145,3 +148,54 @@ expected MAC value from Mapleson's figures rather than from the code.
 **Generator check.** The fact is which MAC the divisor holds, and for which
 age. One-off: it is a choice between published sources that the owner made on
 2026-11-14, not a misreading that other items share.
+
+**Done 2026-11-22**, in pull request #2223. Each agent file stores Mapleson
+1996's MAC at age 40 as `mac_at_age_40_percent` (1.80% sevoflurane, 1.17%
+isoflurane, 6.6% desflurane), with the Mapleson source entry adopted.
+`core/mac.py`'s `mac_for_patient` builds the MAC that a run divides by, as a
+`PatientMac` that carries the age. Every 1 MAC reference line prints its age
+and the stored value to two decimals, and the dial opens at the age-40 value.
+The compared chart refuses runs whose MAC or age differ.
+
+**Values under `tests/reference/` that changed.** Desflurane's 1 MAC rose from
+6.0% to 6.6%, so the dial at its case-opening 1 MAC rose by a factor of 1.1, and
+the model is linear in the dial. The case-opening timing error went from
+6.6e-2 to 7.3e-2 percentage points, its 300x figure from 1.5 to 1.7, and the
+step ratios at 1x and 300x from 20.0 and 6.9 to 18.5 and 6.2. The adversarial
+review measured 0.0725, 1.659, 18.51 and 6.23. The washout test's comparison
+with Mapleson's MAC was removed, because the stored MAC is now Mapleson's.
+
+**Reviews.** Blind pass 1's optional finding (the chart compared only the
+agent) is fixed. Blind pass 2's should-fix finding, that "6.60%" adds a digit
+Mapleson does not give, is fixed. It was first rejected and put to the owner,
+who answered on 2026-11-22 that such calls follow best practice, researched
+rather than recalled. The GUM (JCGM 100:2008, 7.2.6, read from BIPM's PDF)
+rounds an estimate to be consistent with its uncertainty, and the Joint
+Commission's "Do Not Use" list (read from a mirrored copy of the official
+list, because jointcommission.org refused the client with a 403) allows a
+trailing zero only where it shows the precision of the value reported. So the
+1 MAC line drops a trailing zero and reads 1.8%, 1.17% and 6.6%. Pass 2's
+optional finding, that `mac_for_patient` reads nothing from the patient, is
+recorded in `PL-8F9D`'s brief, which is the work that makes it read the age.
+The adversarial review's findings: the documents now say once that the
+reference adult records no age (fixed); two stale rounding examples were
+replaced (fixed); the isoflurane axis's three-decimal labels are `PL-BNMZ`
+(filed); the upper age limit is in `PL-8F9D`'s brief (filed).
+
+**Mutation survivors left.** Two mutants of the name `"agent_mac"` in
+`SimulationController._disagreements_with` survive the unit tests, because
+the one test that reaches that name is
+`tests/integration/controller/test_controller_branching.py::test_a_branch_rebuilt_under_another_mac_is_refused`,
+and the mutation run selects unit tests only. That test asserts the text
+"agent_mac is", which both mutants change. Four mutants of
+`name="mac_at_age_40_percent"` in `parse_agent_parameters` are equivalent: the
+loader's `PositivePercent` and its vaporizer-maximum check refuse every value
+that `MacPercent` would refuse, so its message is never reached from a file.
+
+**Docs checked:** `README.md`, `ROADMAP.md`, `docs/MODEL.md`,
+`docs/INTERFACE.md`, `docs/VERIFICATION.md`, `docs/PARAMETERS.md`,
+`docs/ARCHITECTURE.md`, `.claude/rules/ui-reader.md` and
+`.claude/rules/sources-and-docstrings.md`. A search of them for
+`mac_percent`, "1.2% to 6.0%" and the old MACs finds only the snapshot's
+`agent_mac_percent` field, the dated history of De Wolf's and Weber's values,
+and the description of the shipped v0.4 milestone in `ROADMAP.md`.

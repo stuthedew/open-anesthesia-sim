@@ -471,7 +471,11 @@ def _presentation(
         line = WITHHELD_DELIVERED_LINE_TEXT
 
     try:
-        one_mac = format_mac_reference(record.agent_display_name, record.agent_mac_percent)
+        one_mac = format_mac_reference(
+            record.agent_display_name,
+            record.agent_mac_percent,
+            age_years=record.agent_mac_age_years,
+        )
     except Exception as error:
         one_mac = NotBuilt(error)
 

@@ -31,6 +31,7 @@ each of the three.
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from math import floor
 from types import MappingProxyType
 from typing import Final
 
@@ -77,6 +78,7 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     DECIMAL_BASE,
     FLOW_DISPLAY_DECIMALS,
+    MAC_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
     format_agent_residual,
     format_agent_volume,
@@ -103,7 +105,13 @@ from anesthesia_sim.app.wash_in import WashInDomain, WashInReading
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
-from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.mac import mac_for_patient
+from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
+    load_agent_parameters,
+    load_reference_adult_parameters,
+)
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -759,11 +767,42 @@ MARK_NAME_PLACEHOLDER: Final = "Optional"
 # because a run stands only on whole seconds (`core/simulation_step.py`).
 INSTANT_ENTRY_SUFFIX: Final = " s"
 # The upper bound of the height control before an agent has been named. Every
-# shipped agent's vaporizer reaches at least this multiple of its own 1 MAC.
-# So this value is a lower bound on the real limit rather than a guess at it.
+# shipped agent's vaporizer reaches at least this multiple of its own 1 MAC
+# for the reference adult. The least is desflurane's, 18% / 6.6% = 2.73 MAC.
+# So this value is a lower bound on the real limit rather than a guess at it,
+# and `test_every_agent_reaches_the_default_target_ceiling` holds it there.
+# It was 3.0 while desflurane's MAC was 6.0% (`PL-LBVN`).
 # `MarkEditor.set_reachable_height` replaces it with the running agent's
 # own limit the first time a frame is drawn.
-DEFAULT_MAXIMUM_TARGET_MAC: Final = 3.0
+DEFAULT_MAXIMUM_TARGET_MAC: Final = 2.5
+
+
+def height_entry_maximum_mac(reachable_mac: float) -> float:
+    """Return the highest height that the height control may offer, in multiples of MAC.
+
+    The control holds `MAC_DISPLAY_DECIMALS` decimals, and a spin box rounds
+    its maximum to the nearest value it can show. Rounding to nearest can
+    round up. Desflurane's 18% dial over its 6.6% MAC is 2.727 MAC, and the
+    control would then offer 2.73, a target that no desflurane run can cross
+    (`PL-LBVN`). This function rounds down instead, so every height the
+    control offers is one that the running agent can reach.
+
+    Rounding can leave a quotient just below the hundredth that it equals, so
+    the count of hundredths allows `WHOLE_COUNT_TOLERANCE` before it is
+    rounded down. Without the allowance, a reachable height of exactly
+    4.17 MAC that arrived as 4.169999999999999 would lose a hundredth.
+
+    Args:
+        reachable_mac: The agent's maximum delivered concentration as a
+            multiple of its own 1 MAC.
+
+    Returns:
+        `reachable_mac` rounded down to the control's resolution.
+    """
+
+    scale = DECIMAL_BASE**MAC_DISPLAY_DECIMALS
+    return floor(reachable_mac * scale + WHOLE_COUNT_TOLERANCE) / scale
+
 
 REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
 """Conditional text, which is where a sentence is appropriate.
@@ -1332,11 +1371,17 @@ WIDEST_READOUT_SECONDARY: Final = max(
 )
 #: The widest strings a compartment column can show: the percent at a whole
 #: atmosphere, and that fraction as a multiple of the smallest 1 MAC any
-#: shipped agent has, since the smallest divisor prints the most digits.
+#: shipped agent has for the reference adult, since the smallest divisor
+#: prints the most digits.
 WIDEST_COMPARTMENT_VALUE: Final = format_percent(Fraction(1.0))
 WIDEST_COMPARTMENT_SECONDARY: Final = max(
     (
-        format_mac_multiple(Fraction(1.0), load_agent_parameters(agent_id).mac_percent)
+        format_mac_multiple(
+            Fraction(1.0),
+            mac_for_patient(
+                load_agent_parameters(agent_id), load_reference_adult_parameters()
+            ).percent,
+        )
         for agent_id in AGENT_DATA_FILENAMES
     ),
     key=len,
@@ -3162,7 +3207,9 @@ def mac_reference_caption(frame: ChartFrame) -> str:
         The reference line.
     """
 
-    return format_mac_reference(frame.runs[0].agent_display_name, frame.mac_percent)
+    return format_mac_reference(
+        frame.runs[0].agent_display_name, frame.mac_percent, age_years=frame.mac_age_years
+    )
 
 
 def mac_awake_caption(frame: ChartFrame) -> str:
@@ -3242,8 +3289,8 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     the axis earlier in the window is still drawn clipped now. Hidden traces
     are skipped, so the notice never points at a trace that is not there. A
     trace counts as off scale only once it exceeds the ceiling by more than
-    the readouts resolve. Isoflurane's ceiling is 3 x 1.2, which in binary
-    floating point is 3.5999999999999996. A comparison with zero tolerance
+    the readouts resolve. Desflurane's ceiling is 3 x 6.6, which in binary
+    floating point is 19.799999999999997. A comparison with zero tolerance
     would report that rounding noise as an excursion. This function builds no
     checked concentration. The percents and the axis top were built when the
     frame was assembled, so this function cannot reject a value after the
@@ -3305,8 +3352,8 @@ def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
     one test of "off the scale", and both the chart's off-scale notice and the
     compartment schematic's off-scale mark use it. So the two Views cannot
     disagree about one tension (`PL-RNYV`). The margin of one display step is
-    needed because of binary rounding. For example, isoflurane's top of 3 x 1.2
-    is 3.5999999999999996 in binary. A value that the readouts print as the top
+    needed because of binary rounding. For example, desflurane's top of 3 x 6.6
+    is 19.799999999999997 in binary. A value that the readouts print as the top
     is not above it.
     """
 

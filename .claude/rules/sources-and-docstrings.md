@@ -125,8 +125,8 @@ text what the trace found. Never state a reason that no record holds.
 **A paragraph of `docs/MODEL.md`**, for a clinician. The project owner accepted
 it on 2026-11-04 (`PL-ZDZ0`).
 
-"The smallest change the MAC readout can show is therefore 0.02
-percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane,
+"The smallest change the MAC readout can show is therefore 0.018
+percentage points of sevoflurane, 0.0117 of isoflurane and 0.066 of desflurane,
 never less than the percent readout's. The two readouts round separately, so
 the MAC value can occasionally change while the percent stays the same."
 

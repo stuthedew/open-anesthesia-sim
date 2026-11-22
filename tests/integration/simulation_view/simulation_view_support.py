@@ -1159,9 +1159,12 @@ def _halted_branch_view(application: QApplication) -> SimulationView:
     The trunk is paused at 60 s at 0.17 xMAC alveolar and never advances, so
     it is still running for a target at 0.50 xMAC. The branch is opened at
     that instant, and its delivered concentration is raised to the agent's
-    maximum. It is then stepped until the crossing halts it, at 115 s. The
-    offscreen reproduction on `PL-LHBY` stepped by 0.1 s and put the crossing
-    between 114.6 s and 114.7 s, and 115 s is the first whole second after it.
+    maximum. It is then stepped until the crossing halts it, at 110 s. A bare
+    uptake system with the same settings reads 0.4955 xMAC at 109 s and
+    0.5030 xMAC at 110 s, so 110 s is the first whole second past the mark
+    (measured 2026-11-22, with sevoflurane's MAC at 1.80%). The offscreen
+    reproduction on `PL-LHBY` put the halt at 115 s while the stored MAC was
+    2.0%.
 
     The time bookmark is added for the second half of the same defect. At
     30 s it is behind the trunk's clock and before the branch's own opening

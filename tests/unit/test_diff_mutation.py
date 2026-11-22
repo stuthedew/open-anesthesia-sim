@@ -1022,6 +1022,38 @@ def test_a_compare_run_mutates_the_compared_files_alone(
     assert found == {"pkg.app.formatting.x_f__mutmut_1": "killed"}
 
 
+def test_a_compare_run_whose_tests_reach_no_mutant_catches_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """mutmut exits 1 when no selected test reaches a mutant, and that run caught nothing."""
+
+    stopped = tmp_path / "stopped.log"
+    stopped.write_text(
+        "done in 3726ms (24 files mutated, 61 ignored, 0 unmodified)\n"
+        "Stopping early, because we could not find any test case for any mutant. "
+        "It seems that the selected tests do not cover any code that we mutated.\n",
+        encoding="utf-8",
+    )
+    failed = tmp_path / "failed.log"
+    failed.write_text("failed to run clean test\n", encoding="utf-8")
+    logs = iter([stopped, failed])
+    monkeypatch.setattr(
+        diff_mutation, "run", lambda root, patterns, table, tests=None, only=None: (1, next(logs))
+    )
+    files = ["src/pkg/app/formatting.py"]
+
+    assert (
+        diff_mutation._compared_statuses(
+            tmp_path, ["pkg.app.*"], ["tests/unit/test_d.py"], TABLE, files
+        )
+        == {}
+    )
+    with pytest.raises(diff_mutation.Refusal, match="failed to run clean test"):
+        diff_mutation._compared_statuses(
+            tmp_path, ["pkg.app.*"], ["tests/unit/test_d.py"], TABLE, files
+        )
+
+
 def test_main_runs_nothing_when_no_listed_mutant_can_change_the_verdict(
     tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

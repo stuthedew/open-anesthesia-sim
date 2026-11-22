@@ -165,7 +165,6 @@ atmosphere. $`F = 0.02`$ is a 2% gas-phase concentration, and
 $`\text{percent} = 100F`$. Ambient pressure is fixed at 760 mmHg, so a
 fraction and a partial pressure differ only by that factor: $`F_A = 0.02`$ is
 15.2 mmHg. The vaporizer dial and MAC are given in percent of one atmosphere.
-<!-- not-restated: 2 % -->
 
 **Agent amount.** Every compartment stores its agent as an equivalent gas
 volume: liters of pure agent gas at 20 °C and 760 mmHg, dry. The ideal-gas
@@ -212,7 +211,7 @@ cost of the agent delivered are exact too.
 | $`Q`$ | Cardiac output | L blood/min |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, equal to $`f_iQ`$ | L blood/min |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless |
-| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It sets the dial's starting position and divides the display in MAC multiples. No equation of the model reads it | percent |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC for a 40-year-old, from Mapleson's 1996 meta-analysis. It sets the dial's starting position and divides the display in MAC multiples. No equation of the model reads it | percent |
 | $`\lambda_{b:g}`$ | Blood:gas partition coefficient | dimensionless |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$ | dimensionless |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, equal to $`\lambda_{i:g}/\lambda_{b:g}`$ | dimensionless |
@@ -336,7 +335,6 @@ real machine's flowmeter bank.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- not-restated: 2 % -->
 
 **The circuit volume is that of the assembled breathing system.** The model
 has one well-mixed gas compartment in front of the patient, so $`V_C`$ is the
@@ -528,21 +526,17 @@ exists, or when the value belongs to a set whose internal consistency is part
 of what is modeled. In both cases the data file records the primary
 measurements and how far the stored value sits from them.
 
-**Of the 49 stored values, 27 are tier 1, four are tier 2, 16 are tier 3, and
-two adopt no source.** The 16 tier-3 values all come from Gas Man: the three
-blood:gas coefficients, ten of the eleven patient parameters, and the three
-MAC values. The two unsourced values are the circuit volume and the default
-fresh gas flow.
+**Of the 49 stored values, 27 are tier 1, seven are tier 2, 13 are tier 3, and
+two adopt no source.** The 13 tier-3 values all come from Gas Man: the three
+blood:gas coefficients and ten of the eleven patient parameters. The three MAC
+values are Mapleson's 1996 meta-analytic MACs at age 40, which are tier 2. The
+two unsourced values are the circuit volume and the default fresh gas flow.
 
 The two tier-3 citations are Gas Man simulation studies. Table 1 of De Wolf et
 al. 2012 is the parameter set that the authors fed to Gas Man, and Weber et
-al. 2021 describe the product's standard 70 kg patient. The two do not agree
-on Gas Man's MAC: Weber et al. print 2.1% sevoflurane and 1.1% isoflurane, and
-De Wolf et al. state 2.0% and 1.2%, which this simulator stores. Every
-partition coefficient the two print is the same.
+al. 2021 describe the product's standard 70 kg patient. Every partition
+coefficient the two print is the same.
 <!-- not-restated: 70 kg -->
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
 
 ### The agents
 
@@ -555,7 +549,7 @@ partition coefficient the two print is the same.
 | Vessel-rich tissue:blood (derived) | 1.6923 | 1.6154 | 1.2857 | tissue:gas ÷ blood:gas |
 | Muscle tissue:blood (derived) | 3.6923 | 3.4615 | 2.3095 | tissue:gas ÷ blood:gas |
 | Fat tissue:blood (derived) | 52.3077 | 53.8462 | 30.9524 | tissue:gas ÷ blood:gas |
-| 1 MAC, single adult value with no age stated by its source (percent) | 2.0 | 1.2 | 6.0 | Gas Man, as De Wolf et al. 2012 state it (tier 3) |
+| 1 MAC at age 40 (percent) | 1.80 | 1.17 | 6.6 | Mapleson 1996 (tier 2) |
 | MAC-awake (fraction of 1 MAC) | 0.34 ± 0.05 | 0.31 ± 0.05 | 0.36 ± 0.063 | Katoh et al. 1993 for sevoflurane and isoflurane; Chortkoff et al. 1995 for desflurane (tier 1) |
 | Maximum delivered concentration (percent) | 8.0 | 5.0 | 18.0 | Dräger Vapor 2000 specification; Kelly and Kong 2011; Johnston et al. 1994 on the Tec 6 (tier 1) |
 | Molar mass (g/mol) | 200.05 | 184.49 | 168.04 | ChEMBL formula masses (tier 2, because a molar mass is computed from the formula) |
@@ -572,9 +566,9 @@ partition coefficient the two print is the same.
 <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34 -->
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13 -->
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31 -->
 <!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
@@ -660,13 +654,15 @@ coupled dual-circuit blender". The two designs behave differently away from
 sea level (§ "Altitude"). The model fixes ambient pressure at 760 mmHg, so it does
 not need to know which design each maximum comes from.
 
-**MAC.** The stored MAC is a single adult value. Its source, De Wolf et al.
-2012, gives no age for it, and it is not adjusted for age. The age-referenced
-values are Mapleson's MACs at age 40, which § "MAC multiples" compares with the stored
-ones. No equation uses it. It sets the dial's starting position, so each
+**MAC.** The stored MAC is Mapleson's 1996 meta-analytic MAC at age 40:
+1.80% sevoflurane, 1.17% isoflurane and 6.6% desflurane. It is not adjusted for
+age, because the reference adult has no age. No equation uses it. It sets the dial's starting position, so each
 run opens at 1 MAC, and it is the divisor for every value shown in MAC
 multiples. The simulator refuses any agent whose own vaporizer cannot deliver
-its 1 MAC. § "MAC multiples" gives what the stored MAC costs the display.
+its 1 MAC. § "MAC multiples" gives what a MAC at age 40 means for the display.
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 **MAC-awake.** Katoh et al. (1993) determined sevoflurane and isoflurane
 MAC-awake by a slow, equilibrated washout and by a fast one. Slow washout gave
@@ -693,13 +689,13 @@ agent keeps its own value.
 MAC-awake is stored as a fraction of MAC and never as a percent, because a
 published percent is tied to the MAC of its own population. Chortkoff's
 desflurane MAC-awake of 2.60% is 36% of a MAC of about 7.25%, the figure of
-Rampil et al. (1991) for ages 18-30. Dividing 2.60% by the stored 6.0%
-(Rampil's figure for ages 31-65) would give 0.433, and the band would be drawn
-20% too high. At 0.36 of 6.0% the band's center is 2.16%, and Song et al.
-measured 2.17% in a population that Rampil's 31-65 year MAC describes.
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+Rampil et al. (1991) for ages 18-30. Dividing 2.60% by the stored 6.6% would
+give 0.394, and the band would be drawn 9.4% too high. At 0.36 of 6.6% the
+band's center is 2.38%. Song et al. measured 2.17 ± 0.25%, so the center lies
+within one SD of their mean.
 <!-- provenance: data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36 -->
-<!-- derived: 2.16 % from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
+<!-- derived: 0.394 from data/agents/desflurane.json mac_at_age_40_percent = 6.6, mac_awake.fraction_of_mac = 0.36 -->
+<!-- derived: 2.38 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_at_age_40_percent = 6.6 -->
 
 ### The reference adult
 
@@ -894,11 +890,11 @@ For an ordinary control action, the delay matters less than the uncertainty
 in the blood:gas and muscle coefficients does, and more than the uncertainty
 in the vessel-rich and fat coefficients. When a case opens with the dial moved
 from off to 1 MAC, a change that takes effect one second late displaces a
-displayed concentration by up to 0.066 percentage points, for desflurane. In
+displayed concentration by up to 0.073 percentage points, for desflurane. In
 the first hour at 1 MAC, one standard deviation of the blood:gas coefficient
-displaces a displayed compartment by up to 0.082 percentage points, and one of
-the muscle coefficient by up to 0.90. One standard deviation of the
-vessel-rich or fat coefficient displaces one by up to 0.049 or 0.036
+displaces a displayed compartment by up to 0.090 percentage points, and one of
+the muscle coefficient by up to 0.99. One standard deviation of the
+vessel-rich or fat coefficient displaces one by up to 0.054 or 0.040
 percentage points (§ "Precision").
 
 **An abrupt ventilation change is the exception.** A ventilator start that
@@ -908,12 +904,12 @@ coefficient moves a readout in the first hour. The shift fades as the two runs
 converge: it is 1.0 percentage points three seconds after the change and 0.5
 after eight seconds. The figure is desflurane's, with the dial at its 18%
 maximum, the ventilator off for five minutes and ventilation then started at
-12 L/min. It is about a fifth of desflurane's 1 MAC of 6.0%. The same
+12 L/min. It is about a fifth of desflurane's 1 MAC of 6.6%. The same
 maneuver gives 0.59 percentage points for sevoflurane and 0.36 for
 isoflurane.
 <!-- not-restated: 1.3, 12 L/min, 0.36 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 **Above 5× playback, a control change can wait longer than one second.** At
 1× and 5×, a change waits only for the next whole second. At a faster rate the
@@ -921,8 +917,8 @@ program takes several steps at once, so a setting changed during playback
 first acts up to 2 s later at 20×, 6 s at 60× and 30 s at 300×. The same
 slider moves made at two playback rates are therefore different inputs and
 produce different runs. An ordinary dial change costs far less than the worst
-abrupt maneuver: about 20 times less at 1× and 5×, 19 times at 20×, 16 times
-at 60× and about 7 times at 300×, where it reaches 1.5 percentage points.
+abrupt maneuver: about 19 times less at 1× and 5×, 17 times at 20×, 14 times
+at 60× and about 6 times at 300×, where it reaches 1.7 percentage points.
 
 - Each recorded control change carries the simulated second at which it
   acted, so the record is exact to the step at every rate.
@@ -950,14 +946,14 @@ days:
   is still moving.
 - **The fat group's flow** (§ "The fat group's blood flow"), which acts directly on the slow tail of
   washout.
-<!-- not-restated: 2 %, 5 % -->
+<!-- not-restated: 5 % -->
 
 The 24 hours are not inside the exposure range over which sevoflurane's
 metabolism was measured. Kharasch's review covers 0.35 to 9.5 MAC-hours. A run
 whose alveolar fraction is held near 1 MAC gains about one MAC-hour per hour,
 so it leaves the measured range at about 9.5 hours and reaches about 24
 MAC-hours at the limit. Counted at the dial, a run held at sevoflurane's 8%
-maximum reaches at most about 96 MAC-hours. Past the measured range, even the
+maximum reaches at most about 107 MAC-hours. Past the measured range, even the
 size of the omission is unmeasured.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
@@ -1027,35 +1023,22 @@ standardized surgical stimulus.
 
 Three limits apply to every compartment:
 
-1. MAC falls about 6% per decade of age (Mapleson 1996), and the reference
-   adult has no age.
+1. MAC falls about 6% per decade of age (Mapleson 1996). The reference adult
+   has no age, so every run divides by the MAC at age 40.
 2. The MAC multiples of co-administered agents add, and the model runs one
    agent at a time.
 3. Opioids, temperature and patient factors modify MAC, and the model
    represents none of them.
-<!-- not-restated: 6 % -->
 
-**The stored MACs differ from Mapleson's, and the difference distorts a
-comparison of sevoflurane with desflurane.** Mapleson's meta-analysis gives
-values for age 40 with 95% confidence limits of about ±7% (±10% for
-desflurane).
-
-| Agent | Stored MAC | Mapleson age-40 | Displayed MAC multiples read |
-| --- | --- | --- | --- |
-| Sevoflurane | 2.0% | 1.80% | 10% low |
-| Isoflurane | 1.2% | 1.17% | 2.5% low |
-| Desflurane | 6.0% | 6.6% | 10% high |
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
-
-The errors run in opposite directions for sevoflurane and desflurane, so a
-comparison of the two in MAC multiples differs by about 22% between the stored
-MACs and Mapleson's. That is larger than the confidence limits of Mapleson's
-values, so by Mapleson's meta-analysis two agents at "1 MAC" are not
-equipotent to that precision. The shift is constant within an agent and changes no curve's shape
-or timing. The interface displays the divisor, so a reader can compare it with
-the value they would use.
+**The MAC that the MAC-multiple display divides by is a 40-year-old's.** Each
+agent's stored MAC is Mapleson's meta-analytic MAC at age 40 (Br J Anaesth
+1996;76:179-185), with 95% confidence limits of about ±7% (±10% for
+desflurane). A patient older than 40 reaches 1 MAC at a lower concentration
+than the display assumes, and a younger patient at a higher one. Two agents at
+1 MAC each are equipotent only to within those limits. The choice of MAC
+changes no curve's shape or timing. The interface prints the MAC and its age
+beside the chart, so a reader can compare it with the value they would use for
+their own patient.
 
 ### The MAC-awake band and the 1 MAC line
 
@@ -1077,12 +1060,13 @@ time-to-wake-up figure of any kind.
 **Read the band against the vessel-rich trace.** The model has no effect-site
 compartment, so the alveolar trace is the fastest patient trace on the chart
 and the furthest from where responsiveness returns. In one simulation, sevoflurane ran
-for 3 hours at the opening dial of 2.0% and 4 L/min of fresh gas, which
-brought the alveolar fraction to 1.69%, or 0.84 MAC. The vaporizer was then
+for 3 hours at the opening dial of 1.80%, which is the stored 1 MAC, and
+4 L/min of fresh gas. That brought the alveolar fraction only to 1.52%, or
+0.84 MAC. The vaporizer was then
 turned off and the fresh gas flow raised to 10 L/min. The alveolar trace
 crossed the band's center at 2.86 min and the vessel-rich trace at 6.55 min,
 2.29 times later.
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- not-restated: 10 L/min -->
 
@@ -1105,21 +1089,24 @@ A learner who takes away any of these carries into practice the belief that a
 patient is more awake than they are.
 
 **The stored MAC is a fourth source of error in the band's height.** The
-traces are absolute partial pressures and do not depend on MAC, so wherever
-the stored MAC departs from the literature, the band moves against the traces
-in proportion. Against Mapleson's age-40 values, the stored MAC is 11.1% high
-for sevoflurane, 2.6% high for isoflurane and 9.1% low for desflurane. Only
-sevoflurane's gap is larger than Mapleson's confidence limits, so the
-sevoflurane band probably sits about 11% too high, and a band drawn too high
-teaches an earlier wake-up. In the washout run above, the vessel-rich trace
-crosses the drawn center of 0.68% at 6.55 min, and crosses 0.612%, the same
-fraction of Mapleson's 1.80%, at 7.30 min. Katoh's own age-adjusted MAC
-(2.56 − 0.0156 × age percent for sevoflurane, 1.43 − 0.0061 × age for
-isoflurane) gives 1.94% and 1.19% at age 40. The stored MAC is 3.3% and 1.2%
-above those. The drawn centers are 0.68% and 0.372%, against 0.658% and
-0.368%. Both differences are much less than the standard deviation of Katoh's
-fractions, 0.05 of MAC.
-<!-- not-restated: 1.2 %, 0.05 -->
+band is drawn at a fraction of Mapleson's MAC at age 40, whose 95% confidence
+limits are about ±7%, and ±10% for desflurane. The traces are absolute partial
+pressures and do not depend on MAC, so an error in the stored MAC moves the
+band against them by the same proportion. In the washout run above, the
+vessel-rich trace crosses sevoflurane's drawn band center of 0.612% at
+6.55 min. A patient older than 40 has a lower MAC, so the band drawn at the
+MAC at age 40 sits above that patient's own and teaches an earlier wake-up.
+Katoh's own age-adjusted MAC (2.56 − 0.0156 × age percent for sevoflurane,
+1.43 − 0.0061 × age for isoflurane) gives 1.94% and 1.19% at age 40. The
+stored MAC is 7.0% and 1.3% below those, so at age 40 the band sits slightly
+low and teaches a slightly late wake-up. The drawn centers are 0.612% and
+0.363%, against 0.658% and 0.368%. Both differences are much less than the
+standard deviation of Katoh's fractions, 0.05 of MAC.
+<!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
+<!-- derived: 7.0% from data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- derived: 1.3% from data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- derived: 0.612 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_at_age_40_percent = 1.8 -->
+<!-- derived: 0.363 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_at_age_40_percent = 1.17 -->
 
 ### The $`F_A/F_I`$ plot
 
@@ -1175,15 +1162,15 @@ shift of any reading, in percentage points, is:
 
 | Coefficient changed by one SD | In the first hour | Over 24 h |
 | --- | --- | --- |
-| Blood:gas | 0.020 to 0.082 | 0.024 to 0.12 |
-| Vessel-rich tissue:gas | 0.010 to 0.049 | 0.010 to 0.049 |
-| Muscle tissue:gas | 0.15 to 0.90 | 0.21 to 0.95 |
-| Fat tissue:gas | 0.0034 to 0.036 | 0.076 to 0.40 |
+| Blood:gas | 0.020 to 0.090 | 0.024 to 0.13 |
+| Vessel-rich tissue:gas | 0.010 to 0.054 | 0.010 to 0.054 |
+| Muscle tissue:gas | 0.15 to 0.99 | 0.21 to 1.0 |
+| Fat tissue:gas | 0.0034 to 0.040 | 0.074 to 0.44 |
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 Each range covers the three agents, and desflurane always gives the largest
 shift. In the first hour the muscle coefficient alone moves a reading by up to
-90 counts of the last digit. The last digit separates two moments of one run,
+99 counts of the last digit. The last digit separates two moments of one run,
 not two patients. The readouts show two decimals because at one decimal the
 muscle and fat readings stay at `0.0%` while those compartments fill.
 
@@ -1247,7 +1234,6 @@ The figures are mean ± SD, read from the two abstracts.
 | Isoflurane | 0.733 ± 0.027 | n=7 | 0.6% | *Anesth Analg* 1991 |
 | Desflurane | 0.90 ± 0.01 | n=8 | 2.0% | *Anesthesiology* 1991 |
 | Isoflurane | 0.73 ± 0.03 | n=8 | 0.4% | *Anesthesiology* 1991 |
-<!-- not-restated: 2.0 % -->
 
 The model lands inside the published standard deviation for every row, and
 reproduces the ordering by solubility (desflurane above sevoflurane above
@@ -1385,7 +1371,6 @@ on screen as a prediction of how fast a patient recovers.**
    Halothane gave 64 ± 9%, so the method does detect a metabolized agent. At
    five minutes the fourth compartment's term is about one part in twenty of
    what remains.
-<!-- not-restated: 6 % -->
 
 ### What these comparisons can and cannot detect
 
@@ -1449,7 +1434,6 @@ below the measured mean. A higher dial keeps the trace readable for longer. A
 6% desflurane dial keeps it there until about the fifth hour, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the
 shortfall.
-<!-- not-restated: 6 % -->
 
 ### Gas Man in patients
 
@@ -1471,7 +1455,7 @@ FLOW-i and −0.57%/h [−0.85, −0.16] on the Zeus. By phase:
 | FLOW-i (n = 14) | maintenance, 15-60 min | 0% [−7, 5] | 6% [2, 10] |
 | Zeus (n = 14) | wash-in, 0-15 min | 7% [−6, 28] | 13% [6, 32] |
 | Zeus (n = 14) | maintenance, 15-60 min | −1% [−5, 5] | 5% [2, 9] |
-<!-- not-restated: 15 min, 18 %, 6 %, 5 % -->
+<!-- not-restated: 15 min, 18 %, 5 % -->
 
 The brackets are interquartile ranges. A quarter of FLOW-i patients were
 tracked worse than 51% through the first fifteen minutes, against worse than
@@ -1538,7 +1522,6 @@ $`F_v \approx 0`$, for the reference adult.
 | --- | --- | --- | --- | --- |
 | Sevoflurane at 2% | 0.65 | 0.02 | 0.065 L/min | 1.6% |
 | Nitrous oxide at 70% | 0.47 | 0.50 | 1.18 L/min | 29% |
-<!-- not-restated: 2 % -->
 <!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
 <!-- derived: 1.6 percent from data/patients/reference_adult.json default_cardiac_output_l_min = 5, default_alveolar_ventilation_l_min = 4 -->
 <!-- derived: 1.6 percent from data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
@@ -1803,6 +1786,7 @@ The measurements the model is compared with are end-tidal, and MAC is defined
 on the end-tidal concentration, so the comparison is like with like. But there
 is no water anywhere in the model, so no question about airway humidification
 has an answer in it, whether it concerns an HME or a heated humidifier.
+<!-- not-restated: 6.6 % -->
 
 ### Altitude
 
@@ -1811,7 +1795,6 @@ deliver the same partial pressure at a given dial position, so no displayed
 number is wrong there. A user in Denver (about 630 mmHg) or Mexico City (about
 585 mmHg) who sets 6% desflurane in the simulator and 6% on the real device is
 not delivering the same anesthetic, and nothing else in the simulator says so.
-<!-- not-restated: 6 % -->
 
 **Sevoflurane and isoflurane come from variable-bypass vaporizers** (Dräger
 Vapor 2000, Sevotec 5, Isotec 5, Penlon Sigma Delta). The gas leaving the
@@ -1825,7 +1808,7 @@ $`\%_1 = \%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$: isoflurane dialed to
 pressure is small against ambient pressure. Isoflurane's is about 240 mmHg at
 20 °C, and with it carried through, the delivered partial pressure overshoots
 rather than holds steady, by about 16% at 585 mmHg.
-<!-- not-restated: 2 %, 20 °C -->
+<!-- not-restated: 20 °C -->
 
 **Desflurane comes from a gas-vapor blender** (Tec 6, Tec 6 Plus). Desflurane
 boils at 22.8 °C, so the sump is kept at about 39 °C and about 1460 mmHg, and
