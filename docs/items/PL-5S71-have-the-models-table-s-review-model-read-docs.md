@@ -3,12 +3,14 @@ id: PL-5S71
 title: Have the models table's review model read docs/MODEL.md against src/anesthesia_sim/data/ once through the Message Batches API, on the API credits, for statements that contradict a stored value, each other, or a cited unit, and file each confirmed finding: a strongest-model second reading of the clinical specification that no session's budget has covered
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: docs, infra
 feature: api-credit-runs
 touches: tools/, tests/unit/, docs/items, docs/apparatus.md, docs/maintainer.md, docket.toml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-19 triage pass
 added: 2026-10-19
+closed: 2026-11-22
+reason: The owner dropped it on 2026-11-22: PL-RMNP (#2183) already read every section of docs/MODEL.md against the code and data, about 1,950 claims with 62 corrected, and the document is being split by reader, so the paid reading would repeat work already done on a document about to change
 payoff: the clinical specification gets one full reading by the strongest model against the stored values, so a contradiction a learner could be misled by is found and filed rather than left
 verify: grep -qE '^\*\*Findings checked, ' docs/items/PL-5S71-*.md
 not-delegable: The run spends the owner's API credit from the owner's machine, which no session can reach, and each finding has to be confirmed against its cited source by a session before it is filed
@@ -98,3 +100,5 @@ out, and then a session checking and filing each finding.
 **Checked 2026-11-22** against `d4e8200`: needs the owner. `tools/model_doc_review.py`, its test and `docs/maintainer.md` § "Have a strong model read the model document against the data, once" are still in place, and #2198, which dropped the model trial on API credit, did not remove them. The premise has changed, though. `PL-RMNP` (closed 2026-11-21, #2183) read every section of `docs/MODEL.md` against the code and the data files, checked about 1,950 claims and corrected 62 statements. That is the whole-document reading this brief says no session had done. `docs/MODEL.md` is also being split by reader (`PL-6PPZ`, `PL-FWR6`, `PL-48MX`), so the 25 requests the script builds, one per section, would ask about a document that is about to change shape. The owner's ratified decision of 2026-10-25 was to keep the run over dropping it, so ordinary evidence reopens it. Recommended: drop the run, because the reading it was for has been done.
 
 **Decision needed.** Whether to keep the owner's ratified plan (2026-10-25) to spend API credit on one strong-model reading of `docs/MODEL.md` against the data files. Since then `PL-RMNP` read every section against the code and data, about 1,950 claims, and corrected 62 (#2183), and `docs/MODEL.md` is being split by reader. **Recommendation:** drop the run, because the reading it would buy has been done and the document it would read is about to change. Put to the owner on 2026-11-22.
+
+**Answered 2026-11-22.** Drop the run (project owner, 2026-11-22, ratified, "drop item 5", over the 2026-10-25 plan to spend API credit on one strong-model reading of `docs/MODEL.md` against the data files). The reading it would buy was done by `PL-RMNP` (#2183).
