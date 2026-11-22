@@ -22,11 +22,12 @@ from PySide6.QtWidgets import QAbstractButton, QApplication, QLabel, QWidget
 from anesthesia_sim.app import run_presentation as run_presentation_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app import views as views_module
+from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import CONTROL_TIMELINE_HEADING, run_label
-from anesthesia_sim.app.formatting import format_elapsed
+from anesthesia_sim.app.dashboard_frame import CONTROL_TIMELINE_HEADING, run_label, slider_position
+from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_elapsed
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.view_registry import REGISTERED
+from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS, REGISTERED
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
@@ -38,10 +39,12 @@ from tests.integration.simulation_view.simulation_view_support import (
     _advance_to,
     _case_view,
     _concentration,
+    _dials,
     _failing_assembly,
     _fork_panel,
     _no_setting,
     _select_agent,
+    _select_time_base,
     _settle,
     _shown_view,
     _wash_in,
@@ -438,6 +441,123 @@ def test_a_withheld_chart_shows_no_axis_label_of_the_discarded_frame(
     wash_in = _wash_in(view).chart
     assert wash_in.axis_ticks("bottom") == ()
     assert wash_in.time_axis_title == "simulated time"
+
+
+def _chosen_chart(view: SimulationView, area: AreaId) -> views_module.ConcentrationView:
+    """Choose a concentration chart for `area`, and return the View built there."""
+
+    view.layout_container.choose_view(area, CONCENTRATION_CHART)
+    chosen = view.layout_container.frame(area).content
+    assert isinstance(chosen, views_module.ConcentrationView)
+
+    return chosen
+
+
+def _assert_withheld(chart_view: views_module.ConcentrationView) -> None:
+    """Check that a concentration chart shows the withheld state: empty, explained, unlabelled."""
+
+    chart = chart_view.chart
+    assert chart.frame is None
+    assert not chart_view.withheld_text.isHidden(), "the chart does not say why it is empty"
+    assert chart.axis_ticks("left") == ()
+    assert chart.axis_ticks("right") == ()
+    assert not chart._one_mac_line.isVisible()
+    assert not chart._band.isVisible()
+
+
+def test_a_chart_opened_while_frames_fail_at_a_window_never_drawn_is_withheld(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A chart chosen during a halt, at a window that no kept frame has, shows the withheld state.
+
+    The only kept frame is at 15 minutes. A new chart opens at "Fit run",
+    for which no frame was kept. It used to be left as it was built: no
+    trace, a 1 MAC line and a band parked at 0, default numbers under the
+    "%" and "×MAC" axis titles, and no line saying why, under a banner that
+    said the chart showed the last frame (blind review pass 3, F1).
+    """
+
+    view = _shown_view(application, _run_at(_COMPARED_AT_S))
+    _select_time_base(view, "900.0")
+    view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
+    _settle(application)
+    assert view.layout_container.frame_requests().keys() == {time_base_for_span(900.0)}
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+    assert view.runs[0].controller.has_failed is True
+
+    chosen = _chosen_chart(view, AreaId(2))
+    _settle(application)
+
+    _assert_withheld(chosen)
+    banner = view.runs[0]._notice_text.notice()
+    assert banner is not None
+    assert "the chart and the readouts show the last frame" not in banner
+
+
+def test_a_chart_opened_while_frames_fail_never_draws_a_frame_sampled_for_a_narrower_plot(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A kept frame sampled for a narrower plot is withheld from a chart that opens during a halt.
+
+    With no chart shown, the frame is sampled at the narrowest width. A chart
+    opened while frames fail used to draw that frame, with chords several
+    pixels wide, which breaks the one-pixel chord rule in `docs/INTERFACE.md`
+    (blind review pass 3, F2).
+    """
+
+    view = _shown_view(application, _run_at(_COMPARED_AT_S))
+
+    for area in (AreaId(1), AreaId(3)):
+        view.layout_container.choose_view(area, PARAMETER_CONTROLS)
+
+    _settle(application)
+    view.present(False)
+    assert view.layout_container.frame_requests() == {}
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+    assert view.runs[0].controller.has_failed is True
+
+    chosen = _chosen_chart(view, AreaId(1))
+    _settle(application)
+
+    assert chosen.chart.frame is None, "the chart drew a frame sampled for a narrower plot"
+    _assert_withheld(chosen)
+
+
+def test_a_halt_while_a_thumb_is_held_leaves_no_preview_on_any_chart(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A preview drawn before a halt is not kept, because the halted run refuses that setting.
+
+    The kept frame used to carry the held drag's preview trace and label.
+    So after the halt, and after the release, each chart went on showing a
+    predicted future for a setting that the stopped run would refuse (blind
+    review pass 3, F3).
+    """
+
+    view = _shown_view(application, _run_at(_FORK_S))
+    control = _dials(view.runs[0])._fresh_gas_flow_slider
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(slider_position(6.0, FLOW_DISPLAY_DECIMALS))
+    view.render_tick()
+    assert _concentration(view).chart.preview_label(0) is not None
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.present(False)
+    _settle(application)
+
+    assert view.runs[0].controller.has_failed is True
+
+    for chart in (_concentration(view).chart, _wash_in(view).chart):
+        assert chart.preview_label(0) is None, "a chart kept the preview of a refused setting"
+
+    control.slider.setSliderDown(False)
+    _settle(application)
+    chosen = _chosen_chart(view, AreaId(2))
+    _settle(application)
+
+    assert chosen.chart.frame is None, "a chart opened after the halt drew the kept preview"
 
 
 # ------------------------------------------------- PL-G2WC: values under their run

@@ -515,7 +515,9 @@ def test_a_halt_s_banner_says_the_charts_are_withheld_only_when_they_are() -> No
     assert charts_kept.notice is not None
     assert charts_withheld.notice is not None
     assert started_over.notice is not None
-    assert "the chart and the readouts show the last frame drawn" in charts_kept.notice
+    assert "the readouts and every chart that still has a plot show the last frame" in (
+        charts_kept.notice
+    )
     assert (
         "the readouts show the last frame drawn before it stopped, the charts are withheld"
         in charts_withheld.notice

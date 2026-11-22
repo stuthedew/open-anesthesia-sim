@@ -243,12 +243,17 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # misreading that the hazard table in `docs/VERIFICATION.md` names. The first frame that
 # draws replaces this banner with `FAILURE_NOTICE_TEMPLATE`. Which
 # of the two banners is shown is therefore decided by whether a frame drew, not
-# guessed from the reason (`PL-7DJK`). This banner is given only while each
-# chart keeps its last frame (`CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE`).
+# guessed from the reason (`PL-7DJK`). A chart can still be withheld while the
+# readouts are kept, for example a chart chosen during the halt at a window that
+# no frame was kept for (`views._withholds`). So the banner speaks only of each
+# chart that still has a plot, and the withheld chart says why it is empty. When
+# every chart is withheld, `CHARTS_WITHHELD_UNDRAWN_FAILURE_NOTICE_TEMPLATE` is
+# given instead (blind review of `PL-RF2S`, pass 3). The wording is a
+# placeholder.
 UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. No frame of the stopped run could be drawn: "
-    "the chart and the readouts show the last frame drawn before it stopped, and the "
-    "run itself stands at its last completed step. {exit}"
+    "the readouts and every chart that still has a plot show the last frame drawn "
+    "before it stopped. The run itself stands at its last completed step. {exit}"
 )
 # The failure banner for a halt when no frame has been drawn since the run started
 # over after a Reset or an agent change. The last frame then belongs to the run
@@ -265,8 +270,9 @@ STARTED_OVER_UNDRAWN_FAILURE_NOTICE_TEMPLATE: Final = (
 )
 # The failure banner for a halt when no frame has been drawn for the runs the
 # charts show now, although the run itself has not started over. A branch was
-# taken, the reader chose a Workspace that shows other runs, or no frame has
-# been drawn at all. The readouts are still the run's last frame, but
+# taken, the reader chose a Workspace that shows other runs, no frame has been
+# drawn at all, or the last frame showed the preview of a dial held at the
+# halt. The readouts are still the run's last frame, but
 # each chart withholds its frame, because that frame drew another set of runs
 # (`run_presentation.kept_frames_match`, blind review of `PL-RF2S`). So the
 # banner says that the charts are withheld rather than that they show the last
@@ -1360,14 +1366,13 @@ WITHHELD_DELIVERED_LINE_TEXT: Final = DELIVERED_LINE_TEMPLATE.format(
 #: be built, in place of that run's four dials (`PL-SV2Q`). The wording is a
 #: placeholder.
 SETTING_CONTROLS_NOT_SHOWN_TEXT: Final = "This run's setting controls cannot be shown."
-#: What a chart shows in place of its plot when its frame is withheld: the run
-#: started over, or a run was removed, and no frame has been drawn since
-#: (`run_presentation.shown_without_a_frame`, `PL-RF2S`). The plot is empty, so
+#: What a chart shows in place of its plot when its frame is withheld: the runs
+#: it shows changed or started over, no frame was kept for its window or its
+#: width, or the kept frame held a preview, and no frame can be drawn now
+#: (`run_presentation.shown_without_a_frame`, `views._withholds`, `PL-RF2S`). The plot is empty, so
 #: no trace of the discarded run and no line of another agent stays on it. The
 #: wording is a placeholder.
-WITHHELD_FRAME_TEXT: Final = (
-    "Nothing is plotted, because no frame could be drawn for the runs as they stand now."
-)
+WITHHELD_FRAME_TEXT: Final = "Nothing is plotted, because no frame could be drawn for this chart."
 #: What the legend's 1 MAC and MAC-awake entries show while the chart's frame is
 #: withheld. Both values are the agent's, and after an agent change the last
 #: frame's are the old agent's.

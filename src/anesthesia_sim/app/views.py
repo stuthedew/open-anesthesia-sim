@@ -38,9 +38,12 @@ window, such as which traces are above the axis, from its own frame, one line
 per run. On a tick that draws no frame, the tick gives each chart the last
 frame drawn for its window as kept or as withheld (`run_presentation.ShownFrame`).
 A chart that already shows the kept frame changes nothing. A chart that does
-not yet show it, such as one chosen while no frame can be drawn, draws it. A
-withheld frame empties the plot, the clinical references and the lines, and
-says why (`dashboard_frame.WITHHELD_FRAME_TEXT`, `PL-RF2S`).
+not yet show it, such as one chosen while no frame can be drawn, draws it,
+unless the frame was sampled for a narrower plot. A withheld frame empties the
+plot, the clinical references, the axis labels and the lines, and says why
+(`dashboard_frame.WITHHELD_FRAME_TEXT`, `PL-RF2S`). So does a chart that holds
+no frame and is handed none, and a kept frame too coarse for its plot
+(`_withholds`).
 
 These classes compute nothing that a reader interprets. Every caption comes
 from `app/dashboard_frame.py`, or for the schematic from
@@ -538,6 +541,43 @@ class _KeyScroll(QScrollArea):
         self.updateGeometry()
 
 
+def _withholds(shown: ShownFrame | None, drawn: ChartFrame | None, width_px: float) -> bool:
+    """Whether a chart shows the withheld state on this tick: an empty plot that says why.
+
+    A withheld frame is always withheld. A kept frame is withheld from a
+    chart in two more cases (blind review of `PL-RF2S`, pass 3):
+
+    1. No frame was kept for the chart's window, and the chart holds no
+       frame, as when it was chosen during a halt. Left as built, it would
+       show a 1 MAC line and band at 0 and default numbers under its axis
+       titles.
+    2. The chart does not show the kept frame yet, and that frame was
+       sampled for a narrower plot than this one. Drawn here, its chords
+       would be wider than a pixel (`PL-GS3R`). The frame sampled while no
+       chart is shown is the narrowest.
+
+    A chart that holds a frame and is handed no kept frame for its window
+    keeps its plot, and its control names the window that plot shows
+    (`PL-G3K7`).
+
+    Args:
+        shown: The tick's frame for the chart's window, or None.
+        drawn: The frame the chart shows now, or None.
+        width_px: The width of the chart's plot, in logical pixels.
+    """
+
+    if shown is None or shown.standing is ValuesStanding.DRAWN:
+        return False
+
+    if shown.standing is ValuesStanding.WITHHELD:
+        return True
+
+    if shown.frame is None:
+        return drawn is None
+
+    return shown.frame is not drawn and width_px > shown.frame.plot_width_px
+
+
 def _frame_to_draw(shown: ShownFrame | None, drawn: ChartFrame | None) -> ChartFrame | None:
     """Return the frame a chart must draw from `shown`, or None where it draws nothing.
 
@@ -665,12 +705,13 @@ class ConcentrationView(QWidget):
         deleting the lines of runs that the tick no longer names. A withheld
         frame empties the plot and the references, deletes every run's
         lines, names the runs the tick holds now, and shows why
-        (`run_presentation.shown_without_a_frame`).
+        (`run_presentation.shown_without_a_frame`). A kept frame is withheld
+        in the same way in the cases that `_withholds` names.
         """
 
         shown = tick.frame
 
-        if shown is not None and shown.standing is ValuesStanding.WITHHELD:
+        if _withholds(shown, self.chart.frame, self.chart.plot_width_px()):
             self._withhold(tick)
             return
 
@@ -801,7 +842,7 @@ class WashInView(QWidget):
 
         shown = tick.frame
 
-        if shown is not None and shown.standing is ValuesStanding.WITHHELD:
+        if _withholds(shown, self.chart.frame, self.chart.plot_width_px()):
             self.chart.withhold()
             self.withheld_text.setHidden(False)
 

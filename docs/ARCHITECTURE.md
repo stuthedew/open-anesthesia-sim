@@ -957,7 +957,11 @@ from the same rule (`kept_frames_match`). The frames are kept as soon as every
 View has drawn them, before any run's own panel is written, because a panel
 that refuses the frame has already written its readouts from it. So the charts
 and the readouts keep the same frame. A tick in a Workspace pinned to a run
-that is not open keeps no frame.
+that is not open keeps no frame, and a halt keeps no frame that shows a held
+dial's preview (`kept_on_a_halt`). A chart that does not show the kept frame
+yet is withheld instead of drawing it when no frame was kept for its window
+and it holds none, or when the frame was sampled for a narrower plot
+(`views._withholds`).
 The tick carries no run's snapshot. A value every displayed run shares, such
 as the MAC-awake band's published fraction, is read from the frame, which
 refuses runs on two agents. A tick with no frame still carries

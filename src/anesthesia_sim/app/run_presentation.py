@@ -564,6 +564,30 @@ def kept_frames(
     return KeptFrames(run_cases(runs), selection, MappingProxyType(dict(frames)))
 
 
+def kept_on_a_halt(kept: KeptFrames | None) -> KeptFrames | None:
+    """Return the kept frames that a halt may go on showing, or None where it may show none.
+
+    A frame drawn while a reader held a dial carries that run's preview: the
+    trajectory the run would take under the setting being dragged. A halted
+    run refuses every setting, so after the halt the preview predicts a
+    future that cannot happen. The frame is assembled with the preview's
+    window, so the preview cannot simply be left out of it. So every frame
+    is dropped, each chart is withheld, and the banner says so (blind review
+    of `PL-RF2S`, pass 3).
+
+    Args:
+        kept: The frames of the last tick that drew, or None.
+    """
+
+    if kept is None:
+        return None
+
+    if any(run.preview is not None for frame in kept.frames.values() for run in frame.runs):
+        return None
+
+    return kept
+
+
 def kept_frames_match(kept: KeptFrames | None, cases: tuple[tuple[RunId, int], ...]) -> bool:
     """Whether the kept frames were drawn from these runs, in this order, with none started over.
 

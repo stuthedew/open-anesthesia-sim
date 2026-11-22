@@ -1083,9 +1083,9 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
     assert notice(failed, refused, branch_offered=True) == notice(failed, refused)
     assert halt_notice(failed, refused) == (
         "Simulation stopped — SimulationNumericalError: boom. No frame of the stopped run "
-        "could be drawn: the chart and the readouts show the last frame drawn before it "
-        f"stopped, and the run itself stands at its last completed step. {refused}. "
-        f"{reset_keeps}"
+        "could be drawn: the readouts and every chart that still has a plot show the last "
+        "frame drawn before it stopped. The run itself stands at its last completed step. "
+        f"{refused}. {reset_keeps}"
     )
     assert notice(failed, refused, refused_reset=refused_reset) == (
         "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "

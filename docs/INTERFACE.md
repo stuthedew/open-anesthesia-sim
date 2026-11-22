@@ -2428,18 +2428,25 @@ card therefore withholds its percent and ×MAC number ("—%", "— ×MAC") unde
 new run's heading and 1 MAC line. The clock reads "—", and the accounting panel
 shows no verdict or amounts. Each chart shows an empty plot, with no trace, no
 1 MAC line and no MAC-awake band, and a line above the plot says that nothing
-is plotted because no frame could be drawn for the runs as they stand now. The
+is plotted because no frame could be drawn for that chart. The
 legend's 1 MAC and MAC-awake entries read "—", and the axes lose their labels.
 The banner says that the readouts and the charts are withheld.
 
 **If the runs the charts show change, and the runs stop before the screen is
 redrawn**, the charts withhold their frame in the same way, because it was
 drawn for other runs. A branch taken while frames fail does this, and so does
-a Workspace that shows other runs, or a halt before any frame was drawn. A run
-that has not started over keeps its readouts, and its banner says that the
-readouts show the last frame drawn and that the charts are withheld. After any
-other halt, each chart keeps the last frame it drew, which is the frame that
-the readouts show.
+a Workspace that shows other runs, or a halt before any frame was drawn. So
+does a halt while a dial is held, because the last frame shows the held
+setting's preview, which the stopped run will refuse. A run that has not
+started over keeps its readouts, and its banner says that the readouts show the
+last frame drawn and that the charts are withheld.
+
+After any other halt, each chart keeps the last frame it drew, which is the
+frame that the readouts show, and the banner says that the readouts and every
+chart that still has a plot show the last frame. A chart chosen during such a
+halt draws that frame too. It is withheld instead when no frame was kept for
+its window, or when the kept frame was sampled for a narrower plot, so that
+its lines between drawn instants could be wider than a pixel.
 
 **After a step fails its accounting check**, the accounting panel shows
 "Validation failed" with that step's totals. If the screen is not redrawn after

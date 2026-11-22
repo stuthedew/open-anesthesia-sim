@@ -168,6 +168,7 @@ from anesthesia_sim.app.run_presentation import (
     KeptFrames,
     kept_frames,
     kept_frames_match,
+    kept_on_a_halt,
     shown_drawn,
     shown_without_a_frame,
 )
@@ -2560,6 +2561,10 @@ class SimulationView(QWidget):
         """
 
         self._halting_every_run = True
+        # A kept frame that shows a held dial's preview is dropped before any
+        # run shows its halt, so that each banner says the charts are withheld
+        # (`run_presentation.kept_on_a_halt`).
+        self._kept_frames = kept_on_a_halt(self._kept_frames)
 
         try:
             for run in self._runs:
