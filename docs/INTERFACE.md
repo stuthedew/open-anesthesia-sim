@@ -2454,6 +2454,8 @@ While two or more runs are drawn, each of these places names its run in text:
 6. The heading over each run's compartment schematic, taken from the name on
    the run's own panel.
 7. The heading over each run's agent cost panel, in the same way.
+8. The line above each run's row of dials in the setting controls view, in the
+   same way (`PL-CPF2`).
 
 With only one run drawn, the hover readout, the chart's advisory lines, the
 two record panels' headings and the banner show no run name.

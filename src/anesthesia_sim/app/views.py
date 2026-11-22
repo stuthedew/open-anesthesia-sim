@@ -862,11 +862,17 @@ class RunDials(QWidget):
     another run's presentation. Its dials would then show one run's settings
     and change another's.
 
+    While runs are compared, a line above the dials names the run, with the
+    name that the chart's legend and the other panels use. A lone run is not
+    named. The name is written from the presentation on every tick, so it
+    changes with the run set (`PL-CPF2`).
+
     Args:
         run_id: The run whose settings the dials show and ask to change.
         requests: How the View asks the dashboard for a change.
 
     Attributes:
+        name_text: The run's name, hidden while one run is drawn.
         controls: The four dials, or None while they cannot be shown.
         not_shown_text: The line shown in the dials' place.
     """
@@ -876,6 +882,8 @@ class RunDials(QWidget):
         self._run_id = run_id
         self._requests = requests
         self.controls: ParameterControls | None = None
+        self.name_text = styled_label("", color=INK, bold=True)
+        self.name_text.setHidden(True)
         self.not_shown_text = styled_label(
             SETTING_CONTROLS_NOT_SHOWN_TEXT,
             color=MUTED,
@@ -886,10 +894,11 @@ class RunDials(QWidget):
         self.not_shown_text.setHidden(True)
         self._column = QVBoxLayout(self)
         self._column.setContentsMargins(0, 0, 0, 0)
+        self._column.addWidget(self.name_text)
         self._column.addWidget(self.not_shown_text)
 
     def show_dials(self, run: RunPresentation) -> None:
-        """Write the four dials from `run.dials`, or delete them and show the line in their place.
+        """Write the run's name, then the four dials from `run.dials` or the line in their place.
 
         Args:
             run: The presentation of the run that this row was built for.
@@ -905,6 +914,8 @@ class RunDials(QWidget):
                 f"{run_label(self._run_id)}: each row of dials shows the run it was built for"
             )
 
+        self.name_text.setText(run.name or "")
+        self.name_text.setHidden(run.name is None)
         dials = run.dials
 
         if isinstance(dials, NotBuilt):

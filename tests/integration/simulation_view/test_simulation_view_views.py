@@ -165,6 +165,56 @@ def test_the_views_name_each_run_while_two_are_drawn_and_only_then(
     assert _runs_named_in_the_views(view) == lone
 
 
+def _runs_named_on_the_dials(view: SimulationView) -> list[str | None]:
+    """What each row of the first setting controls View calls its run, or None if it names none."""
+
+    return [
+        None if row.name_text.isHidden() else row.name_text.text()
+        for row in _setting_controls(view).rows
+    ]
+
+
+@pytest.mark.parametrize("frames_fail", [False, True], ids=["frames draw", "every frame fails"])
+def test_each_row_of_dials_names_its_run_while_two_are_drawn_and_only_then(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, frames_fail: bool
+) -> None:
+    """Each row of dials names its run once a branch is drawn, and no row names one after Reset.
+
+    While two runs were compared, the setting controls View showed two rows
+    of dials, and only their order said which run each belonged to
+    (`PL-CPF2`). A row names its run from the run's presentation on every
+    tick, as the other Views do. So the names follow a change to the run set
+    whether or not a frame can be drawn. The names are written out by hand,
+    as the chart's legend and the other panels call the two runs.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    assert _runs_named_on_the_dials(view) == [None]
+
+    if frames_fail:
+        monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.add_run(case.fork_here())
+    view.render_tick()
+    _settle(application)
+
+    assert case.trunk.has_failed is frames_fail
+    assert _runs_named_on_the_dials(view) == ["Run 1", "Run 2"]
+
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+
+    if dialog is not None:
+        dialog.discard_button.click()
+
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert _runs_named_on_the_dials(view) == [None]
+
+
 def _run_widgets_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple[QWidget, ...]]]:
     """Each View that shows something for each run, with the View and its widget for each run."""
 
