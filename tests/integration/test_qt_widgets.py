@@ -438,6 +438,46 @@ def test_a_flow_layout_wraps_at_its_width_and_lays_nothing_outside_it(
     host.close()
 
 
+class _OneLineLabel(QLabel):
+    """Words that wrap, and that ask for the width of one line."""
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        width = self.fontMetrics().horizontalAdvance(self.text()) + 1
+
+        return QSize(width, self.heightForWidth(width))
+
+
+def test_a_flow_layout_gives_an_item_wider_than_the_row_the_row_s_width(
+    application: QApplication,
+) -> None:
+    """`PL-K4CZ`: words wider than the row wrap inside it, rather than running past its edge.
+
+    The MAC-awake legend entry is such an item. It keeps to one line in a
+    wide row and wraps in a narrow one.
+    """
+
+    host = QWidget()
+    flow = FlowLayout(horizontal_spacing=16, vertical_spacing=6, parent=host)
+    label = _OneLineLabel("a band of words that is wider than the row it sits in " * 2)
+    label.setWordWrap(True)
+    flow.addWidget(label)
+    one_line = label.sizeHint()
+    narrow = one_line.width() // 3
+
+    assert flow.heightForWidth(one_line.width()) == one_line.height()
+    assert flow.heightForWidth(narrow) == label.heightForWidth(narrow)
+    assert flow.heightForWidth(narrow) > one_line.height()
+
+    host.resize(narrow, flow.heightForWidth(narrow))
+    host.show()
+    application.processEvents()
+
+    assert label.geometry().x() == 0
+    assert label.geometry().width() == narrow
+    assert label.geometry().height() == label.heightForWidth(narrow)
+    host.close()
+
+
 def test_a_readout_row_refuses_the_wrong_number_of_readouts(application: QApplication) -> None:
     row = _row(application, 1400)
 

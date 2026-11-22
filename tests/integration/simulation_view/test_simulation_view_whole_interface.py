@@ -80,12 +80,16 @@ def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio(
 def test_the_screen_states_the_band_fraction_and_the_divisor_for_every_agent(
     application: QApplication,
 ) -> None:
-    """`PL-F52R`: both free parameters are named on screen, for every agent."""
+    """`PL-F52R`: both free parameters are named on screen, for every agent.
+
+    Each one may be part of a longer string, because the legend entries for
+    the band and the 1 MAC line state them (`PL-K4CZ`).
+    """
 
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
         view = _shown_view(application, SimulationController(agent_id=agent_id))
-        strings = _visible_strings(view)
+        joined = "\n".join(_visible_strings(view))
 
         assert (
             format_mac_awake_reference(
@@ -94,9 +98,9 @@ def test_the_screen_states_the_band_fraction_and_the_divisor_for_every_agent(
                 standard_deviation_fraction_of_mac=agent.mac_awake.standard_deviation_fraction_of_mac,
                 mac_percent=agent.mac_percent,
             )
-            in strings
+            in joined
         )
-        assert format_mac_reference(agent.display_name, agent.mac_percent) in strings
+        assert format_mac_reference(agent.display_name, agent.mac_percent) in joined
 
 
 def test_the_interface_says_which_trace_the_band_is_read_against(application: QApplication) -> None:
@@ -136,7 +140,7 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
     joined = " ".join(sorted(strings))
     assert "1 MAC sevoflurane = 2.0%" in joined
     assert "read against vessel-rich trace" in joined
-    assert "1 MAC, reference adult (alveolar)" in joined
+    assert "1 MAC sevoflurane = 2.0%, reference adult (alveolar, wide dash)" in joined
     assert "Compartments:" in joined
     assert "Clinical references:" in joined
     assert "Run record:" in joined

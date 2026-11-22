@@ -565,7 +565,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "is filled in BACKGROUND (`view_chooser_stylesheet`, PL-RBXL Q1). Also "
         "the current Workspace's tab label in bold, an inactive tab's label and "
         "the '+' under the pointer, and the 1px edge a tab carries with the "
-        "keyboard focus (`workspace_tab_stylesheet`, `WorkspaceTab`, PL-QW1Z Q2)",
+        "keyboard focus (`workspace_tab_stylesheet`, `WorkspaceTab`, PL-QW1Z Q2). "
+        "Also the ring that marks the keyboard focus on the page's scroll area "
+        "and the control-change record's (`FocusRing`, PL-63FQ)",
     ),
     Requirement(
         "INK",
@@ -586,7 +588,15 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the Area header's PANEL surface (`ViewChooser`, `AreaFrame`, PL-RBXL, "
         "PL-MS34), the 1px edge it carries with the keyboard focus "
         "(`view_chooser_stylesheet`), and every entry of the menu it opens "
-        "(`menu_stylesheet`). Also the "
+        "(`menu_stylesheet`). Also a pressed transport button, drawn in "
+        "reverse with its PANEL label on an INK fill, the same pair "
+        "(`transport_button_stylesheet`, PL-CXYV). Also the ring that marks "
+        "the keyboard focus on a "
+        "slider, a selector, a run button, the scroll area that holds a View "
+        "or a chart's "
+        "key, and a list in the Bookmarks View (`FocusRing`, PL-63FQ), a "
+        "graphical object needing SC 1.4.11's 3:1, met by the text minimum "
+        "here. Also the "
         "six compartment checkboxes that show and hide the chart's traces "
         "(`TraceLegend`), whose label is INK text while that trace is drawn and "
         "MUTED while it is hidden - `_on_toggled` is the one writer of that. "
@@ -854,7 +864,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the agent name over its ISO 5360 identification color, in all three "
         "places it is drawn: the header badge's subtitle (`_subtitle_text`), "
-        "the selector while the run is stopped or paused (`_agent_dropdown`), "
+        "the selector while the run is stopped or paused (`_agent_dropdown`) "
+        "with the ring it draws inside its edge in the same colour while it has "
+        "the keyboard focus (`FocusRing`, PL-63FQ), "
         "and the static chip that stands in the selector's place while it is "
         "going (`_running_agent_display`, whose name and lock caption are "
         "`_running_agent_text` and `_running_agent_lock_text`). All three are "
@@ -874,7 +886,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the agent name over its ISO 5360 identification color, in all three "
         "places it is drawn: the header badge's subtitle (`_subtitle_text`), "
-        "the selector while the run is stopped or paused (`_agent_dropdown`), "
+        "the selector while the run is stopped or paused (`_agent_dropdown`) "
+        "with the ring it draws inside its edge in the same colour while it has "
+        "the keyboard focus (`FocusRing`, PL-63FQ), "
         "and the static chip that stands in the selector's place while it is "
         "going (`_running_agent_display`, whose name and lock caption are "
         "`_running_agent_text` and `_running_agent_lock_text`). All three are "
@@ -894,7 +908,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the agent name over its ISO 5360 identification color, in all three "
         "places it is drawn: the header badge's subtitle (`_subtitle_text`), "
-        "the selector while the run is stopped or paused (`_agent_dropdown`), "
+        "the selector while the run is stopped or paused (`_agent_dropdown`) "
+        "with the ring it draws inside its edge in the same colour while it has "
+        "the keyboard focus (`FocusRing`, PL-63FQ), "
         "and the static chip that stands in the selector's place while it is "
         "going (`_running_agent_display`, whose name and lock caption are "
         "`_running_agent_text` and `_running_agent_lock_text`). All three are "

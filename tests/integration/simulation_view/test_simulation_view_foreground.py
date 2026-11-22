@@ -85,6 +85,14 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "that `declare_application_colours` sets reaches it, which is the "
         "project owner's decision in PL-KRZW."
     ),
+    "FocusRing": (
+        "the ring a control draws while it has the keyboard focus "
+        "(`qt_widgets.FocusRing`, `PL-63FQ`). It draws no text and fills no "
+        "surface. Its pen is INK, or the agent foreground that the agent "
+        "selector's style sheet sets, and contrast_check measures each of those "
+        "on the surface the ring is drawn on. It is never painted from the "
+        "foreground role."
+    ),
     "_SettingSlider": (
         "the four setting sliders, each a `QSlider` (`PL-57LD`). Each draws "
         "no text - the value beside it is a label of its own - and "

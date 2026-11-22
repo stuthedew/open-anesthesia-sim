@@ -159,6 +159,7 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import (
+    FocusRing,
     NewCaseDialog,
     NoticeLabel,
     ReadoutRow,
@@ -186,12 +187,14 @@ from anesthesia_sim.app.stylesheets import (
 from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
     AGENT_SELECTOR_WIDTH,
+    CONTROL_BORDER_WIDTH,
     CONTROL_ROW_SPACING,
     CONTROL_TIMELINE_ROW_SPACING,
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
     PANEL_PADDING,
+    PANEL_RADIUS,
     PLAYBACK_RATE_SELECTOR_WIDTH,
     READOUT_HEADING_SPACING,
     READOUT_SECTION_SPACING,
@@ -488,9 +491,11 @@ class RunView(QWidget):
         self._reset_button = QPushButton(RESET_LABEL)
 
         # The transport's colours are the interface's own, not the host
-        # appearance's (`PL-DHBX`). `transport_button_stylesheet` explains why.
+        # appearance's (`PL-DHBX`). `transport_button_stylesheet` explains why,
+        # and why each button also carries a focus ring (`PL-CXYV`).
         for button in (self._start_button, self._pause_button, self._reset_button):
             button.setStyleSheet(transport_button_stylesheet())
+            FocusRing(button, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH)
 
         self._write_transport(self._transport_lock(snapshot))
         self._start_button.clicked.connect(self._handle_start)
