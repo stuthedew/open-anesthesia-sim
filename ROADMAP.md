@@ -36,11 +36,12 @@ The accounting panel and the schematic name the 20 °C and 1 atm at which an
 agent amount is stated, and the agent cost View says on its face that its
 figures are modelled. Every shipped Workspace fits the window without a page
 scroll, and the bookmarks and the branch control are Views. The release has
-141 items. It is a patch on both halves of the patch test in § "Versioning
+146 items. It is a patch on both halves of the patch test in § "Versioning
 decision": the schematic milestone is not finished, and v0.7.0 is given to a
 milestone section, so no patch release may take that number. v0.6.19 finishes
-six features: `copy-editor`, `effort-trial`, `interface-provenance-adoptions`,
-`owner-ask-by-state`, `prose-quality` and `roadmap-structure`.
+seven features: `copy-editor`, `doc-consistency-checks`, `effort-trial`,
+`feature-registry`, `owner-ask-by-state`, `prose-quality` and
+`roadmap-structure`.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
 has cleared and the project owner has test-driven `main`. The Required scope
@@ -53,8 +54,8 @@ model parameter changed:**
 
 | Tree | v0.6.18 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `6da93f5` | `51a72e2` | `core/` as below; `app/`'s playback, branching and chart in whole seconds (`#2180`), the 20 °C and 1 atm labels (`#2136`), the Workspaces fitting the window (`#2134`), and three look and wording fixes (`#2206`) |
-| `src/anesthesia_sim/core/` | `a72bd99` | `6934bc7` | the one-second step and the stored states (`#2180`), every rounding bound in one module (`#2121`), blood flow as a checked type (`#2114`), and checked records that re-run their checks when rebuilt (`#2166`) |
+| `src/` | `6da93f5` | `77c9596` | `core/` as below; `app/`'s playback, branching and chart in whole seconds (`#2180`), the 20 °C and 1 atm labels (`#2136`), the Workspaces fitting the window (`#2134`), three look and wording fixes (`#2206`), and section citations in comments (`#2211`) |
+| `src/anesthesia_sim/core/` | `a72bd99` | `8c64b67` | the one-second step and the stored states (`#2180`), every rounding bound in one module (`#2121`), blood flow as a checked type (`#2114`), checked records that re-run their checks when rebuilt (`#2166`), and one section citation in a comment (`#2211`) |
 | `src/anesthesia_sim/data/` | `9f4943e` | `21784c0` | the Maintenance Workspace's Area sizes (`#2134`) and source notes; no model parameter |
 | `tests/reference/` | `545a009` | `b5db82d` | moved to the one-second step (`#2180`), and new tests of the figures `docs/MODEL.md` quotes (`#2154`, `#2165`) |
 
@@ -258,7 +259,7 @@ so no release's notes name it (`PL-KRS6`).
 | v0.6.16 | Completed | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
 | v0.6.17 | Completed | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
 | v0.6.18 | Completed | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
-| v0.6.19 | Completed / current baseline | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 141 items | `PL-572Q` |
+| v0.6.19 | Completed / current baseline | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 146 items | `PL-572Q` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.

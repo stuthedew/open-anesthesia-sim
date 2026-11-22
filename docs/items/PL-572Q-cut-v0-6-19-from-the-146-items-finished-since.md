@@ -1,13 +1,13 @@
 ---
 id: PL-572Q
-title: Cut v0.6.19 from the 141 items finished since v0.6.18
+title: Cut v0.6.19 from the 146 items finished since v0.6.18
 status: untriaged
 resource: release-train
 added: 2026-11-22
 verify: grep -qF '## Current baseline: v0.6.19' ROADMAP.md
 ---
 
-**Problem.** Cut v0.6.19 from the 141 items finished since v0.6.18
+**Problem.** Cut v0.6.19 from the 146 items finished since v0.6.18
 
 **The cut, 2026-11-22.** The version is 0.6.19 and the notes are in
 `docs/releases/v0.6.19.md`, with 134 items stamped. The first cut ran on a
@@ -50,3 +50,19 @@ comparison stands.
 gate entries, `PL-PX7N` and `PL-4G3N`, so the cut is 141 items and the gate
 stands at 173 of 200 cleared, 6 open for it and 21 deferred. `#2212` changed
 `README.md` and documents only.
+
+**Third re-cut, 2026-11-22.** Two merges landed while the closed cut waited
+on CI. `#2205` closed `PL-Q3BN` and `PL-LRWK` and merged 58 near-duplicate
+features, so four item files conflicted on their `feature:` line. Each
+conflict took `main`'s feature and kept the `milestone: v0.6.19` stamp.
+`#2211` closed `PL-GC7Z`, `PL-LPCB` and `PL-Q2DK` and corrected section
+citations in comments under `src/`, one of them in
+`core/supported_ranges.py`, so the tree table's `src/` and `core/` hashes
+moved. The re-cut has 146 items and finishes seven features: `copy-editor`,
+`doc-consistency-checks`, `effort-trial`, `feature-registry`,
+`owner-ask-by-state`, `prose-quality` and `roadmap-structure`.
+`interface-provenance-adoptions` no longer finishes here, because the registry
+folded it into `interface-areas`. Each of the eight files `#2211` changed under `src/`
+parses to the same syntax tree once docstrings are removed, so only comments
+and docstrings changed. Neither merge changed a file under `tests/reference/`
+or `src/anesthesia_sim/data/`, so the trajectory comparison stands.
