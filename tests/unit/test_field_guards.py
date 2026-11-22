@@ -44,7 +44,9 @@ def _strings(node: ast.expr, constants: dict[str, ast.expr]) -> list[str] | None
     """Return the strings that `node` stands for, or `None` if it holds anything else.
 
     `node` is a string, a tuple, list or set of strings, a `frozenset` of
-    one of those, or the name of a module-level constant holding one of them.
+    one of those, a dict whose keys are strings, or the name of a
+    module-level constant holding one of them. A guard that tests `name in`
+    a dict tests the dict's keys.
     """
 
     if isinstance(node, ast.Name) and node.id in constants:
@@ -61,6 +63,9 @@ def _strings(node: ast.expr, constants: dict[str, ast.expr]) -> list[str] | None
 
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return [node.value]
+
+    if isinstance(node, ast.Dict) and all(key is not None for key in node.keys):
+        return _strings(ast.Tuple(elts=[key for key in node.keys if key is not None]), {})
 
     if isinstance(node, ast.Tuple | ast.List | ast.Set):
         found = [_strings(element, {}) for element in node.elts]
@@ -108,6 +113,15 @@ def guarded_names(source: str) -> dict[str, list[str]]:
         for target in statement.targets
         if isinstance(target, ast.Name)
     }
+    constants.update(
+        {
+            statement.target.id: statement.value
+            for statement in tree.body
+            if isinstance(statement, ast.AnnAssign)
+            and isinstance(statement.target, ast.Name)
+            and statement.value is not None
+        }
+    )
     guards: dict[str, list[str]] = {}
 
     for node in tree.body:
@@ -225,3 +239,12 @@ def test_a_guard_compared_with_something_other_than_a_string_cannot_pass_unread(
 
     with pytest.raises(ValueError, match="compares name with FIELD_NAME, which is not a string"):
         guarded_names(source)
+
+
+def test_a_guard_on_the_keys_of_an_annotated_dict_constant_is_read() -> None:
+    source = GUARD.replace(
+        'GROUPS = frozenset(("first", "second"))',
+        'GROUPS: dict[str, type] = {"first": float, "second": float}',
+    )
+
+    assert guarded_names(source) == {"Probe": ["{volume}", "first", "second"]}

@@ -318,7 +318,7 @@ def test_a_capacity_at_the_agent_held_is_written_and_a_copy_is_held_to_it_too() 
     coefficient, so none enters the capacity (`PL-DQL9`). The tissue:gas coefficient is
     written once, so its case is a new tissue built with `replace`.
     `dataclasses.replace` builds a new tissue through its constructor's writes. A copy and a
-    pickle restore the fields one at a time through `__setattr__`. So a perfusion fraction
+    pickle run the same constructor (`core/checked_record.py`). So a perfusion fraction
     planted by bypassing the guard is refused when a copy or a pickle is made, rather than
     carried into the new tissue (`PL-19Y0`).
     """

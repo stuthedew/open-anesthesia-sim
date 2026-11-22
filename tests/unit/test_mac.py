@@ -123,4 +123,4 @@ def test_a_restored_mac_with_an_age_of_zero_is_refused() -> None:
     restored = object.__new__(PatientMac)
 
     with pytest.raises(SimulationConfigurationError, match="age_years of 0"):
-        restored.__setstate__([MacPercent(1.8), 0])
+        restored.__setstate__({"percent": MacPercent(1.8), "age_years": 0})
