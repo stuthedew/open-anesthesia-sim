@@ -438,9 +438,21 @@ def test_a_one_second_stretch_after_two_adjacent_drawn_seconds_is_still_searched
 def test_a_value_inside_equal_to_an_end_is_not_returned() -> None:
     """A value inside a stretch is returned only where it lies outside each end, not level with one.
 
-    The lowest value inside, 0.4 at 2 s, equals the right end, so it is not a
-    trough below both ends and 2 s is not returned. The highest, 0.9 at 1 s,
-    is above both ends, so 1 s is returned.
+    The highest value inside, 0.9 at 1 s, equals the left end, and the
+    lowest, 0.4 at 2 s, equals the right end. Neither lies outside both
+    ends, so nothing is returned.
     """
 
-    assert extreme_seconds_with_gaps(0, (0.6, 0.9, 0.4, 0.4), (0, 3)) == {1}
+    assert extreme_seconds_with_gaps(0, (0.9, 0.9, 0.4, 0.4), (0, 3)) == set()
+
+
+def test_a_trace_that_starts_after_zero_is_searched_only_between_the_drawn_seconds() -> None:
+    """The search reads only the seconds between two drawn seconds, wherever the trace starts.
+
+    The trace starts at 100 s and runs to 103 s, and the drawn seconds are
+    100 s and 102 s. The one second inside, 101 s, holds 0.5, below both
+    ends, so 101 s is returned. The 0.1 at 103 s lies past the stretch and
+    is not searched.
+    """
+
+    assert extreme_seconds_with_gaps(100, (0.6, 0.5, 0.7, 0.1), (100, 102)) == {101}
