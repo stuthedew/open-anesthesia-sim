@@ -479,7 +479,7 @@ without bound and offer little over branching from the trunk again.
 This section is the object map of `BranchedCase`, its runs and the
 `RunDefinition` each run carries. What a branch *guarantees* is stated and
 measured in one place only:
-`docs/INTERFACE.md` § "Each second has one stored state" and its "What this
+`docs/INTERFACE.md` § "Each second has one stored state" and § "What this
 requires of a branch". They say that a branch holds a copy of its parent's
 stored states up to the fork and steps on from the state stored there, on the
 case's own clock, so no clock is re-based and no conversion is performed.

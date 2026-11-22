@@ -272,8 +272,8 @@ class MacAwakeReference:
     value to whichever MAC its own population was measured against.
     Desflurane's 2.60% is anchored to a MAC of 7.25%, and this project stores
     6.0%. The absolute figure divided by the stored MAC would therefore give
-    0.433, against a published 0.36. `docs/INTERFACE.md` § "MAC-awake as a chart
-    reference" records that comparison.
+    0.433, against a published 0.36. `docs/PARAMETERS.md` § "The MAC-awake
+    fractions" records that comparison.
 
     `mac_reference_basis` is prose rather than a number, because the two
     denominators are not the same kind of thing. Katoh's denominator is each
