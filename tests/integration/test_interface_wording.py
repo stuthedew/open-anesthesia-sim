@@ -1,4 +1,4 @@
-"""Every string the dashboard shows is on a list that a person has approved.
+"""Every string the dashboard shows is on a stored list that was checked by hand.
 
 The interface's wording tests in `tests/integration/simulation_view/` refuse phrases
 somebody thought of, such as an unhedged "end-tidal". A list of forbidden
@@ -31,14 +31,26 @@ wording around it is the interface's. An event point records only the strings
 that no default point shows, so its list holds what the event brings up and
 the reviewer of a change reads each string once.
 
-A change to any text on screen therefore fails here until a person approves
-it. To approve, check the new wording, run
+A change to any text on screen therefore fails here until the list is
+rewritten. Whoever changes the wording checks each changed string, runs
 
     APPROVE_INTERFACE_WORDING=1 uv run pytest tests/integration/test_interface_wording.py
 
-and commit the rewritten file, so that the reviewer of the pull request sees
+and commits the rewritten file, so that the reviewer of the pull request sees
 every changed string in its diff. This is approval testing, in the sense of
-a stored, human-approved output that a test compares against.
+a stored, reviewed output that a test compares against.
+
+A session may rewrite the list itself. The change waits for the project
+owner, a clinician, only when it changes clinical meaning: the name, label or
+unit of a clinical value; whether a value reads as modeled or measured; what
+a warning, halt, refusal or stated limitation tells a learner about a value
+or what to do; or wording that reads as a recommendation. The pull request's
+`Owner-read:` record says which it is, as for any other change to the
+simulator. Any other change merges on green, such as a layout notice, a
+document pointer, punctuation, a corrected typo, or the name of a control or
+View that names no clinical value. Where a change fits both lists, it waits
+for the owner: renaming the "Cardiac output" control names a clinical value
+(`PL-NRP7`).
 
 The application's version is written into one string, and changes with every
 commit. It is replaced by `{version}` before its digits are masked.
@@ -484,7 +496,8 @@ def test_every_string_the_view_shows_is_on_the_approved_list(
         + "\n".join(differences)
         + f"\nIf the new wording is right, run {APPROVE_VARIABLE}=1 uv run pytest "
         "tests/integration/test_interface_wording.py and commit "
-        f"{APPROVED_FILE.name}."
+        f"{APPROVED_FILE.name}. This module's docstring says which changes wait "
+        "for the project owner."
     )
 
 

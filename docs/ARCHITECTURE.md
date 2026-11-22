@@ -1287,12 +1287,13 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     the `QApplication`, whereas the other tests set a palette on one widget.
     It does so because the code under test declares palettes (`PL-RKRY`).
   - A test holds every string the dashboard shows, at fixed points of a run
-    of each agent with the default settings, to a list a person has approved
+    of each agent with the default settings, to a stored list
     (`test_interface_wording.py`, with the list in
     `approved_interface_strings.json` beside it). Digits are masked, so the
     test holds wording and not the model's values. A change to that wording
-    fails until the list is rewritten and committed, and the test module says
-    how. The test also brings about the states that only an event shows, such
+    fails until the list is rewritten and committed, so each changed string
+    shows in the pull request's diff. The test module says how, and which
+    changes wait for the project owner (`PL-NRP7`). The test also brings about the states that only an event shows, such
     as a setting change, a mark, a price, a refused setting and each halt or
     failure notice, and records the strings that no default point shows
     (`PL-86VL`, `PL-4G79`).
