@@ -3,12 +3,15 @@ id: PL-W7HW
 title: A session asks the owner to decide something without first researching current best practice, where the owner wants the research done first so that a clear answer is taken without asking and any real question carries it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: decision-ownership
 touches: .claude/rules/instruction-writing.md, .claude/skills/docket/modes/design.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/coordinator.md, docs/maintainer.md, docs/resident-instructions.md, subprojects/docket/src/docket/arming.py
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2251
 payoff: the owner is asked only what research cannot settle, and every question reaches the owner with the published evidence and a recommendation drawn from it
+verify: grep -qF 'Research best practice before asking' .claude/rules/instruction-writing.md
 ---
 
 **Problem.** A session asks the owner to decide something without first researching current best practice, where the owner wants the research done first so that a clear answer is taken without asking and any real question carries it
@@ -48,3 +51,14 @@ words, not a fact that a reader misread.
 
 **Done when.** Rule 10 holds the research step, each place above points at
 it, and `make check` passes.
+
+**Docs checked 2026-11-22.** Read for statements this change makes untrue:
+`CLAUDE.md` § "Working with the project owner" and § "Proactive expert review
+and domain best practices", rules 10 and 14 of
+`.claude/rules/instruction-writing.md`, `.claude/skills/docket/modes/design.md`,
+`.claude/skills/docket/modes/triage.md` § "Mode: triage",
+`.claude/skills/docket/modes/coordinator.md` § "Reporting to the owner",
+`.claude/skills/pull-request/SKILL.md`'s paragraph on asking the owner,
+`docs/maintainer.md`'s description of the `Owner-ask:` record, and `READ_ASK`
+in `subprojects/docket/src/docket/arming.py`. None needed more than the
+pointers this change adds.
