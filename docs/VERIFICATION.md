@@ -1579,6 +1579,13 @@ nearly nine orders of magnitude below the error of any method that does not solv
 the equations exactly, so the test fails as soon as such an error returns.
 <!-- not-restated: 0.05 -->
 
+**The earlier method was an operator split, which the exact step replaced in v0.4.4,
+released on 2026-09-06** (`PL-GS5X`). Within each step it solved the model's
+exchanges one at a time and in a fixed order, each exactly, while it held every other
+flow still. Because the exchanges were solved one after another rather than together,
+the step as a whole had an error proportional to its length, even though each exchange
+was solved exactly. § "Selected method (as implemented)" describes the exact step.
+
 The comparison covers *trajectories*, runs whose settings change over time, as well as
 runs at fixed settings. A run of the application is a sequence of settings, each held
 until someone moves a slider. A slider move puts an approximate method under the most
@@ -1640,9 +1647,9 @@ restriction check what the oracle imports and what its functions call
 `test_oracle_bodies_call_no_solver_from_core`). Each figure in this note is an
 absolute difference in fraction, taken as the largest over the whole run.
 
-- **Why the limit is not a multiple of the step.** The earlier method, an
-  operator split, had an error proportional to the step, $`C\,\Delta t`$, so a
-  bound on the coefficient $`C`$ bounded the error at every step size. The
+- **Why the limit is not a multiple of the step.** The earlier method had an
+  error proportional to the step, $`C\,\Delta t`$, so a bound on the
+  coefficient $`C`$ bounded the error at every step size. The
   present method's error has no such coefficient.
 - **Why the difference is rounding.** The independent solution takes 80 steps of
   0.0125 s in each of the model's steps, short enough that error from its own
