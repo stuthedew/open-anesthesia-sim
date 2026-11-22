@@ -1583,8 +1583,8 @@ the equations exactly, so the test fails as soon as such an error returns.
 released on 2026-09-06** (`PL-GS5X`). Within each step it solved the model's
 exchanges one at a time and in a fixed order, each exactly, while it held every other
 flow still. Because the exchanges were solved one after another rather than together,
-the step as a whole had an error proportional to its length, even though each exchange
-was solved exactly. § "Selected method (as implemented)" describes the exact step.
+the step as a whole was not exact, even though each exchange was solved exactly. The
+error it added over a fixed span of simulated time was proportional to the step's length. § "Selected method (as implemented)" describes the exact step.
 
 #### The runs the test covers
 
