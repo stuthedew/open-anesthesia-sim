@@ -1,0 +1,17 @@
+---
+id: PL-PXTT
+title: A held arrow key on a playing run sends one auto-repeated key event after another, and since PL-0T2H each that takes effect at a new instant opens an adjustment of its own, so one held key can fill the chart's 24 marks and the list's 12 lines and push the learner's earlier marks off both
+status: done
+added: 2026-11-22
+closed: 2026-11-22
+pr: 2228
+tests: tests/integration/simulation_view/test_simulation_view_controls.py::test_a_held_arrow_key_is_one_adjustment_and_the_next_press_another
+---
+
+**Problem.** A held arrow key on a playing run sends one auto-repeated key event after another, and since PL-0T2H each that takes effect at a new instant opens an adjustment of its own, so one held key can fill the chart's 24 marks and the list's 12 lines and push the learner's earlier marks off both
+
+**Found 2026-11-22** by the first blind review pass on #2228 (`PL-0T2H`, each dial step at a new instant is an adjustment of its own). The slider steps by one display unit, 0.01% on the delivered agent dial, so holding Right to go from 2% to 3% sends about 100 key events. Qt marks each event after the first with `QKeyEvent.isAutoRepeat()`. `SimulationController._record_in_timeline` opens an adjustment for each change at a new simulated instant, so at 1× a held key gives about one adjustment per second held, and at a fast playback rate many more. The chart keeps the latest `MAX_CHART_CONTROL_MARKS` (24) marks (`_run_frame` in `app/chart_frame.py`, `inside[-MAX_CHART_CONTROL_MARKS:]`) and the list the latest `MAX_LISTED_ADJUSTMENTS` (12) (`app/dashboard_frame.py`), so the earliest marks, such as the induction step, drop off both and survive only in the count of unmarked changes. Before `PL-0T2H` the held key was one adjustment, and so was every later step of the same dial.
+
+**Fixed 2026-11-22, in #2228 with `PL-0T2H`.** The slider announces each input that is not a held key's repeat (`_SettingSlider.input_started` in `app/qt_widgets.py`), and the controller opens an adjustment only on an announced input or a change of control. So a hold is one adjustment over an interval, and the next press opens another. `test_a_held_arrow_key_is_one_adjustment_and_the_next_press_another` sends a press at 10 s, repeats at 40 s and 100 s and a fresh press at 130 s. It checks adjustments [1, 1, 1, 2], two list lines with the hold as "10s–1m40s · Fresh gas flow 4.0 L/min -> 4.3 L/min (3 settings)", and marks at 10 s and 130 s on both charts. On the code before `PL-0T2H` it failed with "assert [1, 1, 1, 1] == [1, 1, 1, 2]", and on `PL-0T2H`'s first build it gave a new adjustment at each repeat. Docs checked: those listed in `PL-0T2H`.
+
+**Generator check.** One-off. It is a consequence of `PL-0T2H`'s change, which the decision weighed as "more dashed lines" without counting that the crowded-mark rule keeps the latest marks.

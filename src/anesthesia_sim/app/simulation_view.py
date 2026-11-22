@@ -2426,7 +2426,7 @@ class SimulationView(QWidget):
 
     @halt_gate
     def _handle_adjustment_start_request(self, run_id: RunId) -> None:
-        """Tell the run named by a View that the reader pressed one of its dials.
+        """Tell the run named by a View that the reader began an input on one of its dials.
 
         The run's own method passes the run's halt gate, so an exception
         raised there halts that run alone.

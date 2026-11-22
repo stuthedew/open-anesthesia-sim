@@ -54,6 +54,7 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QFontMetrics,
+    QKeyEvent,
     QMouseEvent,
     QPainter,
     QPaintEvent,
@@ -61,6 +62,7 @@ from PySide6.QtGui import (
     QPen,
     QPolygon,
     QResizeEvent,
+    QWheelEvent,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -1059,17 +1061,41 @@ class _SettingSlider(QSlider):
     the pointer pressed the handle, and the handle moves only as far as the
     pointer does.
 
+    **Each input on the slider is announced before it changes the value**
+    (`PL-0T2H`, `PL-PXTT`). A mouse press, a key press and a wheel notch each
+    emit `input_started` first, so that the run records each as an adjustment
+    of its own (`docs/INTERFACE.md` § "The control-input timeline"). A held
+    key repeats its press, and Qt marks each repeat as such
+    (`QKeyEvent.isAutoRepeat`). A repeat announces nothing, so the whole hold
+    is one adjustment, and the earlier marks on the chart are not pushed off
+    by one held key.
+
     Attributes:
         jumping: True only while a press on the track moves the handle to
             the pointer.
+        input_started: Emitted at the start of each input, before the value
+            it applies arrives.
     """
+
+    input_started = Signal()
 
     def __init__(self) -> None:
         super().__init__(Qt.Orientation.Horizontal)
         self.jumping = False
         self._grab_offset: int | None = None
 
+    def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
+        if not event.isAutoRepeat():
+            self.input_started.emit()
+
+        super().keyPressEvent(event)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:  # Qt spells this in camelCase.
+        self.input_started.emit()
+        super().wheelEvent(event)
+
     def mousePressEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        self.input_started.emit()
         button = event.button().value
         moves_to_pointer = self.style().styleHint(
             QStyle.StyleHint.SH_Slider_AbsoluteSetButtons, None, self
@@ -1194,8 +1220,10 @@ class ParameterSlider(QWidget):
         secondary_label: The setting in its second unit, beside the value
             and shown only where the setting has one, which is the delivered
             dial's MAC multiple.
-        adjustment_started: Emitted when the reader presses the thumb, so
-            the run can mark one adjustment before the values arrive.
+        adjustment_started: Emitted at the start of each input on the
+            slider, so the run can mark one adjustment before the values
+            arrive: a press, a key press that is not a held key's repeat, or
+            a wheel notch.
         value_changed: Emitted with the decoded value when the reader
             applies one: on releasing a dragged thumb, or at once for a key,
             a wheel step or a click on the groove. `set_setting` never emits
@@ -1252,7 +1280,7 @@ class ParameterSlider(QWidget):
         column.addLayout(row)
         column.addWidget(self.slider)
 
-        self.slider.sliderPressed.connect(self.adjustment_started.emit)
+        self.slider.input_started.connect(self.adjustment_started.emit)
         self.slider.sliderPressed.connect(self._on_thumb_pressed)
         self.slider.sliderMoved.connect(self._on_thumb_moved)
         self.slider.sliderReleased.connect(self._on_thumb_released)

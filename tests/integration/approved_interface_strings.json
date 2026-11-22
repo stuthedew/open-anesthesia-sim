@@ -719,7 +719,7 @@
  ],
  "setting changed": [
   "#m##s",
-  "#m##s · Delivered agent #.##% -> #.##%\n#m##s · Delivered agent #.##% -> #.##%\n#m · Fresh gas flow #.# L/min -> #.# L/min"
+  "#m##s–#m##s · Delivered agent #.##% -> #.##% (# settings)\n#m · Fresh gas flow #.# L/min -> #.# L/min"
  ],
  "marks set": [
   "##m – the decision point",
