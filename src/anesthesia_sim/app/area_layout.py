@@ -323,12 +323,17 @@ class AreaOperation:
         result: The layout that choosing the entry would make, or None if the
             entry is unavailable.
         refusal: Why the entry is unavailable, or "" if it is available.
+        focus: The Area whose View chooser takes the keyboard focus once the
+            layout is drawn, or None to leave the focus to Qt. A split names
+            the Area it makes, because it rebuilds the Area whose chooser held
+            the focus (`PL-24SN`).
     """
 
     label: str
     group: str | None
     result: LayoutModel | None
     refusal: str = ""
+    focus: AreaId | None = None
 
     @property
     def available(self) -> bool:
@@ -780,6 +785,9 @@ class AreaLayout(QWidget):
 
         self._apply(operation.result)
 
+        if operation.focus is not None:
+            self._frames[operation.focus].chooser.setFocus(Qt.FocusReason.OtherFocusReason)
+
     def borders(self, area_id: AreaId) -> tuple[AreaBorder, ...]:
         """Return one "Resize" submenu entry for each border of the Area `area_id`.
 
@@ -1062,13 +1070,12 @@ class AreaLayout(QWidget):
         try:
             split, new_id = self._model.split(area_id, orientation, _MENU_SPLIT_AT)
         except LayoutRefused:
-            # `_attempt` below states the model's own refusal.
-            pass
-        else:
-            if not self._parts_hold_the_floor(split, area_id, new_id, orientation, halves):
-                return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
+            return AreaOperation(label, None, None, _NOT_EXPRESSIBLE_TEXT)
 
-        return _attempt(label, None, partial(_split_layout, self._model, area_id, orientation))
+        if not self._parts_hold_the_floor(split, area_id, new_id, orientation, halves):
+            return AreaOperation(label, None, None, _TOO_SMALL_TO_SPLIT_TEXT)
+
+        return AreaOperation(label, None, split, focus=new_id)
 
     def _parts_hold_the_floor(
         self,
@@ -3192,9 +3199,3 @@ def _same_place(first: Rectangle, second: Rectangle) -> bool:
             (first.bottom, second.bottom),
         )
     )
-
-
-def _split_layout(model: LayoutModel, area_id: AreaId, orientation: Orientation) -> LayoutModel:
-    """The layout a split from the menu makes: the Area cut halfway across."""
-
-    return model.split(area_id, orientation, _MENU_SPLIT_AT)[0]

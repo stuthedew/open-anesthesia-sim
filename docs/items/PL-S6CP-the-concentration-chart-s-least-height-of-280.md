@@ -3,13 +3,16 @@ id: PL-S6CP
 title: The concentration chart's least height of 280 px was measured with the offscreen font and no advisory, so in an Area held at that height (Induction at 1366 by 768) an off-scale, capped-trace or hidden-trace advisory, or a desktop font taller than the offscreen one, pushes the bottom of the plot and its time axis below the Area's edge until the learner scrolls; decide whether the chart's need follows the View's own layout, so the Areas move when an advisory appears, or stays a fixed number, so the plot scrolls
 priority: P2
 effort: S
-status: ready
+status: done
 classes: ux, defect
 feature: window-is-the-frame
 touches: src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/views.py, tests/integration/test_layout_safety.py
 deferred-from: v0.7.0 - a new problem: #2134 (PL-CBYS, 2026-11-13) set the 280 px least height after the freeze; at 0947408 the chart's least height was 300 px and the page scrolled instead
 added: 2026-11-14
+closed: 2026-11-22
+pr: 2226
 payoff: A learner reading the concentration chart in a short Area never loses its time axis and its lowest traces without being shown it.
+tests: tests/integration/simulation_view/test_simulation_view_page.py::test_an_advisory_above_the_concentration_plot_grows_its_area_and_keeps_the_plot_whole
 ---
 
 **Problem.** The concentration chart's least height of 280 px was measured with the offscreen font and no advisory, so in an Area held at that height (Induction at 1366 by 768) an off-scale, capped-trace or hidden-trace advisory, or a desktop font taller than the offscreen one, pushes the bottom of the plot and its time axis below the Area's edge until the learner scrolls; decide whether the chart's need follows the View's own layout, so the Areas move when an advisory appears, or stays a fixed number, so the plot scrolls
@@ -56,3 +59,5 @@ y 137 to 297, and its bottom 17 px are scrolled out of view.
 **Answered 2026-11-22 (project owner, 2026-11-22, ratified, over the Area growing or the plot scrolling).** The owner asked that each item needing him be settled by standard practice. The chart keeps room for its advisories all the time, option 3, and falls back to option 1 only if the shipped Workspaces do not fit the 1366 by 768 window with the extra rows. The standard practice is to reserve space in the first layout for content that appears later, so that nothing moves under the reader. web.dev's "Optimize Cumulative Layout Shift" (https://web.dev/articles/optimize-cls, read 2026-11-22) says that "layout shifts can be avoided by reserving the space for them in the initial layout", and calls unexpected shifts "visually jarring and frustrating", "throwing you off and requiring you to find your place again". The page is about web pages, but the hazard it names is the same in a desktop window: a moving layout is a hidden change of mode, and a learner should not lose the time axis without being shown it.
 
 **Done when, as answered.** The concentration chart's least height is read from the View's own layout, with every advisory row counted whether or not it shows. A test in Induction at 1366 by 768 shows the plot whole and the Areas unmoved when an advisory and a second run's notice appear. If the shipped Workspaces do not fit with those rows, the test shows instead that the Area grows and the plot stays whole, and the brief records why.
+
+**Documentation checked on 2026-11-22**, each passage that names a changed module, for a statement the change made untrue: `docs/ARCHITECTURE.md`, `docs/INTERFACE.md`, `docs/interface-provenance.md`, `ROADMAP.md` and `.claude/rules/ui-areas.md`. None needed a change.
