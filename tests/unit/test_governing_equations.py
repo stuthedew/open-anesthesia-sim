@@ -682,6 +682,9 @@ def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(flow: Flow) -> None:
         assert matrix[VENOUS_FRACTION][VENOUS_FRACTION] == 0.0
 
     if zeroed == "fresh_gas_flow_l_min":
+        # The circuit's own inflow, not only the counter that totals it, must
+        # stop, or vapour would still enter while the delivered total read zero.
+        assert matrix[INSPIRED_FRACTION][UNIT_STATE] == 0.0
         assert matrix[DELIVERED_AGENT_L][UNIT_STATE] == 0.0
         assert matrix[EXHAUSTED_AGENT_L][INSPIRED_FRACTION] == 0.0
 

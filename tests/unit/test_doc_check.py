@@ -178,6 +178,14 @@ MODEL = "\n".join(
         "",
         f"The demo value is shown to 0.1 L, as `{FAMILY_TEST}` computes.",
         "",
+        # The list shape again, for the required invariants, which a family
+        # also reads entry by entry and errors on when it cannot find them.
+        "## Required invariants",
+        "",
+        "The model must keep:",
+        "",
+        f"- the demo store at or above zero (`{LIST_FAMILY_TEST}`).",
+        "",
         # The third shape, for the same reason again: each requirement under
         # "## Required tests" is a subsection, and the family errors on a
         # heading it cannot find.
