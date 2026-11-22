@@ -16,9 +16,13 @@ model is claimed to represent a patient (`docs/INTERFACE.md`
 
 A second document, `docs/VERIFICATION.md`, states how the simulator is shown
 to solve these equations correctly: the numerical method and the simulation
-step it supports, the conservation of agent mass, the hazards the
-presentation carries, the required invariants and tests, and the release
-gate.
+step it supports, the conservation of agent mass, the required invariants and
+tests, and the release gate. It also holds two things a clinician may want
+before trusting a displayed value. The comparison of the model's output with
+measurements in volunteers is in `docs/VERIFICATION.md` § "Published wash-in
+and elimination validation test". The ways the display could be misread, and
+what prevents each, are in `docs/VERIFICATION.md` § "Reasonably foreseeable
+misuse, and the hazards the presentation carries".
 
 A statement here that gives a version has been true *since* that version. The
 project's roadmap (`ROADMAP.md`) lists the current release in its version table.
@@ -42,8 +46,9 @@ alveolar gas
 
 ### What a named test, a missing test and a date tell the reader
 
-When a statement in this document or in `README.md` is about the simulator's
-code, data or output, it names the thing it describes. Where no test covers the
+When a statement in this document, in `docs/VERIFICATION.md` or in
+`README.md` is about the simulator's code, data or output, it names the thing
+it describes. Where no test covers the
 statement yet, it says so in a fixed form, ``no test yet (`PL-XXXX`)``, and the
 parenthesis names the open work item for adding the test.
 

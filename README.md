@@ -260,6 +260,8 @@ make run          # or: uv run anesthesia-sim
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the code is shown to
   solve those equations correctly: the numerical method, the properties the
   model must always keep, the required tests, and what a release must pass.
+  Its tests include the comparison with measurements in volunteers, and it
+  lists the ways the display could be misread.
 - [`docs/INTERFACE.md`](docs/INTERFACE.md) — the interface requirements: what
   the display must show, and what each control does.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — how the folders `core/`,

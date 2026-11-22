@@ -1,11 +1,17 @@
-# Verification of the model's implementation
+# Verification and validation of the model
 
 This document states how the simulator is shown to solve the model's
 equations correctly: how the agent's mass is conserved, the numerical method
-and the simulation step it supports, the hazards that the presentation
-carries, the invariants and tests the code must pass, and what a release must
-pass. A separate document, `docs/MODEL.md`, specifies the model those
-equations describe.
+and the simulation step it supports, the invariants and tests the code must
+pass, and what a release must pass. A separate document, `docs/MODEL.md`,
+specifies the model those equations describe.
+
+Two parts of this document answer other questions. One required test, in
+§ "Published wash-in and elimination validation test", compares the model's
+output with measurements in volunteers. It tests whether the equations
+represent patients, not whether the code solves them. § "Reasonably
+foreseeable misuse, and the hazards the presentation carries" lists how a
+reader could misread the display, and what prevents each misreading.
 
 ## Conservation of agent mass
 

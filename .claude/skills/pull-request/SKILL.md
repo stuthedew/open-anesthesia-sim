@@ -127,9 +127,10 @@ arming and before every later push while a pull request is open.** **The owner
 reads only a real decision or a high-risk change, and housekeeping merges on
 green** (project owner, 2026-10-17, `PL-DKBG`). Which one a change is stays
 your call. Record it as an `Owner-read:` trailer, whose form and test `arm`
-prints. **A rewrite of `docs/MODEL.md` or `docs/INTERFACE.md` is housekeeping when it changes no
-value, equation, code span or citation** (project owner, 2026-11-02, ratified,
-`PL-ZTZF`). `python3 tools/model_rewrite.py lost` decides that part. It must
+prints. **A rewrite of a specification document is housekeeping when it changes
+no value, equation, code span or citation** (project owner, 2026-11-02,
+ratified, `PL-ZTZF`). `docket.arming.SPECIFICATION_DOCS` lists those
+documents. `python3 tools/model_rewrite.py lost` decides that part. It must
 add nothing, and each fact it lists as dropped must be history or a duplicate
 the document still holds. A number it marks as restated, such as 4e-4 written
 as 0.04%, has the same value, so it counts as kept and its new form does not

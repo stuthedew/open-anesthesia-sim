@@ -634,38 +634,6 @@ BLIND_UNCOUNTED = (
     "owed none. Make `python3 tools/blind_review.py --count` answer, and ask again."
 )
 
-#: What a `hold` on a simulator path with no record tells the session. The
-#: test for a real decision is the design round's, so it is pointed at rather
-#: than restated, and the high-risk cases are the ones the owner's rule names
-#: in this repository's terms. What a learner can be misled by is the first,
-#: because the safety-critical standard in `CLAUDE.md` makes it so. A rewrite
-#: of docs/MODEL.md or docs/INTERFACE.md that keeps every value, equation, code
-#: span and citation is
-#: housekeeping, and only a sentence whose meaning needs a clinician's judgment
-#: reaches the owner (project owner, 2026-11-02, ratified, over holding every
-#: section part of `PL-ZT47` for the owner's read, `PL-ZTZF`).
-JUDGE_ASK = (
-    "  Decide whether the owner needs to read it, and record the answer as a trailer in "
-    "the last paragraph of a commit made after the change, beside its Co-authored-by "
-    f"line: `{OWNER_READ}: {READ_NEEDED} - <why>` or `{OWNER_READ}: {READ_NOT_NEEDED} - "
-    "<why>`. It is needed for a real decision, one "
-    ".claude/skills/docket/modes/design.md step 4 makes the owner's, and for a high-risk "
-    "change: one that changes a clinical value the "
-    "simulator computes or displays, or what docs/MODEL.md or docs/INTERFACE.md says one "
-    "means, beyond "
-    "restating what the change's own tests measure; one that changes a rule sessions run "
-    "under that the owner did not ask for in their own words; or one whose breakage CI "
-    "would not show or a revert would not undo. Anything else is housekeeping and not "
-    "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
-    "a measurement. A rewrite of docs/MODEL.md or docs/INTERFACE.md is not needed when "
-    "`python3 "
-    "tools/model_rewrite.py lost` adds no equation, code span, citation or number, every "
-    "line it prints as dropped is history or a duplicate the document still holds, and no "
-    "sentence changes what a value means or what a hazard row or limitation promises. "
-    "Where one does, it is needed, and the ask quotes that sentence before and after. "
-    "Then ask again."
-)
-
 #: This module, which decides the answer. Since 2026-10-19 a change to it
 #: waits on a read only when it edits a test pinning its answers or moves it
 #: off the path the base holds it at (`PL-9JHM`), and `arm` names it beside an
@@ -740,6 +708,44 @@ VERIFICATION_DOC = "docs/VERIFICATION.md"
 #: every tool that checks the specification read this tuple, so a document
 #: that joins the specification is added here and nowhere else (`PL-CTXZ`).
 SPECIFICATION_DOCS = (MODEL_DOC, INTERFACE_DOC, VERIFICATION_DOC)
+
+#: The specification documents as a sentence names them, such as "docs/MODEL.md,
+#: docs/INTERFACE.md or docs/VERIFICATION.md".
+_SPECIFICATION_NAMES = ", ".join(SPECIFICATION_DOCS[:-1]) + " or " + SPECIFICATION_DOCS[-1]
+
+#: What a `hold` on a simulator path with no record tells the session. The
+#: test for a real decision is the design round's, so it is pointed at rather
+#: than restated, and the high-risk cases are the ones the owner's rule names
+#: in this repository's terms. What a learner can be misled by is the first,
+#: because the safety-critical standard in `CLAUDE.md` makes it so. A rewrite
+#: of a specification document that keeps every value, equation, code span and
+#: citation is housekeeping, and only a sentence whose meaning needs a
+#: clinician's judgment reaches the owner (project owner, 2026-11-02, ratified,
+#: over holding every section part of `PL-ZT47` for the owner's read,
+#: `PL-ZTZF`). The documents are named from `SPECIFICATION_DOCS`, so a hazard
+#: row that moves to a new document is still named here (`PL-6PPZ`).
+JUDGE_ASK = (
+    "  Decide whether the owner needs to read it, and record the answer as a trailer in "
+    "the last paragraph of a commit made after the change, beside its Co-authored-by "
+    f"line: `{OWNER_READ}: {READ_NEEDED} - <why>` or `{OWNER_READ}: {READ_NOT_NEEDED} - "
+    "<why>`. It is needed for a real decision, one "
+    ".claude/skills/docket/modes/design.md step 4 makes the owner's, and for a high-risk "
+    "change: one that changes a clinical value the "
+    f"simulator computes or displays, or what {_SPECIFICATION_NAMES} says one means, "
+    "beyond "
+    "restating what the change's own tests measure; one that changes a rule sessions run "
+    "under that the owner did not ask for in their own words; or one whose breakage CI "
+    "would not show or a revert would not undo. Anything else is housekeeping and not "
+    "needed: a refactor with its outputs pinned, a tightened test, a figure restated from "
+    f"a measurement. A rewrite of {_SPECIFICATION_NAMES} is not needed when "
+    "`python3 "
+    "tools/model_rewrite.py lost` adds no equation, code span, citation or number, every "
+    "line it prints as dropped is history or a duplicate the document still holds, and no "
+    "sentence changes what a value means or what a hazard row or limitation promises. "
+    "Where one does, it is needed, and the ask quotes that sentence before and after. "
+    "Then ask again."
+)
+
 
 #: The tests that compare the model with published data. An edit or a
 #: deletion of an existing line of one waits on the owner's read whatever the
