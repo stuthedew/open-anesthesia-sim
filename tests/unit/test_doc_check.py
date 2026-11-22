@@ -13489,6 +13489,8 @@ RENAMED_NOTES = "# Notes\n\n## New title\n\nThe body names the old title words.\
         '"""Read `docs/notes.md` for this.\n\n§ "Old title" says why.\n"""\n',
         '# Read docs/notes.md for this.\n# § "Old title" says why.\nVALUE = 1\n',
         '"""See § "Old title"."""\n',
+        '"""See `docs/notes.md`, § "Old title"."""\n',
+        '# The rest is `docs/notes.md` (§ "Old title").\nVALUE = 1\n',
     ],
     ids=[
         "comment",
@@ -13498,6 +13500,8 @@ RENAMED_NOTES = "# Notes\n\n## New title\n\nThe body names the old title words.\
         "bare mark after the document",
         "bare mark after a bare path",
         "bare mark naming no document",
+        "mark after a comma",
+        "mark in parentheses",
     ],
 )
 def test_a_section_mark_in_python_is_refused_once_its_heading_is_renamed(
@@ -13537,6 +13541,24 @@ def test_a_section_mark_naming_words_that_are_no_heading_is_refused(tmp_path: Pa
     assert [error for error in _errors(root) if error.startswith("tools/cites.py")] == [
         'tools/cites.py:1: quotes docs/notes.md § "the old title words", which is no heading '
         "of docs/notes.md"
+    ]
+
+
+def test_a_mark_after_a_document_and_a_comma_is_held_to_its_headings(tmp_path: Path) -> None:
+    """A Markdown document's `` `doc.md`, § "X" `` is that document's section.
+
+    `QUOTED_SOURCE_RE` takes one connective and `check_citations` left a mark
+    after a code-spanned source to it, so nothing read this form (`PL-LPCB`,
+    found by a blind review pass).
+    """
+    readme = README + '\nThe rest is in `docs/notes.md`, § "Old title".\n'
+    root = _repo(tmp_path, readme=readme)
+    (root / "docs" / "notes.md").write_text(NOTES, encoding="utf-8")
+    assert [error for error in _errors(root) if "Old title" in error] == []
+
+    (root / "docs" / "notes.md").write_text(RENAMED_NOTES, encoding="utf-8")
+    assert [error for error in _errors(root) if "Old title" in error] == [
+        'README.md:6: quotes docs/notes.md § "Old title", which is no heading of docs/notes.md'
     ]
 
 

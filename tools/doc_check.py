@@ -1241,6 +1241,24 @@ CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
 QUALIFIED_RE = re.compile(
     r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
 )
+#: A code-spanned document, a connective that claims nothing, and then the
+#: section mark: `` `docs/MODEL.md`, § "Time" `` or `` `docs/MODEL.md` (§
+#: "Time") ``.
+#: The mark makes the quotation a section title of that document, whatever
+#: stands before it. `QUOTED_SOURCE_RE` takes one connective, so it read none of
+#: these, and `QUALIFIED_RE` told every other reader to leave them to it
+#: (`PL-LPCB`, found by a blind review pass).
+# regex: a code-spanned `.md` path, a connective, the section mark and a quotation are an explicit
+# citation syntax, searched for through prose.
+CONNECTED_MARK_RE = re.compile(
+    r"`(?P<document>[\w./-]+\.md)`"
+    + GAP
+    + r"*(?:[,:(]|\bunder\b)"
+    + GAP
+    + r"*§{1,2}"
+    + GAP
+    + rf'*"(?:(?P<quoted>\w{QUOTATION_CHAR}*+)"|(?=\w){UNCLOSED_QUOTATION})'
+)
 #: A claiming connective after a code-spanned item id, which cites that item's
 #: brief: `` `PL-MB2W` § "Design round, 2026-09-24" `` or `` `PL-CNJ1`'s
 #: "writes nothing" ``. `QUALIFIED_RE` hands it on from `check_citations`,
@@ -7305,9 +7323,11 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     cites a `WORKING_NOTES` thread renamed from "Open:" to "Mostly settled:",
     which a containment test catches.
 
-    Case, dash style and quote style are folded, because a passage copied by
-    hand settles on one of the forms this project writes and the passage is
-    still there either way. So is emphasis, which a quotation leaves out
+    In a containment test, case, dash style and quote style are folded,
+    because a passage copied by hand settles on one of the forms this project
+    writes and the passage is still there either way. A heading is matched as
+    `_cites_heading` matches one, with dashes folded and case kept, because a
+    section title is cited as written. So is emphasis, which a quotation leaves out
     (`_without_emphasis`, `PL-RX0W`). The words must stand in one statement of the file,
     as `_comparable_statements` reads it, so a splice across a heading and its
     paragraph is not in it (`PL-Q8LJ`). An elided quotation is skipped outright: one
@@ -7459,6 +7479,20 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     "for it or since removed, nothing to do (only `§` or the possessive claims "
                     "the file holds the words)"
                 )
+
+        for match in _statement_matches(CONNECTED_MARK_RE, prose, kinds):
+            cited = match["document"]
+            line = offset + _line_of(text, match.start()) - 1
+            if match["unclosed"] is not None:
+                report.errors.append(
+                    _unclosed(f"{path}:{line}", f"this § of {cited}", "the section it names")
+                )
+                continue
+            quoted = _normalized(match["quoted"])
+            if body_of(cited) is None:
+                report.errors.append(f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}")
+            elif not _cites_heading(quoted, titles_of(cited) or []):
+                report.errors.append(unheaded(f"{path}:{line}", cited, quoted))
 
         for match in _statement_matches(ITEM_SECTION_RE, prose, kinds):
             item = match.group("item")

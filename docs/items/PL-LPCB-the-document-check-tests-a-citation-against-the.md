@@ -12,7 +12,7 @@ added: 2026-11-22
 closed: 2026-11-22
 pr: 2211
 payoff: a section move that would strand a citation fails the document check at once, instead of reaching the queue as one item per stranded citation
-tests: tests/unit/test_doc_check.py::test_a_section_mark_in_python_is_refused_once_its_heading_is_renamed, tests/unit/test_doc_check.py::test_a_section_mark_naming_words_that_are_no_heading_is_refused, tests/unit/test_doc_check.py::test_a_bare_mark_names_the_document_its_passage_named_last, tests/unit/test_doc_check.py::test_a_section_mark_in_a_code_span_or_an_outside_source_without_it_is_not_read
+tests: tests/unit/test_doc_check.py::test_a_section_mark_in_python_is_refused_once_its_heading_is_renamed, tests/unit/test_doc_check.py::test_a_section_mark_naming_words_that_are_no_heading_is_refused, tests/unit/test_doc_check.py::test_a_mark_after_a_document_and_a_comma_is_held_to_its_headings, tests/unit/test_doc_check.py::test_a_bare_mark_names_the_document_its_passage_named_last, tests/unit/test_doc_check.py::test_a_section_mark_in_a_code_span_or_an_outside_source_without_it_is_not_read
 root-cause-of: PL-10BC, PL-GC7Z, PL-Q2DK, PL-97S1, PL-CVTG
 generator: spent - the document check now reads a section mark in a comment, after a possessive and bare, and holds each to the cited headings
 misread: Which heading of which document a § citation in a comment, possessive or bare § names
@@ -105,7 +105,7 @@ at `a7eb53f`:
 `PL-GC7Z`'s comment in `app/display_units.py` is rewritten in the form
 `PL-97S1` gave `core/liquid_agent.py`, with the mark before the note's name.
 
-**Tests.** The five new tests in `tests/unit/test_doc_check.py` fail on the
+**Tests.** The new tests in `tests/unit/test_doc_check.py` fail on the
 check before this change, nine cases of ten; the tenth is the code-span case,
 which passes on both. Six existing tests now expect the heading refusal where
 they expected the containment one.
@@ -117,3 +117,16 @@ entry for `doc_check.py`, now naming comments and the heading test;
 `.claude/rules/citation-drift.md`, which describes `check_citations` and
 `check_line_citations` and needed no change; `tools/possessive_section_check.py`,
 which reads `_quoting_sources` and now reads comments too, and reports nothing.
+
+**Blind review, 2026-11-22.** Two passes ran on the branch.
+
+1. Pass 2, should-fix, fixed: a mark after a document and a comma, a colon, a
+   parenthesis or `under`, as in `` `docs/MODEL.md`, § "Time" ``, was read by
+   nothing, since `QUOTED_SOURCE_RE` takes one connective and `QUALIFIED_RE`
+   told the other readers to leave it. `CONNECTED_MARK_RE` reads it now, in
+   documents, live briefs and Python alike. The tree held none that failed.
+2. Pass 1, optional, fixed: `check_quoted_sources`' docstring said case is
+   folded, which is now true of its containment test only. It says so.
+3. Pass 1, optional, filed as `PL-MWL0`: a mark after a code-spanned Python
+   file, or after an item id and a connective other than the mark or the
+   possessive, is still read by nothing.
