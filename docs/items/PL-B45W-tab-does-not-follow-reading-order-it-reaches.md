@@ -38,3 +38,10 @@ follows the platform's reading order.
 **Done when.** A test walks the focus chain in each shipped Workspace and
 finds the transport controls before any Area, and each View's controls
 directly after its own chooser.
+
+**Added 2026-11-22 (`PL-63FQ`).** The concentration chart's and the wash-in
+chart's plots are no longer Tab stops, so the order above loses "the plot".
+Each scroll area is still a stop even when its content fits and there is
+nothing to scroll: each Area's View holder, each chart's key and the page. The
+ordering work could make a scroll area a stop only while it can scroll.
+
