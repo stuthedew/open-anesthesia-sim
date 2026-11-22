@@ -355,7 +355,13 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 import required_checks_check
 
 # The simulator package's location is `product_paths`'s (`PL-H5T9`).
-from product_paths import INTERFACE_DOC, MODEL_DOC, PACKAGE_DIR, SPECIFICATION_DOCS, VERIFICATION_DOC
+from product_paths import (
+    INTERFACE_DOC,
+    MODEL_DOC,
+    PACKAGE_DIR,
+    SPECIFICATION_DOCS,
+    VERIFICATION_DOC,
+)
 
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
