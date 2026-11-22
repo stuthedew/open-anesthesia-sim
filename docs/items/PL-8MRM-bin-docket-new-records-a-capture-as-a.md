@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze by PL-TBX9's measurement; the 
 added: 2026-10-27
 closed: 2026-10-27
 pr: 1879
+filed-pr: 1875
 payoff: A batch of related findings filed by one session no longer counts as a defect firing again, so the promotion candidates bin/docket next names rest only on filings by sessions that did not know the item existed
 verify: grep -q 'def test_new_records_nothing_on_an_item_this_branch_filed' subprojects/docket/tests/test_cli.py
 impairs-generators: docket.cli.cmd_new records a recurrence on an item the filing branch itself added, through duplicates.near_duplicates' declared-touches key, so plan.recurrence_chains counts filings by a session that knew the item existed toward the promotion floor and names PL-0889 as a candidate on two such entries

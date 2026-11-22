@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - workflow tooling outside the schematic release
 added: 2026-11-02
 closed: 2026-11-03
 pr: 1973
+filed-pr: 1948
 payoff: a progress line that quotes the hold it reports on reaches the owner without a rewording
 verify: grep -q 'def test_a_quoted_hold_in_a_progress_line_passes' tests/unit/test_owner_ask_guard.py
 reenters: PL-GPJ7

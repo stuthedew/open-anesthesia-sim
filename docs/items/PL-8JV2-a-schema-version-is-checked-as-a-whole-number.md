@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-17
 closed: 2026-10-19
 pr: 1674
+filed-pr: 1481
 payoff: a saved layout can no longer be written or set aside under a file name that states a version or attempt that does not exist, so a later read never refuses it for the wrong reason
 verify: grep -q 'class SchemaVersion' src/anesthesia_sim/layout/migrations.py && grep -q 'def test_a_file_name_cannot_name_a_version_or_an_attempt_that_does_not_exist' tests/unit/test_layout_store.py
 reenters: PL-ZGYX

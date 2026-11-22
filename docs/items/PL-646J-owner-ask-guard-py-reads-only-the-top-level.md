@@ -11,6 +11,7 @@ touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 added: 2026-10-24
 closed: 2026-10-24
 pr: 1746
+filed-pr: 1721
 payoff: a bare read or merge ask relayed by the coordinator is refused wherever its text sits in the post, so the guard no longer depends on a schema nobody has read
 verify: grep -q 'def test_a_coordinator_post_with_its_text_in_a_nested_field_is_refused' tests/unit/test_owner_ask_guard.py
 reenters: PL-YV90

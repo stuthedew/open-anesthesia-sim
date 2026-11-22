@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-11
 closed: 2026-10-12
 pr: 1439
+filed-pr: 1419
 payoff: every gate entry's disposition, frozen or not, debt or not, is read from one record, so a freeze or a report stops losing a deferral the prose held
 verify: grep -q 'def test_a_frozen_entry_deferred_from_its_gate_is_deferred_not_clearable' subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_open_frozen_entry_waiting_outside_with_no_disposition_is_an_error' subprojects/docket/tests/test_checks.py
 root-cause-of: PL-18BD, PL-D388, PL-JV5Q, PL-QWF8

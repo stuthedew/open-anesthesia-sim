@@ -11,6 +11,7 @@ touches: .claude/skills/docket/modes/triage.md
 added: 2026-10-11
 closed: 2026-10-11
 pr: 1416
+filed-pr: 1398
 payoff: A triage pass stops pushing a second answer for an item another branch claimed while the pass ran, so a finished fix is not lost to whichever pull request merges first.
 verify: grep -qF 'bin/docket flight' .claude/skills/docket/modes/triage.md
 reenters: PL-MB2W, PL-7TVT

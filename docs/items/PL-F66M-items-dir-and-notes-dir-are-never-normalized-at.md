@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 closed: 2026-10-18
 pr: 1601
+filed-pr: 1286
 payoff: a store path written with a leading ./ in docket.toml cannot blind the in-flight guard while every other command keeps working
 verify: grep -q 'def test_a_dotted_store_path_loads_normalized' subprojects/docket/tests/test_config.py
 reenters: PL-NGBM

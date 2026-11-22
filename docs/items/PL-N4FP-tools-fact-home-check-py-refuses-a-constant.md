@@ -11,6 +11,7 @@ touches: tools/fact_home_check.py, tests/unit/test_fact_home_check.py, CLAUDE.md
 added: 2026-10-24
 closed: 2026-10-24
 pr: 1738
+filed-pr: 1738
 payoff: a hand test of an item's status set or of a pr: number fails make check, so the next copy of Item.is_open or model.pr_number is refused instead of filed
 verify: grep -q 'def test_a_status_set_tested_by_hand_outside_model_is_refused' tests/unit/test_fact_home_check.py && grep -q 'def test_a_pr_field_read_by_hand_is_refused' tests/unit/test_fact_home_check.py
 root-cause-of: PL-Q80R, PL-TSXD, PL-JT7Y

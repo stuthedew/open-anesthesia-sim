@@ -11,6 +11,7 @@ touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 added: 2026-10-20
 closed: 2026-10-24
 pr: 1721
+filed-pr: 1701
 payoff: a thread's status report reaches the owner without rewording, so a refusal from the guard means a real ask again
 verify: grep -q 'def test_a_report_of_a_choice_already_made' tests/unit/test_owner_ask_guard.py
 reenters: PL-TLPH

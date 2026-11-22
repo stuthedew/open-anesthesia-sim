@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-05
 closed: 2026-10-10
 pr: 1390
+filed-pr: 1377
 payoff: a workflow step or a documented command holding $'...' with an escaped quote can no longer hide every command after it from the checks that read what CI runs
 verify: grep -q 'def test_an_ansi_c_quoted_string_ends_at_the_quote_bash_ends_it_at' subprojects/docket/tests/test_shell.py
 reenters: PL-KGYT

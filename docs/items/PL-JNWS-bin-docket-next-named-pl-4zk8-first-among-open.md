@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-30
 closed: 2026-09-30
 pr: 1239
+filed-pr: 1231
 payoff: a decision the owner has answered stops being offered to them as still waiting, because the commit that records the answer has to move the item's status with it
 verify: grep -q 'def test_an_answer_beneath_the_last_question_refuses_needs_decision' subprojects/docket/tests/test_checks.py && grep -q 'def test_a_question_posed_beneath_the_answer_keeps_needs_decision' subprojects/docket/tests/test_checks.py
 reenters: PL-8YXJ

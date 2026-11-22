@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 closed: 2026-10-12
 pr: 1454
+filed-pr: 1388
 payoff: make check stops refusing a true sentence that cites a Markdown project's URL beside a code block, so nobody rewords correct prose to get past the host-claim check
 verify: grep -q 'def test_block_beside_a_host_is_an_advisory_rather_than_refused' tests/unit/test_doc_check.py && grep -q 'def test_a_word_only_a_refusal_has_beside_a_block_is_still_refused' tests/unit/test_doc_check.py
 reenters: PL-GPJ7

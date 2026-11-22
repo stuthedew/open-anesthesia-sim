@@ -11,6 +11,7 @@ touches: docs/interface-provenance.md
 added: 2026-11-05
 closed: 2026-11-09
 pr: 2072
+filed-pr: 2045
 payoff: a contributor building a View knows the Area draws the header, and does not give one View a second header
 verify: ! grep -qF "should likewise leave a View's chrome to the View" docs/interface-provenance.md
 reenters: PL-4FBP

@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - found by the 2026-11-10 audit after the freeze; not live
 added: 2026-11-10
 closed: 2026-11-22
 pr: 2229
+filed-pr: 2090
 payoff: in compare mode a value shown under the wrong run's name fails a test, for every View that shows two runs
 tests: tests/integration/simulation_view/test_simulation_view_run_values.py::test_each_compared_value_is_shown_under_its_own_run
 reenters: PL-GTH6

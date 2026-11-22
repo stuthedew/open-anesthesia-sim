@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 closed: 2026-10-01
 pr: 1271
+filed-pr: 1270
 payoff: an item's audit reads the commits that lead with its id and no commit that merely cites it, the same answer the claim record gives
 verify: grep -q 'def test_item_commits_reads_leading_ids_only' subprojects/docket/tests/test_verify.py
 reenters: PL-PVW2

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 closed: 2026-10-12
 pr: 1463
+filed-pr: 1271
 payoff: a recurrence on a head means the same mechanism came back, never that two captures both live in docs/items
 verify: grep -q 'def test_sharing_only_the_item_store_is_not_a_recurrence' subprojects/docket/tests/test_duplicates.py
 reenters: PL-TZ7T

@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the freeze; an apparatus defect in the wo
 added: 2026-11-03
 closed: 2026-11-04
 pr: 2010
+filed-pr: 1988
 payoff: a second triage pass sees which ids a first pass has taken before either spends anything on them
 verify: grep -qF 'Claim the ids this pass will answer' .claude/skills/docket/modes/triage.md
 reenters: PL-MB2W

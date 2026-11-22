@@ -11,6 +11,7 @@ touches: docs/interface-provenance.md
 added: 2026-11-11
 closed: 2026-11-11
 pr: 2103
+filed-pr: 2098
 payoff: the adopted list says what the Area container keeps, so nobody builds a second state stack
 verify: grep -qF 'keeps one saved state for each View kind' docs/interface-provenance.md
 reenters: PL-4FBP

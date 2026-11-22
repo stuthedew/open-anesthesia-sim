@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a guard of the workflow, which nothing in the schematic'
 added: 2026-11-11
 closed: 2026-11-11
 pr: 2096
+filed-pr: 2096
 payoff: a forced push, a moved release tag and a merge past the checks are refused by GitHub however a session spells them, so no fifth guard has to be written
 verify: grep -q 'pull_request_target' .github/workflows/merge-hold.yml && ! grep -q 'force-with-lease --force-if-includes' subprojects/docket/src/docket/render.py
 reenters: PL-1ZZ0

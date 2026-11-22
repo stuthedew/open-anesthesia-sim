@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 closed: 2026-09-26
 pr: 1083
+filed-pr: 1007
 payoff: a reader following a section citation in the roadmap or the model specification lands on the section it names instead of nowhere
 verify: ! grep -qF 'Current baseline: v0.4.26' ROADMAP.md && ! grep -qF 'wash-in validation test' docs/MODEL.md
 reenters: PL-B9VL

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-24
 closed: 2026-09-26
 pr: 1068
+filed-pr: 1000
 verify: grep -q 'The hard wrap (.PL-BZHX.) is now the plain-text form' tools/pr_body_check.py
 reenters: PL-WFFX
 ---

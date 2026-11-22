@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/, tools/, subprojects/docket/tests/, test
 added: 2026-10-19
 closed: 2026-10-24
 pr: 1738
+filed-pr: 1712
 payoff: a status added later cannot be open to one docket command and closed to another
 verify: ! grep -rqE --include=*.py --exclude=claims.py '[^f]\.status (not )?in (OPEN|CLOSED)_STATUSES' subprojects/docket/src tools
 reenters: PL-5DZ8

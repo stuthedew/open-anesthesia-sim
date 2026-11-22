@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-23
 closed: 2026-09-24
 pr: 998
+filed-pr: 967
 payoff: a commit on main that says something other than its pull request is reported, not passed as intact
 verify: grep -q 'def test_fires_on_a_squash_body_that_differs_from_its_pull_request_body' tests/unit/test_pr_body_check.py
 reenters: PL-WFFX

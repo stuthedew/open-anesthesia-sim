@@ -13,6 +13,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-09-26
 pr: 1091
+filed-pr: 1050
 payoff: the two lost pull-request bodies are in the checkout, and PL-WFFX's record stops telling a session that a session-armed auto-merge never loses a body
 verify: grep -qF 'commit: 6d2f0531' docs/pr-bodies/1044.md && grep -qF 'commit: fdc76b16' docs/pr-bodies/1015.md && grep -qF '#1044' docs/items/PL-WFFX-*.md
 reenters: PL-WFFX

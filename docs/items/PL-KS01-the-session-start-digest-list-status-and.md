@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-26
 closed: 2026-10-19
 pr: 1625
+filed-pr: 1058
 payoff: the digest, list, status and concurrent answer from the same copy of each item as next and show, so a session resumed behind origin/main is not pointed at work main has closed
 verify: grep -q 'def test_digest_reads_the_base_s_copy_behind_main' subprojects/docket/tests/test_cli.py
 reenters: PL-XBV4
