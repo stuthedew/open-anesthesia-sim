@@ -110,7 +110,7 @@ def _run(agent_id: str) -> AgentRun:
 
     system = AgentUptakeSystem.for_agent(agent_id)
     assert system.circuit.delivered_concentration_percent == float(
-        load_agent_parameters(agent_id).mac_percent
+        load_agent_parameters(agent_id).mac_at_age_40_percent
     ), f"{agent_id} does not open at its stored 1 MAC, which is the section's condition"
     patient = system.patient
     first: dict[str, int] = {}
@@ -230,7 +230,9 @@ def test_the_mac_step_in_percentage_points_matches_each_stored_mac() -> None:
         ("isoflurane", isoflurane),
         ("desflurane", desflurane),
     ):
-        step_pp = MAC_DISPLAY_RESOLUTION_MAC * float(load_agent_parameters(agent_id).mac_percent)
+        step_pp = MAC_DISPLAY_RESOLUTION_MAC * float(
+            load_agent_parameters(agent_id).mac_at_age_40_percent
+        )
         places = len(printed.split(".")[1])
         assert f"{step_pp:.{places}f}" == printed, (
             f"one MAC step of {agent_id} is {step_pp!r} percentage points, printed as {printed}"

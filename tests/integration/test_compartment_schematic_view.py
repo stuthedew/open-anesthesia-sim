@@ -282,7 +282,7 @@ def test_patient_inputs_reach_the_drawn_circuit_label_through_the_model(
     percent = dial_percent * (1.0 - exp(-seconds * flow_l_min / SECONDS_PER_MINUTE / volume_l))
     millilitres = volume_l * percent / 100.0 * 1000.0
     circuit = _schematic(view).schematics[0].canvas.readings[0]
-    axis_top_percent = 3 * load_agent_parameters("sevoflurane").mac_percent
+    axis_top_percent = 3 * load_agent_parameters("sevoflurane").mac_at_age_40_percent
 
     assert 100.0 <= millilitres < 1000.0
     assert circuit.name == "Circuit"
@@ -363,7 +363,7 @@ def test_the_schematic_follows_its_run_through_a_reset_an_agent_change_and_a_com
     view.present(False)
 
     _assert_every_label_matches_its_run(view)
-    isoflurane_top = 3 * load_agent_parameters("isoflurane").mac_percent
+    isoflurane_top = 3 * load_agent_parameters("isoflurane").mac_at_age_40_percent
     schematic = _schematic(view).schematics[0]
     assert f"0 to {isoflurane_top:g}% of 1 atm" in schematic.scale_text.text()
 

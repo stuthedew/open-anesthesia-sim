@@ -109,12 +109,12 @@ mark on a rising crossing and below it on a falling one. One step's change can
 still show on screen. That change grows with the gap between a compartment and
 the gas reaching it, and with the flow that carries that gas in. With 8%
 sevoflurane and a fresh gas flow of 10 L/min, a 0.10 ×MAC target on the circuit
-halts showing 0.11 ×MAC. The change can be larger on other compartments. Run
+halts showing 0.12 ×MAC. The change can be larger on other compartments. Run
 the same settings for 120 s with alveolar ventilation at 0 L/min, so that the
 alveolar reading stays at zero while the circuit fills. Restoring ventilation
-to 12 L/min then raises the alveolar reading from zero to 0.29 ×MAC in the next
-one-second step. So a 0.10 ×MAC alveolar target halts showing 0.29 ×MAC,
-nineteen display counts past its mark. A value one or more display counts past
+to 12 L/min then raises the alveolar reading from zero to 0.32 ×MAC in the next
+one-second step. So a 0.10 ×MAC alveolar target halts showing 0.32 ×MAC,
+twenty-two display counts past its mark. A value one or more display counts past
 the mark is therefore correct, and is not a fault in detecting the crossing.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
@@ -172,9 +172,9 @@ takes the same trajectory as one that halted
 (`test_an_unmarked_run_takes_the_same_trajectory_as_one_that_halted`). The
 status does not read as the learner's own pause
 (`test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` in
-`tests/unit/test_dashboard_frame.py`). A halt can show one display count past a
-circuit target and many past an alveolar one
-(`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past`
+`tests/unit/test_dashboard_frame.py`). A halt can show a few display counts past
+a circuit target and many past an alveolar one
+(`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_counts_past`
 and
 `test_an_alveolar_target_can_halt_many_counts_past_its_mark_when_ventilation_resumes`
 in `tests/integration/controller/test_controller_bookmarks.py`). A target is
@@ -571,7 +571,6 @@ second, the two are the same stretch. The halt record lists the marks a run
 stopped on. The three ways of branching (at a control change, where a paused
 run stands, and at a mark), a branch's reset and the halt record all follow
 one rule:
-<!-- not-restated: 2 % -->
 
 - **A branch's provenance, the record of where it came from, is the reaching
   stretch.** Except at the case's opening, which the paragraph after this list
@@ -1089,7 +1088,7 @@ contribute to the termination of clinical drug effect". That finding is what mak
 metabolism safe over a case. It holds while ventilation and perfusion dominate the trace,
 and becomes progressively false once the only thing still moving is the slow tail, to which
 this model gives no sink.
-<!-- not-restated: 2 %, 5 % -->
+<!-- not-restated: 5 % -->
 
 - Kharasch ED. *Biotransformation of sevoflurane.* Anesth Analg
   1995;81(6 Suppl):S27-38. PMID 7486145,
@@ -1103,7 +1102,7 @@ this model descends from that paper. What the review supplies is the magnitude a
 timing of the omission on which this limit rests, and tier 2 is legitimate for exactly that.
 A limit computed from a metabolic rate would need the primary measurements instead. It would
 be a different and better limit than this one.
-<!-- not-restated: 2 %, 5 % -->
+<!-- not-restated: 5 % -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The 24 hours are not inside the exposure range over which sevoflurane's metabolism was
@@ -1114,16 +1113,16 @@ whose alveolar fraction is held near 1 MAC gains about one MAC-hour per hour. So
 measured range at about 9.5 hours, and reaches about 24 MAC-hours at the limit. Every agent's
 dial opens at that agent's 1 MAC. The alveolar fraction stays below the dial during uptake,
 so a run left at the dial gains somewhat less. Sevoflurane's vaporizer delivers at most 8%,
-four times its 2% MAC. Counted at the dial, a run held there reaches at most about 96
+4.4 times its 1.80% MAC. Counted at the dial, a run held there reaches at most about 107
 MAC-hours. A long run at or above 1 MAC end-tidal therefore leaves the measured range well
 before 24 hours, and past that range even the size of the omission is unmeasured. The 24
 hours rest not on the measured range but on the argument above, that the omission grows
 steadily once only the slow tail is still moving, with no sudden break. Because isoflurane
 and desflurane are metabolized far less, the same span omits less for them.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-<!-- derived: 96 MAC-hours from data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+<!-- derived: 107 MAC-hours from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 
 **Why 24 hours, and not a multiple of the slowest time constant.** At the shipped reference
 settings, sevoflurane's fat group has an isolated time constant of about 42 h, which
@@ -1919,8 +1918,6 @@ to a whole second and never less than one second.
 
 <!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
-<!-- not-restated: 2 %, 6 % -->
-
 The gaps grow with the spacing, so a narrower plot has larger gaps and a wider
 plot smaller ones. They bound the error in a trace's *shape* inside one pixel
 column, never in a displayed value.
@@ -2152,7 +2149,8 @@ per-substance mapping with `ROADMAP.md` Phase 1, which generalizes the patient
 to N simultaneously present substances. The snapshot carries the six fields
 beside the identifier and display name of the agent they belong to
 (`agent_id`, `agent_display_name`), as it carries the agent's MAC
-(`agent_mac_percent`) beside the concentrations that MAC scales. The controller
+(`agent_mac_percent`), and the age that MAC is stated for
+(`agent_mac_age_years`), beside the concentrations that MAC scales. The controller
 exposes immutable snapshots, and immutable windows onto the recorded run, rather
 than mutable compartment objects.
 
@@ -2213,7 +2211,6 @@ five twelve-hour runs built by formula.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
-<!-- not-restated: 2 %, 6 % -->
 
 The five simulated runs for the gap at a peak or a trough were sevoflurane
 2% to 4% and 4% to 0% at the fastest settings, the desflurane case at the
@@ -2236,7 +2233,6 @@ draws the alveolar peak 2 s later, the vessel-rich peak 63 s later and the
 venous peak 79 s later, each between two columns 30 s apart
 (`test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reach`
 in `tests/unit/test_chart_frame.py`).
-<!-- not-restated: 2 % -->
 
 Bounding the gap at a peak or a trough by the readout's resolution is
 deliberate. The bound is about the chart, in the units that the readout shows,
@@ -3007,12 +3003,12 @@ shows it, and a MAC target is set in it (§ "Halting on a marked crossing"). The
 model neither stores a compartment's MAC multiple nor computes one.
 
 **MAC multiples keep their meaning when the agent changes, and clinicians reason
-in them.** A percent changes meaning with the agent: 2% is 1 MAC of sevoflurane
-and about a third of a MAC of desflurane. A desflurane wash-in and a sevoflurane
+in them.** A percent changes meaning with the agent: 1.8% is 1 MAC of sevoflurane
+and about a quarter of a MAC of desflurane. A desflurane wash-in and a sevoflurane
 wash-in drawn at the same height in percent therefore show two different
 clinical situations.
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- derived: a third of a MAC of desflurane from data/agents/desflurane.json mac_percent = 6 -->
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- derived: a quarter of a MAC of desflurane from data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 #### What a MAC multiple means
 
@@ -3031,13 +3027,13 @@ standardized surgical stimulus. So:
 
 Three limitations apply to every compartment, including the alveolar one:
 
-1. MAC falls about 6% per decade of age (Mapleson 1996), and the model's
-   reference adult has no age parameter.
+1. MAC falls about 6% per decade of age (Mapleson 1996). The model's
+   reference adult has no age parameter, so every run divides by the MAC at
+   age 40.
 2. The MAC multiples of co-administered agents are additive, and the model runs
    one agent at a time.
 3. Opioids, temperature and patient factors modify MAC, and the model
    represents none of them.
-<!-- not-restated: 6 % -->
 
 **The MAC multiple is written `×MAC`, not `MAC`.** A clinician reads "0.80 MAC"
 as a depth of anesthesia, and "0.80 ×MAC" as a multiple of 1 MAC, which is what
@@ -3048,21 +3044,39 @@ five of them are not the alveolar compartment. No text on the display explains
 the difference between a ratio and a depth, so the sign is the only thing that
 marks it.
 
-**The agent's 1 MAC is shown beside the chart**, for example as "1 MAC
-sevoflurane = 2.0%". A reader can compare this 1 MAC with the value they use,
-and can convert a MAC multiple back to the percent that the model computes. The
-1 MAC is also the vaporizer's starting position. In each agent's data file, the
-authority for the stored 1 MAC is De Wolf et al. 2012, which reports the flat
-adult MAC that Gas Man uses. `docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" gives the
-source of each agent's 1 MAC, how far it is from the primary literature, and
-what that gap means for comparing agents.
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+**The agent's 1 MAC is shown beside the chart with the age it is stated
+for**, for example as "1 MAC sevoflurane (age 40) = 1.8%". A reader can
+compare this 1 MAC with the value they use for their own patient, and can
+convert a MAC multiple back to the percent that the model computes. The 1 MAC
+is also the vaporizer's starting position. In each agent's data file, the
+authority for the stored 1 MAC is Mapleson's 1996 meta-analysis, which gives
+each agent's MAC at age 40. `docs/PARAMETERS.md` § \"Delivery-limit and MAC
+parameters" gives the source of each agent's 1 MAC and its confidence limits.
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+
+**The 1 MAC prints with at most two decimals and no trailing zero**: 1.8%
+sevoflurane, 1.17% isoflurane and 6.6% desflurane. Two decimals show
+isoflurane's 1.17% in full. A trailing zero would claim a digit that the MAC's
+uncertainty does not support, because Mapleson's 95% limits are about ±7% of
+the MAC (±10% for desflurane). The GUM rounds an estimate to be consistent with
+its uncertainty (JCGM 100:2008, *Evaluation of measurement data: Guide to the
+expression of uncertainty in measurement*, § 7.2.6). The Joint Commission's
+"Do Not Use" list allows a trailing zero only where it shows the precision of
+the value reported. The line then reads as the 1 MAC gridline's axis label
+does. The dial and the percent readouts keep two decimals, because they show a
+setting and a computed concentration at the dial's step.
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 **For developers.** The display code converts percent to MAC multiples in
 `app/formatting.py`, outside the model's code in `core/`. It takes the agent's
 1 MAC as an argument. Each snapshot of the simulation's state carries that 1 MAC
 beside the concentrations it scales and the agent it belongs to
-(`SimulationSnapshot.agent_mac_percent`). The display code therefore cannot pair
+(`SimulationSnapshot.agent_mac_percent`), with the age it is stated for
+(`SimulationSnapshot.agent_mac_age_years`). Both come from one `PatientMac`,
+which `mac_for_patient()` in `core/mac.py` builds from the agent and the
+patient. The display code therefore cannot pair
 one agent's concentrations with another agent's 1 MAC.
 
 Both units are shown because a unit selector would make the axis unit a mode,
@@ -3074,10 +3088,10 @@ because its reader, an anesthesia provider, knows what MAC is defined against,
 and a dozen lines of text between the reader and the plot cost more than they
 gave (`PL-6580`).
 
-The stored 1 MAC (`mac_percent`) is a tier-3 value under
-`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a value".
-Mapleson 1996 is in the `sources` list of each agent's data file as the source
-for the fall in MAC with age.
+The stored 1 MAC (`mac_at_age_40_percent`) is a tier-2 value under
+`docs/PARAMETERS.md` § \"Source hierarchy: what may be cited as the authority for a value".
+Its adopted source in each agent's data file is Mapleson 1996, which is also
+the source for the fall in MAC with age.
 
 The multiple carries the multiplication sign
 (`test_format_mac_multiple_carries_the_multiplication_sign` in
@@ -3104,9 +3118,9 @@ is cut off at the top of the frame, where it runs flat as a plateau would.
 Without the name, a reader would conclude that the concentration stopped rising
 at 3 ×MAC, when in the model it did not. The chart also says that the readouts
 are not cut off and keep showing their values. Inhalational induction commonly
-uses sevoflurane's 8% dial setting, which is 4.00 ×MAC, above the ceiling.
+uses sevoflurane's 8% dial setting, which is 4.44 ×MAC, above the ceiling.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
-<!-- derived: 4.00 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_percent = 2 -->
+<!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **The chart's percent axis is linear, which crowds the slow compartments
@@ -3129,28 +3143,27 @@ heights, amounts and share bar assert").
 redraw a rising curve smaller partway through a lesson, and a reader would take
 that change of shape for something the model did.
 
-The 3 ×MAC ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) is exactly
-desflurane's dial maximum divided by its 1 MAC, so it rests on a real device
-limit. Desflurane's vaporizer is the most limited, and the ceiling leaves no
-empty band above the range that vaporizer can reach. The ceiling puts the 1 MAC
-line at a third of the plot height, inside the plot rather than on its frame.
-Unlike a ceiling of 2, it also keeps on the plot the 2-3 ×MAC range that
-overpressure induction works in. A ceiling at each agent's own dial maximum
-could never be exceeded, but the chart would then draw the same MAC multiple at
-different heights for different agents, because the dial maxima run from
-3.00 ×MAC for desflurane to 4.17 ×MAC for isoflurane (`PL-CC23`).
-<!-- derived: 3.00 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_percent = 6 -->
+The 3 ×MAC ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) puts the
+1 MAC line at a third of the plot height, inside the plot rather than on its
+frame. Unlike a ceiling of 2, it also keeps on the plot the 2-3 ×MAC range that
+overpressure induction works in. Desflurane's vaporizer is the most limited. Its
+18% maximum is 2.73 ×MAC, so desflurane's plot has an empty band from 18% to its
+19.8% top, which no dial setting can reach. A ceiling at each agent's own dial
+maximum could never be exceeded, but the chart would then draw the same MAC
+multiple at different heights for different agents, because the dial maxima run
+from 2.73 ×MAC for desflurane to 4.44 ×MAC for sevoflurane (`PL-CC23`).
+<!-- derived: 2.73 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_at_age_40_percent = 6.6 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-<!-- derived: 4.17 from data/agents/isoflurane.json max_delivered_concentration_percent = 5, mac_percent = 1.2 -->
+<!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 
 A gridline every half MAC (`CHART_GRID_INTERVAL_MAC`) falls on the values that
 the MAC axis labels, so the axis names every gridline on the plot.
 
 The chart compares a trace's excess over the ceiling with the displayed
 resolution rather than with zero, so it does not name a compartment whose trace
-sits exactly at the ceiling. This matters for isoflurane, whose ceiling,
-3 × 1.2, is 3.5999999999999996 in binary floating point.
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+sits exactly at the ceiling. This matters for desflurane, whose ceiling,
+3 × 6.6, is 19.799999999999997 in binary floating point.
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 The ceiling is scaled by the agent's MAC and leaves room above 1 MAC
@@ -3316,8 +3329,9 @@ space between the rules is exactly the published spread.
 **The 1 MAC line marks the nominal value, not the dialled one.** A fixed line
 sits at the same height in every run, so runs stay comparable. A line that
 tracked the dialled concentration would only restate where the trace already
-starts. The line sits at the stored MAC and is labelled as a reference adult
-value, not as this patient's MAC, because this model has no age parameter.
+starts. The line sits at the stored MAC, the MAC at age 40, and is labelled as
+a reference adult value, not as this patient's MAC, because this model has no
+age parameter.
 
 **The band is not a prediction for the patient on the screen.** It is the
 strongest claim that the evidence supports. The interface shows no
@@ -3328,19 +3342,19 @@ per-patient prediction.
 compartment and defines $`F_a \equiv F_A`$ (see `docs/MODEL.md` § "What the model represents"), so the
 alveolar trace is the fastest patient trace on the chart and the furthest from
 where responsiveness returns. One simulation shows the size of the gap. It ran
-sevoflurane for 3 hours at the opening dial of 2.0%, which is the stored 1 MAC,
+sevoflurane for 3 hours at the opening dial of 1.80%, which is the stored 1 MAC,
 and the default fresh gas flow of 4 L/min. That brought the alveolar fraction
-only to 1.69%, or 0.84 MAC. The vaporizer was then turned off and the fresh gas
+only to 1.52%, or 0.84 MAC. The vaporizer was then turned off and the fresh gas
 flow raised to 10 L/min. The alveolar trace crosses the band's centre at
 2.86 min, and the vessel-rich trace crosses it at 6.55 min, 2.29 times later.
-These figures are from a run on 2026-10-26, repeated on 2026-10-31 (`PL-39KH`,
-`PL-PTDZ`). An automated test reruns this protocol and checks each figure to
-the decimal places printed here.
+These figures are from a run on 2026-11-22 (`PL-39KH`, `PL-PTDZ`). An
+automated test reruns this protocol and checks each figure to the decimal
+places printed here.
 <!-- not-restated: 10 L/min -->
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
-<!-- derived: 2.86 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+<!-- derived: 2.86 min from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_at_age_40_percent = 1.8 -->
 
 At a 1 MAC dial, no patient trace reaches the 1 MAC line, however long the case
 runs. This is expected and is not a display fault. Muscle and fat keep taking
@@ -3364,10 +3378,10 @@ published percent would draw the band too high.
 
 **The *absolute height* of the MAC-awake band and the 1 MAC line inherits every
 limitation of the stored MAC.** The MAC-awake fractions come from primary
-measurements in humans (tier 1). The stored MAC is Gas Man's parameter, not a
-measurement, so the source hierarchy grades it tier 3
-(`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a value").
-`docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" records its limitations. The interface
+measurements in humans (tier 1). The stored MAC is Mapleson's meta-analytic
+MAC at age 40, not a measurement, so the source hierarchy grades it tier 2
+(`docs/PARAMETERS.md` § \"Source hierarchy: what may be cited as the authority for a value").
+`docs/PARAMETERS.md` § \"Delivery-limit and MAC parameters" records its limitations. The interface
 shows that MAC, so a reader can compare it with the value they would use.
 
 **Three misreadings of the band all make emergence look faster than this model
@@ -3385,32 +3399,27 @@ three are:
 A learner who takes away any of these errors carries into practice the belief
 that a patient is more awake than they are.
 
-**The stored MAC is a fourth source of error in the band's height, and the
-error's direction differs by agent** (`PL-GCGX`). That MAC is a flat adult
-value. The traces are absolute partial pressures and do not depend on MAC, so
-wherever the stored MAC departs from the literature, the band moves against the
-traces by the same proportion. `docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" compares
-the stored MAC with Mapleson's age-40 values. Against them, the stored MAC is
-11.1% high for sevoflurane, 2.6% high for isoflurane and 9.1% low for
-desflurane. All three are gaps from Mapleson's MAC, not from the MAC that each
-source used. Mapleson's 95% confidence limits are about ±7%, and ±10% for
-desflurane. Only sevoflurane's gap is larger than its limits, so the
-sevoflurane band probably sits too high, by about 11% if Mapleson is right. A
-band drawn too high teaches an earlier wake-up. In the washout run described earlier in this section, the
-vessel-rich trace crosses sevoflurane's drawn band centre of 0.68% at 6.55 min.
-It crosses 0.612%, the same fraction of Mapleson's 1.80%, at 7.30 min. The
-isoflurane and desflurane gaps are inside the limits, so Mapleson does not show
-either band to be off. Song et al.'s measurement also agrees with the drawn
-desflurane band (`docs/PARAMETERS.md` § "The MAC-awake fractions").
-<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
+**The stored MAC is a fourth source of error in the band's height**
+(`PL-GCGX`). The band is drawn at a fraction of the stored MAC, Mapleson's MAC
+at age 40, and `docs/PARAMETERS.md` § "The stored MAC" gives its 95% confidence
+limits of about ±7%, and ±10% for desflurane. A dial set in percent fixes the
+traces, so an error in the stored MAC moves the band against them by the same
+proportion. In a run left at its opening 1 MAC dial, the error does not move
+the band against the traces. The dial opens at the stored MAC and the model is
+linear in the dial, so the traces move with the band, and the error is in the
+percent that the dial delivers instead. In the washout run described earlier in
+this section, the vessel-rich trace crosses sevoflurane's drawn band centre of
+0.612% at 6.55 min. A patient older than 40 has a lower MAC, so the band drawn
+at the MAC at age 40 sits above that patient's own and teaches an earlier
+wake-up.
+<!-- derived: 0.612 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_at_age_40_percent = 1.8 -->
 
-The comparison with Katoh's own MAC at age 40 points the same way as the
-Mapleson one: the band sits slightly high, so it teaches a slightly early
-wake-up. `docs/PARAMETERS.md` § "The MAC-awake fractions" gives the
-comparison.
+The comparison with Katoh's own MAC at age 40 points the other way: the band
+sits slightly low, so it teaches a slightly late wake-up. `docs/PARAMETERS.md`
+§ "The MAC-awake fractions" gives the comparison.
 
 **For developers.** No governing equation in the model's code (`core/`) uses
-MAC-awake or the stored MAC (`mac_percent`). `core/parameters.py` gives the
+MAC-awake or the stored MAC (`mac_at_age_40_percent`). `core/parameters.py` gives the
 band's two edges as fractions of MAC (`mac_awake_band_fractions`), and
 `app/formatting.py` multiplies them by the stored MAC to place the band on the
 percent axis (`mac_awake_band_percent`). Each
@@ -4239,8 +4248,8 @@ places finer than the readout shows. The second is the question that a clinician
 reading a percent sign is asking, and its answer is much coarser.
 
 **Between patients, one measured standard deviation of a partition coefficient
-moves a readout by anything from a third of one count to ninety counts of the
-last displayed digit.** One count is 0.01 percentage points. When one stored coefficient is
+moves a readout by anything from a third of one count to ninety-nine counts of
+the last displayed digit.** One count is 0.01 percentage points. When one stored coefficient is
 changed by one published SD and the run is repeated at 1 MAC with the reference
 adult's flows, the largest shift of any displayed reading in the first hour and
 over the whole 24 h run is as follows
@@ -4249,13 +4258,13 @@ over the whole 24 h run is as follows
 
 | Coefficient changed by one SD | The SD as a share of the mean | Largest shift in the first hour | Largest shift over 24 h |
 | --- | --- | --- | --- |
-| Blood:gas | 5.7% to 8.3% | 2.0×10⁻² to 8.2×10⁻² pp | 2.4×10⁻² to 1.2×10⁻¹ pp |
-| Vessel-rich tissue:gas | 3.7% to 6.1% | 1.0×10⁻² to 4.9×10⁻² pp | 1.0×10⁻² to 4.9×10⁻² pp |
-| Muscle tissue:gas | 37% to 45% | 1.5×10⁻¹ to 9.0×10⁻¹ pp | 2.1×10⁻¹ to 9.5×10⁻¹ pp |
-| Fat tissue:gas | 17% to 19% | 3.4×10⁻³ to 3.6×10⁻² pp | 7.6×10⁻² to 4.0×10⁻¹ pp |
+| Blood:gas | 5.7% to 8.3% | 2.0×10⁻² to 9.0×10⁻² pp | 2.4×10⁻² to 1.3×10⁻¹ pp |
+| Vessel-rich tissue:gas | 3.7% to 6.1% | 1.0×10⁻² to 5.4×10⁻² pp | 1.0×10⁻² to 5.4×10⁻² pp |
+| Muscle tissue:gas | 37% to 45% | 1.5×10⁻¹ to 9.9×10⁻¹ pp | 2.1×10⁻¹ to 1.0 pp |
+| Fat tissue:gas | 17% to 19% | 3.4×10⁻³ to 4.0×10⁻² pp | 7.4×10⁻² to 4.4×10⁻¹ pp |
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-<!-- not-restated: 2.4, 2.1 -->
+<!-- not-restated: 2.4, 2.1, 1.3 -->
 
 Each range covers the three agents that the simulator offers, and desflurane
 always gives the largest shift. A run of 24 h is the longest the simulator
@@ -4273,9 +4282,9 @@ run changes the coefficient by its SD as a share of the mean, upward and
 downward, and keeps the larger shift.
 
 So a reading can differ between two patients by many times its last digit. In
-the first hour the muscle coefficient alone moves a reading by up to 90 counts.
+the first hour the muscle coefficient alone moves a reading by up to 99 counts.
 Over a whole run the slow compartments fill further, and the blood:gas and fat
-coefficients move a reading by up to 12 and 40 counts.
+coefficients move a reading by up to 13 and 44 counts.
 
 **The last digit separates two moments of one run, not two patients.** An SD
 changes where the whole curve sits, not how finely two points on it can be told
@@ -4287,11 +4296,11 @@ above measures how far a patient's value could lie from the one shown.
 **Legibility sets the lower limit on decimals: one decimal hides the slow
 compartments' wash-in, which is the reason for displaying them.** At one decimal
 the sevoflurane and isoflurane fat fractions read `0.0%` for the whole hour
-(0.032% and 0.015% at 3600 s). Desflurane's fat fraction stays at `0.0%` for its
-first 19.3 minutes and reaches 0.2%. Muscle reads `0.0%` for its first 2.9
-minutes with desflurane, 8.5 minutes with sevoflurane and 14.8 minutes with
+(0.029% and 0.014% at 3600 s). Desflurane's fat fraction stays at `0.0%` for its
+first 17.9 minutes and reaches 0.2%. Muscle reads `0.0%` for its first 2.7
+minutes with desflurane, 9.2 minutes with sevoflurane and 15.1 minutes with
 isoflurane. At two decimals, at 1 MAC with default flows, muscle first shows a
-nonzero value at 57, 126 and 191 seconds and fat at 237, 782 and 1478 seconds,
+nonzero value at 55, 133 and 194 seconds and fat at 224, 845 and 1507 seconds,
 for desflurane, sevoflurane and isoflurane in that order. Three tests check
 these figures against the model, all in
 `tests/reference/test_displayed_precision_figures.py`:
@@ -4359,24 +4368,23 @@ comes from changing a coefficient by one SD
 are held by
 `test_one_sd_of_each_coefficient_displaces_the_readouts_as_the_table_states`,
 the SDs by `test_the_relative_sds_are_those_the_section_states`, and the range
-of a third of a count to ninety counts by
-`test_one_sd_is_a_third_of_a_count_to_ninety_counts_of_the_last_digit`. The
-whole-run counts of 12 and 40 are the table's last column in counts.
+of a third of a count to ninety-nine counts by
+`test_one_sd_is_a_third_of_a_count_to_ninety_nine_counts_of_the_last_digit`. The
+whole-run counts of 13 and 44 are the table's last column in counts.
 `test_each_tissue_coefficient_s_sd_is_the_sd_of_the_coefficient_the_model_stores`
 fails if an SD is taken from a row whose mean the stored coefficient does not
 match, as the brain:blood SDs were.
 
 #### The MAC multiple's resolution
 
-**The MAC readout shows the MAC multiple in steps of 0.01 MAC.** One step is 0.02
-percentage points of sevoflurane, 0.012 of isoflurane and 0.06 of desflurane. Each is
+**The MAC readout shows the MAC multiple in steps of 0.01 MAC.** One step is 0.018
+percentage points of sevoflurane, 0.0117 of isoflurane and 0.066 of desflurane. Each is
 at least the percent readout's 0.01 percentage points, because the MAC multiple is
 calculated from the percent concentration and can be no more precise than it. The two
 readouts round separately, so the MAC readout can occasionally change while the percent
 readout stays the same.
 `test_the_mac_step_in_percentage_points_matches_each_stored_mac` in `tests/reference/test_displayed_precision_figures.py` checks the three
 per-agent figures against each agent's stored MAC.
-<!-- not-restated: 0.06 -->
 
 A MAC multiple above zero that rounds to `0.00 ×MAC` shows as `<0.01 ×MAC`. The `<` sign
 matters more on the MAC readout than on the percent readout, because a filling
@@ -4387,10 +4395,10 @@ compartment filling.
 **For developers.**
 The MAC resolution is derived from the percent resolution rather than stored beside
 it, so that re-measuring the percent resolution never leaves a second number to
-update. Divided by the agent's MAC in percent (`mac_percent`), 0.01 percentage
-points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane and 0.0017 for desflurane.
-The MAC resolution is the finest power of ten at or above the coarsest of these,
-isoflurane's 0.0083. A test repeats this arithmetic for every shipped agent
+update. Divided by the agent's MAC in percent (`mac_at_age_40_percent`), 0.01
+percentage points is 0.0056 MAC for sevoflurane, 0.0085 for isoflurane and 0.0015 for
+desflurane. The MAC resolution is the finest power of ten at or above the coarsest of
+these, isoflurane's 0.0085. A test repeats this arithmetic for every shipped agent
 (`test_the_mac_resolution_is_derived_from_the_percent_resolution` in `tests/unit/test_formatting.py`) and fails if
 adding an agent or changing the percent resolution would make the MAC readout finer
 than the percent readout supports. Another test checks the `<0.01 ×MAC` form
@@ -4686,8 +4694,8 @@ many steps.** As with the readouts, the spread between patients does not set the
 step (project owner, 2026-11-14, `PL-W51N`). Changing one of the coefficients
 by its published SD (§ "Why the readouts show two decimals") shifts the
 exhausted total. At 1 MAC with the reference adult's flows, after 1 h and at
-24 h, the longest run the simulator supports, the largest shifts are 0.033 and
-0.61 L for sevoflurane, 0.026 and 0.62 L for isoflurane, and 0.089 and 0.68 L
+24 h, the longest run the simulator supports, the largest shifts are 0.030 and
+0.55 L for sevoflurane, 0.025 and 0.61 L for isoflurane, and 0.097 and 0.74 L
 for desflurane. At each agent's dial maximum with 10 L/min they are 0.17 and
 2.5 L, 0.16 and 2.8 L, and 0.32 and 2.1 L. The muscle coefficient gives the
 largest shift in every case. So after 24 h at a dial maximum an exhausted or
@@ -4821,9 +4829,9 @@ resolve in the other. One step of the litre display, 0.1 L of vapour, is
 0.55 mL of sevoflurane liquid, 0.51 mL of isoflurane and 0.48 mL of desflurane
 at the 20 °C reference of `docs/MODEL.md` § "Agent amount". The smallest power of ten at or
 above all three is 1 mL. For scale, at 1 MAC with the reference adult's flows, the one-SD shifts
-at 24 h given in § "The agent-accounting panel", 0.61 L of sevoflurane vapour, 0.62 L of
-isoflurane and 0.68 L of
-desflurane, are 3.3, 3.2 and 3.2 mL of liquid. So at those settings one step of
+at 24 h given in § "The agent-accounting panel", 0.55 L of sevoflurane vapour, 0.61 L of
+isoflurane and 0.74 L of
+desflurane, are 3.0, 3.1 and 3.5 mL of liquid. So at those settings one step of
 1 mL is about a third of an SD, and a step of 0.1 mL would be about a thirtieth.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
@@ -4920,10 +4928,10 @@ blood, 8.3% in the vessel-rich group, 44% in muscle and 8.2% in fat. The circuit
 and the alveoli move least, because the dial sets them. With two significant
 figures, one step of the last digit is 1% to 10% of the amount, so an amount
 can differ between patients by many steps of its label. At most, in
-isoflurane's muscle at 3 h 34 min, which holds 993 mL, one SD is 28 steps of
+sevoflurane's muscle at 4 h 13 min, which holds 995 mL, one SD is 31 steps of
 10 mL. Two tests hold these figures
 (`test_one_sd_shifts_each_compartment_s_amount_by_the_share_the_section_states`
-and `test_a_two_figure_amount_s_finest_step_is_a_twenty_eighth_of_an_sd` in `tests/integration/test_parameter_uncertainty.py`).
+and `test_a_two_figure_amount_s_finest_step_is_a_thirty_first_of_an_sd` in `tests/integration/test_parameter_uncertainty.py`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- not-restated: 10 mL -->
 
@@ -4952,7 +4960,7 @@ its unit, and the schematic compares them on one scale, in the share bar.
 
 No single number of decimals suits every amount. The shift from one SD in the
 runs above ran from almost nothing, in the circuit in the first seconds, to
-700 mL, in isoflurane's muscle at 24 h, because the amounts themselves span that
+770 mL, in desflurane's muscle at 24 h, because the amounts themselves span that
 many orders of magnitude
 (`test_one_sd_shifts_each_compartment_s_amount_by_the_share_the_section_states`).
 A step of 10 mL would print sevoflurane's and isoflurane's venous blood as
@@ -5608,7 +5616,6 @@ USD 115.13 per 240 mL bottle, 60 min of desflurane at 6 % and 1 L/min costs
 USD 8.23. Shown as 17 mL and USD 0.4797 per mL, the two figures multiply to
 USD 8.15.
 
-<!-- not-restated: 6 % -->
 
 **The cost is the delivered agent's liquid equivalent times the price per
 millilitre.** It uses the delivered agent because that is what left the bottle

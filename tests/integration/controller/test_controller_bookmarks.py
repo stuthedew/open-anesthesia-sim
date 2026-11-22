@@ -153,14 +153,16 @@ def _sevoflurane_at_8_percent_and_10_l_min() -> SimulationController:
     return controller
 
 
-def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_count_past() -> None:
+def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_counts_past() -> None:
     """The simulation halts within one simulation step of the mark, as `docs/INTERFACE.md` now says.
 
     A mark is the target value that the learner sets for a reading. The simulation halts when
     the reading crosses it. § "Halting on a marked crossing" used to say that the value
     displayed beside a halt is the value the learner marked (`PL-M8F6`). The specification
     now gives this case as its first example. With 8% sevoflurane at 10 L/min, a 0.10 ×MAC
-    circuit target halts showing 0.11 ×MAC, one display count past its mark.
+    circuit target halts showing 0.12 ×MAC, two display counts past its mark. A bare uptake
+    system with the same settings reads 0.1211 ×MAC of sevoflurane's 1.80% at 1 s
+    (measured 2026-11-22). When the stored MAC was 2.0%, the same reading was 0.11 ×MAC.
     """
 
     controller = _sevoflurane_at_8_percent_and_10_l_min()
@@ -178,7 +180,7 @@ def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_one_cou
     assert before < mark <= float(halted.inspired_partial_pressure_fraction) / mac_fraction
     assert format_mac_multiple(
         halted.inspired_partial_pressure_fraction, halted.agent_mac_percent
-    ) == (f"0.11{MAC_UNIT_SUFFIX}")
+    ) == (f"0.12{MAC_UNIT_SUFFIX}")
 
 
 def test_an_alveolar_target_can_halt_many_counts_past_its_mark_when_ventilation_resumes() -> None:
@@ -188,8 +190,8 @@ def test_an_alveolar_target_can_halt_many_counts_past_its_mark_when_ventilation_
     `docs/INTERFACE.md` § "Halting on a marked crossing" describes. After 120 s with no
     alveolar ventilation, the circuit has filled but the alveolar reading is still zero. When
     ventilation is restored to 12 L/min, the alveolar reading rises in the next one-second
-    step from zero to 0.29 ×MAC. So a 0.10 ×MAC alveolar target halts showing 0.29 ×MAC,
-    nineteen display counts past its mark.
+    step from zero to 0.32 ×MAC. So a 0.10 ×MAC alveolar target halts showing 0.32 ×MAC,
+    twenty-two display counts past its mark.
 
     The expected reading comes from an uptake system built directly from the core, with no
     controller and no mark. It is given the same settings and takes the same 121 steps.
@@ -224,12 +226,12 @@ def test_an_alveolar_target_can_halt_many_counts_past_its_mark_when_ventilation_
     # The arithmetic is the same on both sides, so the comparison is exact.
     unmarked_reading = never_marked.alveoli.partial_pressure_fraction
     assert halted.alveolar_partial_pressure_fraction == unmarked_reading
-    # The unmarked system reads 0.2888 ×MAC of sevoflurane at 121 s, which a
-    # two-decimal readout shows as 0.29 (measured 2026-11-21).
-    assert round(unmarked_reading / mac_fraction, 2) == 0.29
+    # The unmarked system reads 0.3209 ×MAC of sevoflurane's 1.80% at 121 s,
+    # which a two-decimal readout shows as 0.32 (measured 2026-11-22).
+    assert round(unmarked_reading / mac_fraction, 2) == 0.32
     assert format_mac_multiple(
         halted.alveolar_partial_pressure_fraction, halted.agent_mac_percent
-    ) == (f"0.29{MAC_UNIT_SUFFIX}")
+    ) == (f"0.32{MAC_UNIT_SUFFIX}")
 
 
 def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:

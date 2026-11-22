@@ -903,7 +903,11 @@ def test_changing_circuit_volume_mid_run_does_not_break_the_next_step() -> None:
     # `venous_pool_volume_l` moved from 1.0 L to 1.222 L. A larger venous pool returns
     # slightly less agent to the circuit over the first 60 s. So this number is expected
     # to move with that parameter, and the 3.7e-6 L drop is in the expected direction.
-    assert circuit_agent_before_l == pytest.approx(0.048301285)
+    #
+    # On 2026-11-22 the run's 1 MAC moved from 2.0% to 1.80%, Mapleson 1996's MAC at age
+    # 40 (`PL-LBVN`). The model is linear in the dial, so the load is 0.9 times the last
+    # one: 0.9 x 0.048301285 = 0.043471157 L.
+    assert circuit_agent_before_l == pytest.approx(0.9 * 0.048301285)
 
     system.circuit.set_circuit_volume(CompartmentVolume(3.0))
 

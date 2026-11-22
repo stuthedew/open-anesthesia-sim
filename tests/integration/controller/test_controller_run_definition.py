@@ -555,6 +555,7 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
         agent_display_name=snapshot.agent_display_name,
         max_delivered_concentration_percent=snapshot.max_delivered_concentration_percent,
         agent_mac_percent=snapshot.agent_mac_percent,
+        agent_mac_age_years=snapshot.agent_mac_age_years,
         fresh_gas_flow_l_min=snapshot.fresh_gas_flow_l_min,
         accepted_fresh_gas_flow_range_l_min=snapshot.accepted_fresh_gas_flow_range_l_min,
         delivered_concentration_percent=snapshot.delivered_concentration_percent,

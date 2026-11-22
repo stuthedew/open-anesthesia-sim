@@ -353,7 +353,7 @@ def _ordinary_use(agent_id: str) -> tuple[Phase, ...]:
         Phase(
             ENVELOPE_HORIZON_S,
             OperatingPoint(
-                load_agent_parameters(agent_id).mac_percent,
+                load_agent_parameters(agent_id).mac_at_age_40_percent,
                 FRESH_GAS_FLOW_L_MIN,
                 patient.default_alveolar_ventilation_l_min,
                 patient.default_cardiac_output_l_min,

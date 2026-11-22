@@ -663,7 +663,8 @@ def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
 
     assert len(definition.segments) == 2
 
-    system.set_delivered_concentration_percent(Percent(2.0))
+    # Back to the opening dial: sevoflurane's 1.80%, its MAC at age 40.
+    system.set_delivered_concentration_percent(Percent(1.8))
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
@@ -778,7 +779,8 @@ def test_a_record_handed_out_is_not_changed_by_later_changes() -> None:
     held = definition.segments
     contents = list(held)
 
-    for percent, reach_s in ((4.0, 10), (2.0, 10), (5.0, 20)):
+    # 1.8 is the opening dial, sevoflurane's MAC at age 40.
+    for percent, reach_s in ((4.0, 10), (1.8, 10), (5.0, 20)):
         definition.advance_to(CaseInstant(reach_s))
         system.set_delivered_concentration_percent(Percent(percent))
         definition.record_change(system.equation_settings())

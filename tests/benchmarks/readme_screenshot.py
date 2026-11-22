@@ -3,7 +3,7 @@
 The image is the real Qt dashboard, built and painted with no display under
 Qt's `offscreen` platform, as `.claude/skills/run-the-app/SKILL.md` describes.
 It shows the default Workspace after ten simulated minutes of the shipped
-default case: sevoflurane delivered at 2.00% (1.00 ×MAC), a fresh gas flow of
+default case: sevoflurane delivered at 1.80% (1.00 ×MAC), a fresh gas flow of
 4.0 L/min, an alveolar ventilation of 4.0 L/min and a cardiac output of
 5.0 L/min, played at 1× real time. Those are the settings a new case opens
 with, so the image shows what a reader sees when they press Start and wait.

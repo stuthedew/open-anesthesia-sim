@@ -4,7 +4,7 @@ import math
 import re
 from collections.abc import Callable
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import fields, replace
 from pathlib import Path
 from typing import Any
 
@@ -20,8 +20,10 @@ from anesthesia_sim.core.concentration import MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
+    MAC_STORED_AT_AGE_YEARS,
     MACHINE_SCHEMA_VERSIONS,
     SOURCE_TIERS,
+    AgentParameters,
     SupportedSchemaVersions,
     load_agent_parameters,
     load_reference_adult_parameters,
@@ -40,13 +42,13 @@ REFUSAL_REASON = r", and [^ ]+ is (?:not finite|not greater than zero|negative)$
 
 def _valid_agent_payload() -> dict[str, object]:
     return {
-        "schema_version": 4,
+        "schema_version": 5,
         "id": "test-agent",
         "display_name": "Test Agent",
         "blood_gas_partition_coefficient": 0.5,
         "tissue_gas_partition_coefficients": {"vessel_rich": 1.0, "muscle": 2.0, "fat": 10.0},
         "max_delivered_concentration_percent": 8.0,
-        "mac_percent": 2.0,
+        "mac_at_age_40_percent": 2.0,
         "mac_awake": {
             "fraction_of_mac": 0.34,
             "standard_deviation_fraction_of_mac": 0.05,
@@ -200,7 +202,7 @@ def test_loads_built_in_sevoflurane_parameters() -> None:
     assert agent.muscle_tissue_gas_partition_coefficient == 2.4
     assert agent.fat_tissue_gas_partition_coefficient == 34.0
     assert agent.max_delivered_concentration_percent == 8.0
-    assert agent.mac_percent == 2.0
+    assert agent.mac_at_age_40_percent == 1.8
     assert len(agent.sources) >= 1
 
 
@@ -222,7 +224,7 @@ def test_loads_built_in_isoflurane_parameters() -> None:
     assert agent.muscle_tissue_gas_partition_coefficient == 4.5
     assert agent.fat_tissue_gas_partition_coefficient == 70.0
     assert agent.max_delivered_concentration_percent == 5.0
-    assert agent.mac_percent == 1.2
+    assert agent.mac_at_age_40_percent == 1.17
     assert len(agent.sources) >= 1
 
 
@@ -236,7 +238,7 @@ def test_loads_built_in_desflurane_parameters() -> None:
     assert agent.muscle_tissue_gas_partition_coefficient == 0.97
     assert agent.fat_tissue_gas_partition_coefficient == 13.0
     assert agent.max_delivered_concentration_percent == 18.0
-    assert agent.mac_percent == 6.0
+    assert agent.mac_at_age_40_percent == 6.6
     assert len(agent.sources) >= 1
 
 
@@ -262,53 +264,50 @@ def test_desflurane_is_less_soluble_than_sevoflurane_which_is_less_soluble_than_
 
 
 @pytest.mark.parametrize(
-    (
-        "agent_id",
-        "de_wolf_mac_percent",
-        "mapleson_age_40_mac_percent",
-        "recorded_deviation_percent",
-    ),
-    [
-        ("sevoflurane", 2.0, 1.80, 11.1),
-        ("isoflurane", 1.2, 1.17, 2.6),
-        ("desflurane", 6.0, 6.6, -9.1),
-    ],
+    ("agent_id", "mapleson_age_40_mac_percent"),
+    [("sevoflurane", 1.80), ("isoflurane", 1.17), ("desflurane", 6.6)],
 )
-def test_mac_matches_its_cited_source_and_its_recorded_mapleson_deviation(
-    agent_id: str,
-    de_wolf_mac_percent: float,
-    mapleson_age_40_mac_percent: float,
-    recorded_deviation_percent: float,
+def test_the_stored_mac_is_mapleson_1996_s_mac_at_age_40(
+    agent_id: str, mapleson_age_40_mac_percent: float
 ) -> None:
-    """Each stored MAC equals its adopted source and lies where its notes say.
+    """Each stored MAC equals the MAC at age 40 that its adopted source reports.
 
-    The first literal is De Wolf et al. 2012 (PMC3502091), Methods, first
-    paragraph: "MAC values that we used in our GasMan® simulations are:
-    desflurane 6%, sevoflurane 2%, isoflurane 1.2%." It was read as full text
-    from PubMed Central on 2026-10-17. Weber et al. 2021 (PMC7943506),
-    Table 1, read the same way on the same day, prints the same Gas Man set
-    with sevoflurane 2.1 and isoflurane 1.1. This test uses De Wolf's
-    figures because De Wolf is the adopted authority. It cannot settle which
-    paper is right, and each agent file records the disagreement (`PL-0SG0`).
-
-    The second literal is Mapleson 1996 (PMID 8777094), Abstract, read
-    through PubMed on 2026-10-17: MAC at age 40 is "isoflurane, 1.17%; ...
-    sevoflurane, 1.80%; desflurane 6.6%". Nickalls and Mapleson 2003, Table 1
-    on printed page 171, read in the references corpus, prints the same three
-    values. The third literal is how far the stored MAC lies from that value,
-    in percent, as each agent file's Mapleson note records it. `docs/PARAMETERS.md`
-    § "Delivery-limit and MAC parameters" turns that distance into the error
-    a displayed MAC multiple carries. So if a stored MAC changes, retyping
-    the first literal is not enough. The deviation then fails too, by more
-    than its half a percentage point of rounding, and the notes and that
-    disclosure have to change with it (`PL-FY35`).
+    The literals are Mapleson 1996 (Br J Anaesth 1996;76:179-185, PMID
+    8777094), Abstract, read through PubMed on 2026-11-22: "a = MAC at age
+    40 yr, which ... is given by: ... isoflurane, 1.17%; ... sevoflurane,
+    1.80%; desflurane 6.6%". Nickalls and Mapleson 2003, Table 1, prints the
+    same three values. The project owner adopted these on 2026-11-14
+    (`PL-LBVN`), over De Wolf et al. 2012's 2.0%, 1.2% and 6.0%. The test
+    also checks that the Mapleson entry is the one adopted for the value, so
+    that the figure and the record of where it came from cannot part.
     """
 
-    mac_percent = load_agent_parameters(agent_id).mac_percent
-    deviation_percent = 100.0 * (mac_percent / mapleson_age_40_mac_percent - 1.0)
+    agent = load_agent_parameters(agent_id)
+    (mapleson,) = (
+        source for source in agent.sources if source.citation.startswith("Mapleson WW. Effect")
+    )
 
-    assert mac_percent == de_wolf_mac_percent
-    assert deviation_percent == pytest.approx(recorded_deviation_percent, abs=0.5)
+    assert agent.mac_at_age_40_percent == mapleson_age_40_mac_percent
+    assert mapleson.adopted
+    assert mapleson.authority_for == ("mac_at_age_40_percent",)
+
+
+def test_the_stored_mac_key_names_the_age_it_holds() -> None:
+    """The data key and `MAC_STORED_AT_AGE_YEARS` state one age.
+
+    The key names the age so that a reader of a data file sees it, and the
+    constant carries it to the `1 MAC (age 40)` line on screen. Changing one
+    without the other would label a MAC with an age it is not for.
+    """
+
+    assert MAC_STORED_AT_AGE_YEARS == 40
+    assert (
+        f"mac_at_age_{MAC_STORED_AT_AGE_YEARS}_percent"
+        in parameters_module._AgentPayload.model_fields
+    )
+    assert f"mac_at_age_{MAC_STORED_AT_AGE_YEARS}_percent" in {
+        field.name for field in fields(AgentParameters)
+    }
 
 
 @pytest.mark.parametrize(
@@ -384,7 +383,7 @@ def test_loads_reference_adult_parameters() -> None:
 
 def test_rejects_unknown_schema_version() -> None:
     payload = _valid_agent_payload()
-    payload["schema_version"] = 5
+    payload["schema_version"] = 6
 
     with pytest.raises(SimulationConfigurationError, match="unsupported schema_version"):
         parse_agent_parameters(payload)
@@ -416,17 +415,17 @@ def test_rejects_nonpositive_max_delivered_concentration_percent() -> None:
 
 def test_rejects_mac_percent_over_100() -> None:
     payload = _valid_agent_payload()
-    payload["mac_percent"] = 150.0
+    payload["mac_at_age_40_percent"] = 150.0
 
-    with pytest.raises(SimulationConfigurationError, match="mac_percent"):
+    with pytest.raises(SimulationConfigurationError, match="mac_at_age_40_percent"):
         parse_agent_parameters(payload)
 
 
 def test_rejects_nonpositive_mac_percent() -> None:
     payload = _valid_agent_payload()
-    payload["mac_percent"] = 0.0
+    payload["mac_at_age_40_percent"] = 0.0
 
-    with pytest.raises(SimulationConfigurationError, match="mac_percent"):
+    with pytest.raises(SimulationConfigurationError, match="mac_at_age_40_percent"):
         parse_agent_parameters(payload)
 
 
@@ -453,21 +452,23 @@ def test_an_agent_with_a_non_positive_mac_is_refused() -> None:
             MacPercent(given)
 
     for unchecked in (Percent(0.0), Percent(2.0), 2.0):
-        with pytest.raises(TypeError, match="^mac_percent of .* was not built as MacPercent"):
-            replace(sevoflurane, mac_percent=unchecked)
+        with pytest.raises(
+            TypeError, match="^mac_at_age_40_percent of .* was not built as MacPercent"
+        ):
+            replace(sevoflurane, mac_at_age_40_percent=unchecked)
 
     with pytest.raises(
         SimulationConfigurationError, match="^mac_percent of -2.0 is outside 0 to 100"
     ):
         MacPercent(-2.0)
 
-    assert replace(sevoflurane, mac_percent=MacPercent(2.0)).mac_percent == 2.0
+    assert replace(sevoflurane, mac_at_age_40_percent=MacPercent(2.0)).mac_at_age_40_percent == 2.0
 
 
 def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() -> None:
     """The record, and not only the loader, refuses a zero maximum and a MAC above it (`PL-HPKK`).
 
-    The loader's `PositivePercent` and `_mac_percent_must_not_exceed_vaporizer_max`
+    The loader's `PositivePercent` and `_mac_at_age_40_must_not_exceed_vaporizer_max`
     refuse both for a file. Until `PL-HPKK`, a record built by `dataclasses.replace`
     was checked by neither. A run opens at 1 MAC, so a MAC above the agent's own
     vaporizer maximum would open the run at a dial setting the vaporizer cannot
@@ -487,32 +488,38 @@ def test_an_agent_record_is_held_to_its_vaporizer_maximum_however_it_is_built() 
     with pytest.raises(
         SimulationConfigurationError,
         match=(
-            r"^mac_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
+            r"^mac_at_age_40_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
             r"vaporizer could not deliver 1 MAC, which is where a run opens$"
         ),
     ):
         replace(
             sevoflurane,
             max_delivered_concentration_percent=Percent(8.0),
-            mac_percent=MacPercent(9.0),
+            mac_at_age_40_percent=MacPercent(9.0),
         )
 
     at_the_maximum = replace(
-        sevoflurane, max_delivered_concentration_percent=Percent(2.5), mac_percent=MacPercent(2.5)
+        sevoflurane,
+        max_delivered_concentration_percent=Percent(2.5),
+        mac_at_age_40_percent=MacPercent(2.5),
     )
 
-    assert at_the_maximum.mac_percent == at_the_maximum.max_delivered_concentration_percent == 2.5
+    assert (
+        at_the_maximum.mac_at_age_40_percent
+        == at_the_maximum.max_delivered_concentration_percent
+        == 2.5
+    )
 
 
 def test_rejects_mac_percent_exceeding_max_delivered_concentration_percent() -> None:
     payload = _valid_agent_payload()
     payload["max_delivered_concentration_percent"] = 8.0
-    payload["mac_percent"] = 9.0
+    payload["mac_at_age_40_percent"] = 9.0
 
     with pytest.raises(
         SimulationConfigurationError,
         match=(
-            r"mac_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
+            r"mac_at_age_40_percent of 9% is above the vaporizer maximum of 8%: the agent's own "
             r"vaporizer could not deliver 1 MAC, which is where a run opens"
         ),
     ):
@@ -524,9 +531,9 @@ def test_an_agent_file_with_its_mac_at_the_vaporizer_maximum_loads() -> None:
 
     payload = _valid_agent_payload()
     payload["max_delivered_concentration_percent"] = 8.0
-    payload["mac_percent"] = 8.0
+    payload["mac_at_age_40_percent"] = 8.0
 
-    assert parse_agent_parameters(payload).mac_percent == 8.0
+    assert parse_agent_parameters(payload).mac_at_age_40_percent == 8.0
 
 
 def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
@@ -543,8 +550,8 @@ def test_mac_cross_check_is_a_model_validator_not_a_field_validator() -> None:
 
     decorators = parameters_module._AgentPayload.__pydantic_decorators__
 
-    assert "_mac_percent_must_not_exceed_vaporizer_max" in decorators.model_validators
-    assert "_mac_percent_must_not_exceed_vaporizer_max" not in decorators.field_validators
+    assert "_mac_at_age_40_must_not_exceed_vaporizer_max" in decorators.model_validators
+    assert "_mac_at_age_40_must_not_exceed_vaporizer_max" not in decorators.field_validators
 
 
 def test_mac_cross_check_fires_with_the_fields_declared_in_either_order() -> None:
@@ -553,12 +560,12 @@ def test_mac_cross_check_fires_with_the_fields_declared_in_either_order() -> Non
     One of the two orders is the one that previously defeated the guard.
     """
 
-    guard = parameters_module._AgentPayload.__dict__["_mac_percent_must_not_exceed_vaporizer_max"]
-    payload = {"mac_percent": 40.0, "max_delivered_concentration_percent": 5.0}
+    guard = parameters_module._AgentPayload.__dict__["_mac_at_age_40_must_not_exceed_vaporizer_max"]
+    payload = {"mac_at_age_40_percent": 40.0, "max_delivered_concentration_percent": 5.0}
 
     for first, second in (
-        ("mac_percent", "max_delivered_concentration_percent"),
-        ("max_delivered_concentration_percent", "mac_percent"),
+        ("mac_at_age_40_percent", "max_delivered_concentration_percent"),
+        ("max_delivered_concentration_percent", "mac_at_age_40_percent"),
     ):
         probe = type(
             "AgentPayloadFieldOrderProbe",
@@ -571,7 +578,7 @@ def test_mac_cross_check_fires_with_the_fields_declared_in_either_order() -> Non
 
         assert list(probe.model_fields) == [first, second]
 
-        with pytest.raises(PydanticValidationError, match="mac_percent"):
+        with pytest.raises(PydanticValidationError, match="mac_at_age_40_percent"):
             probe.model_validate(payload)
 
 
@@ -585,7 +592,7 @@ def test_every_shipped_agent_can_deliver_its_own_one_mac() -> None:
     for agent_id in ("sevoflurane", "isoflurane", "desflurane"):
         agent = load_agent_parameters(agent_id)
 
-        assert agent.mac_percent <= agent.max_delivered_concentration_percent
+        assert agent.mac_at_age_40_percent <= agent.max_delivered_concentration_percent
 
 
 def test_rejects_perfusion_fractions_that_do_not_sum_to_one() -> None:
@@ -1322,7 +1329,7 @@ def test_rejects_a_stored_value_named_by_two_sources() -> None:
             "url": "https://example.com/second-source",
             "tier": "reference-implementation",
             "adopted": True,
-            "authority_for": ["mac_percent", "blood_gas_partition_coefficient"],
+            "authority_for": ["mac_at_age_40_percent", "blood_gas_partition_coefficient"],
             "note": "Test source only",
         }
     )
@@ -1389,7 +1396,7 @@ def test_a_version_2_file_is_refused_by_its_version() -> None:
         SimulationConfigurationError,
         match=re.escape(
             "unsupported schema_version: 2; this build reads agent files (data/agents/) at "
-            "schema_version 4"
+            "schema_version 5"
         ),
     ):
         parse_agent_parameters(payload)
@@ -1400,7 +1407,9 @@ def test_the_shipped_files_load_and_carry_authority_for_to_the_public_type() -> 
 
     De Wolf et al. 2012 is the example because its note once called it the
     authority for blood_gas_partition_coefficient alone, while the same file
-    took mac_percent from it too (`PL-9LXK`).
+    took its MAC from it too (`PL-9LXK`). Since 2026-11-14 the MAC is
+    Mapleson 1996's at age 40, so De Wolf is the authority for the
+    blood:gas coefficient alone (`PL-LBVN`).
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
@@ -1414,7 +1423,7 @@ def test_the_shipped_files_load_and_carry_authority_for_to_the_public_type() -> 
         if source.citation.startswith("De Wolf AM")
     )
 
-    assert de_wolf.authority_for == ("blood_gas_partition_coefficient", "mac_percent")
+    assert de_wolf.authority_for == ("blood_gas_partition_coefficient",)
 
 
 def test_provenance_gap_is_absent_by_default() -> None:
@@ -1862,8 +1871,8 @@ def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: 
     the patient file fail to load. Each then had to be edited for a change that
     had nothing to do with it. The last assertion checks that the families
     really are independent. The machine family accepting version 3 must not
-    make the agent family accept it too, now that agent files are at version 4
-    (`PL-KZ99`).
+    make the agent family accept it too, now that agent files are at version 5
+    (`PL-KZ99`, `PL-LBVN`).
     """
 
     _machine_window_widened_to_4(monkeypatch)
@@ -1883,7 +1892,7 @@ def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: 
 
     with pytest.raises(
         SimulationConfigurationError,
-        match=re.escape("agent files (data/agents/) at schema_version 4 (see"),
+        match=re.escape("agent files (data/agents/) at schema_version 5 (see"),
     ):
         parse_agent_parameters(older_agent)
 
@@ -1893,8 +1902,10 @@ def test_a_machine_only_schema_bump_leaves_the_agent_files_loading(monkeypatch: 
     ("parse", "valid_payload", "data_files", "current"),
     (
         # Agent files moved to version 4 when they gained the liquid's density
-        # and molar mass (`PL-KZ99`). The other two families are still at 3.
-        (parse_agent_parameters, _valid_agent_payload, "agent files (data/agents/)", 4),
+        # and molar mass (`PL-KZ99`), and to version 5 when the MAC key was
+        # renamed for the age it holds (`PL-LBVN`). The other two families are
+        # still at 3.
+        (parse_agent_parameters, _valid_agent_payload, "agent files (data/agents/)", 5),
         (
             parse_reference_adult_parameters,
             _valid_patient_payload,

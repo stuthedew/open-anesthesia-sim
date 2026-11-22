@@ -41,14 +41,14 @@ from typing import Final
 # no threshold anywhere in it. So this constant is a declared tolerance rather
 # than a derived limit, and is recorded here as one.
 #
-# The tolerance was measured on 2026-11-21 in percentage points (pp) of one
+# The tolerance was measured on 2026-11-22 in percentage points (pp) of one
 # atmosphere, as the largest difference in any displayed compartment between
 # a manoeuvre made on time and the same manoeuvre made one second late. The
 # case opening, which is dialling from off to 1 MAC at the reference adult's
-# own flows, displaces a compartment by at most 6.6e-2 pp, with desflurane the
+# own flows, displaces a compartment by at most 7.3e-2 pp, with desflurane the
 # worst agent. In the first hour at 1 MAC, one standard deviation of a single
-# measured partition coefficient displaces a compartment by 8.2e-2 pp
-# (blood:gas) to 9.0e-1 pp (muscle) (docs/INTERFACE.md "Displayed precision").
+# measured partition coefficient displaces a compartment by 9.0e-2 pp
+# (blood:gas) to 9.9e-1 pp (muscle) (docs/INTERFACE.md "Displayed precision").
 # So an ordinary control action is timed inside the smallest of the model's
 # own parameter uncertainties.
 #

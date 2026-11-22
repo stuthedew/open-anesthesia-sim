@@ -86,10 +86,8 @@ of De Wolf et al. 2012 is the parameter set that the authors fed to Gas Man,
 and Weber et al. 2021 describe the product's standard 70 kg patient. The two
 papers do not even agree on what Gas Man's set holds. Weber et al.'s Table 1
 prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane and 1.1% isoflurane. De Wolf et
-al. state 2.0% and 1.2%, which are the values this simulator stores on De
-Wolf's authority. Yet every partition coefficient the two print is the same.
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+al. state 2.0% and 1.2%, which this simulator stored on De Wolf's authority
+until 2026-11-14. Yet every partition coefficient the two print is the same.
 <!-- not-restated: 70 kg -->
 
 **A tier-2 or tier-3 source may be adopted, but never silently.** The ranking
@@ -129,8 +127,9 @@ one of them:
    reason does not cover them. But placing one laboratory's blood:gas figure
    among Gas Man's tissue values would make the simulated curve a mix of two
    parameter sets with different origins. The same objection applies to
-   dividing a Gas Man curve by a MAC taken from Mapleson, as § "The stored MAC"
-   discusses.
+   dividing a Gas Man curve by a MAC taken from Mapleson. For the MAC, the
+   project owner accepted that cost on 2026-11-14, for the reason that
+   § "The stored MAC" gives.
 
 The second reason is the narrower of the two. It applies only where the source
 entry cites the primary measurements with their values and records how far the
@@ -177,28 +176,28 @@ its check enforces.
 
 #### Where this project stands
 
-Of the 49 rows in the table of stored values below, 27 are tier 1, four are
-tier 2, 16 are tier 3, and two adopt no source of any tier. The 16 tier-3 rows
-all come from Gas Man: the three blood:gas partition coefficients, ten of the
-eleven parameters of the reference adult patient, and the three MAC values. The
+Of the 49 rows in the table of stored values below, 27 are tier 1, seven are
+tier 2, 13 are tier 3, and two adopt no source of any tier. The 13 tier-3 rows
+all come from Gas Man: the three blood:gas partition coefficients and ten of the
+eleven parameters of the reference adult patient. The
 blood:gas coefficients are the Gas Man set as published by De Wolf et al., and
 the ten patient parameters come from the Gas Man default patient. The two rows
 that adopt no source are the anesthesia machine values: a circuit volume that
 departs deliberately from the published Gas Man figure, and a default fresh gas
 flow with no published counterpart.
 
-**Of all the stored values, MAC (`mac_percent`) is the only one used as a
-divisor for a displayed concentration.** The liquid density is the divisor for
-the displayed millilitres of liquid agent (§ "Agent amount"). The three stored
-MAC values are the ones that
-De Wolf et al. state they used in their Gas Man simulations. MAC divides every
-value shown in MAC multiples, so its tier affects a displayed clinical value as
-well as a starting dial position. § "The stored MAC" states what that costs,
-and `docs/MODEL.md` § "MAC multiples" records it. Two tier-2 sources are
-cited beside the MAC values but not adopted: Mapleson's 1996 meta-analysis and
-the age-related iso-MAC charts built on it.
+**Of all the stored values, MAC (`mac_at_age_40_percent`) is the only one
+used as a divisor for a displayed concentration.** The liquid density is the
+divisor for the displayed millilitres of liquid agent (§ "Agent amount"). The
+three stored MAC values are Mapleson's 1996 meta-analytic MACs at age 40. MAC
+divides every value shown in MAC multiples, so its tier affects a displayed
+clinical value as well as a starting dial position. § "The stored MAC" states
+what that costs, and `docs/MODEL.md` § "MAC multiples" records it. Two sources
+are cited beside the MAC values but not adopted: De Wolf et al.'s Gas Man
+values, which the agent files stored until 2026-11-14, and the age-related
+iso-MAC charts built on Mapleson's analysis.
 
-**The thirty-one rows that adopt a source other than Gas Man are of six kinds.**
+**The thirty-four rows that adopt a source other than Gas Man are of seven kinds.**
 
 1. **All nine tissue:gas partition coefficients**, three per agent, from Yasuda,
    Targ and Eger 1989. They are human autopsy measurements at 37 °C, adopted as
@@ -227,9 +226,11 @@ the age-related iso-MAC charts built on it.
    are tier 2 because a molar mass is computed from the molecular formula and the
    standard atomic weights, not measured on the agent, so no tier-1 source exists
    for one (§ "Agent amount").
+7. **Three MACs at age 40**, from Mapleson's 1996 meta-analysis. They are tier 2,
+   adopted on 2026-11-14 on the project owner's decision (§ "The stored MAC").
 
 **For developers.** The counts of stored-value rows in this subsection appear
-at its head and in the list of the thirty-one rows that adopt a source other
+at its head and in the list of the thirty-four rows that adopt a source other
 than Gas Man. Recompute all of them with `python3 tools/source_tier_counts.py` rather than by hand. The
 script counts the stored values that each source is the authority for (the
 `authority_for` list of each `sources` entry), per data file and in total, and
@@ -285,9 +286,9 @@ division.
 | Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` · `max_delivered_concentration_percent` |
 | Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` · `max_delivered_concentration_percent` |
 | Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` · `max_delivered_concentration_percent` |
-| 1 MAC, single adult value with no age stated by its source (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` · `mac_percent` |
-| 1 MAC, single adult value with no age stated by its source (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` · `mac_percent` |
-| 1 MAC, single adult value with no age stated by its source (desflurane) | 6.0 | percent | `data/agents/desflurane.json` · `mac_percent` |
+| 1 MAC at age 40 (sevoflurane) | 1.8 | percent | `data/agents/sevoflurane.json` · `mac_at_age_40_percent` |
+| 1 MAC at age 40 (isoflurane) | 1.17 | percent | `data/agents/isoflurane.json` · `mac_at_age_40_percent` |
+| 1 MAC at age 40 (desflurane) | 6.6 | percent | `data/agents/desflurane.json` · `mac_at_age_40_percent` |
 | MAC-awake (sevoflurane) | 0.34 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.fraction_of_mac` |
 | MAC-awake standard deviation (sevoflurane) | 0.05 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
 | MAC-awake (isoflurane) | 0.31 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.fraction_of_mac` |
@@ -953,7 +954,6 @@ predates the survey, and was kept under the project owner's ruling of
 2026-09-01.
 <!-- derived: 89 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
-<!-- not-restated: 2 % -->
 
 **Volume is not the whole of the difference between machines**, as the survey
 found. Fukuda et al. moved the fresh gas inlet from beside the absorber to
@@ -1040,9 +1040,9 @@ cohort*. Any systematic error in that technique therefore affects every agent al
 are shown as multiples of MAC to compare agents, an error that all three share cannot make one
 agent look different from another.
 
-The argument from a shared source covers the partition coefficients only. It does not cover the
-stored MAC values, which differ from Mapleson's age-40 values in opposite directions for sevoflurane
-and desflurane. § "The stored MAC" gives the differences.
+The argument from a shared source covers the partition coefficients only. The stored MAC values
+come from a different source, Mapleson's 1996 meta-analysis, which gives all three agents' MACs at
+one age. § "The stored MAC" says what that costs.
 
 #### Where the tissue:gas coefficients come from
 
@@ -1186,12 +1186,18 @@ not lower it to the maximum instead. `test_rejects_construction_above_the_vapori
 check both refusals, and `test_accepts_a_delivered_concentration_of_zero` checks that zero is
 accepted. The function that sets up the uptake simulation for an agent
 (`AgentUptakeSystem.for_agent()`) gives the circuit that maximum and sets the dial's starting
-position from the stored MAC. So the simulation code, not the controller, makes the starting
+position from the run's MAC. So the simulation code, not the controller, makes the starting
 position agent-specific.
 
-Every agent file **must** declare a MAC (`mac_percent`) that its own vaporizer can deliver. A
-cross-field check in `core/parameters.py` rejects an agent file that does not
-(`_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()`). This MAC check runs after every
+One function builds a run's MAC from the agent and the patient (`mac_for_patient()` in
+`core/mac.py`). It returns a `PatientMac`, which holds the MAC in percent and the age it is stated
+for. The uptake system, the controller and the display all take the MAC from that function or from
+the snapshot fields it fills (`agent_mac_percent` and `agent_mac_age_years`), so no reader divides
+by a MAC that another reader did not use.
+
+Every agent file **must** declare a MAC (`mac_at_age_40_percent`) that its own vaporizer can
+deliver. A cross-field check in `core/parameters.py` rejects an agent file that does not
+(`_AgentPayload._mac_at_age_40_must_not_exceed_vaporizer_max()`). This MAC check runs after every
 field is populated, so the order in which the fields are declared cannot defeat it.
 `test_rejects_mac_percent_exceeding_max_delivered_concentration_percent` in
 `tests/unit/test_parameters.py` checks it.
@@ -1216,65 +1222,59 @@ value, so the dial follows the move.
 
 #### The stored MAC
 
-The stored MAC (`mac_percent`) is a single adult MAC. Its source, De Wolf et al. 2012, gives no age
-for it. The age-referenced values are Mapleson's MACs at age 40, which the table below compares
-with the stored ones. The stored MAC has two uses, and both are
-presentation. First, it sets the dial's starting position, so that each new run begins at a
-recognizable clinical anchor. Second, it is the divisor for the display in MAC multiples: every
-displayed compartment value and the chart's second axis are divided by it. The simulator refuses
-any agent whose own vaporizer cannot deliver its 1 MAC, because every run starts the dial
-at 1 MAC.
+The stored MAC (`mac_at_age_40_percent`) is each agent's MAC at age 40 from
+Mapleson's 1996 meta-analysis: sevoflurane 1.80%, isoflurane 1.17% and desflurane
+6.6%. The reference adult has no age, so every run uses the MAC at age 40, and the
+display states that age beside the MAC. The stored MAC has two uses, and both are
+presentation. First, it sets the dial's starting position, so that each new run
+begins at a recognizable clinical anchor. Second, it is the divisor for the display
+in MAC multiples: every displayed compartment value and the chart's second axis are
+divided by it. The simulator refuses any agent whose own vaporizer cannot deliver
+its 1 MAC, because every run starts the dial at 1 MAC.
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 **The stored MAC carries clinical weight.** An error in it would shift every value shown in MAC
 multiples, not only a run's starting point.
 
-The stored MACs are single adult values with no adjustment for age, which De Wolf et al. state
-they used in their Gas Man simulations. § "Source hierarchy" grades them **tier 3**. They were
-adopted for two reasons: they belong to the same parameter set as every partition coefficient in
-this model, and the reference adult has no age to which an age-related MAC could be applied.
+**The stored MACs are Mapleson's age-40 values, graded tier 2** (project owner, 2026-11-14, over
+keeping De Wolf et al.'s Gas Man values). Mapleson's meta-analysis fits a regression of MAC on age
+to the published MAC literature. It gives each agent's MAC at age 40 with 95% confidence limits of
+about ±7% (±10% for desflurane). The table compares the stored values with them.
 
-**The stored MACs differ from Mapleson's, and the difference distorts a comparison of sevoflurane
-with desflurane.** Mapleson's meta-analysis of the published MAC literature gives values for
-age 40, with 95% confidence limits of about ±7% (±10% for desflurane). The table compares the
-stored values with them.
-
-| Agent | Stored MAC | Mapleson age-40 | Displayed MAC multiples read |
+| Agent | Stored MAC at age 40 | Mapleson age-40 | Gap |
 | --- | --- | --- | --- |
-| Sevoflurane | 2.0% | 1.80% | 10% low |
-| Isoflurane | 1.2% | 1.17% | 2.5% low |
-| Desflurane | 6.0% | 6.6% | 10% high |
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+| Sevoflurane | 1.80% | 1.80% | none |
+| Isoflurane | 1.17% | 1.17% | none |
+| Desflurane | 6.6% | 6.6% | none |
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
-Because the errors run in opposite directions for sevoflurane and desflurane, a comparison of the
-two in MAC multiples differs by about 22% between the stored MACs and Mapleson's. Comparing
-agents is what the MAC-multiple display exists for. The 22% is larger than the confidence limits
-of Mapleson's values. It is a limitation of the display, which `docs/MODEL.md` § "MAC multiples"
-states.
-
-**The stored MACs are kept** (project owner, 2026-09-04, ratified, over adopting Mapleson's
-age-40 values). Mapleson's values are not adopted, for three reasons:
+Three points decide how far a displayed MAC multiple can be trusted:
 
 1. Mapleson 1996 is a meta-analysis. It fits a regression to published studies and measures
-   nothing, so § "Source hierarchy" grades it **tier 2**. A recorded decision may still
-   adopt a lower-tier source, such as the stored values. Reasons 2 and 3 explain why the stored
-   values were kept.
-2. Every other parameter in this model comes from the Gas Man set. Dividing the model's Gas Man
-   concentrations by a Mapleson MAC would make each displayed multiple a ratio between values
-   from two different sources. Dividing by the model's own MAC is at least internally consistent.
+   nothing, so § "Source hierarchy" grades it **tier 2**. A MAC at a stated age is a regression
+   over many studies, so no single primary measurement is the value. Mapleson's is the one source
+   that gives every shipped agent's MAC at the same stated age, with confidence limits, and it
+   gives the equation for the fall in MAC with age.
+2. The partition coefficients come from the Gas Man set and from Yasuda, Targ and Eger, and the
+   MAC comes from Mapleson. So each displayed multiple is a ratio between values from different
+   sources. Comparing agents in MAC multiples is what the display exists for, and that comparison
+   now rests on one MAC source for every agent.
 3. With confidence limits of ±7-10%, no MAC source makes a comparison between agents exact. The
-   display shows the MAC it divides by and states the limitation, instead of presenting another
-   estimate as settled.
+   display shows the MAC it divides by, with its age, instead of presenting the estimate as
+   settled.
 
-No planned milestone moves the MAC to a primary measurement. `ROADMAP.md`'s
-planned-milestone item 30 moves it to Mapleson's age-40 values, and item 31
-plans a primary-literature set of partition coefficients beside the stored one.
+No planned milestone moves the MAC to a primary measurement. `ROADMAP.md`'s planned-milestone
+item 30 makes the MAC follow the patient's age once age is an input, and item 31 plans a
+primary-literature set of partition coefficients beside the stored one.
 
 **For developers.** Because the stored MAC divides every displayed compartment value, a change to
 it falls under the safety-critical standard in `CLAUDE.md`. The list of sources in each agent's file (`sources`)
-records the citation, the tier, the Mapleson value that was not adopted, and how far the stored
-value differs from it.
+records Mapleson 1996 as the adopted source, with its tier, and records De Wolf et al.'s value that
+the file stored before and how far it differed.
 
 
 #### The MAC-awake fractions
@@ -1365,43 +1365,43 @@ atmosphere.** Each source expresses MAC-awake as a ratio to MAC, and Katoh does 
 age-adjusted MAC". A published *percent*, by contrast, is tied to whichever MAC
 its own population was measured against. Desflurane shows the risk. Chortkoff's
 MAC-awake of 2.60% is 36% of a MAC of about 7.25%, Rampil's figure for ages
-18-30. The stored MAC equals Rampil's figure for ages 31-65, 6.0%. Dividing 2.60% by
-6.0% would give 0.433 instead of the published 0.36, so the band would be drawn
-20% too high and crossed too soon. Storing the fraction avoids that error. For desflurane, storing the fraction allows an
-independent check. The band's centre is 0.36 of the stored 6.0%, or 2.16%, and
-Song et al. measured 2.17% in the non-jaundiced control arm of a population that
-Rampil's 31-65 year MAC describes.
+18-30. The stored MAC is Mapleson's 6.6% at age 40. Dividing 2.60% by 6.6% would
+give 0.394 instead of the published 0.36, so the band would be drawn 9.4% too
+high and crossed too soon. Storing the fraction avoids that error. For
+desflurane, storing the fraction allows an independent check. The band's centre
+is 0.36 of the stored 6.6%, or 2.38%. Song et al. measured 2.17 ± 0.25% in the
+non-jaundiced control arm, so the centre lies within one SD of that mean.
+Rampil's MAC for ages 31-65, 6.0%, describes that arm's population, and 0.36 of
+it is 2.16%, within 0.01 percentage points of Song's mean.
 
-<!-- derived: 0.433 from data/agents/desflurane.json mac_percent = 6, mac_awake.fraction_of_mac = 0.36 -->
-<!-- derived: 2.16 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_percent = 6 -->
+<!-- derived: 0.394 from data/agents/desflurane.json mac_at_age_40_percent = 6.6, mac_awake.fraction_of_mac = 0.36 -->
+<!-- derived: 2.38 percent from data/agents/desflurane.json mac_awake.fraction_of_mac = 0.36, mac_at_age_40_percent = 6.6 -->
 
-**The comparison with Katoh's own MAC at age 40 points the same way as the
-comparison with Mapleson's** in `docs/INTERFACE.md` § "MAC-awake as a chart
-reference": the band sits slightly high, so it teaches a slightly early
-wake-up (`PL-P319`). Katoh's fractions are ratios to each patient's
+**The comparison with Katoh's own MAC at age 40 shows the band slightly low**,
+so it teaches a slightly late wake-up (`PL-P319`). Katoh's fractions are ratios to each patient's
 age-adjusted MAC, which comes from two linear equations on p. 1013. For
 isoflurane it is 1.43 − 0.0061 × age (yr) percent, and for sevoflurane
 2.56 − 0.0156 × age (yr) percent. The paper cites four MAC studies for the
 equations but does not say how the equations were derived from those studies.
 At age 40 the equations give 1.94% for sevoflurane and 1.19% for isoflurane.
-The stored MAC is 3.3% above Katoh's for sevoflurane and 1.2% above it for
-isoflurane, so the band sits above Katoh's own age-40 awakening concentration
-by the same proportions. The drawn centres are 0.68% sevoflurane and 0.372%
+The stored MAC is 7.0% below Katoh's for sevoflurane and 1.3% below it for
+isoflurane, so the band sits below Katoh's own age-40 awakening concentration
+by the same proportions. The drawn centres are 0.612% sevoflurane and 0.363%
 isoflurane, against 0.658% and 0.368% from Katoh's fractions times Katoh's
 age-40 MAC. Both differences are much less than the standard deviation of
 Katoh's fractions, 0.05 of MAC. Katoh's slow-washout patients themselves woke
 at a mean end-tidal 0.63 ± 0.11% sevoflurane and 0.36 ± 0.08% isoflurane
 (Table 1, p. 1014). Those figures are lower than the band mostly because the
 patients were older, with mean ages of 45.9 and 45.1 years, so they are not a
-like-for-like check of the band. The band is drawn on a single adult MAC whose
-source states no age, and which lies close to Katoh's MAC at age 40.
+like-for-like check of the band. The band is drawn on Mapleson's MAC at age 40,
+the age the paragraph above uses for Katoh's equations.
 <!-- not-restated: 0.36 -->
 <!-- provenance: data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
 <!-- provenance: data/agents/isoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
-<!-- derived: 3.3% from data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- derived: 1.2% from data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- derived: 0.68 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_percent = 2 -->
-<!-- derived: 0.372 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_percent = 1.2 -->
+<!-- derived: 7.0% from data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+<!-- derived: 1.3% from data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- derived: 0.612 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_at_age_40_percent = 1.8 -->
+<!-- derived: 0.363 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_at_age_40_percent = 1.17 -->
 
 
 ## Agent amount
@@ -1816,6 +1816,7 @@ computes the molar volumes at 37 °C and 20 °C from the constants in
 **For developers.** `test_the_humidification_dilution_follows_from_the_water_vapour_pressure`
 computes the 713 mmHg, the 6.2 % and the 6.6 % from 47 mmHg and one
 atmosphere.
+<!-- not-restated: 6.6 % -->
 
 **The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
 47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
@@ -1939,7 +1940,7 @@ reach the document itself.
 **For developers.** The inert circuit is `BreathingCircuit`. The directional
 checks in `tests/reference/test_sevo_patient.py` assert that a higher cardiac
 output slows the rise of $`F_A`$. The MAC-multiple display divides by each
-agent's tier-3 `mac_percent`, and the Datex-Ohmeda 1–18% range is desflurane's
+agent's tier-2 `mac_at_age_40_percent`, and the Datex-Ohmeda 1–18% range is desflurane's
 `max_delivered_concentration_percent`. `reference_adult.json` carries both
 fat-flow comparisons. Its Heinonen et al. note gives both figures and the
 volume-to-mass conversion between them, and says
@@ -2057,7 +2058,7 @@ where a reader trusts most. So the writer says which kind it is, and the check
 enforces only that somebody did. A marker covers only the values it names, in
 their units, so a marker for the 6 L circuit does not clear desflurane's 6%
 MAC in the same paragraph. The check reads:
-<!-- not-restated: 6 L, 6 % -->
+<!-- not-restated: 6 L -->
 
 - a unit written as a word, such as "seconds", and a time in milliseconds,
   minutes or hours, which it converts to seconds;

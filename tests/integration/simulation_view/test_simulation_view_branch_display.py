@@ -672,23 +672,23 @@ def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
     """The region carries the delivered concentration in both units and the 1 MAC (`PL-NWTM`).
 
     The expected text is worked out by hand. The dial opens at sevoflurane's
-    own 1 MAC, 2.0% (`data/agents/sevoflurane.json`), which is 1.00 ×MAC.
-    Moved to 3.0%, it is 1.50 ×MAC.
+    1 MAC at age 40, 1.80% (Mapleson 1996, abstract), which is 1.00 ×MAC.
+    Moved to 3.0%, it is 3.0 / 1.8 = 1.67 ×MAC.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     run = view.runs[0]
 
-    assert run._delivered_text.text() == "Delivered 2.00% (1.00 ×MAC)"
-    assert run._one_mac_text.text() == "1 MAC sevoflurane = 2.0%"
+    assert run._delivered_text.text() == "Delivered 1.80% (1.00 ×MAC)"
+    assert run._one_mac_text.text() == "1 MAC sevoflurane (age 40) = 1.8%"
 
     controller.set_delivered_concentration_percent(
         Percent(3.0, name="delivered_concentration_percent")
     )
     view.present(False)
 
-    assert run._delivered_text.text() == "Delivered 3.00% (1.50 ×MAC)"
+    assert run._delivered_text.text() == "Delivered 3.00% (1.67 ×MAC)"
     assert run._delivered_text.isVisible()
     assert run._one_mac_text.isVisible()
 
