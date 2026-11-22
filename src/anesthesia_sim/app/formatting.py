@@ -184,9 +184,9 @@ class AgentAmount(Enum):
     alone (`PL-0S0V`). So this enum is the first half of the key of
     `AGENT_AMOUNT_DISPLAY_PRECISION`, and `AgentAmountUnit` is the second.
     The three totals are separate members because one unit can suit one
-    total and not another. For example, the stored total comes out 5.8% too
-    high when it is converted to liquid, but the delivered and exhausted
-    agent convert exactly.
+    total and not another. For example, the stored total comes out too high
+    when it is converted to liquid (`docs/MODEL.md` § "Units and symbols"),
+    but the delivered and exhausted agent convert exactly.
 
     Attributes:
         DELIVERED: The agent a run has delivered. The accounting panel and the
@@ -263,9 +263,11 @@ class AgentAmountUnit(Enum):
 # A pair of amount and unit with no entry has no derivation behind it, so it is
 # refused rather than shown at a default precision. The stored total has no
 # liquid entry, because converting the stored total to liquid gives a figure
-# 5.8% too high. That error is more than 1 mL once the store holds about 17 mL
-# of liquid. A compartment's amount has no entry, because `PL-2881` derived a
-# precision of two significant figures for it, not a count of decimals.
+# too high by a fixed fraction (`docs/MODEL.md` § "Units and symbols"). That
+# error grows with the store, and `docs/INTERFACE.md` § "Agent amounts in
+# millilitres, and the cost" gives the size of store at which it passes 1 mL.
+# A compartment's amount has no entry, because `PL-2881` derived a precision of
+# two significant figures for it, not a count of decimals.
 # `format_compartment_amount` applies that precision instead. Money has no entry
 # here, because a cost is shown to its currency's minor unit, which
 # `format_agent_cost` reads (`PL-7R8S`).

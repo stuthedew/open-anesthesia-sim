@@ -16,8 +16,8 @@ partition coefficient enters the calculation.
 **Why the liquid figure is exact.** The delivered agent is gas at room
 temperature, which is the model's reference condition of 20 °C. So
 `core/liquid_agent.py` converts it to liquid exactly. The agent held in the
-body is at body temperature, and the same conversion would give a figure 5.8 %
-too high for it. This module therefore converts only the delivered agent, and
+body is at body temperature, and the same conversion would give a figure too
+high for it (`docs/MODEL.md` § "Units and symbols"). This module therefore converts only the delivered agent, and
 nothing else.
 
 **Why the conversion takes a snapshot.** `liquid_volume_ml` takes a bare
