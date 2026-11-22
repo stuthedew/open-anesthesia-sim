@@ -52,6 +52,7 @@ from anesthesia_sim.core.governing_equations import (
     build_system_matrix,
     require_canonical_state,
 )
+from anesthesia_sim.core.mac import mac_for_patient
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
 from anesthesia_sim.core.parameters import (
     load_agent_parameters,
@@ -297,7 +298,9 @@ class AgentUptakeSystem:
         """Build a system for any built-in agent (see `AGENT_DATA_FILENAMES`).
 
         The circuit carries that agent's own vaporizer maximum. It starts at
-        that agent's own 1 MAC, not with the vaporizer off. Off is the only
+        that agent's own 1 MAC for the reference adult, not with the vaporizer
+        off. `core/mac.py`'s `mac_for_patient` builds that MAC, which is the
+        agent's MAC at age 40 today. Off is the only
         setting `BreathingCircuit` can default to without knowing which agent
         is in use. So a system built here can never begin at a dial position
         that the corresponding real device does not have. The cross-field check
@@ -356,7 +359,9 @@ class AgentUptakeSystem:
             circuit=BreathingCircuit(
                 circuit_volume_l=circuit_parameters.circuit_volume_l,
                 fresh_gas_flow_l_min=opening_fresh_gas_flow_l_min,
-                delivered_concentration_percent=Percent(agent.mac_percent),
+                delivered_concentration_percent=Percent(
+                    mac_for_patient(agent, patient_parameters).percent
+                ),
                 max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
                 deliverable_fresh_gas_flow_range=(
                     circuit_parameters.deliverable_fresh_gas_flow_range

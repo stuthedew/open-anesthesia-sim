@@ -603,7 +603,7 @@ def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
 
         assert line.isAncestorOf(run._delivered_text)
         assert run._delivered_text.isVisible()
-        assert run._delivered_text.text() == "Delivered 2.00% (1.00 ×MAC)"
+        assert run._delivered_text.text() == "Delivered 1.80% (1.00 ×MAC)"
         assert run._running_agent_display.isVisible()
         assert line.height() <= run._playback_rate_dropdown.height(), "the line is two high"
 
@@ -613,7 +613,7 @@ def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
     assert trunk._agent_header_badge.isVisible()
     assert not branch._agent_header_badge.isVisible()
     assert trunk._compartment_substance_text.isVisible()
-    assert trunk._one_mac_text.text() == "1 MAC sevoflurane = 2.0%"
+    assert trunk._one_mac_text.text() == "1 MAC sevoflurane (age 40) = 1.8%"
     assert trunk._one_mac_text.isVisible()
 
     for value in (UnconditionalValue.ADMINISTERED_SUBSTANCE, UnconditionalValue.ONE_MAC):

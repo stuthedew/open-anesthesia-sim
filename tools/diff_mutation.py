@@ -149,6 +149,9 @@ UNIT_TESTS = "tests/unit"
 RUN_LOG = "diff_mutation.log"
 #: What mutmut 3.8.0 says when no mutant matches the names it was given.
 NOTHING_MATCHES = "Filtered for specific mutants, but nothing matches"
+#: What mutmut 3.8.0 says when it stops before its first mutant because no
+#: selected test calls any mutated function. It then exits 1.
+NO_TEST_REACHES_A_MUTANT = "could not find any test case for any mutant"
 #: One line of `mutmut results --all true`: a mutant's name and its status.
 # regex: a line of mutmut's results listing is a fixed shape in that tool's text output.
 RESULT_RE = re.compile(r"^\s+(\S+): (.+)$")
@@ -1415,6 +1418,11 @@ def _compared_statuses(
     module is left out.
     """
     code, log = run(tree, patterns, table, tests, only=files)
+    if code and NO_TEST_REACHES_A_MUTANT in _tail(log):
+        # mutmut exits 1 when no selected test calls any mutated function. The
+        # tests then catch no mutant, which is an answer and not a failed run
+        # (`PL-WYDF`).
+        return {}
     if code:
         raise Refusal(f"mutmut exited {code} in {tree}. The end of {log}:\n{_tail(log)}")
     modules = {module_name(path) for path in files}

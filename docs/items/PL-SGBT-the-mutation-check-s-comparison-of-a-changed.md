@@ -10,6 +10,7 @@ touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py
 deferred-from: v0.7.0 - present at the freeze, but no frozen entry remains for this gate to clear (bin/docket wave, 2026-11-22: 0 open entries this gate can clear), so it costs no remaining entry anything, and it has no connection to v0.7.0's Required scope, all of which has closed
 added: 2026-11-11
 payoff: Each simulator branch's mutation check settles in minutes rather than spending twenty or more on one core.
+recurrences: 2026-11-22 PL-WYDF
 ---
 
 **Problem.** The mutation check's comparison of a changed test reruns each mutant whose test module fails to import one at a time on one core: 238 reruns took over 20 minutes for one changed test in tests/unit/test_wash_in.py on 2026-11-11, 182 of them mutants of core/parameters.py

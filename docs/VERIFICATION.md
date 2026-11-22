@@ -156,7 +156,6 @@ run length instead of conservation. The values below come from runs on
 | desflurane | 4% | 1.60 L | 8.152e-14 L | 5.095e-14 |
 | desflurane | 2% | 0.80 L | 4.076e-14 L | 5.095e-14 |
 
-<!-- not-restated: 2 % -->
 
 Halving the dial setting halves the absolute residual exactly. It leaves the
 relative residual unchanged to four significant figures.
@@ -532,14 +531,14 @@ digit. How many decimals the readout shows is a display choice, and it must not 
 
 | Manoeuvre | Worst displacement | Agent giving the worst |
 | --- | --- | --- |
-| Case opening: dial off to 1 MAC, reference flows | 6.6×10⁻² pp | desflurane |
+| Case opening: dial off to 1 MAC, reference flows | 7.3×10⁻² pp | desflurane |
 | Unperfused load, then perfusion on and dial off | 5.0×10⁻¹ pp | desflurane |
 | Ventilator start at the envelope corner | 1.3 pp | desflurane |
 
 These figures are judged against the model's own parameter uncertainty, which comes before both
 the step and the display. In the first hour at 1 MAC, one standard deviation (SD) of the
-blood:gas coefficient displaces a displayed compartment by up to $`8.2\times10^{-2}`$ pp, and one
-SD of the muscle coefficient by up to $`9.0\times10^{-1}`$ pp. The blood:gas shift is the smallest
+blood:gas coefficient displaces a displayed compartment by up to $`9.0\times10^{-2}`$ pp, and one
+SD of the muscle coefficient by up to $`9.9\times10^{-1}`$ pp. The blood:gas shift is the smallest
 of the four coefficients' shifts, and the muscle shift is the largest. So the timing error of an
 ordinary control action is smaller than the shift from one SD of any coefficient, and in that
 sense the step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
@@ -550,10 +549,10 @@ reading by up to 1.3 pp. That is more than one SD of any single coefficient move
 the first hour. The shift then fades as the two runs converge: it is 1.0 pp three seconds after
 the change and 0.5 pp after eight seconds. The figure is desflurane's, with the dial at its
 18% maximum, the ventilator off for five minutes and ventilation then started at 12 L/min. It
-is about a fifth of desflurane's 1 MAC of 6.0%. The same manoeuvre gives 0.59 pp for sevoflurane
+is about a fifth of desflurane's 1 MAC of 6.6%. The same manoeuvre gives 0.59 pp for sevoflurane
 and 0.36 pp for isoflurane. So a reader comparing an abrupt ventilation change with a
 measurement should know that its *timing* is accurate to one second and no better.
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
@@ -618,9 +617,9 @@ Neither the figures nor the margin can therefore be scaled between rates. Use th
 table.
 
 **An ordinary dial change is well below both the worst and the second-worst columns.** It is the
-case opening, a third manoeuvre, and its error is about 20 times smaller than the worst at 1× and
-5×. The ratio narrows to 19 times at 20×, 16 times at 60× and about 7 times at 300×, where the case
-opening reaches 1.5 pp. Use this comparison to judge what a learner's own actions cost. To see how
+case opening, a third manoeuvre, and its error is about 19 times smaller than the worst at 1× and
+5×. The ratio narrows to 17 times at 20×, 14 times at 60× and about 6 times at 300×, where the case
+opening reaches 1.7 pp. Use this comparison to judge what a learner's own actions cost. To see how
 far the worst figure stands above the other abrupt manoeuvres, use the second-worst column. The
 tens of percentage points at 300× come from abrupt manoeuvres.
 
@@ -1809,7 +1808,6 @@ two volunteer studies:
 | Desflurane | 0.90 ± 0.01 | n=8 | 2.0% | Anesthesiology 1991;74:489-98 |
 | Isoflurane | 0.73 ± 0.03 | n=8 | 0.4% | Anesthesiology 1991;74:489-98 |
 
-<!-- not-restated: 2.0 % -->
 
 The full citations of both papers, with a record of what was read in each, are
 in the reference list, `docs/references/README.md`
@@ -2003,8 +2001,6 @@ four belong beside any statement of this result, wherever it is restated.
    no agreement.
 
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
-
-<!-- not-restated: 6 % -->
 
 The test is `tests/reference/test_published_wash_in_and_elimination.py`.
 It checks the five-minute elimination ratio against a stored value to $`1\times10^{-4}`$ absolute,
@@ -2511,7 +2507,7 @@ stored value.
 | Alveolar gas volume (FRC) | past −90% / +20% | −37% / +22% | −8% / +33% |
 | Circuit volume | past −90% / +76% | past −90% / +253% | −85% / +98% |
 
-<!-- not-restated: 5 %, 6 %, 8 % -->
+<!-- not-restated: 5 %, 8 % -->
 
 The first row's percentages apply to the stored blood:gas coefficients: 0.65
 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. The tissue:gas
@@ -2858,7 +2854,7 @@ the arterial partial pressure, which through the tail is the alveolar one, and
 it never sees the stores that feed it. The model's own conservation identity is
 checked across the removals. The removals are recorded as exhausted agent, so
 that § "Mass-balance identity" remains true with the sink in place.
-<!-- not-restated: 5 %, 5.0 %, 1.3 -->
+<!-- not-restated: 5 %, 5.0 %, 1.3, 1.8 % -->
 
 **What a learner sees of it: nothing on screen, and the record gains the
 number.** The departures above are in $`F_A/F_{A0}`$. At the 1% dial of these runs,
@@ -2873,7 +2869,6 @@ desflurane dial keeps it there until about the fifth hour, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the
 shortfall.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-<!-- not-restated: 6 % -->
 
 **The result does not bear on `docs/INTERFACE.md` § "Supported run length"**, which gives the full reasoning. The
 departures computed here come from the missing fourth compartment and from the fat group's own
@@ -3321,7 +3316,6 @@ $$
 $$
 
 For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
-<!-- not-restated: 2 % -->
 
 The conversion has only two uses. Where the equations need $`F_D`$, the model
 derives it from the dial's percent. The screen converts for display. The model
@@ -3378,9 +3372,9 @@ The agent's MAC is stored as a `MacPercent`, a `Percent` that rejects zero when
 it is built. Every formatter that computes a MAC multiple accepts only that
 kind of percent as its divisor. No other lower limit is set on the MAC, so a MAC
 far below any real agent's would still give multiples too large to read. The
-shipped MACs are 1.2% to 6.0%.
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+shipped MACs at age 40 are 1.17% to 6.6%.
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
 The rules that the fraction and percent types share with the flows are written
 once, in `core/checked_number.py` (`docs/INTERFACE.md` § "Supported input ranges"): what counts as a
@@ -3430,7 +3424,7 @@ defect.
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
 | $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless | `TissueGroup.perfusion_fraction` |
-| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_percent` |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC for a 40-year-old, from Mapleson's 1996 meta-analysis. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_at_age_40_percent` |
 | $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, read from the agent data files and stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, read from the agent data files | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
@@ -3526,7 +3520,6 @@ At 4.0 L/min and the same dial, the vaporizer adds agent about thirteen times
 faster than at the 0.3 L/min that this patient's uptake would set.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
-<!-- not-restated: 2 % -->
 
 Closed-circuit operation is a property of the machine, and one coefficient
 switched by a condition is the wrong way to model it. The machine design in

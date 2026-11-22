@@ -630,6 +630,7 @@ def _frame(
         columns=CHART_COLUMN_BUDGET_PER_SERIES,
         plot_width_px=_PLOT_WIDTH_PX,
         mac_percent=MacPercent(2.0),
+        mac_age_years=40,
         axis_top_percent=Percent(6.0),
         grid_interval_percent=1.0,
         percent_ticks=percent_axis_ticks(6.0, 1.0),
@@ -1637,6 +1638,29 @@ def test_a_compared_hover_answers_for_every_run_in_reach_however_many_there_are(
     assert target is not None
     assert tuple(reading.run for reading in target.readings) == (0, 1, 2)
     assert [line.split()[1] for line in target.readout.splitlines()[2:]] == ["1", "2", "3"]
+
+
+def test_the_frame_refuses_two_runs_whose_mac_is_stated_for_different_ages() -> None:
+    """Two runs on one agent still need one MAC and one age, because they share one MAC axis.
+
+    Every run uses the reference adult today, so the second run's age is
+    written into its snapshot here. Once a patient's age is an input, two
+    compared runs could differ in it, and the second run's traces would be
+    read against the first run's 1 MAC line and age without this check.
+    """
+
+    first = _input(_run(10))
+    older = _input(_run(10), run_index=1)
+    older = replace(older, snapshot=replace(older.snapshot, agent_mac_age_years=70))
+
+    with pytest.raises(
+        ValueError,
+        match=r"^every run on the chart must divide by the same MAC for the same age, because "
+        r"they share one MAC axis and one 1 MAC line; given 1\.8% at age 40, 1\.8% at age 70$",
+    ):
+        assemble_chart_frame(
+            [first, older], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        )
 
 
 def test_a_compared_hover_refuses_to_name_one_agent_over_another_run_s_value() -> None:

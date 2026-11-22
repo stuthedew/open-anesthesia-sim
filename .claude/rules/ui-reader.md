@@ -30,7 +30,7 @@ paragraph is the wrong reading of it and the most available one.
 Traceability, model identity, units and the modelled/measured line are
 discharged by **labels, units, named reference values and axis titles** — not
 by sentences. The pattern is already in the source: `_mac_reference_text` says
-"1 MAC sevoflurane = 2.0%" and `_mac_awake_reference_text` names the fraction,
+"1 MAC sevoflurane (age 40) = 1.8%" and `_mac_awake_reference_text` names the fraction,
 divisor and band. Those are the standard met in the form it asks for, and no
 paragraph of explanation sits beside them.
 

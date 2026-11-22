@@ -111,6 +111,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NewCaseQuestion,
     Readout,
     SettingReadout,
+    height_entry_maximum_mac,
     readout_columns,
     readout_row_width,
     slider_position,
@@ -2196,12 +2197,14 @@ class MarkEditor(QWidget):
 
         Args:
             maximum_mac: The agent's maximum delivered concentration as a
-                multiple of its own 1 MAC. The lower bound is one count of
-                the displayed resolution, because every run is already at a
-                target of zero before it begins.
+                multiple of its own 1 MAC. The upper bound is this value
+                rounded down to the control's resolution, so the control
+                never offers a height that the agent cannot reach. The lower
+                bound is one count of the displayed resolution, because every
+                run is already at a target of zero before it begins.
         """
 
-        self.height_spin.setRange(MAC_DISPLAY_RESOLUTION_MAC, maximum_mac)
+        self.height_spin.setRange(MAC_DISPLAY_RESOLUTION_MAC, height_entry_maximum_mac(maximum_mac))
 
     def set_panel(self, panel: BookmarkPanel) -> None:
         """Redraw both lists from one tick's result, keeping each selection.

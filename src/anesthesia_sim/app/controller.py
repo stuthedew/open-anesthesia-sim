@@ -75,8 +75,13 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
 )
+from anesthesia_sim.core.mac import PatientMac, mac_for_patient
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
-from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
+from anesthesia_sim.core.parameters import (
+    MacAwakeReference,
+    load_agent_parameters,
+    load_reference_adult_parameters,
+)
 from anesthesia_sim.core.prediction import predicted_states, predicted_states_at
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
@@ -202,7 +207,7 @@ class RunSettings(RunStatus):
     agent_display_name: str
     max_delivered_concentration_percent: Percent
     agent_mac_percent: MacPercent
-    """The running agent's 1 MAC, as a percent of one atmosphere.
+    """The running agent's 1 MAC for this run's patient, as a percent of one atmosphere.
 
     Exposed because the interface displays every compartment in multiples
     of it as well as in percent, so it is the divisor of a clinically
@@ -213,9 +218,20 @@ class RunSettings(RunStatus):
     MAC — which would be the correct number under the wrong label that
     `CLAUDE.md` treats as a safety failure.
 
-    `docs/INTERFACE.md` § "MAC multiples as a display unit" states what the
-    quotient asserts, and `docs/PARAMETERS.md` § "Delivery-limit and MAC parameters" holds the
-    value's provenance.
+    `core/mac.py`'s `mac_for_patient` builds it, with `agent_mac_age_years`
+    below. `docs/INTERFACE.md` § "MAC multiples as a display unit" states what
+    the quotient asserts, and `docs/PARAMETERS.md` § "Delivery-limit and
+    MAC parameters" holds the value's provenance.
+    """
+    agent_mac_age_years: int
+    """The age, in years, that `agent_mac_percent` is the MAC for.
+
+    MAC falls with age, so a MAC printed without its age leaves a reader
+    unable to tell which patient the divisor describes. The `1 MAC` reference
+    beside the chart prints it (`formatting.format_mac_reference`). It is 40
+    on every run, because the reference adult records no age and the simulator
+    uses the MAC at age 40 for it. Both fields come from one `PatientMac`, so they
+    cannot describe two different patients.
     """
     fresh_gas_flow_l_min: FreshGasFlow
     accepted_fresh_gas_flow_range_l_min: tuple[float, float]
@@ -948,7 +964,9 @@ class SimulationController:
         self._runs_discarded += 1
         self._agent_id = agent_id
         self._agent_display_name = agent_parameters.display_name
-        self._agent_mac_percent = agent_parameters.mac_percent
+        self._agent_mac: PatientMac = mac_for_patient(
+            agent_parameters, load_reference_adult_parameters()
+        )
         self._agent_mac_awake = agent_parameters.mac_awake
         self._agent_vapour_per_liquid = agent_parameters.vapour_volume_per_liquid_volume
         self._state = SimulationState(uptake_system=uptake_system)
@@ -1207,11 +1225,11 @@ class SimulationController:
     def set_agent(self, agent_id: str) -> None:
         """Start fresh with a different agent at that agent's own 1 MAC.
 
-        The delivered-concentration fraction is reset to the new agent's
-        mac_percent rather than carrying over the old agent's raw percentage,
-        since the same percent number corresponds to a different clinical
-        depth for each agent (e.g. 2% is 1 MAC of sevoflurane but only about
-        a third of a MAC of desflurane). Circuit, flow, ventilation, and
+        The delivered concentration is reset to the new agent's 1 MAC for
+        the reference adult rather than carrying over the old agent's raw
+        percentage, since the same percent number corresponds to a different
+        clinical depth for each agent (e.g. 1.8% is 1 MAC of sevoflurane at
+        age 40 but only about a quarter of a MAC of desflurane). Circuit, flow, ventilation, and
         cardiac output settings are preserved.
 
         The bookmarks are preserved with them, and the way a MAC target is
@@ -1321,7 +1339,8 @@ class SimulationController:
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
             max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
-            agent_mac_percent=self._agent_mac_percent,
+            agent_mac_percent=self._agent_mac.percent,
+            agent_mac_age_years=self._agent_mac.age_years,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
             accepted_fresh_gas_flow_range_l_min=circuit.accepted_fresh_gas_flow_range_l_min,
             delivered_concentration_percent=circuit.delivered_concentration_percent,
@@ -1376,7 +1395,8 @@ class SimulationController:
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
             max_delivered_concentration_percent=circuit.max_delivered_concentration_percent,
-            agent_mac_percent=self._agent_mac_percent,
+            agent_mac_percent=self._agent_mac.percent,
+            agent_mac_age_years=self._agent_mac.age_years,
             agent_mac_awake=self._agent_mac_awake,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
@@ -2060,7 +2080,7 @@ class SimulationController:
                 for field in fields(TissueGroupEquationSettings)
             ),
             ("agent_display_name", self._agent_display_name, branch._agent_display_name),
-            ("agent_mac_percent", self._agent_mac_percent, branch._agent_mac_percent),
+            ("agent_mac", self._agent_mac, branch._agent_mac),
             (
                 "agent_vapour_per_liquid",
                 self._agent_vapour_per_liquid,
@@ -3415,7 +3435,7 @@ class SimulationController:
         return {
             quantity: mac_multiple(
                 Fraction(state[index], name=COMPARTMENT_FRACTION_NAMES[quantity]),
-                self._agent_mac_percent,
+                self._agent_mac.percent,
             )
             for quantity, index in COMPARTMENT_STATE_INDEX.items()
         }

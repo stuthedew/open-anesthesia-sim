@@ -31,7 +31,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.resources import files
 from math import isfinite
-from typing import Annotated
+from typing import Annotated, Final
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
@@ -124,8 +124,17 @@ class SupportedSchemaVersions:
         restore_through_checks(self, state)
 
 
+#: The age, in years, at which every agent file states its MAC. The key that
+#: holds it, `mac_at_age_40_percent`, names the same age, and
+#: `test_the_stored_mac_key_names_the_age_it_holds` holds the two equal.
+#: Mapleson 1996 gives each agent's MAC at this age (Br J Anaesth
+#: 1996;76:179-185), and the agent files adopt its figures on the project
+#: owner's decision of 2026-11-14 (`PL-LBVN`). Version 5 of the agent files
+#: renamed the key from `mac_percent`, which named no age.
+MAC_STORED_AT_AGE_YEARS: Final = 40
+
 AGENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
-    data_files="agent files (data/agents/)", minimum=4, current=4
+    data_files="agent files (data/agents/)", minimum=5, current=5
 )
 PATIENT_SCHEMA_VERSIONS = SupportedSchemaVersions(
     data_files="patient files (data/patients/)", minimum=3, current=3
@@ -155,12 +164,13 @@ def require_perfusion_fractions_sum_to_one(total_perfusion_fraction: float) -> N
 
 
 def require_one_mac_deliverable(
-    mac_percent: Percent, max_delivered_concentration_percent: Percent
+    mac_at_age_40_percent: Percent, max_delivered_concentration_percent: Percent
 ) -> None:
     """Refuse an agent whose own vaporizer cannot deliver 1 MAC, the dial a run opens at.
 
-    `AgentUptakeSystem.for_agent()` opens every run with the dial at 1 MAC,
-    so an agent's MAC must be at or below its vaporizer's maximum.
+    `AgentUptakeSystem.for_agent()` opens every run with the dial at 1 MAC
+    for the reference adult, which is the agent's MAC at age 40
+    (`core/mac.py`). So that MAC must be at or below the vaporizer's maximum.
     `AgentParameters` and the agent file's schema both call this function, so
     the record and the file must meet the same rule (`PL-YHWH`). The message
     names the MAC as the agent's own value. It does not use
@@ -168,13 +178,14 @@ def require_one_mac_deliverable(
     setting that someone asked for (found at review).
 
     Raises:
-        SimulationConfigurationError: `mac_percent` is above
+        SimulationConfigurationError: `mac_at_age_40_percent` is above
             `max_delivered_concentration_percent`.
     """
 
-    if mac_percent > max_delivered_concentration_percent:
+    if mac_at_age_40_percent > max_delivered_concentration_percent:
         raise SimulationConfigurationError(
-            f"mac_percent of {mac_percent:g}% is above the vaporizer maximum of "
+            f"mac_at_age_40_percent of {mac_at_age_40_percent:g}% is above the vaporizer "
+            "maximum of "
             f"{max_delivered_concentration_percent:g}%: the agent's own vaporizer could not "
             "deliver 1 MAC, which is where a run opens"
         )
@@ -267,13 +278,14 @@ class MacAwakeReference:
     **Stored as a fraction, never as a percent of one atmosphere.** The
     published sources express MAC-awake as a ratio to MAC. Katoh 1993 does so
     explicitly, "as a ratio to age-adjusted MAC". The fraction is the only
-    form that stays correct if `mac_percent` changes or is ever made
-    age-aware. Recording the absolute percent instead would silently tie the
-    value to whichever MAC its own population was measured against.
-    Desflurane's 2.60% is anchored to a MAC of 7.25%, and this project stores
-    6.0%. The absolute figure divided by the stored MAC would therefore give
-    0.433, against a published 0.36. `docs/PARAMETERS.md` § "The MAC-awake
-    fractions" records that comparison.
+    form that stays correct when the MAC it multiplies changes, as it does
+    with the patient's age (`core/mac.py`). Recording the absolute percent
+    instead would silently tie the value to whichever MAC its own population
+    was measured against. Desflurane's 2.60% is anchored to a MAC of 7.25%,
+    and this project stores 6.6% at age 40. The absolute figure divided by
+    the stored MAC would therefore give 0.394, against a published 0.36.
+    `docs/PARAMETERS.md` § "The MAC-awake fractions" records that
+    comparison.
 
     `mac_reference_basis` is prose rather than a number, because the two
     denominators are not the same kind of thing. Katoh's denominator is each
@@ -375,7 +387,8 @@ class AgentParameters:
         TypeError: a partition coefficient was not built as a
             `PartitionCoefficient`. Also raised when
             `max_delivered_concentration_percent` was not built as a
-            `Percent`, or `mac_percent` was not built as a `MacPercent`. A
+            `Percent`, or `mac_at_age_40_percent` was not built as a
+            `MacPercent`. A
             `Fraction` and a bare `float` are both refused
             (`core/concentration.py`'s `require_percent` and
             `require_mac_percent`). Each value's range was checked when it was
@@ -387,12 +400,13 @@ class AgentParameters:
         SimulationConfigurationError: `max_delivered_concentration_percent`
             is zero. A vaporizer that delivers nothing has no dial to set. A
             `Percent` refuses a negative value when it is built, so zero is the
-            only non-positive value it can hold. Also raised when `mac_percent`
-            is above the vaporizer maximum. A run opens at 1 MAC
+            only non-positive value it can hold. Also raised when
+            `mac_at_age_40_percent` is above the vaporizer maximum. A run
+            opens at 1 MAC
             (`AgentUptakeSystem.for_agent`), and a dial cannot be set above the
             vaporizer maximum. So such a run would open at a dial setting that
             the vaporizer cannot deliver (`PL-HPKK`). The loader's
-            `_mac_percent_must_not_exceed_vaporizer_max` refuses such a MAC in
+            `_mac_at_age_40_must_not_exceed_vaporizer_max` refuses such a MAC in
             a file, and this check refuses it in a record built any other way.
             Also raised when a tissue:blood coefficient is outside the
             numerical envelope, when `molar_mass_g_mol` is not positive and
@@ -414,7 +428,13 @@ class AgentParameters:
     muscle_tissue_gas_partition_coefficient: PartitionCoefficient
     fat_tissue_gas_partition_coefficient: PartitionCoefficient
     max_delivered_concentration_percent: Percent
-    mac_percent: MacPercent
+    mac_at_age_40_percent: MacPercent
+    """The agent's MAC at age 40, as a percent of one atmosphere (Mapleson 1996).
+
+    It is not the MAC a run divides by. `core/mac.py`'s `mac_for_patient`
+    builds that one from this value and the patient, so that a MAC for
+    another age changes that one function and no reader of it.
+    """
     mac_awake: MacAwakeReference
     molar_mass_g_mol: float
     liquid_density: LiquidDensity
@@ -445,11 +465,13 @@ class AgentParameters:
         require_percent(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
-        require_mac_percent("mac_percent", self.mac_percent)
+        require_mac_percent("mac_at_age_40_percent", self.mac_at_age_40_percent)
         require_positive_finite(
             "max_delivered_concentration_percent", self.max_delivered_concentration_percent
         )
-        require_one_mac_deliverable(self.mac_percent, self.max_delivered_concentration_percent)
+        require_one_mac_deliverable(
+            self.mac_at_age_40_percent, self.max_delivered_concentration_percent
+        )
 
         if not isinstance(self.liquid_density, LiquidDensity):
             raise TypeError(
@@ -812,7 +834,7 @@ its quantity:
   be missed, and where a marked boundary is worth having.
   `parse_agent_parameters` and `parse_reference_adult_parameters` are the only
   places where a value crosses from one layer to the other. They wrap each
-  value explicitly, as in `Percent(model.mac_percent)` and
+  value explicitly, as in `MacPercent(model.mac_at_age_40_percent)` and
   `MacMultiple(model.mac_awake.fraction_of_mac)`. A `Percent` built there
   cannot refuse a value that `PositivePercent` accepted, because the range of
   `PositivePercent` lies inside the range of `Percent`. The payload's check is
@@ -1131,7 +1153,7 @@ class _AgentPayload(_StrictPayload):
     blood_gas_partition_coefficient: PositiveFinite
     tissue_gas_partition_coefficients: _TissueGasPartitionCoefficientsPayload
     max_delivered_concentration_percent: PositivePercent
-    mac_percent: PositivePercent
+    mac_at_age_40_percent: PositivePercent
     mac_awake: _MacAwakePayload
     molar_mass_g_mol: PositiveFinite
     liquid_density: _LiquidDensityPayload
@@ -1139,7 +1161,7 @@ class _AgentPayload(_StrictPayload):
     provenance_gap: OptionalNonEmptyString = None
 
     @model_validator(mode="after")
-    def _mac_percent_must_not_exceed_vaporizer_max(self) -> _AgentPayload:
+    def _mac_at_age_40_must_not_exceed_vaporizer_max(self) -> _AgentPayload:
         """Reject an agent whose own vaporizer cannot deliver 1 MAC.
 
         This is a `model_validator`, not a `field_validator` that reads
@@ -1151,7 +1173,8 @@ class _AgentPayload(_StrictPayload):
 
         with _collected_by_pydantic():
             require_one_mac_deliverable(
-                Percent(self.mac_percent), Percent(self.max_delivered_concentration_percent)
+                Percent(self.mac_at_age_40_percent),
+                Percent(self.max_delivered_concentration_percent),
             )
 
         return self
@@ -1371,7 +1394,7 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
             coefficients.fat, name="tissue_gas_partition_coefficients.fat"
         ),
         max_delivered_concentration_percent=(Percent(model.max_delivered_concentration_percent)),
-        mac_percent=MacPercent(model.mac_percent),
+        mac_at_age_40_percent=MacPercent(model.mac_at_age_40_percent, name="mac_at_age_40_percent"),
         mac_awake=MacAwakeReference(
             fraction_of_mac=MacMultiple(model.mac_awake.fraction_of_mac),
             standard_deviation_fraction_of_mac=MacMultiple(

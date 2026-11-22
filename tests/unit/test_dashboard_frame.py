@@ -77,6 +77,7 @@ from anesthesia_sim.app.dashboard_frame import (
     CONTROL_MARK_LEGEND_LABEL,
     CONTROL_TIMELINE_CAPTION,
     CONTROL_TIMELINE_HEADING,
+    DEFAULT_MAXIMUM_TARGET_MAC,
     EMPTY_METRIC_QUALIFIER,
     EMPTY_METRIC_SECONDARY_VALUE,
     HALT_FORK_LABEL_TEMPLATE,
@@ -138,6 +139,7 @@ from anesthesia_sim.app.dashboard_frame import (
     fork_offer,
     halt_disposition,
     halt_notice,
+    height_entry_maximum_mac,
     kept_fork_selection,
     mac_awake_caption,
     mac_reference_caption,
@@ -222,12 +224,15 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
 )
 from anesthesia_sim.core.governing_equations import STATE_SIZE, UNIT_STATE
+from anesthesia_sim.core.mac import mac_for_patient
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     MacAwakeReference,
     load_agent_parameters,
+    load_reference_adult_parameters,
     parse_breathing_circuit_parameters,
 )
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -403,8 +408,10 @@ def _snapshot(
     if history is None:
         history = (_sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id=agent_id),)
 
+    run_mac = mac_for_patient(load_agent_parameters(agent_id), load_reference_adult_parameters())
+
     if agent_mac_percent is None:
-        agent_mac_percent = load_agent_parameters(agent_id).mac_percent
+        agent_mac_percent = run_mac.percent
 
     if agent_mac_awake is None:
         agent_mac_awake = load_agent_parameters(agent_id).mac_awake
@@ -421,6 +428,7 @@ def _snapshot(
         agent_display_name=agent_display_name,
         max_delivered_concentration_percent=Percent(max_delivered_concentration_percent),
         agent_mac_percent=MacPercent(agent_mac_percent),
+        agent_mac_age_years=run_mac.age_years,
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=FreshGasFlow(3.0),
@@ -1468,7 +1476,8 @@ def test_a_real_run_displays_a_filling_compartment_as_below_resolution() -> None
     # At the same instant, the alveolar reading is an ordinary value at the
     # documented resolution. The marker therefore appears only for a value
     # that is genuinely below the resolution, and is not a formatting quirk.
-    assert _readouts_by_name(controller.snapshot())["Alveolar"][1] == "0.61%"
+    # The run opens at sevoflurane's 1.80% (Mapleson 1996's MAC at age 40).
+    assert _readouts_by_name(controller.snapshot())["Alveolar"][1] == "0.55%"
 
     _advance_to(controller, 1_200)
 
@@ -1512,7 +1521,8 @@ def test_every_compartment_is_readable_in_mac_multiples() -> None:
     multiple.
     """
 
-    snapshot = _snapshot(history=(_sample(60, 0.02, 0.016, 0.008, 0.006, 0.001, 5e-5),))
+    # Each fraction is a round multiple of sevoflurane's 1.80% MAC at age 40.
+    snapshot = _snapshot(history=(_sample(60, 0.018, 0.0144, 0.0072, 0.0054, 0.0009, 5e-5),))
     by_name = _readouts_by_name(snapshot)
 
     assert sum(1 for _, _, secondary in by_name.values() if "MAC" in secondary) == 6
@@ -1525,7 +1535,7 @@ def test_every_compartment_is_readable_in_mac_multiples() -> None:
 
 
 def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
-    """6% is 3 MAC of sevoflurane and 1 MAC of desflurane.
+    """6.6% is 3.67 MAC of sevoflurane and 1 MAC of desflurane, both at age 40.
 
     A divisor left over from a previously selected agent would produce a
     plausible number under the correct label, which is the presentation
@@ -1533,15 +1543,16 @@ def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
     one. Every MAC line is read from the snapshot's own divisor.
     """
 
-    sevoflurane = _snapshot(history=(_sample(60, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),))
+    sevoflurane = _snapshot(history=(_sample(60, 0.066, 0.066, 0.066, 0.066, 0.066, 0.066),))
 
-    assert _readouts_by_name(sevoflurane)["Alveolar"][2] == "3.00 ×MAC"
+    # 6.6 / 1.8 = 3.667
+    assert _readouts_by_name(sevoflurane)["Alveolar"][2] == "3.67 ×MAC"
 
     desflurane = _snapshot(
         agent_id="desflurane",
         agent_display_name="Desflurane",
         max_delivered_concentration_percent=18.0,
-        history=(_sample(60, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06, substance_id="desflurane"),),
+        history=(_sample(60, 0.066, 0.066, 0.066, 0.066, 0.066, 0.066, substance_id="desflurane"),),
     )
 
     assert _readouts_by_name(desflurane)["Alveolar"][2] == "1.00 ×MAC"
@@ -2211,9 +2222,10 @@ def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> No
     """Two ceilings that used to be the same one, and had to become separate (`PL-CC23`).
 
     The delivered dial tracks the real vaporizer cap. The chart's ceiling is
-    the same MAC multiple for every agent. For desflurane the two numbers
-    are equal but the reasons differ. For isoflurane the two numbers visibly
-    differ.
+    the same MAC multiple for every agent. For desflurane the ceiling, 3 x
+    6.6% = 19.8%, sits a little above the 18% dial. For isoflurane it sits
+    well below the 5% dial, at 3 x 1.17% = 3.51%. The MACs are Mapleson
+    1996's at age 40.
     """
 
     desflurane = _fake_controller(
@@ -2223,8 +2235,8 @@ def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> No
     )
 
     assert _settings_by_control(desflurane.snapshot())[ControlInput.DELIVERED].maximum == 18.0
-    assert _frame(desflurane).axis_top_percent == pytest.approx(18.0)
-    assert _frame(desflurane).axis_top_percent == pytest.approx(CHART_AXIS_TOP_MAC * 6.0)
+    assert _frame(desflurane).axis_top_percent == pytest.approx(19.8)
+    assert _frame(desflurane).axis_top_percent == pytest.approx(CHART_AXIS_TOP_MAC * 6.6)
 
     isoflurane = _fake_controller(
         agent_id="isoflurane",
@@ -2233,8 +2245,8 @@ def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> No
     )
 
     assert _settings_by_control(isoflurane.snapshot())[ControlInput.DELIVERED].maximum == 5.0
-    assert _frame(isoflurane).axis_top_percent == pytest.approx(3.6), (
-        "1.2% MAC x 3, not the 5% dial"
+    assert _frame(isoflurane).axis_top_percent == pytest.approx(3.51), (
+        "1.17% MAC x 3, not the 5% dial"
     )
 
 
@@ -2244,20 +2256,20 @@ def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
     delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
 
     assert delivered.value_text == format_percent(Fraction(0.025))
-    assert delivered.secondary == format_mac_multiple(Fraction(0.025), MacPercent(2.0))
-    assert delivered.secondary == "1.25 ×MAC"
+    assert delivered.secondary == format_mac_multiple(Fraction(0.025), MacPercent(1.8))
+    assert delivered.secondary == "1.39 ×MAC"
 
 
 def test_the_delivered_line_prints_the_dial_in_both_units() -> None:
     """The readout heading repeats the dial in the dial's own two units (`PL-NWTM`).
 
-    2.5% sevoflurane over its 2.0% MAC is 1.25 ×MAC, worked here by hand
-    rather than read back from the readout under test.
+    2.5% sevoflurane over its 1.80% MAC at age 40 is 1.389 ×MAC, worked here
+    by hand rather than read back from the readout under test.
     """
 
     delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
 
-    assert delivered_line(delivered) == "Delivered 2.50% (1.25 ×MAC)"
+    assert delivered_line(delivered) == "Delivered 2.50% (1.39 ×MAC)"
 
 
 def test_the_delivered_line_refuses_a_flow_readout() -> None:
@@ -2280,13 +2292,15 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
 
     snapshot = controller.snapshot()
 
-    assert snapshot.agent_mac_percent == 6.0
+    # Mapleson 1996 (PMID 8777094), Abstract: desflurane's MAC at age 40 is 6.6%.
+    assert snapshot.agent_mac_percent == 6.6
+    assert snapshot.agent_mac_age_years == 40
     assert _readouts_by_name(snapshot)["Alveolar"][2] == format_mac_multiple(
-        snapshot.alveolar_partial_pressure_fraction, MacPercent(6.0)
+        snapshot.alveolar_partial_pressure_fraction, MacPercent(6.6)
     )
     # The dial starts at the agent's own 1 MAC, so after a minute of wash-in
     # the alveolar compartment is above zero and below that 1 MAC.
-    alveolar_mac = snapshot.alveolar_partial_pressure_fraction * 100.0 / 6.0
+    alveolar_mac = snapshot.alveolar_partial_pressure_fraction * 100.0 / 6.6
     assert 0.0 < alveolar_mac < 1.0
     assert _settings_by_control(snapshot)[ControlInput.DELIVERED].secondary == "1.00 ×MAC"
 
@@ -2294,9 +2308,9 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
 @pytest.mark.parametrize(
     ("agent_id", "fraction_text", "mac_multiple_text"),
     [
-        ("sevoflurane", "0.98%", "0.49 ×MAC"),
-        ("isoflurane", "0.42%", "0.35 ×MAC"),
-        ("desflurane", "3.59%", "0.60 ×MAC"),
+        ("sevoflurane", "0.88%", "0.49 ×MAC"),
+        ("isoflurane", "0.41%", "0.35 ×MAC"),
+        ("desflurane", "3.94%", "0.60 ×MAC"),
     ],
 )
 def test_each_agents_alveolar_readout_at_five_minutes_is_pinned_as_displayed(
@@ -2311,6 +2325,13 @@ def test_each_agents_alveolar_readout_at_five_minutes_is_pinned_as_displayed(
     catch a later change to the calculation, the agent's data or the
     formatting. They are not a comparison with measured data, which is what
     `tests/reference/` holds.
+
+    The percents were read again on 2026-11-22, when the dial's opening 1 MAC
+    moved from De Wolf et al.'s 2.0%, 1.2% and 6.0% to Mapleson 1996's 1.80%,
+    1.17% and 6.6% at age 40 (`PL-LBVN`). The model is linear in the dial
+    setting, so each MAC multiple stayed where it was, and each percent moved
+    by the ratio of the two MACs: 0.98% x 0.90, 0.42% x 0.975 and 3.59% x
+    1.10, to the display's rounding.
     """
 
     controller = SimulationController(agent_id=agent_id)
@@ -2679,9 +2700,9 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     """The divisor is the one free parameter, so the display carries it, per agent."""
 
     assert mac_reference_caption(_frame(_fake_controller())) == format_mac_reference(
-        "Sevoflurane", MacPercent(2.0)
+        "Sevoflurane", MacPercent(1.8), age_years=40
     )
-    assert mac_reference_caption(_frame(_fake_controller())) == "1 MAC sevoflurane = 2.0%"
+    assert mac_reference_caption(_frame(_fake_controller())) == "1 MAC sevoflurane (age 40) = 1.8%"
 
     desflurane = _fake_controller(
         agent_id="desflurane",
@@ -2689,9 +2710,7 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
         max_delivered_concentration_percent=18.0,
     )
 
-    assert mac_reference_caption(_frame(desflurane)) == format_mac_reference(
-        "Desflurane", MacPercent(6.0)
-    )
+    assert mac_reference_caption(_frame(desflurane)) == "1 MAC desflurane (age 40) = 6.6%"
 
 
 @pytest.mark.parametrize("agent_id", AGENT_DATA_FILENAMES)
@@ -2705,7 +2724,7 @@ def test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from(agent_id
         agent.display_name,
         fraction_of_mac=agent.mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=agent.mac_awake.standard_deviation_fraction_of_mac,
-        mac_percent=agent.mac_percent,
+        mac_percent=agent.mac_at_age_40_percent,
     )
 
 
@@ -2798,31 +2817,38 @@ def test_the_off_scale_notice_stays_silent_for_a_run_inside_the_axis() -> None:
 
 
 def test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale() -> None:
-    """Isoflurane is where a naive comparison would report noise as a defect.
+    """Desflurane is where a naive comparison would report noise as a defect.
 
-    Its ceiling is 3 x 1.2%, which in binary floating point is
-    3.5999999999999996 rather than 3.6, so a trace sitting exactly at 3 MAC
-    is arithmetically *above* the axis by 4e-16.
+    Its ceiling is 3 x 6.6%, which in binary floating point is
+    19.799999999999997 rather than 19.8, so a trace sitting exactly at 3 MAC
+    is arithmetically *above* the axis by 4e-15. Isoflurane was the example
+    while its MAC was 1.2%.
     """
 
     at_ceiling = (
-        _sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
-        _sample(1, 0.036, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
+        _sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="desflurane"),
+        _sample(1, 0.198, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="desflurane"),
     )
     controller = _fake_controller(
-        agent_id="isoflurane", agent_display_name="Isoflurane", history=at_ceiling
+        agent_id="desflurane",
+        agent_display_name="Desflurane",
+        max_delivered_concentration_percent=18.0,
+        history=at_ceiling,
     )
 
     assert off_scale_notice(_frame(controller), 0) is None
 
     # ...and the tolerance is not so wide that it swallows a real excursion:
-    # 3.62% clears the ceiling by more than the readouts can resolve.
+    # 19.82% clears the ceiling by more than the readouts can resolve.
     above_ceiling = (
-        _sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
-        _sample(1, 0.0362, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="isoflurane"),
+        _sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="desflurane"),
+        _sample(1, 0.1982, 0.0, 0.0, 0.0, 0.0, 0.0, substance_id="desflurane"),
     )
     controller = _fake_controller(
-        agent_id="isoflurane", agent_display_name="Isoflurane", history=above_ceiling
+        agent_id="desflurane",
+        agent_display_name="Desflurane",
+        max_delivered_concentration_percent=18.0,
+        history=above_ceiling,
     )
 
     assert off_scale_notice(_frame(controller), 0) is not None
@@ -3407,6 +3433,58 @@ def test_an_unnamed_instant_is_listed_under_its_own_time() -> None:
     panel = _panel(BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600))))
 
     assert panel.times.rows == (format_elapsed(600.0),)
+
+
+@pytest.mark.parametrize(
+    ("agent_id", "vaporizer_maximum_percent", "mac_at_age_40_percent"),
+    [
+        # The vaporizer maxima are the shipped files' 8%, 5% and 18%. The MACs are
+        # Mapleson 1996's at age 40 (PMID 8777094, Abstract): 1.80%, 1.17% and 6.6%.
+        ("sevoflurane", 8.0, 1.8),
+        ("isoflurane", 5.0, 1.17),
+        ("desflurane", 18.0, 6.6),
+    ],
+)
+def test_every_agent_reaches_the_default_target_ceiling(
+    agent_id: str, vaporizer_maximum_percent: float, mac_at_age_40_percent: float
+) -> None:
+    """The target control's first ceiling is one every agent's vaporizer can reach.
+
+    Desflurane reaches the least, 18 / 6.6 = 2.73 MAC, so a ceiling of 3 MAC
+    would offer a target that no desflurane run could cross (`PL-LBVN`).
+    """
+
+    snapshot = SimulationController(agent_id=agent_id).snapshot()
+
+    assert snapshot.max_delivered_concentration_percent == vaporizer_maximum_percent
+    assert snapshot.agent_mac_percent == mac_at_age_40_percent
+    assert vaporizer_maximum_percent / mac_at_age_40_percent >= DEFAULT_MAXIMUM_TARGET_MAC
+
+
+@pytest.mark.parametrize(
+    ("reachable_mac", "expected_maximum_mac"),
+    [
+        # Each vaporizer maximum over its agent's MAC, worked by hand: 8 / 1.8,
+        # 5 / 1.17 and 18 / 6.6. Desflurane's 2.727 would round to nearest as
+        # 2.73, which no desflurane run can reach (`PL-LBVN`).
+        (8.0 / 1.8, 4.44),
+        (5.0 / 1.17, 4.27),
+        (18.0 / 6.6, 2.72),
+        # Isoflurane at its former 1.2% MAC, 4.1667, which rounded up to 4.17.
+        (5.0 / 1.2, 4.16),
+        (DEFAULT_MAXIMUM_TARGET_MAC, 2.5),
+        # A value one float below 4.17 is 4.17 that rounding pushed down, not
+        # a height short of it.
+        (math.nextafter(4.17, 0.0), 4.17),
+    ],
+)
+def test_the_height_maximum_rounds_down_to_a_height_the_agent_can_reach(
+    reachable_mac: float, expected_maximum_mac: float
+) -> None:
+    maximum_mac = height_entry_maximum_mac(reachable_mac)
+
+    assert maximum_mac == pytest.approx(expected_maximum_mac)
+    assert maximum_mac <= reachable_mac + WHOLE_COUNT_TOLERANCE
 
 
 def test_a_target_names_its_compartment_and_its_height() -> None:
@@ -4420,7 +4498,7 @@ def _reachable_height(agent_id: str) -> float:
 
     agent = load_agent_parameters(agent_id)
 
-    return float(agent.max_delivered_concentration_percent) / float(agent.mac_percent)
+    return float(agent.max_delivered_concentration_percent) / float(agent.mac_at_age_40_percent)
 
 
 def test_the_case_s_marks_are_stated_once_when_every_run_agrees() -> None:

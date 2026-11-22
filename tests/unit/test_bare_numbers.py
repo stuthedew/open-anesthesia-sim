@@ -94,6 +94,10 @@ UNCHECKED_AMOUNT = (
     "be built with NaN or a negative amount. It is to get a checked type with the other "
     "agent amounts (PL-LHCL)."
 )
+PATIENT_AGE = (
+    "A patient's age in whole years. PatientMac checks that it is an int above zero. It is "
+    "to get a checked type when patient age becomes an input (PL-8F9D)."
+)
 DERIVED = (
     "A value that the code computes from other values. Arithmetic on a checked type "
     "returns a plain float, so the result carries no proof. It is to get a type that only "
@@ -312,6 +316,7 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "UptakeStepResult.patient_agent_change_l",
         ),
     },
+    PATIENT_AGE: {"mac": ("PatientMac.age_years",)},
     DERIVED: {
         "agent_simulation_validation": ("AgentSimulationValidationResult.relative_error",),
         "alveolar": ("AlveolarCompartment.partial_pressure_fraction -> return",),
@@ -370,7 +375,7 @@ BARE_NUMBERS: dict[str, str] = {
 # took out twelve, and the prediction that a preview draws added two for the
 # state it starts from and the states it returns (`PL-Z6C8`). The prediction at
 # chosen seconds that a preview draws past its first hour added two more.
-MOST_BARE_NUMBERS = 169
+MOST_BARE_NUMBERS = 170
 
 
 def _names_a_bare_number(

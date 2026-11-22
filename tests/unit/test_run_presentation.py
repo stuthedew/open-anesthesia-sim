@@ -102,14 +102,18 @@ def _state(**changes: object) -> RunPanelState:
 
 
 def _run_at(elapsed_s: int, *, agent_id: str = "sevoflurane") -> SimulationController:
-    """A real run of `agent_id`, delivering 2%, advanced to `elapsed_s` and paused."""
+    """A real run of `agent_id`, delivering 1.80%, advanced to `elapsed_s` and paused.
+
+    1.80% is sevoflurane's MAC at age 40 (Mapleson 1996), where a sevoflurane
+    run opens, so a sevoflurane run records no control change here.
+    """
 
     controller = SimulationController()
 
     if agent_id != controller.snapshot().agent_id:
         controller.set_agent(agent_id)
 
-    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.set_delivered_concentration_percent(Percent(1.8))
     controller.start()
 
     for _ in range(elapsed_s // SIMULATION_STEP_S):
@@ -121,7 +125,7 @@ def _run_at(elapsed_s: int, *, agent_id: str = "sevoflurane") -> SimulationContr
 
 
 def _run_with_a_control_change() -> SimulationController:
-    """Return a run paused at 90 s, whose delivered concentration was then moved from 2% to 3%."""
+    """Return a run paused at 90 s, whose delivered concentration was then moved from 1.8% to 3%."""
 
     controller = _run_at(90)
     controller.set_delivered_concentration_percent(Percent(3.0))
@@ -163,8 +167,8 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     """A frame's values, 1 MAC line, dials and record all come from the one snapshot.
 
     The expected texts are worked out from the run, not from the builders. The run
-    delivers 2% sevoflurane and has run for 90 s, and 1 MAC of sevoflurane is 2.0%
-    (`docs/INTERFACE.md` § "MAC multiples as a display unit").
+    delivers 1.80% sevoflurane and has run for 90 s, and 1 MAC of sevoflurane at
+    age 40 is 1.80% (Mapleson 1996, PMID 8777094, Abstract).
     """
 
     controller = _run_at(90)
@@ -179,9 +183,9 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     assert shown.values.schematic.instant == "1m30s"
     assert shown.values.delivered.instant == "1m30s"
     assert shown.values.accounting.status.text == "Valid"
-    assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
+    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
     assert shown.statement.agent_id == "sevoflurane"
-    assert shown.delivered_line == "Delivered 2.00% (1.00 ×MAC)"
+    assert shown.delivered_line == "Delivered 1.80% (1.00 ×MAC)"
     assert not isinstance(shown.dials, NotBuilt)
     assert shown.new_case is None
 
@@ -204,7 +208,7 @@ def test_a_drawn_run_lists_and_counts_the_control_changes_it_was_given() -> None
 
     shown = _drawn(controller, _state(pending_agent_name="Desflurane"))
 
-    assert shown.statement.timeline.entries == "1m30s · Delivered agent 2.00% -> 3.00%"
+    assert shown.statement.timeline.entries == "1m30s · Delivered agent 1.80% -> 3.00%"
     assert shown.new_case is not None
     assert any("1 recorded control change " in line for line in shown.new_case.body)
 
@@ -337,7 +341,7 @@ def test_a_halt_lists_the_control_changes_of_the_run_it_stopped() -> None:
 
     shown = _halted(controller, state, KeptValues(state.case, frame.values))
 
-    assert shown.statement.timeline.entries == "1m30s · Delivered agent 2.00% -> 3.00%"
+    assert shown.statement.timeline.entries == "1m30s · Delivered agent 1.80% -> 3.00%"
 
 
 def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_drew() -> None:
@@ -380,7 +384,7 @@ def test_a_halt_after_a_start_over_withholds_every_value_of_the_discarded_run() 
         assert withheld != getattr(frame.values, field.name), field.name
         assert withheld == getattr(withheld_values(state.playback_rate), field.name), field.name
 
-    assert shown.one_mac == "1 MAC desflurane = 6.0%"
+    assert shown.one_mac == "1 MAC desflurane (age 40) = 6.6%"
 
 
 def _naming_no_agent(text: str) -> str:
@@ -671,25 +675,25 @@ def test_dials_that_cannot_be_built_are_carried_and_everything_else_is_still_sta
     assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
     assert shown.notice is not None
     assert shown.statement.transport.start_enabled is False
-    assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
+    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
 
 
 @pytest.mark.parametrize(
     ("malformed", "dials_error", "one_mac"),
     [
         pytest.param(
-            {"agent_mac_percent": 2.0}, TypeError, TypeError, id="a MAC not built as MacPercent"
+            {"agent_mac_percent": 1.8}, TypeError, TypeError, id="a MAC not built as MacPercent"
         ),
         pytest.param(
             {"delivered_concentration_percent": 150.0},
             TypeError,
-            "1 MAC sevoflurane = 2.0%",
+            "1 MAC sevoflurane (age 40) = 1.8%",
             id="a delivered setting not built as Percent",
         ),
         pytest.param(
             {"fresh_gas_flow_l_min": 2.03},
             ValueError,
-            "1 MAC sevoflurane = 2.0%",
+            "1 MAC sevoflurane (age 40) = 1.8%",
             id="a fresh gas flow between two steps of its dial",
         ),
     ],
@@ -756,7 +760,7 @@ def test_dials_refused_by_the_core_are_carried_like_any_other_refusal(
     assert isinstance(shown.dials, NotBuilt)
     assert type(shown.dials.error) is SimulationConfigurationError
     assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
-    assert shown.one_mac == "1 MAC sevoflurane = 2.0%"
+    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
     assert shown.statement.transport.start_enabled is False
 
 

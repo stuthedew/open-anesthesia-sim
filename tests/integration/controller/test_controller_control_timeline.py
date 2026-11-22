@@ -140,8 +140,8 @@ def test_a_refused_setting_records_nothing() -> None:
 def test_changes_within_one_step_collapse_to_what_the_model_integrated() -> None:
     """Only the value in place when a step runs is ever integrated.
 
-    A dial dragged from 2% through 3% to 4% between two steps is one change
-    from 2% to 4% as far as the run is concerned, and a timeline that
+    A dial dragged from 1.8% through 3% to 4% between two steps is one change
+    from 1.8% to 4% as far as the run is concerned, and a timeline that
     listed the intermediate value would describe a run that never happened.
     """
 
@@ -153,7 +153,8 @@ def test_changes_within_one_step_collapse_to_what_the_model_integrated() -> None
     controller.set_delivered_concentration_percent(Percent(4.0))
 
     (change,) = controller.snapshot().control_timeline
-    assert change.previous_value == pytest.approx(2.0)
+    # The run opens at sevoflurane's 1.80%, Mapleson 1996's MAC at age 40.
+    assert change.previous_value == pytest.approx(1.8)
     assert change.new_value == pytest.approx(4.0)
     assert change.elapsed_s == pytest.approx(1.0)
 
@@ -164,7 +165,7 @@ def test_a_change_undone_within_one_step_leaves_no_entry() -> None:
     controller = SimulationController()
 
     controller.set_delivered_concentration_percent(Percent(3.0))
-    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.set_delivered_concentration_percent(Percent(1.8))
 
     assert controller.snapshot().control_timeline == ()
 
@@ -180,7 +181,7 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
     controller.set_delivered_concentration_percent(Percent(4.0))
 
     first, second = controller.snapshot().control_timeline
-    assert (first.previous_value, first.new_value) == pytest.approx((2.0, 3.0))
+    assert (first.previous_value, first.new_value) == pytest.approx((1.8, 3.0))
     assert (second.previous_value, second.new_value) == pytest.approx((3.0, 4.0))
 
 
