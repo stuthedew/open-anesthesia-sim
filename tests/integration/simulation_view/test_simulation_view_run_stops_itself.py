@@ -903,7 +903,9 @@ _STATES_THE_RECORD = (
 #: both directions, as `FRAME_WIDGETS` is. So a widget added to `RunView` later
 #: fails the test below until it is put in a group or listed here.
 UNGROUPED_WIDGETS: dict[str, str] = {
-    "_run_name_text": "names the run while a second run is drawn, from `set_run_name`",
+    "_run_name_text": (
+        "names the run while a second run is drawn, from the name its presentation carries"
+    ),
     "_status_text": _STATES_THE_RECORD,
     "_notice_text": (
         "the banner, which says which step the values on screen describe. `notice` and "
@@ -1884,8 +1886,9 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
     This test covers a halt when no frame has been drawn since the run started over.
     Until the adversarial review of `PL-J5GC`, the banner said that the chart and
     the readouts showed the last frame drawn before the run stopped. That frame
-    belongs to the run before the restart, and the readouts are withheld. The
-    chart still shows it, because only a frame writes the chart.
+    belongs to the run before the restart, so the readouts are withheld. Since
+    `PL-RF2S`'s third pull request the charts withhold that frame too, and the
+    banner says so.
     """
 
     run, _ = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
@@ -1893,9 +1896,8 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
     banner = run._notice_text.notice()
     assert banner is not None
     assert (
-        "No frame has been drawn since the run started over: the readouts are withheld, "
-        "the chart still shows the run before it started over, and the run itself stands at "
-        "its last completed step."
+        "No frame has been drawn since the run started over: the readouts and the charts "
+        "are withheld, and the run itself stands at its last completed step."
     ) in banner
 
 

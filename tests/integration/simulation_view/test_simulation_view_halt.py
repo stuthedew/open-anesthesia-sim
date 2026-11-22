@@ -155,6 +155,10 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
         "it returns whether an Area shows a branch control, for the banner of a stopped run, "
         "and it reads widget visibility and no run"
     ),
+    ("SimulationView", "self._run_name"): (
+        "it returns what a run is called, from the run count and the run's identity, and it "
+        "reads no snapshot"
+    ),
     ("SimulationView", "self._open_runs"): (
         "it returns the open runs' identities to the tab strip, and it reads no snapshot"
     ),

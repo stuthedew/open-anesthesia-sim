@@ -230,7 +230,13 @@ def test_building_a_run_view_opens_no_window_of_its_own(application: QApplicatio
     host = QWidget()
     windows_before = len(application.topLevelWindows())
 
-    run = RunView(SimulationController(), host, run_id=FIRST_RUN, branch_control=False)
+    run = RunView(
+        SimulationController(),
+        host,
+        run_id=FIRST_RUN,
+        branch_control=False,
+        name=lambda _run_id: None,
+    )
     application.processEvents()
 
     assert len(application.topLevelWindows()) == windows_before

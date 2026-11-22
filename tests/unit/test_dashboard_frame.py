@@ -128,6 +128,7 @@ from anesthesia_sim.app.dashboard_frame import (
     accounting,
     bookmark_panel,
     branch_at_stake,
+    case_marks,
     compared_panel_heading,
     compared_run_line,
     compared_run_notice,
@@ -200,6 +201,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
+from anesthesia_sim.app.wash_in import WashInReading, read_wash_in
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
@@ -314,7 +316,7 @@ def _panel(marks: BookmarkSet) -> BookmarkPanel:
 def _one_run(standings: BookmarkStandings) -> tuple[RunMarks, ...]:
     """Return a lone run's marks, which a panel test wants unless it compares runs.
 
-    A lone run is given no name. `SimulationView._rename_runs` states that
+    A lone run is given no name. `SimulationView._run_name` states that
     rule, and `run_label` supplies the name when a run has one. The label here
     is therefore the one the dashboard would pass, and no row draws it.
     """
@@ -528,6 +530,14 @@ def _frame(
         time_base,
         shown,
         plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+
+def _reading(snapshot: Any) -> WashInReading:
+    """Return the F_A/F_I reading of one snapshot, worked out here from its two fractions."""
+
+    return read_wash_in(
+        snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
     )
 
 
@@ -812,9 +822,8 @@ def test_an_undrawn_halt_after_the_run_started_over_says_its_readouts_are_withhe
 
     assert banner == (
         "Simulation stopped — RuntimeError: boom. No frame has been drawn since the run "
-        "started over: the readouts are withheld, the chart still shows the run before it "
-        "started over, and the run itself stands at its last completed step. Reset to start "
-        "a new run."
+        "started over: the readouts and the charts are withheld, and the run itself stands "
+        "at its last completed step. Reset to start a new run."
     )
     assert halt_notice(failed) != banner
 
@@ -2688,10 +2697,10 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
 def test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from(agent_id: str) -> None:
     """Both of the band's free parameters are named, from the running agent's own file."""
 
-    snapshot = SimulationController(agent_id=agent_id).snapshot()
+    frame = _frame(SimulationController(agent_id=agent_id))
     agent = load_agent_parameters(agent_id)
 
-    assert mac_awake_caption(snapshot) == format_mac_awake_reference(
+    assert mac_awake_caption(frame) == format_mac_awake_reference(
         agent.display_name,
         fraction_of_mac=agent.mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=agent.mac_awake.standard_deviation_fraction_of_mac,
@@ -2702,7 +2711,7 @@ def test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from(agent_id
 def test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit() -> None:
     """0/0 is not a point, and an empty circuit is where every run starts."""
 
-    state = wash_in_state(_snapshot(history=_run_history(1)), 0)
+    state = wash_in_state(_reading(_snapshot(history=_run_history(1))), 0)
 
     assert "Not defined" in state
     assert "no agent has reached the circuit" in state
@@ -2713,7 +2722,7 @@ def test_the_wash_in_trace_stops_when_alveolar_exceeds_inspired() -> None:
     """Elimination is not wash-in, and the plot says so rather than drawing it."""
 
     history = (*_run_history(20), _sample(20, 0.010, 0.030, 0.02, 0.02, 0.01, 0.01))
-    state = wash_in_state(_snapshot(history=history), 0)
+    state = wash_in_state(_reading(_snapshot(history=history)), 0)
 
     assert "alveolar exceeds inspired" in state
     assert "elimination" in state
@@ -2728,7 +2737,7 @@ def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:
 
     controller = _fake_controller(history=_run_history(40))
     drawn_ratio = _frame(controller).runs[0].wash_in[-1].ratios[-1]
-    state = wash_in_state(controller.snapshot(), 0)
+    state = wash_in_state(_reading(controller.snapshot()), 0)
 
     assert format_wash_in_ratio(drawn_ratio) in state
     assert state == f"Now: F<sub>A</sub>/F<sub>I</sub> = {format_wash_in_ratio(drawn_ratio)}"
@@ -2737,10 +2746,12 @@ def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:
 def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> None:
     """A pool that overflowed is displayed rather than silent."""
 
-    state = wash_in_state(_snapshot(history=_run_history(40)), 3)
+    state = wash_in_state(_reading(_snapshot(history=_run_history(40))), 3)
 
     assert state.endswith(" (3 earlier stretch(es) not drawn)")
-    assert not wash_in_state(_snapshot(history=_run_history(40)), 0).endswith("not drawn)")
+    assert not wash_in_state(_reading(_snapshot(history=_run_history(40))), 0).endswith(
+        "not drawn)"
+    )
 
 
 def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat() -> None:
@@ -2941,22 +2952,36 @@ def test_each_run_s_wash_in_state_line_counts_its_own_undrawn_stretches() -> Non
     frame = _compared_frame(*controllers)
     snapshots = tuple(controller.snapshot() for controller in controllers)
 
-    assert wash_in_state_lines(frame, snapshots) == tuple(
+    assert wash_in_state_lines(frame) == tuple(
         compared_run_line(
-            wash_in_state(snapshot, frame.runs[index].undrawn_wash_in_stretches), frame, index
+            wash_in_state(_reading(snapshot), frame.runs[index].undrawn_wash_in_stretches),
+            frame,
+            index,
         )
         for index, snapshot in enumerate(snapshots)
     )
 
 
-def test_wash_in_state_lines_refuse_snapshots_that_do_not_match_the_frame() -> None:
-    """A line from another run's snapshot would put one run's F_A/F_I under another's name."""
+def test_each_run_s_wash_in_state_line_states_its_own_run_s_reading() -> None:
+    """Two runs at different F_A/F_I each get their own reading, under their own name.
 
-    controller = _fake_controller(history=_run_history(40))
-    frame = _frame(controller)
+    Before `PL-RF2S` the lines were built from the frame and a separate tuple
+    of snapshots paired by position, so a line could carry another run's
+    reading. The expected text is built from each run's own snapshot.
+    """
 
-    with pytest.raises(ValueError, match="2 snapshot"):
-        wash_in_state_lines(frame, (controller.snapshot(), controller.snapshot()))
+    early = _fake_controller(history=_run_history(5))
+    late = _fake_controller(history=_run_history(40))
+    frame = _compared_frame(early, late)
+    lines = wash_in_state_lines(frame)
+
+    assert lines[0] != lines[1]
+    assert lines == (
+        compared_run_line(wash_in_state(_reading(early.snapshot()), 0), frame, 0),
+        compared_run_line(wash_in_state(_reading(late.snapshot()), 0), frame, 1),
+    )
+    assert lines[0].startswith(run_label(RUN_IDS[0]))
+    assert lines[1].startswith(run_label(RUN_IDS[1]))
 
 
 def test_a_lone_run_s_banner_is_left_unnamed() -> None:
@@ -4370,3 +4395,74 @@ def test_a_value_the_readouts_print_as_the_top_is_not_above_it() -> None:
     assert above_the_axis_top(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, 0.0) is False
     assert above_the_axis_top(3.62, top) is True
     assert above_the_axis_top(0.0, top) is False
+
+
+# --- the case's marks, read from every run --------------------------------------------
+
+
+def _reachable_height(agent_id: str) -> float:
+    """The highest mark an agent's run accepts, worked out here from the agent's own file."""
+
+    agent = load_agent_parameters(agent_id)
+
+    return float(agent.max_delivered_concentration_percent) / float(agent.mac_percent)
+
+
+def test_the_case_s_marks_are_stated_once_when_every_run_agrees() -> None:
+    """Three runs that hold the same marks give one panel, each run's standings, and one bound."""
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600), "intubation"))
+    settings = SimulationController().settings()
+    labels = ("Run 1", "Run 2", "Run 3")
+    standings = (_unreached(marks),) * 3
+
+    shown = case_marks(labels, (marks,) * 3, standings, (settings,) * 3)
+
+    assert shown.panel == bookmark_panel(
+        marks, tuple(RunMarks(label, run) for label, run in zip(labels, standings, strict=True))
+    )
+    assert shown.reachable_height_mac == pytest.approx(_reachable_height("sevoflurane"))
+
+
+def test_the_case_s_marks_are_refused_when_a_run_holds_other_marks() -> None:
+    """A run holding a mark the others do not hold is refused, not dropped from the panel.
+
+    Before `PL-RF2S` the set was read from the first run alone, so a third
+    run's extra mark was left out of the panel without a word.
+    """
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600)))
+    more = marks.with_time_bookmark(TimeBookmark(CaseInstant(900)))
+    settings = SimulationController().settings()
+
+    with pytest.raises(ValueError, match="Run 3 holds different marks from Run 1"):
+        case_marks(
+            ("Run 1", "Run 2", "Run 3"),
+            (marks, marks, more),
+            (_unreached(marks), _unreached(marks), _unreached(more)),
+            (settings,) * 3,
+        )
+
+
+def test_the_case_s_marks_are_refused_when_two_runs_give_different_bounds() -> None:
+    marks = BookmarkSet()
+    sevoflurane = SimulationController(agent_id="sevoflurane").settings()
+    desflurane = SimulationController(agent_id="desflurane").settings()
+
+    assert _reachable_height("sevoflurane") != pytest.approx(_reachable_height("desflurane"))
+
+    with pytest.raises(ValueError, match="Run 2 accepts marks up to"):
+        case_marks(
+            ("Run 1", "Run 2"), (marks, marks), (_unreached(marks),) * 2, (sevoflurane, desflurane)
+        )
+
+
+def test_the_case_s_marks_need_one_entry_per_run_in_each_list() -> None:
+    marks = BookmarkSet()
+    settings = SimulationController().settings()
+
+    with pytest.raises(ValueError, match="one entry per run"):
+        case_marks(("Run 1", "Run 2"), (marks,), (_unreached(marks),) * 2, (settings,) * 2)
+
+    with pytest.raises(ValueError, match="at least one run"):
+        case_marks((), (), (), ())

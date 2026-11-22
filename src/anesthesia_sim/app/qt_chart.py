@@ -1141,6 +1141,8 @@ class ConcentrationChart(QWidget):
         self._grid.place(frame.tick_times_s, [position for position, _ in frame.percent_ticks])
         self._one_mac_line.setPos(frame.one_mac_percent)
         self._band.setRegion(frame.mac_awake_band_percent)
+        self._one_mac_line.show()
+        self._band.show()
 
         while len(self._runs) < len(frame.runs):
             self._runs.append(_RunItems(item, RunIndex(len(self._runs))))
@@ -1193,9 +1195,27 @@ class ConcentrationChart(QWidget):
         self._frame = frame
         self._refresh_hover()
 
+    def withhold(self) -> None:
+        """Empty the plot: no trace, no mark and no clinical reference, until the next frame.
+
+        A frame is withheld when the run has started over, or a run was
+        removed, since the last frame that drew (`run_presentation.ShownFrame`).
+        The traces, the 1 MAC line and the MAC-awake band of that frame
+        describe a run that is gone, or another agent, so none of them stays
+        on the plot. The axes keep their last scale.
+        """
+
+        for items in self._runs:
+            items.hide()
+
+        self._one_mac_line.hide()
+        self._band.hide()
+        self._frame = None
+        self._refresh_hover()
+
     @property
     def frame(self) -> ChartFrame | None:
-        """The frame last drawn, or `None` before the first."""
+        """The frame last drawn, or `None` before the first and after `withhold`."""
 
         return self._frame
 
@@ -1639,9 +1659,18 @@ class WashInChart(QWidget):
         self._frame = frame
         self._refresh_hover()
 
+    def withhold(self) -> None:
+        """Empty the plot until the next frame, as `ConcentrationChart.withhold` does."""
+
+        for items in self._runs:
+            items.hide()
+
+        self._frame = None
+        self._refresh_hover()
+
     @property
     def frame(self) -> ChartFrame | None:
-        """The frame last drawn, or `None` before the first."""
+        """The frame last drawn, or `None` before the first and after `withhold`."""
 
         return self._frame
 
@@ -2494,7 +2523,7 @@ class TraceLegend(QWidget):
         run set, and the owner already has to draw the frame that shows the
         change. When the change was announced from here, the cap that a
         second run brings drew that frame too early. It drew it from inside
-        `SimulationView._rename_runs`, before the wash-in legend or either
+        the dashboard's method that renamed the runs, before the wash-in legend or either
         run had been told there were two runs. The fork that caused the cap
         then drew its own frame.
 

@@ -28,18 +28,30 @@ refusal of one of them (`PL-7DJK`). `RunValues` holds the four together.
 has started over since that frame. Then the kept values describe a run that
 was discarded, and `halted_run` uses `withheld_values` in their place. All
 four are kept or withheld as one value, so no one of them can be left behind.
+
+**A chart's frame is kept or withheld by the same rule** (`PL-RF2S`). A
+chart window's frame is assembled from every displayed run, so it is kept
+only while every run is the one it was drawn from: the same runs, in the same
+order, none of them started over since. `KeptFrames` records which runs and
+cases the last drawn frames belong to, and `shown_without_a_frame` compares
+that with the runs as they stand now. Otherwise the frame is withheld, and the
+chart shows an empty plot with the reason.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from types import MappingProxyType
 
 from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED, DeliveredShown, delivered_shown
+from anesthesia_sim.app.chart_frame import ChartFrame
+from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_schematic import (
     WITHHELD_SCHEMATIC,
     SchematicShown,
     schematic_shown,
 )
+from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import RunRecord, SimulationSnapshot
@@ -164,6 +176,8 @@ class RunPanelState:
         refused_reset_notice: The notice for a Reset the run refused, or None.
         pending_agent_name: The agent that an open new-case question
             proposes, or None while no such question is open.
+        reset_question: The open Reset question, restated from the runs as
+            they stand now, or None while no Reset question is open.
     """
 
     run_id: RunId
@@ -176,6 +190,7 @@ class RunPanelState:
     rejected_setting_notice: str | None
     refused_reset_notice: str | None
     pending_agent_name: str | None
+    reset_question: NewCaseQuestion | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,6 +222,10 @@ class RunPresentation:
             presentation was drawn from. It is None when no such question is
             open, and on a halt. A halted run does not step, so the figures
             in the question from the last frame are still correct.
+        reset_question: The open Reset question, restated for the runs as
+            they stand at this frame (`PL-WM5P`). It is None while no such
+            question is open, and on a halt, for the same reason as
+            `new_case`.
     """
 
     run_id: RunId
@@ -221,6 +240,7 @@ class RunPresentation:
     dials: tuple[SettingReadout, ...] | NotBuilt
     delivered_line: str
     new_case: NewCaseQuestion | None
+    reset_question: NewCaseQuestion | None
 
 
 def drawn_values(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> RunValues:
@@ -306,6 +326,7 @@ def drawn_run(
         standing=ValuesStanding.DRAWN,
         values=values,
         new_case=new_case,
+        reset_question=state.reset_question,
     )
 
 
@@ -385,6 +406,7 @@ def halted_run(
         standing=standing,
         values=values,
         new_case=None,
+        reset_question=None,
     )
 
 
@@ -411,6 +433,7 @@ def _presentation(
     standing: ValuesStanding,
     values: RunValues,
     new_case: NewCaseQuestion | None,
+    reset_question: NewCaseQuestion | None,
 ) -> RunPresentation:
     """Build the presentation's run-state parts from `record`, around `values`.
 
@@ -457,6 +480,7 @@ def _presentation(
         dials=dials,
         delivered_line=line,
         new_case=new_case,
+        reset_question=reset_question,
     )
 
 
@@ -466,3 +490,106 @@ def _delivered_line(dials: tuple[SettingReadout, ...]) -> str:
     (delivered,) = (dial for dial in dials if dial.control is ControlInput.DELIVERED)
 
     return delivered_line(delivered)
+
+
+@dataclass(frozen=True, slots=True)
+class ShownFrame:
+    """What one chart window shows on one tick: a frame drawn now, a kept frame, or none.
+
+    Attributes:
+        standing: Where `frame` came from. `DRAWN`: it was assembled this
+            tick. `KEPT`: no frame can be drawn, and every displayed run is
+            still the run that the last drawn frame was assembled from.
+            `WITHHELD`: no frame can be drawn, and a run has started over, or
+            the runs changed, since the last drawn frame.
+        frame: The frame to show. None when the frame is withheld. Also None
+            when it is kept but the last drawn frames held none for this
+            window, such as a window chosen while every frame fails. The
+            chart then keeps the plot it holds, which shows another window
+            under a control that names that window (`PL-G3K7`).
+        selection: The compartment selection that `frame` was assembled
+            from, which the legend shows. For a withheld frame it is the
+            selection in force.
+    """
+
+    standing: ValuesStanding
+    frame: ChartFrame | None
+    selection: CompartmentSelection
+
+
+@dataclass(frozen=True, slots=True)
+class KeptFrames:
+    """The frames of the last tick that drew, and which runs and cases they were assembled from.
+
+    Attributes:
+        cases: Each run the frames were assembled from, in drawing order, as
+            its `run_id` and its `RunPresentation.case`.
+        selection: The compartment selection the frames were assembled from.
+        frames: The frame drawn for each window.
+    """
+
+    cases: tuple[tuple[RunId, int], ...]
+    selection: CompartmentSelection
+    frames: Mapping[ChartTimeBase | None, ChartFrame]
+
+
+def run_cases(runs: Sequence[RunPresentation]) -> tuple[tuple[RunId, int], ...]:
+    """Return which runs these are, and how often each had started over, in drawing order."""
+
+    return tuple((run.run_id, run.case) for run in runs)
+
+
+def kept_frames(
+    frames: Mapping[ChartTimeBase | None, ChartFrame],
+    runs: Sequence[RunPresentation],
+    selection: CompartmentSelection,
+) -> KeptFrames:
+    """Return the frames that a tick drew, to keep for a tick that draws none.
+
+    Args:
+        frames: The frame drawn for each window.
+        runs: The presentations built from the snapshots the frames were
+            assembled from, one for each run the frames draw, in drawing order.
+        selection: The compartment selection the frames were assembled from.
+    """
+
+    return KeptFrames(run_cases(runs), selection, MappingProxyType(dict(frames)))
+
+
+def shown_drawn(frame: ChartFrame, selection: CompartmentSelection) -> ShownFrame:
+    """Return a frame drawn this tick, from `selection`, as a chart shows it."""
+
+    return ShownFrame(ValuesStanding.DRAWN, frame, selection)
+
+
+def shown_without_a_frame(
+    kept: KeptFrames | None,
+    time_base: ChartTimeBase | None,
+    runs: Sequence[RunPresentation],
+    selection: CompartmentSelection,
+) -> ShownFrame:
+    """Return what one chart window shows on a tick that draws no frame.
+
+    The last drawn frame is kept while it describes the runs as they stand:
+    the same runs, in the same order, and none started over since
+    (`RunPresentation.case`). Otherwise it is withheld. A frame drawn before
+    a Reset or an agent change shows the discarded run's traces, and after an
+    agent change its 1 MAC line and MAC-awake band are the old agent's. A
+    frame drawn before a run was removed shows that run's traces and names it
+    in the legend. So in both cases no part of it may stay on the plot.
+
+    Args:
+        kept: The frames of the last tick that drew, or None before the first.
+        time_base: The window the chart asks for.
+        runs: The presentations of the runs the chart shows now, in drawing
+            order.
+        selection: The compartment selection in force.
+
+    Returns:
+        The kept frame for `time_base`, or a withheld one.
+    """
+
+    if kept is None or kept.cases != run_cases(runs):
+        return ShownFrame(ValuesStanding.WITHHELD, None, selection)
+
+    return ShownFrame(ValuesStanding.KEPT, kept.frames.get(time_base), kept.selection)

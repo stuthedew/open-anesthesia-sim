@@ -127,7 +127,7 @@ src/anesthesia_sim/
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case's bookmarks and branch control, each built as a copy for every View that shows one (PL-9YPR), the render tick, and the Workspaces: the tab strip over the Areas switches among them, and a pinned Workspace's Views draw its run alone (PL-2KXB), and Tab's order through all of these in reading order, set again after a draw that changed which widgets it holds (PL-B45W); no domain logic
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; a border in the tab order moves one step per arrow key, and the Area menu's Resize entry gives one the focus (PL-M352); focus_order lists each Area's chooser and then its View's controls, in reading order (PL-B45W); a right-click on each Area's header opens an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it, or with Ctrl swaps it, with a preview drawn over the Areas (PL-2KXB, PL-R5G4); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ); no Area is drawn below its need, a View taller than its Area scrolls inside the Area's ViewScroll (PL-CBYS), and an Area that cannot be given its need shows the size it needs (PL-K285); load draws another Workspace from its layout and View state, and a pinned Workspace's run is named in every Area's header, or stated absent in place of each View (PL-2KXB)
 │   ├── workspace_tabs.py           # WorkspaceTabs: the Workspace tab strip above the Areas, drawn from a WorkspaceSet it does not own; shipped tabs first, a rule, then the reader's own; each tab's menu entry worked out before it is shown, Delete and Reset asking first, and rename in place (PL-QW1Z, PL-2KXB); a Layout menu, opened by a right-click on the strip outside a tab, lists every Workspace and holds the current one's entries, and Ctrl+PgUp and Ctrl+PgDn step through them (PL-M352, PL-R5G4); the entries that save and restore Workspaces are in § "User state: the saved Workspaces" (PL-DWHG)
-│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, which names every displayed run by its RunPresentation on a frame and on a halt alike (PL-RF2S), the CaseSurfaces a View may show (PL-9YPR), ViewRequests for a change to shared state, to a named run's setting or for a frame, including the agent cost View's unit and the reader's price for an agent (PL-B396, PL-1P15), PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
+│   ├── view_contract.py            # the View contract every View implements: the View protocol, the ViewContext it is built from, the FrameRequest naming the window and width it draws, the ViewTick it is drawn from, which names every displayed run by its RunPresentation on a frame and on a halt alike, carries each chart's frame as drawn, kept or withheld, and carries no snapshot (PL-RF2S), the CaseSurfaces a View may show (PL-9YPR), ViewRequests for a change to shared state, to a named run's setting or for a frame, including the agent cost View's unit and the reader's price for an agent (PL-B396, PL-1P15), PreferencesInForce, the reader's preferences each tick shows every View (PL-B396), and the saved-state version check (PL-TH35)
 │   ├── views.py                    # the shipped Views, each a QWidget satisfying view_contract.View: ConcentrationView, WashInView, ParameterControlsView, AccountingView (PL-TH35), BookmarksView and BranchView, which each show a copy of a panel of the case (PL-9YPR), and CompartmentSchematicView, which shows one RunSchematic per displayed run (PL-RNYV), and AgentCostView, which shows one RunAgentCost per displayed run in the unit the reader's preferences hold, with a selector that asks the dashboard to change it (PL-B396), the cost at the reader's price, and the form that sets that price (PL-1P15); the four Views of a run build their own widget for each displayed run and write it whole from the run's RunPresentation on every tick, with a frame or without one (PL-RF2S); each chart View holds and saves its own time window and writes the lines that depend on it from its own frame (PL-L59K)
 │   ├── view_registry.py            # the View registry: each View kind's tag, written once as a literal, its RegisteredView entry with the factory that builds it, and RETIRED_TAGS for a tag renamed or removed; REQUIRED_REACHABLE, the kinds a build fails on import without (PL-50PZ); the text of the missing-kind and failed-build notices (PL-R1WQ)
 │   ├── run_view.py                 # one run's widgets, controller and handlers, and show_presentation, the one writer of those widgets; RunView, instantiated once per run (the seam PL-B9PY drew)
@@ -724,11 +724,14 @@ is a property of the display, not of the model:
   the case cannot take.
 - **`SimulationView.add_run` is how a run reaches the dashboard after
   construction** (`PL-VKJW`), so a branch taken during a session has
-  somewhere to be drawn. The names the runs carry and the agent locks are
-  rewritten from the run set whenever it changes
-  (`SimulationView._rename_runs`). Each legend learns the new run set from the
-  frame that the change requires, and each View learns the new names from the
-  tick that it requires. The cap is `MAX_DISPLAYED_RUNS`, which is two.
+  somewhere to be drawn. Each run reads its name, and so whether runs are
+  compared and its agent locked, from the dashboard whenever it builds a
+  presentation (`SimulationView._run_name`). The name travels in the
+  presentation with the run's values, so the run's own panel and every View
+  write the name and the values in one call (`PL-RF2S`). Each legend learns
+  the new run set from the frame that the change requires, and the run's
+  panel and each View learn the new names from the same frame, or from the
+  halt that follows it. The cap is `MAX_DISPLAYED_RUNS`, which is two.
 - **One comparison at a time, and Reset is the way out.** There is no run
   selector, because `ROADMAP.md` § "Explicitly out of scope for v0.5.0" defers
   it. So a second branch could only replace the displayed one, while the first
@@ -938,11 +941,20 @@ that the run holds (`PL-DTJQ`).
 
 Every View is handed the runs on a halt, as it is on a drawn frame
 (`SimulationView._halt_every_run`, `PL-RF2S`). The tick it is handed then
-carries no frame. A View that shows a run's values still writes them from the
+draws no frame. A View that shows a run's values still writes them from the
 tick's presentations. So a View never shows a halted run differently from the
 run's own panel, a run removed while frames fail is dropped from every View,
-and a View that a reader chooses while frames fail shows the runs. A chart
-draws nothing from a tick with no frame. A tick with no frame still carries
+and a View that a reader chooses while frames fail shows the runs. Each chart
+is handed the last frame drawn for its window, as `run_presentation.ShownFrame`.
+The frame is kept while every displayed run is the one it was drawn from, with
+the same runs in the same order and none started over since
+(`shown_without_a_frame`). A chart that already shows the kept frame draws
+nothing, so a dragged dial still leaves the charts to the render tick
+(`PL-018`, `PL-R2YM`). Otherwise the frame is withheld: the chart shows an
+empty plot with no trace, no 1 MAC line and no MAC-awake band, and says why.
+The tick carries no run's snapshot. A value every displayed run shares, such
+as the MAC-awake band's published fraction, is read from the frame, which
+refuses runs on two agents. A tick with no frame still carries
 the case's panels. A bookmarks View or a branch View whose first tick has no
 frame takes its copy from that tick, and the copy shows the panels as the halt
 rewrote them.
@@ -964,9 +976,10 @@ an agent change, and no frame has drawn since, a halt withholds all four
 together. Each readout card and the clock withhold their values, the schematic
 and the delivered agent show no amount, and the accounting panel withholds its
 verdict and amounts. After an accounting halt, the accounting panel shows the
-rejected step's check, whether or not a frame draws. On a halt, the charts'
-off-scale and wash-in lines and both legends stay as the last frame drew them,
-because only a frame draws the charts. A stopped run refuses a dial, so the
+rejected step's check, whether or not a frame draws. On a halt with no start
+over, the charts keep the last frame, with their off-scale and wash-in lines
+and both legends. After a start over, or a removed run, with no frame drawn
+since, the charts withhold that frame as described above. A stopped run refuses a dial, so the
 dials keep the settings the run holds (`PL-3B34`). Where a run's dials cannot
 be built, the setting controls View shows no dial for that run and says so in
 their place, and the delivered line withholds its values (`PL-SV2Q`).
