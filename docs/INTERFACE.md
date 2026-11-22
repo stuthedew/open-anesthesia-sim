@@ -414,9 +414,11 @@ equal to the one in place, or a refused one, records nothing
 `test_a_refused_setting_records_nothing`), and changes within one step collapse
 to what the model integrated
 (`test_changes_within_one_step_collapse_to_what_the_model_integrated`).
-Consecutive changes to one control are one adjustment
-(`test_consecutive_changes_to_one_control_are_one_adjustment`), and a drag reads
-as one act (`test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw`
+Each input the interface declares on one control is an adjustment of its own
+(`test_declared_steps_of_one_control_at_three_instants_are_three_adjustments`),
+changes with no input declared between them are one adjustment
+(`test_unannounced_steps_of_one_control_at_three_instants_are_one_adjustment`),
+and a drag reads as one act (`test_a_drag_reads_as_one_act_spanning_the_settings_the_model_saw`
 in `tests/unit/test_control_timeline.py`). The recorded timeline reproduces the
 run step for step (`test_the_recorded_timeline_reproduces_the_run_step_for_step`
 in `tests/integration/test_control_timeline_replay.py`). The screen says that a
