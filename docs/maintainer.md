@@ -608,7 +608,12 @@ the thread is told so.
 
 A question whose answer is obvious is a wrong question, as on `#1516`. When there is nothing to decide
 or review, the session records `Owner-read: not needed`, and the change merges
-on green without asking you. A change to a test that pins `arm`'s results
+on green without asking you. A change of on-screen wording reaches you only
+when it changes clinical meaning: the name, label or unit of a clinical value,
+whether a value reads as modeled or measured, what a warning, halt, refusal or
+stated limitation tells a learner, or wording that reads as a recommendation.
+The session rewrites the approved wording list for any other change
+(`PL-NRP7`). A change to a test that pins `arm`'s results
 still waits for you whatever that record says, so its ask is a review.
 
 A held pull request merges when you say so, and nothing more is needed:
