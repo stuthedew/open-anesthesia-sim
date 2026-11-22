@@ -51,7 +51,7 @@ from math import isfinite
 from typing import Final
 
 from anesthesia_sim.core.checked_number import require_a_number, shown
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE, MILLILITRES_PER_LITRE
 from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
@@ -98,6 +98,7 @@ REFERENCE_MOLAR_VOLUME_L_MOL: Final = (
 """V_m = R T / p at 20 °C and one standard atmosphere, in litres per mole: about 24.055."""
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class LiquidDensity:
     """One liquid agent's density, its spread, and the temperature at which it was measured.
@@ -142,11 +143,6 @@ class LiquidDensity:
                 f"{REFERENCE_TEMPERATURE_CELSIUS:g} degrees C, and no correction for "
                 'temperature is stored (docs/PARAMETERS.md, "Agent amount")'
             )
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 def vapour_volume_per_liquid_volume(

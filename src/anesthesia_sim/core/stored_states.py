@@ -40,12 +40,13 @@ from __future__ import annotations
 
 from array import array
 from dataclasses import dataclass
+from typing import cast
 
 from anesthesia_sim.core.agent_simulation_validation import (
     TotalsCompensation,
     require_totals_compensation,
 )
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import require_state_by_name, restored_through_checks
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     FRACTION_STATE_NAMES,
@@ -58,6 +59,7 @@ COMPENSATION_SIZE = 2
 """How many compensation terms a second stores: one for each of the two running totals."""
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class Keyframe:
     """A state that a run stored, and the second of the case that it belongs to.
@@ -93,11 +95,6 @@ class Keyframe:
 
     def __post_init__(self) -> None:
         require_case_instant("instant_s", self.instant_s)
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 class StoredStates:
@@ -304,6 +301,88 @@ class StoredStates:
         """Return a record with its own arrays, as `__copy__` does."""
 
         return self.__copy__()
+
+    def __getstate__(self) -> dict[str, object]:
+        """Return the record's opening second, states and compensation terms, by name, for a pickle.
+
+        A copy does not use this pair. `__copy__` copies arrays that this
+        record's own methods filled, and each of them checked every state
+        before storing it. A pickle may have been saved by an older version or
+        edited since, so it is checked again as it loads.
+        """
+
+        return {
+            "opened_at_s": self._opened_at_s,
+            "values": self._values,
+            "compensations": self._compensations,
+        }
+
+    def __setstate__(self, state: object) -> None:
+        """Rebuild an unpickled record by storing each saved second again, through its checks.
+
+        The record opens from the first saved state, as the constructor opens
+        it, and then appends each later second's state and compensation terms
+        with `append`. So every state passes `require_canonical_state` again,
+        and the record is refused where the constructor or `append` would
+        refuse it (`PL-HXNL`).
+
+        Raises:
+            TypeError: `state` is not a dict holding exactly `opened_at_s`,
+                `values` and `compensations` (`require_state_by_name`), the
+                two arrays are not arrays of `float`, or `opened_at_s` is not a
+                `CaseInstant`.
+            SimulationConfigurationError: the arrays do not hold one whole
+                state and one pair of compensation terms for each of the same
+                number of seconds, at least one, or a saved state is not one
+                that the equations can be applied to.
+        """
+
+        by_name = require_state_by_name(self, state, ("opened_at_s", "values", "compensations"))
+        values = by_name["values"]
+        compensations = by_name["compensations"]
+
+        if not (
+            isinstance(values, array)
+            and values.typecode == "d"
+            and isinstance(compensations, array)
+            and compensations.typecode == "d"
+        ):
+            raise TypeError(
+                "StoredStates is restored from two arrays of float, not from a "
+                f"{type(values).__name__} and a {type(compensations).__name__}"
+            )
+
+        seconds = len(values) // STATE_SIZE
+
+        if (
+            seconds < 1
+            or len(values) != seconds * STATE_SIZE
+            or len(compensations) != seconds * COMPENSATION_SIZE
+        ):
+            raise SimulationConfigurationError(
+                f"the saved record holds {len(values)} state values and {len(compensations)} "
+                f"compensation terms, which is not {STATE_SIZE} values and "
+                f"{COMPENSATION_SIZE} terms for each of the same number of seconds, at least one"
+            )
+
+        def saved(second: int) -> tuple[tuple[float, ...], TotalsCompensation]:
+            """Return the state and the compensation terms saved for the `second`-th second."""
+
+            first = second * COMPENSATION_SIZE
+
+            return tuple(values[second * STATE_SIZE : (second + 1) * STATE_SIZE]), (
+                TotalsCompensation(
+                    delivered_l=compensations[first], exhausted_l=compensations[first + 1]
+                )
+            )
+
+        opening, compensation = saved(0)
+        StoredStates.__init__(
+            self, opening, cast("CaseInstant", by_name["opened_at_s"]), compensation
+        )
+
+        for second in range(1, seconds):
+            self.append(*saved(second))
 
     def restart_from(
         self, opening: tuple[float, ...], opened_at_s: CaseInstant, compensation: TotalsCompensation

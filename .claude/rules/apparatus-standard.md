@@ -1,22 +1,24 @@
 ---
 paths:
-  - "/subprojects/docket/**"
-  - "/bin/**"
-  - "/tools/**"
   - "/.claude/**"
   - "/.github/**"
   - "/CLAUDE.md"
-  - "/docs/worker.md"
-  - "/docs/maintainer.md"
+  - "/bin/**"
   - "/docs/apparatus.md"
+  - "/docs/maintainer.md"
   - "/docs/resident-instructions.md"
+  - "/docs/worker.md"
+  - "/subprojects/**"
+  - "/tools/**"
 ---
 
 # The bar for the workflow apparatus
 
 `CLAUDE.md` § "Proactive expert review and domain best practices" splits this
-repository into two standards and names the paths on each side. This is the
-apparatus half, and it loads only on those paths.
+repository into two standards. This is the apparatus half, and it loads only on
+the paths above. `tools/rules_paths_check.py --write` writes them from
+`docket.toml`'s `workflow_paths`, less the tests and the records its `LANE_ONLY`
+lists, and `make check` runs it, so do not edit the list by hand (`PL-C3K1`).
 
 That scoping is the point rather than a convenience. Applied to `src/`,
 `tests/`, `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md`,

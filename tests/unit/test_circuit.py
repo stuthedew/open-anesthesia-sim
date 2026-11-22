@@ -551,8 +551,8 @@ def test_a_copy_of_a_circuit_is_held_to_the_same_checks() -> None:
     """`replace`, a copy and a pickle each write through `__setattr__`, so they refuse what it does.
 
     `dataclasses.replace` builds a new circuit through the writes that its
-    constructor makes. A copy and a pickle of a `slots=True` dataclass restore
-    its fields one at a time through `__setattr__`, in field order. The dial is
+    constructor makes. A copy and a pickle run the same constructor
+    (`core/checked_record.py`), which writes the fields in field order. The dial is
     written before the maximum. So when a dial was planted by bypassing the
     guard, the maximum's write is the one that refuses it, with the message a
     refused dial gives (`PL-19Y0`).
