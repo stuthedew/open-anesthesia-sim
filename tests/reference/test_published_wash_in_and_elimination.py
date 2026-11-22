@@ -170,10 +170,10 @@ fourth apply to the elimination alone.
 1. *The published subjects were breathing nitrous oxide.* Both protocols gave
    65-70% N2O together with the potent agent, so the measured curves include
    a second-gas effect that this model cannot reproduce. The model's alveolus
-   has a fixed volume and holds a single gas. docs/MODEL.md's "Known
-   limitations" excludes nitrous oxide, simultaneous gases, and concentration
-   and second-gas effects alike. Its "Assumptions" section states outright
-   that carrier gases are assumed not to affect kinetics. So the comparison
+   has a fixed volume and holds a single gas. `docs/MODEL.md` § "Assumptions"
+   excludes nitrous oxide, simultaneous gases, and concentration and
+   second-gas effects alike, and states outright that carrier gases are
+   assumed not to affect kinetics. So the comparison
    is not perfectly matched, and the mismatch does not obviously err in a
    conservative direction. The mismatch affects the elimination ratio through
    its denominator as well as its numerator, because F_A0 is itself a
@@ -188,8 +188,8 @@ fourth apply to the elimination alone.
    not be described as more. The parameter set's intent is also least
    reliable during wash-in, which is the direction this module's first
    comparison examines. Gas Man's own published agreement with patients is
-   materially worse during wash-in than during maintenance (docs/MODEL.md,
-   "Gas Man in patients").
+   materially worse during wash-in than during maintenance (`docs/MODEL.md`
+   § "Gas Man in patients").
 3. *The breathing systems differ, and the difference is larger than the
    measurement's own spread.* The paragraphs above measure its effect at 3.5
    to 4.2 published standard deviations per cohort. Any statement that this
@@ -207,7 +207,7 @@ fourth apply to the elimination alone.
    method does detect a metabolized agent. Both papers also report multi-day
    elimination curves. Those curves must not be added here, because over
    days the missing metabolism is no longer negligible. Neither is the fat
-   compartment's flow. docs/MODEL.md's "Known limitations" weighs that flow
+   compartment's flow. `docs/MODEL.md` § "The fat group's blood flow" weighs that flow
    against two human sources, which disagree about whether it is too high or
    too low. It is about twice a resting depot measurement, and at or a little
    below what the same papers' washout fits imply. Either way, the flow acts
@@ -218,8 +218,8 @@ fourth apply to the elimination alone.
    counterpart for it. On the published mean coefficients, that
    compartment's term is the largest in the measured curve from about 1.8 to
    3.1 hours after the 30-minute administration until about 20.7 to 29.4
-   hours (docs/MODEL.md, the intertissue-diffusion note under "Known
-   limitations"). At five minutes the term is about one part in twenty of
+   hours (`docs/MODEL.md` § "Intertissue diffusion: the missing fourth
+   compartment"). At five minutes the term is about one part in twenty of
    what remains. So the gap over those hours is measured beside this gate
    rather than enforced by it. test_late_washout_against_published_fits.py,
    in this directory, records the gap's size and direction over the first 24
@@ -519,7 +519,7 @@ DESFLURANE_TISSUE_SOLUBILITY_CEILINGS = (
 
 
 # The published apparatus's own dead space, read from the primary source rather
-# than assumed. In Yasuda 1991 *Anesthesiology* (PMID 2001028) SS "Materials
+# than assumed. In Yasuda 1991 *Anesthesiology* (PMID 2001028), "Materials
 # and Methods", about 50 ml of corrugated Teflon sits between the tracheal
 # end-tidal sampling port and the connection to the nonrebreathing valve. The
 # paper says this volume protects the end-tidal sample from contamination with
@@ -1380,7 +1380,8 @@ def _eliminate_without_rebreathing(
     """Wash in as shipped, then eliminate into an open circuit.
 
     **This is a test-only driver, and no setting of the shipped simulator can
-    produce the condition it creates.** `docs/MODEL.md` gives the model one
+    produce the condition it creates.** `docs/MODEL.md` § "What the model
+    represents" gives the model one
     ideal circuit, which is a closed recirculating path except for fresh-gas
     inflow and exhaust. So inspired gas is circuit gas, and during any
     elimination F_I settles near `V_A/(V_A + fresh gas flow)` times F_A. That
@@ -2209,9 +2210,10 @@ def test_the_published_data_gate_passes_the_shipped_parameter_set(agent_id: str)
 def test_the_published_data_gate_fails_at_a_stated_perturbation(case: ResolvingPowerCase) -> None:
     """The gate must detect a stored value wrong by the stated factor.
 
-    This turns the resolving-power table in `docs/MODEL.md` into an
-    assertion. Suppose a parameter or solver change made the gate unable to
-    detect a change in blood:gas, vessel-rich tissue:gas or the alveolar gas
+    This turns the resolving-power table in `docs/VERIFICATION.md` § "What the
+    published-data gate can and cannot resolve" into an assertion. Suppose a
+    parameter or solver change made the gate unable to detect a change in
+    blood:gas, vessel-rich tissue:gas or the alveolar gas
     volume. Without this test, that table would still claim a resolving power
     that the gate no longer has.
     """
@@ -2221,7 +2223,8 @@ def test_the_published_data_gate_fails_at_a_stated_perturbation(case: ResolvingP
     assert first_failure is not None, (
         f"{case.agent_id} with {case.change.parameter} x{case.change.factor} passes every "
         f"published-data assertion; the gate no longer resolves this change, so the "
-        f"resolving-power table in docs/MODEL.md must be re-measured"
+        f"resolving-power table in docs/VERIFICATION.md section 'What the published-data "
+        f"gate can and cannot resolve' must be re-measured"
     )
 
 
@@ -2231,7 +2234,8 @@ def test_the_published_data_gate_fails_at_a_stated_perturbation(case: ResolvingP
 def test_the_published_data_gate_passes_at_a_stated_perturbation(case: ResolvingPowerCase) -> None:
     """The gate must still be unable to detect these changes, as the docs say.
 
-    `docs/MODEL.md` tells a reader that a passing gate says nothing about
+    `docs/MODEL.md` § "What these comparisons can and cannot detect" tells a
+    reader that a passing gate says nothing about
     these stored values. This test keeps that statement true. If a model
     change made the gate sensitive to one of them, the statement would
     understate what the gate shows. This test then fails, so that the table
@@ -2305,7 +2309,9 @@ def test_five_minute_elimination_ratio_regression_pin(measurement: PublishedMeas
         f"SD; it now sits {published_distance:+.2f} SD from the {measurement.elimination_mean} "
         f"+/- {measurement.elimination_standard_deviation} measured in "
         f"{measurement.cohort_size} volunteers ({measurement.source}). Re-measure this "
-        f"module's tables and docs/MODEL.md's rather than widening the pin"
+        f"module's tables, and those in docs/MODEL.md section 'Elimination at five "
+        f"minutes: does not agree' and docs/VERIFICATION.md section 'Published wash-in "
+        f"and elimination validation test', rather than widening the pin"
     )
 
 
@@ -2523,7 +2529,8 @@ def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
     rises. Before this test, only the argument above supported that direction
     (`PL-P1P6`).
 
-    `docs/MODEL.md` uses this direction to rule out circuit-wall absorption as
+    `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter file was not changed"
+    uses this direction to rule out circuit-wall absorption as
     an explanation of the model's residual for sevoflurane and isoflurane. The
     residual is the gap between the model's result and the published mean.
     With the shipped circuit, the model already washes both agents out too
@@ -2574,7 +2581,8 @@ def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
         assert larger.ratio > smaller.ratio, (
             f"{agent_id}: F_A/F_A0 at 5 min is {larger.ratio:.4f} with the circuit volume "
             f"x{larger_factor:.2f} and {smaller.ratio:.4f} with it x{smaller_factor:.2f}; a "
-            f"larger circuit-side store eliminated no more slowly, which `docs/MODEL.md` "
+            f"larger circuit-side store eliminated no more slowly, which docs/VERIFICATION.md "
+            f"section 'Desflurane's residual, and why the parameter file was not changed' "
             f"relies on to rule circuit-wall absorption out for sevoflurane and isoflurane"
         )
 
@@ -2680,7 +2688,9 @@ def test_five_minute_elimination_ratio_without_rebreathing_regression_pin(
         f"{measurement.elimination_mean} +/- {measurement.elimination_standard_deviation} "
         f"measured in {measurement.cohort_size} volunteers ({measurement.source}). This is "
         f"the diagnostic condition, which no setting of the shipped simulator reaches; "
-        f"re-measure this module's tables and docs/MODEL.md's rather than widening the pin"
+        f"re-measure this module's tables, and those in docs/MODEL.md section 'Elimination "
+        f"at five minutes: does not agree' and docs/VERIFICATION.md section 'Published "
+        f"wash-in and elimination validation test', rather than widening the pin"
     )
 
 
@@ -2692,7 +2702,8 @@ def test_removing_the_rebreathing_circuit_is_what_moves_the_elimination_comparis
 ) -> None:
     """Pin the size of the apparatus term, on which this module's whole account rests.
 
-    The module docstring, `docs/MODEL.md` and two other tests here all say
+    The module docstring, `docs/MODEL.md` § "Elimination at five minutes: does not agree" and two
+    other tests here all say
     that most of the elimination disagreement comes from the breathing system
     rather than the patient. Until this driver existed, that claim rested on a
     flow sweep. A flow sweep shows that the ratio is *sensitive* to the
@@ -2741,8 +2752,9 @@ def test_removing_the_rebreathing_circuit_is_what_moves_the_elimination_comparis
         f"{measurement.agent_id} moves only {movement_sd:+.2f} published SD when the "
         f"rebreathing circuit is removed, from {shipped_distance:+.2f} to "
         f"{open_circuit_distance:+.2f} SD against {measurement.source}; this module and "
-        f"docs/MODEL.md attribute most of the elimination disagreement to the breathing "
-        f"system, and that attribution is what has changed"
+        f"docs/MODEL.md section 'Elimination at five minutes: does not agree' attribute "
+        f"most of the elimination disagreement to the breathing system, and that "
+        f"attribution is what has changed"
     )
 
 
@@ -2832,7 +2844,8 @@ def test_no_measured_tissue_solubility_reaches_desflurane_s_published_eliminatio
         f"published SD below the {measurement.elimination_mean} +/- "
         f"{measurement.elimination_standard_deviation} measured in "
         f"{measurement.cohort_size} volunteers ({measurement.source}). This module and "
-        f"docs/MODEL.md say the residual is out of reach of any vessel-rich solubility "
+        f"docs/MODEL.md section 'Elimination at five minutes: does not agree' say the "
+        f"residual is out of reach of any vessel-rich solubility "
         f"the human tissue measurements support, and that is what has changed - re-open "
         f"the question rather than raising the shipped coefficient to meet it"
     )
@@ -2848,8 +2861,9 @@ def test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination(
 ) -> None:
     """Desflurane's residual is not the published apparatus's dead space either.
 
-    `docs/VERIFICATION.md` SS "Desflurane's residual" rejected rebreathing in the
-    published apparatus at an *assumed* F_I/F_A of 0.30. The methods section
+    `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter
+    file was not changed" rejected rebreathing in the published apparatus at
+    an *assumed* F_I/F_A of 0.30. The methods section
     later supplied the apparatus's real volume: about 50 ml of corrugated
     Teflon between the tracheal sampling port and the nonrebreathing valve.
     This test uses that sourced figure (`PL-RFLN`).
@@ -2908,7 +2922,8 @@ def test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination(
         f"published SD below the {measurement.elimination_mean} +/- "
         f"{measurement.elimination_standard_deviation} measured in "
         f"{measurement.cohort_size} volunteers ({measurement.source}). This module and "
-        f"docs/MODEL.md say the published apparatus's dead space carries part of the "
+        f"docs/VERIFICATION.md section 'Desflurane's residual, and why the parameter "
+        f"file was not changed' say the published apparatus's dead space carries part of the "
         f"residual and not the whole of it, and that is what has changed - re-open the "
         f"question rather than treating the residual as explained"
     )
@@ -2945,7 +2960,8 @@ def test_the_apparatus_dead_space_moves_every_cohort_together() -> None:
 
     Desflurane is still 1.48 SD short, while both isoflurane cohorts have left
     their published spread entirely. That is the same failure that the
-    alveolar ventilation row of `docs/MODEL.md`'s candidate table records.
+    alveolar ventilation row of the candidate table records, in
+    `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter file was not changed".
     This is not a coincidence. A series dead space *is* a ventilation
     decrement here, so the apparatus's own volume is that same candidate, at
     a sourced magnitude rather than a fitted one.
@@ -2994,7 +3010,9 @@ def test_the_apparatus_dead_space_moves_every_cohort_together() -> None:
     assert desflurane_shortfall_sd > case.minimum_shortfall_sd, (
         f"desflurane is only {desflurane_shortfall_sd:.2f} published SD short at the largest "
         f"apparatus dead space the wash-in comparison admits, so the published apparatus may "
-        f"now account for the residual docs/MODEL.md says it cannot - re-open the question"
+        f"now account for the residual that docs/VERIFICATION.md section "
+        f"'Desflurane's residual, and why the parameter file was not changed' says it "
+        f"cannot - re-open the question"
     )
 
     for measurement in PUBLISHED_MEASUREMENTS:
@@ -3007,7 +3025,9 @@ def test_the_apparatus_dead_space_moves_every_cohort_together() -> None:
         assert excess_sd > AGREEMENT_TOLERANCE_SD, (
             f"{measurement.label} eliminates to F_A/F_A0 {ratio:.4f} ({excess_sd:+.2f} SD) at the "
             f"dead space that leaves desflurane {desflurane_shortfall_sd:.2f} SD short, which is "
-            f"inside its published spread. The common-mode argument docs/MODEL.md rests on - that "
+            f"inside its published spread. The common-mode argument that docs/VERIFICATION.md "
+            f"section 'Desflurane's residual, and why the parameter file was not changed' "
+            f"rests on - that "
             f"this mechanism cannot move desflurane without costing isoflurane - is what has "
             f"changed, and the section has to be rewritten rather than this threshold lowered"
         )

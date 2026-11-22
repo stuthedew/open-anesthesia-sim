@@ -6,7 +6,7 @@ amount cancel. So the accounting residual stays at the level of rounding whateve
 the transfer rates are, including rates that would move the alveolar fraction by
 tenths of a percentage point. Conservation is necessary but nowhere near
 sufficient, and this module is the check that closes the gap. It re-derives
-the governing equations of `docs/MODEL.md` from the parameter files,
+the governing equations of `docs/MODEL.md` § "Equations" from the parameter files,
 integrates them with a fourth-order Runge–Kutta method written from scratch, and
 requires the shipped solution to agree with that one.
 
@@ -1612,7 +1612,7 @@ def test_envelope_limits_match_the_supported_input_ranges() -> None:
     ), (
         "the model's supported input ranges have changed; re-run the envelope "
         "and trajectory sweeps, update these constants and the bound, and "
-        "re-derive the measured figures in docs/MODEL.md"
+        "re-derive the figures that docs/INTERFACE.md section 'Supported input ranges' lists"
     )
 
 
@@ -1694,7 +1694,7 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     ), (
         "the interface's displayed resolution or the simulation step has changed; "
         "re-run the trajectory sweeps and re-derive the measured figures in "
-        "docs/MODEL.md"
+        "docs/INTERFACE.md section 'Displayed precision'"
     )
 
 

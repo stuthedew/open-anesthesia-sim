@@ -1,10 +1,13 @@
 ---
 id: PL-KNHK
 title: Re-point the 34 mentions of docs/MODEL.md in five reference tests to the document and section that now state them; the edit is built and waits for a pull request that already needs the owner's read of tests/reference
-status: untriaged
+status: done
 feature: model-md-structure
 touches: tests/reference
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2250
+verify: ! grep -qF 'docs/MODEL.md` § "Arterial blood"' tests/reference/test_parameter_recovery.py
 ---
 
 **Problem.** Re-point the 34 mentions of docs/MODEL.md in five reference tests to the document and section that now state them; the edit is built and waits for a pull request that already needs the owner's read of tests/reference
@@ -18,3 +21,5 @@ added: 2026-11-22
 **When to do it.** With the next pull request that already needs the owner's read of `tests/reference/`. `PL-MYK0` (five corrected statements in two of the same tests) is the likely one. Apply that patch to that branch with `git am`, and check each heading again against the documents as they then stand.
 
 **Generator check.** Not a new defect: the remainder of `PL-10BC`, held back by the owner-read rule for reference tests.
+
+**Done, 2026-11-22.** The saved patch applied cleanly to `main` at `22828fd0`, after `PL-MYK0` merged in #2243 without it. The five tests now name the document and section for each of the 34 mentions. The same commit fixes three older pointers in two of these files. In `test_parameter_recovery.py`, `docs/MODEL.md` § "Arterial blood" named no heading, and the statement it meant is under § "What the model represents". In `test_published_wash_in_and_elimination.py`, `docs/VERIFICATION.md` SS "Desflurane's residual" now uses the section mark and the heading's full title. Yasuda 1991's "Materials and Methods" lost its stray "SS" and is written as a paper's own locator, without the mark, as `tools/doc_check.py` asks for a section of an outside source. Each heading named by a `§` citation or a `section '...'` string in the five files was compared with the headings of `docs/MODEL.md`, `docs/VERIFICATION.md` and `docs/INTERFACE.md` as they stand at `22828fd0`. No test code changed: each file, parsed by Python before and after, gives the same tree once docstrings and `assert` failure messages are set aside. The owner was asked whether an edit with no code change needed his read under `PL-XSRG` (the published-data test hold), and answered "Agree with recs" on 2026-11-22 (project owner, 2026-11-22, ratified, over waiting for the next change to these tests). Files checked in the documentation sweep: the five test files, and the headings of `docs/MODEL.md`, `docs/VERIFICATION.md` and `docs/INTERFACE.md`.
