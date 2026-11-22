@@ -604,6 +604,65 @@ def test_a_price_form_opened_after_an_agent_change_that_no_frame_draws_names_the
     assert cost_view.price_entry.agent_id == "desflurane"
 
 
+def test_an_open_price_form_follows_the_run_s_agent_until_the_reader_picks_one(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """An open form that the reader has not touched names the agent the run holds now.
+
+    The form is open on sevoflurane, the agent the run opens on. The learner
+    changes the run's agent to desflurane. A form that stayed on sevoflurane
+    would save a price typed for the new agent under the agent the run no
+    longer holds (`PL-FBKK`).
+    """
+
+    view = _dashboard(
+        application,
+        shown,
+        SimulationController(),
+        workspaces=_workspaces(Area(AreaId(1), AGENT_COST)),
+    )
+    (cost_view,) = _cost_views(view)
+    assert cost_view.price_entry.agent_id == "sevoflurane"
+    combo = view.runs[0]._agent_dropdown
+
+    combo.setCurrentIndex(combo.findData("desflurane"))
+    _settle(application)
+    assert cost_view.price_entry.agent_id == "desflurane"
+
+    combo.setCurrentIndex(combo.findData("isoflurane"))
+    _settle(application)
+    assert cost_view.price_entry.agent_id == "isoflurane"
+
+
+def test_an_agent_the_reader_picked_in_the_price_form_stays_through_an_agent_change(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """A hand pick in the form is the reader's own choice, so the run's agent does not move it.
+
+    The reader picks isoflurane in the form while the run holds sevoflurane,
+    and then changes the run's agent to desflurane (`PL-FBKK`).
+    """
+
+    view = _dashboard(
+        application,
+        shown,
+        SimulationController(),
+        workspaces=_workspaces(Area(AreaId(1), AGENT_COST)),
+    )
+    (cost_view,) = _cost_views(view)
+    selector = cost_view.price_entry.agent_selector
+    picked = selector.findData("isoflurane")
+    selector.setCurrentIndex(picked)
+    selector.activated.emit(picked)
+    combo = view.runs[0]._agent_dropdown
+
+    combo.setCurrentIndex(combo.findData("desflurane"))
+    _settle(application)
+
+    assert view.runs[0].controller.agent_id == "desflurane"
+    assert cost_view.price_entry.agent_id == "isoflurane"
+
+
 def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
     application: QApplication, shown: list[SimulationView]
 ) -> None:

@@ -98,9 +98,10 @@ _CURRENCY_LENGTH: Final = 3
 class PriceEntry(QWidget):
     """The form in which the reader sets or removes their price for one agent.
 
-    The agent selector starts on the first displayed run's agent. Choosing an
-    agent fills the fields with its stored price, or empties them when it has
-    none. The fields are filled again only when the stored price for the
+    The agent selector follows the first displayed run's agent until the
+    reader picks an agent in it by hand, and then keeps the reader's pick
+    (`PL-FBKK`). Choosing an agent fills the fields with its stored price, or
+    empties them when it has none. The fields are filled again only when the stored price for the
     chosen agent changes, so a frame drawn while the reader types never
     overwrites what they typed. Discarding a refused entry changes no stored
     price, so it leaves the fields as they are.
@@ -131,7 +132,8 @@ class PriceEntry(QWidget):
         # price, and whether a refused entry for the agent is in the file. The
         # last of the three decides only whether Remove is offered.
         self._filled_from: tuple[str, AgentPrice | None, bool] | None = None
-        self._agent_chosen = False
+        # Whether the reader has picked an agent in the selector by hand.
+        self._agent_picked = False
         # Whether the reader has edited the date since the fields were filled.
         self._date_edited = False
         self.agent_selector = FocusedComboBox()
@@ -231,14 +233,14 @@ class PriceEntry(QWidget):
         Args:
             preferences: The reader's preferences on this frame.
             first_run_agent_id: The first displayed run's agent, which the
-                selector starts on, or None while its values are withheld.
+                selector shows until the reader picks an agent by hand, or
+                None while its values are withheld.
         """
 
         self._preferences = preferences
 
-        if not self._agent_chosen and first_run_agent_id is not None:
+        if not self._agent_picked and first_run_agent_id is not None:
             self.agent_selector.setCurrentIndex(self.agent_selector.findData(first_run_agent_id))
-            self._agent_chosen = True
 
         key = _fill_key(preferences, self.agent_id)
 
@@ -329,7 +331,7 @@ class PriceEntry(QWidget):
     def _handle_agent_pick(self, _index: int) -> None:
         """Show the chosen agent's stored price, and drop any refusal shown for another agent."""
 
-        self._agent_chosen = True
+        self._agent_picked = True
         self._show_refusal(None)
         self._fill(self.agent_id)
 
