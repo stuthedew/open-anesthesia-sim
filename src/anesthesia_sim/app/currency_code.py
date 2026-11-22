@@ -1,4 +1,6 @@
-"""State the rules for a currency code and for how many decimals its amounts show (`PL-93B3`, `PL-1P15`, `PL-7R8S`).
+"""State the rules for a currency code, and for how many decimals its amounts show.
+
+`PL-93B3` and `PL-1P15` set the first rule, and `PL-7R8S` the second.
 
 `docs/INTERFACE.md` § "A cost at the reader's price" says that a price's currency
 is stored and shown as its ISO 4217 alphabetic code. It is never shown as a

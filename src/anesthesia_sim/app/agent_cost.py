@@ -17,8 +17,8 @@ partition coefficient enters the calculation.
 temperature, which is the model's reference condition of 20 °C. So
 `core/liquid_agent.py` converts it to liquid exactly. The agent held in the
 body is at body temperature, and the same conversion would give a figure too
-high for it (`docs/MODEL.md` § "Units and symbols"). This module therefore converts only the delivered agent, and
-nothing else.
+high for it (`docs/MODEL.md` § "Units and symbols"). This module therefore
+converts only the delivered agent, and nothing else.
 
 **Why the conversion takes a snapshot.** `liquid_volume_ml` takes a bare
 volume of vapour and a bare ratio. Given those, a caller could convert one

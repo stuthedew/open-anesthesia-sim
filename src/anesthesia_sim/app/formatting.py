@@ -1741,7 +1741,7 @@ def _require_currency_code(currency: str) -> None:
 
 
 def format_agent_cost(cost: float, currency: str) -> str:
-    """Render the cost of the delivered agent at the reader's price, as money with its currency code first.
+    """Render the cost of the delivered agent at the reader's price, as money with its code first.
 
     The cost is rounded to its currency's minor unit, which
     `minor_unit_decimals` reads from CLDR's currency data. So 8.0703 is shown
