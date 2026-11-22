@@ -71,7 +71,6 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QBrush, QColor, QImage, QMouseEvent, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGraphicsView,
     QHBoxLayout,
     QLabel,
@@ -86,6 +85,7 @@ from anesthesia_sim.app.chart_frame import (
     MAX_CHART_CONTROL_MARKS,
     MAX_CHART_WASH_IN_SEGMENTS,
     WASH_IN_AXIS_MAXIMUM,
+    WASH_IN_RATIO_NAME,
     ChartFrame,
     HoverTarget,
     RunCount,
@@ -126,7 +126,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_chart_time_label, format_time_base
-from anesthesia_sim.app.qt_widgets import FlowLayout, declare_interface_colours
+from anesthesia_sim.app.qt_widgets import FlowLayout, SelectorComboBox, declare_interface_colours
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.stylesheets import foreground_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
@@ -1449,7 +1449,7 @@ class WashInChart(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
-        item.setLabel("left", "F_A/F_I", color=MUTED)
+        item.setLabel("left", WASH_IN_RATIO_NAME, color=MUTED)
         item.setLabel("bottom", "simulated time", color=MUTED)
         # The axis is fixed rather than fitted to the data. It is labelled at
         # its own gridlines, at its own resolution, as `docs/INTERFACE.md`
@@ -2008,7 +2008,7 @@ def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
     return entry
 
 
-class TimeBaseSelector(QComboBox):
+class TimeBaseSelector(SelectorComboBox):
     """The time-base control, which offers "Fit run" and the selectable widths.
 
     The window belongs to the chart View that holds this control

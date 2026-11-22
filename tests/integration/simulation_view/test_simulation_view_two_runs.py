@@ -309,7 +309,7 @@ def test_the_interface_walk_reaches_the_axis_titles_and_the_accessible_names(
     view = _shown_view(application, SimulationController())
     strings = set(view.interface_strings())
 
-    assert {"% of 1 atm", "simulated time", "×MAC", "F_A/F_I"} <= strings
+    assert {"% of 1 atm", "simulated time", "×MAC", "F<sub>A</sub>/F<sub>I</sub>"} <= strings
     assert {
         TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
         for style in COMPARTMENT_TRACES

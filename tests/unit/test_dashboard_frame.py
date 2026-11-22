@@ -2290,8 +2290,8 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
         "Delivered: <0.1 L\n"
         "Exhausted: <0.1 L\n"
         "Stored: <0.1 L\n"
-        "Unaccounted: <1e-12 L\n"
-        "Absolute error: <1e-12 L"
+        "Unaccounted: <10⁻¹² L\n"
+        "Absolute error: <10⁻¹² L"
     )
 
 
@@ -2390,8 +2390,8 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
     assert rejected is not None
 
     assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
-        "Unaccounted: <1e+01 L",
-        "Absolute error: <1e+01 L",
+        "Unaccounted: <10¹ L",
+        "Absolute error: <10¹ L",
     ]
 
 
@@ -2676,7 +2676,7 @@ def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:
     state = wash_in_state(controller.snapshot(), 0)
 
     assert format_wash_in_ratio(drawn_ratio) in state
-    assert state == f"Now: F_A/F_I = {format_wash_in_ratio(drawn_ratio)}"
+    assert state == f"Now: F<sub>A</sub>/F<sub>I</sub> = {format_wash_in_ratio(drawn_ratio)}"
 
 
 def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> None:
