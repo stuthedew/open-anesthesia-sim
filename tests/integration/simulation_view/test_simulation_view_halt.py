@@ -62,33 +62,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _with_stale_tissue_flows,
 )
 
-#: The containers whose controls a halt leaves unchanged, each with the reason. The test
-#: below requires every other control on the dashboard, including one added later, to sit
-#: in one of two places. One is a `RunView`, which restates its own widgets (`PL-X7D5`).
-#: The other is a panel that `SimulationView.halt_restatements` lists. A control in
-#: neither keeps offering its action over a run that every other control says has failed,
-#: as the branch panel did (`PL-MMNX`) and the bookmark panel did (`PL-YHR3`). The keys
-#: are class names, because the dashboard builds each kind of container once per Area or
-#: once per dashboard.
-#:
-#: The test also checks the other direction. An entry that matches no control on the
-#: built dashboard fails the test, because nothing then needs the exemption.
-NOT_RESTATED_ON_A_HALT: dict[str, str] = {
-    "WorkspaceTabs": (
-        "the Workspace tabs choose and rename layouts. A layout is the reader's "
-        "arrangement of Areas, so it acts on no run."
-    ),
-    "ViewChooser": ("an Area's View chooser picks what the Area shows, which acts on no run."),
-    "TimeBaseSelector": (
-        "a chart's time base is the chart's own drawing setting. It touches no "
-        "simulation state, and it is never disabled (`PL-012`)."
-    ),
-    "TraceLegend": (
-        "the legend's boxes ask the dashboard which compartments to draw. The "
-        "selection is the dashboard's display state and acts on no run (`PL-VN6M`)."
-    ),
-}
-
 #: The widget types a reader acts through. A scroll bar is left out: it moves
 #: the widget that holds it, and that widget's own container is what is checked.
 _CONTROL_TYPES = (
@@ -165,14 +138,6 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
     ),
     ("SimulationView", "self._open_runs"): (
         "it returns the open runs' identities to the tab strip, and it reads no snapshot"
-    ),
-    ("SimulationView", "self._restate_fork_panel"): (
-        "it runs inside the halt path, which a gate would enter again, and HaltRestatement "
-        "requires that it not raise"
-    ),
-    ("SimulationView", "self._restate_bookmark_panel"): (
-        "it runs inside the halt path, which a gate would enter again, and HaltRestatement "
-        "requires that it not raise"
     ),
     ("SimulationView", "lambda: self.workspaces"): (
         "it returns the Workspaces as the Areas draw them, for the tab strip to duplicate "
@@ -1124,53 +1089,120 @@ def test_a_slot_that_raises_inside_the_halt_does_not_start_the_halt_again(
     assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
 
 
-def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication) -> None:
-    """Every control on the dashboard is restated by a halt, or is named with why it need not be.
+#: The controls outside every run that stay live on a halted dashboard. Each
+#: key names where the control sits. A bare class name matches a control
+#: inside a widget of that class. A name of the form `Class.attribute`
+#: matches the widget that the attribute holds, and every control inside it.
+#: Each value is the reason the control may stay live while every run has
+#: failed. The test below checks this table in both directions: a live
+#: control that no entry matches fails, and so does an entry that matches no
+#: live control (`PL-5JTH`, `PL-RF2S`).
+LIVE_ON_A_HALT: Final[dict[str, str]] = {
+    "WorkspaceTabs": (
+        "the Workspace tabs choose and rename layouts. A layout is the reader's "
+        "arrangement of Areas, so it acts on no run."
+    ),
+    "ViewChooser": "an Area's View chooser picks what the Area shows, which acts on no run.",
+    "TimeBaseSelector": (
+        "a chart's time base is the chart's own drawing setting. It touches no "
+        "simulation state, and it is never disabled (`PL-012`)."
+    ),
+    "TraceLegend": (
+        "the legend's boxes ask the dashboard which compartments to draw. The "
+        "selection is the dashboard's display state and acts on no run (`PL-VN6M`)."
+    ),
+    "AgentCostView.unit_selector": (
+        "the unit the agent cost View shows is one of the reader's preferences, "
+        "which acts on no run (`PL-B396`)."
+    ),
+    "PriceEntry": (
+        "the price form sets the reader's price for an agent, one of the reader's "
+        "preferences, which acts on no run (`PL-1P15`)."
+    ),
+    "BookmarksPanel": (
+        "the marks editor stays open on a halt so that a reader can still read and "
+        "remove the case's marks. The halt rewrites its lists from the standings it "
+        "hands the Bookmarks View (`PL-YHR3`), and each edit passes the halt gate."
+    ),
+}
 
-    A `RunView` restates its own widgets on a halt, and `PL-X7D5`'s guard enforces that by
-    default. The dashboard's own panels sit outside every run. Each one used to be restated
-    by hand in `_halt_every_run`, so a panel added later was restated only if someone
-    remembered to add it there (`PL-5JTH`). This test builds the dashboard with every panel
-    that holds a control. It gives the view a case, so that the branch panel is offered,
-    and adds a mark, which the marks editor lists. It then fails on any control that no run
-    holds, that no `halt_restatements` panel holds, and that no container in
-    `NOT_RESTATED_ON_A_HALT` holds.
+
+def _live_on_a_halt_entries(chain: Sequence[QWidget]) -> set[str]:
+    """The keys of `LIVE_ON_A_HALT` that match a control, given the control and its ancestors."""
+
+    held = {id(widget) for widget in chain}
+    matched: set[str] = set()
+
+    for key in LIVE_ON_A_HALT:
+        owner, _, attribute = key.partition(".")
+
+        for widget in chain:
+            if type(widget).__name__ != owner:
+                continue
+
+            if not attribute or id(getattr(widget, attribute, None)) in held:
+                matched.add(key)
+
+    return matched
+
+
+def test_every_dashboard_control_is_restated_on_a_halt(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After a halt, every live control outside a run's panel acts on no run, by a named reason.
+
+    A `RunView` restates its own widgets on a halt (`PL-X7D5`). Any other
+    control that still offers its action once every run has failed would
+    offer it over a failed run, as the branch panel did (`PL-MMNX`) and the
+    bookmark panel did (`PL-YHR3`). So the test makes every frame fail, which
+    halts every run, and then reads every control outside a run's panel that
+    is still shown and enabled. Each must sit where an entry of
+    `LIVE_ON_A_HALT` names, with the reason it acts on no run. A control added
+    later to any View therefore fails here unless the halt disables or hides
+    it, or an entry is written for it. An entry that matches no live control
+    fails too, so the table cannot outlive what it excuses. The dashboard has
+    a case, so that the branch control is offered, and a mark, which the
+    marks editor lists.
     """
 
     case = _branched_case()
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
+    view.present(False)
+    offered = _fork_panel(view).take_button
+    assert offered.isEnabled() and offered.isVisibleTo(view), "the case offers no branch"
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+    assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
+
     run_widgets = {id(widget) for run in view.runs for widget in _widget_attributes(run).values()}
-    restated = {
-        id(panel) for restatement in view.halt_restatements() for panel in restatement.panels
-    }
-    exemptions_used: set[str] = set()
-    unrestated: list[str] = []
+    entries_used: set[str] = set()
+    unexcused: list[str] = []
 
     for control in _controls(view):
         chain = _ancestry(control)
 
-        if any(id(widget) in run_widgets or id(widget) in restated for widget in chain):
+        if any(id(widget) in run_widgets for widget in chain):
             continue
 
-        exempt = next(
-            (type(w).__name__ for w in chain if type(w).__name__ in NOT_RESTATED_ON_A_HALT), None
-        )
-
-        if exempt is not None:
-            exemptions_used.add(exempt)
+        if not (control.isEnabled() and control.isVisibleTo(view)):
             continue
 
-        unrestated.append(" < ".join(type(widget).__name__ for widget in chain[:6]))
+        entries = _live_on_a_halt_entries(chain)
+        entries_used.update(entries)
+
+        if not entries:
+            unexcused.append(" < ".join(type(widget).__name__ for widget in chain[:6]))
 
     assert _mark_editor(view).time_list.count() == 1
-    assert sorted(set(unrestated)) == [], (
-        "these controls are in no RunView and in no panel a halt restates: add their panel "
-        "to SimulationView.halt_restatements, or name its container in "
-        "NOT_RESTATED_ON_A_HALT with the reason a halt need not restate it"
+    assert sorted(set(unexcused)) == [], (
+        "these controls are in no RunView and still offer their action after every run "
+        "halted: disable or hide each on a halt, or name its place in LIVE_ON_A_HALT with "
+        "the reason it acts on no run"
     )
-    assert sorted(set(NOT_RESTATED_ON_A_HALT) - exemptions_used) == [], (
-        "these exemptions match no control on the dashboard now - remove the entry"
+    assert sorted(set(LIVE_ON_A_HALT) - entries_used) == [], (
+        "these entries of LIVE_ON_A_HALT match no control that is live after a halt - remove each"
     )
 
 
@@ -1261,12 +1293,13 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     `test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one`
     checks that each `RunView` has one writer of its run state (`PL-X7D5`).
     The branch panel, the marks panel with its editor, and every Area's
-    header sit outside the runs, and the halt restates them through
-    `halt_restatements` (`PL-5JTH`). `test_every_dashboard_control_is_restated_on_a_halt`
-    checks that each control is in a restated panel, but not what the panel
-    then says. This test checks what it says. The run is drawn, and the
-    branch panel is given a refusal. The refusal comes before the halt,
-    because a halted trunk disables the branch controls. Then, while every
+    header sit outside the runs. The halt restates the case's panels and
+    hands them to every View in its tick (`PL-5JTH`, `PL-RF2S`).
+    `test_every_dashboard_control_is_restated_on_a_halt` checks that each
+    control is in a View or a run's panel, but not what it then says. This
+    test checks what it says. The run is drawn, and the branch panel is
+    given a refusal. The refusal comes before the halt, because a halted
+    trunk disables the branch controls. Then, while every
     frame fails, the test changes what the other panels state: it adds a
     mark and changes the playback rate. Finally it compares the halted
     screen, widget by widget, with the same dashboard once a frame draws it.
@@ -1312,8 +1345,8 @@ def test_every_run_state_surface_outside_the_run_view_reads_alike_on_a_drawn_run
     assert len(halted) > 20, "the walk found too few widgets to be reading the window"
     assert sorted(differing - set(SURFACE_FRAME_WIDGETS)) == [], (
         "these widgets outside every run read differently on a halted dashboard and on the "
-        "same dashboard drawn: restate them from SimulationView.halt_restatements, or name "
-        "their type in SURFACE_FRAME_WIDGETS with the reason only a frame can state them. "
+        "same dashboard drawn: write them from the values that a halt hands every View, or "
+        "name their type in SURFACE_FRAME_WIDGETS with the reason only a frame can state them. "
         "Each chain below is followed by its widgets as the halt left them, then as a frame "
         "drew them, each as (type, hidden, enabled, style sheet, text or value):\n"
         + "\n".join(

@@ -144,13 +144,13 @@ class SchematicCanvas(QWidget):
         self.update()
 
     def painted_strings(self) -> tuple[str, ...]:
-        """Every label painted now: each container's name, tension and amount, in order."""
+        """Every label painted now: each container's name, tension and amount, in order.
 
-        return tuple(
-            text
-            for reading in self._readings
-            for text in (reading.name, reading.tension, reading.amount)
-        )
+        `paintEvent` paints exactly these strings, read through `_labels`, so a
+        test that reads them reads what the reader sees (`PL-0G2P`).
+        """
+
+        return tuple(text for reading in self._readings for text in _labels(reading))
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         return self.minimumSizeHint()
@@ -299,7 +299,7 @@ class SchematicCanvas(QWidget):
         painter.setPen(QColor(INK))
         top = float(self._labels_top())
 
-        for line, text in enumerate((reading.name, reading.tension, reading.amount)):
+        for line, text in enumerate(_labels(reading)):
             painter.drawText(
                 QRectF(
                     centre - column / 2.0, top + line * metrics.height(), column, metrics.height()
@@ -307,6 +307,16 @@ class SchematicCanvas(QWidget):
                 int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
                 text,
             )
+
+
+def _labels(reading: ContainerReading) -> tuple[str, str, str]:
+    """The lines painted under one container, top to bottom: its name, tension and amount.
+
+    The painting and `SchematicCanvas.painted_strings` both read this one
+    function, so no painted line can be left out of what a test reads.
+    """
+
+    return (reading.name, reading.tension, reading.amount)
 
 
 # The share bar's height, in logical pixels, and the least width of a segment

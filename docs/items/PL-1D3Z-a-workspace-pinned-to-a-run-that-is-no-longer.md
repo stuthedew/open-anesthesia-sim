@@ -3,14 +3,16 @@ id: PL-1D3Z
 title: A Workspace pinned to a run that is no longer open hides the Bookmarks and Branch Views behind the pin's notice, though both belong to the case and show no single run; and while the pinned run is open their Area headers read that run's name (AreaFrame.show_pin, SimulationView._refresh_view's PinnedRunAbsent path). On main both panels stayed on screen in that state.
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: window-is-the-frame
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py
 deferred-from: v0.7.0 - found after the gate's list was frozen, and it shows only in a Workspace pinned to a run that has closed
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2231
 payoff: a learner who pinned a Workspace to a branch keeps the case's marks and branch control on screen after closing that branch
-verify: grep -rq 'def test_the_case_views_stay_on_screen_in_a_workspace_pinned_to_a_closed_run' tests/integration/simulation_view/
+tests: tests/integration/test_workspace_tabs.py::test_a_workspace_pinned_to_a_run_that_is_not_open_still_shows_the_case_s_marks_and_branch, tests/integration/test_workspace_tabs.py::test_a_case_view_s_header_never_names_the_open_run_a_workspace_is_pinned_to
 ---
 
 **Problem.** A Workspace pinned to a run that is no longer open hides the Bookmarks and Branch Views behind the pin's notice, though both belong to the case and show no single run; and while the pinned run is open their Area headers read that run's name (AreaFrame.show_pin, SimulationView._refresh_view's PinnedRunAbsent path). On main both panels stayed on screen in that state.

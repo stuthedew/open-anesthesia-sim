@@ -2589,13 +2589,18 @@ would find a new run of that name and show its values as the dropped run's.
 (`PL-WV9K` Q6). The pin is saved with the Workspace as two values: the run's
 number, and a random code for the session that placed the run. A run with the
 same number in a later session is therefore a different run. When the pinned
-run is not open, each of the Workspace's areas says so in place of its view
-("Run 2 is not open."), with the run's name in the area's header. The areas
-never show another run in its place, and the simulation is left untouched.
+run is not open, each of the Workspace's areas that show a run's values says
+so in place of its view ("Run 2 is not open."), with the run's name in the
+area's header. The areas never show another run in its place, and the
+simulation is left untouched. The Bookmarks View and the Branch View show the
+case rather than one run, so they still show the case's marks and the branch
+control, and their headers name no run
+(`test_a_workspace_pinned_to_a_run_that_is_not_open_still_shows_the_case_s_marks_and_branch` in
+`tests/integration/test_workspace_tabs.py`, `PL-1D3Z`).
 Where an earlier session placed the pinned run, the areas and the menu of the
 Workspace's tab call it "a run from an earlier session" and give no number,
 because a run that is open now can carry the same number
-(`test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown` in `tests/integration/test_workspace_tabs.py`).
+(`test_a_pinned_run_that_is_not_open_is_stated_in_every_area_of_the_runs` in `tests/integration/test_workspace_tabs.py`).
 The reader sets and removes a pin from the menu of the Workspace's tab
 (`PL-2KXB`).
 
@@ -2605,7 +2610,10 @@ view is pinned to a run, and always in a window broken out of the main one.
 Break-out windows are not built yet, so the dashboard is the only window that
 draws a run. In this version, therefore, the names appear when two runs are
 compared, and a pinned Workspace shows its run's name in the header of every
-area (`PL-2KXB`).
+area that shows a run's values (`PL-2KXB`). The header of the Bookmarks View and
+of the Branch View never names a run, because both show the whole case
+(`test_a_case_view_s_header_never_names_the_open_run_a_workspace_is_pinned_to` in
+`tests/integration/test_workspace_tabs.py`, `PL-1D3Z`).
 
 **For developers.** Colour cannot name the run for a second reason: the hover
 readout is separate from the legend. Drawing order cannot name it either,
@@ -2733,8 +2741,9 @@ in a bounded number of steps, without dragging anything or editing a file.
 Every area's header has a view chooser, whose menu lists every kind of view the
 application has, whatever the Workspace. Choosing a view shows it in that area.
 The exception is a Workspace pinned to a run that is not open. Each of its
-areas then says that the run is not open, in place of its view, until the
-reader removes the pin from the menu of the Workspace's tab.
+areas that shows a run's values then says that the run is not open, in place of
+its view, until the reader removes the pin from the menu of the Workspace's tab.
+The Bookmarks View and the Branch View are still shown there.
 A view that needs more room than its area scrolls inside the area. Three views
 never scroll: the concentration chart, the Parameters view and the Branch view.
 Their areas grow to hold all of the view, so the chart's plot, a run's dials or

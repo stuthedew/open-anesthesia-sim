@@ -37,10 +37,8 @@ from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_contract import ViewTick
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
-    AGENT_COST,
     BOOKMARKS,
     BRANCH,
-    COMPARTMENT_SCHEMATIC,
     CONCENTRATION_CHART,
     PARAMETER_CONTROLS,
     REGISTERED,
@@ -335,9 +333,8 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dropped_branch_in_the_views_afte
     case = _branched_case()
     view = _case_view(application, case)
 
-    for area, kind in ((3, PARAMETER_CONTROLS), (5, COMPARTMENT_SCHEMATIC), (6, AGENT_COST)):
-        view.layout_container.choose_view(AreaId(area), kind)
-        _settle(application)
+    view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
+    _settle(application)
 
     view.add_run(case.fork_here())
     view.render_tick()
@@ -349,10 +346,12 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dropped_branch_in_the_views_afte
         ConcentrationView,
         ParameterControlsView,
         AccountingView,
+        BookmarksView,
+        BranchView,
         CompartmentSchematicView,
         AgentCostView,
     ]
-    before_the_chart, chart, after_the_chart, accounting_view, schematic, cost = views
+    before_the_chart, chart, after_the_chart, accounting_view, _, _, schematic, cost = views
     assert isinstance(before_the_chart, ParameterControlsView)
     assert isinstance(after_the_chart, ParameterControlsView)
     assert isinstance(accounting_view, AccountingView)
@@ -1107,7 +1106,11 @@ def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_contro
 def test_a_failing_frame_withdraws_the_branch_offer_from_every_copy(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt restates every Area's copy of the branch control, not just one (`PL-9YPR`)."""
+    """A halt withdraws the offer from every Area's copy of the branch control (`PL-9YPR`).
+
+    The halt restates the offer once, and every copy is written from it in
+    the halt's tick.
+    """
 
     case = _branched_case()
     view = _case_view(application, case)
@@ -1122,12 +1125,8 @@ def test_a_failing_frame_withdraws_the_branch_offer_from_every_copy(
     view.present(False)
 
     assert case.trunk.has_failed is True
-    restated = {
-        id(panel) for restatement in view.halt_restatements() for panel in restatement.panels
-    }
 
     for panel in panels:
-        assert id(panel) in restated
         assert panel.point_selector.count() == 0
         assert panel.take_button.isHidden() is True
         assert panel.here_button.isHidden() is True
@@ -1158,17 +1157,13 @@ def test_a_halt_that_cannot_restate_the_marks_hides_them_in_every_copy_and_in_a_
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     monkeypatch.setattr(SimulationController, "bookmark_standings", unanswerable)
     view.present(False)
-    built = view.build_bookmarks_panel()
-    # The dashboard owns the copy, so the copy is deleted with it.
-    built.setParent(view)
+    view.layout_container.choose_view(AreaId(4), BOOKMARKS)
+    _settle(application)
+    (built,) = (panel for panel in _marks_panels(view) if panel not in panels)
 
     assert controller.has_failed is True
-    restated = {
-        id(panel) for restatement in view.halt_restatements() for panel in restatement.panels
-    }
 
     for panel in (*panels, built):
-        assert id(panel) in restated
         assert panel.times.isHidden() is True
         assert panel.targets.isHidden() is True
 
@@ -1293,42 +1288,42 @@ def test_the_bookmarks_and_the_branch_control_are_registered_under_their_kinds()
     assert (branch.minimum.width_px, branch.minimum.height_px) == (220, 110)
 
 
-def test_a_bookmarks_panel_built_between_frames_lists_the_marks_on_screen(
+def test_a_bookmarks_view_chosen_after_a_halt_lists_the_marks_on_screen(
     application: QApplication,
 ) -> None:
-    """A copy built after the last frame lists the marks that the frame's copy lists.
+    """A copy chosen for a second Area lists the marks that the copy on screen lists.
 
     The trunk is standing on the mark that halted it, so the frame listed
-    one time bookmark. A new panel's own lists are empty (`PL-9YPR`).
+    one time bookmark. A new panel's own lists are empty, so a copy that
+    was not written from the tick would list nothing (`PL-9YPR`, `PL-RF2S`).
     """
 
     _, view = _halted_trunk_case(application)
     drawn = _marks_panel(view)
-    built = view.build_bookmarks_panel()
-    # The dashboard owns the copy, so the copy is deleted with it.
-    built.setParent(view)
+    view.layout_container.choose_view(AreaId(2), BOOKMARKS)
+    _settle(application)
+    (built,) = (panel for panel in _marks_panels(view) if panel is not drawn)
 
     assert any("the decision point" in text for text in _strings_of(drawn.times, ()))
     assert _strings_of(built.times, ()) == _strings_of(drawn.times, ())
     assert built.times.isHidden() is False
 
 
-def test_a_branch_control_built_between_frames_shows_the_offer_on_screen(
+def test_a_branch_view_chosen_after_a_halt_shows_the_offer_on_screen(
     application: QApplication,
 ) -> None:
-    """A copy built after the last frame offers what the copy drawn by that frame offers.
+    """A copy chosen for a second Area offers what the copy on screen offers.
 
     The trunk is standing on a mark that halted it, so the offer on screen
     has "Branch here" named for the halt. A new control's own defaults have
-    no points and an unnamed button (`PL-9YPR`).
+    no points and an unnamed button (`PL-9YPR`, `PL-RF2S`).
     """
 
     _, view = _halted_trunk_case(application)
     drawn = _fork_panel(view)
-    built = view.build_branch_control()
-    assert built is not None
-    # The dashboard owns the copy, so the copy is deleted with it.
-    built.setParent(view)
+    view.layout_container.choose_view(AreaId(2), BRANCH)
+    _settle(application)
+    (built,) = (panel for panel in _fork_panels(view) if panel is not drawn)
 
     def entries(panel: ForkPanel) -> list[str]:
         selector = panel.point_selector

@@ -181,8 +181,9 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
 
     The trunk is paused at 60 s, so it stores no state for 90 s. The control
     cannot offer such an instant, because `fork_offer` builds the offer from
-    `fork_points_s`. So the test hands the panel an offer that lists one, the
-    way a frame hands it the real offer, to reach the guard behind it. A
+    `fork_points_s`. So the test gives the dashboard an offer that lists one,
+    as a frame gives it the real offer, and hands it to the branch View, to
+    reach the guard behind it. A
     refusal leaves the case and the display untouched and says which instant
     was refused.
     """
@@ -191,15 +192,15 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
     view = _case_view(application, case)
     panel = _fork_panel(view)
     unreached = ForkPoint(CaseInstant(90), format_elapsed(90.0), None)
-    panel.set_offer(
+    view._show_fork_offer(
         fork_offer(
             (CaseInstant(0), CaseInstant(60), unreached.instant_s),
             marks=(),
             comparing=None,
             here=None,
-        ),
-        None,
+        )
     )
+    view._show_case_views()
     panel.point_selector.setCurrentIndex(panel.point_selector.findData(90.0))
 
     assert panel.selected_point() == unreached
@@ -221,25 +222,25 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
 
     An entry can outlive what it offers, by the gap between a frame and a
     press. So `_handle_fork` hands the mark back to the case rather than
-    trusting the entry. Here the panel holds an entry for a mark that the
-    trunk does not hold. An unmark that lands in that gap leaves such an
-    entry behind. `fork_at_mark` refuses it and names the instant, rather
-    than branching anywhere near it.
+    trusting the entry. Here the dashboard's last offer, and so the panel,
+    holds an entry for a mark that the trunk does not hold. An unmark that
+    lands in that gap leaves such an entry behind. `fork_at_mark` refuses it
+    and names the instant, rather than branching anywhere near it.
     """
 
     case = _branched_case()
     view = _case_view(application, case)
     panel = _fork_panel(view)
     unmarked = TimeBookmark(CaseInstant(30), "since removed")
-    panel.set_offer(
+    view._show_fork_offer(
         fork_offer(
             case.fork_points_s,
             marks=(MarkForkPoint(unmarked, CaseInstant(30)),),
             comparing=None,
             here=None,
-        ),
-        None,
+        )
     )
+    view._show_case_views()
     _select_fork_entry(view, f"{format_elapsed(30)}, on your mark")
 
     selected = panel.selected_point()

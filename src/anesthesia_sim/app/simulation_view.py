@@ -4,13 +4,14 @@ The dashboard is divided into a part that all runs share and a part for each
 run (`PL-B9PY`). `SimulationView` is the shared part. It holds what two runs
 cannot each have a copy of: the compartment selection, the Areas (resizable
 panes) and the Views in them, the marks and the branch control. The marks and
-the branch control are shown by Views. The dashboard builds a copy for each
-View that asks, and writes every copy (`PL-9YPR`). It also holds one `RunView`
-per run, and each `RunView` holds everything else for its run. The layout
-adapter (`app/area_layout.py`) builds the Views through the View registry,
-each from the View contract's context (`app/view_contract.py`, `PL-TH35`). So
-this class names no View, except to keep the concentration chart in view after
-a branch.
+the branch control are shown by Views. The dashboard holds what they show and
+hands it to every View in each tick (`view_contract.CasePresentation`,
+`PL-9YPR`). It also holds one `RunView` per run, and each `RunView` holds
+everything else for its run. The layout adapter (`app/area_layout.py`) builds
+the Views through the View registry, each from the View contract's context
+(`app/view_contract.py`, `PL-TH35`). So this class names no View, except to
+keep the concentration chart in view after a branch, and to ask whether a
+branch control is on screen.
 
 **The unconditional region is outside the splitters** (`PL-NWTM`). It holds
 the values that must be on screen at all times. `docs/INTERFACE.md` § "Minimum
@@ -32,8 +33,9 @@ can affect the band.
 a set whose current Workspace differs from the drawn one, it switches the
 Areas. A switch changes which Views are drawn and never touches a run
 (`PL-WV9K` Q6). A Workspace pinned to a run draws that run alone, with the
-run's name on every Area's header. If the pinned run is not open, every Area
-says so in place of its Views.
+run's name on the header of every Area that shows the runs. If the pinned run
+is not open, each of those Areas says so in place of its View. The Views of the
+case show the whole case whatever the pin (`PL-1D3Z`).
 
 **One snapshot per run feeds every View, and then each run's own panel.**
 `_refresh_view` reads one snapshot per run, and builds each run's
@@ -49,11 +51,12 @@ that a reader interprets.
 
 **Every View is handed the runs when no frame is drawn, too** (`PL-RF2S`).
 On a halt, and at once after a dial is dragged, the dashboard hands every View
-a tick that carries no frame. Each run's presentation in that tick is built
-from the run's controller's record, and builds no compartment value
-(`RunView.presentation`). So a View shows a halted run as the run's own panel
-shows it, drops a run that was removed while frames fail, and shows the runs
-when a reader chooses it while frames fail.
+a tick that carries no frame. The case's panels are values in every tick, so a
+halt shows its restated marks and branch offer through the same call. Each
+run's presentation in that tick is built from the run's controller's record,
+and builds no compartment value (`RunView.presentation`). So a View shows a
+halted run as the run's own panel shows it, drops a run that was removed while
+frames fail, and shows the runs when a reader chooses it while frames fail.
 
 **Stepping and drawing run on separate timers** (decision D7). Each run's own
 timer steps that run. This view's render timer draws, but only while a run is
@@ -127,6 +130,7 @@ from anesthesia_sim.app.dashboard_frame import (
     USE_DISCLAIMER_TEXT,
     BookmarkPanel,
     BranchAtStake,
+    CaseMarks,
     ComparedRuns,
     ForkOffer,
     ForkPoint,
@@ -154,12 +158,9 @@ from anesthesia_sim.app.preferences import (
     unsaved_preferences_notice,
 )
 from anesthesia_sim.app.qt_widgets import (
-    BookmarksPanel,
     ClauseWrappingLabel,
     FocusRing,
-    ForkPanel,
     MarkButton,
-    MarkEditor,
     MarkEntry,
     MarkRefusal,
     styled_label,
@@ -177,8 +178,15 @@ from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.stylesheets import page_stylesheet, scroll_area_stylesheet
 from anesthesia_sim.app.theme import PAGE_PADDING, PAGE_SPACING, WARNING
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
-from anesthesia_sim.app.view_contract import PreferencesInForce, ViewRequests
-from anesthesia_sim.app.views import ConcentrationView
+from anesthesia_sim.app.view_contract import (
+    BranchPresentation,
+    CasePresentation,
+    MarksPresentation,
+    PreferencesInForce,
+    ViewRequests,
+    ViewScope,
+)
+from anesthesia_sim.app.views import BranchView, ConcentrationView
 from anesthesia_sim.app.workspace_tabs import WorkspaceTabs
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.units import MILLISECONDS_PER_SECOND
@@ -266,32 +274,6 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
 
         for index in range(widget.count()):
             yield InterfaceText(widget.itemText(index), seen and index == current)
-
-
-def _case_copy[W: QWidget](copies: list[W], copy: W) -> W:
-    """Add a new copy of a case panel to its list, and drop it when Qt destroys it.
-
-    The dashboard writes every copy on the list. A View that an Area stops
-    showing is deleted with its copy, so the dashboard never writes a deleted
-    widget.
-
-    Args:
-        copies: The copies of one case panel that Qt has not destroyed,
-            oldest first.
-        copy: The new copy.
-
-    Returns:
-        The same copy, so a builder can return the call.
-    """
-
-    copies.append(copy)
-    copy.destroyed.connect(lambda: _drop_case_copy(copies, copy))
-
-    return copy
-
-
-def _drop_case_copy[W: QWidget](copies: list[W], copy: W) -> None:
-    copies[:] = [kept for kept in copies if kept is not copy]
 
 
 def _focusable_widgets(window: QWidget) -> list[QWidget]:
@@ -384,32 +366,6 @@ class _RunSlots:
     """
 
     placed: tuple[QWidget, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class HaltRestatement:
-    """A dashboard panel that offers an action on a run, and what restates it on a halt.
-
-    To restate a widget is to rewrite it from the runs' controllers, without drawing a frame.
-    A `RunView` restates its own widgets on a halt (`RunView.show_presentation`), and every
-    View is handed the runs with no frame. The panels that belong to the dashboard itself
-    are inside neither a run nor a View. So a halt restates them only through this list
-    (`SimulationView.halt_restatements`). A panel that holds a control and is missing from
-    the list keeps offering its action over a run that every other control says has failed.
-    That happened to the branch panel (`PL-MMNX`) and to the bookmark panel (`PL-YHR3`). A
-    test fails on a control that is in no `RunView`, in no panel listed here, and in no
-    container that the test exempts by name
-    (`test_every_dashboard_control_is_restated_on_a_halt`, `PL-5JTH`).
-
-    Attributes:
-        panels: The widgets this restatement writes. A control inside one of them counts
-            as restated on a halt.
-        restate: Writes the panels from the runs' controllers, without a frame. It must
-            not raise, because it runs inside the halt path.
-    """
-
-    panels: tuple[QWidget, ...]
-    restate: Callable[[], None]
 
 
 class SimulationView(QWidget):
@@ -583,27 +539,22 @@ class SimulationView(QWidget):
         # to make one failure impossible: two runs compared at two different
         # heights because a learner typed one of them twice.
         #
-        # A bookmarks View shows the marks and the editor that changes them,
-        # and each one asks for a copy of the panel (`build_bookmarks_panel`).
-        # This list holds the copies that Qt has not destroyed, and
-        # `_marks_shown` holds what they were last written, or None where the
-        # lists are withdrawn (`PL-9YPR`). The editor's entry, its refusal and
-        # the bound on its height control are kept here rather than in a copy,
-        # so every copy shows the same and a copy built later shows them too
-        # (`PL-CHX0`).
-        self._bookmarks_panels: list[BookmarksPanel] = []
+        # A bookmarks View shows the marks and the editor that changes them.
+        # `_marks_shown` holds the lists that every tick hands each such View,
+        # or None where the lists are withdrawn (`PL-9YPR`). The editor's
+        # entry, its refusal and the bound on its height control are kept here
+        # rather than in a View, so every copy shows the same and a copy built
+        # later shows them too (`PL-CHX0`).
         self._marks_shown: BookmarkPanel | None = None
         self._mark_entry: MarkEntry | None = None
         self._mark_refusal: MarkRefusal | None = None
         self._reachable_height_mac: float | None = None
 
-        # The copies of the panel where a branch is taken, one for each branch
-        # View, with the offer and the selected point they were last written.
-        # The dashboard builds them for the same reason that it builds the
-        # marks. Both offer instants of the *case*, so neither belongs inside
-        # a `RunView`. The selected point is kept here and not in a copy, so
-        # that it outlives every copy (`kept_fork_selection`).
-        self._fork_panels: list[ForkPanel] = []
+        # The offer that every branch View shows, and the selected point. The
+        # dashboard keeps them for the same reason that it keeps the marks.
+        # Both offer instants of the *case*, so neither belongs inside a
+        # `RunView`. The selected point is kept here and not in a View, so
+        # that it outlives every copy of the control (`kept_fork_selection`).
         self._fork_offer_shown: ForkOffer | None = None
         self._fork_selection: ForkPoint | None = None
 
@@ -723,6 +674,11 @@ class SimulationView(QWidget):
             setting=self._handle_setting_request,
             preview=self._handle_preview_request,
             preview_end=self._handle_preview_end_request,
+            mark_entry=self._handle_mark_entry_request,
+            mark_edit=self._handle_mark_edit_request,
+            branch_point=self._handle_branch_point_request,
+            branch=self._handle_fork,
+            branch_here=self._handle_here_fork,
         )
         current = self._workspaces.current
         self._areas = AreaLayout(current.layout, requests, states=current.view_state)
@@ -1538,24 +1494,28 @@ class SimulationView(QWidget):
             self._page_scroll.ensureWidgetVisible(self._chart_in_view(), 0, 0)
 
     def _restate_fork_panel(self) -> None:
-        """Restate both branch controls from the case on a halt, and offer nothing if that raises.
+        """Restate the branch offer from the case on a halt, and offer nothing if that raises.
 
-        Apart from this method, `_refresh_fork_panel` is called only at the
-        end of a frame. So without this method, a halt whose frame failed left
-        "Branch here" enabled over a trunk that every other control said had
-        failed. A press was then refused, and the next failing frame overwrote
-        the refusal (`PL-MMNX`). The case computes its offer from the trunk's
-        own state, so the restatement needs no frame. On a trunk whose dashboard
-        failed, the panel offers no branch (`PL-T2Q2`).
+        Apart from this method, the offer is worked out only by a frame. So
+        without this method, a halt whose frame failed left "Branch here"
+        enabled over a trunk that every other control said had failed. A press
+        was then refused, and the next failing frame overwrote the refusal
+        (`PL-MMNX`). The case computes its offer from the trunk's own state, so
+        the restatement needs no frame. On a trunk whose dashboard failed, the
+        control offers no branch (`PL-T2Q2`). The halt then hands every View
+        the restated offer in its tick.
 
         The call is wrapped in a `try`, because it runs inside the halt path.
         There, an exception would escape the halt gate that started the halt
         and reach the toolkit. If the case raises while computing its offer,
-        the panel offers no branch rather than keeping the last frame's offer.
+        the control offers no branch rather than keeping the last frame's offer.
         """
 
+        if self._case is None:
+            return
+
         try:
-            self._refresh_fork_panel()
+            self._show_fork_offer(self._fork_offer_now())
         except Exception:
             self._show_fork_offer(
                 fork_offer(
@@ -1567,8 +1527,8 @@ class SimulationView(QWidget):
                 )
             )
 
-    def _refresh_fork_panel(self) -> None:
-        """Redraw both branch controls from the trunk's state this tick.
+    def _fork_offer_now(self) -> ForkOffer:
+        """Return the branch offer that the trunk's state makes this tick.
 
         The points offered are the trunk's own: its keyframes and the marks
         that its clock has passed. So a running case adds a point every time
@@ -1587,26 +1547,30 @@ class SimulationView(QWidget):
         first displayed run today. But that is a property of how the
         dashboard is built, and this method does not need to rely on it.
         Asking the case costs one reading of the marks' standings per frame.
+
+        Raises:
+            ValueError: The dashboard holds no case. A caller asks only for a
+                case it holds.
         """
 
-        if self._case is None:
-            return
+        case = self._case
 
-        self._show_fork_offer(
-            fork_offer(
-                self._case.fork_points_s,
-                marks=self._case.mark_fork_points,
-                comparing=self._compared_runs(),
-                here=self._case.here_fork_point,
-                refusal=self._fork_refusal,
-            )
+        if case is None:
+            raise ValueError("a dashboard handed loose runs has no case to offer a branch of")
+
+        return fork_offer(
+            case.fork_points_s,
+            marks=case.mark_fork_points,
+            comparing=self._compared_runs(),
+            here=case.here_fork_point,
+            refusal=self._fork_refusal,
         )
 
     def _show_fork_offer(self, offer: ForkOffer) -> None:
-        """Write `offer` into every copy of the branch control, and keep it for the next copy.
+        """Keep `offer` as the one every branch View shows, with the selected point carried over.
 
         The selected point is carried from the last offer to this one by
-        `kept_fork_selection`, whether or not any copy is on screen.
+        `kept_fork_selection`, whether or not any branch View is on screen.
         """
 
         shown = self._fork_offer_shown
@@ -1614,37 +1578,18 @@ class SimulationView(QWidget):
             None if shown is None else shown.points, self._fork_selection, offer.points
         )
         self._fork_offer_shown = offer
-        self._write_fork_panels()
-
-    def _write_fork_panels(self) -> None:
-        """Write the offer in force and the selected point into every copy of the branch control."""
-
-        offer = self._fork_offer_shown
-
-        if offer is None:
-            return
-
-        for panel in self._fork_panels:
-            panel.set_offer(offer, self._fork_selection)
 
     @halt_gate
-    def _handle_fork_point_chosen(self, panel: ForkPanel) -> None:
-        """Take the point a learner chose in `panel`, and show it in every other copy.
+    def _handle_branch_point_request(self, point: ForkPoint | None) -> None:
+        """Take the point a learner chose in one branch View, and show it in every other.
 
-        `panel` already shows the point, so it is not written again. Writing it
-        would also replace its entries between frames, under the learner's
-        pointer, where the offer has changed since the last frame.
+        The View that asked already shows the point. Handing it the same offer
+        and point changes nothing in it, because the control rebuilds its
+        entries only when the offer has changed (`ForkPanel.set_offer`).
         """
 
-        self._fork_selection = panel.selected_point()
-        offer = self._fork_offer_shown
-
-        if offer is None:
-            return
-
-        for other in self._fork_panels:
-            if other is not panel:
-                other.set_offer(offer, self._fork_selection)
+        self._fork_selection = point
+        self._show_case_views()
 
     def _branch_control_shown(self) -> bool:
         """Whether a branch control is on screen, so that a banner may send a learner to it.
@@ -1653,29 +1598,22 @@ class SimulationView(QWidget):
         one only while an Area shows the branch View and draws it.
         """
 
-        return any(panel.isVisibleTo(self) for panel in self._fork_panels)
-
-    def build_branch_control(self) -> ForkPanel | None:
-        """Build a copy of the branch control for a View, showing the offer and the point in force.
-
-        Returns:
-            The copy, which this dashboard writes on every frame and restates
-            on a halt. None where the dashboard was handed loose runs: it has
-            no case to branch, so a control could only refuse.
-        """
-
-        if self._case is None:
-            return None
-
-        panel = _case_copy(self._fork_panels, ForkPanel())
-        panel.take_button.clicked.connect(self._handle_fork)
-        panel.here_button.clicked.connect(self._handle_here_fork)
-        panel.point_selector.currentIndexChanged.connect(
-            partial(self._handle_fork_point_chosen, panel)
+        return any(
+            isinstance(view, BranchView) and view.panel is not None and view.panel.isVisibleTo(self)
+            for view in self._areas.views()
         )
-        self._write_fork_panels()
 
-        return panel
+    def _case_presentation(self) -> CasePresentation:
+        """What the case's panels show now, as every tick hands it to each View."""
+
+        return CasePresentation(
+            MarksPresentation(
+                self._marks_shown, self._reachable_height_mac, self._mark_entry, self._mark_refusal
+            ),
+            None
+            if self._case is None
+            else BranchPresentation(self._fork_offer_shown, self._fork_selection),
+        )
 
     def _compared_runs(self) -> ComparedRuns | None:
         """What the trunk and its branch are called while both are drawn, or None while one is."""
@@ -1816,19 +1754,27 @@ class SimulationView(QWidget):
         would otherwise be handed to a chart shown later, beside readouts
         that the runs have since moved past.
 
+        **The case's panels are worked out before anything is drawn, too.**
+        The marks are listed from the snapshots, and the branch offer from the
+        case. A frame whose marks cannot be listed then halts with every View
+        and every run's panel still on the earlier frame. Every View is handed
+        the case's panels in its tick (`view_contract.CasePresentation`).
+
         **A pinned Workspace draws its run alone** (`PL-WV9K` Q6). Its Views
-        are handed frames assembled from the pinned run only, and the run's
-        name is on every Area. Where the pinned run is not open, no View is
-        drawn and every Area says so. Either way, a frame is still assembled
-        over every open run for each window, so its checks still run. Each run
-        shows its own presentation, so a pin never changes a readout.
+        of the runs are handed frames assembled from the pinned run only, and
+        the run's name is on their Areas. Where the pinned run is not open,
+        those Areas say so, and only the Views of the case are drawn
+        (`PL-1D3Z`). Either way, a frame is still assembled over every open run
+        for each window, so its checks still run. Each run shows its own
+        presentation, so a pin never changes a readout.
 
         Raises:
             ValueError: If the runs have come to use different agents since
                 construction (`assemble_chart_frame`).
-            Exception: Whatever building a run's presentation or drawing a
-                View raises. Also the first exception that writing a run's
-                panel raises, once every run's panel has been written.
+            Exception: Whatever building a run's presentation, listing the
+                marks or drawing a View raises. Also the first exception that
+                writing a run's panel raises, once every run's panel has been
+                written.
         """
 
         # These are stored before anything can raise. A frame that fails over
@@ -1863,10 +1809,25 @@ class SimulationView(QWidget):
             )
             for time_base, width_px in requests.items()
         }
+        marks_now = self._marks_now(
+            tuple(snapshot.bookmarks for snapshot in snapshots),
+            tuple(snapshot.bookmark_standings for snapshot in snapshots),
+            snapshots,
+        )
+        offer_now = None if self._case is None else self._fork_offer_now()
+        self._show_marks(marks_now)
+
+        if offer_now is not None:
+            self._show_fork_offer(offer_now)
+
         drawn = self._runs_the_views_show()
+        preferences = PreferencesInForce(self._preferences, self._preferences_notice)
 
         if drawn is None:
             self._kept_frames = None
+            self._areas.refresh(
+                {}, (), selection, preferences, self._case_presentation(), only=ViewScope.CASE
+            )
         else:
             view_frames = frames
             shown = tuple(presentations[i] for i in drawn)
@@ -1889,8 +1850,8 @@ class SimulationView(QWidget):
                 },
                 shown,
                 selection,
-                PreferencesInForce(self._preferences, self._preferences_notice),
-                self,
+                preferences,
+                self._case_presentation(),
             )
             self._kept_frames = kept_frames(view_frames, shown, selection)
 
@@ -1907,15 +1868,9 @@ class SimulationView(QWidget):
         if refusal is not None:
             raise refusal
 
-        self._refresh_bookmarks(
-            tuple(snapshot.bookmarks for snapshot in snapshots),
-            tuple(snapshot.bookmark_standings for snapshot in snapshots),
-            snapshots,
-        )
-        self._refresh_fork_panel()
-        # Each run's own panel and the case's panels are written after the
-        # Areas drew. A banner shown or hidden there changes the height that
-        # the Areas are given, so the Areas are laid out again now (`PL-MXMG`).
+        # Each run's own panel is written after the Areas drew. A banner shown
+        # or hidden there changes the height that the Areas are given, so the
+        # Areas are laid out again now (`PL-MXMG`).
         self._areas.follow_needs()
         # The Views and the runs' panels have now built every widget they show.
         self._order_focus_if_owed()
@@ -1967,8 +1922,8 @@ class SimulationView(QWidget):
 
         return tuple(i for i, run in enumerate(self._runs) if run.run_id in shown)
 
-    def _show_views_the_runs(self) -> None:
-        """Hand every View the runs it shows, with no frame.
+    def _show_views_the_runs(self, only: ViewScope | None = None) -> None:
+        """Hand every View the runs it shows and the case's panels, with no frame.
 
         Each run's presentation is built from its controller's record, which
         builds no compartment value (`RunView.presentation`). Its values are
@@ -1978,11 +1933,17 @@ class SimulationView(QWidget):
         (`PL-7DJK`), and for a run that has not halted it restates what the
         run's own panel shows.
 
-        The tick carries the case's panels, as a tick with a frame does. A
-        bookmarks View or a branch View whose first tick is this one takes
-        its copy from it. A halt restates the case's panels before it calls
-        this method, so the copy shows the marks and the branch control as
-        the halt restated them.
+        The tick carries the case's panels as the dashboard holds them now. A
+        halt restates them before it calls this method, so every View of the
+        case shows the marks and the branch control as the halt restated them.
+        Where the Workspace is pinned to a run that is not open, only the
+        Views of the case are handed a tick, and it names no run (`PL-1D3Z`).
+
+        Args:
+            only: The scope of the Views to hand the tick to, or None for
+                every View. A change to the case's panels alone, such as the
+                reader typing in the marks editor, is handed only to the
+                Views of the case.
 
         Raises:
             Exception: The first exception that a View raises while it writes
@@ -1991,12 +1952,18 @@ class SimulationView(QWidget):
         """
 
         drawn = self._runs_the_views_show()
+        selection = self._compartment_selection
+        preferences = PreferencesInForce(self._preferences, self._preferences_notice)
 
         if drawn is None:
+            self._areas.refresh(
+                {}, (), selection, preferences, self._case_presentation(), only=ViewScope.CASE
+            )
+            self._order_focus_if_owed()
+
             return
 
         runs = tuple(self._runs[i].presentation() for i in drawn)
-        selection = self._compartment_selection
         self._areas.refresh(
             {
                 time_base: shown_without_a_frame(self._kept_frames, time_base, runs, selection)
@@ -2004,52 +1971,60 @@ class SimulationView(QWidget):
             },
             runs,
             selection,
-            PreferencesInForce(self._preferences, self._preferences_notice),
-            self,
+            preferences,
+            self._case_presentation(),
+            only=only,
         )
         self._order_focus_if_owed()
+
+    def _show_case_views(self) -> None:
+        """Hand the Views of the case a tick, after a change to the case's panels alone."""
+
+        self._show_views_the_runs(ViewScope.CASE)
 
     # -------------------------------------------------------------- bookmarks
 
     def _restate_bookmark_panel(self) -> None:
-        """On a halt, restate both lists of marks from every run, or hide them if that raises.
+        """On a halt, restate both lists of marks from every run, or withdraw them if that raises.
 
-        A mark's standing says whether the run has reached it. Apart from this method,
-        `_refresh_bookmarks` is called only with a drawn frame's snapshots. So without this
-        method, a halt that came from a failed frame left the last frame's standings on
-        screen. A mark ahead of the clock still showed as yet to come, although every other
-        control said that the run had failed (`PL-YHR3`). Each run's controller gives its
-        marks and their standings without building a snapshot. So the restatement needs
-        no frame.
+        A mark's standing says whether the run has reached it. Apart from this
+        method, the marks are listed only from a drawn frame's snapshots. So
+        without this method, a halt that came from a failed frame left the last
+        frame's standings on screen. A mark ahead of the clock still showed as
+        yet to come, although every other control said that the run had
+        failed (`PL-YHR3`). Each run's controller gives its marks and their
+        standings without building a snapshot. So the restatement needs no
+        frame. The halt then hands every View the restated lists in its tick.
 
-        The restatement is wrapped in a `try`, as in `_restate_fork_panel`. It runs inside
-        the halt path, where an exception would escape the halt gate that started the halt
-        and reach the toolkit. If the panel cannot be restated, it is hidden rather than
-        left showing the last frame's rows. The editor's lists and their Remove buttons
-        are hidden with it, so the two places that list the marks agree (`PL-F5KT`).
+        The restatement is wrapped in a `try`, as in `_restate_fork_panel`. It
+        runs inside the halt path, where an exception would escape the halt
+        gate that started the halt and reach the toolkit. If the lists cannot
+        be restated, they are withdrawn rather than left showing the last
+        frame's rows. Every bookmarks View then hides its lists, and the
+        editor's lists and their Remove buttons with them, so the two places
+        that list the marks agree (`PL-F5KT`).
         """
 
         controllers = tuple(run.controller for run in self._runs)
 
         try:
-            self._refresh_bookmarks(
-                tuple(controller.bookmarks for controller in controllers),
-                tuple(controller.bookmark_standings() for controller in controllers),
-                tuple(controller.settings() for controller in controllers),
+            self._show_marks(
+                self._marks_now(
+                    tuple(controller.bookmarks for controller in controllers),
+                    tuple(controller.bookmark_standings() for controller in controllers),
+                    tuple(controller.settings() for controller in controllers),
+                )
             )
         except Exception:
             self._marks_shown = None
 
-            for marks in self._bookmarks_panels:
-                marks.withdraw()
-
-    def _refresh_bookmarks(
+    def _marks_now(
         self,
         bookmarks: Sequence[BookmarkSet],
         standings: Sequence[BookmarkStandings],
         settings: Sequence[RunSettings],
-    ) -> None:
-        """Redraw both collections from every run, and reset the limits of the height control.
+    ) -> CaseMarks:
+        """List both collections of marks from every run, with the bound on the height control.
 
         **Every value is read from every run** (`PL-LHBY`, `PL-4KZD`,
         `PL-RF2S`). The set of marks and the height control's bound belong to
@@ -2064,9 +2039,10 @@ class SimulationView(QWidget):
         computed from its own clock, opening instant and halts, and the panel
         names each run where they differ.
 
-        A drawn frame passes in the parts of its snapshots, so the panel shows the values
-        that the frame was assembled from. A halt passes the same parts, read instead from
-        each run's controller (`_restate_bookmark_panel`).
+        A drawn frame passes in the parts of its snapshots, so the lists show
+        the values that the frame was assembled from. A halt passes the same
+        parts, read instead from each run's controller
+        (`_restate_bookmark_panel`).
 
         Args:
             bookmarks: Every displayed run's marks, in drawing order.
@@ -2084,227 +2060,188 @@ class SimulationView(QWidget):
             SimulationConfigurationError: As `bookmark_panel` raises it.
         """
 
-        marks_now = case_marks(
+        return case_marks(
             tuple(run_label(run.run_id) for run in self._runs), bookmarks, standings, settings
         )
-        panel = marks_now.panel
-        self._marks_shown = panel
-        self._reachable_height_mac = marks_now.reachable_height_mac
 
-        for marks in self._bookmarks_panels:
-            marks.set_panel(panel)
-            marks.editor.set_reachable_height(self._reachable_height_mac)
+    def _show_marks(self, marks: CaseMarks) -> None:
+        """Keep `marks` as the lists every bookmarks View shows, and the entry as they hold it.
 
-            if self._mark_entry is not None:
-                # A copy built while a halt hid the lists had no rows to
-                # select. Selecting the kept rows on every refill gives every
-                # copy the reader's selection, so Remove acts on the same
-                # mark in each.
-                marks.editor.select_rows(self._mark_entry)
-
-        if self._bookmarks_panels:
-            # A shorter list can drop a selected row, and the bound can lower
-            # the height, without the reader editing anything. The copies all
-            # agree, so the entry kept for a copy built later is read back
-            # from the first. A dropped row then stays dropped there too.
-            self._mark_entry = self._bookmarks_panels[0].editor.entry()
-
-    def build_bookmarks_panel(self) -> BookmarksPanel:
-        """Build a copy of the marks and their editor for a View, showing the marks listed now.
-
-        The copy's editor shows the entry, the refusal and the bound on the
-        height control that the other copies show, so that a copy built after
-        a switch of Workspace shows what the reader left (`PL-CHX0`).
-
-        Returns:
-            The copy, which this dashboard writes on every frame and restates
-            on a halt. Its lists are hidden until a frame has listed the
-            marks, and while a halt could not work out their standings.
+        A shorter list can drop a selected row, and the bound can lower the
+        height, without the reader editing anything. The entry is kept as the
+        editor then holds it (`MarkEntry.kept_through`), so a copy built later
+        shows what the copies on screen show, and a dropped row stays dropped.
         """
 
-        panel = _case_copy(self._bookmarks_panels, BookmarksPanel())
-        editor = panel.editor
-        editor.add_time_button.clicked.connect(partial(self._add_time_bookmark, editor))
-        editor.remove_time_button.clicked.connect(partial(self._remove_time_bookmark, editor))
-        editor.add_target_button.clicked.connect(partial(self._add_mac_target, editor))
-        editor.remove_target_button.clicked.connect(partial(self._remove_mac_target, editor))
-
-        if self._marks_shown is None:
-            panel.withdraw()
-        else:
-            panel.set_panel(self._marks_shown)
-
-        if self._reachable_height_mac is not None:
-            editor.set_reachable_height(self._reachable_height_mac)
+        self._marks_shown = marks.panel
+        self._reachable_height_mac = marks.reachable_height_mac
 
         if self._mark_entry is not None:
-            editor.set_entry(self._mark_entry)
-
-        editor.show_refusal(self._mark_refusal)
-        editor.entry_edited.connect(partial(self._follow_mark_entry, editor))
-
-        return panel
+            self._mark_entry = self._mark_entry.kept_through(
+                marks.panel, marks.reachable_height_mac
+            )
 
     @halt_gate
-    def _follow_mark_entry(self, editor: MarkEditor) -> None:
-        """Keep what the reader entered in `editor`, and show it in every other copy.
+    def _handle_mark_entry_request(self, entry: MarkEntry) -> None:
+        """Keep what the reader entered in one copy of the marks editor, and show it in every other.
 
-        Each copy of the editor is built for one Area, and the reader edits one
-        copy at a time. The dashboard keeps the entry, as it keeps the branch
-        control's selected point (`_handle_fork_point_chosen`). So two Areas
-        that show the Bookmarks View never show two different entries, and the
-        Add and Remove buttons of every copy act on the same values.
+        Each copy of the editor is built for one Area, and the reader edits
+        one copy at a time. The dashboard keeps the entry, as it keeps the
+        branch control's selected point (`_handle_branch_point_request`). So
+        two Areas that show the Bookmarks View never show two different
+        entries, and the Add and Remove buttons of every copy act on the same
+        values. The copy that the reader edits already holds the entry, so
+        the tick leaves its fields as they are and the cursor does not move.
         """
 
-        self._mark_entry = editor.entry()
+        self._mark_entry = entry
+        self._show_case_views()
 
-        for marks in self._bookmarks_panels:
-            if marks.editor is not editor:
-                marks.editor.set_entry(self._mark_entry)
+    @halt_gate
+    def _handle_mark_edit_request(self, button: MarkButton, entry: MarkEntry) -> None:
+        """Make the edit that `button` asks for on every run, with the entry of the copy pressed.
+
+        An Add reads the mark from the entry, and empties both name fields
+        once the mark is offered to the runs (`MarkEntry.without_names`). A
+        Remove reads the selected row from the entry, and the mark itself from
+        the trunk's snapshot. If the trunk's snapshot rejects a value, the
+        read raises, and the gate halts every run with the halt on screen
+        (`PL-F2T2`). A refusal is shown under the button that asked for the
+        edit, in every copy of the editor.
+        """
+
+        self._mark_entry = entry
+        self._mark_refusal = None
+
+        if button is MarkButton.REMOVE_TIME:
+            applied = self._remove_mark(
+                self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.time_bookmarks,
+                entry.time_row,
+                lambda run, mark: run.remove_time_bookmark(mark),
+                button,
+            )
+        elif button is MarkButton.REMOVE_TARGET:
+            applied = self._remove_mark(
+                self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.mac_targets,
+                entry.target_row,
+                lambda run, mark: run.remove_mac_target(mark),
+                button,
+            )
+        else:
+            applied = self._add_mark(button, entry)
+
+        # An edit offered to the runs is drawn in a frame, because it can
+        # change every run's marks. A refusal before any run was asked changes
+        # only the editor, so only the Views of the case are handed a tick.
+        if applied:
+            self.present(False)
+        else:
+            self._show_case_views()
+
+    def _add_mark(self, button: MarkButton, entry: MarkEntry) -> bool:
+        """Add the mark that `entry` describes to every run, or refuse an entry that describes none.
+
+        Returns:
+            Whether the mark was offered to the runs.
+
+        Raises:
+            ValueError: A target whose compartment row selects no compartment
+                (`MarkEntry.mac_target`).
+        """
+
+        try:
+            if button is MarkButton.ADD_TIME:
+                bookmark = entry.time_bookmark()
+                self._mark_entry = entry.without_names()
+
+                return self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark), button)
+
+            target = entry.mac_target()
+        except SimulationConfigurationError as error:
+            # The entry describes no mark that the case accepts, so nothing
+            # was offered to any run.
+            self._mark_refusal = MarkRefusal(button, refused_setting_notice(error))
+
+            return False
+
+        self._mark_entry = entry.without_names()
+
+        return self._apply_to_every_run(lambda run: run.add_mac_target(target), button)
+
+    def _remove_mark[M](
+        self,
+        marks: Sequence[M],
+        row: int,
+        remove: Callable[[SimulationController, M], None],
+        button: MarkButton,
+    ) -> bool:
+        """Remove the mark at `row` of `marks` from every run, or refuse where no row is selected.
+
+        After an accepted Remove, no row is selected in that list. The mark
+        below the removed one moves up into its row. Kept selected, it would
+        become the mark that a second press of Remove takes from every run,
+        though the reader never chose it. A refused Remove changed no list,
+        so it keeps the selection.
+
+        Returns:
+            Whether the Remove was offered to the runs.
+        """
+
+        if not 0 <= row < len(marks):
+            self._mark_refusal = MarkRefusal(button, REMOVE_NOTHING_SELECTED_TEXT)
+
+            return False
+
+        selected = marks[row]
+        self._apply_to_every_run(lambda run: remove(run, selected), button)
+
+        if self._mark_refusal is None and self._mark_entry is not None:
+            self._mark_entry = (
+                replace(self._mark_entry, time_row=-1)
+                if button is MarkButton.REMOVE_TIME
+                else replace(self._mark_entry, target_row=-1)
+            )
+
+        return True
 
     def _apply_to_every_run(
         self, edit: Callable[[SimulationController], None], button: MarkButton
-    ) -> None:
+    ) -> bool:
         """Make one change to every displayed run, or have the first of them refuse it.
 
         The marks belong to the case. A mark added to one run and refused by
         another would leave two runs of one case with different marks.
-        That is exactly the state this panel exists to prevent. The loop
-        writes run by run and stops at the first refusal, with no second
+        That is exactly the state the bookmarks View exists to prevent. The
+        loop writes run by run and stops at the first refusal, with no second
         phase. That is safe for three reasons. Every `BookmarkSet` operation
         is a pure function of the set and the mark. The displayed runs hold
         equal sets. And nothing interleaves with a synchronous loop. So
         either every run accepts the change, or the first run refuses it and
         no run has changed. This relies on the sets being equal, and
-        `_refresh_bookmarks` halts the dashboard on the first frame in which
-        they are not (`PL-LHBY`). An earlier version of this docstring
-        described a write computed against copies and committed only once
-        every run had accepted. It was never built, and it is not built now
-        either. It would guard an invariant that the frame already enforces
-        more loudly, and the fuzzing that `PL-RBMK` records found no
-        divergence.
+        `_marks_now` halts the dashboard on the first frame in which they are
+        not (`PL-LHBY`). An earlier version of this docstring described a
+        write computed against copies and committed only once every run had
+        accepted. It was never built, and it is not built now either. It
+        would guard an invariant that the frame already enforces more loudly,
+        and the fuzzing that `PL-RBMK` records found no divergence.
 
         Args:
             edit: What to do to one run.
             button: The editor's button that asked for the change. A
                 refusal is shown under that button.
-        """
 
-        self._show_mark_refusal(None)
+        Returns:
+            True, because the change was offered to the runs, whether or not
+            the first of them refused it.
+        """
 
         try:
             for run in self._runs:
                 edit(run.controller)
         except SimulationConfigurationError as error:
-            self._show_mark_refusal(MarkRefusal(button, refused_setting_notice(error)))
+            self._mark_refusal = MarkRefusal(button, refused_setting_notice(error))
 
-        self.present(False)
-
-    def _forget_removed_row(self, button: MarkButton) -> None:
-        """Select no row in the list that a Remove just took a mark from, in every copy.
-
-        The mark below the removed one moves up into its row. Kept selected,
-        it would become the mark that a second press of Remove takes from
-        every run, though the reader never chose it. A refused Remove changed
-        no list, so it keeps the selection.
-        """
-
-        if self._mark_refusal is not None or self._mark_entry is None:
-            return
-
-        if button is MarkButton.REMOVE_TIME:
-            self._mark_entry = replace(self._mark_entry, time_row=-1)
-        else:
-            self._mark_entry = replace(self._mark_entry, target_row=-1)
-
-        for marks in self._bookmarks_panels:
-            marks.editor.select_rows(self._mark_entry)
-
-    def _show_mark_refusal(self, refusal: MarkRefusal | None) -> None:
-        """Show why an edit was refused under its button, in every copy of the editor."""
-
-        self._mark_refusal = refusal
-
-        for marks in self._bookmarks_panels:
-            marks.editor.show_refusal(refusal)
-
-    @halt_gate
-    def _add_time_bookmark(self, editor: MarkEditor) -> None:
-        """Mark the instant that `editor`'s form describes, on every run."""
-
-        try:
-            bookmark = editor.entered_time_bookmark()
-        except SimulationConfigurationError as error:
-            self._show_mark_refusal(MarkRefusal(MarkButton.ADD_TIME, refused_setting_notice(error)))
-
-            return
-
-        self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark), MarkButton.ADD_TIME)
-        editor.clear_entry()
-
-    @halt_gate
-    def _remove_time_bookmark(self, editor: MarkEditor) -> None:
-        """Unmark the instant selected in `editor`, on every run.
-
-        The marks are read from the trunk's snapshot. If the trunk's snapshot rejects
-        a value, the read raises, and the gate halts every run with the halt on
-        screen (`PL-F2T2`).
-        """
-
-        marks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.time_bookmarks
-        index = editor.selected_time_index()
-
-        if not 0 <= index < len(marks):
-            self._show_mark_refusal(
-                MarkRefusal(MarkButton.REMOVE_TIME, REMOVE_NOTHING_SELECTED_TEXT)
-            )
-
-            return
-
-        selected = marks[index]
-        self._apply_to_every_run(
-            lambda run: run.remove_time_bookmark(selected), MarkButton.REMOVE_TIME
-        )
-        self._forget_removed_row(MarkButton.REMOVE_TIME)
-
-    @halt_gate
-    def _add_mac_target(self, editor: MarkEditor) -> None:
-        """Mark the height that `editor`'s form describes, on every run."""
-
-        try:
-            target = editor.entered_mac_target()
-        except SimulationConfigurationError as error:
-            self._show_mark_refusal(
-                MarkRefusal(MarkButton.ADD_TARGET, refused_setting_notice(error))
-            )
-
-            return
-
-        self._apply_to_every_run(lambda run: run.add_mac_target(target), MarkButton.ADD_TARGET)
-        editor.clear_entry()
-
-    @halt_gate
-    def _remove_mac_target(self, editor: MarkEditor) -> None:
-        """Unmark the height selected in `editor`, on every run, reading the marks from the trunk.
-
-        A refusing snapshot halts every run, as in `_remove_time_bookmark`.
-        """
-
-        marks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.mac_targets
-        index = editor.selected_target_index()
-
-        if not 0 <= index < len(marks):
-            self._show_mark_refusal(
-                MarkRefusal(MarkButton.REMOVE_TARGET, REMOVE_NOTHING_SELECTED_TEXT)
-            )
-
-            return
-
-        selected = marks[index]
-        self._apply_to_every_run(
-            lambda run: run.remove_mac_target(selected), MarkButton.REMOVE_TARGET
-        )
-        self._forget_removed_row(MarkButton.REMOVE_TARGET)
+        return True
 
     def halt_for_slot(self, error: Exception) -> None:
         """Halt every run for an exception that one of this view's slots raised.
@@ -2524,21 +2461,21 @@ class SimulationView(QWidget):
         halt shown only through the frame would then never be seen (`PL-25KS`, `PL-7DJK`).
         If presenting the frame fails afterwards, the halt is not undone.
 
-        The dashboard's own panels are restated without the frame, for the same reason as
-        the halts. The branch controls are restated from the case
-        (`_restate_fork_panel`, `PL-MMNX`). The bookmark standings are restated from each
-        run's controller (`_restate_bookmark_panel`, `PL-YHR3`). Both restatements come
-        from one list, `halt_restatements`. A test checks that this list covers every
-        control the dashboard offers outside a run (`PL-5JTH`). The trunk records that
-        its dashboard failed, so the case then offers no branch at all. A branch opened
-        now would be drawn by the same dashboard and could fail the same way (`PL-T2Q2`).
+        The case's panels are restated without the frame, for the same reason as the
+        halts. The branch offer is restated from the case (`_restate_fork_panel`,
+        `PL-MMNX`). The bookmark standings are restated from each run's controller
+        (`_restate_bookmark_panel`, `PL-YHR3`). The trunk records that its dashboard
+        failed, so the case then offers no branch at all. A branch opened now would be
+        drawn by the same dashboard and could fail the same way (`PL-T2Q2`).
 
-        Every View is then handed the runs with no frame (`_show_views_the_runs`). So
-        the panels in the Areas show each halted run as its own panel shows it. A run that
-        was removed while frames fail is dropped from every View, and a View that a reader
-        chose while frames fail shows the runs (`PL-RF2S`). This comes after each run's halt
-        and the restatements, so a View that raises cannot hide either (`PL-25KS`). A View
-        that raises on this tick does not keep the tick from the Views after it
+        Every View is then handed the runs and the case's panels with no frame
+        (`_show_views_the_runs`). So the panels in the Areas show each halted run as its
+        own panel shows it, and every control outside a run is written from the
+        restated case, because each is inside a View. A run that was removed while
+        frames fail is dropped from every View, and a View that a reader chose while
+        frames fail shows the runs (`PL-RF2S`). This comes after each run's halt and the
+        restatements, so a View that raises cannot hide either (`PL-25KS`). A View that
+        raises on this tick does not keep the tick from the Views after it
         (`AreaLayout.refresh`).
 
         The frame is then tried again. When it fails again, some Views may already have
@@ -2579,8 +2516,8 @@ class SimulationView(QWidget):
                 except Exception as raised:
                     presentation_error = presentation_error or raised
 
-            for restatement in self.halt_restatements():
-                restatement.restate()
+            self._restate_fork_panel()
+            self._restate_bookmark_panel()
 
             try:
                 self._show_views_the_runs()
@@ -2602,19 +2539,6 @@ class SimulationView(QWidget):
 
         if presentation_error is not None:
             raise presentation_error
-
-    def halt_restatements(self) -> tuple[HaltRestatement, ...]:
-        """Every dashboard panel that offers an action on a run, with what restates it on a halt.
-
-        `_halt_every_run` restates each one, so this tuple is the one list of them
-        (`PL-5JTH`). Each copy of the bookmark panel holds its own marks editor, so the
-        one restatement writes the lists and the editor together.
-        """
-
-        return (
-            HaltRestatement(tuple(self._fork_panels), self._restate_fork_panel),
-            HaltRestatement(tuple(self._bookmarks_panels), self._restate_bookmark_panel),
-        )
 
     # -------------------------------------------------------------- timing
 

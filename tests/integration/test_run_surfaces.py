@@ -36,53 +36,8 @@ from anesthesia_sim.app.view_registry import (
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, ParameterControlsView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
-from anesthesia_sim.layout.model import LayoutModel
-from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
-from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
-
-#: One Workspace that holds every View this build registers. Each test then
-#: finds the View it reads, whichever Workspace is shipped first. The
-#: parameter controls run across the top. Under them, the concentration chart
-#: sits over the F_A/F_I plot, beside the accounting. That was the dashboard's
-#: layout before it began opening on the shipped Workspaces (`PL-2KXB`).
-_EVERY_VIEW = WorkspaceSet(
-    (
-        Workspace(
-            WorkspaceName("Every View"),
-            Origin.mine(),
-            LayoutModel(
-                (
-                    Window(
-                        Split(
-                            Orientation.COLUMN,
-                            (0.25, 0.75),
-                            (
-                                Area(AreaId(4), PARAMETER_CONTROLS),
-                                Split(
-                                    Orientation.ROW,
-                                    (0.82, 0.18),
-                                    (
-                                        Split(
-                                            Orientation.COLUMN,
-                                            (0.55, 0.45),
-                                            (
-                                                Area(AreaId(1), CONCENTRATION_CHART),
-                                                Area(AreaId(3), WASH_IN),
-                                            ),
-                                        ),
-                                        Area(AreaId(2), AGENT_ACCOUNTING),
-                                    ),
-                                ),
-                            ),
-                        )
-                    ),
-                ),
-                AreaId(5),
-            ),
-        ),
-    ),
-    0,
-)
+from anesthesia_sim.layout.tree import AreaId
+from tests.integration.simulation_view.simulation_view_support import _EVERY_VIEW
 
 _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 1000
