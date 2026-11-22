@@ -2431,6 +2431,11 @@ shows no verdict or amounts. Each chart shows an empty plot, with no trace, no
 is plotted because no frame could be drawn for that chart. The
 legend's 1 MAC and MAC-awake entries read "—", and the axes lose their labels.
 The banner says that the readouts and the charts are withheld.
+Removing a value that no longer describes the run, and saying where it was,
+follows FAA Advisory Circular 25-11B, *Electronic Flight Displays* (2014). Its
+paragraph 4.6.4 asks that lost or erroneous information be removed from the
+display or crossed out, so that it is not used, and its paragraph 6.2.1.7 puts
+a failure flag where the information it replaces would be.
 
 **If the runs the charts show change, and the runs stop before the screen is
 redrawn**, the charts withhold their frame in the same way, because it was
