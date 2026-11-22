@@ -819,6 +819,20 @@ class SettingPreview:
     value: float
 
 
+def _unrecorded_setting_error() -> SimulationExecutionError:
+    """Return the error for a setting written to the core without the controller recording it."""
+
+    return SimulationExecutionError(
+        "A setting was changed on the simulation core without "
+        "SimulationController recording it, so the run's record of its "
+        "settings would no longer match the settings the run steps under. "
+        "The list of control changes, the chart's preview and a branch are "
+        "built from that record. Change settings through "
+        "SimulationController. Reset starts a new run from the settings "
+        "the core now holds."
+    )
+
+
 class SimulationController:
     """Own the run controls and the read-only history for one app session."""
 
@@ -2875,9 +2889,11 @@ class SimulationController:
     ) -> None:
         """Apply one setting through the core and record the change, for each of the four setters.
 
-        Every setter takes the same four steps, in this order. A stopped run
+        Every setter takes the same five steps, in this order. A stopped run
         refuses the setting before anything is applied
-        (`_refuse_a_setting_on_a_stopped_run`). The value in force is read. The
+        (`_refuse_a_setting_on_a_stopped_run`), and so does a run whose core
+        holds a setting this controller did not record
+        (`_refuse_a_setting_after_an_unrecorded_one`). The value in force is read. The
         new value goes through the core's own setter, which refuses a value
         outside its supported range. `_record_control_change` then records the
         change, with a way to write the old value back if the settings record
@@ -2896,9 +2912,12 @@ class SimulationController:
             SimulationConfigurationError: If the run has stopped, if the core
                 refuses the value, or if the settings record refuses it. In
                 each case the run is left as it was.
+            SimulationExecutionError: If the core holds a setting this
+                controller did not record. Nothing is applied.
         """
 
         self._refuse_a_setting_on_a_stopped_run(control)
+        self._refuse_a_setting_after_an_unrecorded_one()
         system = self._state.uptake_system
         previous_value = held(system)
         apply(system, value)
@@ -3205,12 +3224,10 @@ class SimulationController:
         Reset starts a new run from the settings the core holds, so it clears
         the refusal.
 
-        A setting changed through this controller is not checked here.
-        `_record_control_change` records the whole settings record, so the
-        run definition then matches the core again, whatever else had moved.
-        Checking before the write would also refuse a perfusion fraction
-        written in a way that bypasses its guard, before `_record_control_change`
-        could write the setting back. `PL-VCP4`'s tests check that write-back.
+        A setting changed through this controller is checked before it is
+        applied, by `_refuse_a_setting_after_an_unrecorded_one`, because
+        `_record_control_change` records the whole settings record and would
+        otherwise adopt an unrecorded setting with it.
 
         Raises:
             SimulationConfigurationError: If the settings on the core fail the
@@ -3226,15 +3243,44 @@ class SimulationController:
 
         system.equation_settings()
 
-        raise SimulationExecutionError(
-            "A setting was changed on the simulation core without "
-            "SimulationController recording it, so the run's record of its "
-            "settings would no longer match the settings the run steps under. "
-            "The list of control changes, the chart's preview and a branch are "
-            "built from that record. Change settings through "
-            "SimulationController. Reset starts a new run from the settings "
-            "the core now holds."
-        )
+        raise _unrecorded_setting_error()
+
+    def _refuse_a_setting_after_an_unrecorded_one(self) -> None:
+        """Refuse a control change while the core holds a setting this controller did not record.
+
+        `_record_control_change` records the whole settings record that the
+        core holds. Without this check, a setting written to the core without
+        going through this controller, such as a circuit volume, would be
+        recorded with the next control change as if the learner had made it,
+        and the run would go on under it (`PL-S8FM`). The circuit and
+        alveolar gas volumes are fixed for a run (`docs/MODEL.md` § "The four
+        controls"), and no control records a change to either. So the change
+        is refused before anything is applied, with the error that a step
+        gives in the same case.
+
+        Where the settings record refuses the core's settings as they stand,
+        such as after a perfusion fraction written in a way that bypasses its
+        guard, this check lets the change go ahead. The record then refuses it
+        after the write, with the values that disagree, and the change is
+        written back (`PL-VCP4`).
+
+        Raises:
+            SimulationExecutionError: If the settings on the core pass the
+                settings record's own checks and differ from the settings the
+                run definition records.
+        """
+
+        system = self._state.uptake_system
+
+        if system.settings_key() == self._recorded_settings_key:
+            return
+
+        try:
+            system.equation_settings()
+        except SimulationConfigurationError:
+            return
+
+        raise _unrecorded_setting_error()
 
     def _record_control_change(
         self,

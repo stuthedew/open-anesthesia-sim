@@ -73,11 +73,18 @@ class SimulationState:
     (`StoredStates.through`), so the branch holds its parent's states for
     those seconds bit for bit (`PL-FST0`). The run keeps a copy, and its
     steps append to the copy. A record is accepted only where it ends at
-    `elapsed_s` and `uptake_system` stands exactly at its last state and at
-    that state's compensation terms (`AgentUptakeSystem.stands_at`). The
-    fractions are not compared with the ones read back from the system: a
-    compartment holds an amount, and the fraction read back from it can
-    differ in its last bit from the fraction that was written.
+    `elapsed_s`, and where the system's next step would continue it. That
+    holds in either of two ways. The system may stand exactly at the
+    record's last state and that state's compensation terms
+    (`AgentUptakeSystem.stands_at`), as a branch's system placed by
+    `resume_at` does. A compartment holds an amount, and the fraction read
+    back from it can differ in its last bit from the fraction that was
+    written, so the branch's fractions are not compared with the record's.
+    Or the system may read back exactly the record's last state and terms,
+    as a copy of a run opened from its system's own state does before its
+    first step. That run stored the fractions it read, and about one amount
+    in eight does not survive being written back from its fraction
+    (`PL-P5W1`). The comparison is made first, because it writes nothing.
     """
     stored_states: StoredStates = field(init=False)
     """The state of every second from the case's opening to `elapsed_s`.
@@ -102,8 +109,8 @@ class SimulationState:
         Raises:
             TypeError: `opening_record` is neither None nor a `StoredStates`.
             SimulationConfigurationError: `opening_record` does not end at
-                `elapsed_s`, or `uptake_system` does not stand at its last
-                state and that state's compensation terms.
+                `elapsed_s`, or `uptake_system` neither stands at its last
+                state and that state's compensation terms nor reads them back.
         """
 
         system = self.uptake_system
@@ -131,9 +138,13 @@ class SimulationState:
                 "second its opening record stores (StoredStates.through)"
             )
 
-        if not system.stands_at(
-            opening_record.state_at(reached_s), opening_record.compensation_at(reached_s)
-        ):
+        last_state = opening_record.state_at(reached_s)
+        last_compensation = opening_record.compensation_at(reached_s)
+
+        if (system.case_state(), system.accounting_compensation()) != (
+            last_state,
+            last_compensation,
+        ) and not system.stands_at(last_state, last_compensation):
             raise SimulationConfigurationError(
                 f"the uptake system does not stand at the state the opening record stores for "
                 f"{reached_s} s, so the run's next step would not continue that record. A branch "

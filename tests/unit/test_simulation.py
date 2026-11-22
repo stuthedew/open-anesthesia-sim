@@ -844,3 +844,39 @@ def test_a_run_opened_from_a_system_already_holding_agent_steps_and_copies() -> 
     assert state.stored_states.state_at(CaseInstant(1)) == duplicate.stored_states.state_at(
         CaseInstant(1)
     )
+
+
+_DIRECTLY_WRITTEN_ALVEOLAR_AMOUNTS_L = [0.001 + step * 0.0049 for step in range(40)]
+
+
+@pytest.mark.parametrize(
+    "rebuild",
+    [copy.deepcopy, lambda run: pickle.loads(pickle.dumps(run))],
+    ids=["deepcopy", "pickle"],
+)
+def test_a_run_opened_from_directly_written_amounts_copies_before_its_first_step(
+    rebuild: Callable[[SimulationState], SimulationState],
+) -> None:
+    """A copy accepts a system that reads back exactly the state the run stored (`PL-P5W1`).
+
+    The run stores the fraction it reads, amount divided by volume. Writing
+    that fraction back multiplies by the volume, and for about one amount in
+    eight the product differs from the amount in the last bit. Before the fix
+    the copy's check wrote the fraction back, so those copies were refused.
+    Forty amounts across 0.001 to 0.19 L include several such amounts. Each
+    copy must also take the same first step as the run it was copied from.
+    """
+
+    for amount_l in _DIRECTLY_WRITTEN_ALVEOLAR_AMOUNTS_L:
+        system = AgentUptakeSystem.for_agent("sevoflurane")
+        system.alveoli.agent_amount_l = amount_l
+        system.agent_simulation_validator.initial_agent_l = amount_l
+        state = SimulationState(uptake_system=system)
+
+        duplicate = rebuild(state)
+        state.advance()
+        duplicate.advance()
+
+        assert duplicate.stored_states.state_at(CaseInstant(1)) == state.stored_states.state_at(
+            CaseInstant(1)
+        ), amount_l
