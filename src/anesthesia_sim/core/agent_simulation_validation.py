@@ -4,12 +4,16 @@ This is mass-balance accounting. It checks the delivered, exhausted and stored
 agent against the accounting identity documented on `AgentSimulationValidator`.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from math import isfinite
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.checked_number import require_a_number, shown
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import (
+    require_state_by_name,
+    restored_through_checks,
+    state_by_name,
+)
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
@@ -38,6 +42,7 @@ _ACCOUNTING_TOTALS = frozenset({"initial_agent_l", "delivered_agent_l", "exhaust
 _COMPENSATION_TERMS = frozenset({"delivered_compensation_l", "exhausted_compensation_l"})
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class TotalsCompensation:
     """The compensation terms of the delivered and the exhausted totals, in litres.
@@ -71,11 +76,6 @@ class TotalsCompensation:
                 raise SimulationConfigurationError(
                     f"the compensation term {name} must be finite, and {shown(term)} is not"
                 )
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 UNCOMPENSATED = TotalsCompensation(delivered_l=0.0, exhausted_l=0.0)
@@ -135,6 +135,7 @@ def _compensated_sum(total: float, compensation: float, addend: float) -> tuple[
     return summed, (summed - total) - corrected
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class AgentSimulationValidationResult:
     """Result of checking whether all agent is accounted for."""
@@ -149,6 +150,7 @@ class AgentSimulationValidationResult:
     passes_validation: bool
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class AgentSimulationValidatorState:
     """A validator's run state holds three totals and two compensation terms.
@@ -209,6 +211,33 @@ class AgentSimulationValidator:
     exhausted_agent_l: float = 0.0
     delivered_compensation_l: float = field(default=0.0, init=False)
     exhausted_compensation_l: float = field(default=0.0, init=False)
+
+    def __getstate__(self) -> dict[str, object]:
+        """Return each total and compensation term by name, for a pickle or a copy (`PL-HXNL`)."""
+
+        return state_by_name(self)
+
+    def __setstate__(self, state: object) -> None:
+        """Restore each total and compensation term through `__setattr__`'s checks.
+
+        The constructor does not take the two compensation terms, so each
+        field is written by name instead. Every write passes through
+        `__setattr__`, which makes the same check as for any other write. No
+        field is checked against another, so the order of the writes does not
+        matter.
+
+        Raises:
+            TypeError: `state` is not a dict holding exactly this validator's
+                field names (`require_state_by_name`), or a value is not an
+                `int` or a `float`.
+            SimulationConfigurationError: a total is negative or not finite,
+                or a compensation term is not finite.
+        """
+
+        by_name = require_state_by_name(self, state, [item.name for item in fields(self)])
+
+        for name, value in by_name.items():
+            setattr(self, name, value)
 
     if not TYPE_CHECKING:  # pragma: no branch - TYPE_CHECKING is False at run time
         # The `__setattr__` below is hidden from `mypy` on purpose, as

@@ -1,104 +1,168 @@
-"""Restore a checked record from a pickle or a copy through its constructor's checks.
+"""Save a record by field name, and rebuild it through its checks when a pickle or a copy loads it.
 
-A checked record is a frozen dataclass in this package that checks its fields
-in `__post_init__`. Each one gives itself a `__setstate__` that calls
-`restore_through_checks`, so a record rebuilt by `pickle`, `copy.copy` or
-`copy.deepcopy` is checked as the constructor checks it.
-`tests/unit/test_record_restores.py` walks `core/` and fails for a checked
-record that restores without its checks (`PL-8W1Q`).
+`pickle`, `copy.copy` and `copy.deepcopy` rebuild an object without calling
+its constructor. They create an empty object and pass its saved state to
+`__setstate__`. So a record whose constructor checks its fields can come back
+holding a value that the constructor would refuse, unless its `__setstate__`
+runs those checks. A saved settings record whose state held a cardiac output
+of 1000.0 as a bare `float` once loaded without error (`PL-S11T`), and so did
+a saved `Keyframe` whose `instant_s` was a bare -50.0 (`PL-8W1Q`).
+`CheckedQuantity.__reduce__` (`core/checked_number.py`) rebuilds a value
+pickled as its checked type through that type's constructor, but it does not
+protect a field whose saved state holds a bare number.
+
+Every record in `core/` therefore saves its state as a dict from each field's
+name to its value, and restores from that dict through its own checks.
+`restored_through_checks` gives a dataclass whose constructor takes every
+field both methods. A record with a constructor of another shape writes its
+own pair, and checks the saved dict with `require_state_by_name`.
+`tests/unit/test_record_restores.py` walks `core/` and fails for a record
+that restores another way (`PL-8W1Q`, `PL-HXNL`).
+
+**Why by name.** The `__getstate__` that `dataclass` writes for a frozen,
+slotted record returns the field values in field order, without their names.
+A record saved before two fields of one type changed places would then load
+with the two values swapped, and both would pass every check. Sevoflurane's
+liquid density of 1.5203 g/mL and its standard deviation of 0.0008 g/mL,
+swapped, would load as a density of 0.0008 g/mL. A dict keyed by field name
+loads each value into its own field whatever the order, and a field renamed
+or removed since the save is refused by name.
+
+**What this protects against.** It protects against a saved value that is
+wrong, or saved under an older shape of the record. It does not protect
+against a pickle crafted as an attack. A pickle can call any function that
+can be imported, so a crafted pickle can still write a record's slots
+directly. The Python documentation warns against loading a pickle from an
+untrusted source for that reason
+(https://docs.python.org/3/library/pickle.html), so nothing here treats a
+pickle as untrusted input.
 """
 
 from __future__ import annotations
 
-from dataclasses import fields
+import inspect
+from collections.abc import Collection, Mapping
+from dataclasses import fields, is_dataclass
 
-__all__ = ["restore_through_checks"]
+__all__ = [
+    "require_state_by_name",
+    "restore_through_checks",
+    "restored_through_checks",
+    "state_by_name",
+]
+
+
+def require_state_by_name(
+    record: object, state: object, names: Collection[str]
+) -> Mapping[str, object]:
+    """Return `state` as a mapping from each of `names` to its saved value.
+
+    Every record's `__setstate__` calls this before it rebuilds anything, so
+    each one refuses a saved state of the wrong shape with the same message.
+
+    Args:
+        record: The empty record that `pickle` or `copy` created. Only its type
+            is read, to name it in a refusal.
+        state: What the record's `__getstate__` returned when it was saved.
+        names: The names that the saved state must hold, and no others.
+
+    Raises:
+        TypeError: `state` is not a dict, or it does not hold exactly `names`.
+            A state saved as a list or tuple of values in field order, as
+            `dataclass` writes one, is refused, because its values cannot be
+            matched to their fields by name.
+    """
+
+    record_type = type(record).__name__
+
+    if not isinstance(state, dict):
+        raise TypeError(
+            f"{record_type} is restored from its field values by name, "
+            f"not from a {type(state).__name__}"
+        )
+
+    missing = [name for name in names if name not in state]
+    unknown = sorted(str(key) for key in state if key not in names)
+
+    if missing or unknown:
+        raise TypeError(
+            f"{record_type} is restored from its field values by name, and the saved state "
+            f"lacks {', '.join(missing) or 'nothing'} and holds unknown "
+            f"{', '.join(unknown) or 'nothing'}"
+        )
+
+    return state
+
+
+def state_by_name(record: object) -> dict[str, object]:
+    """Return a dataclass record's state for a pickle or a copy: each field's name and value."""
+
+    return {field.name: getattr(record, field.name) for field in fields(record)}  # type: ignore[arg-type]
 
 
 def restore_through_checks(record: object, state: object) -> None:
-    """Restore an unpickled or copied record by building it again through its constructor.
+    """Restore an unpickled or copied dataclass record by running its constructor on it.
 
-    Unpickling or copying a frozen record creates an empty object and passes
-    the saved field values to `__setstate__`. The `__setstate__` that
-    `dataclass` generates writes each value straight into its slot, so
-    `__post_init__` never runs. A saved settings record whose state held a
-    cardiac output of 1000.0 as a bare `float` loaded without error, and a
-    `RunDefinition` opened under it advanced. A saved fresh gas flow of NaN
-    also loaded (`PL-S11T`, measured 2026-10-25). A saved `Keyframe` whose
-    `instant_s` was a bare -50.0 loaded too (`PL-8W1Q`).
-    `CheckedQuantity.__reduce__` (`core/checked_number.py`) protects a value
-    that was pickled as its checked type. It does not protect a field whose
-    saved state holds a bare number.
+    The function runs the record's own `__init__` on the empty record, with
+    each saved value passed by its field name. So every check that the
+    constructor makes is made, in `__post_init__` and in a `__setattr__` that
+    guards each write, and a value that the constructor would refuse is refused
+    on load, with the constructor's own exception.
 
-    So each checked record's `__setstate__` calls this function. The function
-    builds a new record from the saved values, which runs every check that the
-    constructor runs. It then copies the checked fields into the restored
-    object. A state that the constructor would refuse is refused on load, with
-    the constructor's own exception.
+    The check sits in `__setstate__` rather than in `__reduce__`. Every pickle
+    protocol, `copy.copy` and `copy.deepcopy` restore the record through
+    `__setstate__`, and so would a pickle written in another form. A
+    `__reduce__` that called the constructor would change only how a record is
+    written from now on.
 
-    The check sits in `__setstate__` rather than in `__reduce__` for this
-    reason. Every pickle protocol, `copy.copy` and `copy.deepcopy` restore the
-    record through `__setstate__`, and so does a pickle written before this
-    function existed. A `__reduce__` that called the constructor would change
-    only how a record is written from now on. A saved or edited state in the
-    form that `dataclass` writes would still load through `__setstate__`.
-
-    This function protects against a saved value that is wrong, not against a
-    pickle crafted as an attack. A pickle can call any function that can be
-    imported, so a crafted pickle can still write a record's slots directly.
-    A pickle is trusted input.
-
-    The state holds the field values in field order, without their names, as
-    `dataclass` writes it. Suppose the order of the fields changes. A record
-    saved before that change would then load its values into the wrong fields,
-    wherever those values still pass the checks. A saved-run file format that
-    stores each value with its field name would close that gap; the first
-    loader of saved runs chooses the format (`PL-HXNL`).
-
-    Args:
-        record: The empty record that `pickle` or `copy` created. Its type is
-            the dataclass whose constructor is run.
-        state: What the record's `__getstate__` returned when it was saved:
-            its field values, in field order.
-
-    The record must be a frozen dataclass with `slots=True`, because only then
-    is its saved state the list of field values that this function reads. Every
-    field must be one that the constructor takes. `tests/unit/test_record_restores.py`
-    holds every checked record in `core/` to both.
+    `restored_through_checks` installs this function as a record's
+    `__setstate__`, and refuses a record that the constructor cannot rebuild.
 
     Raises:
-        TypeError: the state is not a list or tuple of exactly the record's
-            field values, the record has a field that the constructor does
-            not take, or the constructor refuses a value's type.
+        TypeError: the state is not a dict holding exactly the record's field
+            names (`require_state_by_name`), or the constructor refuses a
+            value's type.
         SimulationConfigurationError: the constructor refuses a value.
     """
 
-    record_type = type(record)
+    names = [field.name for field in fields(record)]  # type: ignore[arg-type]
+    by_name = require_state_by_name(record, state, names)
 
-    if not isinstance(state, (list, tuple)):
+    type(record).__init__(record, **by_name)
+
+
+def restored_through_checks[Record: type](record_type: Record) -> Record:
+    """Give a dataclass a `__getstate__` that saves by field name, and a `__setstate__` that checks.
+
+    Apply it above `@dataclass`, so that it replaces the pair that `dataclass`
+    writes for a frozen, slotted record. The record then saves its state with
+    `state_by_name` and restores it with `restore_through_checks`.
+
+    Raises:
+        TypeError: `record_type` is not a dataclass, or its constructor does
+            not take exactly its fields. A field with `init=False` is not
+            passed to the constructor, and an `InitVar` is passed to it but is
+            not saved, so the constructor cannot rebuild either record from
+            its saved fields. Such a record writes its own `__getstate__` and
+            `__setstate__`. The order does not matter, because every value is
+            passed by name. The error is raised when the class is defined, so
+            a misshapen record fails at import.
+    """
+
+    if not is_dataclass(record_type):
+        raise TypeError(f"{record_type.__name__} is not a dataclass")
+
+    names = sorted(field.name for field in fields(record_type))
+    taken = sorted(inspect.signature(record_type).parameters)
+
+    if taken != names:
         raise TypeError(
-            f"{record_type.__name__} is restored from a list of its field values, "
-            f"not a {type(state).__name__}"
+            f"{record_type.__name__} cannot be restored through its constructor, because the "
+            f"constructor takes {', '.join(taken) or 'nothing'} and the record's fields are "
+            f"{', '.join(names) or 'none'}"
         )
 
-    record_fields = fields(record_type)  # type: ignore[arg-type]
-    derived = [field.name for field in record_fields if not field.init]
+    record_type.__getstate__ = state_by_name  # type: ignore[method-assign,assignment]
+    record_type.__setstate__ = restore_through_checks  # type: ignore[attr-defined]
 
-    if derived:
-        raise TypeError(
-            f"{record_type.__name__} cannot be restored through its constructor, because "
-            f"the constructor does not take {', '.join(derived)}"
-        )
-
-    names = tuple(field.name for field in record_fields)
-
-    if len(state) != len(names):
-        raise TypeError(
-            f"{record_type.__name__} is restored from its {len(names)} field values, "
-            f"not from {len(state)}"
-        )
-
-    checked = record_type(**dict(zip(names, state, strict=True)))
-
-    for name in names:
-        object.__setattr__(record, name, getattr(checked, name))
+    return record_type

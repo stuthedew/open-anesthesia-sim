@@ -359,9 +359,7 @@ class _ForgingPickler(pickle.Pickler):
             return NotImplemented
 
         constructor, arguments, state = obj.__reduce_ex__(self._protocol)[:3]
-        names = [field.name for field in fields(obj)]  # type: ignore[arg-type]
-        forged = list(state)
-        forged[names.index(self._field)] = self._value
+        forged = {**state, self._field: self._value}
 
         return constructor, arguments, forged
 
@@ -464,13 +462,14 @@ def test_an_unpickled_settings_record_refuses_tissue_rows_of_another_type(protoc
 
 
 def test_a_settings_record_is_not_restored_from_a_state_of_another_shape() -> None:
-    """A state other than the list of field values that `dataclass` writes is refused."""
+    """A state that does not name exactly the record's fields is refused, by name (`PL-HXNL`)."""
 
     restored = object.__new__(UptakeEquationSettings)
 
     with pytest.raises(
         TypeError,
-        match="^UptakeEquationSettings is restored from a list of its field values, not a dict$",
+        match="^UptakeEquationSettings is restored from its field values by name, and the saved "
+        "state lacks .*fresh_gas_flow_l_min.* and holds unknown nothing$",
     ):
         restored.__setstate__({"cardiac_output_l_min": CARDIAC_OUTPUT_L_MIN})
 

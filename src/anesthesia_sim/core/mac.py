@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from anesthesia_sim.core.checked_number import shown
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.concentration import MacPercent, require_mac_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
@@ -36,6 +36,7 @@ from anesthesia_sim.core.parameters import (
 __all__ = ["PatientMac", "mac_for_patient"]
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class PatientMac:
     """One agent's 1 MAC for one patient, as a percent of one atmosphere, and the age it is for.
@@ -67,11 +68,6 @@ class PatientMac:
                 f"age_years of {self.age_years} is not an age: a MAC belongs to a patient "
                 "older than zero years"
             )
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 def mac_for_patient(agent: AgentParameters, patient: ReferenceAdultParameters) -> PatientMac:
