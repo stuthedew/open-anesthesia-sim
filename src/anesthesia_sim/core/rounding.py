@@ -267,11 +267,25 @@ shipped agent's step and fails when one needs more than three.
 AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L: Final = 1e-12
 """A step also passes the agent balance when the unaccounted agent is within 1 picolitre of gas.
 
-A step passes on either limit. While a run has handled less than a millilitre
-of agent gas, this limit is the wider of the two. In the 3600 s runs of
-2026-11-21, the largest unaccounted amount was 1.1e-12 L, for isoflurane, and
-that step passed on the relative limit (`docs/VERIFICATION.md` § "Selected method
-(as implemented)").
+A step passes on either limit. This limit equals
+`AGENT_ACCOUNTING_RELATIVE_TOLERANCE` applied to 1 mL of agent gas, so it is the
+wider of the two only while a run has handled less than 1 mL. Once a run has
+handled more, the relative limit decides.
+
+This is a fixed allowance, not a derived bound. The value dates from v0.1.0
+(commit `875ba0850`), and no record says why it is 1e-12 and not another number
+(`PL-FV44`). No run on record needs it: the rounding in the balance grows with
+the agent handled, so the relative limit admits it at every scale. On
+2026-11-22 the largest relative residual in the first 300 s of each shipped
+agent's default run was 4.0e-14, and each run had handled 1 mL by its second
+step. So the limit only widens what passes while less than 1 mL has been
+handled.
+
+In the 3600 s runs of 2026-11-21, the largest unaccounted amount was 1.1e-12 L,
+for isoflurane, and that step passed on the relative limit (`docs/VERIFICATION.md`
+§ "Selected method (as implemented)"). `tests/unit/test_agent_simulation_validation.py`
+checks that, with 1 µL handled, a balance short by 0.9 pL passes and one short by
+1.1 pL halts the run.
 """
 
 FLOW_FRACTION_TOLERANCE: Final = 1e-12

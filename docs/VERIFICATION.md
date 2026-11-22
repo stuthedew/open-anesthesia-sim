@@ -404,9 +404,10 @@ amount of agent left unaccounted for was 5.1e-13 L for sevoflurane, 1.1e-12 L fo
 
 The check on agent accounting (`check_agent_accounting`) accepts an error within either of two
 limits: a fixed 1 picolitre, set in `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L`, or a share of the
-agent handled. The fixed limit catches a gross error early, while little agent has been
-delivered, and the share limit takes over after that. The rounding error is a thousand times
-smaller than the share limit, so no accuracy is lost.
+agent handled. A step passes on either limit, so the fixed limit can only admit an error, never
+refuse one. It is the wider limit only while less than 1 mL of agent has been handled, and the
+share limit decides after that. The rounding error is a thousand times smaller than the share
+limit, so no accuracy is lost.
 
 In litres, though, that error scales with the largest amount in play: about 14 L of delivered
 agent over an hour at desflurane's 1 MAC dial setting. A long run therefore routinely exceeds the fixed
