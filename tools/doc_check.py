@@ -9640,6 +9640,57 @@ def check_math_delimiters(root: Path, report: Report) -> None:
                 )
 
 
+# regex: a decision record opens with a fixed phrase and an ISO date, the form
+# `.claude/rules/citation-drift.md` prescribes for recording one.
+# A hard wrap may fall at either space, and renders as one space, so each is a `GAP`.
+DECISION_RECORD_RE = re.compile(rf"\(project{GAP}owner,{GAP}{ISO_DATE_RE.pattern}")
+# regex: an item id is the store's own grammar, `ID_PATTERN`, not part of a longer word.
+ITEM_ID_RE = re.compile(rf"(?<![\w-]){ID_PATTERN}")
+
+
+def check_model_reader_text(root: Path, report: Report) -> None:
+    """Refuse a decision record or an item id in the text `docs/MODEL.md` shows.
+
+    `docs/MODEL.md` is written for a clinician, who does not know this
+    repository's own names (`.claude/rules/document-readers.md`). Who decided
+    what and when goes in the item, and an item id is a name that only this
+    repository gives meaning to. The document held 20 decision records on
+    2026-11-10 and none, and no item id, once the restructure of `PL-48MX`
+    landed. Nothing kept them out, so this check does (`PL-RLRG`).
+
+    A decision record is "(project owner, " and a date, the form
+    `.claude/rules/citation-drift.md` prescribes. A hard wrap inside it renders
+    as a space, so the record is matched across a line break, and the error
+    gives the line on which it starts. Only the text a reader sees is read:
+    paragraphs, list items, headings and tables, code spans included, because
+    a code span is shown too. Every other line is blanked before the match, so
+    an HTML comment, such as a provenance marker, is not read, and a blank line
+    still ends a paragraph.
+    """
+    path = root / MODEL
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UNREADABLE:
+        return
+    lines = split_lines(text)
+    shown = block_lines(_body_lines(lines), PROSE)
+    joined = "\n".join(line if index in shown else "" for index, line in enumerate(lines))
+    for match in DECISION_RECORD_RE.finditer(joined):
+        record = " ".join(match.group(0).split())
+        report.errors.append(
+            f"{MODEL}:{joined.count(chr(10), 0, match.start()) + 1} records a decision, "
+            f"`{record}`, in text written for a clinician; move the record to the item and "
+            "keep only the fact here"
+        )
+    for match in ITEM_ID_RE.finditer(joined):
+        report.errors.append(
+            f"{MODEL}:{joined.count(chr(10), 0, match.start()) + 1} names the item "
+            f"`{match.group(0)}`, which a clinician cannot look up; state the reason in words, "
+            "and put the item id in docs/VERIFICATION.md or docs/PARAMETERS.md if a developer "
+            "needs it"
+        )
+
+
 #: What may close a line after its last word: emphasis, a code span, a
 #: bracket or a quotation mark. `_ends_a_sentence` looks past these to the
 #: punctuation they follow.
@@ -10736,6 +10787,7 @@ def _analyze(root: Path) -> Report:
     check_ruff_cache(root, report)
     check_gate_parity(root, report)
     check_math_delimiters(root, report)
+    check_model_reader_text(root, report)
     check_wrapped_list_items(root, report)
     check_host_claims(root, report)
     check_raising_docstrings(root, report)
