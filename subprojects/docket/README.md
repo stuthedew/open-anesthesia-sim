@@ -2208,9 +2208,9 @@ versions are chosen by hand, a `release` naming none prints the refusal in
 place of asking for a version it would then refuse (`PL-53Y6`). The digest
 reads the refs for it wherever `Readiness.is_worth_cutting` holds, which
 means there is finished work to cut, not that a release is being offered: where
-the roadmap has reserved the number a bump would reach, the line says
-`No release to offer` and the read still runs, which between milestones is the
-usual case (`PL-FT3M`).
+the roadmap has reserved the number a bump would reach, the line offers the
+next patch instead, or says `No release to offer` where that patch is spent
+too, and the read runs either way (`PL-FT3M`, `PL-49J8`).
 
 **A release that cannot finish writing itself is resumable, and one that is
 not resumed is reported.** Three things reach disk — the `milestone:` stamp on
