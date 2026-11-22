@@ -229,7 +229,7 @@ def test_the_wash_in_view_writes_its_fractions_with_subscripts(application: QApp
     assert "<" not in spoken, spoken
     # The hover readout is plain text, so it writes the ratio as the abstract
     # does. The expected line is the example in `docs/INTERFACE.md` § "Which
-    # series answer a hover, and which do not".
+    # lines on the chart show a hover readout".
     assert WASH_IN_HOVER_LABEL == "Wash-in FA/FI (alveolar / modelled circuit)"
 
 
