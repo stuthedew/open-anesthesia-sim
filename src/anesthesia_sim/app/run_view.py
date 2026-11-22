@@ -539,8 +539,9 @@ class RunView(QWidget):
         )
         # These two labels sit on the heading line above the row. One shows the
         # delivered dial's setting in both units. The other shows the 1 MAC value
-        # that divides every ×MAC number in the row. Both values are in
-        # `docs/MODEL.md`'s per-substance tier. The dial and the chart's caption
+        # that divides every ×MAC number in the row. Both values are in the
+        # per-substance tier of `docs/INTERFACE.md` § "The unconditional
+        # values". The dial and the chart's caption
         # cannot carry them, because each is now a View that a reader can close
         # (`PL-NWTM`). `show_presentation` writes both from one record on every
         # path, so the two cannot disagree.

@@ -478,7 +478,8 @@ names stay distinct until the split is made:** the milestone that implements
 this design moves the patient circuit to the run. From then, a machine profile
 carries `apparatus_volume_l`, and the run supplies the rest of $`V_C`$. Today's
 meaning of `circuit_volume_l` is written where a profile author reads it: in the
-schema docstring, the data file and `docs/MODEL.md` (`PL-TBMX`).
+schema docstring, the data file and `docs/MODEL.md` § "Breathing circuit"
+(`PL-TBMX`).
 
 **The model keeps its envelope.** The bounds in `core/supported_ranges.py` are
 the domain the compartment model is claimed over, and they stay exactly where
@@ -546,8 +547,8 @@ circuit, for three reasons:
    setting the sum against 9.86 L. The comparison therefore bears on counting
    a lung twice, and says nothing about how the 6.0 L divides between
    apparatus and patient circuit.
-3. `docs/MODEL.md` compares the 6.0 L with Shin et al.'s totals that include the
-   patient circuit, the Primus's 5.9 L, rather than with their apparatus figures.
+3. `docs/MODEL.md` § "The breathing circuit" compares the 6.0 L with Shin et
+   al.'s totals that include the patient circuit, the Primus's 5.9 L, rather than with their apparatus figures.
 
 **No source divides the 6.0 L between apparatus and patient circuit**, so
 splitting it would invent two numbers where one is recorded. The profile
@@ -763,8 +764,9 @@ already in the closed set: one data file and its provenance rows, and nothing
 else.** The machine needs one JSON file under
 `src/anesthesia_sim/data/machines/`, naming one strategy for each of the three
 slots, with every field sourced and a non-empty `not_modelled` list. The
-documentation check requires a provenance row in `docs/MODEL.md` for every
-number in a data file, so the machine also needs one row there for each of its
+documentation check requires a provenance row in
+`docs/PARAMETERS.md` § "The stored values, by data file and key" for every number
+in a data file, so the machine also needs one row there for each of its
 numbers; `ROADMAP.md`'s item 1 counts those rows in this cost. **It needs no
 change to `core/`, no change to any patient row and no new test of the
 physics.** The physics is the matrix, which is already tested, and the new
@@ -775,7 +777,7 @@ the machine profile small". They therefore cover the new file without a test
 of its own. The comparison table between machines (`PL-WZVZ`) is derived from
 the profiles (Question 6), so nobody writes a row for it. The cost can be
 checked: the diff touches one file under `data/machines/` and the provenance
-rows in `docs/MODEL.md`.
+rows in `docs/PARAMETERS.md` § "The stored values, by data file and key".
 
 **A machine needing a new strategy, in any of the three slots: a design event,
 and a bounded one.** It is added in this order. The survey gains the entry for
@@ -857,7 +859,8 @@ names only the sources this document reasons from.
   with a standing bellows ventilator, rather than an idealized one; used in
   § "Fresh gas inlet position is not modelled". Abstract read 2026-11-11
   through the PubMed MCP server, which holds no full text for it.
-  `docs/MODEL.md` cites the same paper, read at full text on 2026-09-06.
+  `docs/VERIFICATION.md` § "Parameter-recovery test" cites the same paper, read
+  at full text on 2026-09-06.
 - Johnston RV, Andrews JJ, Deyo DJ, et al. *Anesth Analg.* 1994;79(3):548–552 —
   the Tec 6 desflurane vaporizer characterised from 1% to 18%, the provenance
   of desflurane's 18% maximum dial setting; used in Question 2's

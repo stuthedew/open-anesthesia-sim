@@ -298,7 +298,7 @@ CONTROL_EXEMPTION_NAME = "FOREGROUND_NOT_DECLARED"
 #: symbol from a module under `APP`, in backticks. Bare, so `mount` and
 #: not `mount()`; a span holding anything else - a path, a prose word, an item
 #: id - is left alone, which is what keeps `.claude/rules/ui-color.md` and
-#: `docs/MODEL.md` readable as the citations they are.
+#: `docs/INTERFACE.md` readable as the citations they are.
 # regex: an identifier in a code span is a flat token of a fixed shape.
 SYMBOL_SPAN_RE = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
 
@@ -360,9 +360,9 @@ AA_NON_TEXT = 3.0
 #: a measurement of what a dichromat perceives, and not a WCAG measure: SC
 #: 1.4.11 is defined on the color the display actually emits. Ratios computed
 #: on simulated output are this project's own bar, recorded as such in
-#: `docs/MODEL.md`, and are used for exactly two things - the trace floor
-#: below, and the pairwise matrix that shows why line style rather than color
-#: has to separate these curves.
+#: `docs/INTERFACE.md` § "Where the chart goes beyond AA", and are used for
+#: exactly two things - the trace floor below, and the pairwise matrix that
+#: shows why line style rather than color has to separate these curves.
 DICHROMACY_TRANSFORMS: dict[str, tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]] = {
     "protanopia": (
         (0.14980, 1.19548, -0.34528, 0.10764, 0.84864, 0.04372, 0.00384, -0.00540, 1.00156),
@@ -383,7 +383,8 @@ DICHROMACY_TRANSFORMS: dict[str, tuple[tuple[float, ...], tuple[float, ...], tup
 
 #: The four ways every trace is measured: as displayed, and as simulated for
 #: each dichromacy. Normal vision is named rather than implied so a report
-#: column and a `docs/MODEL.md` row cannot come to mean different things.
+#: column and a row of the table in `docs/INTERFACE.md` § "The six compartment
+#: traces: what separates them" cannot come to mean different things.
 VISION_MODELS: tuple[str, ...] = ("normal", *DICHROMACY_TRANSFORMS)
 
 #: What every chart trace must clear against the panel in *all four* models.

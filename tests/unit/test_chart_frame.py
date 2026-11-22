@@ -1577,8 +1577,8 @@ def test_a_run_out_of_reach_leaves_the_three_line_form_standing() -> None:
     """Reporting every run in reach is not the same as reporting every run drawn.
 
     The second run's alveolar point is 30 px away, so only one run is
-    reported. The readout is the three-line form that `docs/MODEL.md`
-    derives. It still names the run, because two runs are drawn (`PL-MN4J`).
+    reported. The readout is the three-line form that `docs/INTERFACE.md`
+    § "What it shows" derives. It still names the run, because two runs are drawn (`PL-MN4J`).
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -2275,7 +2275,10 @@ def test_no_compared_run_s_real_curve_is_thinner_than_a_preview_of_its_compartme
 
 
 def test_no_trace_and_no_preview_is_drawn_thinner_than_two_pixels() -> None:
-    """A 1 px antialiased line renders under 3:1 against the panel (docs/MODEL.md)."""
+    """A 1 px antialiased line renders under 3:1 against the panel.
+
+    `docs/INTERFACE.md` § "The six compartment traces: what separates them" gives the reason.
+    """
 
     assert MINIMUM_TRACE_STROKE_WIDTH == 2
     assert all(style.stroke_width >= 2 for style in COMPARTMENT_TRACES)

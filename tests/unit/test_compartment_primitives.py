@@ -410,8 +410,9 @@ def test_the_closed_form_is_independent_of_step_size(primitive: CompartmentPrimi
 
 @_PRIMITIVE_CASES
 def test_zero_flow_is_an_exact_no_op(primitive: CompartmentPrimitive) -> None:
-    """`docs/MODEL.md` states the no-flow case as an equality, so the test asserts equality.
+    """The no-flow case is stated as an equality, so the test asserts equality.
 
+    `docs/VERIFICATION.md` § "Zero-tissue-flow test" states it.
     The compartment must hold exactly the loaded amount and report exactly
     zero agent moved, not a value within a tolerance of either. No closed form
     has a zero-flow branch. Each is exact at zero flow on its own: the

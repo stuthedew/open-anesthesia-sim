@@ -511,9 +511,9 @@ def test_the_alveolar_row_is_the_alveolar_balance() -> None:
 
 
 def test_the_pulmonary_uptake_rate_is_formed() -> None:
-    """The matrix forms the rate `docs/MODEL.md` specifies, which the operator split never formed.
+    """The matrix forms the pulmonary uptake rate, which the operator split never formed.
 
-    The document gives the pulmonary uptake rate as Q*lambda_bg(F_A - F_v)
+    `docs/MODEL.md` § "Alveolar gas" gives that rate as Q*lambda_bg(F_A - F_v)
     (`PL-Y5BV`). The alveolar row's own entries are that expression divided by
     the alveolar volume. Asserting the identity here turns "it is in there
     somewhere" into a check.
@@ -650,7 +650,7 @@ def test_the_compartments_neither_create_nor_lose_agent() -> None:
 
 @pytest.mark.parametrize("flow", SUPPORTED_FLOWS, ids=FLOW_IDS)
 def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(flow: Flow) -> None:
-    """`docs/MODEL.md`'s three zero-flow cases, expressed as arithmetic.
+    """The zero-flow cases of `docs/MODEL.md` § "The four controls", expressed as arithmetic.
 
     Each case says that a transfer stops. Under the operator split, each case
     needed an early return, because its closed form divided by the flow. Here
@@ -670,8 +670,8 @@ def test_a_zero_flow_is_a_zero_rate_and_needs_no_branch(flow: Flow) -> None:
     if zeroed == "alveolar_ventilation_l_min":
         assert matrix[INSPIRED_FRACTION][ALVEOLAR_FRACTION] == 0.0
         assert matrix[ALVEOLAR_FRACTION][INSPIRED_FRACTION] == 0.0
-        # docs/MODEL.md says the circuit equation reduces here to the v0.0.2
-        # circuit equation: fresh-gas wash-in alone.
+        # With no ventilation, docs/MODEL.md § "Breathing circuit" reduces the
+        # circuit equation to fresh-gas wash-in alone.
         assert matrix[INSPIRED_FRACTION][INSPIRED_FRACTION] == pytest.approx(
             -FRESH_GAS_FLOW_L_S / CIRCUIT_VOLUME_L
         )

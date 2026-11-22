@@ -5,9 +5,10 @@ and how data flows through it. It is a map for contributors, not a scientific
 specification. To find where a change belongs, start at § "Where new code
 belongs", the last chapter.
 § "Layering" says what an Area, a View and a Workspace are.
-For the equations, units, parameter provenance, and numerical method, see
-[`docs/MODEL.md`](MODEL.md). For version history and milestones, see
-[`ROADMAP.md`](../ROADMAP.md). For the origin of the interface's area and
+For the equations and units, see [`docs/MODEL.md`](MODEL.md). For each stored
+value's source, see `docs/PARAMETERS.md` § "Parameter provenance". For the
+numerical method, see `docs/VERIFICATION.md` § "Numerical method". For version
+history and milestones, see [`ROADMAP.md`](../ROADMAP.md). For the origin of the interface's area and
 workspace model, see [`docs/interface-provenance.md`](interface-provenance.md).
 That document says which parts of Blender were studied, under which licence
 rules, and what this project deliberately does differently.
@@ -289,8 +290,7 @@ a sequence of separate exchanges between compartments or a generic numerical
 integrator:
 
 1. `core/governing_equations.py` assembles the system matrix `A`. Each entry
-   is one term of one balance equation in `docs/MODEL.md`,
-   "Equations".
+   is one term of one balance equation in `docs/MODEL.md` § "Equations".
 2. `core/matrix_exponential.py` computes `exp(A dt)`. This is the system's
    exact propagator, because every setting is held constant across a step.
    The result is cached against the settings it was built for, and it is
@@ -1300,7 +1300,7 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
   solution, the sevoflurane patient reference scenario, and the from-scratch
   RK4 integration of the coupled system in `test_coupled_dynamics.py`.
   These are the regression tests referred to throughout the release gate in
-  `docs/MODEL.md`. A reference case may import the parameter loaders, but it
+  `docs/VERIFICATION.md` § "Release gate". A reference case may import the parameter loaders, but it
   must not take its expected value from a solver in `core/`. The expected value
   is worth having because it was derived independently of the code it checks.
 - **`tests/benchmarks/`** — measurement harnesses, which the test runner does
@@ -1330,8 +1330,8 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
 ## Where new code belongs
 
 - A new physiological compartment or coupling → `core/`. Document its
-  equations and reference cases in `docs/MODEL.md` first, as `CLAUDE.md`
-  requires.
+  equations in `docs/MODEL.md` § "Equations" and its reference cases in
+  `docs/VERIFICATION.md` § "Required tests" first, as `CLAUDE.md` requires.
 - A new agent, patient or machine profile → a new validated, cited file under
   the matching subdirectory of `data/`, and any parsing support the file needs
   in `core/parameters.py`. Do not hardcode its values in `core/`.
@@ -1496,5 +1496,6 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   drawn-point rule. A trace of a *derived* quantity with a domain, such as the
   wash-in ratio, also stays out of the table. The table binds a line to one
   `RecordedSeries`, and a value that is sometimes absent has no such series to
-  bind to. Such a trace must state its domain instead, in `docs/MODEL.md` and
-  at the point of display.
+  bind to. Such a trace must state its domain instead, at the point of display
+  and in `docs/INTERFACE.md`. For the wash-in ratio, that statement is in
+  `docs/INTERFACE.md` § "F_A/F_I as a displayed ratio".

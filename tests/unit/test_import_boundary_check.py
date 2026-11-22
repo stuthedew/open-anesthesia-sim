@@ -238,8 +238,9 @@ class TestAnalyze:
     def test_the_clock_and_generator_boundaries_permit_no_module_under_core(
         self, package: str
     ) -> None:
-        """`CLAUDE.md`'s never-wall-clock rule, and MODEL.md's guarantee, measured.
+        """`CLAUDE.md`'s never-wall-clock rule, and the reproducibility guarantee, measured.
 
+        `docs/VERIFICATION.md` § "The reproducibility guarantee" states the guarantee.
         The tree is `core/` and not the whole package deliberately: the
         interface schedules its ticks with the wall clock, which the guarantee
         permits. Widening this to `src/anesthesia_sim` would fail on a real

@@ -134,8 +134,8 @@ class AgentColorScheme:
 # reference is already ISO's own nearest sample of it, and `fill` is a further
 # sRGB approximation of the Pantone. Two of the three Munsell originals fall
 # outside the sRGB gamut, so no display can reproduce them exactly.
-# `docs/MODEL.md` records the measured deviation of each `fill` from its
-# Munsell original.
+# `docs/INTERFACE.md` § "Color as a cue: agent colors and the alert color"
+# records the measured deviation of each `fill` from its Munsell original.
 #
 # ISO 5360 does not specify desflurane's *dimensions*. Its Scope excludes them,
 # and Table 2 gives "N.S." for the desflurane collar angle. But the same row of
@@ -336,7 +336,8 @@ ACCOUNTING_STATUS_SIZE = 20
 # their own hue and saturation exactly. Each was darkened to the lightest shade
 # that reaches 3.2:1 in all four models. That is 3:1 plus two tenths, so the
 # shipped value is not itself the boundary case that the next edit trips over.
-# `tools/contrast_check.py` measures all four and `docs/MODEL.md` records them.
+# `tools/contrast_check.py` measures all four, and `docs/INTERFACE.md`
+# § "The six compartment traces: what separates them" records them.
 #
 # **Between traces, colour is not the separating channel, and no palette could
 # make it one.** Contrast ratios compose along a single bounded axis. The 3:1
