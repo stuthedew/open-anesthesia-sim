@@ -2351,6 +2351,94 @@ def test_elimination_is_dominated_by_the_rebreathing_circuit(agent_id: str) -> N
     )
 
 
+@dataclass(frozen=True, slots=True)
+class QuotedDesfluraneWashout:
+    """One setting at which `docs/MODEL.md` quotes desflurane's five-minute washout.
+
+    The settings left as `None` stay at the reference operating point that
+    `_eliminate()` reads from the parameter files. `ratio` is this model's own
+    F_A/F_A0 at five minutes, measured on 2026-11-21. It is not a published
+    value. `faster_than_volunteers` says on which side of the published mean
+    the quoted paragraph places it.
+    """
+
+    label: str
+    fresh_gas_flow_l_min: float
+    alveolar_ventilation_l_min: float | None
+    cardiac_output_l_min: float | None
+    ratio: float
+    faster_than_volunteers: bool
+
+
+# The three figures that `docs/MODEL.md` § "Known limitations" quotes in its
+# paragraph on desflurane's five-minute washout, beyond the 10 L/min figure that
+# `MODELLED_ELIMINATION_RATIOS` already pins. Each is stored to four decimals and
+# pinned to `ELIMINATION_RATIO_PIN_TOLERANCE`, for the reason given there.
+QUOTED_DESFLURANE_WASHOUTS = (
+    QuotedDesfluraneWashout(
+        label="default fresh gas flow 4 L/min",
+        fresh_gas_flow_l_min=4.0,
+        alveolar_ventilation_l_min=None,
+        cardiac_output_l_min=None,
+        ratio=0.2852,
+        faster_than_volunteers=False,
+    ),
+    QuotedDesfluraneWashout(
+        label="fresh gas 8 L/min, alveolar ventilation 8 L/min",
+        fresh_gas_flow_l_min=8.0,
+        alveolar_ventilation_l_min=8.0,
+        cardiac_output_l_min=None,
+        ratio=0.1262,
+        faster_than_volunteers=True,
+    ),
+    QuotedDesfluraneWashout(
+        label="fresh gas 10 L/min, cardiac output 2 L/min",
+        fresh_gas_flow_l_min=10.0,
+        alveolar_ventilation_l_min=None,
+        cardiac_output_l_min=2.0,
+        ratio=0.1303,
+        faster_than_volunteers=True,
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    "quoted", QUOTED_DESFLURANE_WASHOUTS, ids=[q.label for q in QUOTED_DESFLURANE_WASHOUTS]
+)
+def test_desflurane_washout_figures_quoted_in_known_limitations_regression_pin(
+    quoted: QuotedDesfluraneWashout,
+) -> None:
+    """Pin each desflurane washout figure that the model description quotes to a learner.
+
+    `docs/MODEL.md` § "Known limitations" tells a learner on which settings
+    desflurane's washout on screen is slower than Yasuda's volunteers', and on
+    which it is faster, with these figures. The test asserts both the value,
+    to `ELIMINATION_RATIO_PIN_TOLERANCE`, and the side of the published mean
+    that the paragraph names. A change to the circuit, the patient or the
+    stepping that moves any of them fails here, so the paragraph is re-measured
+    rather than left describing a model that no longer exists.
+    """
+
+    measurement = next(m for m in PUBLISHED_MEASUREMENTS if m.agent_id == "desflurane")
+    ratio = _eliminate(
+        "desflurane",
+        alveolar_ventilation_l_min=quoted.alveolar_ventilation_l_min,
+        cardiac_output_l_min=quoted.cardiac_output_l_min,
+        fresh_gas_flow_l_min=quoted.fresh_gas_flow_l_min,
+    ).ratio
+
+    assert abs(ratio - quoted.ratio) <= ELIMINATION_RATIO_PIN_TOLERANCE, (
+        f"desflurane eliminates to F_A/F_A0 {ratio:.5f} at 5 min with {quoted.label}, "
+        f"against the {quoted.ratio} that docs/MODEL.md's Known limitations quotes; "
+        f"re-measure that paragraph rather than widening the pin"
+    )
+    assert (ratio < measurement.elimination_mean) == quoted.faster_than_volunteers, (
+        f"desflurane's five-minute F_A/F_A0 {ratio:.5f} with {quoted.label} is on the "
+        f"other side of the volunteers' mean {measurement.elimination_mean} from the one "
+        f"docs/MODEL.md's Known limitations names"
+    )
+
+
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
 def test_a_larger_circuit_can_only_slow_the_elimination(agent_id: str) -> None:
     """Check whether a store of agent in the breathing circuit speeds or slows the elimination.

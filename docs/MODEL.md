@@ -5990,6 +5990,16 @@ so the disagreement is left uncorrected.
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- not-restated: 10 L/min -->
 
+**For developers.** `test_desflurane_washout_figures_quoted_in_known_limitations_regression_pin`
+in `tests/reference/test_published_wash_in_and_elimination.py` pins the
+figures at a fresh gas flow of 4 L/min, at 8 L/min of fresh gas and of
+alveolar ventilation, and at a cardiac output of 2 L/min. It also asserts the
+side of the volunteers' mean that each one falls on.
+`test_five_minute_elimination_ratio_regression_pin` pins the figure at
+10 L/min.
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+<!-- not-restated: 10 L/min -->
+
 **Dead space is left out, and the effect of a series dead space is known
 exactly.** The model ventilates the alveolar compartment continuously and has
 no separate breaths, so it represents neither anatomic nor apparatus dead
