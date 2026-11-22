@@ -4,6 +4,7 @@ title: Seven open items still name docs/MODEL.md in their touches or verify for 
 priority: P3
 effort: S
 status: done
+milestone: v0.6.19
 touches: docs/items/
 added: 2026-11-14
 closed: 2026-11-14

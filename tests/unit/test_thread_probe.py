@@ -55,7 +55,7 @@ def test_session_start_says_when_the_repository_settings_cannot_be_read(tmp_path
 
 def test_the_hook_file_has_the_wrapper_claude_code_requires() -> None:
     # A hooks file without the top-level "hooks" key fails to load
-    # (https://code.claude.com/docs/en/plugins-reference.md, § "hooks").
+    # (https://code.claude.com/docs/en/plugins-reference.md, section "hooks").
     hooks = json.loads((PLUGIN / "hooks" / "hooks.json").read_text())
     assert set(hooks) == {"hooks"}
     assert set(hooks["hooks"]) == {"SessionStart", "PreToolUse"}

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: session-cost
-feature: mutation-run-first-step
+feature: tests-detect-wrong-values
 touches: pyproject.toml, tests/unit/test_generated_runs.py, .claude/skills/docket/modes/close-out.md
 added: 2026-11-11
 payoff: A branch that changes the simulation core can read its full mutation verdict before it closes, instead of checking only the mutants its session picks.

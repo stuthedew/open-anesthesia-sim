@@ -467,7 +467,7 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # An axis that grew to fit an excursion would redraw a rising curve at a
 # smaller height partway through a lesson. A reader would then attribute that
 # change of shape to the model rather than to the axis. The paragraph "The
-# axis is fixed rather than fitted" in `docs/MODEL.md` § "F_A/F_I as a
+# axis is fixed rather than fitted" in `docs/INTERFACE.md` § "F_A/F_I as a
 # displayed ratio" settled the same question for the wash-in plot, and its
 # reasoning applies here too. Because
 # the axis is also fixed across the session, two consecutive runs can be
@@ -498,7 +498,7 @@ CHART_GRID_INTERVAL_MAC: Final = 0.5
 # other. Instead, the value is set by what the ratio is compared against.
 # Yasuda et al. report F_A/F_I at 30 minutes as 0.850, 0.733 and 0.90, with
 # standard deviations of 0.018, 0.027 and 0.01
-# (`docs/MODEL.md` § "Published wash-in and elimination validation test").
+# (`docs/VERIFICATION.md` § "Published wash-in and elimination validation test").
 # A third decimal would be finer than the published spread that this trace
 # exists to be read beside.
 WASH_IN_DISPLAY_DECIMALS: Final = 2
@@ -1489,6 +1489,10 @@ def format_delivered_agent(amount: float, unit: AgentAmountUnit) -> str:
     return _format_run_total(amount, precision, AGENT_AMOUNT_UNIT_DISPLAY[unit].label)
 
 
+# The superscript form of each character that an integer's `str` can hold.
+_SUPERSCRIPT_DIGITS: Final = str.maketrans("0123456789-", "⁰¹²³⁴⁵⁶⁷⁸⁹⁻")
+
+
 def format_agent_residual(litres: float) -> str:
     """Render a residual of the accounting panel as the power of ten it lies below.
 
@@ -1497,8 +1501,11 @@ def format_agent_residual(litres: float) -> str:
     conservation check sits. At 1e-12 L, the fixed form of
     `format_agent_volume` would show `0.0 L` and say nothing (`PL-TG60`). Each
     line instead prints the smallest power of ten that its magnitude is
-    strictly less than. So `5.601e-14` is shown as `<1e-13 L`, where the `<`
-    means the same as it does on the amounts above.
+    strictly less than. So `5.601e-14` is shown as `<10⁻¹³ L`, where the `<`
+    means the same as it does on the amounts above. The exponent is written
+    in superscript digits, as a clinician writes a power of ten, rather than
+    in a programming language's e-notation (`PL-8V6L`). A positive exponent
+    has no sign.
 
     **The decade is the only meaningful digit in the value** (`PL-3PJZ`). A
     passing residual is the rounding error left over from summing four
@@ -1520,7 +1527,7 @@ def format_agent_residual(litres: float) -> str:
         litres: The residual, in litres of equivalent pure agent gas.
 
     Returns:
-        The bound with its unit, such as `<1e-13 L`, or `0 L` for exactly zero.
+        The bound with its unit, such as `<10⁻¹³ L`, or `0 L` for exactly zero.
     """
 
     if not isfinite(litres):
@@ -1535,7 +1542,7 @@ def format_agent_residual(litres: float) -> str:
     # -16.0 for it, which would print the decade above the one the value is in.
     exponent = Decimal(abs(litres)).adjusted() + 1
 
-    return f"<1e{exponent:+03d} {_ACCOUNTED_LITRES}"
+    return f"<10{str(exponent).translate(_SUPERSCRIPT_DIGITS)} {_ACCOUNTED_LITRES}"
 
 
 # A compartment's amount is shown to two significant figures, and never finer

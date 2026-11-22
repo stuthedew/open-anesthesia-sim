@@ -5,6 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: defect, safety
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/display_units.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/core/liquid_agent.py, tests/unit/test_display_units.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md, tools/glyph_check.py
 added: 2026-11-10
 closed: 2026-11-11

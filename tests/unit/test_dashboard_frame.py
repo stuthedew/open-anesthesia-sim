@@ -648,7 +648,7 @@ def test_a_frame_is_two_ticks() -> None:
 
 
 def test_the_dashboard_displays_at_most_two_runs() -> None:
-    """`ROADMAP.md` § "v0.5.0 - the case you can branch": never more than two.
+    """`ROADMAP.md` § "Completed: v0.5.0 - the case you can branch": never more than two.
 
     The constructor's refusal belongs to `SimulationView` and is tested with
     the widget. The number itself belongs to the frame. `PL-HLD5`'s two-level
@@ -1179,9 +1179,9 @@ def test_the_supported_limit_notice_says_why_the_model_is_not_claimed_past_the_s
 
     The banner may not say instead that the model is "not validated" past the
     span. A reader would take that to mean it is validated inside it, which
-    `docs/MODEL.md` § "Published wash-in and elimination validation test"
+    `docs/VERIFICATION.md` § "Published wash-in and elimination validation test"
     does not claim. Nor may it call the fat flow wrong: the two human sources
-    that § "Known limitations" weighs disagree about which way it errs. What
+    that `docs/MODEL.md` § "Known limitations" weighs disagree about which way it errs. What
     is true for every agent is that both limitations are present from the
     start and their cost grows with the run.
     """
@@ -2290,8 +2290,8 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
         "Delivered: <0.1 L\n"
         "Exhausted: <0.1 L\n"
         "Stored: <0.1 L\n"
-        "Unaccounted: <1e-12 L\n"
-        "Absolute error: <1e-12 L"
+        "Unaccounted: <10⁻¹² L\n"
+        "Absolute error: <10⁻¹² L"
     )
 
 
@@ -2390,8 +2390,8 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
     assert rejected is not None
 
     assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
-        "Unaccounted: <1e+01 L",
-        "Absolute error: <1e+01 L",
+        "Unaccounted: <10¹ L",
+        "Absolute error: <10¹ L",
     ]
 
 
@@ -2676,7 +2676,7 @@ def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:
     state = wash_in_state(controller.snapshot(), 0)
 
     assert format_wash_in_ratio(drawn_ratio) in state
-    assert state == f"Now: F_A/F_I = {format_wash_in_ratio(drawn_ratio)}"
+    assert state == f"Now: F<sub>A</sub>/F<sub>I</sub> = {format_wash_in_ratio(drawn_ratio)}"
 
 
 def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> None:

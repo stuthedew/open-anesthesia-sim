@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
-feature: layout-sliver-areas
+feature: interface-areas
 milestone: v0.6.0
 touches: src/anesthesia_sim/layout/model.py, tests/unit/test_layout_model.py
 blocked-by: PL-391Y

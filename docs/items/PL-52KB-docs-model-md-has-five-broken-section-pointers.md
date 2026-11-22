@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-md-structure
+milestone: v0.6.19
 touches: docs/MODEL.md, src/anesthesia_sim/app/formatting.py, tests/unit/test_agent_simulation_validation.py
 added: 2026-11-05
 closed: 2026-11-11

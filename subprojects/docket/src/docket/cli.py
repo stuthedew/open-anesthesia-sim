@@ -55,6 +55,14 @@ from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .digits import whole_number
 from .duplicates import anchor, near_duplicates
+from .feature_match import (
+    lone_features,
+    similar_features,
+    suggest,
+    unfeatured_matches,
+    unfeatured_pairs,
+)
+from .feature_match import profiles as feature_profiles
 from .inflow import INFLOW_FEATURE
 from .inflow import analyze as analyze_inflow
 from .inflow import missed as missed_inflow
@@ -118,6 +126,9 @@ from .plan import (
 )
 from .release import (
     NOTES_DIR,
+    PATCH,
+    PLANNED,
+    RESERVED,
     SEMVER_GRAMMAR,
     SEMVER_RE,
     TAG_SCRIPT,
@@ -137,6 +148,7 @@ from .release import (
     read_version,
     readiness,
     release_notes,
+    release_offer,
     reservation,
     restate_references,
     stamp,
@@ -1124,6 +1136,26 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _suggestion(ready: Readiness, plan: Wave | None) -> str:
+    """The version `release --dry-run` suggests, with the plan folded in.
+
+    It printed `ready.suggested_version`, the bump's arithmetic alone, as a
+    "mechanical guess". A feature-classed item makes that the next minor
+    number, which is nearly always the next milestone's, so the dry run
+    suggested a version the cut then refuses, and sessions concluded no cut was
+    due (`PL-49J8`). This reads the same `release_offer` the survey and the
+    digest read, so the three cannot disagree.
+    """
+    offer = release_offer(ready, plan)
+    if offer.kind == PATCH:
+        return f"Suggested: {offer.version}. {render.patch_reason(offer)}"
+    if offer.kind == RESERVED:
+        return render.reserved_refusal(offer, "`docket wave` for what is due")
+    if offer.kind == PLANNED:
+        return f"Suggested: {offer.version}, the version the roadmap names for this release."
+    return f"Suggested: {offer.version}."
+
+
 def _plan(root: Path, items: Sequence[Item], config: Config) -> Wave | None:
     """Where the project stands on its own timeline, or `None` if that is unclear.
 
@@ -1241,9 +1273,9 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     a session shown no `Releasable:` line has nothing to be warned off. That
     gate means there is finished work to cut, whether or not a version is free
     to cut it at, so it is not the release offer: where the roadmap has
-    reserved the number a bump would reach, the line says `No release to offer`
-    and the walk still runs, which between milestones is the usual case
-    (`PL-FT3M`). It does not fetch - the digest's hook already did, and this
+    reserved the number a bump would reach, the line offers the next patch or
+    says `No release to offer`, and the walk runs either way (`PL-FT3M`,
+    `PL-49J8`). It does not fetch - the digest's hook already did, and this
     must stay answerable in a checkout with no network. The remote's branch
     list it reads deleted branches out by is the snapshot's (`PL-MT3R`),
     which the command has taken before asking.
@@ -1330,7 +1362,24 @@ def cmd_new(args: argparse.Namespace) -> int:
     a resource is filed only while nobody else holds it, and one title at a
     time, because the check is what the field exists for (`_train_refusal`).
     """
-    directory, items, _ = _load(args)
+    directory, items, config = _load(args)
+    # Refused with nothing written, as `set` refuses it, rather than captured
+    # for `check` to refuse at the commit: the message names the line to add,
+    # and the capture is one retry away (`PL-Q3BN`).
+    merged = config.feature_redirect(args.feature) if args.feature else ""
+    if merged:
+        print(
+            f"new: nothing was written; feature '{args.feature}' was merged into "
+            f"'{merged}' in {config.features_file}. Run this again with --feature {merged}."
+        )
+        return 1
+    if args.feature and config.features_file and not config.describe_feature(args.feature):
+        print(
+            f"new: nothing was written; feature '{args.feature}' is not in "
+            f"{config.features_file}. Use a feature listed there, or add the line "
+            f'{args.feature} = "<what belongs in it, in one sentence>" and run this again.'
+        )
+        return 1
     # The `--touches` order that used to fail loudly now parses, so the one way
     # left to lose a path is to space-separate it and have it land in the title.
     # Refused rather than written, because the alternative is a silently captured
@@ -1364,6 +1413,9 @@ def cmd_new(args: argparse.Namespace) -> int:
     # Several findings filed with one `--touches` value matched each other this
     # way, and that is how `PL-0889` came to look filed twice (`PL-8MRM`).
     held = _claimed_here(args) | _filed_here(args)
+    # Offered only where a registry describes the features: without one there
+    # is no description to judge a suggestion by (`PL-LRWK`).
+    groups = feature_profiles(items, config) if config.features_file else {}
     captures: list[Item] = []
     for title in args.title:
         captures.append(_captured(new_id(taken), title, args))
@@ -1396,6 +1448,8 @@ def cmd_new(args: argparse.Namespace) -> int:
             onto = anchor(found)
             if onto is not None:
                 items = _record_recurrence(directory, items, onto.item, identifier, args)
+        if groups and not capture.feature:
+            print(render.format_feature_suggestions(identifier, suggest(capture.title, groups)))
     return 0
 
 
@@ -2860,6 +2914,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         plan,
         interrupted=interrupted,
         cuts=_cuts(root, config, args) if ready.shippable and not interrupted else None,
+        descriptions=dict(config.feature_descriptions),
     )
     print(rendered if rendered else "Nothing open.")
     _say_read_from_base(args, replaced)
@@ -3534,8 +3589,19 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
 
 def cmd_feature(args: argparse.Namespace) -> int:
-    """Progress by feature, so a half-finished one is visible as such."""
-    items, _, replaced = _load_to_read(args)
+    """Progress by feature, so a half-finished one is visible as such.
+
+    Each feature's line in the registry follows its heading, so the answer
+    says what the group is for as well as how far it has got (`PL-Q3BN`).
+    """
+    items, config, replaced = _load_to_read(args)
+    if args.similar:
+        if args.name:
+            print("`--similar` lists across every feature and takes no name.")
+            return 1
+        print(_similar_report(items, config, _invocation(args).tracked))
+        _say_read_from_base(args, replaced)
+        return 0
     groups = features(items)
     if not groups:
         print("no items are assigned to a feature")
@@ -3548,10 +3614,29 @@ def cmd_feature(args: argparse.Namespace) -> int:
     for feature in sorted(wanted, key=lambda f: (-f.progress, f.name)):
         state = "complete" if feature.is_complete else f"{len(feature.open_items)} left"
         print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
+        description = config.describe_feature(feature.name)
+        if description:
+            print(f"  {description}")
         for item in feature.items:
             print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
     _say_read_from_base(args, replaced)
     return 0
+
+
+def _similar_report(items: list[Item], config: Config, items_dir: str) -> str:
+    """The grooming pass's three lists for regrouping features (`PL-LRWK`).
+
+    Each is a ranked suggestion and decides nothing: which pairs are one goal
+    is the judgment half, and `feature_match`'s docstring gives the measured
+    rate at which the ranking is right.
+    """
+    groups = feature_profiles(items, config)
+    return render.format_similar_features(
+        similar_features(groups),
+        unfeatured_matches(items, groups),
+        unfeatured_pairs(items, items_dir),
+        lone_features(items, config),
+    )
 
 
 def cmd_generators(args: argparse.Namespace) -> int:
@@ -3884,8 +3969,8 @@ def cmd_release(args: argparse.Namespace) -> int:
             return 1
         print(
             "This project chooses versions by the capability boundary a release "
-            "crosses, not by incrementing. Name the version to cut it "
-            f"(mechanical guess, for reference only: {ready.suggested_version})."
+            "crosses, not by incrementing. Name the version to cut it. "
+            f"{_suggestion(ready, _plan(root, items, config))}"
         )
         if unread:
             print(
@@ -6322,6 +6407,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     feature = add("feature", "progress by feature")
     feature.add_argument("name", nargs="?")
+    feature.add_argument(
+        "--similar",
+        action="store_true",
+        help="list features that read alike, open items with no feature, and lone features",
+    )
     feature.set_defaults(func=cmd_feature)
 
     generators = add("generators", "how much of each generator's cluster is still open")

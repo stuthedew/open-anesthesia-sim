@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: dropped
 classes: defect
-feature: repo-copy-edit
+feature: copy-editor
 touches: tools/copy_edit.py, tools/new_prose.py, tests/unit/test_copy_edit.py, tests/unit/test_new_prose.py, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze: tools/copy_edit.py and its reply handling arrived in 7fca61f8 (PL-TQ4J)
 added: 2026-11-09

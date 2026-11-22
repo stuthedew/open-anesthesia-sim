@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, docs
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, docs/INTERFACE.md
 added: 2026-11-05
 closed: 2026-11-16

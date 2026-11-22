@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: interface-matches-its-spec
+milestone: v0.6.19
 touches: docs/ARCHITECTURE.md, README.md, .github/workflows/quality.yml
 added: 2026-11-21
 closed: 2026-11-21

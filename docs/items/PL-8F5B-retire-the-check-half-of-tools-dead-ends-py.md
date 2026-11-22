@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: standing-weight
+milestone: v0.6.19
 touches: Makefile, .github/workflows/quality.yml, tools/dead_ends.py, tests/unit/test_dead_ends.py, tests/unit/test_doc_check.py, docs/dead-ends.md, docs/apparatus.md, .claude/rules/dead-ends-apparatus.md, .claude/skills/docket/modes/triage.md, .claude/hooks/gate_status_guard.py, tests/unit/test_gate_status_guard.py, .claude/hooks/docket-digest.sh, tests/unit/test_quality_step_order.py
 added: 2026-11-21
 closed: 2026-11-21

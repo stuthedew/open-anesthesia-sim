@@ -3,8 +3,8 @@
 Claude Code's Projects documentation says a cloud thread loads each
 repository's `CLAUDE.md` and `.claude/rules/`, but not its
 `.claude/settings.json`: the hooks there are "Not run"
-(https://code.claude.com/docs/en/claude-projects.md, § "What threads pick up
-from your repositories", read 2026-10-26). So a thread works without the
+(https://code.claude.com/docs/en/claude-projects.md, section "What threads pick
+up from your repositories", read 2026-10-26). So a thread works without the
 guards, the session-start digest and the stop-hook correction, and nothing
 tells it so (`PL-CR81`). A thread does read the user settings in
 `~/.claude/settings.json`, and reloads them when they change: a hook written

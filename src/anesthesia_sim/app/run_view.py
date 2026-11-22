@@ -92,7 +92,6 @@ from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QBoxLayout,
-    QComboBox,
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -159,7 +158,13 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_widgets import NewCaseDialog, NoticeLabel, ReadoutRow, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    NewCaseDialog,
+    NoticeLabel,
+    ReadoutRow,
+    SelectorComboBox,
+    styled_label,
+)
 from anesthesia_sim.app.run_presentation import (
     KeptValues,
     NotBuilt,
@@ -437,7 +442,7 @@ class RunView(QWidget):
         # Every widget whose visibility is written here is built with this
         # view as its parent. A widget shown without a parent is a top-level
         # window of its own, even for the instant before a layout adopts it.
-        self._agent_dropdown = QComboBox(self)
+        self._agent_dropdown = SelectorComboBox(self)
         self._agent_dropdown.setFixedWidth(AGENT_SELECTOR_WIDTH)
 
         for index, (agent_id, display_name) in enumerate(AVAILABLE_AGENTS):
@@ -495,7 +500,7 @@ class RunView(QWidget):
         # How fast the run is played. This view control decides how many
         # steps a tick takes, and never how large a step is. It is never
         # disabled, and Reset leaves it alone, as it does every other setting.
-        self._playback_rate_dropdown = QComboBox()
+        self._playback_rate_dropdown = SelectorComboBox()
         self._playback_rate_dropdown.setFixedWidth(PLAYBACK_RATE_SELECTOR_WIDTH)
         self._playback_rate_dropdown.setStyleSheet(selector_stylesheet())
 

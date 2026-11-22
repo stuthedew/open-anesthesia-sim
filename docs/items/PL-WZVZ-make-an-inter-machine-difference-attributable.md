@@ -176,8 +176,8 @@ on Gate 2, where they would hold the gate open until planned-milestone item 28
 and a machine chooser are scheduled), so v0.6.0 ships without it as v0.5.0 did.
 What holds it is unchanged - `blocked-by` names the same four items, and
 `src/anesthesia_sim/data/machines/` still held one profile at `19af95d` - so
-the hazard is still not live. `ROADMAP.md` § "v0.6.0 - the layout is the
-reader's" -> "Debt gate: the frozen list" records the deferral and the reading
+the hazard is still not live. `ROADMAP.md` § "Completed: v0.6.0 - the layout
+is the reader's" -> "Debt gate: the frozen list" records the deferral and the reading
 of the tree it rests on.
 
 **Checked 2026-10-25 (`PL-F2NX`, Gate 3's staleness sweep): the hazard is still not live, and what it waits on has narrowed.** `src/anesthesia_sim/data/machines/` still holds one profile, and nothing under `src/` selects between profiles, so the deferral to Gate 4 still holds. Two of the four blockers are done: `PL-TH35` and `PL-R1WQ` shipped the View contract and the view registry, so item 34's rule against a new display surface no longer applies to surface 1. Surface 2 is now a requirement on the compare mode v0.5.0 shipped, as the brief foresaw. What still blocks the item is `PL-TBMK`, a second machine profile, and `PL-4TWW`, the surface that chooses between profiles.

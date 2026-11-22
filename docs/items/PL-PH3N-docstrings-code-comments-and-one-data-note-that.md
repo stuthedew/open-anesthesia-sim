@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, docs
 feature: interface-matches-its-spec
+milestone: v0.6.19
 touches: .claude/rules/ui-color.md, .claude/rules/where-new-code-goes.md, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/playback.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/core/rounding.py, src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/data/machines/reference_circle_system.json, src/anesthesia_sim/layout/model.py, src/anesthesia_sim/layout/run_identity.py, src/anesthesia_sim/layout/store.py, tests/integration/controller/test_controller_branching.py, tests/integration/simulation_view/test_simulation_view_foreground.py, tests/unit/test_bookmarks.py, tests/unit/test_formatting.py
 added: 2026-11-21
 closed: 2026-11-21

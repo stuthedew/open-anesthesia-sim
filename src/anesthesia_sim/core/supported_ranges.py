@@ -76,7 +76,7 @@ computed fraction exceeds it by more than the propagator's error. That error
 grows with the number of times the propagator is squared
 (`core/matrix_exponential.py`) and with the number of steps. The largest
 excess over 86 400 one-second steps across the envelope's corners was 1.0e-4,
-and `docs/MODEL.md` § "The numerical envelope" reports those runs.
+and `docs/VERIFICATION.md` § "The numerical envelope" reports those runs.
 
 **Fresh gas flow has a second bound, set by the machine and held outside this
 module** (`PL-8PS6`). What a *machine* can deliver differs between machines: its
@@ -195,7 +195,7 @@ refuses the instant one step later.
 Widening any interval is a safety-critical change, not a convenience. Argue
 that the compartment structure still represents a patient over the wider range.
 Re-run the reference gates at the new corner. Revise
-`docs/INTERFACE.md` § "Supported input ranges" and `docs/MODEL.md`
+`docs/INTERFACE.md` § "Supported input ranges" and `docs/VERIFICATION.md`
 § "Independent-solution test" together. Widening no longer requires
 re-deriving the displayed resolution or
 the supported simulation step. Both used to depend on the splitting coefficient
@@ -246,7 +246,7 @@ state that the stepped system holds when it is built. The module docstring
 gives the reason (`PL-9B1M`). The ceiling sits 0.01 below 1. That margin is
 about 100 times the largest excess over the ceiling in runs that started at it.
 The excess was measured at every corner of the numerical envelope, and the
-largest was 1.0e-4, after 86 400 one-second steps (`docs/MODEL.md` § "The
+largest was 1.0e-4, after 86 400 one-second steps (`docs/VERIFICATION.md` § "The
 numerical envelope", 2026-11-21). The ceiling is above
 every shipped vaporizer maximum, the highest of which is desflurane's 18%. It
 is tied to the envelope rather than to one agent, so a later gas delivered at a
@@ -275,7 +275,7 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # this model leaves out answers that question.
 #
 # **The omission that limits the run is metabolism.** `docs/MODEL.md`
-# § "Known limitations" records it, and
+# § "Known limitations" records it, and `docs/VERIFICATION.md`
 # § "Published wash-in and elimination validation test"
 # already draws its consequence: it rejects the Yasuda papers' own multi-day
 # elimination curves as a comparison. Over days, the missing metabolism is no
@@ -286,7 +286,7 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # already lacks its largest measured term. That term is the fourth
 # compartment that human washout needs and this model lacks, and it is the
 # largest term from about the third hour of elimination.
-# § "Supported run length" records this. It limits what the late tail is
+# `docs/INTERFACE.md` § "Supported run length" records this. It limits what the late tail is
 # worth, not how long a run may be.
 #
 # Sevoflurane is the agent that sets the limit. Between 2% and 5% of its
@@ -480,7 +480,7 @@ def _above_the_input_ceiling(name: str, written: str, ceiling: str) -> Simulatio
         f"{name} of {written} is above {ceiling} of the ambient pressure, the highest partial "
         "pressure the coupled model starts from. It is kept below 1 so that no partial "
         "pressure the model computes exceeds the ambient pressure, which the model fixes at "
-        'one atmosphere (docs/MODEL.md, "The numerical envelope")'
+        'one atmosphere (docs/VERIFICATION.md, "The numerical envelope")'
     )
 
 
@@ -955,7 +955,7 @@ def require_compartment_step(name: str, simulation_step_s: float) -> None:
             f"{name} of {simulation_step_s} s is shorter than the "
             f"smallest supported step of {MINIMUM_COMPARTMENT_STEP_S} s, below which "
             "rounding is a growing share of what each step changes "
-            '(docs/MODEL.md, "Supported simulation step")'
+            '(docs/VERIFICATION.md, "Supported simulation step")'
         )
 
     if simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S:
@@ -964,7 +964,7 @@ def require_compartment_step(name: str, simulation_step_s: float) -> None:
             f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s "
             f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR:g} h), the most "
             "simulated time this model is claimed to represent a patient over, so no "
-            'single step may be longer (docs/MODEL.md, "Supported simulation step")'
+            'single step may be longer (docs/VERIFICATION.md, "Supported simulation step")'
         )
 
 

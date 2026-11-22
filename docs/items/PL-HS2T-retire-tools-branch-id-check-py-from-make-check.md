@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: standing-weight
+milestone: v0.6.19
 touches: .claude/hooks/docket_branch_guard.py, .claude/hooks/push_check_guard.py, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/start.md, .github/workflows/quality.yml, Makefile, docket.toml, docs/apparatus.md, docs/resident-instructions.md, subprojects/docket/README.md, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/claims.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_claims.py, subprojects/docket/tests/test_vcs.py, tests/unit/test_branch_id_check.py, tests/unit/test_docket_branch_guard.py, tests/unit/test_floor_interpreter_guard.py, tests/unit/test_main_ci_status.py, tests/unit/test_push_check_guard.py, tests/unit/test_tools_portability.py, tests/unit/test_workflow_paths_check.py, tools/branch_id_check.py, tools/fixture_id_check.py, docs/items/PL-PNB2-replace-each-paragraph-of-the-instructions.md, docs/items/PL-TPXK-review-the-four-streamlining-decisions-of-2026.md
 added: 2026-11-21
 closed: 2026-11-21

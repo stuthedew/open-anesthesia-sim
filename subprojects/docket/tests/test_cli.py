@@ -1474,6 +1474,80 @@ def test_status_leads_with_features_not_items(
     assert "chart-readout" in out
 
 
+def test_status_and_feature_print_each_feature_s_description(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-Q3BN`: the registry's line follows the feature's name in both answers."""
+    grouped = READY.replace("status: ready", "status: ready\nfeature: chart-readout")
+    store = _store(tmp_path, grouped)
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nfeatures_file = "features.toml"\n', encoding="utf-8"
+    )
+    (tmp_path / "features.toml").write_text(
+        'chart-readout = "The chart\'s axes and notices."\n', encoding="utf-8"
+    )
+
+    _run("status", "--items", str(store))
+    status = capsys.readouterr().out
+    _run("feature", "chart-readout", "--items", str(store))
+    feature = capsys.readouterr().out
+
+    assert "    The chart's axes and notices." in status
+    assert "chart-readout: 0/1 done (1 left)\n  The chart's axes and notices.\n" in feature
+
+
+def test_new_refuses_a_feature_the_registry_does_not_list(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-Q3BN`: refused with nothing written, and the message names the line to add."""
+    store = _store(tmp_path)
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nfeatures_file = "features.toml"\n', encoding="utf-8"
+    )
+    (tmp_path / "features.toml").write_text('chart-readout = "The chart."\n', encoding="utf-8")
+
+    refused = _run("new", "--no-git", "--items", str(store), "--feature", "chart", "A finding")
+    message = capsys.readouterr().out
+    listed = _run("new", "--no-git", "--items", str(store), "--feature", "chart-readout", "B")
+
+    assert refused == 1
+    assert "feature 'chart' is not in features.toml" in message
+    assert 'chart = "<what belongs in it' in message
+    assert [p.name.split("-")[2] for p in store.iterdir()] == ["b.md"]
+    assert listed == 0
+
+
+def test_new_redirects_a_folded_feature_and_suggests_one_when_none_is_given(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-LRWK`: a merged name is refused with the name to use, and a bare capture is offered
+    the features its title reads like, without being refused."""
+    grouped = READY.replace("status: ready", "status: ready\nfeature: chart-readout").replace(
+        "title: A ready item", "title: The chart axis tick labels are cut"
+    )
+    store = _store(tmp_path, grouped)
+    (tmp_path / "docket.toml").write_text(
+        '[docket]\nfeatures_file = "features.toml"\n', encoding="utf-8"
+    )
+    (tmp_path / "features.toml").write_text(
+        'chart-readout = "The chart\'s axes."\nchart-axes = { use = "chart-readout" }\n',
+        encoding="utf-8",
+    )
+
+    refused = _run("new", "--no-git", "--items", str(store), "--feature", "chart-axes", "A")
+    redirect = capsys.readouterr().out
+    filed = _run("new", "--no-git", "--items", str(store), "The chart axis labels overlap")
+    suggestion = capsys.readouterr().out
+    _run("feature", "--similar", "--items", str(store))
+    similar = capsys.readouterr().out
+
+    assert refused == 1
+    assert "was merged into 'chart-readout'" in redirect
+    assert filed == 0
+    assert "The features its title reads most like: chart-readout." in suggestion
+    assert "-> chart-readout  The chart axis labels overlap" in similar
+
+
 def test_release_refuses_to_invent_a_version_under_a_manual_policy(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -10997,6 +11071,8 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
     `docs/INTERFACE.md` joined on 2026-11-11, when `PL-CTXZ` moved the interface
     sections out of `docs/MODEL.md` (project owner, 2026-11-11, ratified,
     `PL-P3GZ`). The text was on the list before the move, as part of that file.
+    `docs/VERIFICATION.md` joined on 2026-11-22 the same way, when `PL-6PPZ`
+    moved the verification sections out.
 
     `tests/` outside `subprojects/` was the owner's wording: the docket
     package's own tests arm with the tooling. The workflows, the hooks and
@@ -11009,6 +11085,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/",
         "docs/MODEL.md",
         "docs/INTERFACE.md",
+        "docs/VERIFICATION.md",
         "src/anesthesia_sim/data/",
         "README.md",
     )
@@ -11019,6 +11096,7 @@ def test_the_owners_read_list_is_spelt_as_the_owner_spelt_it() -> None:
         "tests/conftest.py",
         "docs/MODEL.md",
         "docs/INTERFACE.md",
+        "docs/VERIFICATION.md",
         "README.md",
     ):
         assert arming.waits_on_read(path), path

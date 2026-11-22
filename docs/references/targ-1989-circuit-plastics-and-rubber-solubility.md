@@ -59,7 +59,7 @@ value" defines adoption.
   in `docs/MODEL.md` beside the circuit volume. The measured system included
   the reservoir bag that stood in for the lungs, so the volume is an upper
   limit on the circuit's volume and cannot replace it (`PL-QBKQ`).
-- **The desflurane reading and the ideal line.** From them, `docs/MODEL.md`
+- **The desflurane reading and the ideal line.** From them, `docs/VERIFICATION.md`
   § "Desflurane's residual, and why the parameter file was not changed" rules
   out circuit-wall absorption as a cause of desflurane's residual (`PL-XWCY`).
   The residual is that the simulator's desflurane washes out faster than it

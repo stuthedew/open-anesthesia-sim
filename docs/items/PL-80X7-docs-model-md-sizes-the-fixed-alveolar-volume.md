@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: docs
-feature: circuit-boundary-docs
+feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-20
 payoff: the fixed-alveolar-volume argument a nitrous-oxide scoping round is told to read sizes both terms that change alveolar volume, not one of the two

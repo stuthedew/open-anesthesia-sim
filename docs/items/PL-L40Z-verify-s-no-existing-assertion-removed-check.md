@@ -3,7 +3,7 @@ id: PL-L40Z
 title: verify's 'no existing assertion removed' check greps the substring 'assert' across every removed line including Markdown prose, so a documentation rewrite REJECTs for sentences that are not assertions - 6 of the last 7 release cuts removed such a line from ROADMAP.md alone
 status: dropped
 classes: defect, infra
-feature: verify-close-out
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
 closed: 2026-09-17

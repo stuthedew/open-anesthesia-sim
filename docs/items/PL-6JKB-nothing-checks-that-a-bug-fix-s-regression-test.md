@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
-feature: test-effectiveness-measurement
+feature: tests-detect-wrong-values
 milestone: v0.5.26
 touches: .claude/rules/test-oracles.md
 added: 2026-10-17

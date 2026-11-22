@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: model-spec-accuracy
+milestone: v0.6.19
 touches: docs/MODEL.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md, docs/items/PL-Y33V-docs-model-md-gives-sevoflurane-fat-and-muscle.md, docs/items/PL-LBVN-gas-man-s-released-settings-file-holds-mac-2-1.md
 added: 2026-11-21
 closed: 2026-11-21

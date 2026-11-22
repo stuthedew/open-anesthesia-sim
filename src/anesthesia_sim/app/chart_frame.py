@@ -121,10 +121,14 @@ __all__ = [
     "COMPARTMENT_TRACES",
     "MAX_CHART_CONTROL_MARKS",
     "MAX_CHART_WASH_IN_SEGMENTS",
+    "ALVEOLAR_FRACTION_NAME",
+    "INSPIRED_FRACTION_NAME",
     "WASH_IN_AXIS_MAXIMUM",
     "WASH_IN_GRID_INTERVAL",
     "WASH_IN_HOVER_LABEL",
     "WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT",
+    "WASH_IN_RATIO_NAME",
+    "WASH_IN_RATIO_PLAIN_NAME",
     "WASH_IN_TERMINUS_CEILING",
     "ChartFrame",
     "HoverReading",
@@ -250,6 +254,19 @@ WASH_IN_TERMINUS_CEILING: Final = 1.05
 # shown, never dropped silently.
 MAX_CHART_WASH_IN_SEGMENTS: Final = 8
 
+# The names of the alveolar and inspired fractions and of their ratio, as the
+# uptake literature typesets them, with the A and the I as subscripts
+# (`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio"). Qt labels and the
+# plot's axis title render the `<sub>` markup (`PL-35L9`).
+ALVEOLAR_FRACTION_NAME: Final = "F<sub>A</sub>"
+INSPIRED_FRACTION_NAME: Final = "F<sub>I</sub>"
+WASH_IN_RATIO_NAME: Final = f"{ALVEOLAR_FRACTION_NAME}/{INSPIRED_FRACTION_NAME}"
+
+# The ratio's name where text is drawn without markup, as in the hover readout.
+# It is "FA/FI", as the abstract of Yasuda et al. 1991 writes it
+# (doi:10.1097/00000542-199103000-00017).
+WASH_IN_RATIO_PLAIN_NAME: Final = WASH_IN_RATIO_NAME.replace("<sub>", "").replace("</sub>", "")
+
 # The second line of the wash-in trace's hover readout, which says what the
 # value is. The parenthesis repeats the caption that `app/wash_in.py` already
 # uses, for the reason given there: F_I is the modelled circuit, not the
@@ -257,7 +274,7 @@ MAX_CHART_WASH_IN_SEGMENTS: Final = 8
 # may show" derives the three-line form. The label uses a solidus rather than a
 # division sign, because every non-ASCII character shown to a reader must first
 # have been rendered and checked by eye (`tools/glyph_check.py`).
-WASH_IN_HOVER_LABEL: Final = "Wash-in F_A/F_I (alveolar / modelled circuit)"
+WASH_IN_HOVER_LABEL: Final = f"Wash-in {WASH_IN_RATIO_PLAIN_NAME} (alveolar / modelled circuit)"
 
 # The text that the wash-in hover prints, instead of a number, at a column past
 # equilibrium. The crossing column, where the trace passes equilibrium, is drawn only

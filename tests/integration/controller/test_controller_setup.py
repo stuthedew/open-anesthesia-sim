@@ -165,7 +165,7 @@ def test_explicit_patient_settings_still_override_the_data_file() -> None:
 def test_every_run_simulates_the_shipped_reference_adult() -> None:
     """Every run simulates the reference adult, because no input changes its body (`PL-DXJR`).
 
-    `docs/MODEL.md`'s hazard row for entering an identifiable patient's data
+    `docs/VERIFICATION.md`'s hazard row for entering an identifiable patient's data
     lists the fixed reference adult as one of its two safeguards. This test
     enforces that safeguard. A learner can set four settings and the agent, but
     nothing that would describe a particular patient: no weight, age, sex,

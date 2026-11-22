@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
-feature: replay-hermeticity
+feature: verify-command-health
 milestone: v0.4.33
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, docs/items
 added: 2026-09-20

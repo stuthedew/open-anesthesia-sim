@@ -1,8 +1,8 @@
 """Define the View contract, which says what every View implements and what it is given.
 
 An Area holds one View, and any View can occupy any Area (`ROADMAP.md`
-§ "v0.6.0 - the layout is the reader's", Required scope entry 5). That works
-only if every View presents the same small contract. The adapter,
+§ "Completed: v0.6.0 - the layout is the reader's", Required scope entry 5).
+That works only if every View presents the same small contract. The adapter,
 `app/area_layout.py`, can then build, draw and save any View without knowing
 which kind it holds. This module is that contract. It was designed in an item
 (`PL-TH35`) as answers to numbered questions, and the project owner ratified
@@ -54,8 +54,8 @@ raises, and the halt that follows hands every View a tick with no frame.
 
 **A chart's time window is its own** (project owner, 2026-10-19, ratified,
 over one shared window saved per Workspace; `PL-L59K`). Q2 and Q7 made the
-time base shared state, which every chart showed. `ROADMAP.md` § "v0.6.0 -
-the layout is the reader's", Required scope entry 11, puts the window in each
+time base shared state, which every chart showed. `ROADMAP.md` § "Completed:
+v0.6.0 - the layout is the reader's", Required scope entry 11, puts the window in each
 View's own state instead, so that one chart can be zoomed to the first minutes
 while another shows the whole run. So a chart View holds its window, sets it
 from its own control and saves it. It asks for a frame at once through

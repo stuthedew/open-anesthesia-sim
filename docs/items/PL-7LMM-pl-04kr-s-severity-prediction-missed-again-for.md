@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: convergence-visibility
+milestone: v0.6.19
 touches: docs/items/PL-7LMM-pl-04kr-s-severity-prediction-missed-again-for.md
 added: 2026-11-04
 closed: 2026-11-14

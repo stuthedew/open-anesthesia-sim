@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost
 feature: standing-weight
+milestone: v0.6.19
 touches: CLAUDE.md, tools/doc_check.py, tests/unit/test_doc_check.py, docs/resident-instructions.md, docs/apparatus.md
 blocked-by: PL-2PJ6, PL-CYT1, PL-GDN7, PL-T51K, PL-PNB2
 deferred-from: v0.7.0 - the move changes how sessions are instructed, not the schematic, so the release does not wait on it

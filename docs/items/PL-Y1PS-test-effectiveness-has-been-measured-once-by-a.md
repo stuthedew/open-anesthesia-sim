@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: done
 classes: infra
-feature: test-effectiveness-measurement
+feature: tests-detect-wrong-values
 milestone: v0.5.26
 touches: Makefile, pyproject.toml, uv.lock, .gitignore, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, tests/unit/test_line_splits.py, docs/mutation-testing.md, docs/apparatus.md, docket.toml, .claude/rules/test-oracles.md, .claude/skills/docket/modes/close-out.md
 added: 2026-10-17

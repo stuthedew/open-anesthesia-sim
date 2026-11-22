@@ -1830,14 +1830,40 @@ def test_format_agent_volume_leaves_an_impossible_negative_visible() -> None:
     assert format_agent_volume(-2.0) == "-2.0 L"
 
 
-def test_format_agent_residual_prints_the_power_of_ten_it_lies_below() -> None:
-    """The two residual lines exist to show an order of magnitude (`PL-TG60`) and print only it."""
+# Each superscript character that a residual's exponent is written in, and the
+# ASCII character it stands for, written out here rather than read from
+# `app/formatting.py`.
+_FROM_SUPERSCRIPT = str.maketrans(
+    {
+        "⁰": "0",
+        "¹": "1",
+        "²": "2",
+        "³": "3",
+        "⁴": "4",
+        "⁵": "5",
+        "⁶": "6",
+        "⁷": "7",
+        "⁸": "8",
+        "⁹": "9",
+        "⁻": "-",
+    }
+)
 
-    assert format_agent_residual(1.5e-13) == "<1e-12 L"
-    assert format_agent_residual(5.601e-14) == "<1e-13 L"
-    assert format_agent_residual(3.289e-15) == "<1e-14 L"
-    assert format_agent_residual(0.5) == "<1e+00 L"
-    assert format_agent_residual(12.0) == "<1e+02 L"
+
+def test_format_agent_residual_prints_the_power_of_ten_it_lies_below() -> None:
+    """The two residual lines exist to show an order of magnitude (`PL-TG60`) and print only it.
+
+    The exponent is in superscript digits, as a clinician writes a power of
+    ten, with no e-notation (`PL-8V6L`).
+    """
+
+    assert format_agent_residual(1.5e-13) == "<10⁻¹² L"
+    assert format_agent_residual(5.601e-14) == "<10⁻¹³ L"
+    assert format_agent_residual(3.289e-15) == "<10⁻¹⁴ L"
+    assert format_agent_residual(0.5) == "<10⁰ L"
+    assert format_agent_residual(12.0) == "<10² L"
+    assert format_agent_residual(1.5e-20) == "<10⁻¹⁹ L"
+    assert format_agent_residual(3.7e-6) == "<10⁻⁵ L"
 
 
 def test_format_agent_residual_prints_no_digit_a_last_bit_change_redraws() -> None:
@@ -1862,7 +1888,7 @@ def test_format_agent_residual_drops_the_sign_the_rounding_chose() -> None:
     decimal places.
     """
 
-    assert format_agent_residual(-3.289e-15) == "<1e-14 L"
+    assert format_agent_residual(-3.289e-15) == "<10⁻¹⁴ L"
     assert format_agent_residual(-3.289e-15) == format_agent_residual(3.289e-15)
 
 
@@ -1879,12 +1905,12 @@ def test_format_agent_residual_bound_is_strict_and_tight_at_every_power_of_ten(p
 
     for litres in (math.nextafter(nearest, 0.0), nearest, math.nextafter(nearest, math.inf)):
         rendered = format_agent_residual(litres)
-        exponent = int(rendered.removeprefix("<1e").removesuffix(" L"))
+        exponent = int(rendered.removeprefix("<10").removesuffix(" L").translate(_FROM_SUPERSCRIPT))
 
         assert Decimal(litres) < Decimal(10) ** exponent, rendered
         assert Decimal(litres) >= Decimal(10) ** (exponent - 1), rendered
 
-    assert format_agent_residual(1e-16) == "<1e-16 L"
+    assert format_agent_residual(1e-16) == "<10⁻¹⁶ L"
 
 
 def test_format_agent_residual_reads_zero_as_zero() -> None:

@@ -135,6 +135,31 @@ def popup_stylesheet() -> str:
     )
 
 
+# A selector's padding leaves room on the right for the arrow that marks its
+# list, as the View chooser's does (`view_chooser_stylesheet`).
+_SELECTOR_PADDING = f"4px {MENU_ARROW_SIZE + 2 * MENU_ARROW_GAP}px 4px 8px"
+
+
+def _drop_down_stylesheet() -> str:
+    """Return the rule that stops the platform style drawing a selector's arrow button.
+
+    A style sheet that draws a combo box's frame must also draw its drop-down
+    button, which Qt treats as a part with a rule of its own, `::drop-down`
+    (Qt 6, "Qt Style Sheets Reference", the QComboBox entry). Without that
+    rule Qt asks the platform style to draw its usual button inside the
+    sheet's rounded frame. The button's edge and shadow then showed as a
+    bracket in the frame's right corner, under Fusion and on the owner's Mac
+    (`PL-9389`). This rule gives the button no border and no fill, so nothing
+    is drawn there. `SelectorComboBox` draws the arrow in that space instead.
+    """
+
+    return (
+        "QComboBox::drop-down { subcontrol-origin: padding; subcontrol-position: center right; "
+        f"width: {MENU_ARROW_SIZE + 2 * MENU_ARROW_GAP}px; border: none; "
+        "background: transparent; } "
+    )
+
+
 def selector_stylesheet() -> str:
     """A combo box a reader reads rather than merely operates: PANEL fill, MUTED edge, INK text.
 
@@ -149,7 +174,9 @@ def selector_stylesheet() -> str:
 
     return (
         f"QComboBox {{ background-color: {PANEL}; color: {INK}; border: 1px solid {MUTED}; "
-        f"border-radius: {PANEL_RADIUS}px; padding: 4px 8px; }} " + popup_stylesheet()
+        f"border-radius: {PANEL_RADIUS}px; padding: {_SELECTOR_PADDING}; }} "
+        + _drop_down_stylesheet()
+        + popup_stylesheet()
     )
 
 
@@ -359,5 +386,7 @@ def agent_selector_stylesheet(scheme: AgentColorScheme) -> str:
     return (
         f"QComboBox {{ background-color: {scheme.fill}; color: {scheme.foreground}; "
         f"border: 1px solid {scheme.foreground}; border-radius: {PANEL_RADIUS}px; "
-        f"padding: 4px 8px; font-weight: bold; }} " + popup_stylesheet()
+        f"padding: {_SELECTOR_PADDING}; font-weight: bold; }} "
+        + _drop_down_stylesheet()
+        + popup_stylesheet()
     )

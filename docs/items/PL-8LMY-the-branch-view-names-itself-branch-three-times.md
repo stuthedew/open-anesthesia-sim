@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: interface-design-review
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
 closed: 2026-11-22

@@ -1071,7 +1071,7 @@ def test_require_canonical_state_refuses_a_negative_amount_of_agent(
 ) -> None:
     """A cumulative amount of agent below zero describes a run that never happened.
 
-    The values include the nearest float below zero, as `docs/MODEL.md` § "The numerical
+    The values include the nearest float below zero, as `docs/VERIFICATION.md` § "The numerical
     envelope" says. A check that refused -1e-12 and accepted a smaller negative amount would
     pass a test that tried -1e-12 alone (`PL-076B`).
     """

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: interface-matches-its-spec
+milestone: v0.6.19
 touches: tests/reference/test_mac_awake_washout_figures.py, tests/reference/test_coupled_dynamics.py, tests/reference/test_canonical_evaluation.py
 added: 2026-11-21
 closed: 2026-11-21

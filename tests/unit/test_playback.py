@@ -124,7 +124,7 @@ def test_clearing_the_owed_time_owes_nothing() -> None:
 
 #: For each rate, the longest simulated time between two instants at which a
 #: live control change can first act. It is the grid that the module docstring
-#: of `app/playback.py` and `docs/MODEL.md` § "Supported simulation step"
+#: of `app/playback.py` and `docs/VERIFICATION.md` § "Supported simulation step"
 #: publish.
 #:
 #: The values are written out rather than computed from the multipliers,
@@ -147,7 +147,7 @@ def test_the_control_grid_at_each_rate_is_the_one_two_documents_publish(rate: Pl
 
     assert rate.multiplier in PUBLISHED_CONTROL_GRID_S, (
         f"{rate.multiplier}x is offered but its control grid is published nowhere; "
-        "add it to app/playback.py and docs/MODEL.md 'Supported simulation step' first"
+        "add it to app/playback.py and docs/VERIFICATION.md 'Supported simulation step' first"
     )
     assert (
         rate.control_grid_s(tick_interval_ms=TICK_INTERVAL_MS)

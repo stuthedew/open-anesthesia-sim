@@ -306,7 +306,7 @@ page and decides which file a session reads.
    6's review, step 8's check of the text and step 5's audit**, because a fix for a
    finding changes the files those steps read. Every simulator pull request
    gets one pass before it merges. One that changes the model's code, its
-   parameter files, `docs/MODEL.md` or `docs/INTERFACE.md` gets a second (project
+   parameter files or a specification document gets a second (project
    owner, 2026-10-24,
    ratified, over two passes everywhere and over one pass everywhere,
    `PL-TDV9`). `docket.arming.SECOND_PASS_PATHS` holds that list of paths.

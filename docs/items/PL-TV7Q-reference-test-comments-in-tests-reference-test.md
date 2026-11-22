@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: ready
 classes: defect
-feature: numbers-outside-their-valid-range
+feature: floating-point-domain
 touches: tests/reference/test_coupled_dynamics.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - present at the freeze, but it continues PL-GJ1W (one statement of how far a computed value can be from the exact one), which this gate defers, and is worked with it; no learner reads a test comment, and the figures in docs/INTERFACE.md agree with the 2026-11-21 measurement
 added: 2026-11-22

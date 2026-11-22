@@ -380,7 +380,7 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
 
     assert off_scale.isHidden() is False
     assert off_scale.text().startswith("Above the top of the plot:")
-    assert state.text().startswith("Now: F_A/F_I =")
+    assert state.text().startswith("Now: F<sub>A</sub>/F<sub>I</sub> =")
     assert run_label(FIRST_RUN) not in off_scale.text()
     assert run_label(FIRST_RUN) not in state.text()
 

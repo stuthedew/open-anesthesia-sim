@@ -11,6 +11,7 @@ themselves:
 - which cell of the marks editor each field sits in, the order in which Tab visits them, and
   how an entry and a refusal are written into it
 - where the window opens (`PL-005`)
+- that a selector draws its own arrow and none of the platform's button (`PL-9389`)
 
 The widgets render on Qt's `offscreen` platform, which `tests/conftest.py` selects.
 """
@@ -28,6 +29,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
+    QStyle,
+    QStyleOptionComboBox,
     QWidget,
 )
 
@@ -69,11 +72,25 @@ from anesthesia_sim.app.qt_widgets import (
     NoticeLabel,
     ParameterSlider,
     ReadoutRow,
+    SelectorComboBox,
     initial_window_geometry,
     styled_label,
 )
-from anesthesia_sim.app.stylesheets import transport_button_stylesheet
-from anesthesia_sim.app.theme import ACCENT, INK, MUTED, PANEL, WARNING
+from anesthesia_sim.app.stylesheets import (
+    agent_selector_stylesheet,
+    selector_stylesheet,
+    transport_button_stylesheet,
+)
+from anesthesia_sim.app.theme import (
+    ACCENT,
+    AGENT_COLOR_SCHEMES,
+    INK,
+    MENU_ARROW_SIZE,
+    MUTED,
+    PANEL,
+    PANEL_RADIUS,
+    WARNING,
+)
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 
 
@@ -811,6 +828,65 @@ def test_a_transport_button_draws_the_theme_rather_than_the_host_palette(
 
     assert _channel_distance(darkest, expected) < _channel_distance(darkest, "#FFFFFF")
     assert _channel_distance(darkest, expected) < _channel_distance(darkest, other)
+
+
+# ------------------------------------------------------------ the selectors
+
+
+def _arrow_space_colours(selector: SelectorComboBox, application: QApplication) -> list[str]:
+    """Return the colour of each pixel in the space a selector's style sheet leaves for its arrow.
+
+    The rows within `PANEL_RADIUS` of the top and bottom edges are left out,
+    because the frame's rounded corners reach into the space there.
+    """
+
+    selector.addItem("0s")
+    selector.setFixedWidth(160)
+    selector.show()
+    application.processEvents()
+    option = QStyleOptionComboBox()
+    selector.initStyleOption(option)
+    space = selector.style().subControlRect(
+        QStyle.ComplexControl.CC_ComboBox, option, QStyle.SubControl.SC_ComboBoxArrow, selector
+    )
+    image = selector.grab().toImage()
+
+    assert space.width() >= MENU_ARROW_SIZE, space
+
+    return [
+        image.pixelColor(x, y).name().upper()
+        for x in range(space.left(), space.right() + 1)
+        for y in range(PANEL_RADIUS, selector.height() - PANEL_RADIUS)
+    ]
+
+
+@pytest.mark.parametrize("agent_id", [None, *AGENT_COLOR_SCHEMES])
+def test_a_selector_draws_its_own_arrow_and_none_of_the_platform_s_button(
+    application: QApplication, agent_id: str | None
+) -> None:
+    """The arrow space holds the selector's fill and its text colour, and nothing else (`PL-9389`).
+
+    Before the fix, the platform style drew its drop-down button there, inside
+    the style sheet's rounded frame. Its edge and shadow showed as a bracket,
+    in greys that are neither the fill nor the text colour. The selector for a
+    reading uses the interface's pair, and the agent selector uses each
+    agent's ISO 5360 pair. The fill and text colours are taken from
+    `app/theme.py`, not read back from the widget.
+    """
+
+    selector = SelectorComboBox()
+
+    if agent_id is None:
+        selector.setStyleSheet(selector_stylesheet())
+        fill, text = PANEL, INK
+    else:
+        scheme = AGENT_COLOR_SCHEMES[agent_id]
+        selector.setStyleSheet(agent_selector_stylesheet(scheme))
+        fill, text = scheme.fill, scheme.foreground
+
+    colours = _arrow_space_colours(selector, application)
+
+    assert set(colours) == {fill.upper(), text.upper()}, sorted(set(colours))
 
 
 # ------------------------------------------------------------ the notice

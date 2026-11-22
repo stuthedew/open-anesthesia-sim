@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: dropped
 classes: defect
-feature: repo-copy-edit
+feature: copy-editor
 touches: tools/copy_edit.py, tests/unit/test_copy_edit.py
 deferred-from: v0.7.0 - a new problem, not present at the freeze: meaning_findings arrived in 37c88630 (PL-F0Q2)
 added: 2026-11-09

@@ -35,8 +35,8 @@ A Projects thread checked on 2026-11-04 that the stored message carries the
 appended line (`PL-X4MD` § "Step 1 passed"). `"allow"` is needed because, in
 auto mode, Claude Code can deny a changed call that carries no decision and
 then drops the `updatedInput` on the retry
-(https://code.claude.com/docs/en/hooks, § "PreToolUse `updatedInput` in auto
-mode", read 2026-11-03). The cost is that the hook approves these sends
+(https://code.claude.com/docs/en/hooks, section "PreToolUse `updatedInput` in
+auto mode", read 2026-11-03). The cost is that the hook approves these sends
 itself. `guard.py` still refuses the call where another guard refuses it.
 
 **Which tools.** Every `mcp__hearthbot__` tool but those in

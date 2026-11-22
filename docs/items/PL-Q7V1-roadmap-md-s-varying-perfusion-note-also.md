@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: science, docs
-feature: late-washout-evidence
+feature: validation-resolving-power
 milestone: v0.5.20
 touches: ROADMAP.md
 added: 2026-09-27

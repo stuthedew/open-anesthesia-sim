@@ -41,7 +41,10 @@ from anesthesia_sim.app.bookmarks import (
     TimeBookmark,
 )
 from anesthesia_sim.app.chart_frame import (
+    ALVEOLAR_FRACTION_NAME,
     COMPARED_COMPARTMENT_CAP,
+    INSPIRED_FRACTION_NAME,
+    WASH_IN_RATIO_NAME,
     ChartFrame,
     RunCount,
     RunIndex,
@@ -133,8 +136,8 @@ RENDER_INTERVAL_S: Final = 0.2
 INITIAL_CHART_TIME_BASE: Final = TIME_BASE_LADDER[0]
 
 # How many runs the dashboard may draw at once. The limit is two for two
-# reasons. Two is what `ROADMAP.md` § "v0.5.0 - the case you can branch" puts
-# in its own out-of-scope list. And the encoding that tells one run from
+# reasons. Two is what `ROADMAP.md` § "Completed: v0.5.0 - the case you can
+# branch" puts in its own out-of-scope list. And the encoding that tells one run from
 # another has two levels (`PL-HLD5`: the run is shown by line width, with a cap
 # of two compartments). A third run would have no encoding left to be drawn
 # with.
@@ -236,7 +239,7 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # stopped run has been drawn. At that point the chart and the readouts still show
 # the frame drawn before the stop, which is not the step the run stopped at. So
 # "the values shown are the last completed step" would be the stale-state
-# misreading that the hazard table in `docs/MODEL.md` names. The first frame that
+# misreading that the hazard table in `docs/VERIFICATION.md` names. The first frame that
 # draws replaces this banner with `FAILURE_NOTICE_TEMPLATE`. Which
 # of the two banners is shown is therefore decided by whether a frame drew, not
 # guessed from the reason (`PL-7DJK`).
@@ -893,13 +896,17 @@ PREVIEW_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown, centred on now during
 # The wash-in section. It says that its values are modelled with
 # `INTERPRETATION_DISCLAIMER_TEXT`, on a line of its own rather than at the end
 # of a paragraph, where nobody reads it (`PL-F9TQ`, `PL-T8DF`).
-WASH_IN_HEADING: Final = "Wash-in: F_A/F_I, alveolar as a fraction of the modelled circuit"
-WASH_IN_DENOMINATOR_TEXT: Final = (
-    "F_I = modelled circuit, not the vaporizer dial — a rise across a control mark "
-    "can be the denominator moving, not uptake"
+WASH_IN_HEADING: Final = (
+    f"Wash-in: {WASH_IN_RATIO_NAME}, alveolar as a fraction of the modelled circuit"
 )
-WASH_IN_TRACE_LEGEND_LABEL: Final = "F_A/F_I (solid)"
-EQUILIBRIUM_LEGEND_LABEL: Final = "Equilibrium, F_A = F_I (wide dash)"
+WASH_IN_DENOMINATOR_TEXT: Final = (
+    f"{INSPIRED_FRACTION_NAME} = modelled circuit, not the vaporizer dial — a rise across a "
+    "control mark can be the denominator moving, not uptake"
+)
+WASH_IN_TRACE_LEGEND_LABEL: Final = f"{WASH_IN_RATIO_NAME} (solid)"
+EQUILIBRIUM_LEGEND_LABEL: Final = (
+    f"Equilibrium, {ALVEOLAR_FRACTION_NAME} = {INSPIRED_FRACTION_NAME} (wide dash)"
+)
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
 #: The MAC-awake band's legend words: a population value with its spread,
 #: and the trace that the band is read against (`PL-90Y6`).
@@ -1002,7 +1009,7 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # to say at which of its two boundaries it stopped. "Nothing has reached the
 # circuit yet" and "the patient is giving agent back" are opposite
 # situations, and a reader shown only an empty plot could tell neither.
-WASH_IN_STATE_TEMPLATE: Final = "Now: F_A/F_I = {ratio}"
+WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: no agent has reached the circuit yet."
 WASH_IN_ELIMINATION_TEXT: Final = (
     "Past equilibrium: alveolar exceeds inspired — the patient is returning agent, "

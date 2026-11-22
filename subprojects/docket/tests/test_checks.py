@@ -2920,6 +2920,58 @@ def test_a_closed_item_keeps_its_retired_feature() -> None:
     assert not _has(analyze([_item(feature="docket")], TODAY, RETIRED).errors, "is retired")
 
 
+REGISTRY = Config(
+    features_file="docs/features.toml",
+    feature_descriptions=(("chart-readout", "The chart's axes and notices."),),
+)
+
+
+def test_an_item_whose_feature_the_registry_does_not_list_is_an_error() -> None:
+    """`PL-Q3BN`: a name nobody described is how a session guessed at a group.
+
+    The message names the line to add, so the fix needs no lookup. A closed
+    item is held too, because the registry describes every name in use.
+    """
+    for status, closed in (("ready", None), ("done", date(2026, 8, 20))):
+        item = _item(feature="chart-redaout", status=status, closed=closed)
+        errors = analyze([item, _item("PL-BBB2", feature="chart-readout")], TODAY, REGISTRY).errors
+
+        assert _has(errors, "feature 'chart-redaout' is not in docs/features.toml"), status
+        assert _has(errors, 'chart-redaout = "<what belongs in it'), status
+
+
+def test_a_listed_feature_that_no_item_carries_is_an_error() -> None:
+    """The registry lists what is in use, so a stale line is caught rather than kept."""
+    errors = analyze([_item(feature="")], TODAY, REGISTRY).errors
+
+    assert _has(errors, "feature 'chart-readout' is listed but no item carries it")
+
+
+def test_an_item_carrying_a_folded_feature_is_told_the_name_to_use() -> None:
+    """`PL-LRWK`: the merge's whole point, and a folded line is never "unused"."""
+    folded = Config(
+        features_file="docs/features.toml",
+        feature_descriptions=(("chart-readout", "The chart."),),
+        feature_aliases=(("chart-axes", "chart-readout"),),
+    )
+    errors = analyze(
+        [_item(feature="chart-axes"), _item("PL-BBB2", feature="chart-readout")], TODAY, folded
+    ).errors
+    clean = analyze([_item(feature="chart-readout")], TODAY, folded).errors
+
+    assert _has(errors, "feature 'chart-axes' was merged into 'chart-readout'")
+    assert not _has(errors, "is not in docs/features.toml")
+    assert not _has(clean, "chart-axes")
+
+
+def test_a_registered_feature_raises_nothing_and_no_registry_checks_nothing() -> None:
+    listed = analyze([_item(feature="chart-readout")], TODAY, REGISTRY).errors
+    unregistered = analyze([_item(feature="anything")], TODAY, Config()).errors
+
+    assert not _has(listed, "docs/features.toml")
+    assert not _has(unregistered, "features.toml")
+
+
 # The closing half of the same rule, which outlived the retired
 # `verify_required_from` because the `ready` gate never reaches an item that
 # goes straight to `done` (`PL-Z34C`).

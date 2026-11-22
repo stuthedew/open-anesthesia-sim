@@ -5,7 +5,8 @@ priority: P2
 effort: M
 status: done
 classes: perf, infra
-feature: mutation-run-first-step
+feature: tests-detect-wrong-values
+milestone: v0.6.19
 touches: tools/diff_mutation.py, docs/mutation-testing.md, tests/unit/test_diff_mutation.py, tests/unit/test_line_splits.py
 deferred-from: v0.7.0 - captured after the freeze; a close-out audit cost in the workflow lane, not safety or science, which its band ranks rather than the gate
 added: 2026-11-11

@@ -20,7 +20,9 @@ checked here, and never left to a session to remember:
 - **Citations.** Every repository path and every section heading cited from
   a documentation file resolves to something that exists - or, for a path a
   sentence names as absent, planned or deleted, is declared under its
-  paragraph as `<!-- absent: path -->`, and is absent.
+  paragraph as `<!-- absent: path -->`, and is absent. A section mark in a
+  Python docstring or comment, or in an open item brief, names a heading of
+  the document it cites, as written.
 - **Line citations.** Every citation that points into a file by line -
   `core/parameters.py:274` - names a line that file still has. Held over the
   authoritative documents and over *open* item briefs; a closed brief records
@@ -355,7 +357,13 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 import required_checks_check
 
 # The simulator package's location is `product_paths`'s (`PL-H5T9`).
-from product_paths import INTERFACE_DOC, MODEL_DOC, PACKAGE_DIR, SPECIFICATION_DOCS
+from product_paths import (
+    INTERFACE_DOC,
+    MODEL_DOC,
+    PACKAGE_DIR,
+    SPECIFICATION_DOCS,
+    VERIFICATION_DOC,
+)
 
 # Which files the repository holds is `tracked_files`'s answer, and which of
 # them are rule files is `rules_paths_check`'s, so a checkout under
@@ -474,6 +482,9 @@ MODEL = Path(MODEL_DOC)
 # What the interface must show and do, which was part of `docs/MODEL.md` until
 # `PL-CTXZ` moved it out.
 INTERFACE = Path(INTERFACE_DOC)
+# How the implementation is shown to solve the model's equations, which was
+# part of `docs/MODEL.md` until `PL-6PPZ` moved it out.
+VERIFICATION = Path(VERIFICATION_DOC)
 # The documents whose restated numbers are held to their homes (`PL-JS6P`):
 # each document of the specification, and `README.md`, the page a new reader
 # trusts first.
@@ -1050,9 +1061,9 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # read by nothing, which is how two of them stayed stale for a fortnight
 # (`PL-QQCD`). A mark that a code-spanned source stands directly before is not
 # this pattern's to resolve: `` `docs/MODEL.md` § "X" `` names its document and
-# `QUOTED_SOURCE_RE` holds it by containment, and `` `PL-MB2W` § "X" `` names
-# an item brief, which no documentation heading answers and `ITEM_SECTION_RE`
-# holds the same way.
+# `QUOTED_SOURCE_RE` holds it to that document's headings, and `` `PL-MB2W` §
+# "X" `` names an item brief, which no documentation heading answers and
+# `ITEM_SECTION_RE` holds by containment.
 #
 # The mark names a section of this repository's own documents, and nothing
 # else. A section of an outside source - a paper's "Materials and Methods", a
@@ -1156,14 +1167,19 @@ MARKED_RE = re.compile(r"§{1,2}" + GAP + r"*(?=.\Z)", re.DOTALL)
 MARKER_RE = re.compile(rf"^[ \t]*\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*", re.M)
 
 # A citation that names its target document and then quotes it:
-# `` `docs/WORKING_NOTES.md`, "Splitting error outside the gate's operating
-# point" ``. The document is explicit, so nothing has to be inferred about
+# `` `docs/WORKING_NOTES.md`, "Long-term vision (aspirational north star, not a
+# scoped milestone)" ``. The document is explicit, so nothing has to be inferred about
 # which file the quotation belongs to - which is what lets this run over the
 # queue and the docstrings without the guesswork that reading a bare quoted
 # phrase there would need. The quotation must open on a word character, so a
 # stray `")"` in prose is not read as one, and it may span source lines inside
 # its paragraph, at any length (`PL-WJF2`); one its paragraph never closes is
 # the `unclosed` branch, refused by name (`PL-T73L`).
+#: The possessive, which may carry the section mark after it: `` `ROADMAP.md`'s
+#: § "X" `` is a section citation like the plain mark, and is held to headings
+#: as one. Without the mark here, a pattern took the possessive alone, met the
+#: mark where it wanted the quotation, and read nothing (`PL-LPCB`).
+POSSESSIVE = r"['\u2019]s(?:" + GAP + r"+own)?(?:" + GAP + r"*§{1,2})?"
 #: What may stand between a cited document and its quotation. A closed set of
 #: connectives, never a content word: the pattern once allowed only `,` and
 #: `:`, which left the two forms this project actually writes - `§` and the
@@ -1176,8 +1192,9 @@ MARKER_RE = re.compile(rf"^[ \t]*\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*
 #: often as for a section it is citing, and that the two are indistinguishable
 #: without reading the meaning (`PL-V13T`, which measured 28 errors and read
 #: every one as a false positive). **The distinction was never needed.**
-#: `check_quoted_sources` is the only consumer of this pattern and it tests
-#: containment rather than headings, so it asks one question of both uses -
+#: `check_quoted_sources` is the only consumer of this pattern, and after any
+#: connective but the section mark it tests containment rather than headings,
+#: so it asks one question of both uses -
 #: whether the cited file contains the words - and a quotation that has drifted
 #: is as stale as a title that has. Re-measured on 2026-09-21 over the same
 #: tree: 40 errors, of which 24 were verbatim in an earlier version of the
@@ -1195,7 +1212,7 @@ MARKER_RE = re.compile(rf"^[ \t]*\*\*(?P<title>(?:[^*\n]|{SOFT_BREAK})+?)\.?\*\*
 #: text that is not wrong. That is `PL-KJ63`'s over-reach, so widening this set
 #: still means adding a *named* connective with no second use that containment
 #: cannot answer, and nothing else.
-CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|['\u2019]s(?:" + GAP + r"+own)?|\bunder\b)"
+CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|" + POSSESSIVE + r"|\bunder\b)"
 
 # regex: a code-spanned `.md` path followed by a connective and a quotation is the syntax this
 # project writes a citation of another document in, searched for through prose.
@@ -1220,7 +1237,7 @@ QUOTED_SOURCE_RE = re.compile(
 #: one contained in its file that day, so the move lost no finding. The
 #: possessive stays hard because neither refusal came through it, and because
 #: it is how this project quotes a sentence, whose drift is the point.
-CLAIMING_CONNECTIVE = r"§{1,2}|['\u2019]s(?:" + GAP + r"+own)?"
+CLAIMING_CONNECTIVE = r"§{1,2}|" + POSSESSIVE
 # regex: this tests whether a captured connective is one of the claiming forms: the section mark or
 # a possessive.
 CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
@@ -1232,6 +1249,24 @@ CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
 # break where there is one.
 QUALIFIED_RE = re.compile(
     r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
+)
+#: A code-spanned document, a connective that claims nothing, and then the
+#: section mark: `` `docs/MODEL.md`, § "Time" `` or `` `docs/MODEL.md` (§
+#: "Time") ``.
+#: The mark makes the quotation a section title of that document, whatever
+#: stands before it. `QUOTED_SOURCE_RE` takes one connective, so it read none of
+#: these, and `QUALIFIED_RE` told every other reader to leave them to it
+#: (`PL-LPCB`, found by a blind review pass).
+# regex: a code-spanned `.md` path, a connective, the section mark and a quotation are an explicit
+# citation syntax, searched for through prose.
+CONNECTED_MARK_RE = re.compile(
+    r"`(?P<document>[\w./-]+\.md)`"
+    + GAP
+    + r"*(?:[,:(]|\bunder\b)"
+    + GAP
+    + r"*§{1,2}"
+    + GAP
+    + rf'*"(?:(?P<quoted>\w{QUOTATION_CHAR}*+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 #: A claiming connective after a code-spanned item id, which cites that item's
 #: brief: `` `PL-MB2W` § "Design round, 2026-09-24" `` or `` `PL-CNJ1`'s
@@ -1248,6 +1283,13 @@ ITEM_SECTION_RE = re.compile(
     rf"`(?P<item>{ID_PATTERN})`{GAP}*(?:{CLAIMING_CONNECTIVE}){GAP}*"
     rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}{{2,}}+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
+
+#: A document a docstring or a comment names, which a bare section mark after it
+#: in the same passage cites (`PL-LPCB`).
+#: Written in a code span or bare, since a comment often writes a path bare.
+# regex: a `.md` path is the syntax this project names a document in, with or without its code
+# span.
+NAMED_DOCUMENT_RE = re.compile(r"(?<![\w./-])`?(?P<document>[\w./-]+\.md)\b`?")
 
 # The `**Tags.**` statement. What it claims is deliberately not a list: the
 # version table above it already says which releases exist, so restating them
@@ -3011,9 +3053,9 @@ def check_untied_restatements(root: Path, report: Report) -> None:
 
     `check_prose_provenance` holds a marked number to its home. This check
     finds the numbers nobody marked (`PL-JS6P`). It reads each figure in
-    `docs/MODEL.md`, `docs/INTERFACE.md` and `README.md`, the three
-    `PROVENANCE_DOCUMENTS`, that equals a stored value in that value's
-    unit (`stored_values`). The figure must sit under a marker that says what
+    `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md` and
+    `README.md`, the four `PROVENANCE_DOCUMENTS`, that equals a stored value
+    in that value's unit (`stored_values`). The figure must sit under a marker that says what
     it is. A `provenance:` or `derived:` marker naming the value says it is
     the stored value, or was computed from it. A `not-restated:` marker
     listing the figure says it only coincides with one.
@@ -4604,7 +4646,7 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 # that section's own subsection calls silent.
 BOUND_FAMILIES = (
     BoundFamily(
-        document=MODEL,
+        document=VERIFICATION,
         heading="Reasonably foreseeable misuse, and the hazards the presentation carries",
         level=2,
         kind=TEST_ENTITY,
@@ -4620,7 +4662,7 @@ BOUND_FAMILIES = (
         promise="every entry names the test that holds it",
     ),
     BoundFamily(
-        document=MODEL,
+        document=VERIFICATION,
         heading="Required tests",
         level=2,
         kind=TEST_ENTITY,
@@ -4995,7 +5037,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     (`_check_gate_dispositions` in `subprojects/docket/src/docket/checks.py`,
     which lived in this file until `PL-WD5Z`). A deferral is a recorded
     disposition, so it silences that rule. It does not silence this one,
-    because § "Deferring to the next gate" defers a `safety` or `science` entry
+    because `ROADMAP.md` § "Deferring to the next gate" defers a `safety` or `science` entry
     only while it stays written on the frozen list, with a record that its
     hazard is not live (`PL-8C8W`). So a deferral alone answers that rule and
     leaves this one standing, and this one's text says so rather than leaving a
@@ -6619,7 +6661,7 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
         for match in _statement_matches(CITATION_RE, prose, PROSE):
             # A code-spanned source directly before the mark says where the
             # section lives: a document, or an item brief no heading here
-            # answers, and `check_quoted_sources` holds either by containment.
+            # answers, and `check_quoted_sources` holds either.
             before = match.string[max(match.pos, match.start() - 200) : match.start() + 1]
             if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
                 continue
@@ -7201,10 +7243,14 @@ def _quoting_sources(
 
     Three sets, and the two `DOC_GLOBS` misses are where this project actually
     writes its citations: the queue, which is most of its prose, and the
-    docstrings, which are where a contributor reading the code is sent
-    somewhere else. `DOC_GLOBS` itself is left alone - widening it would hand
-    every item file to `check_make_targets` and to `candidates`, neither of
-    which wants them.
+    docstrings and comments of its Python files, which are where a
+    contributor reading the code is sent somewhere else. Each comment comes as
+    a run of the comment lines that stand alone on consecutive rows, as
+    `_python_comments` reads one, since that is how this tree wraps a
+    paragraph of comment. The comments were not read until `PL-LPCB`, and 87
+    marked citations in them were checked by nothing. `DOC_GLOBS` itself is
+    left alone - widening it would hand every item file to
+    `check_make_targets` and to `candidates`, neither of which wants them.
 
     **The queue half is the *live* briefs only**, which is `_live_item_briefs`
     and the same line `check_line_citations` draws. Each comes as its
@@ -7251,6 +7297,16 @@ def _quoting_sources(
             continue
         for line, docstring in _as_passages(_docstrings(tree, source)):
             yield relative, line, docstring
+        try:
+            comments = list(_as_passages(_python_comments(source)))
+        except UNTOKENIZABLE as error:
+            declined.append(
+                f"{relative}: Python {platform.python_version()} cannot tokenize this file "
+                f"({error}), so no citation in its comments was checked"
+            )
+            continue
+        for line, comment in comments:
+            yield relative, line, comment
 
 
 def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report) -> None:
@@ -7262,19 +7318,25 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     citation into it by section title is stale the moment the thread is
     rewritten, and nothing said so.
 
-    **The test is containment, not headings, and that is what makes it
-    exact.** A citation names a document and then quotes it; whether the
-    quotation is a section title or a sentence is a distinction this tool
-    would have to guess at, and guessing produced six false errors against
-    prose that was quoted correctly. Whether the named document contains the
-    words is decidable, it is the same question in both cases, and a
-    quotation that has drifted is as stale as a title that has - `PL-XF89`
+    **A quotation after the section mark is held to the document's headings,
+    and any other to its words** (`PL-LPCB`). The mark says the quotation is a
+    section title, so `_cites_heading` decides it, the test `check_citations`
+    applies to a Markdown document's own marks. Tested by containment, a mark
+    passed while the document held the words anywhere: `ROADMAP.md`'s heading
+    "v0.6.0 - the layout is the reader's" became "Completed: v0.6.0 - the
+    layout is the reader's", and the citations of the old title passed
+    (`PL-Q2DK`). Without the mark, whether a quotation is a title or a
+    sentence is a distinction this tool would have to guess at, and guessing
+    produced six false errors against prose that was quoted correctly. So it
+    is held to the words, which is the same question for both: `PL-XF89`
     cites a `WORKING_NOTES` thread renamed from "Open:" to "Mostly settled:",
-    which a heading test and a containment test both catch.
+    which a containment test catches.
 
-    Case, dash style and quote style are folded, because a passage copied by
-    hand settles on one of the forms this project writes and the passage is
-    still there either way. So is emphasis, which a quotation leaves out
+    In a containment test, case, dash style and quote style are folded,
+    because a passage copied by hand settles on one of the forms this project
+    writes and the passage is still there either way. A heading is matched as
+    `_cites_heading` matches one, with dashes folded and case kept, because a
+    section title is cited as written. So is emphasis, which a quotation leaves out
     (`_without_emphasis`, `PL-RX0W`). The words must stand in one statement of the file,
     as `_comparable_statements` reads it, so a splice across a heading and its
     paragraph is not in it (`PL-Q8LJ`). An elided quotation is skipped outright: one
@@ -7290,12 +7352,19 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     failed on CI's runner, where it does not. Two red runs on 2026-10-17 were
     this split (`PL-2D1S`). `PL-H0CF` fixed the same split for path citations.
 
-    **A section mark is also held to the document's headings, among the
-    documents of the specification** (`PL-CTXZ`). Those documents name each
-    other's sections, so `docs/MODEL.md` holds the words of a heading that is
-    `docs/INTERFACE.md`'s, and containment passed a mark that named the wrong
-    one. A mark that names one of them, and quotes a heading that only
-    another of them has, is refused.
+    **A refused mark is told which document has the heading, where one
+    does** (`PL-CTXZ`). The documents name each other's sections, so a
+    section that moved is usually still named, by its old document, in words.
+
+    **A bare mark in a docstring or a comment names the document its passage
+    named last** (`PL-LPCB`). A module has no headings, so the mark cannot
+    name one of its own, and a docstring writes the document once and its
+    sections after it: `preferences.py` named `docs/MODEL.md` and then the
+    section on the reader's price on the next line, which had moved to
+    `docs/INTERFACE.md`. A passage that names no document holds the mark to
+    every document's headings, as `check_citations` does for a Markdown
+    document's mark that names no section of its own file. A mark in a code
+    span is a literal and is not read.
 
     **Only a claiming connective makes a miss an error** - `§` or the
     possessive, `CLAIMING_CONNECTIVE_RE`. After any other the same miss is an
@@ -7316,39 +7385,52 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     """
     bodies: dict[str, str | None] = {}
     briefs: dict[str, list[str]] = {}
-    specification: dict[str, list[str]] = {}
+    titles: dict[str, list[str] | None] = {}
 
-    def section_elsewhere(cited: str, quoted: str) -> str | None:
-        """The specification document whose section `quoted` names, where `cited` has none.
+    def target_of(cited: str) -> Path | None:
+        return next(
+            (root / path for path in _repository_paths(cited) if (root / path).is_file()), None
+        )
 
-        The specification is several documents since `PL-CTXZ`, and each
-        points at the others' sections by name. So a document holds the words
-        of a heading that is another document's, and containment alone passes
-        a section mark that names the wrong one of them.
+    def titles_of(cited: str) -> list[str] | None:
+        """The titles a section mark may name in `cited`, or `None` where no such file exists."""
+        if cited not in titles:
+            target = target_of(cited)
+            titles[cited] = (
+                _headings(target.read_text(encoding="utf-8")) if target is not None else None
+            )
+        return titles[cited]
+
+    def holder_of(term: str) -> str | None:
+        """The first documentation file with a heading `term` names, if any does.
+
+        Named in a refusal, so a section that moved is sent to where it went:
+        the specification's documents point at each other's sections by name,
+        so the document a stale mark names often still holds the words
+        (`PL-CTXZ`).
         """
-        if not specification:
-            for document in SPECIFICATION_DOCS:
-                if (root / document).is_file():
-                    specification[document] = _headings(
-                        (root / document).read_text(encoding="utf-8")
-                    )
-        own = specification.get(cited.lstrip("/"))
-        if own is None or _cites_heading(quoted, own):
-            return None
         return next(
             (
-                document
-                for document, titles in specification.items()
-                if document != cited.lstrip("/") and _cites_heading(quoted, titles)
+                path.as_posix()
+                for path in documents
+                if _cites_heading(term, titles_of(path.as_posix()) or [])
             ),
             None,
         )
 
+    def unheaded(where: str, cited: str, term: str) -> str:
+        """The refusal of a section mark that names no heading of `cited`."""
+        holder = holder_of(term)
+        if holder is not None and holder != cited:
+            return (
+                f'{where}: cites {cited} § "{term}", which is a section of {holder} '
+                f"and not of {cited}"
+            )
+        return f'{where}: quotes {cited} § "{term}", which is no heading of {cited}'
+
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
-            target = next(
-                (root / path for path in _repository_paths(cited) if (root / path).is_file()), None
-            )
+            target = target_of(cited)
             bodies[cited] = (
                 _comparable_statements(target.read_text(encoding="utf-8"))
                 if target is not None
@@ -7390,15 +7472,12 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             body = body_of(cited)
             if body is None:
                 finding = f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}"
+            elif "§" in (match.group("connective") or ""):
+                if _cites_heading(quoted, titles_of(cited) or []):
+                    continue
+                finding = unheaded(f"{path}:{line}", cited, quoted)
             elif _comparable(_without_emphasis(quoted)).rstrip(" .,;:") not in body:
                 finding = f'{path}:{line}: quotes {cited} as "{quoted}", which is not in that file'
-            elif (match.group("connective") or "").startswith("§") and (
-                elsewhere := section_elsewhere(cited, quoted)
-            ):
-                finding = (
-                    f'{path}:{line}: cites {cited} § "{quoted}", which is a section of '
-                    f"{elsewhere} and not of {cited}"
-                )
             else:
                 continue
             if claims:
@@ -7409,6 +7488,20 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                     "for it or since removed, nothing to do (only `§` or the possessive claims "
                     "the file holds the words)"
                 )
+
+        for match in _statement_matches(CONNECTED_MARK_RE, prose, kinds):
+            cited = match["document"]
+            line = offset + _line_of(text, match.start()) - 1
+            if match["unclosed"] is not None:
+                report.errors.append(
+                    _unclosed(f"{path}:{line}", f"this § of {cited}", "the section it names")
+                )
+                continue
+            quoted = _normalized(match["quoted"])
+            if body_of(cited) is None:
+                report.errors.append(f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}")
+            elif not _cites_heading(quoted, titles_of(cited) or []):
+                report.errors.append(unheaded(f"{path}:{line}", cited, quoted))
 
         for match in _statement_matches(ITEM_SECTION_RE, prose, kinds):
             item = match.group("item")
@@ -7440,6 +7533,47 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             ):
                 report.errors.append(
                     f'{path}:{line}: quotes {item} as "{quoted}", which is not in {held[0]}'
+                )
+
+        if path.suffix != ".py":
+            continue
+        # A bare mark in a docstring or a comment (`PL-LPCB`). A Markdown
+        # document's is `check_citations`'s, which reads the document's own
+        # headings for one. A module has none, so the mark names a section of
+        # the document the passage named last before it, or of some document
+        # where it named none.
+        spans = [(span.start(), span.end()) for span in _statement_spans(text)]
+        for match in _statement_matches(CITATION_RE, prose, kinds):
+            before = match.string[max(match.pos, match.start() - 200) : match.start() + 1]
+            if _inside(match.start(), spans) or QUALIFIED_RE.search(before):
+                continue
+            line = offset + _line_of(text, match.start()) - 1
+            if match["unclosed"] is not None:
+                report.errors.append(_unclosed(f"{path}:{line}", "this §", "the section it names"))
+                continue
+            term = _normalized(match["term"])
+            named = next(
+                (
+                    found["document"]
+                    for found in reversed(list(NAMED_DOCUMENT_RE.finditer(text, 0, match.start())))
+                    if target_of(found["document"]) is not None
+                ),
+                None,
+            )
+            if named is None:
+                if holder_of(term) is None:
+                    report.errors.append(
+                        f'{path}:{line}: cites section "{term}", which no documentation file has '
+                        "(§ names a section of these documents; write an outside source's "
+                        "section without the mark)"
+                    )
+            elif not _cites_heading(term, titles_of(named) or []):
+                holder = holder_of(term)
+                where = f"a section of {holder}" if holder else "no heading of any document"
+                report.errors.append(
+                    f'{path}:{line}: cites § "{term}" after naming {named}, which has no such '
+                    f"heading; it is {where}. A bare mark names the document its passage named "
+                    "last, so name the document directly before the mark"
                 )
 
 

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: interface-design-review
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/qt_agent_cost.py, src/anesthesia_sim/app/qt_agent_price.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/theme.py, tests/integration/test_agent_cost_view.py
 added: 2026-11-22
 closed: 2026-11-22

@@ -182,6 +182,13 @@ class Config:
     #: carrying one; a closed item keeps its own, so the history stays readable
     #: and the name reports as finished. Empty retires nothing (`PL-S0MB`).
     retired_features: tuple[str, ...] = ()
+    #: The project's feature registry: a TOML file, relative to the project
+    #: root, of `name = "description"` lines, one per feature any item
+    #: carries. `docket status` and `docket feature` print the description
+    #: beside the name, and `docket check` errors on an item whose feature is
+    #: not listed and on a listed name no item carries. Empty keeps no
+    #: registry, and then nothing is printed or checked (`PL-Q3BN`).
+    features_file: str = ""
     #: Paths holding the checks themselves. A delegated diff that edits one
     #: has changed the thing measuring it, so the measurement means nothing.
     gate_paths: tuple[str, ...] = (
@@ -379,12 +386,28 @@ class Config:
     #: Empty where the file is absent or holds no entry, and then nothing a
     #: session sees changes (`PL-3R6L`).
     model_evidence: tuple[ModelEvidence, ...] = ()
+    #: The rows of `features_file`, as (name, description) pairs in the file's
+    #: order. Empty where no registry is named (`PL-Q3BN`).
+    feature_descriptions: tuple[tuple[str, str], ...] = ()
+    #: The registry's redirects, as (folded name, name to use) pairs: a name
+    #: merged into another, written `old = { use = "new" }`. `docket new` and
+    #: `docket check` answer a folded name with the one to use, as a tag
+    #: synonym does (`PL-LRWK`).
+    feature_aliases: tuple[tuple[str, str], ...] = ()
     #: The `[models]` table: which model and effort each kind of work uses
     #: (`PL-0XDM`). A table of its own beside `[docket]` rather than a setting
     #: in it, because tools outside this package read it too. `None` where the
     #: file has no such table, and then `next` and `show` name no model.
     models: ModelTable | None = None
     extra: dict[str, object] = field(default_factory=dict)
+
+    def describe_feature(self, name: str) -> str:
+        """The registry's description of a feature, or "" where none is listed."""
+        return dict(self.feature_descriptions).get(name, "")
+
+    def feature_redirect(self, name: str) -> str:
+        """The feature a folded name was merged into, or "" where it was not."""
+        return dict(self.feature_aliases).get(name, "")
 
     def vocabulary(self) -> frozenset[str]:
         """Every class an item may carry, declared or derived.
@@ -491,10 +514,64 @@ def _int(value: object, fallback: int, name: str) -> int:
 
 
 #: The keys `load` reads, which are the fields of `Config` but `extra`,
-#: `model_evidence` and `models`. A project sets `extra` in code. The evidence
-#: comes from `MODEL_EVIDENCE_NAME`, and `models` from its own `[models]` table
-#: rather than from `[docket]`.
-SETTINGS = frozenset(f.name for f in fields(Config)) - {"extra", "model_evidence", "models"}
+#: `model_evidence`, `feature_descriptions` and `models`. A project sets
+#: `extra` in code. The evidence comes from `MODEL_EVIDENCE_NAME`, the
+#: descriptions from the file `features_file` names, and `models` from its own
+#: `[models]` table rather than from `[docket]`.
+SETTINGS = frozenset(f.name for f in fields(Config)) - {
+    "extra",
+    "model_evidence",
+    "feature_descriptions",
+    "feature_aliases",
+    "models",
+}
+
+
+def load_feature_registry(
+    root: Path, features_file: str
+) -> tuple[tuple[tuple[str, str], ...], tuple[tuple[str, str], ...]]:
+    """Read the feature registry that `features_file` names, as descriptions and redirects.
+
+    A line is `name = "description"`, or `old = { use = "new" }` for a name
+    merged into another. A named file that is missing, a description that is
+    not a non-empty string, and a redirect to a name the file does not
+    describe are refused rather than read as an empty registry: the check
+    would then pass every item while the setting reads as applied
+    (`PL-Q3BN`, `PL-LRWK`).
+    """
+    if not features_file.strip():
+        return (), ()
+    path = root / features_file
+    if not path.is_file():
+        raise ValueError(
+            f"{CONFIG_NAME}: features_file names {features_file}, which does not exist"
+        )
+    with path.open("rb") as handle:
+        data = tomllib.load(handle)
+    descriptions: list[tuple[str, str]] = []
+    aliases: list[tuple[str, str]] = []
+    for name, value in data.items():
+        if isinstance(value, dict):
+            target = value.get("use")
+            if set(value) != {"use"} or not isinstance(target, str) or not target.strip():
+                raise ValueError(
+                    f"{features_file}: {name!r} must be a description string or "
+                    '{ use = "<the feature it was merged into>" }'
+                )
+            aliases.append((name, target.strip()))
+        elif isinstance(value, str) and value.strip():
+            descriptions.append((name, value.strip()))
+        else:
+            raise ValueError(
+                f"{features_file}: feature {name!r} needs a one-line description as a string"
+            )
+    described = {name for name, _ in descriptions}
+    for name, target in aliases:
+        if target not in described:
+            raise ValueError(
+                f"{features_file}: {name!r} is redirected to {target!r}, which it does not describe"
+            )
+    return tuple(descriptions), tuple(aliases)
 
 
 def load_model_evidence(root: Path) -> tuple[ModelEvidence, ...]:
@@ -532,6 +609,8 @@ def load(root: Path) -> Config:
     if unknown:
         raise ValueError(f"{CONFIG_NAME}: no setting is named {', '.join(unknown)}")
     defaults = Config()
+    features_file = _str(section.get("features_file"), defaults.features_file, "features_file")
+    registry = load_feature_registry(root, features_file)
     return Config(
         items_dir=_store_dir(section.get("items_dir"), defaults.items_dir, "items_dir"),
         safety_classes=_tuple(
@@ -639,6 +718,9 @@ def load(root: Path) -> Config:
         version_policy=_str(
             section.get("version_policy"), defaults.version_policy, "version_policy"
         ),
+        features_file=features_file,
+        feature_descriptions=registry[0],
+        feature_aliases=registry[1],
         model_evidence=evidence,
         models=models,
     )

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: window-is-the-frame
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py
 deferred-from: v0.7.0 - found after the gate's list was frozen, and it shows only when a View is chosen after a simulation error
 added: 2026-11-11

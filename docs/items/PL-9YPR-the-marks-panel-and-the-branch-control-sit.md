@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature
 feature: window-is-the-frame
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/data/workspaces/default.json, tests/integration/test_simulation_view.py
 added: 2026-11-11
 closed: 2026-11-11

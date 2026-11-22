@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: copy-editor
+milestone: v0.6.19
 touches: tools/copy_edit.py, tools/prose_judge.py, tools/rejected_prose.py, tools/new_prose.py, tools/regex_baseline.py, tools/rules_paths_check.py, tests/unit/test_copy_edit.py, tests/unit/test_prose_judge.py, tests/unit/test_rejected_prose.py, tests/unit/test_new_prose.py, .claude/agents/copy-editor.md, .claude/agents/meaning-check.md, .claude/agents/prose-judge.md, docs/prose-review, Makefile, .github/workflows/quality.yml, docket.toml, docs/apparatus.md, docs/resident-instructions.md, .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.md, docs/items/PL-4BGX-docs-model-md-s-paragraph-on-the-two-classes-of.md, docs/items/PL-VZ57-reproduce-and-file-the-leads-of-the-2026-11-10.md, docs/items/PL-4H8Q-sort-the-verification-document-by-reader-after.md, docs/items/PL-N83Z-sort-the-parameter-document-by-reader-after-the.md, docs/items/PL-SY7G-sort-the-interface-document-by-reader-after-the.md
 added: 2026-11-14
 closed: 2026-11-14

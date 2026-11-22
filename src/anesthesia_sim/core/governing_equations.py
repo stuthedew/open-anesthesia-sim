@@ -51,7 +51,7 @@ produce. The container is still the circuit, and `circuit.py` still owns it.
 
 ## Why delivered and exhausted agent are states rather than a side calculation
 
-`docs/MODEL.md`'s mass-balance identity is
+`docs/VERIFICATION.md`'s mass-balance identity is
 
     initial agent + delivered agent = exhausted agent + currently stored agent
 
@@ -66,7 +66,7 @@ be consistent with anything here.
 When the integral is carried as a state, it is exact for the same reason that
 the fractions are. The accounting residual is then at the level of rounding
 error rather than of the numerical method's error. Delivered and exhausted
-agent take two rows, for the `docs/MODEL.md` § "External delivery" and
+agent take two rows, for the `docs/VERIFICATION.md` § "External delivery" and
 "Circuit exhaust" equations respectively, and each row is written as its
 equation.
 
@@ -606,12 +606,13 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     """Assemble $`A`$, so that $`\\exp(A\\Delta t)`$ advances the model exactly.
 
     Each block below is one equation of `docs/MODEL.md` § "Governing
-    equations" or § "Conservation of agent mass", written in that document's
-    symbols. The blocks follow the order of the state vector, so the venous
-    balance comes before the tissue balances, and the two totals come last. The
-    comment above each block is the equation, and each line under the comment
-    writes one of its terms as one matrix entry. `docs/MODEL.md` § "Selected
-    method (as implemented)" describes the step for which this matrix is
+    equations" or `docs/VERIFICATION.md` § "Conservation of agent mass",
+    written in the symbols of `docs/MODEL.md`. The blocks follow the order of
+    the state vector, so the venous balance comes before the tissue balances,
+    and the two totals come last. The comment above each block is the
+    equation, and each line under the comment writes one of its terms as one
+    matrix entry. `docs/VERIFICATION.md` § "Selected method (as implemented)"
+    describes the step for which this matrix is
     assembled, and names this module as the source of $`A`$.
 
     Each citation uses the section-mark form, and quotes the section title

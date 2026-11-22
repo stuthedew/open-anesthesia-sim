@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: preferences-store
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/formatting.py
 added: 2026-11-22
 closed: 2026-11-22

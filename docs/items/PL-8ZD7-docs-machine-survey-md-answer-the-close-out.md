@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: defect, docs
 feature: machine-docs-structure
+milestone: v0.6.19
 touches: docs/machine-survey.md, docs/items/PL-37N4-docs-machine-abstraction-md-answer-the-close.md
 added: 2026-11-07
 closed: 2026-11-11

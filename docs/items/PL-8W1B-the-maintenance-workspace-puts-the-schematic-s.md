@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: presentation-safety
+milestone: v0.6.19
 touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/qt_schematic.py, tests/integration/test_compartment_schematic_view.py, tests/unit/test_compartment_schematic.py, docs/MODEL.md
 added: 2026-11-02
 closed: 2026-11-14

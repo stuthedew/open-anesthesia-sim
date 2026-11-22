@@ -606,7 +606,7 @@ class BreathingCircuit:
         which blamed the numerics for the setter's defect.
 
         This method conserves the agent itself, rather than leaving that to the
-        caller (PL-006). So two of `docs/MODEL.md`'s required invariants still
+        caller (PL-006). So two of `docs/VERIFICATION.md`'s required invariants still
         apply for every caller of this public method: "no compartment creates
         agent spontaneously" and "changing a setting does not reset stored
         state". Otherwise they would apply only for a caller that knew to read
@@ -811,7 +811,7 @@ class BreathingCircuit:
     def advance(self, simulation_step_s: float) -> None:
         """Preserve the original v0.0.2 circuit interface.
 
-        This method keeps the old name and adds no behaviour. `docs/MODEL.md`
+        This method keeps the old name and adds no behaviour. `docs/VERIFICATION.md`
         § "Preserved circuit reference tests" requires the v0.0.2 analytic
         wash-in and washout tests to pass *unchanged*, and
         `tests/reference/test_circuit_wash_in.py` calls the circuit by this

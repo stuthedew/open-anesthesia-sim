@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: standing-weight
+milestone: v0.6.19
 touches: Makefile, .github/workflows/quality.yml, tools/pr_body_check.py, tests/unit/test_pr_body_check.py, tools/doc_check.py, tests/unit/test_doc_check.py, docs/apparatus.md, docs/pr-bodies/README.md, .claude/skills/docket/modes/release.md
 added: 2026-11-21
 closed: 2026-11-21

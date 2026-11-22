@@ -50,7 +50,17 @@ from math import ceil
 from typing import Final
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QMouseEvent, QPalette, QResizeEvent
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QFontMetrics,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPalette,
+    QPolygon,
+    QResizeEvent,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -128,6 +138,7 @@ from anesthesia_sim.app.theme import (
     MARK_ROW_BULLET,
     MARK_ROW_BULLET_SPACING,
     MARK_ROW_SPACING,
+    MENU_ARROW_SIZE,
     METRIC_NAME_SIZE,
     METRIC_QUALIFIER_SIZE,
     METRIC_SECONDARY_VALUE_SIZE,
@@ -1529,7 +1540,7 @@ class ForkPanel(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.point_selector = QComboBox()
+        self.point_selector = SelectorComboBox()
         self.point_selector.setStyleSheet(selector_stylesheet())
         # The selector has a fixed width because its entries grow as the trunk runs. A
         # selector that widened as it filled would move the button beside it under the
@@ -1845,7 +1856,7 @@ class MarkEditor(QWidget):
         self.remove_time_button = QPushButton(REMOVE_MARK_LABEL)
         self.remove_time_notice = NoticeLabel()
 
-        self.compartment_combo = QComboBox()
+        self.compartment_combo = FocusedComboBox()
         self.compartment_combo.setStyleSheet(selector_stylesheet())
 
         for quantity in COMPARTMENT_QUANTITIES:
@@ -1866,7 +1877,7 @@ class MarkEditor(QWidget):
         for listing in (self.time_list, self.target_list):
             listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
 
-        for field in (self.instant_spin, self.compartment_combo, self.height_spin):
+        for field in (self.instant_spin, self.height_spin):
             wheel_only_with_focus(field)
 
         for control in (
@@ -2225,6 +2236,44 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
     return QRect(left, top, width, height)
 
 
+class SelectorComboBox(QComboBox):
+    """A combo box that draws the arrow marking its list in its own text colour.
+
+    `selector_stylesheet` and `agent_selector_stylesheet` stop the platform
+    style drawing the drop-down button, whose edge showed through the rounded
+    frame (`PL-9389`). A style sheet cannot draw an arrow without an image
+    file, so this class paints one into the space the sheet leaves for it. The
+    arrow is a triangle `MENU_ARROW_SIZE` px wide, the size of the View
+    chooser's, in the colour the style sheet gives the text. So it is
+    the running agent's foreground on the agent selector. It is drawn without
+    smoothing, so each of its pixels is the text colour.
+    """
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        super().paintEvent(event)
+        option = QStyleOptionComboBox()
+        self.initStyleOption(option)
+        button = self.style().subControlRect(
+            QStyle.ComplexControl.CC_ComboBox, option, QStyle.SubControl.SC_ComboBoxArrow, self
+        )
+        half_width = MENU_ARROW_SIZE // 2
+        left = button.center().x() - half_width + 1
+        top = button.center().y() - half_width // 2
+        painter = QPainter(self)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.palette().color(QPalette.ColorRole.ButtonText))
+        painter.drawPolygon(
+            QPolygon(
+                [
+                    QPoint(left, top),
+                    QPoint(left + MENU_ARROW_SIZE, top),
+                    QPoint(left + half_width, top + half_width),
+                ]
+            )
+        )
+        painter.end()
+
+
 class _WheelOnlyWithFocus(QObject):
     """An event filter that hands a wheel event to the widget's parent while the widget lacks focus.
 
@@ -2265,7 +2314,7 @@ def wheel_only_with_focus(widget: QWidget) -> None:
     widget.installEventFilter(_WheelOnlyWithFocus(widget))
 
 
-class FocusedComboBox(QComboBox):
+class FocusedComboBox(SelectorComboBox):
     """A combo box that a mouse wheel changes only once it has focus (`wheel_only_with_focus`).
 
     Without it, a wheel over the agent cost View's selectors would change the

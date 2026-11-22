@@ -2,7 +2,7 @@
 id: PL-B7V7
 title: Audit the line edit of docs/machine-abstraction.md and docs/machine-survey.md (#2048) section by section for dropped statements, qualifiers, requirements and reasons, as the MODEL.md audit did, and restore each
 status: done
-feature: repo-copy-edit
+feature: copy-editor
 milestone: v0.6.17
 touches: docs/machine-abstraction.md, docs/machine-survey.md
 added: 2026-11-07

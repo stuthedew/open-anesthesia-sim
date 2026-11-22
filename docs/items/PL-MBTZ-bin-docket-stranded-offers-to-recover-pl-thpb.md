@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect
-feature: stranded-ahead-or-behind
+feature: stranded-report-fidelity
 milestone: v0.5.0
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/capture.md
 added: 2026-09-14

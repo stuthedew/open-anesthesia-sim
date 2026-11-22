@@ -10,12 +10,12 @@ this file. The simulation is deterministic, so the strings at a fixed
 simulated time are too. Hidden strings are included, because a hidden string
 can be shown at any moment.
 
-Each digit is replaced by `#` before the comparison. The test is about
-wording, and the numbers are the model's, which other tests check. A changed
-model value would otherwise fail here with dozens of changed numbers, and a
-real change of wording would be lost among them. The number of digits and the
-place of the decimal point are kept, so a change in how many decimals a value
-shows still fails here.
+Each digit is replaced by `#`, and each superscript digit by `^`, before the
+comparison. The test is about wording, and the numbers are the model's, which
+other tests check. A changed model value would otherwise fail here with dozens
+of changed numbers, and a real change of wording would be lost among them. The
+number of digits and the place of the decimal point are kept, so a change in
+how many decimals a value shows still fails here.
 
 The recorded points use the default settings with no change by the learner.
 A string that appears only after a setting changes, with a bookmark or a
@@ -56,7 +56,9 @@ from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, Wo
 APPROVED_FILE = Path(__file__).with_name("approved_interface_strings.json")
 APPROVE_VARIABLE = "APPROVE_INTERFACE_WORDING"
 VERSION_PLACEHOLDER = "{version}"
-_DIGITS_TO_HASH = str.maketrans(dict.fromkeys("0123456789", "#"))
+# A superscript digit, as in a residual's power of ten, is masked as a raised
+# `#`, so the exponent's length and its place are still checked (`PL-8V6L`).
+_DIGITS_TO_HASH = str.maketrans(dict.fromkeys("0123456789", "#") | dict.fromkeys("⁰¹²³⁴⁵⁶⁷⁸⁹", "^"))
 
 #: The points at which the strings are recorded, each an agent and a simulated
 #: time. Sevoflurane, the default agent, is recorded before Start, during

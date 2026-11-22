@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety, docs
 feature: model-md-structure
+milestone: v0.6.19
 touches: docs/MODEL.md
 added: 2026-11-05
 closed: 2026-11-14

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: dropped
 classes: docs
-feature: verify-command-meaning
+feature: verify-command-health
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
 closed: 2026-09-23

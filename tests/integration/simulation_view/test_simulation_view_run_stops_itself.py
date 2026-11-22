@@ -1075,10 +1075,10 @@ def _no_settings() -> dict[str, object]:
 #: They are written by hand. 40.0 L delivered, less 20.0 L exhausted and 14.0 L stored,
 #: leaves 6.0 L unaccounted. The panel does not show the unaccounted amount or the
 #: absolute error exactly. It shows the next power of ten above each one, so both lines
-#: show "<1e+01 L".
+#: show "<10¹ L".
 _REJECTED_CHECK_AMOUNTS: Final = (
     "Delivered: 40.0 L\nExhausted: 20.0 L\nStored: 14.0 L\n"
-    "Unaccounted: <1e+01 L\nAbsolute error: <1e+01 L"
+    "Unaccounted: <10¹ L\nAbsolute error: <10¹ L"
 )
 
 
