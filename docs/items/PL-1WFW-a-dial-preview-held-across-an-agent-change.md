@@ -3,12 +3,15 @@ id: PL-1WFW
 title: A dial preview held across an agent change still reads the earlier agent in its delivered line, and one held across a Reset that drops the branch still reads Run 1 preview, on main as on the PL-RF2S branch
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: every-view-in-run-state-tests
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/simulation_view
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2214
 payoff: A preview never names an agent or a run that is no longer on screen, so a learner cannot read a dotted trajectory as belonging to the wrong agent.
+tests: tests/integration/simulation_view/test_simulation_view_views.py::test_a_preview_held_across_an_agent_change_ends_rather_than_name_the_earlier_agent, tests/integration/simulation_view/test_simulation_view_views.py::test_a_preview_held_while_a_branch_is_opened_ends_rather_than_go_unnamed
 ---
 
 **Problem.** A dial preview held across an agent change still reads the earlier agent in its delivered line, and one held across a Reset that drops the branch still reads Run 1 preview, on main as on the PL-RF2S branch
@@ -43,3 +46,5 @@ shown without the state it was built from.
 **Done when.** While a dial's thumb is held, a change of agent or a Reset that changes the run set leaves the preview's label naming the agent and run that are shown, or ends the preview. A test drives both sequences and reads the label.
 
 **Generator check.** An instance of the fact that `PL-RF2S` states, "Which widgets state a run's current state, and that each is restated on every path that changes it": the label is a value shown without the state it was built from. `PL-RF2S` is still open, so this is a member of that head rather than a re-entry.
+
+**Done 2026-11-22.** A preview held across a start-over, a branch opening or an agent change now ends, by clearing the held preview in `_announce_the_start_over` and in `set_run_name` when the name changes, so the preview label never names a run or agent that is no longer drawn. Docs checked: `docs/INTERFACE.md` § "A preview of an unapplied setting" (updated), `docs/ARCHITECTURE.md` (its preview passages say how a preview is computed, not when it ends, so unchanged) and `README.md` (no mention of a preview, by `grep -n -i "preview"`).

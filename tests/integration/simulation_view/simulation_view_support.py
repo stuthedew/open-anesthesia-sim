@@ -65,7 +65,7 @@ from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     format_elapsed,
 )
-from anesthesia_sim.app.qt_widgets import BookmarkDialog, BookmarksPanel, ForkPanel, ParameterSlider
+from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel, MarkEditor, ParameterSlider
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.run_view import RunView
@@ -1138,18 +1138,13 @@ _CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN: Final = _REFUSED_ON_A_STOPPED_RUN_TEMP
 # reaching both runs, and the listing a reader sees.
 # `tests/unit/test_bookmarks.py` tests what a mark refuses, and
 # `tests/unit/test_dashboard_frame.py` tests what a row says. These tests
-# check that the dialog is wired to every run rather than to one (`PL-LPLD`).
+# check that the editor is wired to every run rather than to one (`PL-LPLD`).
 
 
-def _opened_bookmark_dialog(view: SimulationView) -> BookmarkDialog:
-    """The editor, opened the way the button opens it."""
+def _mark_editor(view: SimulationView) -> MarkEditor:
+    """The marks editor in the dashboard's first Area that shows the bookmarks View."""
 
-    _marks_panel(view).edit_button.click()
-    dialog = view._bookmark_dialog
-
-    assert dialog is not None
-
-    return dialog
+    return _marks_panel(view).editor
 
 
 # The branch halts on 0.50 xMAC at 115 s, 55 steps after it opens at 60 s.

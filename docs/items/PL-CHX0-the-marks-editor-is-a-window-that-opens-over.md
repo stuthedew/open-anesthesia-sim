@@ -3,12 +3,15 @@ id: PL-CHX0
 title: The marks editor is a window that opens over required readouts while a run plays, and nothing applies the occlusion rule of docs/INTERFACE.md to it: decide where it may sit
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, ux
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py, tests/integration/test_qt_widgets.py, tests/integration/simulation_view, docs/INTERFACE.md
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2214
 payoff: no window of the application can cover a required readout while a run plays, on any platform
+tests: tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_a_remove_leaves_no_mark_selected_so_a_second_press_removes_nothing, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_every_copy_of_the_marks_editor_shows_one_entry_and_acts_on_it, tests/integration/simulation_view/test_simulation_view_comparison.py::test_editing_a_mark_while_a_run_plays_opens_no_window, tests/integration/test_qt_widgets.py::test_a_mouse_wheel_over_an_unfocused_field_scrolls_the_area_and_changes_no_mark, tests/integration/test_qt_widgets.py::test_each_remove_button_is_drawn_below_the_list_it_removes_from
 ---
 
 **Problem.** The marks editor is a window that opens over required readouts while a run plays, and nothing applies the occlusion rule of docs/INTERFACE.md to it: decide where it may sit
@@ -46,3 +49,5 @@ The position is the offscreen platform's. A desktop may place the editor elsewhe
 **Checked 2026-11-22.** `BookmarkDialog` is still in `app/qt_widgets.py`, `SimulationView._open_bookmark_dialog` still calls `show()` on it, and `docs/INTERFACE.md` still says the bookmark editor does not block the window, so runs go on while it is open. The dialog existed at the freeze too (`git show 0947408:src/anesthesia_sim/app/qt_widgets.py`).
 
 **Generator check.** The fact misread is whether a value that the application treats as shown can be seen, which `_seen_by_reader` decides from visibility alone. No head states it. The marks editor is the one window of the application that a run plays under, so this is a one-off.
+
+**Done 2026-11-22.** The marks editor's fields now sit in the Bookmarks View, below the two lists, as `MarkEditor` in `app/qt_widgets.py`; `BookmarkDialog` and the window it opened are deleted, so no window covers a readout while marks are edited. Each Area that shows the Bookmarks View holds a copy of the editor; the dashboard keeps one entry, one refusal and one bound on the height and writes them into every copy. Review fixes: a wheel over an unfocused field scrolls the Area instead of changing it, each Remove sits under its list with its own refusal line, a copy built while a halt hides the lists selects the kept row once they return, a refill keeps the list's scroll position, and an accepted Remove leaves no row selected. Docs checked: `docs/INTERFACE.md` (the bookmarks requirements updated), `docs/ARCHITECTURE.md` (updated), `README.md` and `docs/MODEL.md` (no mention of the dialog, by `grep -n -i "bookmark dialog\|BookmarkDialog\|edit bookmarks"`), `tools/contrast_check.py` citations (now name `MarkEditor`).
