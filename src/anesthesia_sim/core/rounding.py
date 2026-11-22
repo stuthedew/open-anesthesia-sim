@@ -15,9 +15,8 @@ The module has two parts.
 **Bounds that follow from the arithmetic.** `propagator_rounding` bounds the
 rounding of one propagator, the matrix exponential that advances the state over
 one interval. A step applies one propagator, so it is also the bound for one
-step. `run_rounding` bounds a run of n steps. `clock_rounding` bounds what
-rounding of the clock adds, and `RUNNING_TOTAL_ROUNDING` bounds a compensated
-running total. Each is relative: a share of the value's own size, or of the
+step. `run_rounding` bounds a run of n steps, and `RUNNING_TOTAL_ROUNDING`
+bounds a compensated running total. Each is relative: a share of the value's own size, or of the
 scale that its docstring names.
 
 **Fixed allowances.** Each constant in the second part is the allowance of one
@@ -39,16 +38,18 @@ sources.
 
 **The agent balance does not use the summed bound.** It keeps its fixed limit
 of one part in 10**9 (project owner, 2026-11-11, ratified, with the decision
-above). Summed over the longest run a learner can reach, the bound is about 190
-times that limit, so a limit set from it would let a real accounting error
-pass. `AGENT_ACCOUNTING_RELATIVE_TOLERANCE` says what this costs.
+above). A run could then step by 1 ms. Summed over the longest such run, the
+bound was about 190 times that limit, so a limit set from it would have let a
+real accounting error pass. At the one-second step the summed bound for a
+shipped agent's longest run is one and a half times the limit.
+`AGENT_ACCOUNTING_RELATIVE_TOLERANCE` gives both figures and says what the
+fixed limit costs.
 
 Two tolerances in `layout/` stay there: `BORDER_ALIGNMENT_TOLERANCE` and
 `LAYOUT_SIZE_SUM_TOLERANCE`. They allow for rounding in the shares of a window
 that its areas take, and no computed clinical value depends on them.
 """
 
-import math
 import sys
 from typing import Final
 
@@ -171,13 +172,6 @@ allowance within 51 steps (`PL-XST1`, replayed 2026-11-11).
 """
 
 
-CLOCK_ROUNDING_UNITS: Final = 1.5
-"""How many units in the last place of the later instant a measured interval can be wrong by.
-
-`clock_rounding` gives the three roundings that add up to it.
-"""
-
-
 def propagator_rounding(squarings: int) -> float:
     """Return the bound on one propagator's rounding, as a share of the state's scale.
 
@@ -221,13 +215,11 @@ def run_rounding(squarings: int, steps: StepCount) -> float:
     """Return the bound on the rounding of `steps` steps in a row, as a share of the state's scale.
 
     The bound is `steps` times `propagator_rounding(squarings)`: each step's
-    bound, summed. The module docstring says why it is the sum. A sampled
-    window chains one propagator per column, so the same figure bounds a chain
-    of that many propagators.
+    bound, summed. The module docstring says why it is the sum.
 
     Args:
         squarings: How many squarings each step's propagator takes.
-        steps: How many steps, or chained propagators, the value has behind it.
+        steps: How many steps the value has behind it.
 
     Raises:
         TypeError: `steps` was not built as a `StepCount`, or `squarings`
@@ -241,45 +233,6 @@ def run_rounding(squarings: int, steps: StepCount) -> float:
     return propagator_rounding(squarings) * steps
 
 
-def clock_rounding(instant_s: float, interval_s: float) -> float:
-    """Return how far rounding of the clock can move a reading, as a share of its range.
-
-    A run definition measures an interval as the difference of two rounded
-    instants. Each instant is within half a unit in the last place of its
-    exact value, and the subtraction rounds by at most half a unit more. So
-    the difference can be wrong by one and a half units in the last place of
-    the later instant. On 2026-11-11 the interval from step 2 356 to step
-    6 244 of a 0.01 s step was wrong by 1.25 units. A reading is most
-    sensitive to an error in time when one of the system's time constants
-    equals the interval. Even then, the reading moves by less than the time
-    error divided by the interval. A total that grows in proportion to time,
-    such as the agent delivered at a constant setting, moves by exactly that
-    share. The figure returned is the time error divided by the interval.
-
-    Args:
-        instant_s: The later of the two instants, in seconds.
-        interval_s: The interval that the reading was propagated over, in
-            seconds.
-
-    Raises:
-        SimulationConfigurationError: `instant_s` is negative or not finite,
-            or `interval_s` is not finite or not above zero. A reading
-            propagated over no interval has no clock rounding to bound.
-    """
-
-    if not (math.isfinite(instant_s) and instant_s >= 0.0):
-        raise SimulationConfigurationError(
-            f"instant_s must be finite and at least zero, and {instant_s!r} is not"
-        )
-
-    if not (math.isfinite(interval_s) and interval_s > 0.0):
-        raise SimulationConfigurationError(
-            f"interval_s must be finite and above zero, and {interval_s!r} is not"
-        )
-
-    return CLOCK_ROUNDING_UNITS * math.ulp(instant_s) / interval_s
-
-
 # The fixed allowances. Each belongs to one kind of comparison.
 
 AGENT_ACCOUNTING_RELATIVE_TOLERANCE: Final = 1e-9
@@ -289,26 +242,36 @@ The agent handled is the amount at the start of the accounting period plus the
 amount delivered since. In exact arithmetic the balance closes, so everything
 this limit admits is rounding (`docs/MODEL.md` § "Mass-balance identity").
 
-The limit is fixed, and it is not the summed bound. A correct 24-hour run of a
-shipped agent left a residual below 4e-11, so the limit is at least 25 times
-the measured rounding. `run_rounding` for that run at the 1 ms step is 1.9e-7,
-about 190 times the limit. A limit that wide would let a real accounting error
-pass (`PL-D88N`).
+The limit is fixed, and it is not the summed bound. A shipped agent's
+one-second step needs at most three squarings, so `run_rounding` for its
+longest run, 86 400 steps, is 1.5e-9. That is one and a half times the limit.
+For the same 24 hours at the earlier step of 0.1 s, which needed no squaring,
+the bound was 1.9e-9. So the one-second step did not move the bound further
+above the limit. A measurement checks the bound: a correct 24-hour run of a
+shipped agent left a residual of at most 9.8e-12, a hundredth of the limit
+(2026-11-21, `PL-SZ6G`).
+
+Until `PL-SZ6G` a run could also step by 1 ms. `run_rounding` for 24 hours of
+those steps was 1.9e-7, about 190 times the limit. A limit that wide would let
+a real accounting error pass, which is why the limit was kept fixed
+(`PL-D88N`).
 
 The cost is a documented halt. At the stiffest corners of the numerical
-envelope a step needs squarings, and its rounding alone can exceed this limit
-within seconds of simulated time. Such a run halts although nothing is wrong
-with its accounting. No shipped agent's step needs a squaring, and
-`tests/unit/test_numerical_envelope_sweep.py` fails when one does.
+envelope a step needs 22 squarings, and one propagator's bound is then 9.3e-9,
+above this limit. Such a run halts on its first step or within seconds of
+simulated time, although nothing is wrong with its accounting.
+`tests/unit/test_numerical_envelope_sweep.py` counts the squarings of every
+shipped agent's step and fails when one needs more than three.
 """
 
 AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L: Final = 1e-12
 """A step also passes the agent balance when the unaccounted agent is within 1 picolitre of gas.
 
 A step passes on either limit. While a run has handled less than a millilitre
-of agent gas, this limit is the wider of the two. On 2026-09-06 the largest unaccounted amount in a
-3600 s run was 1.3e-11 L, for desflurane, and that run passed on the relative
-limit (`docs/MODEL.md` § "Selected method (as implemented)").
+of agent gas, this limit is the wider of the two. In the 3600 s runs of
+2026-11-21, the largest unaccounted amount was 1.1e-12 L, for isoflurane, and
+that step passed on the relative limit (`docs/MODEL.md` § "Selected method
+(as implemented)").
 """
 
 FLOW_FRACTION_TOLERANCE: Final = 1e-12
@@ -352,7 +315,8 @@ from that point by rounding, and in some runs it has F_A above F_I. On
 2026-10-26, nine combinations of agent and fresh gas flow were stepped at 0.1 s
 for 24 h, and the largest ratio was 1 + 2.2e-14. Twenty-one runs evaluated in
 one propagator from their start to 24 h reached at most 1 + 9.6e-14
-(`PL-N559`).
+(`PL-N559`). At the one-second step, isoflurane at a fresh gas flow of 6 L/min
+settles at 1 + 4.7e-15 (2026-11-21, `PL-SZ6G`).
 
 The value is set from a clinical requirement, and not from the rounding alone
 (project owner, 2026-10-26, ratified, over 1e-9 sized from rounding and over
@@ -366,38 +330,23 @@ the allowance is at least 1 000 times the rounding at each agent's settled
 state.
 """
 
-LIVE_READING_GAP: Final = 1e-6
-"""How far a stepped reading and the canonical reading of one instant may differ, as a share of it.
-
-The stepped reading has one propagator behind it for every step. The canonical
-reading has one propagator from the last setting change
-(`RunDefinition.state_at`). `PL-QVBR` measured the difference on 2026-11-01 for
-the three agents, in runs that included a setting change. As a share of the
-reading, it was at most 1.4e-10 over 24 h at the 0.1 s step, 2.9e-10 over 6 h
-at the 0.01 s step, and 1.2e-9 over 2 h at the 0.001 s step. It grows with the
-number of steps. Scaled in proportion to 24 h at the 0.001 s step it is 1.4e-8,
-and `run_rounding` for that run is 1.9e-7. This allowance is about five times
-the bound and seventy times the scaled measurement.
-
-`app/bookmarks.py` uses it to decide when a MAC target can be judged from the
-stepped readings alone. It is ten times finer than `HEIGHT_BAND`, so the zones
-around that band's two edges never meet.
-"""
-
 HEIGHT_BAND: Final = 1e-5
 """A reading within this share of a MAC target's height counts as at the height.
 
-Two readings of one instant can lie about 1e-14 apart, on opposite sides of a
-height. A steady reading also moves by one unit in the last place from step to
-step. Compared with the exact height, the first let a run stop on a target
-that its branch showed as still running, and the second made a run with a
-target at 1.00 ×MAC halt 965 times in ten minutes (`PL-QVBR`, measured
-2026-11-01). `MacTarget` in `app/bookmarks.py` says how a crossing is decided
-with the band.
+A steady reading moves by one unit in the last place from step to step.
+Compared with the exact height, such a reading made a run with a target at
+1.00 ×MAC halt 965 times in ten minutes (`PL-QVBR`, measured 2026-11-01, at
+the 0.1 s step that a run took then). `MacTarget` in `app/bookmarks.py` says
+how a crossing is decided with the band.
 
-The band is ten times `LIVE_READING_GAP`. It is also far finer than anything
-displayed. A percentage shown to two decimals resolves 0.01 percentage points,
-which is 0.5% of 1 MAC of sevoflurane, about five hundred times this band.
+The value was set as ten times an allowance for two readings of one instant
+that agreed only to rounding (`PL-QVBR`). A step now has one reading at each
+end, taken from the run's stored states, and that allowance is removed
+(`PL-Z6C8`). The band keeps its value. It is far wider than one unit in the
+last place of a reading, which is 2.2e-16 of the reading. It is also far
+finer than anything displayed. A percentage shown to two decimals resolves
+0.01 percentage points, which is 0.5% of 1 MAC of sevoflurane, about five
+hundred times this band.
 """
 
 WHOLE_COUNT_TOLERANCE: Final = 1e-9
@@ -406,11 +355,12 @@ WHOLE_COUNT_TOLERANCE: Final = 1e-9
 A quotient of two decimal quantities can come out just below the whole number
 that it equals exactly: 0.7 / 0.1 is 6.999999999999999. The
 rounding is a few times `MACHINE_EPSILON` of the quotient. A truly fractional
-quotient is far from every whole number: half a step, for a playback rate that
-does not fit a whole number of steps into a tick. This allowance lies between
-the two. Three comparisons read it: the steps in one playback tick
-(`app/playback.py`), the ticks on the chart's percent axis
-(`app/chart_frame.py`) and the grid units in a chart spacing
-(`app/chart_time_base.py`). Each of them had its own constant of the same
-value until `PL-GJ1W`.
+quotient is far from every whole number: two and a half tick intervals, for an
+axis whose top is not a multiple of its interval. This allowance lies between
+the two. One comparison reads it: the ticks on the chart's percent axis
+(`app/chart_frame.py`). Until `PL-SZ6G` the steps in one playback tick
+(`app/playback.py`) and the grid units in a chart spacing
+(`app/chart_time_base.py`) read it too. Playback now counts whole
+milliseconds, and a chart spacing is a whole number of seconds, so neither
+needs an allowance.
 """

@@ -17,8 +17,8 @@ also check that a flow is built from a number and nothing else, and that it
 stores minus zero as zero. Since `PL-CN5S`, the case instant and the step
 count are types too, `CaseInstant` and `StepCount`. The tests under "The case
 instant and the step count are types" check them in the same way. Since
-`PL-7N8P`, those tests also check that the instant is built only from a
-number and stores minus zero as zero.
+`PL-SZ6G`, those tests also check that the instant is built from an `int`
+and nothing else, as the count is.
 
 The endpoints are tested as carefully as the rejections. Every range is
 closed, and both ends matter. One reference gate trajectory keeps cardiac
@@ -50,13 +50,14 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import SimulationStep, require_simulation_step
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
     MAXIMUM_INPUT_FRACTION,
+    MAXIMUM_STEP_COUNT,
     MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MINIMUM_CARDIAC_OUTPUT_L_MIN,
     MINIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -66,7 +67,6 @@ from anesthesia_sim.core.supported_ranges import (
     FreshGasFlow,
     StepCount,
     describe_count,
-    maximum_step_count,
     require_alveolar_ventilation,
     require_cardiac_output,
     require_case_instant,
@@ -344,10 +344,10 @@ def test_another_flows_type_is_refused_as_a_swapped_argument(control: Control) -
 @pytest.mark.parametrize("control", CONTROLS, ids=CONTROL_IDS)
 @pytest.mark.parametrize(
     "other",
-    [SimulationStep(0.1), StepCount(600), CaseInstant(600.0), Fraction(0.5), Percent(2.0)],
+    [StepCount(600), CaseInstant(600), Fraction(0.5), Percent(2.0)],
     ids=lambda other: type(other).__name__,
 )
-def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument(
+def test_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swapped_argument(
     control: Control, other: object
 ) -> None:
     """The refusal names what the value was built as, and does not say to rebuild it as this flow.
@@ -356,8 +356,8 @@ def test_a_step_a_count_or_an_instant_handed_in_as_a_flow_is_refused_as_a_swappe
     `StepCount(5)` handed in as a fresh gas flow was told to build
     `FreshGasFlow(...)` from it. That is the rebuild that the flows' refusal of
     each other exists to prevent. Every checked quantity now shares one record
-    (`core/checked_number.py`). So the step, a count, an instant and both forms
-    of a concentration are refused in the same words as the other flows, and
+    (`core/checked_number.py`). So a count, an instant and both forms of a
+    concentration are refused in the same words as the other flows, and
     nothing is written.
     """
 
@@ -595,7 +595,7 @@ def test_a_cardiac_output_written_past_set_cardiac_output_is_refused_at_the_writ
     )
     assert patient.cardiac_output_l_min is held
     assert system.equation_settings() == settings
-    system.advance(SimulationStep(0.1))
+    system.advance()
 
     with pytest.raises(SimulationConfigurationError, match="written straight onto the patient"):
         patient.cardiac_output_l_min = CardiacOutput(nextafter(float(held), inf))
@@ -663,126 +663,37 @@ def test_the_supported_run_length_is_twenty_four_hours() -> None:
     `docs/MODEL.md`.
     """
 
-    assert MAXIMUM_ELAPSED_SIMULATION_TIME_S == 86_400.0
+    assert MAXIMUM_ELAPSED_SIMULATION_TIME_S == 86_400
+    assert type(MAXIMUM_ELAPSED_SIMULATION_TIME_S) is int
     assert MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600 == 24.0
 
 
-@pytest.mark.parametrize(
-    "simulation_step_s",
-    [0.01, 0.05, 0.1, 0.2, 0.25, 0.5, 1.0, 768 / 1_000_000 * 100, 0.02304, 1e-12, 1e-300, 5e-304],
-)
-def test_the_last_supported_step_lands_inside_the_declared_span(simulation_step_s: float) -> None:
-    """The step count is whole, and the run it allows stays inside the span.
+def test_the_last_step_a_run_may_take_lands_on_the_boundary_exactly() -> None:
+    """The span is a whole number of one-second steps, and the last one lands on its end.
 
-    The test checks a spread of steps rather than only the shipped 0.1 s,
-    because the count is derived from the step. For a step that does not
-    divide the span evenly, the count must round *down*. The last completed
-    step then lands at or below the boundary and never past it, and the next
-    step lands past it.
-
-    The last five steps are the regression cases (`PL-8H2R`). At
-    `768 / 1_000_000 * 100` s, which is 0.07680000000000001, the floored
-    quotient was one step too many, and the run stopped at 86400.00000000001 s.
-    At 0.02304 s the count was one short of the step that lands on 86400.0 s.
-    At 1e-12 s it was eight short. At 1e-300 s it was further short still.
-    There, many counts round to one simulated time, and only a search on that
-    time finds the last count. At 5e-304 s the count is near the largest value
-    a float holds, so a search bracket built by doubling the guess would itself
-    overflow.
-
-    Since `PL-YZ17` put the last three below `MINIMUM_SIMULATION_STEP_S`, no
-    run can take them, just as no run can take the four above 0.1 s. They stay
-    because `maximum_step_count` is arithmetic on the step it is given, and the
-    defects they caught were in that arithmetic.
+    A learner watching a run to its limit therefore reads the limit itself. A
+    count one step to either side lands one second away, so this test pins
+    the count as well. The count is whole, so no rounding decides where the
+    last step lands. Until `PL-SZ6G` the count was worked out from a float
+    step, and a quotient put it one step to either side of the span at some
+    steps (`PL-8H2R`).
     """
 
-    count = maximum_step_count(simulation_step_s)
-
-    assert isinstance(count, int)
-    assert count * simulation_step_s <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
-    assert (count + 1) * simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S
-
-
-def test_every_step_in_a_family_that_rounds_both_ways_stops_inside_the_span() -> None:
-    """The test sweeps a family of computed steps, not only the two found by hand.
-
-    Before `PL-8H2R`, the steps `0.1 / n` gave 54 counts that were one step
-    too many and 104 that were one too few, for n up to 2 000 (measured
-    2026-10-03). So this sweep fails in both directions on a count read off
-    the quotient alone. Each step is checked on the two products that define
-    the count, rather than on the quotient. Each product is what a run's
-    `elapsed_s` is at that count.
-    """
-
-    wrong = [
-        n
-        for n in range(1, 2_001)
-        if not (
-            maximum_step_count(0.1 / n) * (0.1 / n)
-            <= MAXIMUM_ELAPSED_SIMULATION_TIME_S
-            < (maximum_step_count(0.1 / n) + 1) * (0.1 / n)
-        )
-    ]
-
-    assert wrong == []
-
-
-def test_the_step_that_lands_on_the_limit_is_counted_at_a_step_the_quotient_undercounts() -> None:
-    """0.02304 s divides 24 hours exactly in floating point, so the run reaches the limit.
-
-    3 750 000 steps of 0.02304 s land on exactly 86400.0 s. The quotient
-    rounds down to 3 749 999, which stopped the run 0.02304 s short of the
-    limit that a learner would read (`PL-8H2R`).
-    """
-
-    assert maximum_step_count(0.02304) == 3_750_000
-    assert 3_750_000 * 0.02304 == MAXIMUM_ELAPSED_SIMULATION_TIME_S
-
-
-def test_a_step_whose_quotient_overcounts_stops_one_step_earlier() -> None:
-    """The count whose last step lands a float past the limit is not allowed.
-
-    1 125 000 steps of `768 / 1_000_000 * 100` s land at 86400.00000000001 s,
-    which the case-instant guard refuses. So the count stops at 1 124 999, the
-    last count whose simulated time is inside the span (`PL-8H2R`).
-    """
-
-    simulation_step_s = 768 / 1_000_000 * 100
-
-    assert 1_125_000 * simulation_step_s > MAXIMUM_ELAPSED_SIMULATION_TIME_S
-    assert maximum_step_count(simulation_step_s) == 1_124_999
-
-
-def test_the_shipped_step_reaches_the_boundary_exactly() -> None:
-    """At 0.1 s the span is a whole number of steps, and the run lands on it.
-
-    This is not implied by the test above, which only requires the last step
-    to be inside the span. Here the last step is *on* the boundary. The last
-    step that a run may take at 0.1 s lands exactly on the limit. So a learner
-    watching a run to its limit reads the limit itself, rather than a value a
-    tenth of a second short of it. A count one step to either side lands a
-    tenth of a second away, so this test pins the count as well.
-
-    Landing exactly is not a property of every limit. Every whole number of
-    hours from 1 to 720 lands exactly in floating point (measured 2026-10-03,
-    `PL-T5J5`). A limit that did not land exactly would fail here, because a
-    learner would then read a value a tenth of a second short of it.
-    """
-
-    assert maximum_step_count(0.1) * 0.1 == MAXIMUM_ELAPSED_SIMULATION_TIME_S
+    assert type(MAXIMUM_STEP_COUNT) is int
+    assert MAXIMUM_STEP_COUNT * SIMULATION_STEP_S == MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 
 def test_a_run_may_complete_the_step_that_reaches_the_boundary() -> None:
     """The interval is closed, like the three flow ranges above it."""
 
-    require_supported_run_length(maximum_step_count(0.1) - 1, 0.1)
+    require_supported_run_length(StepCount(MAXIMUM_STEP_COUNT - 1))
 
 
 def test_the_step_that_would_cross_the_boundary_is_refused() -> None:
     """When a run stands exactly on the limit, the next step is the one refused."""
 
     with pytest.raises(SimulationDomainLimitError):
-        require_supported_run_length(maximum_step_count(0.1), 0.1)
+        require_supported_run_length(StepCount(MAXIMUM_STEP_COUNT))
 
 
 def test_a_run_already_past_the_boundary_is_refused_too() -> None:
@@ -796,7 +707,7 @@ def test_a_run_already_past_the_boundary_is_refused_too() -> None:
     """
 
     with pytest.raises(SimulationDomainLimitError):
-        require_supported_run_length(maximum_step_count(0.1) + 5_000, 0.1)
+        require_supported_run_length(StepCount(MAXIMUM_STEP_COUNT + 500))
 
 
 def test_the_run_length_refusal_says_what_was_reached_and_why() -> None:
@@ -809,10 +720,11 @@ def test_the_run_length_refusal_says_what_was_reached_and_why() -> None:
     """
 
     with pytest.raises(SimulationDomainLimitError) as raised:
-        require_supported_run_length(maximum_step_count(0.1), 0.1)
+        require_supported_run_length(StepCount(MAXIMUM_STEP_COUNT))
 
     message = str(raised.value)
 
+    assert f"reached {MAXIMUM_ELAPSED_SIMULATION_TIME_S} s of simulated time" in message
     assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
     assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
     assert "leaves out metabolism" in message
@@ -834,7 +746,7 @@ def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
     """
 
     with pytest.raises(SimulationDomainLimitError) as raised:
-        require_supported_run_length(maximum_step_count(0.1), 0.1)
+        require_supported_run_length(StepCount(MAXIMUM_STEP_COUNT))
 
     assert not isinstance(raised.value, SimulationConfigurationError)
     assert isinstance(raised.value, SimulationExecutionError)
@@ -851,31 +763,24 @@ def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
 # accepted.
 
 
-@pytest.mark.parametrize(
-    "simulation_step_s", [0.1, 0.07, 0.03, 0.025, 0.01, 768 / 1_000_000 * 100, 0.02304]
-)
-def test_a_run_may_be_built_where_stepping_stops_it_and_no_further(
-    simulation_step_s: float,
-) -> None:
+def test_a_run_may_be_built_where_stepping_stops_it_and_no_further() -> None:
     """The count a run stops on is legal to stand on and illegal to step from.
 
-    Both guards read `maximum_step_count`, so they agree at every step. That
-    includes the last two steps, at which the quotient alone put that count
-    one step to either side of the span (`PL-8H2R`). Where the count falls is
-    the next test's question. This test asks only that the two count guards
-    agree.
+    Both guards read `MAXIMUM_STEP_COUNT`, so they agree. Where the count
+    falls is the next test's question. This test asks only that the two count
+    guards agree.
     """
 
-    limit = maximum_step_count(simulation_step_s)
+    limit = MAXIMUM_STEP_COUNT
 
-    require_supported_run_length(limit - 1, simulation_step_s)
-    require_supported_step_count(limit, simulation_step_s)
+    require_supported_run_length(StepCount(limit - 1))
+    require_supported_step_count(StepCount(limit))
 
     with pytest.raises(SimulationDomainLimitError):
-        require_supported_run_length(limit, simulation_step_s)
+        require_supported_run_length(StepCount(limit))
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
-        require_supported_step_count(limit + 1, simulation_step_s)
+        require_supported_step_count(StepCount(limit + 1))
 
 
 def _accepted(guard: Callable[[], None]) -> bool:
@@ -888,71 +793,46 @@ def _accepted(guard: Callable[[], None]) -> bool:
 
 
 @pytest.mark.parametrize("steps_past_the_limit", [-1, 0, 1])
-@pytest.mark.parametrize(
-    "simulation_step_s", [0.1, 0.07, 0.03, 0.025, 0.01, 768 / 1_000_000 * 100, 0.02304]
-)
-def test_the_step_count_and_the_case_instant_bound_the_same_span(
-    simulation_step_s: float, steps_past_the_limit: int
-) -> None:
+def test_the_step_count_and_the_case_instant_bound_the_same_span(steps_past_the_limit: int) -> None:
     """The count guard accepts a count exactly where the instant guard accepts its instant.
 
     A branch at a bookmark is built from its parent's step count, and a branch
     at a control event is built from its parent's instant. So the two guards
     have to put the end of the span in the same place. Otherwise the same fork
-    would be built one way and refused the other. Before `PL-8H2R`, at
-    `768 / 1_000_000 * 100` s, the count guard accepted a run standing at
-    86400.00000000001 s, which the instant guard refuses. At 0.02304 s, the
-    count guard refused a count standing on 86400.0 s, which the instant guard
-    accepts.
+    would be built one way and refused the other. Until `PL-SZ6G` the step was
+    a `float`, and at a step that did not divide the span the two guards
+    disagreed by one step (`PL-8H2R`).
     """
 
-    step_count = maximum_step_count(simulation_step_s) + steps_past_the_limit
+    step_count = MAXIMUM_STEP_COUNT + steps_past_the_limit
 
-    by_count = _accepted(lambda: require_supported_step_count(step_count, simulation_step_s))
-    by_instant = _accepted(lambda: require_supported_case_instant(step_count * simulation_step_s))
+    by_count = _accepted(lambda: require_supported_step_count(StepCount(step_count)))
+    by_instant = _accepted(lambda: require_supported_case_instant(step_count * SIMULATION_STEP_S))
 
     assert by_count == by_instant
     assert by_count == (steps_past_the_limit <= 0)
 
 
 def test_the_step_count_refusal_names_the_count_the_step_and_the_limit() -> None:
-    """The refusal gives counts rather than a time, because counts are exact.
+    """The refusal gives the count handed in beside the largest count allowed.
 
-    Consider a run one step past the limit, at a step that does not divide the
-    limit evenly. Its time, printed at the precision that a message rounds to,
-    would look the same as the limit. The count, printed beside the largest count
-    allowed, cannot be misread. The limit is read from its constant, which
+    It names the one-second step, so a reader knows what each count measures.
+    The limit is read from its constant, which
     `test_the_supported_run_length_is_twenty_four_hours` pins.
     """
 
-    limit = maximum_step_count(0.1)
+    limit = MAXIMUM_STEP_COUNT
 
     with pytest.raises(SimulationConfigurationError) as raised:
-        require_supported_step_count(limit + 1, 0.1)
+        require_supported_step_count(StepCount(limit + 1))
 
     message = str(raised.value)
 
-    assert f"{limit + 1} steps of 0.1 s" in message
+    assert f"{limit + 1} steps of 1 s" in message
     assert f"at most {limit}" in message
     assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
     assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
     assert "Supported run length" in message
-
-
-def test_the_step_count_refusal_prints_the_step_it_was_given_in_full() -> None:
-    """A computed step is printed exactly, not rounded to a value that looks like another step.
-
-    `768 / 1_000_000 * 100` is 0.07680000000000001. Rounded to six figures, it
-    would print as 0.0768, a step at which the run was not taken.
-    """
-
-    simulation_step_s = 768 / 1_000_000 * 100
-    past = maximum_step_count(simulation_step_s) + 1
-
-    with pytest.raises(SimulationConfigurationError) as raised:
-        require_supported_step_count(past, simulation_step_s)
-
-    assert f"{past} steps of 0.07680000000000001 s" in str(raised.value)
 
 
 def test_a_step_count_too_long_to_print_is_refused() -> None:
@@ -960,30 +840,26 @@ def test_a_step_count_too_long_to_print_is_refused() -> None:
 
     CPython will not print an integer longer than `sys.get_int_max_str_digits`
     digits. So a refusal that printed the count raised `ValueError` while the
-    message was being written. The run-length refusal, which multiplies the
-    count by the step, raised `OverflowError`. Either error escaped the
-    simulator's exceptions, where every guard here promises one of its own.
+    message was being written. The run-length refusal, which then multiplied
+    the count by a `float` step, raised `OverflowError`. Either error escaped
+    the simulator's exceptions, where every guard here promises one of its own.
     """
 
     too_long = 10**5000
     named = f"<more than {sys.get_int_max_str_digits():,} digits>"
 
     with pytest.raises(SimulationConfigurationError) as past_the_span:
-        SimulationState(step_count=StepCount(too_long), simulation_step_s=SimulationStep(0.1))
+        SimulationState(step_count=StepCount(too_long))
 
     with pytest.raises(SimulationConfigurationError) as negative:
         StepCount(-too_long)
 
     with pytest.raises(SimulationDomainLimitError) as stepped_from:
-        require_supported_run_length(StepCount(too_long), SimulationStep(0.1))
+        require_supported_run_length(StepCount(too_long))
 
-    with pytest.raises(SimulationConfigurationError) as without_a_step:
-        SimulationState(step_count=StepCount(too_long))
-
-    assert f"a run of {named} steps of 0.1 s" in str(past_the_span.value)
+    assert f"a run of {named} steps of 1 s" in str(past_the_span.value)
     assert f"not -{named}" in str(negative.value)
-    assert f"reached {named} steps of 0.1 s" in str(stepped_from.value)
-    assert f"step_count is {named} but no simulation_step_s" in str(without_a_step.value)
+    assert f"reached {named} s of simulated time" in str(stepped_from.value)
 
 
 def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> None:
@@ -993,8 +869,8 @@ def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> No
     count longer than `sys.get_int_max_str_digits` digits would raise
     `ValueError` while the `TypeError` was being written. `PL-5F76` closed
     that escape for the count, and `PL-CN5S` never opened it for the instant.
-    `PL-848D` closed it for the step and the three flows, which printed with
-    `repr` until then.
+    `PL-848D` closed it for the three flows, which printed with `repr` until
+    then.
     """
 
     too_long = 10**5000
@@ -1006,15 +882,9 @@ def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> No
     with pytest.raises(TypeError) as as_an_instant:
         require_case_instant("instant_s", too_long)
 
-    with pytest.raises(TypeError) as as_a_step:
-        require_simulation_step(too_long)
-
     assert f"step_count of {named} was not built as StepCount, it is int" in str(as_a_count.value)
     assert f"instant_s of {named} was not built as CaseInstant, it is int" in str(
         as_an_instant.value
-    )
-    assert f"simulation_step_s of {named} was not built as SimulationStep, it is int" in str(
-        as_a_step.value
     )
 
     for control, require_built in zip(
@@ -1030,52 +900,110 @@ def test_a_count_too_long_to_print_is_named_when_it_was_not_built_as_one() -> No
         assert expected in str(as_a_flow.value)
 
 
-@pytest.mark.parametrize("instant_s", [0.0, 3_600.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S])
-def test_a_case_instant_is_supported_over_the_closed_span(instant_s: float) -> None:
+@pytest.mark.parametrize("instant_s", [0, 3_600, MAXIMUM_ELAPSED_SIMULATION_TIME_S])
+def test_a_case_instant_is_supported_over_the_closed_span(instant_s: int) -> None:
     """Both ends are included, like every interval here, so a run may stand on the far end."""
 
     require_supported_case_instant(instant_s)
 
 
-@pytest.mark.parametrize(
-    "instant_s",
-    [
-        nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf),
-        MAXIMUM_ELAPSED_SIMULATION_TIME_S + 3_600.0,
-        nextafter(0.0, -inf),
-        -1.0,
-        nan,
-        inf,
-        -inf,
-    ],
+INSTANTS_OUTSIDE_THE_SPAN = (
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S + 1,
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S + 3_600,
+    -1,
+    -3_600,
+    10**400,
+    -(10**400),
 )
-def test_a_case_instant_outside_the_span_is_refused(instant_s: float) -> None:
-    """Refused on either side, and when it is not a finite number at all.
+"""Whole seconds outside the span: the first one past each end, and others further out.
 
-    `nan` fails every comparison, so a guard written only as a test against
-    the maximum would let it through. One expression refuses every case with
-    one message, as `_require_supported` does for the flows.
+`10**400` is an `int` too large for a `float`. The guard compares it exactly,
+as an `int`, and refuses it against the run length as it refuses any other.
+"""
+
+FLOAT_INSTANTS = (
+    0.0,
+    -0.0,
+    2.0,
+    2.5,
+    3_600.0,
+    float(MAXIMUM_ELAPSED_SIMULATION_TIME_S),
+    nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf),
+    nextafter(0.0, -inf),
+    -1.0,
+    nan,
+    inf,
+    -inf,
+    numpy.float64(1.0),
+)
+"""Floats that an instant is never built from, inside the span, at its edges and outside it.
+
+Each was either accepted or refused against the run length while an instant
+was a `float`. `0.0`, `2.0`, `3_600.0` and the run length itself are whole and
+inside the span. `-0.0` was stored as zero. The two `nextafter` values are the
+first floats outside each end. `nan` fails every comparison.
+"""
+
+
+@pytest.mark.parametrize("instant_s", INSTANTS_OUTSIDE_THE_SPAN, ids=describe_count)
+def test_a_case_instant_outside_the_span_is_refused(instant_s: int) -> None:
+    """A whole second outside the span is refused on either side, as a refused setting is.
+
+    The first second past the far end and the first second before induction
+    are both refused, so the interval is closed exactly at 0 and at the run
+    length. One expression refuses every case with one message, as
+    `_require_supported` does for the flows.
     """
 
     with pytest.raises(SimulationConfigurationError, match="supported run length"):
         require_supported_case_instant(instant_s)
 
 
-def test_the_case_instant_refusal_names_the_instant_and_the_span() -> None:
-    """The value is printed exactly, not rounded to look like the limit."""
+@pytest.mark.parametrize("instant_s", FLOAT_INSTANTS, ids=repr)
+def test_a_float_is_refused_as_a_case_instant_whatever_it_holds(instant_s: float) -> None:
+    """An instant is an `int`, so a `float` is refused before its value is read (`PL-SZ6G`).
 
-    past = nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf)
+    A run moves only by the one-second step, so every instant that it reaches
+    is a whole number of seconds. `2.0` is whole and is refused all the same,
+    because a `float` handed in is a sign that something computed the instant
+    by arithmetic that can round. The refusal is a `TypeError`, as when a
+    count refuses a `float`. It is a programming error in the caller, not a
+    refused setting. So a float outside the span, `nan` and an infinity meet
+    the same refusal as a float inside it, and none of them reaches the
+    comparison with the run length. Minus zero has no stored form, because it
+    is a `float` too.
+    """
+
+    for build in (require_supported_case_instant, CaseInstant):
+        with pytest.raises(TypeError) as raised:
+            build(instant_s)  # type: ignore[arg-type]
+
+        assert str(raised.value) == (
+            f"instant_s of {instant_s!r} has type {type(instant_s).__name__}, not int: an "
+            "instant of the case is a whole number of seconds, because a run moves only by "
+            "the 1 s step (core/simulation_step.py)"
+        )
+
+
+def test_the_case_instant_refusal_names_the_instant_and_the_span() -> None:
+    """The whole sentence is pinned, with the instant printed as it was handed in.
+
+    The span in the expected sentence is 0 to 86 400 s, which is 24 hours. It
+    is read from the constant that
+    `test_the_supported_run_length_is_twenty_four_hours` pins.
+    """
+
+    past = MAXIMUM_ELAPSED_SIMULATION_TIME_S + 1
 
     with pytest.raises(SimulationConfigurationError) as raised:
         require_supported_case_instant(past)
 
-    message = str(raised.value)
-
-    assert f"{past} s" in message
-    assert f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s is" not in message
-    assert f"0 to {MAXIMUM_ELAPSED_SIMULATION_TIME_S:g} s" in message
-    assert f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} h)" in message
-    assert "Supported run length" in message
+    assert str(raised.value) == (
+        f"a case instant of {past} s is outside the supported run length of 0 to "
+        f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S} s "
+        f"({MAXIMUM_ELAPSED_SIMULATION_TIME_S // 3600} h), the span this model is claimed to "
+        'represent a patient over (docs/INTERFACE.md, "Supported run length")'
+    )
 
 
 # --- The case instant and the step count are types (PL-CN5S) ----------------
@@ -1083,47 +1011,40 @@ def test_the_case_instant_refusal_names_the_instant_and_the_span() -> None:
 # These types work as each flow does above. The instant is checked against the
 # span once, where it is built as a `CaseInstant`. The count is checked once,
 # where it is built as a `StepCount`, for what a count can be checked for on
-# its own: that it is whole and nonnegative. How many steps fit depends on the
-# step, so that half of the check stays with the record that holds the pair,
-# `SimulationState`. Each type keeps what it was built from, refuses in its
-# check's own words, and comes back from a copy as itself. The test modules of
-# the records that store these types check that each record refuses a value
-# that was never built as the type.
+# its own: that it is whole and nonnegative. How many steps a run may complete
+# is the run's limit, so that half of the check stays with the record that
+# holds the run's clock, `SimulationState`. Each type keeps what it was built
+# from, refuses in its check's own words, and comes back from a copy as itself.
+# The test modules of the records that store these types check that each
+# record refuses a value that was never built as the type.
 
 
 @pytest.mark.parametrize(
     "instant_s",
     [
-        0.0,
-        5e-324,
-        3_600.0,
-        86_400.0 / 3.0,
-        nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, -inf),
+        0,
+        1,
+        3_600,
+        MAXIMUM_ELAPSED_SIMULATION_TIME_S // 3,
+        MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1,
         MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     ],
 )
-def test_a_case_instant_is_the_instant_it_was_built_from_exactly(instant_s: float) -> None:
-    """Like a flow, an instant keeps its value bit for bit, at the span's ends and between."""
+def test_a_case_instant_is_the_instant_it_was_built_from_exactly(instant_s: int) -> None:
+    """An instant keeps the whole second it was built from, at the span's ends and between."""
 
     built = CaseInstant(instant_s)
 
     assert type(built) is CaseInstant
-    assert isinstance(built, float)
-    assert built.hex() == float(instant_s).hex()
+    assert isinstance(built, int)
+    assert int(built) == instant_s
+    assert str(built) == str(instant_s)
 
 
 def test_a_case_instant_refuses_what_its_guard_refuses_in_the_guards_words() -> None:
     """The type and its guard share one check, so they reject the same values in the same words."""
 
-    for instant_s in (
-        nextafter(MAXIMUM_ELAPSED_SIMULATION_TIME_S, inf),
-        MAXIMUM_ELAPSED_SIMULATION_TIME_S + 3_600.0,
-        nextafter(0.0, -inf),
-        -1.0,
-        nan,
-        inf,
-        -inf,
-    ):
+    for instant_s in INSTANTS_OUTSIDE_THE_SPAN:
         with pytest.raises(SimulationConfigurationError) as by_the_guard:
             require_supported_case_instant(instant_s)
 
@@ -1133,32 +1054,33 @@ def test_a_case_instant_refuses_what_its_guard_refuses_in_the_guards_words() -> 
         assert str(by_the_type.value) == str(by_the_guard.value)
 
 
-def test_a_case_instant_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_own_words() -> None:
-    """An instant is built from an int or a float and nothing else, and has no sign at zero.
+def test_a_case_instant_refuses_what_is_not_an_int_and_names_an_overflowing_int() -> None:
+    """An instant is built from an `int` and nothing else, in the simulator's own words.
 
     The guard and the type both refuse each value in `NOT_A_NUMBER`, before
     any comparison reads it. The refusal is a `TypeError` in the simulator's
-    words that names the value and its type, as each flow's refusal does
+    words that names the value and its type, as the count's refusal does
     (`PL-LLMN`). Until `PL-7N8P`, `True` and `numpy.True_` were each an
     instant of 1 s on the case's axis, and `Decimal('2.5')` was an instant of
     2.5 s. The string and the signalling NaN escaped in `math.isfinite`'s
-    words. An `int` past the float range is compared exactly and refused
-    against the run length, in the same words as any other instant outside it.
-    Before that fix, `isfinite` raised `OverflowError` for such an int. An int
-    too long to print is named by its length, as a refused count is
-    (`PL-5F76`). Minus zero is stored as zero, and an `int` is accepted just as
-    a `float` is.
+    words. A NumPy integer is not an `int`, so it is refused with them. An
+    `int` past the float range is compared exactly and refused against the
+    run length, in the same words as any other instant outside it. An int too
+    long to print is named by its length, as a refused count is (`PL-5F76`).
+    Zero has one form, the `int`, and an instant built from the `int` 1 holds
+    1.
     """
 
-    for value in NOT_A_NUMBER:
+    for value in (*NOT_A_NUMBER, numpy.int64(1), None):
         for build in (require_supported_case_instant, CaseInstant):
             with pytest.raises(TypeError) as raised:
                 build(value)  # type: ignore[arg-type]
 
             message = str(raised.value)
 
-            assert message.startswith(f"instant_s of {value!r} has type {type(value).__name__}")
-            assert "not int or float" in message
+            assert message.startswith(
+                f"instant_s of {value!r} has type {type(value).__name__}, not int: "
+            )
 
     with pytest.raises(SimulationConfigurationError, match="supported run length") as by_the_type:
         CaseInstant(10**400)
@@ -1179,13 +1101,12 @@ def test_a_case_instant_refuses_a_bool_a_decimal_and_an_overflowing_int_in_its_o
         in str(too_long.value)
     )
 
-    assert CaseInstant(-0.0).hex() == (0.0).hex()
+    assert str(CaseInstant(-0)) == "0"
 
-    for number in (1, 1.0, numpy.float64(1.0)):
-        built = CaseInstant(number)
+    built = CaseInstant(1)
 
-        assert type(built) is CaseInstant
-        assert built.hex() == (1.0).hex()
+    assert type(built) is CaseInstant
+    assert int(built) == 1
 
 
 def _id(value: object) -> str:
@@ -1194,13 +1115,14 @@ def _id(value: object) -> str:
     return describe_count(value) if isinstance(value, int) else repr(value)
 
 
-@pytest.mark.parametrize("step_count", [0, 1, 864_000, 2**63, 10**5000], ids=_id)
+@pytest.mark.parametrize("step_count", [0, 1, 86_400, 2**63, 10**5000], ids=_id)
 def test_a_step_count_is_any_whole_nonnegative_count_however_long(step_count: int) -> None:
     """On its own, a count is checked only for being whole and nonnegative.
 
-    A count past the span is built here, because whether it is past the span
-    depends on the step it is paired with. `SimulationState` refuses the pair,
-    and names a count too long to print by its length.
+    A count past the span is built here, because how many steps a run may
+    complete is the run's limit and not the count's. `SimulationState` refuses
+    such a count where it stores it, and names a count too long to print by
+    its length.
     """
 
     built = StepCount(step_count)
@@ -1248,24 +1170,24 @@ def test_arithmetic_on_an_instant_or_a_count_is_a_plain_number() -> None:
     """A value derived from an instant or a count is not checked, and must not look checked.
 
     The instant one step past the end of the span is outside the span. So is
-    the count one step past the last step that a run may take at the coarsest
-    step. If either sum were still the type, it would promise a check that
-    never ran. `SimulationState` builds the type again where it stores the
-    next count and where it reports the instant it stands at.
+    the count one step past the last step that a run may take. If either sum
+    were still the type, it would promise a check that never ran.
+    `SimulationState` builds the type again where it stores the next count and
+    where it reports the instant it stands at.
     """
 
     at_the_end = CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S)
-    at_the_limit = StepCount(maximum_step_count(SimulationStep(0.1)))
+    at_the_limit = StepCount(MAXIMUM_STEP_COUNT)
 
-    assert type(at_the_end + 0.1) is float
-    assert type(at_the_end - at_the_end) is float
-    assert type(-at_the_end) is float
+    assert type(at_the_end + SIMULATION_STEP_S) is int
+    assert type(at_the_end - at_the_end) is int
+    assert type(-at_the_end) is int
     assert type(at_the_limit + 1) is int
-    assert type(at_the_limit * 0.1) is float
+    assert type(at_the_limit * SIMULATION_STEP_S) is int
     assert type(-at_the_limit) is int
 
 
-@pytest.mark.parametrize("built", [CaseInstant(600.0), StepCount(6_000)], ids=repr)
+@pytest.mark.parametrize("built", [CaseInstant(600), StepCount(6_000)], ids=repr)
 def test_an_instant_and_a_count_survive_copy_and_pickle_as_their_types(built: object) -> None:
     """Each is rebuilt through its type's constructor, which checks it again and keeps the type."""
 
@@ -1303,7 +1225,7 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
         assert f"it is {type(unbuilt).__name__}" in str(raised.value)
         assert "build it as StepCount(...)" in str(raised.value)
 
-    require_case_instant("instant_s", CaseInstant(600.0))
+    require_case_instant("instant_s", CaseInstant(600))
     require_step_count(StepCount(6_000))
 
 
@@ -1311,7 +1233,6 @@ def test_a_value_not_built_as_the_type_is_refused_whatever_it_holds() -> None:
     "other",
     [
         StepCount(600),
-        SimulationStep(0.1),
         FreshGasFlow(4.0),
         AlveolarVentilation(4.0),
         CardiacOutput(5.0),
@@ -1325,8 +1246,8 @@ def test_another_quantity_handed_in_as_an_instant_is_refused_as_a_swapped_argume
 ) -> None:
     """The refusal names what the value was built as, and does not say to rebuild it as an instant.
 
-    A count of 600 steps, or the 0.1 s step, arriving where an instant belongs
-    is a swapped argument. A refusal that prescribed `CaseInstant(600)` would
+    A count of 600 steps arriving where an instant belongs is a swapped
+    argument. A refusal that prescribed `CaseInstant(600)` would
     have the caller build an instant of 600 s from it. That instant passes
     every check and is the wrong quantity, so the message prescribes nothing.
     """
@@ -1344,8 +1265,7 @@ def test_another_quantity_handed_in_as_an_instant_is_refused_as_a_swapped_argume
 @pytest.mark.parametrize(
     "other",
     [
-        CaseInstant(600.0),
-        SimulationStep(0.1),
+        CaseInstant(600),
         FreshGasFlow(4.0),
         AlveolarVentilation(4.0),
         CardiacOutput(5.0),

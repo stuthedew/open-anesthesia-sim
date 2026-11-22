@@ -1,8 +1,8 @@
 """Measure what a late control change costs, and check the published table against it.
 
-Since `PL-X9KD`, `MAXIMUM_SIMULATION_STEP_S` is no longer a numerical limit. The
-exact step has no truncation error at any step size, so there is no accuracy
-domain left to stay inside. The constant now declares a *control-resolution
+`SIMULATION_STEP_S`, the one-second step, is not a numerical limit. The exact
+step has no truncation error at any step size, so there is no accuracy domain
+to stay inside (`PL-X9KD`). The constant declares a *control-resolution
 tolerance*. Settings are held constant across a step, so a control change is
 invisible to the model until the step ends. A change therefore takes effect up
 to one whole step late.
@@ -10,8 +10,8 @@ to one whole step late.
 That makes the tolerance a measurement rather than a definition, and
 `docs/MODEL.md` § "Supported simulation step" publishes it as one. The table
 gives three manoeuvres, each with its worst displacement over all three agents,
-in percentage points of one atmosphere. `core/uptake_system.py` repeats two of
-the figures in the comment that derives the constant. Before this module, only
+in percentage points of one atmosphere. `core/simulation_step.py` repeats two of
+the figures in the comment on the constant. Before this module, only
 the prose in those two files stated the figures, and nothing checked them. A
 change to the governing equations, to a partition coefficient, to the reference
 adult's volumes or to the supported input envelope would have moved them
@@ -55,7 +55,7 @@ from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -66,20 +66,20 @@ AGENT_IDS = ("sevoflurane", "isoflurane", "desflurane")
 #: this set is what gives that phrase its meaning.
 STATE_LABELS = ("circuit", "alveolar", "mixed venous", "vessel rich", "muscle", "fat")
 
-#: The step at which every figure below was measured, and the step the interface
-#: runs at. `test_the_tolerance_is_measured_at_the_supported_step` checks that it
-#: equals `MAXIMUM_SIMULATION_STEP_S`. Since `PL-NBCJ`, that constant is an
-#: argued decision with three recorded reasons rather than a default. Every
-#: figure in both published tables is measured *at* it, so the two must not be
-#: allowed to differ.
-SHIPPED_STEP_S = SimulationStep(0.1)
+#: The step at which every figure below was measured, in seconds. It is written
+#: here as a literal, and `test_the_tolerance_is_measured_at_the_supported_step`
+#: checks that it equals `SIMULATION_STEP_S`, the step every run takes. The step
+#: is a recorded decision (`PL-7CY5`, replacing the 0.1 s step of `PL-NBCJ`), and
+#: every figure in both published tables is measured *at* it, so the two must
+#: not be allowed to differ.
+MEASURED_STEP_S = 1
 
-#: The interface's run-loop tick. It is restated here rather than imported from
-#: `app/simulation_view.py`, because that module needs Flet.
-#: `tests/integration/simulation_view/` checks that the shipped constant equals this value,
-#: so a change there fails there. `tests/unit/test_playback.py` restates the
-#: value for the same reason.
-TICK_INTERVAL_S = 0.1
+#: The interface's run-loop tick, in milliseconds of real time. It is restated
+#: here rather than imported from `app/dashboard_frame.py`, which loads the
+#: interface. `tests/unit/test_dashboard_frame.py` checks that the shipped
+#: constant equals this value, so a change there fails there.
+#: `tests/unit/test_playback.py` restates the value for the same reason.
+TICK_INTERVAL_MS = 100
 
 #: The fresh gas flow at which the case-opening manoeuvre runs. "Reference flows"
 #: in the published table means this flow together with the reference adult's
@@ -98,7 +98,7 @@ REFERENCE_FRESH_GAS_FLOW_L_MIN = 4.0
 #: 120 s, 300 s or 600 s past the change gives the same figure to six
 #: significant digits. 120 s is four times the largest delay, and it is the
 #: value kept.
-SETTLE_S = 120.0
+SETTLE_S = 120
 
 #: How far a measurement may sit from the figure that `docs/MODEL.md` prints and
 #: still count as that figure.
@@ -135,7 +135,7 @@ class Manoeuvre:
 
     before: OperatingPoint
     after: OperatingPoint
-    hold_s: float
+    hold_s: int
 
 
 def _case_opening(agent_id: str) -> Manoeuvre:
@@ -162,7 +162,7 @@ def _case_opening(agent_id: str) -> Manoeuvre:
     )
     one_mac = load_agent_parameters(agent_id).mac_percent
 
-    return Manoeuvre(closed, _with_dial(closed, one_mac), hold_s=60.0)
+    return Manoeuvre(closed, _with_dial(closed, one_mac), hold_s=60)
 
 
 def _unperfused_load_then_dial_off(agent_id: str) -> Manoeuvre:
@@ -193,7 +193,7 @@ def _unperfused_load_then_dial_off(agent_id: str) -> Manoeuvre:
             alveolar_ventilation_l_min=supported_ranges.MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
             cardiac_output_l_min=supported_ranges.MAXIMUM_CARDIAC_OUTPUT_L_MIN,
         ),
-        hold_s=600.0,
+        hold_s=600,
     )
 
 
@@ -222,7 +222,7 @@ def _ventilator_start(agent_id: str) -> Manoeuvre:
     return Manoeuvre(
         before=_with_ventilation(corner, supported_ranges.MINIMUM_ALVEOLAR_VENTILATION_L_MIN),
         after=corner,
-        hold_s=300.0,
+        hold_s=300,
     )
 
 
@@ -239,35 +239,38 @@ def _ventilator_start(agent_id: str) -> Manoeuvre:
 #: module drives them to answer a different question, and it is free to change
 #: them for its own reasons.
 PUBLISHED_TOLERANCE = {
-    "case opening": (_case_opening, 6.7e-3, "desflurane"),
-    "unperfused load then dial off": (_unperfused_load_then_dial_off, 5.0e-2, "desflurane"),
-    "ventilator start": (_ventilator_start, 1.4e-1, "desflurane"),
+    "case opening": (_case_opening, 6.6e-2, "desflurane"),
+    "unperfused load then dial off": (_unperfused_load_then_dial_off, 5.0e-1, "desflurane"),
+    "ventilator start": (_ventilator_start, 1.3, "desflurane"),
 }
 
 #: The worst displacement per grid step at each playback rate that the interface
 #: offers. The figures come from the second table in the same section. `PL-NBWP`
-#: added that table when it established that the interface waits one *step* for
-#: a control change only at 1x. Above 1x, the interface waits `multiplier x 0.1` s.
+#: added that table when it established that the interface waits longer than
+#: one step for a control change at its fast rates. The interface waits one step
+#: at 1x and 5x, and 2, 6 and 30 s at 20x, 60x and 300x
+#: (`PlaybackRate.control_grid_s`).
 #:
 #: The table is keyed by multiplier rather than by delay. So a playback rate
 #: added without a measured displacement fails here, and so does a row published
-#: for a rate that nobody can select. The 1x entry is the ventilator-start row of
-#: the table above, and that shared entry keeps the two tables consistent.
-PUBLISHED_DISPLACEMENT_PER_GRID_STEP_PP = {1: 1.4e-1, 5: 7.0e-1, 20: 2.5, 60: 5.8, 300: 1.0e1}
+#: for a rate that nobody can select. The 1x and 5x entries are the
+#: ventilator-start row of the table above, and that shared entry keeps the two
+#: tables consistent.
+PUBLISHED_DISPLACEMENT_PER_GRID_STEP_PP = {1: 1.3, 5: 1.3, 20: 2.5, 60: 5.8, 300: 1.0e1}
 
 #: The second-worst manoeuvre's displacement at each rate. `docs/MODEL.md`
 #: publishes it as the column beside the bound, so that a reader can see how
 #: much room the bound has. At 300x the two round to the same published figure
 #: (`PL-WT07`), so the numbers alone cannot show the gap.
 #: `PUBLISHED_BINDING_MARGIN` below gives the gap as a ratio instead.
-PUBLISHED_SECOND_WORST_PER_GRID_STEP_PP = {1: 5.0e-2, 5: 2.5e-1, 20: 9.8e-1, 60: 2.8, 300: 1.0e1}
+PUBLISHED_SECOND_WORST_PER_GRID_STEP_PP = {1: 5.0e-1, 5: 5.0e-1, 20: 9.8e-1, 60: 2.8, 300: 1.0e1}
 
 #: The published ratio of the worst manoeuvre's displacement to the second
 #: worst's. `docs/MODEL.md` states the bound's headroom as this ratio. The ratio
 #: is checked more tightly than `PUBLICATION_RELATIVE_TOLERANCE` on purpose. The
 #: 300x entry is 1.03, and a 5% band there would admit the reversal that this
 #: column exists to make visible.
-PUBLISHED_BINDING_MARGIN = {1: 2.84, 5: 2.78, 20: 2.56, 60: 2.11, 300: 1.03}
+PUBLISHED_BINDING_MARGIN = {1: 2.70, 5: 2.70, 20: 2.56, 60: 2.11, 300: 1.03}
 
 #: How far the published margin may drift before the table must be restated. The
 #: margin is a ratio of two measurements of the same kind, so it moves less
@@ -352,7 +355,7 @@ def _displayed_states(system: AgentUptakeSystem) -> tuple[float, ...]:
 
 
 @cache
-def _worst_displacement_pp(manoeuvre_name: str, agent_id: str, delay_s: float) -> float:
+def _worst_displacement_pp(manoeuvre_name: str, agent_id: str, delay_s: int) -> float:
     """Return the largest displacement, in percentage points, that a delay of `delay_s` causes.
 
     The function runs the same manoeuvre twice from the same empty system and
@@ -363,10 +366,8 @@ def _worst_displacement_pp(manoeuvre_name: str, agent_id: str, delay_s: float) -
     falls inside the interval that the delay opens and not at either end of the
     run.
 
-    Boundaries are counted in whole steps rather than compared as times. Every
-    hold and every grid step that this module drives is an exact multiple of
-    `SHIPPED_STEP_S`. Counting steps keeps a float comparison out of the
-    definition of when a control change lands.
+    Boundaries are counted in whole steps. Every hold and every grid step that
+    this module drives is a whole number of seconds, and a step is one second.
     """
 
     build = PUBLISHED_TOLERANCE[manoeuvre_name][0]
@@ -375,9 +376,9 @@ def _worst_displacement_pp(manoeuvre_name: str, agent_id: str, delay_s: float) -
     on_time = _system_at(agent_id, manoeuvre.before)
     late = _system_at(agent_id, manoeuvre.before)
 
-    change_step = round(manoeuvre.hold_s / SHIPPED_STEP_S)
-    late_change_step = change_step + round(delay_s / SHIPPED_STEP_S)
-    total_steps = late_change_step + round(SETTLE_S / SHIPPED_STEP_S)
+    change_step = manoeuvre.hold_s // MEASURED_STEP_S
+    late_change_step = change_step + delay_s // MEASURED_STEP_S
+    total_steps = late_change_step + SETTLE_S // MEASURED_STEP_S
 
     worst = 0.0
     for step in range(total_steps):
@@ -386,8 +387,8 @@ def _worst_displacement_pp(manoeuvre_name: str, agent_id: str, delay_s: float) -
         if step == late_change_step:
             _apply(late, manoeuvre.after)
 
-        on_time.advance(SHIPPED_STEP_S)
-        late.advance(SHIPPED_STEP_S)
+        on_time.advance()
+        late.advance()
 
         worst = max(
             worst,
@@ -400,7 +401,7 @@ def _worst_displacement_pp(manoeuvre_name: str, agent_id: str, delay_s: float) -
     return worst * 100.0
 
 
-def _worst_over_agents(manoeuvre_name: str, delay_s: float) -> tuple[float, str]:
+def _worst_over_agents(manoeuvre_name: str, delay_s: int) -> tuple[float, str]:
     """Return the worst displacement over all three agents, and the agent that produces it."""
 
     measured = {
@@ -412,7 +413,7 @@ def _worst_over_agents(manoeuvre_name: str, delay_s: float) -> tuple[float, str]
     return measured[binding], binding
 
 
-def _ranked_over_manoeuvres(grid_step_s: float) -> list[tuple[str, float, str]]:
+def _ranked_over_manoeuvres(grid_step_s: int) -> list[tuple[str, float, str]]:
     """Return the three manoeuvres at one grid step, worst first, with their agents.
 
     The per-rate table publishes the top two of this ranking and the margin
@@ -429,29 +430,26 @@ def _ranked_over_manoeuvres(grid_step_s: float) -> list[tuple[str, float, str]]:
     return sorted(measured, key=lambda result: result[1], reverse=True)
 
 
-def _grid_step_s(rate: PlaybackRate) -> float:
+def _grid_step_s(rate: PlaybackRate) -> int:
     """Return the simulated seconds between the instants at which a control change can land.
 
-    A tick advances its whole burst of steps with nothing in between. So the
-    grid step is the number of steps in that burst times the step size. It is
-    derived from the rate rather than restated, because
-    `tests/unit/test_playback.py` already checks the derivation against the grid
-    that `docs/MODEL.md` publishes. What this module adds is the cost of one such
-    grid step.
+    A tick takes all of its steps with nothing in between. So the grid step is
+    the most steps one tick takes, and never less than one step. It is read
+    from the rate rather than restated, because `tests/unit/test_playback.py`
+    already checks it against the grid that `docs/MODEL.md` publishes. What
+    this module adds is the cost of one such grid step.
     """
 
-    steps = rate.steps_per_tick(tick_interval_s=TICK_INTERVAL_S, simulation_step_s=SHIPPED_STEP_S)
-
-    return steps * SHIPPED_STEP_S
+    return rate.control_grid_s(tick_interval_ms=TICK_INTERVAL_MS)
 
 
 @pytest.mark.parametrize("manoeuvre_name", PUBLISHED_TOLERANCE)
 def test_the_control_resolution_tolerance_table(manoeuvre_name: str) -> None:
-    """The model meets the tolerance that `MAXIMUM_SIMULATION_STEP_S` declares.
+    """The model meets the tolerance that `SIMULATION_STEP_S` declares.
 
     This test asserts the table in `docs/MODEL.md` § "Supported simulation step"
     that sits under "The tolerance, in percentage points of one atmosphere". The
-    comment in `core/uptake_system.py` that derives the constant repeats the
+    comment on the constant in `core/simulation_step.py` repeats the
     case-opening and ventilator-start rows of that table. Since `PL-X9KD` retired
     the accuracy derivation, these three figures are the entire content of the
     constant. So a change to the model has to move them here before it changes
@@ -464,14 +462,14 @@ def test_the_control_resolution_tolerance_table(manoeuvre_name: str) -> None:
     """
 
     _, published_pp, published_binding_agent = PUBLISHED_TOLERANCE[manoeuvre_name]
-    measured_pp, binding_agent = _worst_over_agents(manoeuvre_name, SHIPPED_STEP_S)
+    measured_pp, binding_agent = _worst_over_agents(manoeuvre_name, MEASURED_STEP_S)
 
     assert measured_pp == pytest.approx(published_pp, rel=PUBLICATION_RELATIVE_TOLERANCE), (
         f"the {manoeuvre_name} manoeuvre now displaces a displayed compartment by "
         f"{measured_pp:.3g} pp per step, not the {published_pp:.3g} pp published in "
         'docs/MODEL.md "Supported simulation step"; re-measure the whole table, and '
-        "update it and the MAXIMUM_SIMULATION_STEP_S comment in "
-        "src/anesthesia_sim/core/uptake_system.py together"
+        "update it and the SIMULATION_STEP_S comment in "
+        "src/anesthesia_sim/core/simulation_step.py together"
     )
     assert binding_agent == published_binding_agent, (
         f"the {manoeuvre_name} manoeuvre is now worst for {binding_agent}, not the "
@@ -483,10 +481,10 @@ def test_the_control_resolution_tolerance_table(manoeuvre_name: str) -> None:
 def test_the_displacement_per_grid_step_at_each_playback_rate(rate: PlaybackRate) -> None:
     """Check the per-rate table's cost column over the same three manoeuvres.
 
-    `PL-NBWP` established that the interface waits one *step* for a control
-    change only at 1x. Above 1x, a tick advances its whole burst without
-    interruption, so the grid is `multiplier x 0.1` s. That item disclosed the
-    cost per rate rather than changing the behaviour.
+    `PL-NBWP` established that the interface waits longer than one step for a
+    control change at its fast rates. A tick takes all of its steps without
+    interruption, so the grid is 2, 6 and 30 s at 20x, 60x and 300x. That item
+    disclosed the cost per rate rather than changing the behaviour.
     `tests/unit/test_playback.py` checks the grid column of that table against
     the ladder of playback rates. This test checks the column beside it: what one
     grid step of delay actually costs a displayed compartment.
@@ -635,7 +633,7 @@ def test_the_case_opening_stays_milder_than_the_binding_manoeuvre_at_every_rate(
         f"{min(ratios, key=lambda m: ratios[m])}x); docs/MODEL.md "
         '"Supported simulation step" reads the per-rate table on that relation'
     )
-    assert ratios[1] == pytest.approx(21.0, rel=0.1)
+    assert ratios[1] == pytest.approx(20.0, rel=0.1)
     assert ratios[300] == pytest.approx(6.9, rel=0.1)
 
     case_opening_at_300x_pp, _ = _worst_over_agents(
@@ -651,21 +649,17 @@ def test_the_case_opening_stays_milder_than_the_binding_manoeuvre_at_every_rate(
 def test_the_tolerance_is_measured_at_the_supported_step() -> None:
     """The table and the constant are one decision, so they move together.
 
-    Nothing else pins `MAXIMUM_SIMULATION_STEP_S` to its value.
-    `test_the_shipped_step_is_within_the_maximum_simulation_step` asserts only
-    that the shipped step does not exceed it, and both sides of that relation
-    could move together. Since `PL-NBCJ`, the value is an argued decision with
-    three recorded reasons rather than a default, and every figure in both
+    The step is a recorded decision (`PL-7CY5`), and every figure in both
     tables above is measured at it. A silent change would leave two documents
     describing a tolerance that the code no longer meets (`PL-ZVS7`).
     """
 
-    assert MAXIMUM_SIMULATION_STEP_S == SHIPPED_STEP_S, (
-        f"the largest supported step is now {MAXIMUM_SIMULATION_STEP_S} s, but the "
-        f"control-resolution tolerance published in docs/MODEL.md 'Supported simulation "
-        f"step' is measured at {SHIPPED_STEP_S} s; re-measure both tables at the new "
-        "step, and update that section and the MAXIMUM_SIMULATION_STEP_S comment in "
-        "src/anesthesia_sim/core/uptake_system.py together"
+    assert SIMULATION_STEP_S == MEASURED_STEP_S, (
+        f"a run now steps by {SIMULATION_STEP_S} s, but the control-resolution "
+        f"tolerance published in docs/MODEL.md 'Supported simulation step' is measured "
+        f"at {MEASURED_STEP_S} s; re-measure both tables at the new step, and update "
+        "that section and the SIMULATION_STEP_S comment in "
+        "src/anesthesia_sim/core/simulation_step.py together"
     )
 
 
@@ -682,7 +676,7 @@ def test_the_case_opening_starts_from_an_empty_system(agent_id: str) -> None:
     manoeuvre = _case_opening(agent_id)
     system = _system_at(agent_id, manoeuvre.before)
 
-    for _ in range(round(manoeuvre.hold_s / SHIPPED_STEP_S)):
-        system.advance(SHIPPED_STEP_S)
+    for _ in range(manoeuvre.hold_s // MEASURED_STEP_S):
+        system.advance()
 
     assert _displayed_states(system) == (0.0,) * len(STATE_LABELS)

@@ -25,16 +25,13 @@ from PySide6.QtWidgets import QApplication
 from anesthesia_sim.app import controller as controller_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.controller import SimulationController
-from anesthesia_sim.app.dashboard_frame import (
-    READOUT_PANELS,
-    REFUSED_RESET_WAY_OUT_TEXT,
-    SIMULATION_STEP_S,
-)
+from anesthesia_sim.app.dashboard_frame import READOUT_PANELS, REFUSED_RESET_WAY_OUT_TEXT
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING
 from anesthesia_sim.app.views import AccountingView
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 
 _SECONDS_PER_MINUTE = 60.0
 _WINDOW_WIDTH_PX = 1400
@@ -114,7 +111,7 @@ def _a_paused_run_at_10_minutes() -> SimulationController:
     controller.start()
 
     for _ in range(round(10 * _SECONDS_PER_MINUTE / SIMULATION_STEP_S)):
-        controller.advance(SIMULATION_STEP_S)
+        controller.advance()
 
     controller.pause()
 

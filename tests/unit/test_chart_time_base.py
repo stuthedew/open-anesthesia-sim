@@ -23,6 +23,8 @@ from anesthesia_sim.app.chart_time_base import (
     SELECTABLE_TIME_BASES,
     TIME_BASE_LADDER,
     ChartTimeBase,
+    drawn_seconds,
+    extreme_seconds,
     fit_to_run,
     fitted_window,
     following_window,
@@ -93,7 +95,7 @@ def test_fitting_a_run_always_contains_it() -> None:
     rung, rather than at a convenient length.
     """
 
-    instants = [0.0, 0.1, 59.9, 60.0, 60.1, 899.9, 900.0, 900.1, 43_200.0, 43_200.1, 86_400.0]
+    instants = [0, 1, 59, 60, 61, 899, 900, 901, 43_200, 43_201, 86_400]
 
     for newest_instant_s in instants:
         time_base = fit_to_run(CaseInstant(newest_instant_s))
@@ -106,12 +108,12 @@ def test_fitting_a_run_always_contains_it() -> None:
 def test_fitting_takes_the_narrowest_width_that_holds_the_run() -> None:
     """A wider width would squeeze the run into part of the plot for no reason."""
 
-    assert fit_to_run(CaseInstant(0.0)).span_s == 60.0
-    assert fit_to_run(CaseInstant(60.0)).span_s == 60.0
-    assert fit_to_run(CaseInstant(60.1)).span_s == 120.0
-    assert fit_to_run(CaseInstant(900.0)).span_s == 900.0
-    assert fit_to_run(CaseInstant(3_600.0)).span_s == 3_600.0
-    assert fit_to_run(CaseInstant(43_200.0)).span_s == 43_200.0
+    assert fit_to_run(CaseInstant(0)).span_s == 60.0
+    assert fit_to_run(CaseInstant(60)).span_s == 60.0
+    assert fit_to_run(CaseInstant(61)).span_s == 120.0
+    assert fit_to_run(CaseInstant(900)).span_s == 900.0
+    assert fit_to_run(CaseInstant(3_600)).span_s == 3_600.0
+    assert fit_to_run(CaseInstant(43_200)).span_s == 43_200.0
 
 
 def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
@@ -126,7 +128,8 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     """
 
     widest = TIME_BASE_LADDER[-1]
-    beyond = fit_to_run(CaseInstant(widest.span_s * 1.5))
+    widest_span_s = int(widest.span_s)
+    beyond = fit_to_run(CaseInstant(widest_span_s * 3 // 2))
 
     assert beyond.span_s == widest.span_s * 2.0
     # The span and the tick interval double together. So the wider axis has as
@@ -135,7 +138,7 @@ def test_fitting_past_the_widest_rung_doubles_rather_than_giving_up() -> None:
     assert beyond.span_s / beyond.tick_interval_s == widest.span_s / widest.tick_interval_s
     # A run that ends exactly on a doubled width fits it, as a run that ends
     # exactly on a declared rung fits that rung, and is not doubled again.
-    assert fit_to_run(CaseInstant(widest.span_s * 2.0)).span_s == widest.span_s * 2.0
+    assert fit_to_run(CaseInstant(widest_span_s * 2)).span_s == widest.span_s * 2.0
 
 
 def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
@@ -148,7 +151,7 @@ def test_a_chosen_width_is_held_exactly_at_every_point_of_a_run() -> None:
     """
 
     for time_base in SELECTABLE_TIME_BASES:
-        for newest_instant_s in (0.0, 1.0, time_base.span_s, MAXIMUM_ELAPSED_SIMULATION_TIME_S):
+        for newest_instant_s in (0, 1, int(time_base.span_s), MAXIMUM_ELAPSED_SIMULATION_TIME_S):
             window_start_s, window_stop_s = following_window(
                 time_base, CaseInstant(newest_instant_s)
             )
@@ -166,7 +169,7 @@ def test_a_run_shorter_than_the_chosen_width_still_shows_whole() -> None:
 
     time_base = time_base_for_span(900.0)
 
-    for newest_instant_s in (0.0, 10.0, 400.0, 880.0):
+    for newest_instant_s in (0, 10, 400, 880):
         window_start_s, window_stop_s = following_window(time_base, CaseInstant(newest_instant_s))
 
         assert window_start_s == 0.0
@@ -178,7 +181,7 @@ def test_a_chosen_width_follows_the_run_once_it_is_outgrown() -> None:
 
     time_base = time_base_for_span(900.0)
     headroom_s = 900.0 * CHART_LIVE_HEADROOM_FRACTION
-    window_start_s, window_stop_s = following_window(time_base, CaseInstant(5_000.0))
+    window_start_s, window_stop_s = following_window(time_base, CaseInstant(5_000))
 
     assert window_stop_s == pytest.approx(5_000.0 + headroom_s)
     assert window_start_s == pytest.approx(5_000.0 + headroom_s - 900.0)
@@ -192,7 +195,7 @@ def test_fitting_charges_no_headroom_so_a_run_stays_on_its_own_rung() -> None:
     before the run reaches that width anyway.
     """
 
-    assert fit_to_run(CaseInstant(900.0)) is time_base_for_span(900.0)
+    assert fit_to_run(CaseInstant(900)) is time_base_for_span(900.0)
 
 
 def test_ticks_stand_at_absolute_times_rather_than_at_the_window_s_edge() -> None:
@@ -214,21 +217,34 @@ def test_ticks_include_a_window_edge_that_falls_exactly_on_one() -> None:
     assert tick_times(180.0, 540.0, 180.0) == (180.0, 360.0, 540.0)
 
 
-@pytest.mark.parametrize(
-    "newest_instant_s", [-1.0, -0.001, math.nan, math.inf, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1]
-)
-def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_s: float) -> None:
+@pytest.mark.parametrize("newest_instant_s", [-1, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 1])
+def test_a_window_cannot_be_given_an_instant_off_the_case_s_axis(newest_instant_s: int) -> None:
     """An axis drawn against a width nobody can account for is worse than none.
 
     `CLAUDE.md`'s standard prefers an obvious failure to a plausible-looking
     displayed value, and every drawn time is placed against the window's width.
-    Both windows take a `CaseInstant`. So an instant before induction, one that
-    is not finite, or one past the supported run length is rejected where the
-    instant is built, and neither window checks it again (`PL-9DF9`).
+    Both windows take a `CaseInstant`. So an instant before induction or one
+    past the supported run length is rejected where the instant is built, and
+    neither window checks it again (`PL-9DF9`).
     """
 
     with pytest.raises(SimulationConfigurationError, match="outside the supported run length"):
         CaseInstant(newest_instant_s)
+
+
+@pytest.mark.parametrize(
+    "newest_instant_s", [-0.001, 2.0, math.nan, math.inf, MAXIMUM_ELAPSED_SIMULATION_TIME_S + 0.1]
+)
+def test_a_window_cannot_be_given_an_instant_between_two_seconds(newest_instant_s: float) -> None:
+    """An instant is a whole number of seconds, so a `float` is refused whatever its value.
+
+    A run stands only on whole seconds. A `float` instant, even a whole one
+    such as 2.0, or one that is not finite, is refused where the instant is
+    built, before its range is checked (`PL-SZ6G`).
+    """
+
+    with pytest.raises(TypeError, match="has type float, not int"):
+        CaseInstant(newest_instant_s)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("newest_instant_s", [math.inf, math.nan, 900.0])
@@ -284,12 +300,87 @@ def test_a_time_base_carries_its_own_interval() -> None:
 def test_a_preview_window_keeps_the_width_and_centres_the_reach() -> None:
     base = time_base_for_span(1800.0)
 
-    assert preview_window(base, CaseInstant(3600.0)) == pytest.approx((2700.0, 4500.0))
+    assert preview_window(base, CaseInstant(3600)) == pytest.approx((2700.0, 4500.0))
     # Early in a run the window stops at zero, and the reach sits left of the middle.
-    assert preview_window(base, CaseInstant(300.0)) == pytest.approx((0.0, 1800.0))
-    assert preview_window(base, CaseInstant(900.0)) == pytest.approx((0.0, 1800.0))
+    assert preview_window(base, CaseInstant(300)) == pytest.approx((0.0, 1800.0))
+    assert preview_window(base, CaseInstant(900)) == pytest.approx((0.0, 1800.0))
 
 
 def test_a_preview_window_refuses_a_reach_not_built_as_an_instant() -> None:
     with pytest.raises(TypeError):
         preview_window(time_base_for_span(1800.0), 300.0)  # type: ignore[arg-type]
+
+
+def test_a_window_draws_its_ends_its_grid_columns_and_each_setting_change() -> None:
+    """Columns fall on multiples of the spacing counted from the case's zero, not the window's."""
+
+    # A window from 7 s to 50 s with columns 10 s apart, and settings changed at 5, 23 and 50 s.
+    # The change at 5 s lies outside the window. The change at 50 s is the window's end.
+    assert drawn_seconds(7, 50, 10, events_s=(5, 23, 50)) == (7, 10, 20, 23, 30, 40, 50)
+
+
+def test_a_window_of_one_second_draws_that_second_once() -> None:
+    assert drawn_seconds(30, 30, 10, events_s=(30,)) == (30,)
+
+
+def test_a_window_whose_columns_are_one_second_apart_draws_every_second() -> None:
+    assert drawn_seconds(3, 8, 1, events_s=()) == (3, 4, 5, 6, 7, 8)
+
+
+@pytest.mark.parametrize(("first_s", "last_s", "spacing_s"), [(0, 10, 0), (0, 10, -1), (10, 9, 1)])
+def test_a_window_with_no_spacing_or_that_ends_before_it_begins_is_refused(
+    first_s: int, last_s: int, spacing_s: int
+) -> None:
+    with pytest.raises(ValueError, match=r"spacing|ends before it begins"):
+        drawn_seconds(first_s, last_s, spacing_s, events_s=())
+
+
+# One value for each second from 100 s to 112 s. The trace rises to a peak of
+# 9.0 at 103 s, falls to a trough of 1.0 at 107 s and rises again.
+TRACE_FROM_100_S = (2.0, 4.0, 7.0, 9.0, 8.0, 5.0, 3.0, 1.0, 2.5, 4.5, 6.0, 6.5, 7.0)
+
+
+def test_a_peak_and_a_trough_between_two_drawn_seconds_are_both_found() -> None:
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 112)) == {103, 107}
+
+
+def test_each_stretch_is_searched_on_its_own() -> None:
+    """Columns at 100, 105 and 112 s leave the peak in one stretch and the trough in the next."""
+
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 105, 112)) == {103, 107}
+    # With a column on the peak, only the trough is left to find.
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 103, 112)) == {107}
+    # With a column on each, nothing is.
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100, 103, 107, 112)) == set()
+
+
+def test_a_trace_that_only_rises_or_only_falls_across_a_stretch_adds_nothing() -> None:
+    rising = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6)
+    falling = tuple(reversed(rising))
+
+    assert extreme_seconds(0, rising, (0, 3, 6)) == set()
+    assert extreme_seconds(0, falling, (0, 3, 6)) == set()
+
+
+def test_a_value_that_only_equals_an_end_of_its_stretch_adds_nothing() -> None:
+    """The end is already drawn at that value, so the line already reaches it."""
+
+    level = (5.0, 5.0, 5.0, 5.0, 5.0)
+    back_to_the_start = (5.0, 3.0, 4.0, 5.0, 2.0)
+
+    assert extreme_seconds(0, level, (0, 4)) == set()
+    # The highest value inside is 5.0 at 3 s, which the left end already draws.
+    # The lowest inside is 3.0 at 1 s, which is above the right end's 2.0.
+    assert extreme_seconds(0, back_to_the_start, (0, 4)) == set()
+
+
+def test_a_peak_held_for_several_seconds_is_drawn_at_its_first_second() -> None:
+    flat_topped = (1.0, 6.0, 8.0, 8.0, 8.0, 4.0, 2.0)
+
+    assert extreme_seconds(40, flat_topped, (40, 46)) == {42}
+
+
+def test_neighbouring_drawn_seconds_have_nothing_between_them_to_search() -> None:
+    assert extreme_seconds(100, TRACE_FROM_100_S, tuple(range(100, 113))) == set()
+    assert extreme_seconds(100, TRACE_FROM_100_S, (100,)) == set()
+    assert extreme_seconds(100, TRACE_FROM_100_S, ()) == set()

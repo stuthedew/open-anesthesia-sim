@@ -18,7 +18,7 @@ from tests.integration.controller.controller_support import _advance_for
 def test_a_setting_change_is_recorded_with_the_time_it_took_effect() -> None:
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, 1.0)
+    _advance_for(controller, 1)
 
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
 
@@ -99,7 +99,7 @@ def test_the_control_timeline_records_the_vaporizer_percent_as_dialled() -> None
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, duration_s=1.0)
+    _advance_for(controller, duration_s=1)
 
     controller.set_delivered_concentration_percent(Percent(0.9))
 
@@ -147,7 +147,7 @@ def test_changes_within_one_step_collapse_to_what_the_model_integrated() -> None
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, 1.0)
+    _advance_for(controller, 1)
 
     controller.set_delivered_concentration_percent(Percent(3.0))
     controller.set_delivered_concentration_percent(Percent(4.0))
@@ -176,7 +176,7 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
     controller.start()
 
     controller.set_delivered_concentration_percent(Percent(3.0))
-    _advance_for(controller, 1.0)
+    _advance_for(controller, 1)
     controller.set_delivered_concentration_percent(Percent(4.0))
 
     first, second = controller.snapshot().control_timeline
@@ -191,7 +191,7 @@ def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
     controller.start()
 
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
-    _advance_for(controller, 1.0)
+    _advance_for(controller, 1)
     controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
     timeline = controller.snapshot().control_timeline
@@ -210,7 +210,7 @@ def test_a_declared_boundary_separates_two_drags_of_one_control() -> None:
     controller.start()
 
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
-    _advance_for(controller, 60.0)
+    _advance_for(controller, 60)
     controller.begin_control_adjustment()
     controller.set_fresh_gas_flow(FreshGasFlow(2.0))
 
@@ -233,7 +233,7 @@ def test_changing_a_different_control_starts_a_new_adjustment() -> None:
 def test_reset_clears_the_control_timeline_with_the_run() -> None:
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, 1.0)
+    _advance_for(controller, 1)
     controller.set_fresh_gas_flow(FreshGasFlow(3.0))
 
     controller.reset()
@@ -291,7 +291,7 @@ def test_a_recorded_change_is_stamped_with_the_instant_it_took_effect() -> None:
 
     controller = SimulationController()
     controller.start()
-    _advance_for(controller, 2.0)
+    _advance_for(controller, 2)
 
     controller.set_cardiac_output(CardiacOutput(4.0))
 
@@ -299,6 +299,6 @@ def test_a_recorded_change_is_stamped_with_the_instant_it_took_effect() -> None:
     elapsed_s = controller.snapshot().elapsed_s
 
     assert change.elapsed_s == pytest.approx(elapsed_s)
-    _advance_for(controller, 2.0)
+    _advance_for(controller, 2)
     window = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
     assert change.elapsed_s in window.times_s

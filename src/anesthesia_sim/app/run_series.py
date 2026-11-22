@@ -39,7 +39,6 @@ from anesthesia_sim.core.governing_equations import (
     INSPIRED_FRACTION,
     VENOUS_FRACTION,
 )
-from anesthesia_sim.core.run_definition import DisplayState
 
 __all__ = [
     "COMPARTMENT_FRACTION_NAMES",
@@ -103,9 +102,9 @@ COMPARTMENT_QUANTITIES: Final = (
 #: with one entry per compartment. It is the one place where a trace could come
 #: to carry another compartment's values. It replaces the same pairing that
 #: `_build_history_sample` made while the chart was drawn from recorded samples
-#: (`PL-2FM6`). The chart now evaluates the run definition instead, so a trace
-#: needs a position in `governing_equations`' state order, not a compartment
-#: accessor.
+#: (`PL-2FM6`). The chart now reads the states that the run stored
+#: (`core/stored_states.py`), so a trace needs a position in
+#: `governing_equations`' state order, not a compartment accessor.
 #:
 #: The three tissue groups are consecutive, starting at `FIRST_TISSUE_FRACTION`.
 #: They follow the order of `PatientCompartmentsState.tissues`, which is the
@@ -134,7 +133,7 @@ COMPARTMENT_STATE_INDEX: Final[Mapping[RecordedQuantity, int]] = MappingProxyTyp
 #:
 #: These are the names that `AgentUptakeSystem._write_state_vector` gives the
 #: same six quantities when a step writes them (`PL-SPN6`). The interface builds
-#: a checked `Fraction` for the snapshot's quotients, the MAC multiples and a
+#: a checked `Fraction` for the snapshot's fractions, the MAC multiples and a
 #: drawn column. A value rejected there is named as the step that computed it
 #: would have named it. So a reader of the halted-run notice learns which
 #: compartment failed, whichever of the two rejected it. `WASH_IN_RATIO` is
@@ -182,22 +181,16 @@ class RecordedSeries:
 
 @dataclass(frozen=True, slots=True)
 class DrawnWindow:
-    """The states one frame draws, evaluated from the run's definition.
+    """The states one frame draws, each read from the states the run stored.
 
     `SimulationController.drawn_window` returns this window, and the chart is
-    drawn from nothing else. It replaces `HistoryWindow`, and `PL-2FM6` made
-    that change. The old window covered *recorded samples*. A caller asked it
-    which samples to draw, and its cost grew with the span it covered. This
-    window holds only the result, which is the states at the instants the
-    chart plots, and nothing else.
+    drawn from nothing else. Each state is the one that the run stored for
+    its second (`core/stored_states.py`), so a point on a trace is the value
+    that the readout showed at that second (`PL-MH9J`).
 
-    **A drawn value is not a recorded one, and the type says so.** Every
-    state here is a `DisplayState`. `core/run_definition.py` makes that type
-    structurally different from a state vector. It does so precisely so that
-    a drawn value cannot become a keyframe, an export or a fork's opening
-    state just by having the right shape. `docs/INTERFACE.md` § "The canonical
-    evaluation rule" states the guarantee, and this class is one of the
-    places that must enforce it.
+    `SimulationController.preview_window` returns one too. Its states are
+    predicted, for a setting that the reader is trying, and no run stored
+    them. They are drawn as a preview and used for nothing else.
 
     Attributes:
         substance_id: Which substance every state here describes. It is
@@ -220,7 +213,7 @@ class DrawnWindow:
 
     substance_id: str
     times_s: tuple[float, ...]
-    states: tuple[DisplayState, ...]
+    states: tuple[tuple[float, ...], ...]
 
     def __post_init__(self) -> None:
         if len(self.times_s) != len(self.states):
@@ -264,15 +257,15 @@ class DrawnWindow:
 
         index = COMPARTMENT_STATE_INDEX[series.quantity]
 
-        return [state.values[index] for state in self.states]
+        return [state[index] for state in self.states]
 
     def wash_in_quotients(self, substance_id: str) -> list[float | None]:
         """F_A/F_I at every drawn instant, or `None` where there is no quotient.
 
         While the run kept a history, `app/wash_in.py`'s rules ran once per
         *recorded sample*, and the stretches they produced were updated
-        incrementally. With no history to maintain, the stretches become a
-        property of the drawn column instead. The quotient is plain arithmetic
+        incrementally. The stretches are now a property of the drawn columns
+        instead. The quotient is plain arithmetic
         on the two fractions this window already carries, so it is formed for
         what is being plotted rather than for samples behind it.
 
@@ -306,9 +299,7 @@ class DrawnWindow:
         alveolar = COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
         circuit = COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
 
-        return [
-            wash_in_ratio(state.values[alveolar], state.values[circuit]) for state in self.states
-        ]
+        return [wash_in_ratio(state[alveolar], state[circuit]) for state in self.states]
 
     def _require_substance(self, substance_id: str) -> None:
         """Reject a read for a substance this window does not describe.

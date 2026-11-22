@@ -44,7 +44,6 @@ from anesthesia_sim.core.concentration import (
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_sevoflurane_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -341,14 +340,7 @@ def test_neither_conversion_takes_the_form_it_converts_to() -> None:
 
 @pytest.mark.parametrize(
     "other",
-    [
-        SimulationStep(0.05),
-        StepCount(1),
-        CaseInstant(0.5),
-        FreshGasFlow(2.0),
-        AlveolarVentilation(4.0),
-        CardiacOutput(5.0),
-    ],
+    [StepCount(1), CaseInstant(1), FreshGasFlow(2.0), AlveolarVentilation(4.0), CardiacOutput(5.0)],
     ids=lambda other: type(other).__name__,
 )
 def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_argument(
@@ -356,19 +348,20 @@ def test_another_quantity_handed_in_as_a_concentration_is_refused_as_a_swapped_a
 ) -> None:
     """The refusal names the quantity the value was built as, with no advice to rebuild or convert.
 
-    A `SimulationStep(0.05)` arriving where a fraction belongs, or a
+    A `StepCount(1)` arriving where a fraction belongs, or a
     `FreshGasFlow(2.0)` arriving where the dial setting belongs, is a swapped
     argument. It is not the missed conversion that each concentration type
     refuses in the other. Until `PL-CX2C`, `require_fraction` and
     `require_percent` knew only about each other. So each told the caller to
-    build its type from the value: a concentration of 0.05 from a step, or a
+    build its type from the value: a concentration of 1.0 from a count, or a
     dial at 2% from a flow. Every later check accepts such a value. All checked
     quantities are now handled by one module (`core/checked_number.py`). So the
     refusal names the type that the value was built as, and prescribes nothing.
     It does so wherever a concentration is stored: at the constructor and,
     since `PL-SWD1`, at the two crossings as well. Before that,
     `fraction_from_percent(FreshGasFlow(2.0))` returned a `Fraction` of 0.02,
-    and `percent_from_fraction(CaseInstant(0.5))` returned a `Percent` of 50.0.
+    and `percent_from_fraction` of an instant of 0.5 s, which an instant could
+    then be, returned a `Percent` of 50.0.
     The arithmetic had run on the number before the constructor saw a plain
     `float`.
     """
@@ -661,7 +654,7 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     venous = system.patient.venous_blood
     fat = system.patient.fat
     vector_before = system.state_vector()
-    step = SimulationStep(0.1)
+    step = 0.1
 
     with pytest.raises(TypeError) as as_a_fraction:
         system.circuit.set_inspired_partial_pressure_fraction(0.0)  # type: ignore[arg-type]

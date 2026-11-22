@@ -3,13 +3,15 @@ id: PL-8J3W
 title: The display-path test's two bounds are 5 to 10 times looser than the figures docs/INTERFACE.md prints: tighten them to the printed figures, or reword the sentence in docs/MODEL.md that says the test keeps those figures true
 priority: P2
 effort: S
-status: blocked
+status: dropped
 classes: defect
 feature: model-spec-accuracy
 touches: tests/reference/test_canonical_evaluation.py, docs/MODEL.md
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+closed: 2026-11-21
+reason: PL-Z6C8 removed the display path and its test
 payoff: the test that docs/MODEL.md says keeps the printed display-path figures true fails when a change moves one past the figure in print
 ---
 
@@ -26,3 +28,6 @@ payoff: the test that docs/MODEL.md says keeps the printed display-path figures 
 **Done when.** The two bounds and the sentence about them agree.
 
 **Generator check.** Split from an item that `PL-RMNP` (the check of `docs/MODEL.md` against the code) filed, a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.
+
+**Checked 2026-11-21: nothing left to do.** `PL-Z6C8` removed the display path and its test file, `tests/reference/test_canonical_evaluation.py`, so the two bounds this item would have tightened no longer exist. The chart draws the states a run stored.
+<!-- absent: tests/reference/test_canonical_evaluation.py -->

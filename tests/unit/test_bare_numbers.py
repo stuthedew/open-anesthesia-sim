@@ -116,11 +116,6 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "CompartmentVolume.__new__(volume_l)",
             "PartitionCoefficient.__new__(coefficient)",
         ),
-        "simulation_step": (
-            "SimulationStep.__new__(seconds)",
-            "require_at_least_the_smallest_step(simulation_step_s)",
-            "require_supported_simulation_step(simulation_step_s)",
-        ),
         "supported_ranges": (
             "AlveolarVentilation.__new__(alveolar_ventilation_l_min)",
             "CardiacOutput.__new__(cardiac_output_l_min)",
@@ -155,6 +150,10 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
         ),
     },
     PLAIN_NUMBER: {
+        "agent_simulation_validation": (
+            "TotalsCompensation.delivered_l",
+            "TotalsCompensation.exhausted_l",
+        ),
         "blood_flow": ("BloodFlow.__reduce__ -> return",),
         "checked_number": (
             "CheckedQuantity.__reduce__ -> return",
@@ -172,31 +171,34 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
     },
     INSTANT_OR_WINDOW: {
         "matrix_exponential": ("matrix_exponential(interval_s)",),
-        "rounding": ("clock_rounding(instant_s)", "clock_rounding(interval_s)"),
         "run_definition": (
-            "RunDefinition.evaluate(columns)",
-            "RunDefinition.evaluate(start_s)",
-            "RunDefinition.evaluate(stop_s)",
-            "RunDefinition.evaluate_anchored(spacing_s)",
-            "RunDefinition.evaluate_anchored(start_s)",
-            "RunDefinition.evaluate_anchored(stop_s)",
             "RunDefinition.reaching_segment_at(instant_s)",
             "RunDefinition.segment_at(instant_s)",
-            "RunDefinition.state_at(instant_s)",
-            "SampledWindow.times_s",
         ),
     },
     STATE_VECTOR: {
         "matrix_exponential": ("propagate -> return", "propagate(state)"),
-        "run_definition": (
-            "DisplayState.values",
+        "prediction": (
+            "predicted_states -> return",
+            "predicted_states(opening)",
+            "predicted_states_at -> return",
+            "predicted_states_at(opening)",
+        ),
+        "stored_states": (
             "Keyframe.state",
-            "RunDefinition.__init__(initial_state)",
-            "RunDefinition.state_at -> return",
+            "StoredStates.__deepcopy__(memo)",
+            "StoredStates.__init__(opening)",
+            "StoredStates.append(state)",
+            "StoredStates.fraction_series -> return",
+            "StoredStates.restart_from(opening)",
+            "StoredStates.state_at -> return",
         ),
         "uptake_system": (
+            "AgentUptakeSystem.case_state -> return",
             "AgentUptakeSystem.resume_at(state)",
+            "AgentUptakeSystem.stands_at(state)",
             "AgentUptakeSystem.state_vector -> return",
+            "UptakeStepResult.state",
         ),
     },
     MATRIX: {
@@ -333,13 +335,11 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "PatientCompartments.total_perfusion_fraction -> return",
         ),
         "rounding": (
-            "clock_rounding -> return",
             "propagator_rounding -> return",
             "propagator_rounding(squarings)",
             "run_rounding -> return",
             "run_rounding(squarings)",
         ),
-        "supported_ranges": ("maximum_step_count -> return",),
         "tissue": (
             "TissueGroup.capacity_l -> return",
             "TissueGroup.partial_pressure_fraction -> return",
@@ -363,8 +363,14 @@ BARE_NUMBERS: dict[str, str] = {
 # it shows a reviewer that the change adds a bare number. The blood flow and the
 # perfusion fraction took it to 165 (`PL-GKG4`). `core/rounding.py` added seven:
 # the squarings and the result of its two bounds on a propagator, and the instant,
-# the interval and the result of its bound on the clock (`PL-GJ1W`).
-MOST_BARE_NUMBERS = 172
+# the interval and the result of its bound on the clock (`PL-GJ1W`). The record
+# of a run's stored states added ten state vectors, which it passes, stores and
+# returns (`PL-MH9J`), and the series of fractions that the chart reads
+# (`PL-BLZJ`). Removing the states that a run definition computed by formula
+# took out twelve, and the prediction that a preview draws added two for the
+# state it starts from and the states it returns (`PL-Z6C8`). The prediction at
+# chosen seconds that a preview draws past its first hour added two more.
+MOST_BARE_NUMBERS = 169
 
 
 def _names_a_bare_number(

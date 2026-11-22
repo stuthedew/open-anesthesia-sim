@@ -9,7 +9,8 @@ A container session has no display and needs none. Under Qt's `offscreen`
 platform the real widgets are built, laid out and painted into memory,
 `QWidget.grab()` writes the result to a PNG, and the `Read` tool opens the PNG
 as an image. Everything below is that one route, and every command in it was
-run as written on 2026-10-01 (`PL-CQRL`).
+run as written on 2026-10-01 (`PL-CQRL`). The first was run again on
+2026-11-21 with its one-second steps, through `.venv/bin/python`.
 
 ## See the dashboard in a given state
 
@@ -17,11 +18,11 @@ run as written on 2026-10-01 (`PL-CQRL`).
 mkdir -p out && QT_QPA_PLATFORM=offscreen uv run python - <<'EOF'
 from PySide6.QtWidgets import QApplication, QPushButton
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.qt_widgets import declare_application_colours
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 
-SIMULATED_S = 120.0
+SIMULATED_S = 120
 WIDTH_PX, HEIGHT_PX = 1600, 2400
 
 app = QApplication([])
@@ -35,8 +36,8 @@ view.present(False)
 
 next(b for b in view.findChildren(QPushButton) if b.text() == "Start").click()
 controller = case.trunk
-for _ in range(round(SIMULATED_S / SIMULATION_STEP_S)):
-    controller.advance(SIMULATION_STEP_S)
+for _ in range(SIMULATED_S // SIMULATION_STEP_S):
+    controller.advance()
 
 view.present(False)
 app.processEvents()

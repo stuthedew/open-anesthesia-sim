@@ -288,7 +288,7 @@ def _shipped_view_at(
 
     case = _branched_case()
     case.trunk.start()
-    _advance(case.trunk, 300.0)
+    _advance(case.trunk, 300)
     _delete_shown_views(application)
     view = SimulationView((case.trunk,), case=case, workspaces=shipped_workspaces())
     _SHOWN_VIEWS.append(view)

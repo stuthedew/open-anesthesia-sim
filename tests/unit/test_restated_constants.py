@@ -233,6 +233,18 @@ def test_each_constant_widens_its_interval_by_its_width() -> None:
     assert [constant.name for constant in constants if is_zero_floor(constant)] == ["MINIMUM_RATE"]
 
 
+def test_a_minimum_paired_by_name_widens_towards_its_named_maximum() -> None:
+    """The compartment step's floor has the run length as its ceiling, under another name."""
+
+    constants = [
+        Constant("MINIMUM_COMPARTMENT_STEP_S", 0.5),
+        Constant("MAXIMUM_ELAPSED_SIMULATION_TIME_S", 0.75),
+    ]
+
+    assert widened(constants[0], constants) == 0.25
+    assert widened(constants[0], constants[:1]) is None
+
+
 def test_every_constant_on_this_tree_can_be_moved() -> None:
     """A constant no rule can move fails the scheduled job, so it is caught here first."""
 

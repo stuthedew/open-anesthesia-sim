@@ -149,7 +149,7 @@ def _require_within_the_float_range(name: str, value: float) -> None:
     raises `OverflowError` for an `int` it cannot convert. So an `int` beyond
     the float range used to escape both guards above as Python's own
     exception, which named neither the field nor the bound.
-    `SimulationStep(10**400)` was refused that way rather than as a step
+    A step of `10**400` s was refused that way rather than as a step
     (`PL-3800`, which folded in the step half of `PL-21V4`). The other guards
     in `core/` have a supported range to refuse such an `int` against
     (`core/supported_ranges.py`). These two guards check only the sign, so

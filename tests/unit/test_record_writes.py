@@ -60,7 +60,6 @@ from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionC
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.patient import PatientCompartments
 from anesthesia_sim.core.simulation import SimulationState
-from anesthesia_sim.core.simulation_step import MAXIMUM_SIMULATION_STEP_S, SimulationStep
 from anesthesia_sim.core.supported_ranges import (
     AlveolarVentilation,
     CardiacOutput,
@@ -170,12 +169,12 @@ def _halved_fraction(field: str) -> Callable[[PatientCompartments], TissueGroup]
 
 
 def _system_holding_agent() -> AgentUptakeSystem:
-    """The default sevoflurane system after 20 of its largest steps at its opening settings."""
+    """The default sevoflurane system after two seconds at its opening settings."""
 
     system = AgentUptakeSystem.default()
 
-    for _ in range(20):
-        system.advance(SimulationStep(MAXIMUM_SIMULATION_STEP_S))
+    for _ in range(2):
+        system.advance()
 
     return system
 
@@ -190,10 +189,6 @@ _ACCOUNTING = (
     "The identity ties the field to every other store of agent in the system, and the "
     "system checks it at every step and at every read of its accounting."
 )
-
-
-def _state_part_way() -> SimulationState:
-    return SimulationState(step_count=StepCount(3), simulation_step_s=SimulationStep(0.1))
 
 
 WRITES: dict[str, dict[str, Write]] = {
@@ -271,19 +266,27 @@ WRITES: dict[str, dict[str, Write]] = {
         field: Write(
             PRIVATE, why="Written only by the run definition's own methods, which hold its rules."
         )
-        for field in ("_last_window_propagators", "_reached_s", "_segments")
-    },
-    "run_definition._WindowPropagators": {
-        field: Write(
-            PRIVATE,
-            why="A private helper built and discarded inside one call to evaluate_anchored.",
-        )
-        for field in ("_kept", "used")
+        for field in ("_reached_s", "_segments")
     },
     "simulation.SimulationState": {
         "uptake_system": Write(ONCE, SimulationState),
+        # A count of one is a supported run length, so the count's own checks
+        # pass it. A fresh state stores no state for second 1, so the state
+        # refuses it as its clock. `tests/unit/test_simulation.py` writes a
+        # count past the supported run length.
         "step_count": Write(CHECKED, SimulationState, lambda state: StepCount(1)),
-        "simulation_step_s": Write(CHECKED, _state_part_way, lambda state: None),
+        "stored_states": Write(ONCE, SimulationState),
+    },
+    "stored_states.StoredStates": {
+        field: Write(
+            PRIVATE,
+            why=(
+                "Only the record's own methods write it: the constructor, append, "
+                "restart_from, through and a copy. Each checks the state and the "
+                "compensation terms it stores."
+            ),
+        )
+        for field in ("_compensations", "_opened_at_s", "_values")
     },
     "tissue.TissueGroup": {
         "name": Write(OWN, why="The name labels the group's messages and enters no rule."),
@@ -301,7 +304,7 @@ WRITES: dict[str, dict[str, Write]] = {
             field: Write(
                 PRIVATE,
                 why=(
-                    "The cached propagator and its key, written by _propagator_for and "
+                    "The cached propagator and its key, written by _step_propagator and "
                     "keyed by the settings they were built from."
                 ),
             )

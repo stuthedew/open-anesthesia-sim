@@ -19,7 +19,6 @@ from anesthesia_sim.app.dashboard_frame import (
     COMPARING_AGENT_LOCK_TEXT,
     MAX_DISPLAYED_RUNS,
     RESET_LABEL,
-    SIMULATION_STEP_S,
     TRUNK_RUN_INDEX,
     comparing_fork_lock_text,
     fork_offer,
@@ -45,6 +44,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _shown_view,
     _steps,
     _take_fork,
+    _ticks,
 )
 
 
@@ -143,20 +143,18 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
     panel = _fork_panel(view)
     panel.set_offer(
         fork_offer(
-            (CaseInstant(0.0), CaseInstant(30.0), CaseInstant(60.0)),
-            marks=(),
-            comparing=None,
-            here=None,
+            (CaseInstant(0), CaseInstant(60), CaseInstant(90)), marks=(), comparing=None, here=None
         ),
         None,
     )
-    panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
+    # The trunk is paused at 60 s, so a branch at 90 s is refused.
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(90.0))
     panel.take_button.click()
 
     assert len(view.runs) == 1
     refusal = panel.notice.notice()
     assert refusal is not None
-    assert "30" in refusal
+    assert "90" in refusal
 
     view.runs[TRUNK_RUN_INDEX]._reset_button.click()
     _settle(application)
@@ -178,7 +176,7 @@ def test_a_one_run_reset_leaves_a_case_with_no_branches(application: QApplicatio
 
     case = _branched_case()
     view = _case_view(application, case)
-    case.fork_at(CaseInstant(60.0))
+    case.fork_at(CaseInstant(60))
 
     assert len(view.runs) == 1
     assert len(case.branches) == 1
@@ -246,7 +244,7 @@ def _branch_holding_work(view: SimulationView, application: QApplication, work: 
     [
         (
             "elapsed",
-            "Run 2 — branched at 1m and run to 1m0.4s, 1 recorded control change — will be "
+            "Run 2 — branched at 1m and run to 1m4s, 1 recorded control change — will be "
             "discarded along with its chart history. This cannot be undone.",
             1,
         ),
@@ -266,7 +264,7 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     The `work` parameter takes the values `elapsed` and `change`, one for each
     condition that `has_recorded_run` checks. A question that checked only one
     of them would miss the other. The expected warning is a literal string.
-    Four steps of 0.1 s from the fork at 60 s reach 1m0.4s on the case clock.
+    Four steps of one second from the fork at 60 s reach 1m4s on the case clock.
     In both cases the branch's "Control changes" panel lists the trunk's
     change at 1m, which the branch opened with. For `change`, it also lists
     the learner's change, recorded after the opened entry. The question
@@ -339,8 +337,8 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
     Before `PL-TPBH` a branch went on running while the trunk's question was
     open. The runs' ticks now hold while it is open, so the test moves the
     branch's controller directly, and the rewrite is kept as a guard. The
-    test compares the warning with a literal string. Four steps of 0.1 s
-    from the fork at 60 s reach 1m0.4s, and four more reach 1m0.8s. The one
+    test compares the warning with a literal string. Four steps of one second
+    from the fork at 60 s reach 1m4s, and four more reach 1m8s. The one
     recorded change is the trunk's change at 1m. The branch opened with that
     change, and its "Control changes" panel lists it (`PL-ZR49`).
     """
@@ -354,25 +352,29 @@ def test_an_open_trunk_reset_question_follows_a_running_branch(application: QApp
     trunk._reset_button.click()
     dialog = trunk._reset_dialog
     assert dialog is not None
-    assert "run to 1m0.4s" in dialog.body_labels[1].text()
+    assert "run to 1m4s" in dialog.body_labels[1].text()
 
     for _ in range(4):
-        branch.controller.advance(SIMULATION_STEP_S)
+        branch.controller.advance()
 
     view.present(False)
 
     assert dialog.body_labels[1].text() == (
-        "Run 2 — branched at 1m and run to 1m0.8s, 1 recorded control change — will be "
+        "Run 2 — branched at 1m and run to 1m8s, 1 recorded control change — will be "
         "discarded along with its chart history. This cannot be undone."
     )
     assert dialog.title_label.text() == "Reset Run 1 and discard Run 2?"
 
 
-def _one_tick_advance_s(run: RunView) -> float:
-    """Step `run` by one tick and return how far its clock moved."""
+def _ten_tick_advance_s(run: RunView) -> int:
+    """Fire ten ticks on `run`, one second of real time, and return how far its clock moved.
+
+    A run played at real time takes one step in ten ticks. A run that is
+    paused or held takes none.
+    """
 
     before = run.snapshot().elapsed_s
-    run.step_tick()
+    _ticks(run, 10)
 
     return run.snapshot().elapsed_s - before
 
@@ -399,9 +401,9 @@ def test_the_run_does_not_advance_while_a_reset_question_is_open(
     if trunk_running:
         trunk._start_button.click()
 
-    tick_s = {run.run_id: _one_tick_advance_s(run) for run in view.runs}
-    assert tick_s[branch.run_id] > 0.0
-    assert (tick_s[trunk.run_id] > 0.0) is trunk_running
+    tick_s = {run.run_id: _ten_tick_advance_s(run) for run in view.runs}
+    assert tick_s[branch.run_id] > 0
+    assert (tick_s[trunk.run_id] > 0) is trunk_running
 
     trunk._reset_button.click()
     dialog = trunk._reset_dialog
@@ -418,18 +420,18 @@ def test_the_run_does_not_advance_while_a_reset_question_is_open(
     _settle(application)
 
     assert trunk._reset_dialog is None
-    assert {run.run_id: _one_tick_advance_s(run) for run in view.runs} == pytest.approx(tick_s)
+    assert {run.run_id: _ten_tick_advance_s(run) for run in view.runs} == tick_s
     assert [run.is_running for run in view.runs] == [trunk_running, True]
 
 
 def test_a_running_run_holds_while_its_new_case_question_is_open(application: QApplication) -> None:
     """The question asked before a new agent discards the run holds it too (`PL-TPBH`)."""
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    tick_s = _one_tick_advance_s(run)
+    tick_s = _ten_tick_advance_s(run)
 
     _select_agent(run, "desflurane")
     dialog = run._new_case_dialog
@@ -444,17 +446,17 @@ def test_a_running_run_holds_while_its_new_case_question_is_open(application: QA
 
     assert run._new_case_dialog is None
     assert run.is_running
-    assert _one_tick_advance_s(run) == pytest.approx(tick_s) != 0.0
+    assert _ten_tick_advance_s(run) == tick_s != 0
 
 
 def test_a_running_run_holds_while_a_workspace_question_is_open(application: QApplication) -> None:
     """A Workspace question blocks Pause as a Reset question does, so it holds the run too."""
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    tick_s = _one_tick_advance_s(run)
+    tick_s = _ten_tick_advance_s(run)
     strip = view.tab_strip
     _restore, reset_all = strip.default_operations()
     assert reset_all.question is not None
@@ -471,7 +473,7 @@ def test_a_running_run_holds_while_a_workspace_question_is_open(application: QAp
     _settle(application)
 
     assert strip.question is None
-    assert _one_tick_advance_s(run) == pytest.approx(tick_s) != 0.0
+    assert _ten_tick_advance_s(run) == tick_s != 0
 
 
 def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplication) -> None:
@@ -483,7 +485,7 @@ def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplica
     meant to be non-modal, so it is now shown with `show()`.
     """
 
-    controller = _paused_run_with_history(60.0)
+    controller = _paused_run_with_history(60)
     controller.start()
     view = _shown_view(application, controller)
     run = view.runs[0]
@@ -495,7 +497,7 @@ def test_the_bookmark_editor_is_not_modal_and_holds_no_run(application: QApplica
     assert dialog.isVisible()
     assert not dialog.isModal()
     assert dialog.windowModality() is Qt.WindowModality.NonModal
-    assert _one_tick_advance_s(run) > 0.0
+    assert _ten_tick_advance_s(run) > 0
 
     run._pause_button.click()
 
@@ -706,7 +708,7 @@ def test_a_run_added_to_a_paused_dashboard_is_drawn_on_the_next_tick(
     view = _case_view(application, case)
     presented = view.presented_frames
 
-    view.add_run(case.fork_at(CaseInstant(60.0)))
+    view.add_run(case.fork_at(CaseInstant(60)))
 
     assert view.presented_frames == presented, "add_run drew a frame of its own"
 
@@ -765,7 +767,7 @@ def test_a_mark_added_after_a_fork_reaches_both_runs(application: QApplication) 
     view = _case_view(application, _branched_case())
     _take_fork(view, 60.0)
     dialog = _opened_bookmark_dialog(view)
-    dialog.instant_spin.setValue(300.0)
+    dialog.instant_spin.setValue(300)
     dialog.add_time_button.click()
 
     marked = [run.snapshot().bookmarks.time_bookmarks for run in view.runs]
@@ -835,9 +837,9 @@ def test_add_run_refuses_a_branch_of_another_case(application: QApplication) -> 
 
     view = _case_view(application, _branched_case())
     elsewhere = BranchedCase(_paused_run_with_history())
-    foreign = elsewhere.fork_at(CaseInstant(60.0))
+    foreign = elsewhere.fork_at(CaseInstant(60))
 
-    with pytest.raises(ValueError, match=re.escape("opened at 60.0 s but belongs to another case")):
+    with pytest.raises(ValueError, match=re.escape("opened at 60 s but belongs to another case")):
         view.add_run(foreign)
 
     assert len(view.runs) == 1

@@ -105,13 +105,12 @@ more than they do:
   the stepped system opens from must be at or below `MAXIMUM_INPUT_FRACTION`
   in `core/supported_ranges.py`, 0.99 of the ambient pressure (project owner,
   2026-10-31, ratified, over a fraction check that accepts a value slightly
-  above 1). The largest computed excess over that ceiling, measured at every
-  envelope corner, was 3.3e-5, so no computed fraction from a supported
-  opening comes near 1. No shipped vaporizer comes near the ceiling either:
-  the highest maximum is desflurane's 18%. The display path refuses a drawn
-  fraction outside 0 to 1 when it builds each `DisplayState`
-  (`core/run_definition.py`), and the interface builds each plotted value as a
-  `Fraction` again when the frame is assembled (`app/chart_frame.py`).
+  above 1). The largest computed excess over that ceiling, measured over
+  86 400 one-second steps at every envelope corner, was 1.0e-4 on
+  2026-11-21, so no computed fraction from a supported opening comes near 1.
+  No shipped vaporizer comes near the ceiling either: the highest maximum is
+  desflurane's 18%. The interface builds each plotted value as a `Fraction`
+  again when the frame is assembled (`app/chart_frame.py`).
 
 **Why one module rather than a convention.** Before `PL-WVSK`, the factor 100
 was written out twelve times across six modules. Six of the twelve were on the
@@ -380,9 +379,10 @@ def require_fraction(name: str, fraction: object) -> None:
     rebuild with the same message. `require_not_another_quantity`, which
     `Fraction` also calls, names a value built as any other checked quantity,
     such as a step, a flow, an instant or a count, and gives no advice
-    (`core/checked_number.py`). Until `PL-CX2C`, a `SimulationStep(0.05)`
-    passed in as a fraction was told to build `Fraction(...)` from it. That
-    rebuild would have stored a step's value as a concentration. The value is
+    (`core/checked_number.py`). Until `PL-CX2C`, a step of 0.05 s,
+    then a checked type of its own, was told to build `Fraction(...)` from
+    itself when passed in as a fraction. That rebuild would have stored a
+    step's value as a concentration. The value is
     printed through `shown`, so a bare `int` too long for `repr` is named by
     its length instead of escaping as a `ValueError`.
 

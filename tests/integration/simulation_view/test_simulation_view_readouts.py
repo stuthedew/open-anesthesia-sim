@@ -13,11 +13,7 @@ from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
-from anesthesia_sim.app.chart_frame import (
-    COMPARED_COMPARTMENT_CAP,
-    HOVER_INSTANT_RESOLUTION_S,
-    format_trace_hover,
-)
+from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP, format_trace_hover
 from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import SimulationController
@@ -90,10 +86,8 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     The test goes through the dashboard rather than the bare chart, so the
     readout comes from the shipped composition. It checks against the frame
     the dashboard drew, so the readout is the state at which the run was
-    evaluated, not a position between two states. A drawn instant belongs to
-    a grid column rather than to a step. So the time the readout states is
-    the instant rounded to the hover's own resolution, not the column's raw
-    time.
+    evaluated, not a position between two states. Every drawn instant is a
+    whole second, so the time the readout states is the drawn instant itself.
 
     The window is tall enough for the plot's preferred height. At the fixed
     test size the plot is at its least height, where the circuit trace lies
@@ -103,7 +97,7 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 300.0)
+    _advance(controller, 300)
     view = _shown_view(application, controller, height_px=_TALL_WINDOW_HEIGHT_PX)
     chart = _concentration(view).chart
     assert chart.height() >= CHART_HEIGHT
@@ -119,9 +113,9 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     assert readout is not None
     assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index, len(frame.runs))
     context, what, value = readout.splitlines()
-    instant_s = round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S
+    assert time_s == int(time_s), "the chart drew an instant that is not a whole second"
     assert "sevoflurane" in context
-    assert format_elapsed(instant_s) in context
+    assert format_elapsed(time_s) in context
     assert "Alveolar" in what
     assert _ALVEOLAR_METRIC_QUALIFIER in what
     assert format_percent(fraction) in value
@@ -133,7 +127,7 @@ def test_hiding_a_trace_changes_only_what_is_drawn(application: QApplication) ->
 
     controller = SimulationController()
     controller.start()
-    _advance(controller, 120.0)
+    _advance(controller, 120)
     view = _shown_view(application, controller)
     # The first frame is drawn before the plot, at its least height in this
     # Workspace, has its settled width: 979 px, against 990 px from the next
@@ -360,7 +354,7 @@ def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
     controller = SimulationController()
     controller.start()
     controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600.0)
+    _advance(controller, 600)
     view = _shown_view(application, controller)
     line = _concentration(view).off_scale.lines[0]
 
@@ -394,7 +388,7 @@ def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
     for index in range(4):
         controller.begin_control_adjustment()
         controller.set_fresh_gas_flow(FreshGasFlow(4.0 - (index + 1) * 0.1))
-        _advance(controller, 1.0)
+        _advance(controller, 1)
 
     view = _shown_view(application, controller)
 

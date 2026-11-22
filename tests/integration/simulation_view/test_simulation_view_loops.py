@@ -18,8 +18,6 @@ from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.compartment_schematic import SchematicShown
 from anesthesia_sim.app.controller import RunRecord, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
-    SIMULATION_STEP_S,
-    SIMULATION_TICK_INTERVAL_S,
     STATUS_FAILED_TEXT,
     Readout,
     accounting,
@@ -42,10 +40,12 @@ from anesthesia_sim.app.views import (
     CompartmentSchematicView,
     ConcentrationView,
 )
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
     _RUN_PANEL_VIEWS,
+    _TICKS_PER_STEP_AT_REAL_TIME,
     _accounting_of,
     _accounting_panel,
     _accounting_reading,
@@ -62,6 +62,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _shown_view,
     _StepFailingController,
     _steps,
+    _ticks,
 )
 
 # -------------------------------------------------------------- the loops
@@ -77,7 +78,7 @@ def test_simulation_loop_advances_without_rendering(application: QApplication) -
 
     _steps(view.runs[0], 3)
 
-    assert controller.snapshot().elapsed_s > 0.0
+    assert controller.snapshot().elapsed_s > 0
     assert view.presented_frames == presented
 
 
@@ -92,7 +93,7 @@ def test_render_loop_draws_without_advancing(application: QApplication) -> None:
     view.render_tick()
     view.render_tick()
 
-    assert controller.snapshot().elapsed_s == 0.0
+    assert controller.snapshot().elapsed_s == 0
     assert view.presented_frames >= presented + 1
 
 
@@ -104,7 +105,7 @@ def test_neither_loop_does_anything_while_paused(application: QApplication) -> N
     _steps(view.runs[0], 2)
     view.render_tick()
 
-    assert controller.snapshot().elapsed_s == 0.0
+    assert controller.snapshot().elapsed_s == 0
     assert view.presented_frames == presented
 
 
@@ -228,22 +229,24 @@ def test_simulation_time_does_not_depend_on_render_cadence(application: QApplica
     """Identical step counts must give identical results, however drawing goes.
 
     `PL-VM40`: simulation time is a function of steps taken, never of the
-    wall clock or of how many frames were drawn between them.
+    wall clock or of how many frames were drawn between them. Fifty ticks at
+    real time take five steps, and a frame is drawn after each tick. The
+    reference run takes five steps with no frame drawn.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     controller.start()
 
-    for _ in range(5):
+    for _ in range(50):
         view.runs[0].step_tick()
         view.render_tick()
 
-    steps_taken = round(controller.snapshot().elapsed_s / SIMULATION_STEP_S)
     reference = SimulationController()
     reference.start()
-    _advance(reference, steps_taken * SIMULATION_STEP_S)
+    _advance(reference, 5)
 
+    assert controller.snapshot().elapsed_s == 5
     assert controller.snapshot().elapsed_s == reference.snapshot().elapsed_s
     assert (
         controller.snapshot().alveolar_partial_pressure_fraction
@@ -251,25 +254,44 @@ def test_simulation_time_does_not_depend_on_render_cadence(application: QApplica
     )
 
 
-def test_the_run_loop_takes_one_step_per_tick_at_real_time_and_never_catches_up(
+def test_the_run_loop_takes_one_step_on_every_tenth_tick_at_real_time_and_never_catches_up(
     application: QApplication,
 ) -> None:
     """A late tick must cost the run real time, never change its trajectory.
 
     The number of steps a tick takes is set by the reader's playback setting,
     not by how long the tick took. So when a host wakes the tick late, the run
-    falls behind the wall clock and stays behind.
+    falls behind the wall clock and stays behind. The tick is 100 ms and the
+    step is one second, so at real time the tenth and the twentieth ticks each
+    take one step, and no other tick of the first 25 takes any.
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     controller.start()
+    elapsed_after_each_tick: list[int] = []
 
-    ticks = 7
-    _steps(view.runs[0], ticks)
+    for _ in range(25):
+        _ticks(view.runs[0], 1)
+        elapsed_after_each_tick.append(controller.snapshot().elapsed_s)
 
-    assert controller.snapshot().elapsed_s == ticks * SIMULATION_STEP_S
-    assert round(controller.snapshot().elapsed_s / SIMULATION_STEP_S) == ticks
+    assert elapsed_after_each_tick == [0] * 9 + [1] * 10 + [2] * 6
+    assert _TICKS_PER_STEP_AT_REAL_TIME == 10
+
+
+# The steps that each of a run's first twenty ticks takes at each offered rate.
+# They are written out from the rule in `app/playback.py`: a 100 ms tick owes
+# the run 100 ms of simulated time times the multiplier, and the run takes one
+# step for each whole second owed. So 1x takes one step on every tenth tick and
+# 5x on every second tick, and 20x, 60x and 300x take 2, 6 and 30 steps on
+# every tick.
+_STEPS_ON_EACH_OF_TWENTY_TICKS = {
+    1: [0] * 9 + [1] + [0] * 9 + [1],
+    5: [0, 1] * 10,
+    20: [2] * 20,
+    60: [6] * 20,
+    300: [30] * 20,
+}
 
 
 @pytest.mark.parametrize(
@@ -280,35 +302,35 @@ def test_the_run_loop_takes_one_step_per_tick_at_real_time_and_never_catches_up(
 def test_the_run_loop_takes_the_playback_rates_steps_per_tick(
     application: QApplication, rate: PlaybackRate, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The multiplier is steps per tick, and the step never moves (`PL-SN2C`)."""
+    """The multiplier sets the steps that each tick takes, and the step never moves (`PL-SN2C`).
+
+    Twenty ticks are two seconds of real time, so the run ends at twice the
+    multiplier, in simulated seconds.
+    """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     view.runs[0]._playback_rate = rate
     controller.start()
 
-    steps_requested: list[float] = []
+    steps_taken = 0
     advance = controller.advance
 
-    def recording_advance(simulation_step_s: float) -> None:
-        steps_requested.append(simulation_step_s)
-        advance(simulation_step_s)
+    def counting_advance() -> None:
+        nonlocal steps_taken
+        steps_taken += 1
+        advance()
 
-    monkeypatch.setattr(controller, "advance", recording_advance)
+    monkeypatch.setattr(controller, "advance", counting_advance)
+    steps_on_each_tick: list[int] = []
 
-    ticks = 3
-    _steps(view.runs[0], ticks)
+    for _ in range(20):
+        before = steps_taken
+        _ticks(view.runs[0], 1)
+        steps_on_each_tick.append(steps_taken - before)
 
-    steps_per_tick = rate.steps_per_tick(
-        tick_interval_s=SIMULATION_TICK_INTERVAL_S, simulation_step_s=SIMULATION_STEP_S
-    )
-    expected_steps = ticks * steps_per_tick
-
-    assert steps_per_tick == rate.multiplier
-    assert len(steps_requested) == expected_steps
-    assert set(steps_requested) == {SIMULATION_STEP_S}
-    assert controller.snapshot().elapsed_s == expected_steps * SIMULATION_STEP_S
-    assert round(controller.snapshot().elapsed_s / SIMULATION_STEP_S) == expected_steps
+    assert steps_on_each_tick == _STEPS_ON_EACH_OF_TWENTY_TICKS[rate.multiplier]
+    assert controller.snapshot().elapsed_s == 2 * rate.multiplier
 
 
 def test_a_failed_step_abandons_the_rest_of_its_tick(
@@ -328,18 +350,18 @@ def test_a_failed_step_abandons_the_rest_of_its_tick(
     calls = 0
     advance = controller.advance
 
-    def failing_advance(simulation_step_s: float) -> None:
+    def failing_advance() -> None:
         nonlocal calls
         calls += 1
 
         if calls == 5:
             raise _real_step_failure()
 
-        advance(simulation_step_s)
+        advance()
 
     monkeypatch.setattr(controller, "advance", failing_advance)
 
-    _steps(view.runs[0], 2)
+    _ticks(view.runs[0], 2)
 
     assert calls == 5
     assert controller.snapshot().elapsed_s == 4 * SIMULATION_STEP_S
@@ -387,7 +409,7 @@ def test_the_simulation_loop_survives_a_failure_so_reset_can_restart_it(
     _steps(run, 3)
 
     assert controller.has_failed is False
-    assert controller.snapshot().elapsed_s > 0.0
+    assert controller.snapshot().elapsed_s > 0
     assert run._status_text.text() == "Running"
     assert run._notice_text.isHidden() is True
 
@@ -542,7 +564,7 @@ def test_a_halt_after_a_frame_whose_value_could_not_be_written_is_still_stated(
         write(shown)
 
     run._readout_row.set_readouts = refusing  # type: ignore[method-assign]
-    controller.advance(SIMULATION_STEP_S)
+    controller.advance()
 
     if refuses_every_write:
         with pytest.raises(ValueError, match="the readouts could not show these values"):
@@ -578,7 +600,7 @@ def test_a_halt_shows_the_last_frame_whose_readouts_were_written_on_every_panel(
     (`test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_readouts_show`).
     """
 
-    controller = _fresh_run(60.0)
+    controller = _fresh_run(60)
     view = _shown_view(application, controller)
     run = view.runs[0]
     first_frame = readouts(controller.snapshot(), DEFAULT_PLAYBACK_RATE)
@@ -594,9 +616,9 @@ def test_a_halt_shows_the_last_frame_whose_readouts_were_written_on_every_panel(
 
     run._readout_row.set_readouts = refusing_a_later_frame  # type: ignore[method-assign]
     controller.start()
-    _advance(controller, 60.0)
+    _advance(controller, 60)
     later = accounting(controller.snapshot()).amounts
-    at_60_s = _fresh_run(60.0).snapshot()
+    at_60_s = _fresh_run(60).snapshot()
 
     view.present(False)
 
@@ -633,7 +655,7 @@ def test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_rea
     on the cost panel is written out by hand.
     """
 
-    controller = _fresh_run(60.0)
+    controller = _fresh_run(60)
     view = _shown_view(application, controller, workspaces=_RUN_PANEL_VIEWS)
     run = view.runs[0]
     accounting_view, schematic_view, cost_view = view.layout_container.views()
@@ -655,9 +677,9 @@ def test_a_schematic_that_refuses_a_frame_leaves_every_view_on_the_frame_the_rea
 
     schematic.show_schematic = refusing_a_later_frame  # type: ignore[method-assign]
     controller.start()
-    _advance(controller, 60.0)
+    _advance(controller, 60)
     later = accounting(controller.snapshot()).amounts
-    at_60_s = _fresh_run(60.0).snapshot()
+    at_60_s = _fresh_run(60).snapshot()
 
     view.present(False)
 
@@ -697,7 +719,7 @@ def test_a_view_that_cannot_draw_the_frame_a_halt_tries_again_leaves_every_view_
     and amounts are those of a second run built directly and stepped to 60 s.
     """
 
-    controller = _fresh_run(60.0)
+    controller = _fresh_run(60)
     view = _shown_view(application, controller)
     run = view.runs[0]
     view.layout_container.choose_view(AreaId(4), AGENT_ACCOUNTING)
@@ -717,9 +739,9 @@ def test_a_view_that_cannot_draw_the_frame_a_halt_tries_again_leaves_every_view_
 
     _concentration(view).chart.draw = refusing  # type: ignore[method-assign]
     controller.start()
-    _advance(controller, 60.0)
+    _advance(controller, 60)
     later = accounting(controller.snapshot()).amounts
-    at_60_s = _fresh_run(60.0).snapshot()
+    at_60_s = _fresh_run(60).snapshot()
 
     view.present(False)
 

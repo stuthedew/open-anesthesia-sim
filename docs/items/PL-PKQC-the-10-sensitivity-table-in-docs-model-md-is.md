@@ -3,7 +3,7 @@ id: PL-PKQC
 title: The 10% sensitivity table in docs/MODEL.md is dated the day before the venous pool changed, and two of its rows no longer reproduce to the last digit
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: defect
 feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
@@ -25,7 +25,7 @@ payoff: the table that says how large a coefficient error the published-data com
 
 The docstring of `tests/reference/test_published_wash_in_and_elimination.py` carries the same table, and its line "+0.45 to +0.55" repeats one figure. A change under `tests/reference/` waits for the project owner's read.
 
-**Why it waits on `PL-SZ6G`** (a run's time as a whole number of seconds). That branch changes the step at which every figure in the table is computed, and it rewrites the test module that holds the table's copy. The table is to give the figures of the tree that ships, so measure once, after that branch merges. A change to an existing line of a test under `tests/reference/` also waits for the project owner's read.
+[superseded 2026-11-21] **Why it waits on `PL-SZ6G`** (a run's time as a whole number of seconds). That branch changes the step at which every figure in the table is computed, and it rewrites the test module that holds the table's copy. The table is to give the figures of the tree that ships, so measure once, after that branch merges. A change to an existing line of a test under `tests/reference/` also waits for the project owner's read.
 
 **Done when.** The table and the test module's copy give the figures of the tree that ships, with the date and the words "against each agent's first cohort".
 

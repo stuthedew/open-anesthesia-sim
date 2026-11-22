@@ -3,7 +3,7 @@ id: PL-TN2L
 title: Four dated numerical records in docs/MODEL.md do not reproduce on today's tree: the mass-balance headroom, the column built from shorter pieces, the alveolar volumes that halt a run, and what the envelope sweep holds one step to
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: defect
 feature: model-spec-accuracy
 touches: docs/MODEL.md
@@ -29,3 +29,5 @@ The scripts that produced today's figures are not in the tree. Each figure above
 **Done when.** Each of the four passages either states figures measured on the tree that ships, with the date, or says in its own sentence that the figures are those of the dated run.
 
 **Generator check.** Filed by `PL-RMNP` (the check of `docs/MODEL.md` against the code), a sweep that the owner asked for. The fact it misreads is whether a `docs/MODEL.md` sentence about what the model computes matches what it computes, which the head `PL-B6YV` (a document sentence about what the model computes, checked against the code) already states. It is counted under the sweep and is not a new head.
+
+**Checked 2026-11-21:** `PL-Z6C8` removed the passage of `docs/MODEL.md` on the column built from shorter pieces, because the chart no longer computes its columns. The other three records remain.

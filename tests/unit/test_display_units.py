@@ -237,8 +237,8 @@ def test_the_fork_point_entry_is_sized_from_the_clocks_own_format() -> None:
     The measure below counts each character as 1 and adds 10 for each "9". The
     elapsed time has an hours part, a minutes part and a seconds part. For each
     part, the widest text is the first value, counting upward, that has the most
-    nines and the most characters. That gives 19h, 19m and 19.9s. "9h" scores 12
-    and "19h" scores 13. "19.9s" scores 25, against 24 for "9.9s".
+    nines and the most characters. That gives 19h, 19m and 19s. "9h" scores 12
+    and "19h" scores 13. "19s" scores 13, against 12 for "9s".
     """
 
     def advance_px(text: str) -> int:
@@ -246,7 +246,7 @@ def test_the_fork_point_entry_is_sized_from_the_clocks_own_format() -> None:
 
     entry = widest_fork_point_label(advance_px)
 
-    assert entry == MARK_FORK_LABEL_TEMPLATE.format(instant="19h19m19.9s")
+    assert entry == MARK_FORK_LABEL_TEMPLATE.format(instant="19h19m19s")
 
 
 def test_the_reference_condition_label_names_the_conversions_temperature_and_pressure() -> None:

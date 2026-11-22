@@ -30,12 +30,11 @@ from anesthesia_sim.app.playback import DEFAULT_PLAYBACK_RATE
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
-from anesthesia_sim.core.simulation_step import SimulationStep
+from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, FreshGasFlow
 
-STEP_S = 0.1
 FRESH_GAS_FLOW_L_MIN = 8.0
-SECONDS_PER_MINUTE = 60.0
+SECONDS_PER_MINUTE = 60
 SEVOFLURANE_MAC_PERCENT = load_agent_parameters("sevoflurane").mac_percent
 # The concentration chart's axis is 3 MAC of the running agent for every agent
 # (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
@@ -43,7 +42,7 @@ SEVOFLURANE_MAC_PERCENT = load_agent_parameters("sevoflurane").mac_percent
 AXIS_TOP_PERCENT = 3 * SEVOFLURANE_MAC_PERCENT
 
 
-def _run_with_no_ventilation(dial_percent: float, seconds: float) -> SimulationController:
+def _run_with_no_ventilation(dial_percent: float, seconds: int) -> SimulationController:
     """Run sevoflurane with no alveolar ventilation, so only the circuit fills."""
 
     controller = SimulationController(agent_id="sevoflurane")
@@ -52,13 +51,13 @@ def _run_with_no_ventilation(dial_percent: float, seconds: float) -> SimulationC
     controller.set_delivered_concentration_percent(Percent(dial_percent))
     controller.start()
 
-    for _ in range(round(seconds / STEP_S)):
-        controller.advance(SimulationStep(STEP_S))
+    for _ in range(seconds // SIMULATION_STEP_S):
+        controller.advance()
 
     return controller
 
 
-def _circuit_percent(dial_percent: float, seconds: float, volume_l: float) -> float:
+def _circuit_percent(dial_percent: float, seconds: int, volume_l: float) -> float:
     """The closed-form circuit concentration, in percent, with no uptake by the patient."""
 
     return dial_percent * (
@@ -91,7 +90,7 @@ def test_a_run_that_has_not_started_fills_no_container_and_holds_no_agent() -> N
 def test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale() -> None:
     """At a 4% dial for 30 s, the circuit is about 2.0%, a third of the 6% axis."""
 
-    seconds = 30.0
+    seconds = 30
     snapshot = _run_with_no_ventilation(4.0, seconds).snapshot()
     volume_l = float(snapshot.circuit_volume_l)
     percent = _circuit_percent(4.0, seconds, volume_l)
@@ -135,8 +134,8 @@ def test_a_container_s_height_is_its_tension_and_not_its_amount() -> None:
     controller = SimulationController(agent_id="sevoflurane")
     controller.set_delivered_concentration_percent(Percent(SEVOFLURANE_MAC_PERCENT))
     controller.start()
-    for _ in range(round(60 * SECONDS_PER_MINUTE / STEP_S)):
-        controller.advance(SimulationStep(STEP_S))
+    for _ in range(60 * SECONDS_PER_MINUTE // SIMULATION_STEP_S):
+        controller.advance()
     snapshot = controller.snapshot()
     by_quantity = {reading.quantity: reading for reading in container_readings(snapshot)}
     amounts = snapshot.compartment_agent_amounts
@@ -148,7 +147,7 @@ def test_a_container_s_height_is_its_tension_and_not_its_amount() -> None:
 
 
 def test_each_container_prints_the_tension_its_readout_prints() -> None:
-    snapshot = _run_with_no_ventilation(8.0, 90.0).snapshot()
+    snapshot = _run_with_no_ventilation(8.0, 90).snapshot()
     readout_values = {
         readout.name: readout.value for readout in readouts(snapshot, DEFAULT_PLAYBACK_RATE)
     }
@@ -157,7 +156,7 @@ def test_each_container_prints_the_tension_its_readout_prints() -> None:
         assert reading.tension == readout_values[reading.name]
 
 
-def _run(agent_id: str, seconds: float) -> SimulationController:
+def _run(agent_id: str, seconds: int) -> SimulationController:
     """Run an agent at its 1 MAC dial with the default ventilation and flow."""
 
     controller = SimulationController(agent_id=agent_id)
@@ -166,8 +165,8 @@ def _run(agent_id: str, seconds: float) -> SimulationController:
     )
     controller.start()
 
-    for _ in range(round(seconds / STEP_S)):
-        controller.advance(SimulationStep(STEP_S))
+    for _ in range(seconds // SIMULATION_STEP_S):
+        controller.advance()
 
     return controller
 
@@ -182,12 +181,12 @@ def test_the_share_bar_shares_add_up_to_the_whole(agent_id: str) -> None:
     what its heights, amounts and share bar assert").
     """
 
-    controller = _run(agent_id, 0.0)
-    elapsed_s = 0.0
+    controller = _run(agent_id, 0)
+    elapsed_s = 0
 
-    for until_s in (1.0, 60.0, 20 * SECONDS_PER_MINUTE, 60 * SECONDS_PER_MINUTE):
-        for _ in range(round((until_s - elapsed_s) / STEP_S)):
-            controller.advance(SimulationStep(STEP_S))
+    for until_s in (1, 60, 20 * SECONDS_PER_MINUTE, 60 * SECONDS_PER_MINUTE):
+        for _ in range((until_s - elapsed_s) // SIMULATION_STEP_S):
+            controller.advance()
         elapsed_s = until_s
         snapshot = controller.snapshot()
         segments = share_segments(snapshot)
@@ -208,7 +207,7 @@ def test_with_no_ventilation_the_circuit_holds_the_whole_share() -> None:
     holds nothing, so its share is exactly zero and is shown as `0%`.
     """
 
-    segments = share_segments(_run_with_no_ventilation(8.0, 90.0).snapshot())
+    segments = share_segments(_run_with_no_ventilation(8.0, 90).snapshot())
     assert segments is not None
 
     assert [(segment.share, segment.text) for segment in segments] == [(1.0, "100%")] + [
@@ -236,7 +235,7 @@ def test_the_share_lines_keep_their_count_when_the_first_agent_arrives() -> None
     three when the first agent arrived, which moved everything below it.
     """
 
-    segments = share_segments(_run("sevoflurane", 1.0).snapshot())
+    segments = share_segments(_run("sevoflurane", 1).snapshot())
 
     assert len(NO_AGENT_SHARE_LINE.splitlines()) == len(share_line(segments).splitlines())
 
@@ -267,8 +266,8 @@ def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_near
 
     controller = _run("sevoflurane", 10 * SECONDS_PER_MINUTE)
     early = share_segments(controller.snapshot())
-    for _ in range(round(50 * SECONDS_PER_MINUTE / STEP_S)):
-        controller.advance(SimulationStep(STEP_S))
+    for _ in range(50 * SECONDS_PER_MINUTE // SIMULATION_STEP_S):
+        controller.advance()
     snapshot = controller.snapshot()
     late = share_segments(snapshot)
     assert early is not None
