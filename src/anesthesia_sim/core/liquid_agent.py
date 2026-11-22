@@ -31,15 +31,17 @@ of amount. It is not a claim about real vapour. The unit is the volume that
 the agent would fill as an ideal gas at the reference condition, as
 `docs/MODEL.md` § "Agent amount" defines it.
 
-**The conversion is exact for fresh gas and about 5.8 % too high for agent in
-the body.** The delivered and exhausted agent and the circuit's amount are gas
-at room temperature. So they really are at the 20 °C condition, and this
+**The conversion is exact for fresh gas and too high for agent in the
+body.** The delivered and exhausted agent and the circuit's amount are gas at
+room temperature. So they really are at the 20 °C condition, and this
 conversion is exact for them. The alveolar, venous and tissue stores are at
-body temperature. They carry the 20 °C condition only as a label, and they
-hold 5.5 % fewer moles than the label implies. So the label overstates them by
-5.8 %, and the liquid volume converted from a store is 5.8 % too high
-(`docs/MODEL.md` § "Units and symbols"). A cost is a delivered amount, so it
-is exact. A readout that converts a store must say so (`PL-B396`).
+body temperature. They carry the 20 °C condition only as a label, and they hold
+fewer moles than the label implies, by the ratio of the two temperatures in
+kelvin. So the liquid volume converted from a store is too high by that ratio.
+`docs/MODEL.md` § "Units and symbols" gives the figure, computed from
+`REFERENCE_TEMPERATURE_CELSIUS`, so this docstring does not repeat it. A cost
+is a delivered amount, so it is exact. A readout that converts a store must say
+so (`PL-B396`).
 """
 
 from __future__ import annotations
@@ -185,9 +187,10 @@ def liquid_volume_ml(vapour_volume_l: float, vapour_per_liquid: float) -> float:
     millilitres of vapour per millilitre of liquid. `vapour_volume_l` is an
     amount of agent, which the model expresses as a volume of vapour at 20 °C
     and one standard atmosphere. The result is exact for an amount delivered,
-    an amount exhausted or an amount in the circuit. It is 5.8 % too high for
-    an amount in the alveoli, in venous blood or in a tissue. The module
-    docstring describes both cases.
+    an amount exhausted or an amount in the circuit. It is too high for an
+    amount in the alveoli, in venous blood or in a tissue, by the factor
+    `docs/MODEL.md` § "Units and symbols" gives. The module docstring describes
+    both cases.
 
     Raises:
         TypeError: `vapour_volume_l` or `vapour_per_liquid` is not an `int` or

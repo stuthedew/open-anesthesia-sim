@@ -4811,35 +4811,27 @@ thirtieth.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
-**A cost is shown to three significant figures.** The agent cost display gives
-the cost as the delivered agent in liquid times the reader's price per
-millilitre (§ "A cost at the reader's price"). The price is the reader's own
-figure, so it carries no modelled uncertainty. The cost's only modelled
-uncertainty is therefore the liquid figure's. The largest relative SD of a
-stored density is sevoflurane's, 0.0008 g/mL against 1.5203 g/mL, or 0.053 %.
-That SD is relative, so the cost's precision is set in significant figures, not
-in decimals. With n significant figures, the smallest relative step is 1 in
-(10^n - 1), at a value such as 999. At three figures that is 0.10 %, coarser
-than one SD of the density, which is allowed because the derived precision
-limits only how fine a figure is shown. At four it would be 0.010 %, finer than
-one SD.
-<!-- provenance: data/agents/sevoflurane.json liquid_density.standard_deviation_g_ml = 0.0008 -->
-<!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
+**A cost is shown as money, to its currency's minor unit.** USD 12.34 reads
+`USD 12.34` and USD 123.454 reads `USD 123.45`. The count of decimals is the
+one that the Unicode CLDR's currency data gives each currency, which it bases
+on the minor unit that ISO 4217 lists: two for USD and EUR, none for JPY and
+three for KWD. A code that CLDR does not list gets CLDR's default of two
+(Unicode Technical Standard #35, Part 3, Numbers, section "Currency Fraction
+Digits and Rounding", https://www.unicode.org/reports/tr35/tr35-numbers.html). A cost
+is not a value that patient care depends on, and a price is read to the cent,
+so the liquid density's uncertainty does not set its precision. A positive
+cost that would round to zero reads `USD <0.01` or `JPY <1`, and a run that has
+delivered nothing reads `USD 0.00`. The digits are not grouped in thousands,
+because the separator differs between regions, and in many a comma is the
+decimal point.
 
-**A cost is never shown finer than a hundredth of its currency**, which is the
-smallest unit of most currencies. For example, 0.68 reads `USD 0.68`, not
-`USD 0.680`. A positive cost that would round to 0.00 reads `USD <0.01`, and a
-run that has delivered nothing reads `USD 0`.
-
-**A price per millilitre is shown to four significant figures.** A reader can
-multiply the liquid volume shown by the price shown. Four is the fewest figures
-at which the price's rounding moves that product by at most half of the cost's
-smallest step. At four figures that rounding is at most 0.5 in 1000 of the
-price, and half of the cost's smallest step is 0.5 in 999 of the cost. The
-liquid volume, in whole millilitres, is then the only figure in the reader's
-multiplication rounded coarsely enough to matter. Its rounding can make the
-product miss the cost by up to about half a millilitre's price, and the readout
-says that the figures are rounded (§ "A cost at the reader's price").
+**A price per millilitre is shown to four significant figures**, such as
+`USD 0.2047 per mL of liquid`. Most prices per millilitre are less than one
+unit of the currency, so a price rounded to the cent would lose most of its
+figures. At four figures, rounding moves the price by at most 0.05 %. The
+liquid volume is shown in whole millilitres, so a reader who multiplies the
+volume by the price will not always get the cost, and the readout says that
+the figures are rounded (§ "A cost at the reader's price").
 
 **The exhausted total in millilitres of liquid has a precision of whole
 millilitres, and no View shows it in that unit yet.**
@@ -4896,8 +4888,11 @@ shipped agent from the stored molar mass and density
 Another computes each agent's largest supported total and its SD from the stored
 densities
 (`test_the_delivered_total_in_millilitres_of_liquid_is_shown_in_whole_millilitres`).
-A third computes the cost's and the price's precisions from the stored densities
-(`test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost`).
+A third holds the price per millilitre's four figures to the 0.05 % bound
+above
+(`test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent`),
+and `test_a_cost_is_shown_to_its_currency_s_minor_unit` checks a cost's decimals
+in USD, JPY, KWD and a code CLDR does not list.
 A fourth checks that the stored total is refused in liquid
 (`test_a_unit_with_no_derived_precision_is_refused`). Whole millilitres replaced a tenth on
 2026-11-04 (project owner, ratified, over keeping the tenth and over four
@@ -4918,10 +4913,13 @@ other code under `src/` calls the conversion to liquid (`liquid_volume_ml`).
 One table in `app/formatting.py` gives the precision for each run total in each
 unit where the precision is a number of decimals
 (`AGENT_AMOUNT_DISPLAY_PRECISION`). A compartment's amount, its share and the
-cost have precisions that are not a number of decimals of one unit. Each is
-held in constants of its own beside its formatter
+price per millilitre have precisions that are not a number of decimals of one
+unit. Each is held in constants of its own beside its formatter
 (`COMPARTMENT_AMOUNT_SIGNIFICANT_FIGURES`, `COMPARTMENT_AMOUNT_FINEST_DECIMALS`,
-`COMPARTMENT_SHARE_DECIMALS`, `AGENT_COST_SIGNIFICANT_FIGURES`), and the table
+`COMPARTMENT_SHARE_DECIMALS`, `PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES`). A
+cost's count of decimals comes from its currency, through `minor_unit_decimals`
+in `app/currency_code.py`, and
+`test_a_cost_is_shown_to_its_currency_s_minor_unit` checks it. The table
 refuses a compartment's amount in every unit. Each entry of the table
 (`AgentAmountPrecision`) holds the amount, the unit and the precision shown. It
 reads the finest precision from the derivation for that amount and unit, so no
@@ -5665,7 +5663,9 @@ these four cases:
   in `tests/integration/test_agent_cost_view.py`);
 - the price per millilitre is not a positive finite number, or the cost is not
   finite, which extreme entries can cause, such as a bottle price of 10 to the
-  power 308 for a 0.5 mL bottle; or
+  power 308 for a 0.5 mL bottle. The same applies to a cost too large to be held
+  to its minor unit, above about USD 3.5 × 10^13, where the cents shown would
+  come from the computer's rounding rather than from the price; or
 - the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
@@ -5792,8 +5792,8 @@ read for this section.
 The shown liquid volume times the shown price per millilitre differs from the
 cost by at most half a unit of the volume's last shown digit times the price per
 millilitre, plus the volume times half a unit of the price's last shown digit.
-The cost's precision is not a fixed count of decimals, because how many decimals
-a cost can justify depends on the price (§ "Displayed precision", `PL-0S0V`).
+The cost is shown to its currency's minor unit (§ "Agent amounts in millilitres,
+and the cost").
 
 The two rows in the hazard table (`docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the
 hazards the presentation carries") name the tests for this section. The cost is

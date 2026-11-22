@@ -109,6 +109,14 @@ dependencies = [
     # 2.13.5 both parse every shipped agent and patient file; the floor keeps
     # the broken pairing unreachable rather than pinning around it.
     "pydantic>=2.12.4,<3.0",
+    # A cost is shown to its currency's minor unit, two decimals for USD and
+    # none for JPY, as the Unicode CLDR's currency data gives it
+    # (`docs/INTERFACE.md` § "Agent amounts in millilitres, and the cost",
+    # `PL-7R8S`). Babel ships that data and keeps it current with each CLDR
+    # release. Qt's `QLocale.toCurrencyString` takes the decimals from the
+    # region instead of the currency, so it is not used. Only
+    # `app/currency_code.py` imports Babel (`tools/import_boundary_check.py`).
+    "babel>=2.18.0,<3.0",
 ]
 
 [project.scripts]

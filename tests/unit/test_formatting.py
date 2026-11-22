@@ -29,8 +29,6 @@ from anesthesia_sim.app.agent_cost import price_from_entry
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_DISPLAY_PRECISION,
-    AGENT_COST_FINEST_DECIMALS,
-    AGENT_COST_SIGNIFICANT_FIGURES,
     CHART_AXIS_TOP_MAC,
     CHART_GRID_INTERVAL_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
@@ -47,6 +45,7 @@ from anesthesia_sim.app.formatting import (
     agent_amount_display_precision,
     chart_axis_top_percent,
     chart_grid_interval_percent,
+    cost_is_exact_to_its_minor_unit,
     format_agent_cost,
     format_agent_residual,
     format_agent_volume,
@@ -2167,21 +2166,41 @@ def test_a_share_that_is_not_a_number_is_refused(share: object) -> None:
 
 
 @pytest.mark.parametrize(
-    ("cost", "expected"),
+    ("cost", "currency", "expected"),
     [
-        pytest.param(8.0703, "USD 8.07", id="Exercise 14-1 at 60 min"),
-        pytest.param(0.6812, "USD 0.68", id="no finer than a cent"),
-        pytest.param(50.04, "USD 50.0", id="three figures"),
-        pytest.param(1234.5, "USD 1230", id="three figures above a thousand"),
-        pytest.param(9.996, "USD 10.0", id="rounds up into the next decade"),
-        pytest.param(0.004, "USD <0.01", id="below a cent"),
-        pytest.param(0.0, "USD 0", id="nothing delivered"),
+        pytest.param(8.0703, "USD", "USD 8.07", id="Exercise 14-1 at 60 min"),
+        pytest.param(0.6812, "USD", "USD 0.68", id="no finer than a cent"),
+        pytest.param(12.34, "USD", "USD 12.34", id="to the cent above ten"),
+        pytest.param(123.454, "USD", "USD 123.45", id="to the cent above a hundred"),
+        pytest.param(50.0, "USD", "USD 50.00", id="whole units keep their cents"),
+        pytest.param(1234.5, "USD", "USD 1234.50", id="no thousands separator"),
+        pytest.param(9.996, "USD", "USD 10.00", id="rounds up into the next unit"),
+        pytest.param(0.004, "USD", "USD <0.01", id="below a cent"),
+        pytest.param(0.0, "USD", "USD 0.00", id="nothing delivered"),
+        pytest.param(-0.0, "USD", "USD 0.00", id="negative zero has no sign"),
+        pytest.param(
+            2.0**44, "USD", "USD 17592186044416.00", id="largest power of two to the cent"
+        ),
+        pytest.param(1099.98, "JPY", "JPY 1100", id="yen has no minor unit"),
+        pytest.param(0.4, "JPY", "JPY <1", id="below one yen"),
+        pytest.param(0.0, "JPY", "JPY 0", id="nothing delivered in yen"),
+        pytest.param(2.0**51, "JPY", "JPY 2251799813685248", id="floats exactly half a yen apart"),
+        pytest.param(1.2346, "KWD", "KWD 1.235", id="dinar has three decimals"),
+        pytest.param(12.345678, "QQQ", "QQQ 12.35", id="a code CLDR does not list"),
     ],
 )
-def test_a_cost_is_shown_to_three_figures_and_never_finer_than_a_hundredth(
-    cost: float, expected: str
+def test_a_cost_is_shown_to_its_currency_s_minor_unit(
+    cost: float, currency: str, expected: str
 ) -> None:
-    assert format_agent_cost(cost, "USD") == expected
+    """A cost reads as an ordinary money figure, to the cent for USD (`PL-7R8S`).
+
+    The count of decimals per currency is the minor unit that ISO 4217 lists
+    and CLDR copies: 2 for USD, 0 for JPY and 3 for KWD. A code CLDR does not
+    list gets CLDR's default of 2 (Unicode Technical Standard #35, Part 3,
+    section "Currency Fraction Digits and Rounding").
+    """
+
+    assert format_agent_cost(cost, currency) == expected
 
 
 @pytest.mark.parametrize(
@@ -2293,45 +2312,37 @@ def test_a_cost_that_is_not_a_number_is_refused() -> None:
         format_agent_cost(1.0, 840)  # type: ignore[arg-type]
 
 
-def test_the_cost_s_and_the_price_s_precisions_follow_from_the_density_and_the_cost() -> None:
-    """Derive both precisions from the stored densities, independently of the formatter.
+@pytest.mark.parametrize(
+    ("cost", "currency"),
+    [
+        pytest.param(2.0**45, "USD", id="neighbouring floats a cent apart"),
+        pytest.param(1e26, "USD", id="past the decimal context's 28 digits"),
+        pytest.param(2.0**42, "KWD", id="three decimals refuse sooner"),
+        pytest.param(2.0**52, "JPY", id="floats a whole yen apart"),
+    ],
+)
+def test_a_cost_too_large_to_show_to_its_minor_unit_is_refused(cost: float, currency: str) -> None:
+    """A float's spacing past half a minor unit would make the last digits noise.
 
-    `docs/INTERFACE.md` § "Displayed precision" gives the derivation (`PL-1P15`).
-    The price is the reader's own figure, so the cost's only modelled
-    uncertainty is the liquid figure's, which comes from the measured density
-    alone. The largest relative SD of a stored density is sevoflurane's,
-    0.0008 / 1.5203, or 0.053 %. A cost shown to n significant figures has a
-    smallest relative step of 1 in (10^n - 1), at a value such as 999. At
-    three figures that is 0.10 %, coarser than one SD of the density, as the
-    one-sided bound requires. At four figures it would be 0.010 %, finer than
-    one SD.
-
-    The price per millilitre carries no model uncertainty. Four figures is the
-    fewest at which rounding the price moves the product of the figures shown
-    by at most half of the cost's smallest step. Half a step at four figures is
-    at most 0.5 in 1000, or 0.050 %, against 0.5 in 999 for the cost.
+    At 2^44 two neighbouring floats are 2^-8 apart, under half a cent. At 2^45
+    they are 2^-7, or 0.0078, over it. Blind review of `PL-7R8S` found that 1e26
+    raised the decimal module's InvalidOperation instead of a refusal.
     """
 
-    largest_relative_sd = max(
-        load_agent_parameters(agent_id).liquid_density.standard_deviation_g_ml
-        / load_agent_parameters(agent_id).liquid_density.g_ml
-        for agent_id in AGENT_DATA_FILENAMES
-    )
+    assert not cost_is_exact_to_its_minor_unit(cost, currency)
 
-    def smallest_relative_step(figures: int) -> float:
-        return 1.0 / (10**figures - 1)
+    with pytest.raises(ValueError, match="too large to show to its currency's minor unit"):
+        format_agent_cost(cost, currency)
 
-    def largest_relative_half_step(figures: int) -> float:
-        return 0.5 / 10 ** (figures - 1)
 
-    assert largest_relative_sd == pytest.approx(0.0008 / 1.5203)
-    assert AGENT_COST_SIGNIFICANT_FIGURES == 3
-    assert smallest_relative_step(AGENT_COST_SIGNIFICANT_FIGURES) > largest_relative_sd
-    assert smallest_relative_step(AGENT_COST_SIGNIFICANT_FIGURES + 1) < largest_relative_sd
-    assert AGENT_COST_FINEST_DECIMALS == 2
-    assert PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES == 4
+def test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent() -> None:
+    """At four significant figures, rounding moves a price by at most 0.05 % of it.
 
-    half_cost_step = smallest_relative_step(AGENT_COST_SIGNIFICANT_FIGURES) / 2.0
-    price = PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES
-    assert largest_relative_half_step(price) <= half_cost_step
-    assert largest_relative_half_step(price - 1) > half_cost_step
+    `docs/INTERFACE.md` § "Agent amounts in millilitres, and the cost" states
+    that bound. The largest relative rounding at n figures is half a step in
+    the last figure of a value such as 1000, or 0.5 in 10^(n - 1).
+    """
+
+    largest_relative_rounding = 0.5 / 10 ** (PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES - 1)
+
+    assert largest_relative_rounding == pytest.approx(0.0005)
