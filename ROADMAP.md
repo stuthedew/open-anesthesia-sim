@@ -75,7 +75,7 @@ names the scripts that measured this.
 step was 0.1 s, which a binary number cannot hold exactly, and six closed
 items came from that rounding. A run now counts whole seconds, and the playback
 takes one exact one-second step for each second that real time allows.
-`docs/MODEL.md` § "Supported simulation step" gives how far a control change
+`docs/VERIFICATION.md` § "Supported simulation step" gives how far a control change
 made one second late can move the alveolar reading: at most 1.3 percentage
 points, from a desflurane ventilator start at the edge of the supported
 settings, fading to 0.5 points after eight seconds.

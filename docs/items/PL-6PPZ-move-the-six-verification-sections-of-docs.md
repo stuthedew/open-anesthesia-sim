@@ -141,7 +141,21 @@ declined:
    document. Declined: `PL-P3GZ` names a developer as its reader, and the
    comparisons with measurements in people go to `docs/MODEL.md` in
    `PL-48MX`. Until then, the pointer in `docs/MODEL.md` § "Status" sends a
-   clinician to them.
+   clinician to them. The owner was asked who the document is for, and
+   answered "Research best practice" (project owner, 2026-11-22). The
+   published guidance keeps developers as the only reader. The ISPOR-SMDM
+   task force on model transparency asks for two documents: a nontechnical
+   description for anyone, which includes the validation methods, results
+   and limitations, and technical documentation detailed enough for a reader
+   with the needed expertise to evaluate and reproduce the model (Eddy DM et
+   al. Med Decis Making. 2012;32(5):733-43. doi:10.1177/0272989X12454579;
+   abstract read through PubMed). `docs/MODEL.md` after `PL-48MX` is the
+   first and this document is the second. The FDA's guidance on reporting
+   computational modelling studies addresses its report, with sections for
+   code verification, calculation verification, validation and limitations,
+   to industry and FDA staff, and names no clinician reader (FDA, Reporting
+   of Computational Modeling Studies in Medical Device Submissions, 2016,
+   Introduction and sections III, VIII, X and XIII; pages 1 to 16 read).
 
 **Files checked** for a citation of a moved section, and for a sentence that
 names `docs/MODEL.md` as the home of the numerical method, the tests or the
