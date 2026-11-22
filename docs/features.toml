@@ -109,6 +109,7 @@ late-washout-evidence = { use = "validation-resolving-power" }
 layout-sliver-areas = { use = "interface-areas" }
 line-ends = "Splitting text into lines the way git and Markdown do, not at every character Python treats as a break."
 liquid-agent-consumption = "Showing agent use in millilitres of liquid and its cost, from each agent's molar mass and density."
+localization = "Make the interface translatable, and show numbers, money and units in the reader's region."
 mac-awake-reference-text = { use = "model-spec-accuracy" }
 machine-docs-structure = "Structure and claims of docs/machine-survey.md and docs/machine-abstraction.md."
 machine-profile-framework = "Machine profiles: loading one by id, a second profile, and choosing between them."
