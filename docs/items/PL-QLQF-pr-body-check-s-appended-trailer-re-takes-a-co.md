@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 closed: 2026-10-12
 pr: 1434
+filed-pr: 1391
 payoff: pr_body_check --compare keeps a body's own last line, so a squash commit that lost one is reported rather than passed as equal, and a faithful one is not reported as differing
 verify: grep -q 'def test_a_trailer_closing_a_prose_paragraph_is_the_bodys_own' tests/unit/test_pr_body_check.py
 reenters: PL-4ZVH

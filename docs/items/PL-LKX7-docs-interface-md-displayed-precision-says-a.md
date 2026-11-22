@@ -11,6 +11,7 @@ touches: docs/INTERFACE.md, tests/integration/simulation_view/test_simulation_vi
 added: 2026-11-04
 closed: 2026-11-14
 pr: 2156
+filed-pr: 2022
 payoff: a reader on a 1280 px laptop sees all seven readouts in one row, or the model specification says plainly that the row opens on four there
 verify: grep -rq 'def test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns' tests/integration
 reenters: PL-4FBP

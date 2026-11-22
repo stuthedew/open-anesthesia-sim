@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-17
 closed: 2026-10-19
 pr: 1676
+filed-pr: 1480
 payoff: a compartment whose capacity underflows to zero is refused at build by name, instead of failing later with a bare division error the halt path does not handle
 verify: grep -q 'build(1e-200, 1e-200)' tests/unit/test_tissue.py && grep -q 'volume_l=1e-200, blood_gas_partition_coefficient=1e-200' tests/unit/test_blood.py
 reenters: PL-ZGYX

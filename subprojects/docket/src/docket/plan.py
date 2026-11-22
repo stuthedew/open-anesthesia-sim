@@ -686,6 +686,44 @@ def _unseated_by(item: Item) -> str:
     return "" if item.is_startable else item.status
 
 
+def held_back(item: Item, scope: Scope | None) -> bool:
+    """Whether the roadmap holds `item` back until the gate being cleared is clear.
+
+    An item in the gated milestone's own `Required scope`, below `P0`, while
+    the beat is clearing the gate (`Scope.held_for_gate`). `ROADMAP.md` §
+    "The cadence" clears the gate before the milestone is built, and the
+    project owner kept that rule on 2026-11-11 (`PL-6590`). `recommend` ranked
+    such an item below the gate's entries but still offered it once those ran
+    short, so a session could start milestone work with the gate open, which
+    is how `PL-KFTM` was likely built (`PL-JF22`). So it is not offered, and
+    `next` names how many wait instead. An item on the generator tier keeps
+    the tier: `recommend` checks that itself, since the tier is above the
+    plan.
+    """
+    return scope is not None and item.priority != "P0" and scope.held_for_gate(item.identifier)
+
+
+def held_back_by_gate(
+    items: list[Item],
+    in_flight: Collection[str] | None = None,
+    *,
+    scope: Scope | None,
+    effort: str | None = None,
+    lane: str | None = None,
+    workflow_paths: tuple[str, ...] = (),
+) -> list[Item]:
+    """The startable items `recommend` leaves out because the gate is not yet clear.
+
+    `offerable`'s population, narrowed by `lane` as `recommend` narrows it, so
+    `next` can say how many build items wait rather than hiding them.
+    """
+    return [
+        item
+        for item in offerable(items, in_flight, effort=effort)
+        if (lane is None or item.lane(workflow_paths) == lane) and held_back(item, scope)
+    ]
+
+
 def awaits_decision(item: Item) -> bool:
     """Whether this item's next step is the project owner's answer rather than a session's work.
 
@@ -1302,10 +1340,7 @@ def placement_line(
         # scope mapped to the anchor - so "outside what v0.5.0 names; placed by
         # v0.5.0" is accurate and reads as a bug. It is the commonest case
         # there is while a gate is open, and it says something different.
-        # `milestone()` answers with a bare `v0.5.0` while `anchor` carries the
-        # roadmap's label - "v0.5.0 - the case you can branch" - so comparing
-        # them directly never matches. The anchor's first token is the version.
-        if placed_by and scope.anchor.split()[0] == placed_by:
+        if scope.held_for_gate(identifier):
             return f"in the scope of {scope.anchor}, which clearing its gate comes before"
         return f"outside what {scope.anchor} names; placed by {placed_by}"
     if where == EXCLUDED:
@@ -1373,10 +1408,8 @@ def placement_mark(scope: Scope | None, identifier: str) -> str:
         placed_by = scope.milestone(identifier)
         # While a gate is open, `later` also carries the anchor's own scope
         # under the anchor's version - the commonest case there is, and a
-        # different statement from "a later milestone names this". The anchor
-        # carries the roadmap's label and `milestone()` a bare version, so the
-        # comparison is on the label's first token, as `placement_line` does.
-        if placed_by and scope.anchor.split()[0] == placed_by:
+        # different statement from "a later milestone names this".
+        if scope.held_for_gate(identifier):
             return "[after the gate]"
         return f"[{placed_by}]" if placed_by else ""
     if where == EXCLUDED:
@@ -1418,8 +1451,8 @@ def placement_clause(scope: Scope | None, identifier: str) -> str:
         # gate is open, and that is the commonest reading there is - it says
         # "this is the milestone's own work, which the gate comes before",
         # never "a later release owns this". `placement_line` draws the same
-        # distinction on the same test, the anchor's first token.
-        if placed_by and scope.anchor.split()[0] == placed_by:
+        # distinction on the same test, `Scope.held_for_gate`.
+        if scope.held_for_gate(identifier):
             return "not on the gate; it is what the gate clears the way for"
         if not placed_by:
             return "not on the gate"
@@ -1613,7 +1646,9 @@ def recommend(
     placement rather than filtered by it. Out-of-scope work stays in the list,
     carrying the milestone that names it, because "is this really out of
     scope?" is a judgment and hiding the item would be a verdict this cannot
-    support - where saying which milestone names its id is a fact it can.
+    support - where saying which milestone names its id is a fact it can. The
+    one exception is the gated milestone's own `Required scope` while its gate
+    is the beat, which the roadmap itself holds back (`held_back`, `PL-JF22`).
 
     A generator - an item carrying a sound `root-cause-of:` - sits directly
     below `P0` and above everything else, including a `safety`- or
@@ -1778,6 +1813,8 @@ def recommend(
 
     ranked: list[Recommendation] = []
     for item in sorted(startable, key=rank):
+        if held_back(item, scope) and item.identifier not in on_tier:
+            continue
         if item.priority == "P0":
             reason = "P0: this comes before feature work."
         elif item.identifier in generating:

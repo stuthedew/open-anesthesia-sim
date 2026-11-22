@@ -11,6 +11,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, doc
 added: 2026-10-25
 closed: 2026-10-27
 pr: 1875
+filed-pr: 1835
 payoff: the recurrence count that names generator-tier promotion candidates is known to count the right item, or a fix for it is filed
 verify: grep -qE '^\*\*Measured' docs/items/PL-TBX9-*.md
 reenters: PL-PNSV

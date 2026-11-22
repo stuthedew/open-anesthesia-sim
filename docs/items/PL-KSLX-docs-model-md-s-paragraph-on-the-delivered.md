@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - captured after the gate froze; the wrong unit is in the 
 added: 2026-10-31
 closed: 2026-11-01
 pr: 1915
+filed-pr: 1898
 payoff: docs/MODEL.md names the unit that every recorded change of the delivered dial carries, percent of 1 atm, so a reader of the specification cannot read a recorded 2 as 200%
 verify: ! grep -qF 'carry the unit *fraction of 1 atm*' docs/MODEL.md && grep -qF 'carry the unit *percent of 1 atm*' docs/MODEL.md && ! grep -qF 'fraction of one atmosphere. It is displayed as a percent' docs/MODEL.md
 reenters: PL-4FBP

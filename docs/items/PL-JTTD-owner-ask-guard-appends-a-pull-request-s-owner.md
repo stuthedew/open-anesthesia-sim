@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a new problem: owner_ask_guard began appending to every 
 added: 2026-11-04
 closed: 2026-11-14
 pr: 2164
+filed-pr: 2025
 payoff: after the owner says merge, thread messages stop repeating the read or merge ask he has already answered
 verify: grep -q 'def test_arm_owner_ask_sends_nothing_once_the_owner_has_answered' subprojects/docket/tests/test_cli.py
 reenters: PL-X4MD

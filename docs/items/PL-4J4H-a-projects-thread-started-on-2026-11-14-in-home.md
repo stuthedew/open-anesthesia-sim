@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - a new problem: the setup entry it fails in came in with 
 added: 2026-11-14
 closed: 2026-11-22
 pr: 2207
+filed-pr: 2155
 payoff: A Projects thread that starts above its checkout still runs with the guard hooks that refuse forbidden commands, and still sees the queue digest at start.
 tests: tests/unit/test_thread_hooks.py::test_the_setup_script_s_entry_finds_the_hook_from_the_checkout_or_its_parent
 reenters: PL-CR81

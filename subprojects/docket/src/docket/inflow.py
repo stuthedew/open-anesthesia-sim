@@ -66,6 +66,17 @@ only where some item records a sweep, so a store with none asks git nothing.
 Where git cannot answer, the column prints `?` and the report says why, since
 those filings are then counted as ordinary.
 
+**A filing found while a fix was being built is not a re-entry.** The pull
+request that closed an item can also file what its work turned up, and triage
+may write `reenters:` on that filing, naming the item it was found beside. That
+fix had not shipped when the filing was made, so it cannot have failed to
+reach it. In the week `PL-BB16` read, 8 of the 11 filings that re-entered an
+item closed on their own filing day were of this kind. So a `reenters:` id is
+counted only where the named item's `pr:` differs from the filing's
+`filed-pr:`, the pull request that added it, which `docket new` records
+(`PL-C47M`). Where either number is missing, the id is counted as before, and
+the report says how many counted filings carry no `filed-pr:`.
+
 **At release time it is silent unless an expectation failed.** `missed`
 checks the last complete period against `PL-04KR`'s pre-registered
 predictions, and `docket release` prints what it returns and nothing when it
@@ -103,6 +114,7 @@ from .model import (
     Item,
     is_under,
     owner_set_priority,
+    pr_number,
 )
 from .plan import Fact, clusters, facts
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
@@ -269,6 +281,30 @@ class Inflow:
     #: some item records `sweep:` and git could not say which item's work
     #: filed each item. Those filings are then counted in `filed`.
     sweeps_unread: str = ""
+    #: How many of the re-entries counted carry no `filed-pr:`, so whether
+    #: the pull request that closed the item they name also filed them could
+    #: not be checked. They are counted, as every re-entry was before
+    #: `PL-C47M`.
+    unchecked_reentries: int = 0
+
+
+def counted_reentries(item: Item, by_id: Mapping[str, Item]) -> tuple[str, ...]:
+    """The ids in `item`'s `reenters:` that count as a fix that shipped and did not hold.
+
+    An id is left out where the item it names was closed by the pull request
+    that filed `item`: its `pr:` and `item`'s `filed-pr:` are one number. That
+    filing was found while the fix was being built, before it shipped. An id
+    is kept where either number is missing or unreadable, since nothing then
+    shows the two pull requests were one.
+    """
+    filed = pr_number(item.filed_pr)
+    if filed is None:
+        return item.reenters
+    return tuple(
+        named
+        for named in item.reenters
+        if named not in by_id or pr_number(by_id[named].pr) != filed
+    )
 
 
 def apparatus_paths(item: Item, config: Config, excluded: tuple[str, ...]) -> frozenset[str]:
@@ -378,10 +414,12 @@ def analyze(
     # Each head that states a fact, to the fact. The fact's first head is the
     # id its line is listed under.
     fact_of = {head.identifier: fact for fact in facts(groups).values() for head in fact.heads}
+    by_id = {item.identifier: item for item in items}
+    counted = {item.identifier: counted_reentries(item, by_id) for _, item in filings}
     reentering: dict[str, list[str]] = {}
     for _, item in filings:
         if item.identifier not in swept:
-            lines = (_line(named, fact_of) for named in item.reenters)
+            lines = (_line(named, fact_of) for named in counted[item.identifier])
             for closed in dict.fromkeys(lines):
                 reentering.setdefault(closed, []).append(item.identifier)
     first_named: dict[str, date] = {}
@@ -403,7 +441,7 @@ def analyze(
                 by_sweep=sum(1 for item in window if item.identifier in by_sweep),
                 priorities=dict(Counter(item.priority or UNBANDED for item in organic)),
                 new_paths=sum(1 for day in first_named.values() if start <= day <= end),
-                reentries=sum(1 for item in organic if item.reenters),
+                reentries=sum(1 for item in organic if counted[item.identifier]),
                 severe=dict(
                     Counter(item.priority for item in organic if _unexpected_band(item, config))
                 ),
@@ -473,6 +511,13 @@ def analyze(
         successors=successors,
         answered=answered,
         sweeps_unread=sweeps_unread,
+        unchecked_reentries=sum(
+            1
+            for _, item in filings
+            if item.identifier not in swept
+            and counted[item.identifier]
+            and pr_number(item.filed_pr) is None
+        ),
     )
 
 

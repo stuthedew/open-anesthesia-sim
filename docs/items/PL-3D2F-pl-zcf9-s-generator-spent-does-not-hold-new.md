@@ -11,6 +11,7 @@ touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py, s
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1984
+filed-pr: 1980
 payoff: an ask the owner gets is a recorded question, never a bare read or merge request or a made-up question, while progress notes still reach them unchecked
 verify: ! grep -q 'def unasserted' .claude/hooks/owner_ask_guard.py && grep -q 'def test_a_waiting_threads_ask_is_refused_until_it_records_one' tests/unit/test_owner_ask_guard.py
 reenters: PL-ZCF9

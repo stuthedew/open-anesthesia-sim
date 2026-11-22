@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - filed after the gate froze; it needs a window smaller th
 added: 2026-10-27
 closed: 2026-11-01
 pr: 1912
+filed-pr: 1880
 payoff: a press on a border in a too-small window no longer rewrites the learner's saved arrangement with nothing visible changing
 verify: grep -q 'def test_a_press_in_a_window_below_the_floors_keeps_the_stored_fractions' tests/integration/test_layout_adapter.py
 reenters: PL-97WX

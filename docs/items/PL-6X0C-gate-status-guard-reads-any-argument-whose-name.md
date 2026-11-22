@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-11
 closed: 2026-10-12
 pr: 1434
+filed-pr: 1392
 payoff: a scratch script handed a tools check or its test as an argument is no longer refused as running that check, so reading a check's own files costs no retry
 verify: grep -q 'def test_only_the_script_an_interpreter_runs_is_read_as_a_check' tests/unit/test_gate_status_guard.py
 reenters: PL-61FT

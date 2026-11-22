@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-18
 closed: 2026-10-19
 pr: 1616
+filed-pr: 1616
 payoff: a pull request reaches the owner only with a recorded question or risk to review, printed as the ask's opening line, and anything else merges on green
 verify: grep -q 'OWNER_ASK = "Owner-ask"' subprojects/docket/src/docket/arming.py && grep -q 'def test_arm_holds_for_the_owner_only_with_a_recorded_ask' subprojects/docket/tests/test_cli.py && grep -q 'PL-9JHM. records the owner' subprojects/docket/src/docket/arming.py
 reenters: PL-9KHK, PL-DKBG

@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/core, tests/unit/test_record_restores.py, docs/ARCHI
 added: 2026-10-27
 closed: 2026-11-14
 pr: 2166
+filed-pr: 1877
 payoff: a record restored by a pickle or a copy is checked as the constructor checks it, and the next checked record cannot skip that
 verify: grep -q 'def test_every_checked_record_restores_through_its_checks' tests/unit/test_record_restores.py
 reenters: PL-S11T

@@ -12,6 +12,7 @@ deferred-from: v0.7.0 - filed after the gate froze; an apparatus-only release-re
 added: 2026-11-03
 closed: 2026-11-03
 pr: 1979
+filed-pr: 1977
 payoff: a release cut counts only apparatus work as unexpected apparatus severity, so a safety-pinned simulator build that extends a checking tool no longer reads as a broken convergence prediction
 verify: grep -q 'def test_a_crossing_item_s_p1_is_not_an_unexpected_band' subprojects/docket/tests/test_inflow.py
 reenters: PL-00TR

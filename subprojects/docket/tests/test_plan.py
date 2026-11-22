@@ -25,6 +25,7 @@ from docket.plan import (
     effort_total,
     features,
     gate,
+    held_back_by_gate,
     longest_waiting,
     overlaps,
     placement_clause,
@@ -719,6 +720,34 @@ def test_placement_line_does_not_say_a_milestone_is_outside_itself() -> None:
     assert placement_line(scope, "PL-1111") == (
         f"in the scope of {STEP}, which clearing its gate comes before"
     )
+
+
+def test_next_does_not_offer_the_milestone_s_own_work_while_its_gate_is_open() -> None:
+    """`ROADMAP.md` § "The cadence" clears the gate before the milestone is built (`PL-JF22`).
+
+    Ranked below the gate's entries, a Required-scope item was still offered
+    once they ran short, which is the likely route by which `PL-KFTM` was built
+    with the gate open. A `P0` keeps its rank, as everywhere in the plan, and
+    once the gate clears the same item is offered.
+    """
+    anchor_version = STEP.split()[0]
+    build = _item("PL-1111", priority="P1")
+    hotfix = _item("PL-3333", priority="P0")
+    later = _item("PL-4444", priority="P1")
+    items = [build, hotfix, later]
+    clearing = _scope(
+        current=("PL-2222",),
+        later={"PL-1111": anchor_version, "PL-3333": anchor_version, "PL-4444": "v0.9.0"},
+        clearing=True,
+    )
+
+    offered = [r.item.identifier for r in recommend(items, scope=clearing, limit=5)]
+    assert offered == ["PL-3333", "PL-4444"]
+    assert [i.identifier for i in held_back_by_gate(items, scope=clearing)] == ["PL-1111"]
+
+    built = _scope(current=("PL-1111", "PL-3333"), later={"PL-4444": "v0.9.0"})
+    assert "PL-1111" in [r.item.identifier for r in recommend(items, scope=built, limit=5)]
+    assert held_back_by_gate(items, scope=built) == []
 
 
 DEBT_CLASSES = ("defect", "safety", "science", "refactor", "perf")

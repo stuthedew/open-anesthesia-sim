@@ -10,6 +10,7 @@ touches: ROADMAP.md, docs/items/PL-9LNF-three-app-surfaces-own-state-a-layout-co
 added: 2026-09-26
 closed: 2026-09-26
 pr: 1132
+filed-pr: 1120
 payoff: a reader following any live citation of the inert splitter lands on the function itself, and the citation stops drifting because it names a symbol rather than a line
 verify: ! grep -qE 'qt_widgets\.py:[0-9]+' ROADMAP.md docs/items/PL-9LNF-three-app-surfaces-own-state-a-layout-could.md docs/items/PL-W9P6-build-the-one-adapter-module-that-drives-the-qt.md
 reenters: PL-G424

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 closed: 2026-09-25
 pr: 1034
+filed-pr: 1015
 payoff: a delegated branch that adds or edits a core, data or MODEL.md file under a name git would quote fails the protected-path audit instead of passing as none touched
 verify: grep -q 'def test_a_non_ascii_protected_path_is_rejected' subprojects/docket/tests/test_verify.py
 reenters: PL-KR69

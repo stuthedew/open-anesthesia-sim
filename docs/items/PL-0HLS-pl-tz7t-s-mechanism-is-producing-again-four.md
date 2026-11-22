@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-12
 closed: 2026-10-12
 pr: 1463
+filed-pr: 1452
 payoff: a capture made before triage is shown the open item that already describes it, so a defect is diagnosed once rather than twice, and three open defects in the duplicate search close in one design instead of three patches that undo each other
 verify: grep -q 'def test_an_untriaged_capture_meets_an_untriaged_item' subprojects/docket/tests/test_duplicates.py
 root-cause-of: PL-6SV4, PL-9VPH, PL-SV0D, PL-TS7L

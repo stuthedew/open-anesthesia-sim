@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-06
 closed: 2026-10-18
 pr: 1536
+filed-pr: 1386
 payoff: a verify: continued across lines is refused by name, so a backslash continuation can no longer turn a failing ! grep into a pass the single-line guard never sees
 verify: grep -q 'def test_a_verify_continued_with_a_backslash_is_refused_through_the_parser' subprojects/docket/tests/test_checks.py
 reenters: PL-HXJY

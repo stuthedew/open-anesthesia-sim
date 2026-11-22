@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-18
 closed: 2026-10-19
 pr: 1620
+filed-pr: 1588
 payoff: a commit made after a merge that only deletes a file is reported as left behind, instead of the report reading as complete without it
 verify: grep -q 'def test_orphaned_reports_a_post_merge_commit_that_only_deletes_a_file' subprojects/docket/tests/test_vcs.py
 reenters: PL-927J

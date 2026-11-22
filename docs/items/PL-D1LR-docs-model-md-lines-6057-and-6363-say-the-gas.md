@@ -11,6 +11,7 @@ touches: docs/MODEL.md
 added: 2026-10-25
 closed: 2026-11-01
 pr: 1915
+filed-pr: 1841
 payoff: docs/MODEL.md states the resolution the agent-accounting panel actually shows, and its headroom argument is made against that number
 verify: ! grep -qF 'accumulators are displayed as six decimals of a litre' docs/MODEL.md && ! grep -qF 'the 1e-4 and 1e-6 of' docs/MODEL.md
 reenters: PL-4FBP
