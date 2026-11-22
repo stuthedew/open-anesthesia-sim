@@ -340,11 +340,14 @@ model's setter for that control returns. A setter returns only when the model
 accepts the value, so no separate check is needed to keep a refused setting out.
 
 The interface declares an adjustment when a drag starts, and each change
-carries the number of its adjustment. A change that arrives with no declared
-adjustment, such as a call from code, gets a number of its own. Code must never
-group changes by the time between them. A playback multiplier changes how much
-simulated time one drag spans, so any time threshold would group correctly at
-one multiplier and wrongly at another.
+carries the number of its adjustment. A change to another control, or a change
+that takes effect at a later simulated instant, starts an adjustment of its
+own, so each key press, wheel notch or track click made while the run plays is
+marked. A change that arrives with no declared adjustment, such as a call from
+code, gets a number of its own. Code must never group changes by a span of time
+between them. A playback multiplier changes how much simulated time one action
+spans, so any time threshold would group correctly at one multiplier and
+wrongly at another.
 
 The limit on a chart's marks is `MAX_CHART_CONTROL_MARKS` in
 `app/chart_frame.py`, and the limit on the list's lines is

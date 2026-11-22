@@ -184,18 +184,46 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
     assert (second.previous_value, second.new_value) == pytest.approx((3.0, 4.0))
 
 
-def test_consecutive_changes_to_one_control_are_one_adjustment() -> None:
-    """One drag of one slider counts as one adjustment, however many steps it spans."""
+def test_changes_to_one_control_at_one_instant_are_one_adjustment() -> None:
+    """Changes made while the run is paused take effect at one instant, so they are one input.
+
+    Three changes to the fresh gas flow on a paused run leave one entry, from
+    the first value to the last, in one adjustment.
+    """
+
+    controller = SimulationController()
+
+    controller.set_fresh_gas_flow(FreshGasFlow(5.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(6.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(7.0))
+
+    (change,) = controller.snapshot().control_timeline
+    assert change.adjustment == 1
+    assert (change.previous_value, change.new_value) == (4.0, 7.0)
+
+
+def test_steps_of_one_control_at_three_instants_are_three_adjustments() -> None:
+    """A key press, a wheel notch or a track click at a later instant is an adjustment of its own.
+
+    `docs/INTERFACE.md` § "The control-input timeline" requires it, so that the
+    chart marks a dial stepped back later in the run (`PL-0T2H`). The three
+    steps are at 10 s, 40 s and 100 s, with no other control changed between
+    them.
+    """
 
     controller = SimulationController()
     controller.start()
 
-    controller.set_fresh_gas_flow(FreshGasFlow(3.0))
-    _advance_for(controller, 1)
-    controller.set_fresh_gas_flow(FreshGasFlow(2.0))
+    _advance_for(controller, 10)
+    controller.set_fresh_gas_flow(FreshGasFlow(4.1))
+    _advance_for(controller, 30)
+    controller.set_fresh_gas_flow(FreshGasFlow(4.2))
+    _advance_for(controller, 60)
+    controller.set_fresh_gas_flow(FreshGasFlow(4.3))
 
     timeline = controller.snapshot().control_timeline
-    assert {change.adjustment for change in timeline} == {1}
+    assert [change.elapsed_s for change in timeline] == [10, 40, 100]
+    assert [change.adjustment for change in timeline] == [1, 2, 3]
 
 
 def test_a_declared_boundary_separates_two_drags_of_one_control() -> None:

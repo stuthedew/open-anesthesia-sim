@@ -364,6 +364,36 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
     assert _wash_in(view).chart.control_mark_times(0) == (pytest.approx(released_at_s),)
 
 
+def test_each_arrow_key_step_at_a_new_instant_is_marked_and_listed(
+    application: QApplication,
+) -> None:
+    """Three Right-arrow presses on one dial, at 10 s, 40 s and 100 s, give three marks.
+
+    `docs/INTERFACE.md` § "The control-input timeline" makes each key press an
+    adjustment of its own. Before `PL-0T2H` the three presses were joined into
+    one adjustment, so both charts marked only 10 s, and a later step changed
+    the curves with no mark.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    slider.setFocus()
+
+    for elapsed_s in (10, 40, 100):
+        _advance(controller, elapsed_s - controller.snapshot().elapsed_s)
+        QTest.keyClick(slider, Qt.Key.Key_Right)
+
+    view.present(False)
+
+    assert [change.elapsed_s for change in controller.record().control_timeline] == [10, 40, 100]
+    assert len(run._control_timeline_text.text().splitlines()) == 3
+    assert _concentration(view).chart.control_mark_times(0) == (10.0, 40.0, 100.0)
+    assert _wash_in(view).chart.control_mark_times(0) == (10.0, 40.0, 100.0)
+
+
 # --------------------------------------- a press on a slider, on each platform
 
 

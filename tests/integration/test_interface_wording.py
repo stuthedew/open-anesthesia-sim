@@ -263,12 +263,11 @@ def _strings_at(application: QApplication, agent_id: str, elapsed_s: float | Non
 
 
 def _after_a_setting_change(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
-    """Sevoflurane at 2 min, with three kinds of line in the change record.
+    """Sevoflurane at 2 min, with a flow and a concentration in the change record.
 
     The fresh gas flow changes once at 1 min, which the record words as a flow.
-    The delivered concentration changes at 90 s and again at 100 s, with no
-    new adjustment begun between them. The record words that as one change in
-    percent, over an interval, of two settings.
+    The delivered concentration changes at 90 s and again at 100 s. The record
+    words each as a change in percent, on a line of its own (`PL-0T2H`).
     """
 
     controller = SimulationController()

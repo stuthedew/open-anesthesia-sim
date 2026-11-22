@@ -3,14 +3,17 @@ id: PL-0T2H
 title: Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/chart_frame.py, docs/INTERFACE.md, tests/integration/controller/test_controller_control_timeline.py
 blocked-by: PL-Z6C8
 deferred-from: v0.7.0 - filed on 2026-11-21, after the gate froze; it builds after the whole-second stepping work, which changes when a setting takes effect
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2228
 payoff: A learner who steps a dial up and later back with the keys sees a mark on the chart at each change
+tests: tests/integration/controller/test_controller_control_timeline.py::test_steps_of_one_control_at_three_instants_are_three_adjustments, tests/integration/simulation_view/test_simulation_view_controls.py::test_each_arrow_key_step_at_a_new_instant_is_marked_and_listed
 ---
 
 **Problem.** Arrow-key, wheel and track-click steps on one dial are joined into one adjustment, so the chart marks only the first step and docs/INTERFACE.md says each step is an adjustment of its own: decide which a learner sees
@@ -84,3 +87,7 @@ Three wheel notches and three clicks on the track gave the same single line unde
 **Done when.** A key press, a wheel notch and a click on the track each open an adjustment of their own when they take effect at a different simulated instant, a test presses a key on a slider at two simulated instants and checks the marks, and `docs/INTERFACE.md` § "The control-input timeline" and the docstring of `begin_control_adjustment` say what the code does. Build this after the whole-second stepping work (`PL-SZ6G`, `PL-MH9J`, `PL-FST0`, `PL-Z6C8`), which changes when a setting takes effect.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and its blocker `PL-Z6C8` closed with #2180. `SimulationController._record_in_timeline` in `app/controller.py` still opens a new adjustment only when `control is not self._open_adjustment_control`. `ParameterSlider` in `app/qt_widgets.py` still emits `adjustment_started` only on `sliderPressed`. `docs/INTERFACE.md` § "The control-input timeline" still says each key press, wheel notch or track click "is an adjustment of its own". No test presses a key on a slider.
+
+**Done 2026-11-22.** `SimulationController._record_in_timeline` opens a new adjustment when the control differs from the open one or when the change takes effect at a later simulated instant (`self._open_adjustment_instant`). Changes to one control at one instant, as on a paused run, stay one adjustment. A drag applies once, at release (`PL-5B1N`), so no drag spans instants. On the code before the fix, `test_steps_of_one_control_at_three_instants_are_three_adjustments` failed with "assert [1, 1, 1] == [1, 2, 3]" and `test_each_arrow_key_step_at_a_new_instant_is_marked_and_listed` failed with "AssertionError: assert 1 == 3". The second presses the Right arrow on the fresh gas flow slider at 10 s, 40 s and 100 s and checks three timeline entries, three list lines and marks at 10, 40 and 100 s on both charts. `test_changes_to_one_control_at_one_instant_are_one_adjustment` replaces `test_consecutive_changes_to_one_control_are_one_adjustment`. The interface wording test's setting-change point now shows two separate Delivered agent lines where it showed one line with "(2 settings)", and its approved list was re-approved.
+
+**Docs checked.** `docs/INTERFACE.md` § "The control-input timeline": the paragraph on how the interface declares an adjustment now says that a change to another control or at a later instant starts one. The per-input sentence already said so. The dashboard's list of what it shows still holds ("One adjustment can hold several changes of one control" is true at a branch's fork instant), and `PL-MQD3` asks whether that form is still worth keeping. The docstring of `begin_control_adjustment`. `docs/ARCHITECTURE.md`, `docs/VERIFICATION.md` and `README.md` say nothing about adjustments.

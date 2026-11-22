@@ -981,6 +981,7 @@ class SimulationController:
         self._opened_with: tuple[ControlChange, ...] = ()
         self._adjustment_count = 0
         self._open_adjustment_control: ControlInput | None = None
+        self._open_adjustment_instant: float | None = None
         self._open_adjustment = 0
 
     @property
@@ -3124,24 +3125,18 @@ class SimulationController:
     def begin_control_adjustment(self) -> None:
         """Declare that the changes that follow are a new user adjustment.
 
-        The interface calls this when a drag begins. Without it, a slider
-        dragged twice would be indistinguishable from one dragged once. Both
-        arrive as a series of changes to the same control, and only the input
-        device knows where one action ended and the next began. Inferring the
-        boundary from the timing of the entries would need a threshold. No
-        threshold survives the playback multiplier that v0.4.0 adds, because
-        the same drag spans more simulated time the faster the run is played.
+        The interface calls this when a drag begins. A change to another
+        control, or one that takes effect at a later instant, starts a new
+        adjustment by itself (`_record_in_timeline`, `PL-0T2H`). What only
+        this call separates is two drags of one control at one instant, as on
+        a paused run, which arrive as a series of changes to the same control.
+        Only the input device knows where one drag ended and the next began.
 
         This method records nothing on its own and changes no simulation
         state. It only closes whichever adjustment is open, so the next change
-        starts a new one. A change that arrives with no adjustment open, such
-        as a programmatic call or a test, therefore becomes an adjustment of
-        its own. A key press, a wheel notch or a click on a slider's track
-        calls nothing here, so it joins the adjustment that is open on the
-        same control, however much simulated time has passed since.
-        `PL-0T2H` (one adjustment for each step of a dial) changes that. The
-        grouping degrades safely, rather than wrongly, when this method is
-        never called.
+        starts a new one. A key press, a wheel notch or a click on a slider's
+        track calls nothing here, so on a paused run it joins the adjustment
+        that is open on the same control.
         """
 
         self._open_adjustment_control = None
@@ -3305,9 +3300,19 @@ class SimulationController:
         (`RunRecord.opened_with`).
         """
 
-        if control is not self._open_adjustment_control:
+        # A change joins the open adjustment only when it is to the same
+        # control at the same instant, as the changes of one drag on a paused
+        # run are. A key press, a wheel notch or a click on the track that takes
+        # effect at a later instant is an adjustment of its own, so the chart
+        # marks it (`docs/INTERFACE.md` § "The control-input timeline",
+        # `PL-0T2H`).
+        if (
+            control is not self._open_adjustment_control
+            or self._state.elapsed_s != self._open_adjustment_instant
+        ):
             self._adjustment_count += 1
             self._open_adjustment_control = control
+            self._open_adjustment_instant = self._state.elapsed_s
             self._open_adjustment = self._adjustment_count
 
         # Two changes to one control inside a single step are one action. The
