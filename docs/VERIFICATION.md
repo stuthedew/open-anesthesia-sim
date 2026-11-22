@@ -1274,7 +1274,8 @@ whether each test is any good.
 **For developers.** A check keeps the right-hand column to existing tests. It
 fails when a test named anywhere in this document matches no existing test.
 
-The rest of this document argues forward from each decision, which finds the
+`docs/MODEL.md`, `docs/INTERFACE.md` and the rest of this document argue
+forward from each decision, which finds the
 mistakes someone thought to look for. This table works back from each way a
 reader could be misled, which finds the others.
 
@@ -2941,16 +2942,16 @@ stepped from there, and a branch compared against its parent
 
 The model must return a stored value, such as the alveolar volume, when this
 test simulates a procedure that measures that value. Each procedure is derived
-from a physical law, not from the equations in this document. Like the other
+from a physical law, not from the equations in `docs/MODEL.md`. Like the other
 verification tests, this test checks that the equations are the ones intended.
 It cannot show that a stored value is right, because each procedure recovers
 whatever value the data files hold.
 
 **This test catches a class of error that the other verification tests miss.**
 The test in § "Independent-solution test" solves the equations as written in
-this document, so it reproduces any error in them and still agrees with the
+`docs/MODEL.md`, so it reproduces any error in them and still agrees with the
 code. The test in § "Mass-balance test" catches an error only when agent is lost
-or created. Suppose this document gave the tissue capacity as $`V_i\lambda_{i:b}`$,
+or created. Suppose `docs/MODEL.md` gave the tissue capacity as $`V_i\lambda_{i:b}`$,
 leaving out the blood:gas factor $`\lambda_{b:g}`$, and used that capacity in the
 tissue's rate equation. Agent would still be conserved, and the independent
 solution would agree with the code. The tissue volume recovered by the Fick
@@ -3049,7 +3050,8 @@ A release is complete only when:
 - deterministic replay passes (§ "Deterministic replay test");
 - changing a setting during a case keeps the simulation's current state;
 - the interface contains the educational and non-clinical warning; and
-- this document describes the behavior actually present in the tagged release.
+- `docs/MODEL.md`, `docs/INTERFACE.md` and this document describe the behavior
+  actually present in the tagged release.
 
 The elimination regression pins compare simulated elimination with the model's
 own earlier output. They run with the test suite, so a failing pin still stops
