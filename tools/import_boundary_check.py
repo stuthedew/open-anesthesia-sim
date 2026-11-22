@@ -330,6 +330,18 @@ BOUNDARIES: tuple[Boundary, ...] = (
         ),
     ),
     Boundary(
+        package="babel",
+        tree=PACKAGE_DIR,
+        allowed=(f"{PACKAGE_DIR}/app/currency_code.py",),
+        why=(
+            "Babel supplies the Unicode CLDR's count of decimals for each currency, which "
+            "sets how a cost is shown (PL-7R8S). `app/currency_code.py` holds the project's "
+            "rules for a currency, so it is the one module that reads CLDR. A second reader "
+            "could apply a different default to a code CLDR does not list, and two Views "
+            "would then show one cost to different decimals"
+        ),
+    ),
+    Boundary(
         package=f"{PACKAGE}.app",
         tree=CORE_DIR,
         allowed=(),

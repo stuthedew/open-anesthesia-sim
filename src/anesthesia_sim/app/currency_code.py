@@ -1,4 +1,4 @@
-"""State the one rule for what a currency code must look like (`PL-93B3`, `PL-1P15`).
+"""State the rules for a currency code and for how many decimals its amounts show (`PL-93B3`, `PL-1P15`, `PL-7R8S`).
 
 `docs/INTERFACE.md` § "A cost at the reader's price" says that a price's currency
 is stored and shown as its ISO 4217 alphabetic code. It is never shown as a
@@ -7,6 +7,11 @@ is not three capital letters, and the formatters refuse to print one. Both
 read the rule here, so they cannot disagree about it. The code is not checked
 against the list of codes ISO 4217 assigns, for the reason `app/preferences.py`
 gives.
+
+A cost is shown to its currency's minor unit, such as the cent
+(`docs/INTERFACE.md` § "Agent amounts in millilitres, and the cost"). The count
+of decimals comes from the Unicode CLDR's currency data, read through Babel,
+and this is the only module that imports Babel.
 """
 
 from __future__ import annotations
@@ -14,7 +19,9 @@ from __future__ import annotations
 import re
 from typing import Final
 
-__all__ = ["is_currency_code"]
+from babel.numbers import get_currency_precision
+
+__all__ = ["is_currency_code", "minor_unit_decimals"]
 
 # regex: three capital letters, the form of an ISO 4217 alphabetic code. `[A-Z]`
 # in Python's `re` matches only the 26 ASCII capitals. The pattern checks only
@@ -27,3 +34,23 @@ def is_currency_code(text: str) -> bool:
     """Return whether `text` is three capital letters, the form of an ISO 4217 code."""
 
     return _CURRENCY_CODE_PATTERN.fullmatch(text) is not None
+
+
+def minor_unit_decimals(currency: str) -> int:
+    """Return how many decimals an amount in `currency` is shown to: 2 for USD, 0 for JPY.
+
+    The count is the `digits` that CLDR's currency data gives the currency.
+    CLDR bases it on the minor unit that ISO 4217 lists, and departs from
+    ISO 4217 only where customary use differs. A code that CLDR does not list,
+    such as a mistyped `UDS`, gets CLDR's default of 2 (Unicode Technical
+    Standard #35, Part 3, Numbers, § "Currency Fraction Digits and Rounding",
+    https://www.unicode.org/reports/tr35/tr35-numbers.html). Babel's
+    `get_currency_precision` applies that default for an unlisted code. CLDR's
+    separate figures for cash, such as rounding Swiss francs to 0.05, are not
+    used, because a cost is not paid in cash.
+
+    The caller checks the code's form with `is_currency_code` first. This
+    function does not refuse a code of another form.
+    """
+
+    return get_currency_precision(currency)

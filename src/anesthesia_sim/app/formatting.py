@@ -59,7 +59,7 @@ from math import floor, isfinite
 from types import MappingProxyType
 from typing import Final
 
-from anesthesia_sim.app.currency_code import is_currency_code
+from anesthesia_sim.app.currency_code import is_currency_code, minor_unit_decimals
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
 from anesthesia_sim.core.concentration import (
@@ -77,8 +77,6 @@ from anesthesia_sim.core.units import MILLILITRES_PER_LITRE, SECONDS_PER_HOUR, S
 
 __all__ = [
     "AGENT_AMOUNT_DISPLAY_PRECISION",
-    "AGENT_COST_FINEST_DECIMALS",
-    "AGENT_COST_SIGNIFICANT_FIGURES",
     "PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES",
     "COMPARTMENT_SHARE_DECIMALS",
     "CHART_AXIS_TOP_MAC",
@@ -269,8 +267,8 @@ class AgentAmountUnit(Enum):
 # of liquid. A compartment's amount has no entry, because `PL-2881` derived a
 # precision of two significant figures for it, not a count of decimals.
 # `format_compartment_amount` applies that precision instead. Money has no entry
-# here, because a cost's precision is a count of significant figures, which
-# `format_agent_cost` applies (`PL-1P15`).
+# here, because a cost is shown to its currency's minor unit, which
+# `format_agent_cost` reads (`PL-7R8S`).
 _RUN_TOTAL_LITRE_DECIMALS: Final = 1
 _FINEST_DERIVED_DECIMALS: Final[Mapping[tuple[AgentAmount, AgentAmountUnit], int]] = (
     MappingProxyType(
@@ -1702,13 +1700,10 @@ def format_compartment_share(share: float) -> str:
     return f"{percent:.{COMPARTMENT_SHARE_DECIMALS}f}%"
 
 
-# A cost at the reader's price is shown to three significant figures, and never
-# finer than two decimals of its currency. A price per millilitre of liquid is
-# shown to four significant figures. `docs/INTERFACE.md` § "Displayed precision"
-# derives both (`PL-1P15`). These three constants are the only place that
-# states either precision.
-AGENT_COST_SIGNIFICANT_FIGURES: Final = 3
-AGENT_COST_FINEST_DECIMALS: Final = 2
+# A price per millilitre of liquid is shown to four significant figures
+# (`docs/INTERFACE.md` § "Agent amounts in millilitres, and the cost",
+# `PL-1P15`). A cost's decimals come from its currency, through
+# `minor_unit_decimals`, so no constant here states them (`PL-7R8S`).
 PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES: Final = 4
 
 
@@ -1744,18 +1739,20 @@ def _require_currency_code(currency: str) -> None:
 
 
 def format_agent_cost(cost: float, currency: str) -> str:
-    """Render the cost of the delivered agent at the reader's price, with its currency code first.
+    """Render the cost of the delivered agent at the reader's price, as money with its currency code first.
 
-    The cost is rounded to `AGENT_COST_SIGNIFICANT_FIGURES` significant
-    figures, and never to more than `AGENT_COST_FINEST_DECIMALS` decimals. So
-    8.0703 is shown as `USD 8.07`, 0.6812 as `USD 0.68`, 50.04 as
-    `USD 50.0` and 1234.5 as `USD 1230`. The rounding is to the nearest
-    figure, with halves rounded to even. A positive cost that rounds to zero
-    at the finest decimal is shown as `USD <0.01`, so a run that has delivered
-    agent never appears to have cost nothing. Exactly zero is shown as
-    `USD 0`, the cost before any agent is delivered. The currency is printed
-    as its ISO 4217 code, never as a sign such as "$" that several currencies
-    share (`docs/INTERFACE.md` § "A cost at the reader's price").
+    The cost is rounded to its currency's minor unit, which
+    `minor_unit_decimals` reads from CLDR's currency data. So 8.0703 is shown
+    as `USD 8.07`, 123.454 as `USD 123.45`, 1234.5 as `USD 1234.50` and
+    1099.98 yen as `JPY 1100`. Halves are rounded to even. A positive cost
+    that rounds to zero is shown as `USD <0.01`, or `JPY <1`, so a run that
+    has delivered agent never appears to have cost nothing. Exactly zero is
+    shown as `USD 0.00`, the cost before any agent is delivered. The digits
+    are not grouped in thousands, because the separator differs between
+    regions and a comma reads as a decimal point in many of them. The
+    currency is printed as its ISO 4217 code, never as a sign such as "$"
+    that several currencies share (`docs/INTERFACE.md` § "A cost at the
+    reader's price").
 
     Args:
         cost: The cost, in `currency`.
@@ -1775,18 +1772,14 @@ def format_agent_cost(cost: float, currency: str) -> str:
     _require_currency_amount(cost, "a cost")
     _require_currency_code(currency)
 
-    if cost == 0.0:
-        return f"{currency} 0"
+    decimals = minor_unit_decimals(currency)
+    minor_unit = Decimal(1).scaleb(-decimals)
+    rounded = Decimal(cost).quantize(minor_unit, rounding=ROUND_HALF_EVEN)
 
-    rounded, decimals = _round_to_figures(
-        Decimal(cost), AGENT_COST_SIGNIFICANT_FIGURES, AGENT_COST_FINEST_DECIMALS
-    )
+    if rounded == 0 and cost > 0.0:
+        return f"{currency} <{minor_unit:.{decimals}f}"
 
-    if rounded == 0:
-        floor = Decimal(1).scaleb(-AGENT_COST_FINEST_DECIMALS)
-        return f"{currency} <{floor:.{AGENT_COST_FINEST_DECIMALS}f}"
-
-    return f"{currency} {rounded:.{max(decimals, 0)}f}"
+    return f"{currency} {rounded:.{decimals}f}"
 
 
 def format_price_per_liquid_ml(price_per_ml: float, currency: str) -> str:

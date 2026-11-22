@@ -397,8 +397,8 @@ def test_each_run_is_priced_at_its_own_agent_s_price() -> None:
     cost = cost_shown(delivered_shown(switched.snapshot()), preferences)
     liquid_ml = 4800.0 / _vapour_ml_per_liquid_ml("sevoflurane")
 
-    assert cost.cost == f"EUR {liquid_ml * 240.34 / 250.0:.1f}"
-    assert cost.cost == "EUR 25.2"
+    assert cost.cost == f"EUR {liquid_ml * 240.34 / 250.0:.2f}"
+    assert cost.cost == "EUR 25.24"
     assert "EUR 0.9614 per mL of liquid" in cost.working
     assert "sevoflurane" in cost.label
     assert "USD" not in " ".join((cost.cost, cost.working, cost.price))
@@ -409,7 +409,7 @@ def test_a_run_that_has_delivered_nothing_costs_zero_at_a_set_price() -> None:
 
     cost = cost_shown(delivered_shown(snapshot), _priced(_GAS_MAN_ISOFLURANE))
 
-    assert cost.cost == "USD 0"
+    assert cost.cost == "USD 0.00"
     assert cost.working.startswith("0 mL of liquid x")
 
 

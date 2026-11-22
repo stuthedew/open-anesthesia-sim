@@ -3,13 +3,16 @@ id: PL-7R8S
 title: docs/MODEL.md § Displayed precision judges the cost's significant figures against one SD of the density while every other agent amount, the liquid volume beside the cost included, is judged against a seventh of an SD, so the section applies two limits to figures with the same relative uncertainty
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: model-claims-held-by-tests
-touches: docs/MODEL.md, tests/unit/test_formatting.py, docs/INTERFACE.md
+touches: docs/INTERFACE.md, tests/unit/test_formatting.py, tests/unit/test_agent_cost.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/currency_code.py, pyproject.toml, uv.lock, tools/import_boundary_check.py, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem: the cost display and its three-significant-figures paragraph came with 7baae320 (2026-11-02), after the freeze
 added: 2026-11-04
+closed: 2026-11-22
+pr: 2241
 payoff: a learner reads a cost as an ordinary money figure, to the cent, and the document gives a reason that agrees with the display
+tests: tests/unit/test_formatting.py::test_a_cost_is_shown_to_its_currency_s_minor_unit, tests/unit/test_formatting.py::test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent, tests/unit/test_agent_cost.py::test_each_run_is_priced_at_its_own_agent_s_price
 verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 ---
 
@@ -39,3 +42,12 @@ verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 **Done when.** The agent cost View shows every cost to the cent, so USD 12.34 reads USD 12.34 and USD 123.45 reads USD 123.45. `docs/INTERFACE.md`'s paragraph that opens "A cost is shown to three significant figures" is rewritten to say a cost is shown as a money figure to its currency's minor unit, and no longer judges it against the density's SD. A test shows a cost above USD 100 printed with two decimals, and one in JPY printed with none.
 
 **Measured 2026-11-22 by the localization research thread (`PL-SRP7`).** Qt's own money formatter takes its count of decimals from the region's currency, not from the currency it is given: on PySide6 6.11.2, `QLocale("ja_JP").toCurrencyString(1099.98, "USD")` returns "USD1,100". Babel 2.18.0's `format_currency(1099.98, "USD", locale="ja_JP")` returns "$1,099.98". So the build uses Babel, or CLDR's currency digits directly, and not `QLocale.toCurrencyString`.
+
+**Built 2026-11-22.** The cost is rounded to its currency's minor unit, halves to even, and printed with its three-letter code first: `USD 12.34`, `USD 123.45`, `JPY 1100`, `KWD 1.235`. Four choices this session made:
+
+1. **Babel, not CLDR's table copied here.** Babel 2.18.0 is now a dependency, and `app/currency_code.py`'s `minor_unit_decimals` is the one reader of it; `tools/import_boundary_check.py` confines Babel to that module. Babel's `get_currency_precision` returns `precisions.get(currency, precisions['DEFAULT'])[0]` (read in the installed 2.18.0 source). `PL-TLW6` (units in Settings) will need CLDR's region-to-currency data too, which Babel carries, so a second library or a copied table would be undone there.
+2. **A code CLDR does not list gets two decimals.** That is CLDR's own default: Unicode Technical Standard #35, Part 3, Numbers, version 49, § "Currency Fraction Digits and Rounding" ("If a particular currency does not occur in the fractions list, then it is given the defaults ... digits ... The default is 2"; read 2026-11-22 at https://www.unicode.org/reports/tr35/tr35-numbers.html). The `DEFAULT` entry in CLDR's `common/supplemental/supplementalData.xml` on `main` reads `digits="2" rounding="0"`, and every non-cash `info` entry there has `rounding="0"`, so the count of digits is the whole rule. Cash rounding (Swiss francs to 0.05) is not applied, because a cost is not paid in cash.
+3. **Zero reads `USD 0.00`, and digits are not grouped in thousands.** A placeholder look choice. Grouping waits for the region setting in `PL-TLW6`, because a comma is the decimal point in many regions.
+4. **The price per millilitre keeps four significant figures.** Its old reason measured it against the cost's three-figure step, which no longer exists. `docs/INTERFACE.md` now gives the plain reason: most prices per millilitre are less than one unit of the currency, and four figures move the price by at most 0.05 %.
+
+Files checked in the doc sweep: `docs/INTERFACE.md` (§ "Agent amounts in millilitres, and the cost", its note for developers, and § "A cost at the reader's price"), `docs/VERIFICATION.md` (the two cost hazard rows, still true), `docs/MODEL.md`, `docs/PARAMETERS.md`, `README.md` (no cost precision), `docs/ARCHITECTURE.md` (the `currency_code.py` line, updated), `pyproject.toml`.
