@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: dropped
 classes: defect, infra
-feature: stale-blocked-routing
+feature: blocked-means-blocked
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-10-03

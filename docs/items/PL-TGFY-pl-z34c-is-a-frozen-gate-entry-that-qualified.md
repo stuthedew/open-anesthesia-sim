@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: planning
-feature: gate-remaining-cost
+feature: gate-prerequisites
 milestone: v0.4.32
 touches: ROADMAP.md, docs/items
 added: 2026-09-20

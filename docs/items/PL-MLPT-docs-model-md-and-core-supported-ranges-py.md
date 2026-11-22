@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: science, docs
-feature: supported-run-length-text
+feature: presentation-safety
 milestone: v0.6.9
 touches: docs/MODEL.md, src/anesthesia_sim/core/supported_ranges.py
 added: 2026-10-25

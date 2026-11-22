@@ -2,7 +2,7 @@
 id: PL-3BZS
 title: The placeholder set citation-drift.md documents as the project's illustrative ids includes PL-A1B2, which is outside store.ID_ALPHABET, and modes/ideas.md prints it as an example
 status: done
-feature: one-id-grammar
+feature: read-facts-through-docket
 milestone: v0.5.2
 touches: .claude/rules/citation-drift.md, .claude/skills/docket/modes/ideas.md
 added: 2026-09-21

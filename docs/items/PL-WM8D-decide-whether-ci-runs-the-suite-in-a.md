@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: dropped
 classes: test, infra
-feature: test-effectiveness-measurement
+feature: tests-detect-wrong-values
 touches: pyproject.toml, uv.lock, .github/workflows/drift.yml
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-17 triage pass
 added: 2026-10-17

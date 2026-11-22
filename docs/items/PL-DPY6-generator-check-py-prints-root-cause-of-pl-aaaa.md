@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
-feature: one-id-grammar
+feature: read-facts-through-docket
 milestone: v0.5.1
 touches: tools/generator_check.py, tests/unit/test_generator_check.py
 added: 2026-09-21

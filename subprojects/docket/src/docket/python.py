@@ -276,7 +276,7 @@ def docstrings(tree: ast.AST) -> list[ast.Constant]:
 
     A module, class or function docstring is one, and so is an attribute
     docstring: the string a statement after an assignment holds, as PEP 257
-    § "What is a Docstring?" describes. Defining a docstring by its position
+    describes in its section "What is a Docstring?". Defining a docstring by its position
     as the first statement of a scope would miss the attribute docstring,
     which no scope opens with. So a string is documentation when it stands
     alone as a statement, wherever it stands. Returned in `ast.walk` order.

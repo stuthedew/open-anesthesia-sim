@@ -45,6 +45,7 @@ ALLOWED_IMPORTS = {
     "json",
     "keyword",
     "locale",
+    "math",
     "os",
     "pathlib",
     "random",

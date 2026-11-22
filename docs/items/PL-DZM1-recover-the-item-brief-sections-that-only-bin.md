@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
-feature: unmerged-item-edits
+feature: stranded-report-fidelity
 milestone: v0.5.0
 touches: docs/items
 added: 2026-09-21

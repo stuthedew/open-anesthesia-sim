@@ -46,6 +46,10 @@ docket new --feature run-scrubbing \
   "Decide what the readouts show while scrubbed away from now"
 ```
 
+A new feature's name needs its line in `docs/features.toml` first, with one
+sentence on what belongs in it, because `docket new` refuses a feature that
+file does not list (`PL-Q3BN`).
+
 Never hand the decomposition back. Working out what the idea breaks into,
 naming the feature and writing the briefs is the job being delegated — asking
 "which items should this be?" or "what should we call the feature?" returns it.

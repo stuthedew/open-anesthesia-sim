@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs, defect
-feature: settings-panel-prerequisite
+feature: preferences-store
 milestone: v0.4.35
 touches: ROADMAP.md
 added: 2026-09-17

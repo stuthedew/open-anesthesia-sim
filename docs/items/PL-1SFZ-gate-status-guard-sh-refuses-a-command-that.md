@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
-feature: gate-status-guard
+feature: bash-guard-bound
 milestone: v0.5.12
 touches: .claude/hooks/gate-status-guard.sh, tests/unit/test_gate_status_guard.py, docs/items/PL-PVW2-predicates-the-apparatus-asks-repeatedly-which.md
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the second 2026-09-23 triage pass

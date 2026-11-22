@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
-feature: one-home-for-constants
+feature: one-source-of-truth
 milestone: v0.6.6
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/MODEL.md
 blocked-by: PL-R417

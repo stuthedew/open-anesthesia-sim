@@ -136,8 +136,8 @@ RENDER_INTERVAL_S: Final = 0.2
 INITIAL_CHART_TIME_BASE: Final = TIME_BASE_LADDER[0]
 
 # How many runs the dashboard may draw at once. The limit is two for two
-# reasons. Two is what `ROADMAP.md` § "v0.5.0 - the case you can branch" puts
-# in its own out-of-scope list. And the encoding that tells one run from
+# reasons. Two is what `ROADMAP.md` § "Completed: v0.5.0 - the case you can
+# branch" puts in its own out-of-scope list. And the encoding that tells one run from
 # another has two levels (`PL-HLD5`: the run is shown by line width, with a cap
 # of two compartments). A third run would have no encoding left to be drawn
 # with.

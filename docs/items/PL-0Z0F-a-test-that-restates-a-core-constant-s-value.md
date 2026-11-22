@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: done
 classes: test
-feature: one-home-for-constants
+feature: one-source-of-truth
 milestone: v0.6.6
 touches: tools, .github/workflows/drift.yml, tests, docket.toml, docs/apparatus.md
 blocked-by: PL-R417

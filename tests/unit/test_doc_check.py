@@ -1678,13 +1678,15 @@ def test_a_section_cited_in_an_indented_code_block_or_a_comment_is_not_held(
     assert not any('write § "Known limitations"' in a for a in report.advisories)
 
 
-def test_a_marked_citation_after_its_source_document_is_left_to_containment(tmp_path: Path) -> None:
-    """`` `doc.md` § "X" `` names its document; `check_quoted_sources` holds it by containment."""
+def test_a_marked_citation_after_its_source_document_is_held_to_its_headings(
+    tmp_path: Path,
+) -> None:
+    """`` `doc.md` § "X" `` names its document; `check_quoted_sources` holds it to its headings."""
     readme = '# Demo\n\nThe rest is in `docs/MODEL.md` § "Renamed limitations".\n'
     errors = _errors(_repo(tmp_path, readme=readme))
 
     assert not any("cites section" in e for e in errors)
-    assert any('quotes docs/MODEL.md as "Renamed limitations"' in e for e in errors)
+    assert any('quotes docs/MODEL.md § "Renamed limitations", which is no' in e for e in errors)
 
 
 def test_an_outside_source_section_is_written_without_the_mark(tmp_path: Path) -> None:
@@ -1837,7 +1839,8 @@ def test_a_section_mark_citation_is_checked_like_a_comma_one(tmp_path: Path) -> 
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "A thread that was deleted".\n')
     assert any(
-        'PL-0000-demo.md:1: quotes docs/MODEL.md as "A thread that was deleted"' in e
+        'PL-0000-demo.md:1: quotes docs/MODEL.md § "A thread that was deleted", which is no '
+        "heading of docs/MODEL.md" in e
         for e in _errors(root)
     )
 
@@ -8355,7 +8358,7 @@ PARAGRAPH_FAMILY_DOCUMENT = "\n".join(
 
 
 def _paragraph_family() -> doc_check.BoundFamily:
-    """Return a paragraph-shaped family over § "Overview", built here rather
+    """Return a paragraph-shaped family over the fixture's "Overview", built here rather
     than read from `BOUND_FAMILIES`.
 
     It names `docs/MODEL.md` as its document only so that
@@ -11237,7 +11240,8 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             UNCLOSED.format(
                 "README.md:3", "this citation of docs/MODEL.md", "whether the file holds the words"
             ),
-            'README.md:4: quotes docs/MODEL.md as "Gone section", which is not in that file',
+            'README.md:4: quotes docs/MODEL.md § "Gone section", which is no heading of '
+            "docs/MODEL.md",
         ],
     ),
     "host claims, a front matter key is dated by no other key": (
@@ -11815,8 +11819,8 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
             tmp_path, '# Demo\n\n> It is `docs/MODEL.md` §\n> "A thread that was deleted".\n'
         ),
         [
-            'README.md:3: quotes docs/MODEL.md as "A thread that was deleted", which is not in '
-            "that file"
+            'README.md:3: quotes docs/MODEL.md § "A thread that was deleted", which is no heading '
+            "of docs/MODEL.md"
         ],
     ),
     "quoted sources, an item's section mark wrapped in a blockquote": (
@@ -12638,7 +12642,10 @@ LONG_QUOTATIONS: dict[str, tuple[Callable[[Path], object], object]] = {
         lambda tmp_path: _citation_findings(
             tmp_path, f'# Demo\n\nIt is `docs/MODEL.md` § "{LONG_TITLE}".\n'
         ),
-        [f'README.md:3: quotes docs/MODEL.md as "{LONG_TITLE}", which is not in that file'],
+        [
+            f'README.md:3: quotes docs/MODEL.md § "{LONG_TITLE}", which is no heading of '
+            "docs/MODEL.md"
+        ],
     ),
     "item sections, a long quotation the brief lacks": (
         lambda tmp_path: _citation_findings(
@@ -13464,6 +13471,132 @@ def test_a_section_mark_naming_the_wrong_specification_document_is_refused(tmp_p
     current = README + '\nSee `docs/INTERFACE.md` § "Shown values".\n'
     (root / "README.md").write_text(current, encoding="utf-8")
     assert [error for error in _errors(root) if "Shown values" in error] == []
+
+
+#: A document with one section, cited by each form below, and the same document
+#: after that section is renamed.
+NOTES = "# Notes\n\n## Old title\n\nThe body names the old title words.\n"
+RENAMED_NOTES = "# Notes\n\n## New title\n\nThe body names the old title words.\n"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '# See `docs/notes.md` § "Old title".\nVALUE = 1\n',
+        '#: See `docs/notes.md` § "Old title".\nVALUE = 1\n',
+        'VALUE = 1  # `docs/notes.md` § "Old title"\n',
+        '"""See `docs/notes.md`\'s § "Old title"."""\n',
+        '"""Read `docs/notes.md` for this.\n\n§ "Old title" says why.\n"""\n',
+        '# Read docs/notes.md for this.\n# § "Old title" says why.\nVALUE = 1\n',
+        '"""See § "Old title"."""\n',
+        '"""See `docs/notes.md`, § "Old title"."""\n',
+        '# The rest is `docs/notes.md` (§ "Old title").\nVALUE = 1\n',
+    ],
+    ids=[
+        "comment",
+        "attribute comment",
+        "comment after code",
+        "possessive",
+        "bare mark after the document",
+        "bare mark after a bare path",
+        "bare mark naming no document",
+        "mark after a comma",
+        "mark in parentheses",
+    ],
+)
+def test_a_section_mark_in_python_is_refused_once_its_heading_is_renamed(
+    tmp_path: Path, source: str
+) -> None:
+    """Each way this repository writes a § citation in Python is held to the cited headings.
+
+    A comment, a possessive and a bare mark were read by nothing, so a section
+    move stranded them without a word (`PL-LPCB`). Each passes while the
+    heading stands and is refused once it is renamed.
+    """
+    root = _repo(tmp_path)
+    (root / "docs" / "notes.md").write_text(NOTES, encoding="utf-8")
+    (root / "tools" / "cites.py").write_text(source, encoding="utf-8")
+
+    assert [error for error in _errors(root) if error.startswith("tools/cites.py")] == []
+
+    (root / "docs" / "notes.md").write_text(RENAMED_NOTES, encoding="utf-8")
+    refused = [error for error in _errors(root) if error.startswith("tools/cites.py")]
+    assert len(refused) == 1
+    assert '"Old title"' in refused[0]
+
+
+def test_a_section_mark_naming_words_that_are_no_heading_is_refused(tmp_path: Path) -> None:
+    """A mark is held to the cited document's headings, not to its words anywhere.
+
+    `ROADMAP.md`'s "v0.6.0 - the layout is the reader's" became "Completed:
+    v0.6.0 - the layout is the reader's", which still holds the old words, so a
+    containment test passed the stale citation (`PL-Q2DK`, `PL-LPCB`).
+    """
+    root = _repo(tmp_path)
+    (root / "docs" / "notes.md").write_text(NOTES, encoding="utf-8")
+    (root / "tools" / "cites.py").write_text(
+        '"""See `docs/notes.md` § "the old title words"."""\n', encoding="utf-8"
+    )
+
+    assert [error for error in _errors(root) if error.startswith("tools/cites.py")] == [
+        'tools/cites.py:1: quotes docs/notes.md § "the old title words", which is no heading '
+        "of docs/notes.md"
+    ]
+
+
+def test_a_mark_after_a_document_and_a_comma_is_held_to_its_headings(tmp_path: Path) -> None:
+    """In a Markdown document, a mark after a document and a comma names that document's section.
+
+    `QUOTED_SOURCE_RE` takes one connective and `check_citations` left a mark
+    after a code-spanned source to it, so nothing read this form (`PL-LPCB`,
+    found by a blind review pass).
+    """
+    readme = README + '\nThe rest is in `docs/notes.md`, § "Old title".\n'
+    root = _repo(tmp_path, readme=readme)
+    (root / "docs" / "notes.md").write_text(NOTES, encoding="utf-8")
+    assert [error for error in _errors(root) if "Old title" in error] == []
+
+    (root / "docs" / "notes.md").write_text(RENAMED_NOTES, encoding="utf-8")
+    assert [error for error in _errors(root) if "Old title" in error] == [
+        'README.md:6: quotes docs/notes.md § "Old title", which is no heading of docs/notes.md'
+    ]
+
+
+def test_a_bare_mark_names_the_document_its_passage_named_last(tmp_path: Path) -> None:
+    """A bare mark after a document that lacks the heading is refused, and told where it is.
+
+    `preferences.py` named `docs/MODEL.md`, and on the next line cited the
+    section on the reader's price with a bare mark, after that section had
+    moved to `docs/INTERFACE.md` (`PL-10BC`, `PL-LPCB`).
+    """
+    root = _repo(tmp_path)
+    (root / "docs" / "notes.md").write_text(NOTES, encoding="utf-8")
+    (root / "tools" / "cites.py").write_text(
+        '"""Read `docs/MODEL.md` for this.\n\n§ "Old title" says why.\n"""\n', encoding="utf-8"
+    )
+
+    assert [error for error in _errors(root) if error.startswith("tools/cites.py")] == [
+        'tools/cites.py:3: cites § "Old title" after naming docs/MODEL.md, which has no such '
+        "heading; it is a section of docs/notes.md. A bare mark names the document its passage "
+        "named last, so name the document directly before the mark"
+    ]
+
+
+def test_a_section_mark_in_a_code_span_or_an_outside_source_without_it_is_not_read(
+    tmp_path: Path,
+) -> None:
+    """A mark inside a code span is a literal, and an outside source's section carries no mark.
+
+    `check_citations` reads a Markdown document's marks the same way.
+    """
+    root = _repo(tmp_path)
+    (root / "tools" / "cites.py").write_text(
+        '"""Write `` `doc.md` § "X" `` to cite a section.\n\n'
+        'The hooks page, section "Timeouts", says so.\n"""\n',
+        encoding="utf-8",
+    )
+
+    assert [error for error in _errors(root) if error.startswith("tools/cites.py")] == []
 
 
 def test_an_absent_marker_under_a_list_covers_its_first_item(tmp_path: Path) -> None:

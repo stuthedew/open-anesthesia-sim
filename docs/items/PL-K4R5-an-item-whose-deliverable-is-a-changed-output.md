@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, infra
-feature: verify-assertion-check
+feature: verify-false-reject
 milestone: v0.4.34
 touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket
 added: 2026-09-20
