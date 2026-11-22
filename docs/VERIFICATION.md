@@ -844,22 +844,41 @@ corner, each volume is at one of its limits, and the two coefficients are at one
 corners of the region allowed by their own limits and the tissue:blood quotient's limits. Each
 flow is set to zero, to the smallest positive number a computer can hold and to its maximum. The
 test steps the whole model once, steps each compartment alone
-at its own limits, and predicts every second of a 60 s run in one-second steps. At the two
-corners where rounding went furthest it predicts every second of 24 hours. Each run washes in
+at its own limits, and predicts every second of a 60 s run in one-second steps. At the three
+corners where rounding went furthest,
+`test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere` also predicts every second of
+24 hours, at one setting of the flows: no fresh gas, 12 L/min of ventilation and 10 L/min of
+cardiac output. Each run washes in
 to the 0.99 limit, washes out from it, or sits at it. Stepped alone, a tissue group and the venous pool run at zero flow, at the
 smallest positive flow and at the largest supported cardiac output, and each result stays
 finite and between its start and its equilibrium.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
 
 Each result of the first test must be finite. Each fraction must lie from 0 through 1, with no
-allowance. It must also lie at or below 0.99, and the agent balance must close, both to within
-the error bound of the propagators that produced the result (`propagator_rounding` in
-`core/rounding.py`). That bound uses the squarings each propagator actually needed, with a margin
-of 8, so the bound at a corner that needs few squarings is a few rounding errors. The worst
-result, from runs on 2026-10-26, reached 2.5 times the bound's leading term,
-$`2^{s} \cdot 2^{-52}`$ for $`s`$ squarings.
+allowance. What else a result must meet depends on how it was computed.
 
-One step of the whole model must also pass the simulator's own mass-balance check, which allows
+1. **A predicted run.** Each fraction must also lie at or below 0.99, and the agent balance must
+   close, both to within the error bound of the propagators that produced the state
+   (`propagator_rounding` in `core/rounding.py`). That bound is 10 times $`2^{s} \cdot 2^{-52}`$
+   for the $`s`$ squarings that a step at that corner and those flows actually needs. The 10 is
+   `PROPAGATOR_ROUNDING_UNITS`, derived from the arithmetic, so at a corner that needs no
+   squarings the bound is ten rounding errors. The worst result, from runs on
+   2026-10-26, reached 2.5 times the bound's leading term, $`2^{s} \cdot 2^{-52}`$ for $`s`$
+   squarings. The separate 24-hour test holds its predictions to the 0.99 limit in the same
+   way, with `run_rounding`, and does not check their agent balance.
+2. **One step of the whole model.** Each fraction must lie at or below 0.99 to within the bound
+   for 22 squarings, the most that any corner's step needs (`MOST_SQUARINGS` in
+   `tests/unit/test_numerical_envelope.py`), whatever the corner needs itself. The agent balance
+   is held to the simulator's own check, described next.
+3. **A compartment stepped alone.** It is advanced by its own exact solution, not by a
+   propagator, so no propagator bound applies. Each amount must lie between its starting value
+   and its equilibrium, and the circuit's agent balance must close to within four rounding
+   errors.
+<!-- provenance: core/rounding.py PROPAGATOR_ROUNDING_UNITS = 10 -->
+
+One step of the whole model must pass the simulator's own mass-balance check, which allows
 one part in 10⁹. A step that needs 22 squarings may be refused by that check instead. The test
 accepts the refusal only when the imbalance is within the error bound for 22 squarings and the
 step was undone. On 2026-11-21 the check refused 76 of the 864 first steps that need 22
@@ -2592,17 +2611,18 @@ spread, not the band.
 The wash-in ratio at 30 minutes and the elimination ratio at 5 minutes respond
 to almost separate sets of parameters, which is why the edges fall where they
 do. The table below shows how far each ratio moves when one coefficient is
-raised by 10%, in units of that ratio's own published SD (from model runs on
-2026-09-06):
+raised by 10%, in units of that ratio's own published SD. The figures come
+from model runs on 2026-11-22, against each agent's first cohort. For
+isoflurane that is the Anesth Analg 1991;72:316-24 cohort, not the
+Anesthesiology 1991;74:489-98 one:
 
 | Perturbed coefficient | Wash-in | Elimination |
 | --- | --- | --- |
-| Blood:gas | −0.57 to −0.64 | +0.09 to +0.17 |
-| Vessel-rich tissue:gas | −0.02 to −0.06 | +0.45 to +0.55 |
+| Blood:gas | −0.57 to −0.64 | +0.11 to +0.18 |
+| Vessel-rich tissue:gas | −0.02 to −0.07 | +0.44 to +0.54 |
 | Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
 | Fat tissue:gas | −0.00 | −0.00 |
-
-<!-- not-restated: 0.06 -->
+<!-- not-restated: 0.18, 0.54 -->
 
 Wash-in at 30 minutes depends mostly on blood:gas and barely on the vessel-rich
 group. Elimination at five minutes depends mostly on the vessel-rich group and
@@ -3536,7 +3556,13 @@ exponential terms is $`e^{\lambda_k t}`$ for one eigenvalue $`\lambda_k`$ of
 $`A_6`$, with time constant $`\tau_k = -1/\operatorname{Re}\lambda_k`$. The
 5.83 s figure comes from a search over a grid of 11 fresh gas flows, 13
 ventilations and 21 cardiac outputs for each agent, refined along cardiac
-output.
+output. The fastest point is isoflurane's at the largest fresh gas flow and
+ventilation, and the refined cardiac output is 9.325 L/min. The time constant
+there differs from its value at 9.32 or 9.33 L/min by less than 0.00001 s, so
+`docs/MODEL.md` gives the cardiac output as about 9.3 L/min.
+`test_the_fastest_time_constant_is_the_one_the_model_document_prints` in
+`tests/unit/test_governing_equations.py` repeats the search on the shipped
+system matrix and holds both figures to the ones `docs/MODEL.md` prints.
 
 Many numerical methods need steps short compared with the fastest time constant
 to keep their errors from growing. The slowest time constant is about 5 700 to

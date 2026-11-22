@@ -3,14 +3,17 @@ id: PL-TN2L
 title: Four dated numerical records in docs/MODEL.md do not reproduce on today's tree: the mass-balance headroom, the column built from shorter pieces, the alveolar volumes that halt a run, and what the envelope sweep holds one step to
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2237
 payoff: four passages of docs/MODEL.md that argue from measured figures give the figures of the model that ships, or say that theirs are a dated run's
+verify: grep -qF 'is held to the simulator' docs/VERIFICATION.md
 ---
 
 **Problem.** Four dated numerical records in docs/MODEL.md do not reproduce on today's tree: the mass-balance headroom, the column built from shorter pieces, the alveolar volumes that halt a run, and what the envelope sweep holds one step to
@@ -33,3 +36,17 @@ The scripts that produced today's figures are not in the tree. Each figure above
 **Checked 2026-11-21:** `PL-Z6C8` removed the passage of `docs/MODEL.md` on the column built from shorter pieces, because the chart no longer computes its columns. The other three records remain.
 
 **Checked 2026-11-22** against `d4e8200`: partly done, and its blocker `PL-SZ6G` (whole-second stepping) closed with #2180. That merge re-measured the first record: § "Mass-balance identity" now gives about 250x headroom at the reference runs' horizon and about 22x at 8 h, from a table measured on the shipped tree. It also turned the third record into a dated past-tense record "at the step of 0.1 s that a run then took". `PL-Z6C8` had already removed the second record. What is left is the fourth: § "The numerical envelope" still says "That bound uses the squarings each propagator actually needed", while `_require_the_system` in `tests/unit/test_numerical_envelope_sweep.py` holds one step of the whole model to `propagator_rounding(MOST_SQUARINGS)`.
+
+**Done 2026-11-22**, on `claude/project-thread-v9awbd` from `c0e9861e`. The restructure had moved all four passages from `docs/MODEL.md` to `docs/VERIFICATION.md`. Records 1 to 3 were already settled, as the check of 2026-11-22 above says: § "Mass-balance identity" gives about 250x and 22x from a table measured on the shipped tree (1e-10 against 3.90e-13 and 4.50e-12), § "Volumes outside the envelope" gives the tiny-volume halts in the past tense at the 0.1 s step a run then took, and the passage on the column built from shorter pieces is gone.
+
+The fourth is fixed in § "The tests across the envelope". The paragraph said that every result of the first sweep test is held to 0.99 and to the agent balance within the bound for the squarings "each propagator actually needed". It now says what each kind of result is held to, as `tests/unit/test_numerical_envelope_sweep.py` does it:
+
+1. A predicted 60 s run: the 0.99 limit and the agent balance, within the propagator bound at the squarings that a step at that corner and those flows needs (`_require_the_run`, `_propagator_error`). The 24-hour predictions: the 0.99 limit only, within `run_rounding` (`test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere`).
+2. One step of the whole model: the 0.99 limit within `propagator_rounding(MOST_SQUARINGS)`, 22 squarings whatever the corner needs, and the agent balance by the simulator's own one part in 10⁹ (`_require_the_system`).
+3. A compartment stepped alone: no propagator bound; each amount between its start and its equilibrium, and the circuit's balance within four rounding errors (`_require_the_compartments_alone`).
+
+The same paragraph said the 24-hour predictions ran "at the two corners where rounding went furthest". `ROUNDING_CORNERS` holds three, and a separate test runs them, so the sentence now says three and names the test. No figure needed re-measuring: the change states which limit applies to which result, and every limit is read from the test code at `c0e9861e`.
+
+Files checked: `docs/VERIFICATION.md` § "The tests across the envelope", § "The margin between 0.99 and 1", § "Volumes outside the envelope" and § "Mass-balance identity"; `docs/MODEL.md`, by `grep -n "squarings\|headroom\|halts"`, which finds none of the four records there.
+
+**Blind review of #2237, 2026-11-22: fixed.** The rewritten list said the propagator bound carries "a margin of 8". Since 2026-11-14 the bound is `PROPAGATOR_ROUNDING_UNITS` = 10 times $`2^{s} \cdot 2^{-52}`$, derived from the arithmetic (`core/rounding.py`), and the same document says the measured margin of 8 ended then. The item now states the current bound, and a `provenance:` marker ties the 10 to the constant: with the constant set to 11, the documentation check fails with "states PROPAGATOR_ROUNDING_UNITS = 10 but core/rounding.py holds 11". The first paragraph also now names the one setting of the flows at which the 24-hour test runs each of its three corners: no fresh gas, 12 L/min of ventilation and 10 L/min of cardiac output, as `test_a_state_at_the_fraction_ceiling_stays_within_one_atmosphere` sets them. Two `provenance:` markers tie the 12 and the 10 to `core/supported_ranges.py`.

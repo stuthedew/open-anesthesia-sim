@@ -315,8 +315,8 @@ class AgentUptakeSystem:
         neither can be built without one (`PL-M85T`).
 
         Of these values, the flow is the only one that a profile may leave out,
-        because no surveyed machine publishes a startup fresh gas flow
-        (`PL-QW19`). A run built from such a profile opens at
+        because no source the machine survey reached gives a startup fresh
+        gas flow for any machine (`PL-QW19`). A run built from such a profile opens at
         `TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`. That is a code constant, not a
         file value. This method names it instead of leaving the argument out,
         so that this path still says where its number came from. The
