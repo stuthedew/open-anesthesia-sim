@@ -89,6 +89,7 @@ def test_a_closure_recording_no_number_is_refused(
     err = capsys.readouterr().err
     assert "PL-K7QX" in err
     assert "bin/docket record 1050" in err
+    assert "base to that branch" not in err
 
 
 def test_a_closure_recording_another_number_is_refused(
@@ -103,7 +104,11 @@ def test_a_closure_recording_another_number_is_refused(
     )
 
     assert _run(monkeypatch, "1050") == 1
-    assert "records `pr: 1049`" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "records `pr: 1049`" in err
+    # The likeliest cause is a branch built on #1049's, which may not merge
+    # first and land #1049's work under its own commit (`PL-6LJS`).
+    assert "set this pull request's base to that branch" in err
 
 
 def test_every_closure_is_held_to_it_and_the_refusal_names_each(

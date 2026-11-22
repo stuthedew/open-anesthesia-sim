@@ -12,8 +12,10 @@ second copy of that fact, and it goes stale the way that item did.
 **One rule, exact.** A model id is a string that `MODEL_ID_RE` matches:
 `claude-`, a family name, and version numbers. A tracked file may name one only
 if it is `docket.toml`, a record or a test, or is registered in `COPIES` with
-the reason it may. A record states what happened, such as the session ledger,
-a worker run or a closed item, so it is history rather than a choice. An open
+the reason it may. An id inside a web address is part of a cited page's address,
+not a choice of model, so the check does not read web addresses. A record states
+what happened, such as the session ledger, a worker run or a closed item, so it
+is history rather than a choice. An open
 item is read as instructions, so it is held to the rule: that is where the
 stale model was. A test's expected value is meant to be independent of the
 code it checks.
@@ -49,6 +51,12 @@ from docket.vcs import tracked_files  # noqa: E402
 # regex: a model id is a flat token of a fixed shape, searched for through prose and code alike.
 MODEL_ID_RE = re.compile(r"\bclaude-[a-z]+(?:-\d+)+\b")
 
+#: A web address. A model id inside one is part of the address of a cited page,
+#: such as a prompting guide named for a model, and not a choice of model, so
+#: the check removes every address before it searches (`PL-BBTV`).
+# regex: an address runs from its scheme to the next space or closing bracket, quote or backtick.
+WEB_ADDRESS_RE = re.compile(r"https?://[^\s)\]>`'\"]+")
+
 #: Where the item store lives. A closed item is a record. An open one is read
 #: as instructions, which is how a stale model reached a session, so it is
 #: held to the rule like any other file.
@@ -71,9 +79,6 @@ COPIES = {
     "tools/skill_start_eval.py": "a usage example in the docstring",
     "docs/items/PL-6FX6-make-the-first-month-of-api-credit-runs-the.md": (
         "the dropped model-comparison trial's run commands, which name the models it compared"
-    ),
-    "docs/items/PL-J1ZM-sessions-write-prose-that-over-explains-in.md": (
-        "the web addresses of two prompting guides it cites, which contain a model's name"
     ),
 }
 
@@ -98,7 +103,7 @@ def problems(root: Path, files: list[str] | None = None) -> list[str]:
             text = source.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
-        ids = MODEL_ID_RE.findall(text)
+        ids = MODEL_ID_RE.findall(WEB_ADDRESS_RE.sub(" ", text))
         if not ids or is_under(path, MODEL_RECORDS):
             continue
         if path.startswith(ITEMS) and not parse_item(text, Path(path).name).is_open:

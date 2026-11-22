@@ -137,12 +137,24 @@ def main() -> int:
         for identifier, pr in owed.items()
     )
     closer, where = where_read(head)
+    # A closure recording another number is most often one this branch took
+    # from the branch it was built on. Passing it would let this pull request
+    # merge first and land that work under its own commit, so the check still
+    # refuses it and says how the stack clears (`PL-6LJS`).
+    stacked = (
+        "\n  A closure that records another pull request's number may come from the branch "
+        "this one was built on. Then set this pull request's base to that branch until it "
+        "merges, or wait for it to merge and merge main into this branch."
+        if any(owed.values())
+        else ""
+    )
     print(
         f"pr-record: {closer} closes {', '.join(closing)}{where}, but #{number} is not "
         f"recorded on {recorded}.\n"
         f"  The pull request that closed an item is written on the branch, before the merge, "
         f"and nothing recovers it afterwards.\n"
-        f"  Run `bin/docket record {number}` on this branch, commit what it wrote, and push.",
+        f"  Run `bin/docket record {number}` on this branch, commit what it wrote, and push."
+        f"{stacked}",
         file=sys.stderr,
     )
     return 1
