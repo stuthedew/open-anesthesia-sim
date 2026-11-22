@@ -396,6 +396,34 @@ def test_the_concentration_plot_takes_half_its_area_on_a_laptop(application: QAp
     assert key.verticalScrollBar().maximum() == 0
 
 
+def test_the_1_mac_value_stays_on_screen_where_the_rows_above_the_plot_scroll(
+    application: QApplication,
+) -> None:
+    """`PL-K4CZ`: the clinical references are the legend's first row, above the compartments.
+
+    In the Induction Workspace at 1366 by 768 the box above the plot is
+    squeezed to its first rows, and the rest scroll. The 1 MAC value had a
+    line of its own second in that box. It now sits in the clinical
+    references row, and that row must come before the compartment rows, or
+    the value scrolls out of sight.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768)
+    chart_view = _concentration(view)
+    (key,) = chart_view.findChildren(QScrollArea)
+    (one_mac,) = (
+        label
+        for label in chart_view.legend.findChildren(QLabel)
+        if label.text() == chart_view.legend.one_mac_text
+    )
+    top = one_mac.mapTo(key.viewport(), QPoint(0, 0)).y()
+
+    assert key.verticalScrollBar().maximum() > 0, "the box no longer scrolls here"
+    assert key.verticalScrollBar().value() == 0
+    assert 0 <= top
+    assert top + one_mac.height() <= key.viewport().height()
+
+
 @pytest.mark.parametrize("workspace", ("Default", "Induction"))
 def test_a_chart_views_least_width_holds_every_row_above_its_plot(
     application: QApplication, workspace: str

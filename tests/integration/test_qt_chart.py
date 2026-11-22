@@ -1106,6 +1106,15 @@ def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wra
     assert band.height() > one_line
     assert entry.geometry().right() < legend.width()
     assert narrow < band.sizeHint().width()
+    # The words break only after a comma or a semicolon, so no value is
+    # parted from its unit and no range from either of its edges.
+    lines = band.text().split("\n")
+
+    assert len(lines) > 1
+    assert all(line.endswith((",", ";")) for line in lines[:-1])
+    assert "MAC-awake sevoflurane = 0.34 ×MAC (0.68%)," in lines
+    assert any(line.startswith("band ±1 SD 0.58–0.78%;") for line in lines)
+    assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
     legend.close()
 
 
@@ -1322,7 +1331,7 @@ def test_the_legend_rows_wrap_under_a_narrow_chart_and_stand_on_one_line_under_a
     """
 
     legend = TraceLegend()
-    compartments, compared, references, record = _legend_rows(legend)
+    references, compartments, compared, record = _legend_rows(legend)
     one_line = compartments.minimumSize().height()
 
     # The per-run row is hidden entirely while one run is drawn, because the

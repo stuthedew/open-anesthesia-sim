@@ -49,6 +49,7 @@ palette that is drawn.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from math import ceil
@@ -68,7 +69,16 @@ from PySide6.QtCore import (
     Signal,
     SignalInstance,
 )
-from PySide6.QtGui import QBrush, QColor, QImage, QMouseEvent, QPainter, QPaintEvent, QPen
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QImage,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+    QResizeEvent,
+)
 from PySide6.QtWidgets import (
     QCheckBox,
     QGraphicsView,
@@ -2081,7 +2091,7 @@ class TimeBaseSelector(SelectorComboBox):
 class TraceLegend(QWidget):
     """This widget shows the chart's four legend rows, and its compartment row is also a control.
 
-    The rows are the compartments, the compared runs, the references and the
+    The rows are the references, the compartments, the compared runs and the
     run record. The compared-runs row is empty, and takes no height, when a
     single run is drawn.
 
@@ -2157,21 +2167,6 @@ class TraceLegend(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(LEGEND_LINE_SPACING)
-        layout.addLayout(_legend_row("Compartments:", compartments))
-        # The compare row has one entry per curve actually drawn, and each
-        # entry names both the compartment and the run. Once a curve stands
-        # for two things, a legend that names only one of them identifies
-        # nothing. The row is empty and takes no height when a single run is
-        # drawn, because the row above already names every drawn curve
-        # completely.
-        self._compared_row = _legend_row(None, [])
-        self._compared_caption = legend_caption(COMPARED_TRACE_LEGEND_CAPTION)
-        self._compared_row.addWidget(self._compared_caption)
-        self._compared_entries = [
-            _PooledEntry(self._compared_row)
-            for _ in range(COMPARED_COMPARTMENT_CAP * MAX_DISPLAYED_RUNS)
-        ]
-        layout.addLayout(self._compared_row)
         # Each reference names the compartment it is read against.
         # `docs/INTERFACE.md` § "Interface boundary" requires that of a
         # reference, in the same passage that exempts a reference from the
@@ -2185,10 +2180,12 @@ class TraceLegend(QWidget):
         # Each entry also states its reference's value, from `show_references`.
         # The values had a line each above the legend, which repeated the
         # entries' names and took the plot's height at 1366 by 768
-        # (`PL-K4CZ`). The 1 MAC entry comes first, because the band's
-        # fraction is a fraction of that 1 MAC. The band's entry is the
-        # longest in the legend, so its words wrap in a narrow View rather
-        # than set the View's least width.
+        # (`PL-K4CZ`). The row comes first in the legend, so where the box
+        # above the plot is squeezed to its first two rows, the 1 MAC value
+        # is still on screen, as it was on its own line. Its 1 MAC entry
+        # comes first, because the band's fraction is a fraction of that
+        # 1 MAC. The band's entry is the longest in the legend, so its words
+        # wrap in a narrow View rather than set the View's least width.
         self._one_mac_label = _legend_label(
             ONE_MAC_LINE_LEGEND_TEMPLATE.format(reference=ONE_MAC_LINE_LEGEND_NAME)
         )
@@ -2215,6 +2212,21 @@ class TraceLegend(QWidget):
                 ],
             )
         )
+        layout.addLayout(_legend_row("Compartments:", compartments))
+        # The compare row has one entry per curve actually drawn, and each
+        # entry names both the compartment and the run. Once a curve stands
+        # for two things, a legend that names only one of them identifies
+        # nothing. The row is empty and takes no height when a single run is
+        # drawn, because the row above already names every drawn curve
+        # completely.
+        self._compared_row = _legend_row(None, [])
+        self._compared_caption = legend_caption(COMPARED_TRACE_LEGEND_CAPTION)
+        self._compared_row.addWidget(self._compared_caption)
+        self._compared_entries = [
+            _PooledEntry(self._compared_row)
+            for _ in range(COMPARED_COMPARTMENT_CAP * MAX_DISPLAYED_RUNS)
+        ]
+        layout.addLayout(self._compared_row)
         # A third row, because a control mark is neither of the two kinds
         # above it. A compartment trace is a modelled quantity, and a
         # clinical reference is a published constant. A control mark is a
@@ -2421,7 +2433,7 @@ class TraceLegend(QWidget):
         """The MAC-awake band's entry: its words, its edge pen and its fill."""
 
         return BandMark(
-            self._band_label.text(), self._band_swatch.edge_pen, self._band_swatch.fill_brush
+            self._band_label.words(), self._band_swatch.edge_pen, self._band_swatch.fill_brush
         )
 
     @property
@@ -2616,30 +2628,91 @@ def _legend_label(text: str) -> QLabel:
 
 
 class _WrappingLegendLabel(QLabel):
-    """Legend words that keep to one line where the row has room, and wrap where it has not.
+    """Legend words that keep to one line where the row has room, and break only after a clause.
 
-    A word-wrapped `QLabel` asks for a width that Qt guesses, and wraps
-    there even in a row wide enough for one line. This label asks for its
+    The words break only at a space after a comma or a semicolon. So a value
+    keeps its unit, and a range keeps both its edges, on one line: the
+    MAC-awake entry never ends a line on "0.58–" or between "±1" and "SD".
+    Qt's own word wrap breaks at any space, and it also wraps at a width it
+    guesses, even in a row wide enough for one line. This label asks for its
     one-line width instead. A `FlowLayout` row gives an entry narrower than
-    that its own width and the height its words need there, so the words
-    wrap only in a row too narrow for them.
+    that its own width and the height its lines need there, and the label
+    breaks only as many clauses onto new lines as that width needs.
     """
 
     def __init__(self, text: str) -> None:
         super().__init__(text)
-        self.setWordWrap(True)
+        self._words = text
         self.setStyleSheet(foreground_stylesheet(INK))
 
-    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+    def setText(self, text: str) -> None:  # Qt spells this in camelCase.
+        self._words = text
+        super().setText(self._lines_at(self.width() - self._extra_px()))
+        self.updateGeometry()
+
+    def words(self) -> str:
+        """The words on one line, as the entry states them wherever it is laid out."""
+
+        return self._words
+
+    def _clauses(self) -> list[str]:
+        return re.split(r"(?<=[,;]) ", self._words)
+
+    def _lines_at(self, width: int) -> str:
+        """Return the words with a line break after each clause that does not fit in `width`."""
+
+        metrics = self.fontMetrics()
+        lines: list[str] = []
+
+        for clause in self._clauses():
+            if lines and metrics.horizontalAdvance(f"{lines[-1]} {clause}") <= width:
+                lines[-1] = f"{lines[-1]} {clause}"
+            else:
+                lines.append(clause)
+
+        return "\n".join(lines)
+
+    def _extra_px(self) -> int:
         margins = self.contentsMargins()
-        # One pixel more than the text's advance, so the layout's rounding
-        # cannot leave the words a fraction too narrow and wrap them.
-        width = (
-            self.fontMetrics().horizontalAdvance(self.text())
-            + 1
-            + margins.left()
-            + margins.right()
+
+        return margins.left() + margins.right() + 2 * self.margin()
+
+    def _height_of(self, text: str) -> int:
+        margins = self.contentsMargins()
+        rows = text.count("\n") + 1
+
+        return (
+            rows * self.fontMetrics().lineSpacing()
+            + margins.top()
+            + margins.bottom()
             + 2 * self.margin()
         )
 
-        return QSize(width, self.heightForWidth(width))
+    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
+        return True
+
+    def heightForWidth(self, width: int) -> int:  # Qt spells this in camelCase.
+        return self._height_of(self._lines_at(width - self._extra_px()))
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        # One pixel more than the text's advance, so the layout's rounding
+        # cannot leave the words a fraction too narrow and break them.
+        width = self.fontMetrics().horizontalAdvance(self._words) + 1 + self._extra_px()
+
+        return QSize(width, self._height_of(self._words))
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        # The height is one line's. A layout widens an item's size hint to its
+        # minimum, so the height of the narrowest layout here would be
+        # reserved at every width. The height at a given width is
+        # `heightForWidth`'s.
+        widest = max(self.fontMetrics().horizontalAdvance(clause) for clause in self._clauses())
+
+        return QSize(widest + 1 + self._extra_px(), self._height_of(self._words))
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
+        super().resizeEvent(event)
+        lines = self._lines_at(self.width() - self._extra_px())
+
+        if lines != self.text():
+            super().setText(lines)
