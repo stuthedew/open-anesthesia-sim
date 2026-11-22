@@ -12,10 +12,11 @@ tab's menu, which Shift+F10 on the tab opens, and again in the Layout menu's
 
 The first test drives the whole set with key presses. It gives each control
 the focus in code, as the Tab key would. The tab-order tests check that each
-control is in the tab order. No test here presses, moves or releases the
-mouse, so none synthesises a drag. Each test works out its expected layout or
-size from pixel measurements or from the operation itself. It never reads its
-expected values back from `AreaLayout`, the code under test. The tests render
+control is in the tab order, and that Tab reaches the controls in reading
+order. No test here presses, moves or releases the mouse, so none synthesises
+a drag. Each test works out its expected layout or size from pixel
+measurements or from the operation itself. It never reads its expected values
+back from `AreaLayout`, the code under test. The tests render
 under the `offscreen` platform that `tests/conftest.py` selects. A desktop
 makes the window active again when a popup menu closes, but that platform does
 not. So the tests activate the window themselves.
@@ -29,7 +30,17 @@ import pytest
 from PySide6.QtCore import QEvent, QPoint, Qt, QTimer
 from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QDialog, QMenu, QSplitter, QToolButton, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QMainWindow,
+    QMenu,
+    QPushButton,
+    QSlider,
+    QSplitter,
+    QToolButton,
+    QWidget,
+)
 
 from anesthesia_sim.app.area_layout import (
     CLOSE_AREA_LABEL,
@@ -38,11 +49,14 @@ from anesthesia_sim.app.area_layout import (
     SPLIT_SIDE_BY_SIDE_LABEL,
     SPLIT_STACKED_LABEL,
     SWAP_WITH_LABEL,
+    AreaFrame,
     AreaLayout,
     AreaMenu,
+    ViewChooser,
     _AreaHandle,
 )
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.main import open_dashboard
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import AREA_HANDLE_WIDTH, AREA_KEYBOARD_STEP
 from anesthesia_sim.app.view_contract import (
@@ -66,15 +80,22 @@ from anesthesia_sim.app.workspace_tabs import (
     SAVE_AS_DEFAULT_LABEL,
     THIS_WORKSPACE_LABEL,
     WorkspaceQuestionDialog,
+    WorkspaceTab,
     WorkspaceTabs,
     display_order,
 )
 from anesthesia_sim.layout.model import Handle, LayoutModel
 from anesthesia_sim.layout.run_identity import SessionToken
 from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
-from anesthesia_sim.layout.store import WORKSPACES_FILE_NAME, Source, WorkspaceStore
+from anesthesia_sim.layout.store import (
+    USER_DIRECTORY_VARIABLE,
+    WORKSPACES_FILE_NAME,
+    Source,
+    WorkspaceStore,
+)
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 from anesthesia_sim.layout.workspace import ShippedWorkspaceId, WorkspaceName, WorkspaceSet
+from tests.integration.simulation_view.simulation_view_support import _branched_case, _take_fork
 
 #: The session the tab strips under test run in. No test here pins a run.
 _SESSION = SessionToken("0" * 32)
@@ -859,6 +880,218 @@ def test_a_border_is_in_the_tab_order_and_loses_its_line_with_the_focus(
     container.frame(AreaId(1)).chooser.setFocus(Qt.FocusReason.TabFocusReason)
     application.processEvents()
     assert not border.lit
+
+
+#: The Views of each shipped Workspace in reading order, by the title each
+#: Area's chooser shows. They are written out from the three layouts in
+#: `src/anesthesia_sim/data/workspaces/`, not read from the code under test.
+#: Each layout splits the window into a left and a right column. The order
+#: reads down the left column, then down the right, and from left to right
+#: across a row inside a column.
+_SHIPPED_READING_ORDER = {
+    "Default": ["Concentrations", "Parameters", "Bookmarks", "Branch"],
+    "Induction": ["Concentrations", "Wash-in", "Parameters", "Bookmarks", "Branch"],
+    "Maintenance": ["Concentrations", "Compartment schematic", "Parameters", "Bookmarks", "Branch"],
+}
+
+
+def _tab_stops(application: QApplication, start: QWidget) -> list[QWidget]:
+    """Press Tab from `start` until the focus comes back to it, and return each widget reached."""
+
+    start.setFocus(Qt.FocusReason.TabFocusReason)
+    application.processEvents()
+    stops = [start]
+
+    for _ in range(200):
+        QTest.keyClick(stops[-1], Qt.Key.Key_Tab)
+        application.processEvents()
+        reached = application.focusWidget()
+        assert reached is not None
+
+        if reached is start:
+            return stops
+
+        stops.append(reached)
+
+    raise AssertionError("200 presses of Tab did not bring the focus back to where it started")
+
+
+def _area_frame(widget: QWidget) -> AreaFrame | None:
+    """Return the Area that holds `widget`, found by walking up its parents."""
+
+    parent: QWidget | None = widget
+
+    while parent is not None:
+        if isinstance(parent, AreaFrame):
+            return parent
+
+        parent = parent.parentWidget()
+
+    return None
+
+
+def test_a_new_window_starts_with_the_focus_on_the_first_run_s_agent_selector(
+    application: QApplication, shown: list[QWidget], tmp_path: Path
+) -> None:
+    """The first key pressed in a new window acts on the top-left control (`PL-B45W`).
+
+    The window is built as `main()` builds it: the dashboard first, then a
+    main window that holds it. Before the fix, Qt gave the focus to the
+    record of control changes. Qt also forgets a focus given before the
+    dashboard moves into the main window.
+    """
+
+    view = open_dashboard(
+        BranchedCase(SimulationController()), "", {USER_DIRECTORY_VARIABLE: str(tmp_path)}
+    )
+    window = QMainWindow()
+    window.setCentralWidget(view)
+    shown.extend((view, window))
+    window.resize(1400, 1000)
+    window.show()
+    _activate(application, window)
+    view.present(False)
+
+    assert application.focusWidget() is view.runs[0]._agent_dropdown
+
+
+def _assert_areas_follow_their_choosers(stops: list[QWidget], first_tab: int) -> None:
+    """Check that each stop inside an Area follows its own chooser, and the borders come last.
+
+    Once Tab leaves the Areas it does not come back into one, and no Area
+    border is reached before the last stop inside an Area.
+    """
+
+    current: AreaFrame | None = None
+    left = False
+
+    for stop in stops[first_tab:]:
+        frame = _area_frame(stop)
+
+        if isinstance(stop, ViewChooser):
+            assert not left, stop
+            current = frame
+        elif frame is not None:
+            assert not left, stop
+            assert frame is current, stop
+        elif current is not None:
+            left = True
+
+    inside = [index for index, stop in enumerate(stops) if _area_frame(stop) is not None]
+    borders = [index for index, stop in enumerate(stops) if isinstance(stop, _AreaHandle)]
+
+    assert borders, "Tab reached no Area border"
+    assert min(borders) > max(inside)
+
+
+@pytest.mark.parametrize("workspace", list(_SHIPPED_READING_ORDER))
+def test_tab_reaches_the_transport_then_the_tabs_then_each_area_in_reading_order(
+    application: QApplication, shown: list[QWidget], workspace: str
+) -> None:
+    """Tab follows the order in which a reader reads the window (`PL-B45W`).
+
+    WCAG 2.2 Success Criterion 2.4.3, Focus Order, asks that the order of
+    focus preserve meaning and operability. Here that means the run's own
+    controls first, then the Workspace tabs, then each Area from the top left.
+    A reader who tabs to an Area's View chooser reaches that View's controls
+    next, before the next Area. Before the fix, Qt's order followed the order
+    in which the widgets were built. Tab reached the Workspace tabs before
+    Start, and reached the parameter dials about twenty stops after the
+    Parameters chooser.
+    """
+
+    view = _dashboard(application, shown)
+
+    while str(view.workspaces.current.name) != workspace:
+        view.tab_strip.next_action.trigger()
+        application.processEvents()
+
+    view.present(False)
+    application.processEvents()
+    stops = _tab_stops(application, view.runs[0]._agent_dropdown)
+    first_tab = next(index for index, stop in enumerate(stops) if isinstance(stop, WorkspaceTab))
+    before_tabs = [stop.text() for stop in stops[:first_tab] if isinstance(stop, QPushButton)]
+    choosers = [stop for stop in stops if isinstance(stop, ViewChooser)]
+
+    run = view.runs[0]
+    expected_run_region = [
+        run._agent_dropdown,
+        run._start_button,
+        run._reset_button,
+        run._playback_rate_dropdown,
+        view._record_scroll,
+    ]
+    first_chooser = stops.index(choosers[0])
+
+    assert before_tabs == ["Start", "Reset"]
+    assert len(stops[:first_tab]) == len(expected_run_region)
+    assert all(stop is expected for stop, expected in zip(stops, expected_run_region, strict=False))
+    assert [stop.text() for stop in stops[first_tab:first_chooser]] == [
+        "Default",
+        "Induction",
+        "Maintenance",
+        "+",
+    ]
+    assert [chooser.text() for chooser in choosers] == _SHIPPED_READING_ORDER[workspace]
+    _assert_areas_follow_their_choosers(stops, first_tab)
+
+
+def test_tab_keeps_reading_order_after_a_branch_and_after_a_pinned_run_is_unpinned(
+    application: QApplication, shown: list[QWidget]
+) -> None:
+    """Tab keeps reading order after a run is added and after its dials are built again.
+
+    A branch adds a second run, whose Start and Reset come before the
+    Workspace tabs. Pinning the Workspace to Run 2 and unpinning it builds
+    Run 1's dials again. Before the fix, Tab then reached Run 2's dials
+    first, so an arrow key on the first dial in the Parameters Area changed
+    the lower run's setting. The expected order is read from the screen:
+    Run 1's four dials sit above Run 2's.
+    """
+
+    case = _branched_case()
+    view = SimulationView((case.trunk,), case=case)
+    view.resize(1400, 1000)
+    view.show()
+    shown.append(view)
+    _activate(application, view)
+    view.present(False)
+    _take_fork(view, 60.0)
+    view.present(False)
+    application.processEvents()
+
+    assert len(view.runs) == 2
+
+    # Tab starts from Start, because a case hides the agent selector once it
+    # has a branch.
+    stops = _tab_stops(application, view.runs[0]._start_button)
+    first_tab = next(index for index, stop in enumerate(stops) if isinstance(stop, WorkspaceTab))
+
+    for run in view.runs:
+        assert stops.index(run._start_button) < first_tab
+
+    _assert_areas_follow_their_choosers(stops, first_tab)
+
+    for label in ("Pin Run 2", "Unpin Run 2"):
+        view.tab_strip.choose(
+            next(
+                operation for operation in view.tab_strip.operations(0) if operation.label == label
+            )
+        )
+        view.present(False)
+        application.processEvents()
+
+    stops = _tab_stops(application, view.runs[0]._start_button)
+    first_tab = next(index for index, stop in enumerate(stops) if isinstance(stop, WorkspaceTab))
+    dial_heights = [
+        stop.mapTo(view, QPoint(0, 0)).y()
+        for stop in stops
+        if isinstance(stop, QSlider) and _area_frame(stop) is not None
+    ]
+
+    assert len(dial_heights) == 8
+    assert max(dial_heights[:4]) < min(dial_heights[4:]), dial_heights
+    _assert_areas_follow_their_choosers(stops, first_tab)
 
 
 def test_the_resize_submenu_names_each_border_and_its_entry_gives_that_border_the_focus(
