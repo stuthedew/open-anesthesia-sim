@@ -2178,7 +2178,9 @@ def test_a_share_that_is_not_a_number_is_refused(share: object) -> None:
         pytest.param(0.004, "USD", "USD <0.01", id="below a cent"),
         pytest.param(0.0, "USD", "USD 0.00", id="nothing delivered"),
         pytest.param(-0.0, "USD", "USD 0.00", id="negative zero has no sign"),
-        pytest.param(2.0**44, "USD", "USD 17592186044416.00", id="largest power of two to the cent"),
+        pytest.param(
+            2.0**44, "USD", "USD 17592186044416.00", id="largest power of two to the cent"
+        ),
         pytest.param(1099.98, "JPY", "JPY 1100", id="yen has no minor unit"),
         pytest.param(0.4, "JPY", "JPY <1", id="below one yen"),
         pytest.param(0.0, "JPY", "JPY 0", id="nothing delivered in yen"),
