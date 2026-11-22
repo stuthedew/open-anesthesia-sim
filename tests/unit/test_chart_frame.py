@@ -75,6 +75,7 @@ from anesthesia_sim.app.run_series import (
     RecordedSeries,
 )
 from anesthesia_sim.app.theme import (
+    CHART_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
     MINIMUM_TRACE_STROKE_WIDTH,
     ONE_MAC_LINE_DASH_PATTERN,
@@ -89,10 +90,12 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
     build_system_matrix,
 )
-from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.mac import mac_for_patient
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.rounding import propagator_rounding, run_rounding
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow, StepCount
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
 # The identities a dashboard gives the first runs it places, in order, which
@@ -1108,6 +1111,50 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
         emerging.percents(RecordedQuantity.MUSCLE)[0]
         > still_carrying.percents(RecordedQuantity.FAT)[0] * 5.0
     ), "the contending values must differ severalfold for this to matter"
+
+
+@pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
+def test_fat_trace_first_hour_spans_under_4_px_at_1_mac_and_under_12_px_at_the_vaporizer_maximum(
+    agent_id: str,
+) -> None:
+    """Hold the fat-trace figure in the hazard row on traces drawn on top of each other.
+
+    `docs/VERIFICATION.md` names this test beside the row "reading one
+    compartment's concentration as another's where two traces are drawn on
+    top of each other". The row says the fat trace moves less than 4 px over
+    its first hour at a 1 MAC dial and less than 12 px at the agent's
+    vaporizer maximum, with the chart at its preferred height. Fat starts
+    empty and only rises at a fixed dial, so its value at 60 min is the whole
+    first hour's span.
+
+    Each run is built directly: the reference adult, the dial held from
+    t = 0, one-second steps. The height used is `theme.CHART_HEIGHT`, the
+    whole chart. The percent axis is a part of that height, so the pixel
+    figure here is an upper bound on the one a reader sees. The 12 px is the
+    hover radius (`HOVER_RADIUS_PIXELS` in `app/qt_chart.py`). Below it, every
+    compartment in reach answers under its own name, which is what the row
+    relies on. Measured on 2026-11-22: 1.5-3.7 px at a 1 MAC dial and
+    6.3-10.0 px at the vaporizer maximum (`PL-8YBS`).
+    """
+
+    agent = load_agent_parameters(agent_id)
+    mac = mac_for_patient(agent, load_reference_adult_parameters()).percent
+    pixels_per_percent = CHART_HEIGHT / chart_axis_top_percent(mac)
+
+    def fat_pixels_at_one_hour(dial_percent: float) -> float:
+        system = AgentUptakeSystem.for_agent(agent_id)
+        system.set_delivered_concentration_percent(Percent(dial_percent))
+        for _ in range(3600):
+            system.advance()
+        (fat,) = (tissue for tissue in system.patient.tissues if tissue.name == "fat")
+
+        return 100.0 * fat.partial_pressure_fraction * pixels_per_percent
+
+    at_one_mac = fat_pixels_at_one_hour(mac)
+    at_the_maximum = fat_pixels_at_one_hour(agent.max_delivered_concentration_percent)
+
+    assert 0.0 < at_one_mac < 4.0
+    assert at_one_mac < at_the_maximum < 12.0
 
 
 def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:

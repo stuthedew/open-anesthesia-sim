@@ -3,13 +3,15 @@ id: PL-8YBS
 title: docs/MODEL.md's hazard row for two traces drawn on top of each other says fat's whole first hour spans under 4 px on the chart, which holds only at a 1 MAC dial: at the interface's maximum dial it spans 6.1-11.0 px
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: chart-readout
-touches: docs/MODEL.md, docs/VERIFICATION.md
+touches: docs/MODEL.md, docs/VERIFICATION.md, tests/unit/test_chart_frame.py
 added: 2026-09-26
+closed: 2026-11-22
+pr: 2262
 payoff: the authoritative specification states the fat-trace pixel figure with the dial it holds at, so no later session copies a 1 MAC measurement onward as true at every dial
-verify: grep -qF "fat's whole first hour spans under 4 px at a 1 MAC dial and under 12 px at the agent's vaporizer maximum" docs/VERIFICATION.md
+verify: grep -qF 'less than 4 px over its whole first hour at a 1 MAC dial, and less than 12 px at the agent' docs/VERIFICATION.md
 ---
 
 **Problem.** docs/MODEL.md's hazard row for two traces drawn on top of each other says fat's whole first hour spans under 4 px on the chart, which holds only at a 1 MAC dial: at the interface's maximum dial it spans 6.1-11.0 px
@@ -76,3 +78,7 @@ here is unchanged. If `PL-B6YV`'s rule is adopted, the corrected row should
 also name a test that computes the pixel figure at the dial it states.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, but the sentence it would fix has been reworded. In the hazard row "reading one compartment's concentration as another's where two traces are drawn on top of each other", `docs/VERIFICATION.md` now says "the fat trace moves less than 4 px over its whole first hour", still with no dial. #1944 (`20e39f39`) wrote that wording. The verbatim clause that the done-when and `verify:` require was written against the old wording, so the fix should condition the sentence as it now reads, and `verify:` should be rewritten to match. The figures were measured at the old 0.1 s step, and #2180 now steps a run in whole seconds; re-measure them before quoting them. The row moves with `PL-6PPZ` (claimed elsewhere) to a new verification document.
+
+**Done 2026-11-22.** Re-measured at the one-second step and the MAC at age 40, with the chart's whole preferred height (`theme.CHART_HEIGHT`, 360 px) as the scale, which bounds the percent axis from above. Fat at 60 min spans 1.47 px (isoflurane), 1.93 px (sevoflurane) and 3.67 px (desflurane) at a 1 MAC dial, and 6.27, 8.57 and 10.01 px at each agent's vaporizer maximum. Both stay under the figures the row now states, and under the 12 px hover radius. The row in `docs/VERIFICATION.md` now reads "with the chart at its preferred height, the fat trace moves less than 4 px over its whole first hour at a 1 MAC dial, and less than 12 px at the agent's vaporizer maximum", and names `test_fat_trace_first_hour_spans_under_4_px_at_1_mac_and_under_12_px_at_the_vaporizer_maximum`, which computes the figure for each agent at both dials, as `PL-B6YV`'s rule asks. The height condition was added because an Area can stretch the chart taller than its preferred height, and the pixel figure grows with it. A taller chart separates the traces more, so the row's conclusion holds there too. `PL-K1VH` (the reader-chosen ceiling) will change the figure at its 1.5 MAC rung, where fat at the vaporizer maximum spans 12.5-20.0 px, and must restate the row for the ceiling it holds at.
+
+Docs checked: `docs/VERIFICATION.md` (the row, and § on the hover radius), `docs/INTERFACE.md` § "MAC multiples as a display unit" (its 1 MAC figures, 1.3-3.3 px against a 320 px percent axis, agree with these against 360 px), `docs/MODEL.md` (no pixel figure for fat).
