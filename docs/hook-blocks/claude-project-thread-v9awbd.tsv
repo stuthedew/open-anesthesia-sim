@@ -50,3 +50,7 @@ time	session	guard	rule
 2026-11-22T20:47:40.483688+00:00	95154b6a-1005-52f7-802d-6577035750ff	gate-status-guard	status-swallowed:tools/doc_check.py
 2026-11-22T20:49:37.945426+00:00	95154b6a-1005-52f7-802d-6577035750ff	gate-status-guard	status-swallowed:pytest
 2026-11-22T20:49:41.600579+00:00	95154b6a-1005-52f7-802d-6577035750ff	gate-status-guard	status-swallowed:pytest
+2026-11-22T22:05:17.409091+00:00	95154b6a-1005-52f7-802d-6577035750ff	gate-status-guard	status-swallowed:pytest
+2026-11-22T22:14:24.564701+00:00	95154b6a-1005-52f7-802d-6577035750ff	gate-status-guard	status-swallowed:pytest
+2026-11-22T22:18:41.254853+00:00	95154b6a-1005-52f7-802d-6577035750ff	gate-status-guard	status-swallowed:ruff
+2026-11-22T22:19:01.996525+00:00	95154b6a-1005-52f7-802d-6577035750ff	gate-status-guard	status-swallowed:ruff
