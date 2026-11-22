@@ -1990,6 +1990,26 @@ when raised to 8% between 600 s and 672 s. Measured on 2026-11-22.
 
 <!-- not-restated: 8 % -->
 
+**The F_A/F_I plot also draws the second at which the ratio crosses
+equilibrium between two columns** (`PL-CJJ1`). A wash-in stretch ends on the
+first drawn point past equilibrium, so that the curve meets the equilibrium line
+and ends there with a dot. One step carries the ratio at most 3% past
+equilibrium, but the next column can be minutes later, and after the dial is
+closed the ratio there is far above the plot's top. Before this rule the curve
+then stopped below the line with no dot, which looks like a cut-off trace rather
+than a finished wash-in. With the run of 60 minutes at the default dial
+followed by 20 minutes with the dial closed, this happened at 17 of 66 pairs
+of time base and plot width tried, from 300 px to 1 600 px, and it happens at
+none of them now. The crossing second is a stored state, as every drawn point
+is. Where the first second outside the domain has no ratio, because the
+inspired fraction is too small to divide by, the stretch ends without a
+crossing, as before.
+
+**For developers.** `chart_time_base.wash_in_crossing_seconds` chooses the
+crossing seconds, and `controller._with_extremes` adds them to every drawn and
+predicted window. `test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium`
+in `tests/unit/test_chart_frame.py` reproduces the run above.
+
 ### What the reader chooses: traces, window and playback rate
 
 **The user chooses which compartment traces are drawn and how wide a window

@@ -548,6 +548,36 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     assert run.undrawn_wash_in_stretches == 0
 
 
+@pytest.mark.parametrize(("time_base_s", "plot_width_px"), [(14400, 1200), (43200, 900)])
+def test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium(
+    time_base_s: int, plot_width_px: float
+) -> None:
+    """A stretch that crossed equilibrium ends on the line at a wide time base (`PL-CJJ1`).
+
+    The run is an hour at the default dial and then 20 minutes with the dial
+    closed. On the 4-hour and 12-hour time bases the columns are many seconds
+    apart, and the first column after the dial closed has a ratio far above
+    the plot. Before the crossing second was drawn, the stretch stopped at
+    0.99 with no terminus.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 3600)
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    _advance(controller, 1200)
+    frame = assemble_chart_frame(
+        [_input(controller)],
+        time_base_for_span(time_base_s),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=plot_width_px,
+    )
+    (stretch,) = frame.runs[0].wash_in
+
+    assert stretch.ends_above_equilibrium
+    assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
+
+
 def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> None:
     """`PL-YH6Z`: the crossing column is drawn, but its quotient is not printed as wash-in.
 

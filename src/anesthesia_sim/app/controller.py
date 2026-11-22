@@ -31,6 +31,7 @@ from anesthesia_sim.app.chart_time_base import (
     extreme_seconds,
     extreme_seconds_with_gaps,
     grid_spacing_s,
+    wash_in_crossing_seconds,
 )
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_UNITS,
@@ -3867,6 +3868,11 @@ def _with_extremes(
     a second whose inspired fraction is too small to divide by
     (`chart_time_base.extreme_seconds_with_gaps`).
 
+    The second at which the ratio crosses equilibrium between two of the
+    chosen seconds is drawn as well, so a wash-in stretch ends on the line
+    however far apart the columns are (`PL-CJJ1`,
+    `chart_time_base.wash_in_crossing_seconds`).
+
     Args:
         first_s: The window's first second.
         last_s: The window's last second.
@@ -3894,8 +3900,10 @@ def _with_extremes(
         )
     ]
     extremes_s |= extreme_seconds_with_gaps(first_s, ratios, drawn_s)
+    chosen_s = sorted(extremes_s.union(drawn_s))
+    crossings_s = wash_in_crossing_seconds(first_s, ratios, chosen_s)
 
-    return tuple(CaseInstant(second) for second in sorted(extremes_s.union(drawn_s)))
+    return tuple(CaseInstant(second) for second in sorted(crossings_s.union(chosen_s)))
 
 
 class BranchedCase:

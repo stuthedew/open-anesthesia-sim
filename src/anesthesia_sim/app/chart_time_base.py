@@ -47,6 +47,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Final
 
+from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
 
@@ -555,6 +556,77 @@ def extreme_seconds_with_gaps(
 
         if all(lowest < end for end in ends):
             found.add(left_s + 1 + inside.index(lowest))
+
+    return found
+
+
+def wash_in_crossing_seconds(
+    first_s: int, ratios: Sequence[float | None], drawn_s: Sequence[int]
+) -> set[int]:
+    """Return the second at which F_A/F_I crosses equilibrium between two drawn seconds.
+
+    The wash-in plot ends a stretch on the column at which the ratio left
+    the wash-in domain, so that the curve meets the equilibrium line rather
+    than stopping short of it (`chart_frame.wash_in_stretches`). Where the
+    columns are far apart, the next drawn column can be minutes past the
+    crossing. After the dial is closed, the ratio there can be far above 1,
+    past what the plot draws, and the trace then stops in clear space below
+    the line with no mark that it ended (`PL-CJJ1`). So the chart also draws
+    the second at which the ratio crossed. That second is a stored state, and
+    one step carries the ratio no more than 3% past equilibrium, as
+    `chart_frame.wash_in_stretches` says.
+
+    For each pair of neighbouring drawn seconds, the rule looks for one
+    crossing:
+
+    - **Leaving the domain.** The left second is wash-in and the right one is
+      not. The first second after the left one that is not wash-in is
+      returned, if it has a ratio.
+    - **Entering the domain.** The right second is wash-in and the left one is
+      not. The last second before the right one that is not wash-in is
+      returned, if it has a ratio.
+
+    A second with no ratio is never returned. Where the first second outside
+    the domain has none, the stretch ends because there is nothing to divide
+    by, and no crossing is drawn, as before.
+
+    Args:
+        first_s: The second of `ratios[0]`.
+        ratios: The ratio at each second from `first_s`, one entry per
+            second, or `None` at a second where it has no value
+            (`wash_in.wash_in_ratio`).
+        drawn_s: The seconds already drawn, ascending, each within `ratios`.
+
+    Returns:
+        The seconds to draw as well. At most one is returned for each pair of
+        neighbouring drawn seconds.
+    """
+
+    def outside(ratio: float | None) -> bool:
+        return ratio is None or not is_wash_in(ratio)
+
+    found: set[int] = set()
+
+    for left_s, right_s in itertools.pairwise(drawn_s):
+        left = ratios[left_s - first_s]
+        right = ratios[right_s - first_s]
+        inside = range(left_s + 1, right_s)
+
+        if not outside(left) and outside(right):
+            crossing_s = next(
+                second for second in (*inside, right_s) if outside(ratios[second - first_s])
+            )
+        elif outside(left) and not outside(right):
+            crossing_s = next(
+                second
+                for second in (*reversed(inside), left_s)
+                if outside(ratios[second - first_s])
+            )
+        else:
+            continue
+
+        if crossing_s not in (left_s, right_s) and ratios[crossing_s - first_s] is not None:
+            found.add(crossing_s)
 
     return found
 

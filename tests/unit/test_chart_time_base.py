@@ -32,6 +32,7 @@ from anesthesia_sim.app.chart_time_base import (
     preview_window,
     tick_times,
     time_base_for_span,
+    wash_in_crossing_seconds,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CaseInstant
@@ -456,3 +457,53 @@ def test_a_trace_that_starts_after_zero_is_searched_only_between_the_drawn_secon
     """
 
     assert extreme_seconds_with_gaps(100, (0.6, 0.5, 0.7, 0.1), (100, 102)) == {101}
+
+
+# The ratio at each second from 200 s. It rises through equilibrium at 204 s,
+# has no value at 207 s and 208 s, and comes back into the domain at 211 s.
+RATIOS_FROM_200_S: tuple[float | None, ...] = (
+    0.90,
+    0.95,
+    0.98,
+    0.999,
+    1.01,
+    1.5,
+    3.0,
+    None,
+    None,
+    2.0,
+    1.2,
+    0.99,
+    0.97,
+)
+
+
+def test_the_second_a_wash_in_stretch_leaves_the_domain_is_drawn() -> None:
+    """The first second past equilibrium is returned, not the column minutes later (`PL-CJJ1`)."""
+
+    assert wash_in_crossing_seconds(200, RATIOS_FROM_200_S, (200, 206)) == {204}
+
+
+def test_the_second_before_a_stretch_enters_the_domain_is_drawn() -> None:
+    """Coming back under equilibrium, the last second above it is returned."""
+
+    assert wash_in_crossing_seconds(200, RATIOS_FROM_200_S, (209, 212)) == {210}
+
+
+def test_a_crossing_already_drawn_or_with_no_ratio_adds_nothing() -> None:
+    """A crossing at a drawn second needs nothing more, and a second with no ratio is never drawn.
+
+    From 206 s to 211 s, the last second outside the domain before 211 s is
+    210 s. From 205 s to 208 s, both ends are already outside the domain, so
+    no stretch ends between them. From 203 s to 204 s, nothing lies between
+    two neighbouring seconds. And where the ratio first leaves the domain at a
+    second with no value, nothing is returned, because the stretch ends for
+    want of a ratio rather than by crossing equilibrium.
+    """
+
+    with_a_gap_first: tuple[float | None, ...] = (0.9, 0.95, None, 1.2, 1.3)
+
+    assert wash_in_crossing_seconds(200, RATIOS_FROM_200_S, (206, 211)) == {210}
+    assert wash_in_crossing_seconds(200, RATIOS_FROM_200_S, (205, 208)) == set()
+    assert wash_in_crossing_seconds(200, RATIOS_FROM_200_S, (203, 204)) == set()
+    assert wash_in_crossing_seconds(0, with_a_gap_first, (0, 4)) == set()
