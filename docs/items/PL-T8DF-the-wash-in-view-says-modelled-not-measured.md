@@ -1,9 +1,14 @@
 ---
 id: PL-T8DF
 title: The wash-in View says 'Modelled, not measured' where every other View says 'Model outputs — not measurements.' for the same fact, and the line sits on the page background outside the View's panel
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: ux
 feature: interface-design-review
+touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/simulation_view/test_simulation_view_whole_interface.py, tests/integration/simulation_view/test_simulation_view_page.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
+payoff: the wash-in View states that its values are modelled in the same words and place as every other View
 ---
 
 **Problem.** The wash-in View says 'Modelled, not measured' where every other View says 'Model outputs — not measurements.' for the same fact, and the line sits on the page background outside the View's panel
@@ -31,3 +36,7 @@ the words stay on screen wherever any part of the plot is. Delete
 **Done when.** The wash-in View's pinned row reads `INTERPRETATION_DISCLAIMER_TEXT`,
 `WASH_IN_MODELLED_TEXT` no longer exists, and a test finds the row painted on
 the panel colour.
+
+**Reproduced 2026-11-22** on `a7eb53f`, offscreen: `view-wash_in-1366x768.png` shows the line on the page background.
+
+**Generator check.** One fact with two homes: `WASH_IN_MODELLED_TEXT` was written beside `INTERPRETATION_DISCLAIMER_TEXT` for the same statement (`PL-F9TQ`). No other copy of the statement exists, so this is a one-off.

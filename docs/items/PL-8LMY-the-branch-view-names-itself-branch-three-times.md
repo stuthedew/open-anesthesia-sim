@@ -1,9 +1,14 @@
 ---
 id: PL-8LMY
 title: The Branch View names itself 'Branch' three times: in its Area header, as its panel heading, and on its button
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: ux
 feature: interface-design-review
+touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
+payoff: the Branch Area gives a row back and names itself once
 ---
 
 **Problem.** The Branch View names itself 'Branch' three times: in its Area header, as its panel heading, and on its button
@@ -23,3 +28,7 @@ keeps the name, and the button keeps its label, because that names the act.
 
 **Done when.** The Branch View shows no heading of its own, and a test checks
 that "Branch" appears once as a label in the View.
+
+**Reproduced 2026-11-22** on `a7eb53f`, offscreen: `ws0-Default-1366x768.png`.
+
+**Generator check.** A one-off: the heading dates from when the branch control was a fixed page section under the Areas, before `PL-9YPR` made it a View whose Area header names it.
