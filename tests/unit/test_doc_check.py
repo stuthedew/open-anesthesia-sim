@@ -276,6 +276,11 @@ def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> 
     families = tuple(
         dataclasses.replace(family, document=doc_check.MODEL)
         if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
+        # `PL-48MX` moved the numeric paragraphs that the family reads from
+        # `docs/MODEL.md` § "Known limitations" to a section of
+        # `docs/PARAMETERS.md`. The fixture keeps them under the old heading.
+        else dataclasses.replace(family, document=doc_check.MODEL, heading="Known limitations")
+        if family.document == doc_check.PARAMETERS
         else family
         for family in doc_check.BOUND_FAMILIES
     )
@@ -11749,20 +11754,22 @@ CONTINUED_STATEMENTS: dict[str, tuple[Callable[[Path], object], object]] = {
     # The Symbols table `core_vocabulary_check` resolves, read by the same
     # table reader (`PL-FBWD`).
     "vocabulary symbols, a row inside a comment is none": (
-        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}<!--\n| b | B | - | `X.b` |\n-->\n"),
+        lambda _: _symbol_rows(f"### Symbols\n\n{SYMBOLS}<!--\n| b | B | - | `X.b` |\n-->\n"),
         [(5, "a")],
     ),
     "vocabulary symbols, a second table after a blank line is not this one": (
-        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}\n{SYMBOLS}"),
+        lambda _: _symbol_rows(f"### Symbols\n\n{SYMBOLS}\n{SYMBOLS}"),
         [(5, "a")],
     ),
     "vocabulary symbols, a row without its leading pipe": (
-        lambda _: _symbol_rows(f"## Symbols\n\n{SYMBOLS}b | B | - | `X.b`\n"),
+        lambda _: _symbol_rows(f"### Symbols\n\n{SYMBOLS}b | B | - | `X.b`\n"),
         [(5, "a"), (6, "b")],
     ),
-    "vocabulary symbols, the table under a setext heading": (
+    # The table is a level-three subsection since `PL-48MX`, which a setext
+    # heading cannot be, so a level-two setext heading of the same name is not it.
+    "vocabulary symbols, a level-two setext heading is not the section": (
         lambda _: _symbol_rows(f"Symbols\n-------\n\n{SYMBOLS}"),
-        [(6, "a")],
+        [],
     ),
     # `docs/dead-ends.md`, an entry at a time through docket's list walker (`PL-F5B9`).
     "dead ends, a title wrapped onto an indented line": (

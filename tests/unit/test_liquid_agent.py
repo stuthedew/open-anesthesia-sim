@@ -147,7 +147,7 @@ def test_a_liquid_density_measured_at_another_temperature_is_refused(
     expected = (
         f"a liquid density measured at {measured_at_celsius!r} degrees C cannot be used: the "
         "model states every amount of agent at 20 degrees C, and no correction for "
-        'temperature is stored (docs/MODEL.md, "Agent amount")'
+        'temperature is stored (docs/PARAMETERS.md, "Agent amount")'
     )
 
     with pytest.raises(SimulationConfigurationError, match=f"^{re.escape(expected)}$"):

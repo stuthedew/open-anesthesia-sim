@@ -2,7 +2,7 @@
 
 A tissue group receives a fixed fraction of the cardiac output, its perfusion
 fraction $`f_i`$. Its blood flow is that fraction of the cardiac output,
-$`Q_i = f_iQ`$ (`docs/MODEL.md` § "Tissue groups"). This module gives each of
+$`Q_i = f_iQ`$ (`docs/MODEL.md` § "Blood flow to the tissue groups"). This module gives each of
 the two a checked type, as `core/supported_ranges.py` gives the cardiac output
 one (`.claude/rules/core-domain.md` § "A quantity with a check of its own is a
 type, checked once").
@@ -71,7 +71,8 @@ class PerfusionFraction(float, CheckedQuantity):
             raise SimulationConfigurationError(
                 f"{name} of {shown(perfusion_fraction)} is not above 0 and at most "
                 f"{MAXIMUM_PERFUSION_FRACTION:g}, the range of the fraction of the cardiac "
-                'output that reaches a tissue group (docs/MODEL.md, "Tissue groups")'
+                "output that reaches a tissue group (docs/MODEL.md, "
+                '"Blood flow to the tissue groups")'
             )
 
         return super().__new__(cls, perfusion_fraction)
@@ -177,7 +178,7 @@ def require_perfusion_fraction(name: str, perfusion_fraction: object) -> None:
     raise TypeError(
         f"{name} of {shown(perfusion_fraction)} was not built as PerfusionFraction, it is "
         f"{type(perfusion_fraction).__name__}: build it as PerfusionFraction(...), which "
-        'checks it against its range once (docs/MODEL.md, "Tissue groups")'
+        'checks it against its range once (docs/MODEL.md, "Blood flow to the tissue groups")'
     )
 
 
@@ -212,5 +213,5 @@ def require_blood_flow(name: str, blood_flow_l_min: object) -> None:
     raise TypeError(
         f"{name} of {shown(blood_flow_l_min)} {found}: build it as "
         "BloodFlow(cardiac_output_l_min, perfusion_fraction), the tissue group's perfusion "
-        'fraction of the cardiac output (docs/MODEL.md, "Tissue groups")'
+        'fraction of the cardiac output (docs/MODEL.md, "Blood flow to the tissue groups")'
     )

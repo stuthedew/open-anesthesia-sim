@@ -233,13 +233,16 @@ def require_within_vaporizer_maximum(
     )
 
 
+CAPACITY_SECTION = "How much agent each compartment holds"
+"""The section of `docs/MODEL.md` that defines each compartment's capacity.
+
+Every refusal below of an agent amount that does not fit its compartment's
+capacity cites this section, whichever compartment refused it.
+"""
+
+
 def require_room_for_the_agent_held(
-    name: str,
-    value: float,
-    capacity_l: float,
-    agent_amount_l: float,
-    compartment: str,
-    section: str,
+    name: str, value: float, capacity_l: float, agent_amount_l: float, compartment: str
 ) -> None:
     """Refuse a volume or partition coefficient too small for the agent its compartment holds.
 
@@ -247,7 +250,7 @@ def require_room_for_the_agent_held(
     its capacity. Its capacity is the amount of agent it would hold at a
     partial pressure of one atmosphere. The capacity is the compartment's
     volume, multiplied by its partition coefficient when the compartment is
-    blood or tissue (`docs/MODEL.md` § "Tissue compartments" gives the
+    blood or tissue (`docs/MODEL.md` § "How much agent each compartment holds" gives the
     tissue's). With the amount fixed, shrinking either factor raises the
     partial pressure. Once the capacity is less than the amount held, the
     partial pressure is above one atmosphere. Each compartment rejects an
@@ -273,12 +276,12 @@ def require_room_for_the_agent_held(
         raise SimulationConfigurationError(
             f"{name} of {shown(value)} is too small for the {agent_amount_l!r} L of agent "
             f"the {compartment} holds: it would leave room for {capacity_l!r} L at a "
-            f'partial pressure of one atmosphere (docs/MODEL.md, "{section}")'
+            f'partial pressure of one atmosphere (docs/MODEL.md, "{CAPACITY_SECTION}")'
         )
 
 
 def require_within_the_capacity(
-    name: str, agent_amount_l: float, capacity_l: float, compartment: str, section: str
+    name: str, agent_amount_l: float, capacity_l: float, compartment: str
 ) -> None:
     """Refuse an agent amount larger than the capacity of the compartment it is written to.
 
@@ -287,7 +290,7 @@ def require_within_the_capacity(
     written too small for the amount already held. This guard refuses an amount that
     is written too large for the capacity. Either way the partial pressure would be
     above one atmosphere. Both guards name the value, the capacity and the
-    `docs/MODEL.md` section, so the single relation is refused in the same terms from
+    same `docs/MODEL.md` section, so the single relation is refused in the same terms from
     either side (`PL-XVCV`).
     The caller checks first that the amount is a nonnegative finite number.
 
@@ -299,7 +302,7 @@ def require_within_the_capacity(
         raise SimulationConfigurationError(
             f"{name} of {shown(agent_amount_l)} L is more than the {capacity_l!r} L the "
             f"{compartment} holds at a partial pressure of one atmosphere "
-            f'(docs/MODEL.md, "{section}")'
+            f'(docs/MODEL.md, "{CAPACITY_SECTION}")'
         )
 
 
@@ -310,7 +313,6 @@ def require_a_capacity_with_room_for_the_agent(
     capacity_per_litre: float,
     agent_amount_l: float | None,
     compartment: str,
-    section: str,
 ) -> None:
     """Refuse a volume or partition coefficient that leaves a blood or tissue capacity too small.
 
@@ -334,5 +336,5 @@ def require_a_capacity_with_room_for_the_agent(
 
     if agent_amount_l is not None:
         require_room_for_the_agent_held(
-            name, value, volume_l * capacity_per_litre, agent_amount_l, compartment, section
+            name, value, volume_l * capacity_per_litre, agent_amount_l, compartment
         )

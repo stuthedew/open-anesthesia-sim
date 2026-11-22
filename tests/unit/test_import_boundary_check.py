@@ -578,7 +578,7 @@ class TestMain:
     ) -> None:
         """The asymmetry, pinned end-to-end so widening the tree cannot pass quietly.
 
-        `docs/MODEL.md` "The reproducibility guarantee" permits the interface
+        `docs/VERIFICATION.md` "The reproducibility guarantee" permits the interface
         its wall clock - what it forbids is a tick's real duration reaching the
         run - so a boundary that failed here would be enforcing a rule the
         design does not hold.

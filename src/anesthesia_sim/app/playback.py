@@ -1,7 +1,7 @@
 """Playback rate: how many one-second steps the run loop takes on each tick.
 
 A run's trajectory depends on its inputs and on the number of steps taken,
-and on nothing else (`docs/MODEL.md` § "The reproducibility guarantee").
+and on nothing else (`docs/VERIFICATION.md` § "The reproducibility guarantee").
 For a run nobody touches, playing it faster is therefore a *scheduling*
 change and never a modelling one. The same steps are taken, in the same
 order, at the same size, and more of them are taken per second of real

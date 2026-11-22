@@ -118,12 +118,7 @@ class AlveolarCompartment:
 
                 if hasattr(self, "agent_amount_l"):
                     require_room_for_the_agent_held(
-                        name,
-                        value,
-                        value,
-                        self.agent_amount_l,
-                        "alveolar compartment",
-                        "Gas compartments",
+                        name, value, value, self.agent_amount_l, "alveolar compartment"
                     )
             elif name == "alveolar_ventilation_l_min":
                 require_alveolar_ventilation(value)
@@ -132,11 +127,7 @@ class AlveolarCompartment:
                 # names this compartment (`core/validation.py`, `PL-2TZT`).
                 require_nonnegative_finite("alveolar agent_amount_l", value)
                 require_within_the_capacity(
-                    "alveolar agent_amount_l",
-                    value,
-                    self.gas_volume_l,
-                    "alveolar compartment",
-                    "Gas compartments",
+                    "alveolar agent_amount_l", value, self.gas_volume_l, "alveolar compartment"
                 )
 
             super().__setattr__(name, value)
@@ -145,7 +136,7 @@ class AlveolarCompartment:
     def partial_pressure_fraction(self) -> float:
         """The alveolar fraction $`F_A = M_A/V_A`$.
 
-        `docs/MODEL.md` § "Gas compartments" is the definition. The alveolar
+        `docs/MODEL.md` § "How much agent each compartment holds" is the definition. The alveolar
         capacity is $`V_A`$, with no partition coefficient, because this is a
         gas phase. That is why this property divides by the volume itself,
         where the blood and tissue compartments divide by a `capacity_l`.

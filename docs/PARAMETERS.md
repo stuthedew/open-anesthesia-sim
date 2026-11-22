@@ -5,6 +5,10 @@ provenance table with each value's file and key, how each source was read,
 and why each value was chosen over the alternatives. A separate document,
 `docs/MODEL.md`, specifies the model those values enter.
 
+The source text of this document carries hidden markers. Each one ties a figure
+that restates a stored value to the data file that holds the value.
+§ "The provenance table, and the markers over restated values" explains them.
+
 ## Parameter provenance
 
 No scientific parameter may be added without:
@@ -16,9 +20,17 @@ No scientific parameter may be added without:
 - any conversion performed;
 - the tissue-group mapping;
 - a brief justification for selecting that source;
-- the source's tier in the hierarchy below; and
+- the source's tier, as § "Source hierarchy: what may be cited as the
+  authority for a value" defines it; and
 - where the source is not a primary measurement, what the primary literature
   reports and how far that differs from the source's value.
+
+The build checks part of two of these requirements. The provenance table
+below must give each stored value, as § "The provenance table, and the markers
+over restated values" describes, but the check reads the value and not its
+unit. Each entry under `sources` in a data file must declare its source's tier,
+as § "What the data-file format requires of a `sources` entry" describes. A
+reviewer checks each unit and every other requirement.
 
 ### Source hierarchy: what may be cited as the authority for a value
 
@@ -53,8 +65,32 @@ decision, under the rule set out after the three tiers.
    recover from the program which measurement each number descends from, or
    what was adjusted to make the set consistent. **Gas Man's behavior has been
    compared with measurements in patients**, and the agreement is materially
-   worse during wash-in than during maintenance. `docs/MODEL.md` § "Known limitations" gives
-   the figures and the limits they set.
+   worse during wash-in than during maintenance. `docs/MODEL.md` § "Gas Man in
+   patients" gives the figures and the limits they set.
+
+**Holding a source's full text does not change its tier.** The project owner
+keeps the full texts in a private corpus, so that a claim can be checked
+against the source itself. `docs/references/` holds no full text. It records
+each source's full citation, in `docs/references/README.md`, and notes of the
+values taken from it. Baker and Farmery's 2011 *Comprehensive
+Physiology* review of inert gas transport in blood and tissues is the closest
+published statement of what `docs/MODEL.md` specifies. For any individual number
+in it, the review is still a tier-2 synthesis.
+
+**Republication does not promote a value between tiers.** A peer-reviewed
+paper that prints a reference implementation's parameter table is still a
+tier-3 citation. Two of this project's three tier-3 citations are of that kind, and
+neither measured a coefficient. Both are Gas Man simulation studies, and the
+third citation is the Gas Man Workbook itself. Table 1
+of De Wolf et al. 2012 is the parameter set that the authors fed to Gas Man,
+and Weber et al. 2021 describe the product's standard 70 kg patient. The two
+papers do not even agree on what Gas Man's set holds. Weber et al.'s Table 1
+prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane and 1.1% isoflurane. De Wolf et
+al. state 2.0% and 1.2%, which are the values this simulator stores on De
+Wolf's authority. Yet every partition coefficient the two print is the same.
+<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- not-restated: 70 kg -->
 
 **A tier-2 or tier-3 source may be adopted, but never silently.** The ranking
 says which tier a reader may trust without examining it. Nearly half of this
@@ -93,14 +129,14 @@ one of them:
    reason does not cover them. But placing one laboratory's blood:gas figure
    among Gas Man's tissue values would make the simulated curve a mix of two
    parameter sets with different origins. The same objection applies to
-   dividing a Gas Man curve by a MAC taken from Mapleson, as discussed later in
-   this document.
+   dividing a Gas Man curve by a MAC taken from Mapleson, as § "The stored MAC"
+   discusses.
 
 The second reason is the narrower of the two. It applies only where the source
 entry cites the primary measurements with their values and records how far the
 stored value differs from them, so that the reader can see what the choice
 costs. For the three blood:gas coefficients, the stored values are 0.9% to
-26.3% below the measured ones. A later part of this section gives each
+26.3% below the measured ones. § "The blood:gas coefficients" gives each
 difference, the date of the decision, and the planned route to measured
 coefficients for all three, which would remove this reason for them.
 
@@ -109,64 +145,40 @@ that quantity supports it, and in this simulator that is the ordinary case.
 Where a primary measurement *is* available and simply has not been adopted,
 the source entry says so in those words.
 
-**Holding a source's full text does not change its tier.** The project owner
-keeps the full texts in a private corpus, so that a claim can be checked
-against the source itself. `docs/references/` holds no full text. It records
-each source's full citation, in `docs/references/README.md`, and notes of the
-values taken from it. Baker and Farmery's 2011 *Comprehensive
-Physiology* review of inert gas transport in blood and tissues is the closest
-published statement of what `docs/MODEL.md` specifies. For any individual number
-in it, the review is still a tier-2 synthesis.
-
-**Republication does not promote a value between tiers.** A peer-reviewed
-paper that prints a reference implementation's parameter table is still a
-tier-3 citation. Two of this project's three tier-3 citations are of that kind, and
-neither measured a coefficient. Both are Gas Man simulation studies, and the
-third citation is the Gas Man Workbook itself. Table 1
-of De Wolf et al. 2012 is the parameter set that the authors fed to Gas Man,
-and Weber et al. 2021 describe the product's standard 70 kg patient. The two
-papers do not even agree on what Gas Man's set holds. Weber et al.'s Table 1
-prints Gas Man 4.2's 1 MAC as 2.1% sevoflurane and 1.1% isoflurane. De Wolf et
-al. state 2.0% and 1.2%, which are the values this simulator stores on De
-Wolf's authority. Yet every partition coefficient the two print is the same.
-<!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->
-<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
-<!-- not-restated: 70 kg -->
-
-**For developers.** Each entry under `sources` in a data file must record its
-tier in a `tier` field, and the project's checks reject a tier outside the fixed
-list. The entry's `authority_for` field lists the stored values that rest on
-it. Where the reason why no tier-1 source was adopted covers a whole file, it
-goes in the file's `provenance_gap` field. Where a primary measurement is
-available and has not been adopted, the entry's `adopted` field records that no
-primary measurement backs the value. The field exists because of the ordinary
-case described above.
-
 Three rules apply to an entry under `sources`:
 
-- Where the stored value is not a primary measurement, say in the entry's note
-  which value the primary literature reports and by how much the two differ.
-  Use words that a reader comparing against a textbook can act on.
-- Do not let a primary citation stand in for a primary value. Citing a
-  measurement *alongside* a tier-3 number does not source that number. A file
-  that looks sourced while its number came from somewhere else is worse than
-  one that cites nothing, because it stops the reader checking.
-- Where no primary source has been adopted, record it as an open gap. "No
-  primary source has been adopted for this value" is a legitimate provenance
-  state for an educational simulator, and one that can later be fixed. A
-  tier-3 citation presented as settled is neither legitimate nor marked for
-  fixing.
+1. Where the stored value is not a primary measurement, say in the entry's note
+   which value the primary literature reports and by how much the two differ.
+   Use words that a reader comparing against a textbook can act on.
+2. Do not let a primary citation stand in for a primary value. Citing a
+   measurement *alongside* a tier-3 number does not source that number. A file
+   that looks sourced while its number came from somewhere else is worse than
+   one that cites nothing, because it stops the reader checking.
+3. Where no primary source has been adopted, record it as an open gap. "No
+   primary source has been adopted for this value" is a legitimate provenance
+   state for an educational simulator, and one that can later be fixed. A
+   tier-3 citation presented as settled is neither legitimate nor marked for
+   fixing.
 
-Saying that a constant comes from Gas Man, or from a paper that reprints Gas
-Man's table, presents a tier-3 source as though it were a measurement. Citing
-De Wolf et al. 2012 or Weber et al. 2021 as though a value had been measured is
-the same error.
+A check on every build enforces part of the second and third rules. For the
+second, it checks that each entry declares which stored values rest on it, but
+not that a source declared primary and adopted really is where the number came
+from. It enforces the third rule only for a file that adopts no primary source
+at all. In a file that adopts some, such as each agent file, it does not see
+whether each value that rests on no primary source is recorded as a gap. No
+check reads the note that the first rule asks for. A reviewer checks that note,
+the truth of each declaration, and the third rule value by value.
 
-#### Where each stored value comes from
+**For developers.** § "What the data-file format requires of a `sources` entry"
+names the field of a data file that records each of these, and the exact rules
+its check enforces.
 
-**Where this project stands.** Of the 49 rows in the table of stored values
-below, 27 are tier 1, four are tier 2, 16 are tier 3, and two adopt no source
-of any tier. The 16 tier-3 rows
+### Where each stored value comes from
+
+#### Where this project stands
+
+Of the 49 rows in the table of stored values below, 27 are tier 1, four are
+tier 2, 16 are tier 3, and two adopt no source of any tier. The 16 tier-3 rows
 all come from Gas Man: the three blood:gas partition coefficients, ten of the
 eleven parameters of the reference adult patient, and the three MAC values. The
 blood:gas coefficients are the Gas Man set as published by De Wolf et al., and
@@ -177,12 +189,12 @@ flow with no published counterpart.
 
 **Of all the stored values, MAC (`mac_percent`) is the only one used as a
 divisor for a displayed concentration.** The liquid density is the divisor for
-the displayed millilitres of liquid agent (`docs/MODEL.md` § "Agent amount"). The three stored
+the displayed millilitres of liquid agent (§ "Agent amount"). The three stored
 MAC values are the ones that
 De Wolf et al. state they used in their Gas Man simulations. MAC divides every
 value shown in MAC multiples, so its tier affects a displayed clinical value as
-well as a starting dial position. § "Delivery-limit and MAC parameters" states
-what that costs, and `docs/MODEL.md` § "Known limitations" records it. Two tier-2 sources are
+well as a starting dial position. § "The stored MAC" states what that costs,
+and `docs/MODEL.md` § "MAC multiples" records it. Two tier-2 sources are
 cited beside the MAC values but not adopted: Mapleson's 1996 meta-analysis and
 the age-related iso-MAC charts built on it.
 
@@ -214,7 +226,88 @@ the age-related iso-MAC charts built on it.
 6. **Three molar masses**, ChEMBL's formula masses, adopted the same day. They
    are tier 2 because a molar mass is computed from the molecular formula and the
    standard atomic weights, not measured on the agent, so no tier-1 source exists
-   for one (`docs/MODEL.md` § "Agent amount").
+   for one (§ "Agent amount").
+
+**For developers.** The counts of stored-value rows in this subsection appear
+at its head and in the list of the thirty-one rows that adopt a source other
+than Gas Man. Recompute all of them with `python3 tools/source_tier_counts.py` rather than by hand. The
+script counts the stored values that each source is the authority for (the
+`authority_for` list of each `sources` entry), per data file and in total, and
+names the source behind every row. Each data file gives the tier of every source
+it lists. No check compares the counts in either place with the text, so they
+can go stale silently. Whoever changes a count must check that the sentence
+around it is still true.
+
+#### The stored values, by data file and key
+
+The following table records every stored value. Each value is
+loaded from a versioned data file and validated against its schema, rather than
+written into the program. That file records full citations, definitions and
+reference conditions in its `sources` entries, and the table does not repeat
+them.
+
+Each row names the file and the exact key path that locates its value in that
+file, so a row traces to one stored value, not to a file that happens to
+contain a matching number. A check compares each row's key path and value with
+its file, as § "The provenance table, and the markers over restated values"
+describes. A row for a derived value states the stored value beside it. The tissue:blood coefficients
+are computed from the tissue:gas and blood:gas values when a file is loaded, so
+their rows name the key path of the stored tissue:gas value and show the
+division.
+
+| Parameter | Selected value | Unit | Source (data file · key path) |
+| --- | ---: | --- | --- |
+| Blood:gas partition coefficient (sevoflurane) | 0.65 | dimensionless | `data/agents/sevoflurane.json` · `blood_gas_partition_coefficient` |
+| Vessel-rich tissue:blood coefficient (sevoflurane) | 1.6923 (= 1.1 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
+| Muscle tissue:blood coefficient (sevoflurane) | 3.6923 (= 2.4 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.muscle` |
+| Fat tissue:blood coefficient (sevoflurane) | 52.3077 (= 34.0 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.fat` |
+| Blood:gas partition coefficient (isoflurane) | 1.3 | dimensionless | `data/agents/isoflurane.json` · `blood_gas_partition_coefficient` |
+| Vessel-rich tissue:blood coefficient (isoflurane) | 1.6154 (= 2.1 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
+| Muscle tissue:blood coefficient (isoflurane) | 3.4615 (= 4.5 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.muscle` |
+| Fat tissue:blood coefficient (isoflurane) | 53.8462 (= 70.0 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.fat` |
+| Blood:gas partition coefficient (desflurane) | 0.42 | dimensionless | `data/agents/desflurane.json` · `blood_gas_partition_coefficient` |
+| Vessel-rich tissue:blood coefficient (desflurane) | 1.2857 (= 0.54 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
+| Muscle tissue:blood coefficient (desflurane) | 2.3095 (= 0.97 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.muscle` |
+| Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.fat` |
+| Reference patient weight | 70.0 | kg | `data/patients/reference_adult.json` · `weight_kg` |
+| Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` · `alveolar_gas_volume_l` |
+| Venous blood-pool volume | 1.222 | L | `data/patients/reference_adult.json` · `venous_pool_volume_l` |
+| Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` · `tissue_groups.vessel_rich.volume_l` |
+| Muscle tissue volume | 33.0 | L | `data/patients/reference_adult.json` · `tissue_groups.muscle.volume_l` |
+| Fat tissue volume | 14.5 | L | `data/patients/reference_adult.json` · `tissue_groups.fat.volume_l` |
+| Vessel-rich flow fraction | 0.76 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.vessel_rich.perfusion_fraction` |
+| Muscle flow fraction | 0.18 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.muscle.perfusion_fraction` |
+| Fat flow fraction | 0.06 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.fat.perfusion_fraction` |
+| Default alveolar ventilation | 4.0 | L/min | `data/patients/reference_adult.json` · `default_alveolar_ventilation_l_min` |
+| Default cardiac output | 5.0 | L/min | `data/patients/reference_adult.json` · `default_cardiac_output_l_min` |
+| Breathing-circuit volume | 6.0 | L | `data/machines/reference_circle_system.json` · `circuit_volume_l` |
+| Default fresh gas flow | 4.0 | L/min | `data/machines/reference_circle_system.json` · `default_fresh_gas_flow_l_min` |
+| Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` · `max_delivered_concentration_percent` |
+| Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` · `max_delivered_concentration_percent` |
+| Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` · `max_delivered_concentration_percent` |
+| 1 MAC, single adult value with no age stated by its source (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` · `mac_percent` |
+| 1 MAC, single adult value with no age stated by its source (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` · `mac_percent` |
+| 1 MAC, single adult value with no age stated by its source (desflurane) | 6.0 | percent | `data/agents/desflurane.json` · `mac_percent` |
+| MAC-awake (sevoflurane) | 0.34 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.fraction_of_mac` |
+| MAC-awake standard deviation (sevoflurane) | 0.05 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
+| MAC-awake (isoflurane) | 0.31 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.fraction_of_mac` |
+| MAC-awake standard deviation (isoflurane) | 0.05 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
+| MAC-awake (desflurane) | 0.36 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.fraction_of_mac` |
+| MAC-awake standard deviation (desflurane) | 0.063 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
+| Molar mass (sevoflurane) | 200.05 | g/mol | `data/agents/sevoflurane.json` · `molar_mass_g_mol` |
+| Molar mass (isoflurane) | 184.49 | g/mol | `data/agents/isoflurane.json` · `molar_mass_g_mol` |
+| Molar mass (desflurane) | 168.04 | g/mol | `data/agents/desflurane.json` · `molar_mass_g_mol` |
+| Liquid density at 20 °C (sevoflurane) | 1.5203 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.g_ml` |
+| Liquid density at 20 °C (isoflurane) | 1.5019 | g/mL | `data/agents/isoflurane.json` · `liquid_density.g_ml` |
+| Liquid density at 20 °C (desflurane) | 1.4651 | g/mL | `data/agents/desflurane.json` · `liquid_density.g_ml` |
+| Liquid density standard deviation (sevoflurane) | 0.0008 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density standard deviation (isoflurane) | 0.0006 | g/mL | `data/agents/isoflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density standard deviation (desflurane) | 0.0004 | g/mL | `data/agents/desflurane.json` · `liquid_density.standard_deviation_g_ml` |
+| Liquid density measurement temperature (sevoflurane) | 20.0 | °C | `data/agents/sevoflurane.json` · `liquid_density.measured_at_celsius` |
+| Liquid density measurement temperature (isoflurane) | 20.0 | °C | `data/agents/isoflurane.json` · `liquid_density.measured_at_celsius` |
+| Liquid density measurement temperature (desflurane) | 20.0 | °C | `data/agents/desflurane.json` · `liquid_density.measured_at_celsius` |
+
+#### The blood:gas coefficients
 
 **Each agent's data file cites primary blood:gas measurements beside its tier-3
 blood:gas value, and marks each one as not adopted.** The sources are Strum and
@@ -236,11 +329,91 @@ textbook 1.4 or to Lerman's measured 1.46 for isoflurane. The route to primary
 values for all three agents is a planned milestone (`ROADMAP.md`
 planned-milestone item 31).
 
-**The reference patient's data file still adopts no primary source for any of
-its eleven parameters, and records that in those words.** A measurement cited
-beside a tier-3 number does not source it, which is the second of the three
-rules below. So none of the five comparisons in the next paragraph changes or
-promotes a stored value.
+#### The tissue:blood coefficients
+
+**Dividing tissue:gas by blood:gas is the literature's own operation, and one
+published table reproduces its results.** Eger and Saidman state the operation
+in these words: "a tissue/blood partition coefficient for a given anesthetic is
+calculated by dividing a tissue/gas partition coefficient by the blood/gas
+partition coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger
+computed their own tissue:blood table the same way, as § "v0.2.0: isoflurane
+and desflurane" records. Both papers were read in full text from the private reference corpus.
+Eger and Saidman's p. 1023 was read on 2026-10-25. The full citation of Eger
+and Saidman is in § "The evidence behind the known limitations".
+
+Baker and Farmery's 2011 review publishes the results as well as the
+operation. Its Table 2 (p. 572) prints two sets of tissue:blood coefficients
+for the vessel-rich, muscle and fat groups. The set that matches the derived
+rows is the one in brackets, which the table's footnote d attributes to Eger
+and Shafer's 2005 tutorial. Desflurane has only that set. The table was read in
+full text from the private reference corpus on 2026-10-25. In each cell below,
+the first figure is the derived value from the parameter table above, and the
+second is Baker's bracketed figure:
+
+| | vessel-rich | muscle | fat |
+| --- | ---: | ---: | ---: |
+| sevoflurane | 1.6923 vs 1.69 | 3.6923 vs 3.69 | 52.3077 vs 52.3 |
+| isoflurane | 1.6154 vs 1.62 | 3.4615 vs 3.46 | 53.8462 vs 53.8 |
+| desflurane | 1.2857 vs 1.29 | 2.3095 vs 2.31 | 30.9524 vs 30.9 |
+
+<!-- derived: 1.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 3.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 52.3077 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 1.6154 from data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 3.4615 from data/agents/isoflurane.json tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 53.8462 from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 1.2857 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 2.3095 from data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
+
+Baker's bracketed blood:gas values are the three that the agent files store:
+0.65 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. Eight of the
+nine tissue:blood figures are the derived value rounded to Baker's printed
+precision. Desflurane's fat coefficient is the exception: 30.9524 rounds to
+31.0, and Baker prints 30.9. The difference is 0.05, or 0.17%, in the last
+printed digit. That is too small to come from a different operation, and Baker
+does not say how the figures were rounded.
+<!-- not-restated: 0.05 -->
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+<!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
+<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
+
+**The agreement with Baker's table checks that the division is the right
+operation and was done correctly, not that the coefficients are right.** It
+shows that the stored tissue:gas values, divided by the stored blood:gas
+values, give the coefficients as the literature publishes them, which confirms
+the operation and its arithmetic. It is not a second measurement. Eger and
+Shafer's tutorial ran its simulations in Gas Man, according to its abstract.
+The stored tissue:gas values are Gas Man's figures for Yasuda, Targ and Eger's
+measurements, and the stored blood:gas values are De Wolf et al.'s. In all
+seven cells where Gas Man's figure differs from Yasuda's mean, Baker's
+bracketed figure follows Gas Man's. Isoflurane fat is the clearest: 53.8 is
+70.0 divided by 1.3, where Yasuda's 64.2 would give 49.4. So the match is one
+parameter set divided twice, not two sources agreeing. Eger and Shafer's paper
+is not held here, so it is not known which of the two took its figures from
+the other. `docs/MODEL.md` § "The tissue:gas coefficients are carried as
+exact" says how far other laboratories' coefficients differ from these.
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
+<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
+
+**Baker's other set of coefficients is not a check on the division.** The
+unbracketed figures are "Data from Fiserova-Bergerova and Diaz (26)", a 1986
+paper. They come with their own blood:gas values, 0.6 for sevoflurane and 1.4
+for isoflurane, and they differ from the derived rows by far more than
+rounding. § "The evidence behind the known limitations" gives the differences.
+
+The citations of Baker and Farmery 2011, Eger and Shafer 2005 and
+Fiserova-Bergerova and Diaz 1986 were checked in PubMed on 2026-10-25 (PMIDs
+23737195, 16115976 and 3721592). Only Baker and Farmery was read in full text,
+and its full citation is in `docs/references/README.md`.
+
+**For developers.** The tissue:blood coefficients are computed by properties of
+the class for an agent's parameters (`AgentParameters`, in `core/parameters.py`). One test in
+`tests/unit/test_parameters.py`, `test_derives_tissue_blood_coefficients`,
+checks the division of tissue:gas by blood:gas, for sevoflurane.
+
+#### The reference patient's parameters
 
 **Five of the eleven patient parameters have a measurement cited beside them
 and explicitly not adopted.** For each, the patient's data file gives the
@@ -256,8 +429,8 @@ Heinonen et al.'s PET measurement of resting adipose perfusion is about half
 what the stored fat flow fraction implies. Frayn and Karpe's review supplies the
 muscle comparison. It also shows that the fat gap concerns the absolute flow,
 not the muscle-to-fat ratio, which the stored fractions get right. The fat gap
-is the largest of the five, and `docs/MODEL.md` § "Known limitations" records it as well,
-because it changes the shape of a displayed curve and not only a number in a
+is the largest of the five, and `docs/MODEL.md` § "The fat group's blood flow"
+records it as well, because it changes the shape of a displayed curve and not only a number in a
 file.
 
 **The other six patient parameters have no comparison, and their data file says
@@ -270,14 +443,59 @@ program default. The remaining three each combine several tissues into one
 group: the vessel-rich volume and flow fraction, and the fat volume. No single
 measurement exists of what this model means by each of them.
 
+The reference patient weight identifies which patient the volumes and flows
+describe, and no equation in this model uses it. The compartment volumes and
+flows are the source's absolute values for a 70 kg adult, not quantities scaled
+from a weight, so changing the weight alone would not rescale them. The litres
+are Gas Man's form of the data. The Workbook names Lowe and Ernst as its
+source, and that book prints the same material as per cent of a 100 kg body,
+with cardiac output an allometric function of mass.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+
+**The vessel-rich flow fraction is 0.76 here and 75.8% in one of the two
+reachable publications of the same parameter set.** Weber et al. 2021's Table 2
+prints 76.00%. The stored value comes from the
+Workbook's own page-168 table, which gives the vessel-rich relative flow as
+0.76 (read at the source on 2026-09-06). The twelve partition coefficients come
+from De Wolf et al. 2012. Their Table 1 prints 75.8, and 75.8 + 18 + 6 = 99.8.
+The model requires the flow fractions to sum to 1 within the tolerance that
+`docs/MODEL.md` § "Blood flow to the tissue groups" gives, so the published set could not be stored as printed,
+even if it were preferred. The difference changes the vessel-rich time constant
+by 0.26%, below the resolution of anything a learner reads off the curve. The
+De Wolf entry in the reference patient's data file (`reference_adult.json`)
+records the difference in full.
+<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
+
+There is no "arterial blood-pool volume" row, because arterial blood has no
+volume of its own in this model (see `docs/MODEL.md` § "What the model represents").
+
+**For developers.** The reference patient's data file is
+`src/anesthesia_sim/data/patients/reference_adult.json`. The patient weight
+(`ReferenceAdultParameters.weight_kg`) is loaded and checked to be positive and
+finite, and nothing else reads it.
+
+Two checks each reject a set of flow fractions whose sum differs from 1.0 by
+more than the tolerance in `docs/MODEL.md` § "Blood flow to the tissue groups"
+(`FLOW_FRACTION_TOLERANCE`). One runs on the reference patient's data file
+(`_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one`), and the other
+runs when the patient's compartments are built (`PatientCompartments.__post_init__`).
+The tolerance stays as it is, because one loose enough to admit De Wolf's 99.8%
+would also admit a transcription error silently.
+`test_the_perfusion_allowance_admits_rounding_and_refuses_a_transcription_error`
+in `tests/unit/test_rounding.py` checks that the stored fractions pass and that
+De Wolf's printed ones fail.
+
+#### Where Gas Man's reference-patient values come from
+
 **Nothing on the longest provenance chain behind the reference patient was
 measured by anybody this document can name.** The chain runs Gas Man (tier 3)
 → Lowe and Ernst (tier 2) → ICRP Committee II (tier 2), a committee of the
 International Commission on Radiological Protection.
 
-**The lineage is Lowe and Ernst's, not Mapleson's.** The note beneath the Gas
-Man Workbook's Model Parameters table (Appendix B, page 168) reads: "Values for
-volume, flow and relative flow are taken from Lowe and Ernst, 1981". The book is
+**The Workbook attributes the values to Lowe and Ernst 1981.** The note
+beneath the Gas Man Workbook's Model Parameters table (Appendix B, page 168)
+reads: "Values for volume, flow and relative flow are taken from Lowe and
+Ernst, 1981". The book is
 *The Quantitative Practice of Anesthesia: Use of Closed Circuit*, Williams &
 Wilkins. The Workbook attributes nothing to Mapleson.
 
@@ -300,10 +518,6 @@ venous pool's 1.0 L is in the Workbook after all. Only the reference weight
 (`weight_kg`) is in neither appendix. The Workbook's prose states it, together
 with the 4 L/min alveolar ventilation, in Chapter 13, page 127.
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
-
-**None of the Workbook pages above promotes a value to a higher tier.** Their
-values are one program's defaults written down more than once, tier 3 each time.
-The stored venous pool no longer uses Gas Man's value at all.
 
 **Pages 55–60 and 82–84 of Lowe and Ernst were read at the source**, on
 2026-09-08, from an interlibrary-loan scan. Two papers that use the book had
@@ -365,9 +579,17 @@ radius of organs of the adult human body"**, tabulated for a total body of
 70,000 g. A "standard man" is a reference specification agreed by a committee,
 and the document's own title is *Report of Committee II*. The table gives no
 citation, sample count or dispersion for any row, while each tissue row of
-Table 7, on the facing page 150, carries a count in parentheses. Under the
-hierarchy at the head of this section, a consensus document that collects
-primary measurements without making one is **tier 2**.
+Table 7, on the facing page 150, carries a count in parentheses. Under
+§ "Source hierarchy: what may be cited as the authority for a value", a
+consensus document that collects primary measurements without making one is
+**tier 2**.
+
+**The book's model patient weighs 100 kg, which is why the material arrives in
+this project as fractions.** Page 56 picks that weight so that "the organ
+weights can also be read as per cent of total body weight". So Lerou and
+Booij's Table 6 of fractions is the book's own table divided by 100, not a
+normalization they performed. Nothing in the book states a 70 kg parameter set.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **Four of the ten rows in Lowe's figure 4.1b correspond to ICRP's Table 8
 closely enough to be an inheritance.** The comparison is at 100 kg, where his
@@ -396,7 +618,7 @@ volume and the stored 0.76 perfusion fraction is kidney + heart + brain + liver,
 at 8.6% of body weight. On ICRP's own rows those four organs are **5.36%, which
 is 3.75 L at 70 kg**, 38% below what is stored. **No stored value changes
 because of this, and none should.** Lumping the splanchnic bed into the liver
-compartment is ordinary modelling. `docs/MODEL.md` § "Tissue compartments" already treats
+compartment is ordinary modelling. `docs/MODEL.md` § "The reference adult" already treats
 the vessel-rich group as one lumped tissue. Nothing here is sourced to ICRP.
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.volume_l = 6 -->
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
@@ -437,20 +659,6 @@ References 19 and 20 give different flows for different compartments. Reference
 20 names Mapleson 1963, reference 9, only as the source of the model
 *concept*. The paragraphs below record what reading it found.
 
-**For developers.** The reference patient's data file is
-`src/anesthesia_sim/data/patients/reference_adult.json`, and the anesthesia
-machine's is `src/anesthesia_sim/data/machines/reference_circle_system.json`.
-
-The counts of stored-value rows in this section appear at its head and in the
-list of the thirty-one rows that adopt a source other than Gas Man. Recompute
-all of them with `python3 tools/source_tier_counts.py` rather than by hand. The
-script counts the stored values that each source is the authority for (the
-`authority_for` list of each `sources` entry), per data file and in total, and
-names the source behind every row. Each data file gives the tier of every source
-it lists. No check compares the counts in either place with the text, so they
-can go stale silently. Whoever changes a count must check that the sentence
-around it is still true.
-
 **Mapleson 1963, Lowe and Ernst's reference 9, closes the chain of sources.
 Their references 19 and 20 are its Table 1, lumped and relabelled, and most of
 its volumes come from their reference 26, an ICRP report.** Mapleson 1963 was
@@ -480,10 +688,9 @@ shunt: Values chosen merely to complete cardiac output"**. That row is 1,290 of
 the table.
 <!-- not-restated: 2.5 liters -->
 
-This model's whole representation of perfusion comes from one assumption in
-Mapleson's Appendix 1: "it has been thought legitimate to assume that **the
-blood flow to any region is a fixed fraction of the total cardiac output** from
-20 to 70 years of age."
+`docs/MODEL.md` § "Blood flow to the tissue groups" quotes the assumption in
+Mapleson's Appendix 1 on which this model's whole representation of perfusion
+rests.
 
 **The perfusion fractions this model runs on have no identified origin in any
 reference the book names for them.** Reference 26 has no flows at all, and the
@@ -516,60 +723,6 @@ changes because of these findings.**
 <!-- provenance: data/patients/reference_adult.json tissue_groups.muscle.volume_l = 33 -->
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 <!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
-<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
-
-Mapleson 1963 is one of the four documents read, but that does not make
-Mapleson the *Workbook's* source. The Workbook attributes nothing to Mapleson.
-Lowe and Ernst cite him for a table they collected, two links further up the
-chain.
-
-**The book's model patient weighs 100 kg, which is why the material arrives in
-this project as fractions.** Page 56 picks that weight so that "the organ
-weights can also be read as per cent of total body weight". So Lerou and
-Booij's Table 6 of fractions is the book's own table divided by 100, not a
-normalization they performed. Nothing in the book states a 70 kg parameter set.
-<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
-
-**The book's cardiac-output relation gives 4.84 L/min at 70 kg, against the
-5.0 L/min stored here.** Page 59, read at the source, gives the cardiac output
-for its worked prime dose as $`2M^{3/4}`$ dl/min, "or 63.25 dl" for the 100 kg
-patient. That is 0.2 times body mass to the three-quarter power in L/min. The
-stored 5.0 would need 73.1 kg. The worked value of 63.25 dl determines the
-exponent on its own, without reading a superscript off a scan. The stored
-cardiac output stays a fixed 5.0, and `docs/MODEL.md` § "Known limitations" gives the
-reasoning.
-<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
-<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
-
-**The cardiac-output relation is derived, not measured, and pages 17–19 show
-how.** Page 59 states $`2M^{3/4}`$ without citing anything. Chapter 2 builds the
-relation in three steps, and neither of its two constants is a cardiac-output
-measurement:
-
-- **Figure 2.2, page 17** plots oxygen consumption against body weight for
-  mammals from 0.03 kg to 8,000 kg. The plot is linear on log–log axes, and the
-  slope is given as "approximately 10 kg^(3/4)". The figure is reproduced by
-  permission from *Brody, S. Bioenergetics and Growth. Reinhold, New York,
-  1945*. It is an interspecies metabolic allometry, not a human study.
-- **Page 17** takes the arteriovenous oxygen content difference as "about 5 ml
-  of O₂/dl of blood", attributed to Guyton et al. (the chapter's reference 13).
-  Guyton et al. are also credited with concluding that kg^(3/4) "is probably a
-  better index of cardiac output than any other parameter, including surface
-  area". Chapter 2's reference list is outside the pages read, so that
-  citation is unresolved.
-- **Figure 2.4, page 19** does the arithmetic. kg^(3/4) × 10 gives O₂ use in
-  ml/min. O₂ use ÷ 5 gives cardiac output in dl/min, and the figure annotates
-  that divisor as "(a–v)DO₂ = 5 ml/dl". The figure also draws the two steps
-  combined, kg^(3/4) × 2 → $`\dot{Q}`$ in dl/min, which is page 59's constant.
-
-<!-- not-restated: 2.4 -->
-
-So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
-arteriovenous difference that is assumed constant across mammals. **4.84 L/min
-at 70 kg is therefore a derived interspecies extrapolation and must not be
-treated as a measured human cardiac output.** This matters in `docs/MODEL.md` § "Known
-limitations", the only place in that document that sets the figure beside
-Cattermole et al.'s measured median.
 <!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
 
 **Checked against the book itself, the Workbook's attribution survives for
@@ -617,6 +770,52 @@ authority a compilation, not a measurement. What the reading
 gains is an attribution checked against the document itself, and a known tier
 for the next link in the chain.
 
+#### The cardiac-output relation in Lowe and Ernst
+
+**The book's cardiac-output relation gives 4.84 L/min at 70 kg, against the
+5.0 L/min stored here.** Page 59, read at the source, gives the cardiac output
+for its worked prime dose as $`2M^{3/4}`$ dl/min, "or 63.25 dl" for the 100 kg
+patient. That is 0.2 times body mass to the three-quarter power in L/min. The
+stored 5.0 would need 73.1 kg. The worked value of 63.25 dl determines the
+exponent on its own, without reading a superscript off a scan. The stored
+cardiac output stays a fixed 5.0, and § "The evidence behind the known
+limitations" gives the reasoning.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
+
+**The cardiac-output relation is derived, not measured, and pages 17–19 show
+how.** Page 59 states $`2M^{3/4}`$ without citing anything. Chapter 2 builds the
+relation in three steps, and neither of its two constants is a cardiac-output
+measurement:
+
+- **Figure 2.2, page 17** plots oxygen consumption against body weight for
+  mammals from 0.03 kg to 8,000 kg. The plot is linear on log–log axes, and the
+  slope is given as "approximately 10 kg^(3/4)". The figure is reproduced by
+  permission from *Brody, S. Bioenergetics and Growth. Reinhold, New York,
+  1945*. It is an interspecies metabolic allometry, not a human study.
+- **Page 17** takes the arteriovenous oxygen content difference as "about 5 ml
+  of O₂/dl of blood", attributed to Guyton et al. (the chapter's reference 13).
+  Guyton et al. are also credited with concluding that kg^(3/4) "is probably a
+  better index of cardiac output than any other parameter, including surface
+  area". Chapter 2's reference list is outside the pages read, so that
+  citation is unresolved.
+- **Figure 2.4, page 19** does the arithmetic. kg^(3/4) × 10 gives O₂ use in
+  ml/min. O₂ use ÷ 5 gives cardiac output in dl/min, and the figure annotates
+  that divisor as "(a–v)DO₂ = 5 ml/dl". The figure also draws the two steps
+  combined, kg^(3/4) × 2 → $`\dot{Q}`$ in dl/min, which is page 59's constant.
+
+<!-- not-restated: 2.4 -->
+
+So $`0.2M^{3/4}`$ is Brody's mammalian metabolic allometry divided by an
+arteriovenous difference that is assumed constant across mammals. **4.84 L/min
+at 70 kg is therefore a derived interspecies extrapolation and must not be
+treated as a measured human cardiac output.** This matters in `docs/MODEL.md`
+§ "The reference adult", the only place in that document that sets the figure
+beside Cattermole et al.'s measured median.
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+
+#### The venous pool
+
 **The venous pool has a published counterpart, and it replaced Gas Man's
 1.0 L.** Davis and Mapleson's paper (*Br J Anaesth* 1981;53:399–405) was read
 at the source on 2026-09-07. It describes a standard man of 70 kg with a total
@@ -654,110 +853,7 @@ circuit rather than to tissue return. This shift is between a thirtieth and a te
 the gap it adds to.
 <!-- not-restated: 0.31 -->
 
-**Gas Man's 1.0 L is not an arterial compartment under a venous name.** Lerou
-and Booij's arterial fraction of 0.2 gives 0.98 L at their 4.9 L total,
-within 2% of Gas Man's 1.0 L, which suggested that reading. Davis and
-Mapleson's own arterial pool for an inhaled-anaesthetic model is 799 ml, which
-is 15.4% rather than 20%. So that coincidence does not survive the primary
-source. Their venous pool is the closer structural match, and the time
-constants nearly agree: 1222/6480 = 11.3 s, against Gas Man's 1.0/5.0 =
-12.0 s. That near agreement is a property of the time constant rather than of
-the volume. It is not evidence of a shared lineage, because nothing documents
-Gas Man as having taken anything from this paper.
-<!-- not-restated: 2 % -->
-
-The following table records every stored value. Each value is
-loaded from a versioned data file and validated against its schema, rather than
-written into the program. That file records full citations, definitions and
-reference conditions in its `sources` entries, and the table does not repeat
-them.
-
-Each row names the file and the exact key path that locates its value in that
-file, so a row traces to one stored value, not to a file that happens to
-contain a matching number. A check compares each row's key path and value with
-its file, as `docs/MODEL.md` § "How this document is held to the tree" describes. A row for a
-derived value states the stored value beside it. The tissue:blood coefficients
-are computed from the tissue:gas and blood:gas values when a file is loaded, so
-their rows name the key path of the stored tissue:gas value and show the
-division.
-
-| Parameter | Selected value | Unit | Source (data file · key path) |
-| --- | ---: | --- | --- |
-| Blood:gas partition coefficient (sevoflurane) | 0.65 | dimensionless | `data/agents/sevoflurane.json` · `blood_gas_partition_coefficient` |
-| Vessel-rich tissue:blood coefficient (sevoflurane) | 1.6923 (= 1.1 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
-| Muscle tissue:blood coefficient (sevoflurane) | 3.6923 (= 2.4 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.muscle` |
-| Fat tissue:blood coefficient (sevoflurane) | 52.3077 (= 34.0 / 0.65) | dimensionless | `data/agents/sevoflurane.json` · `tissue_gas_partition_coefficients.fat` |
-| Blood:gas partition coefficient (isoflurane) | 1.3 | dimensionless | `data/agents/isoflurane.json` · `blood_gas_partition_coefficient` |
-| Vessel-rich tissue:blood coefficient (isoflurane) | 1.6154 (= 2.1 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
-| Muscle tissue:blood coefficient (isoflurane) | 3.4615 (= 4.5 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.muscle` |
-| Fat tissue:blood coefficient (isoflurane) | 53.8462 (= 70.0 / 1.3) | dimensionless | `data/agents/isoflurane.json` · `tissue_gas_partition_coefficients.fat` |
-| Blood:gas partition coefficient (desflurane) | 0.42 | dimensionless | `data/agents/desflurane.json` · `blood_gas_partition_coefficient` |
-| Vessel-rich tissue:blood coefficient (desflurane) | 1.2857 (= 0.54 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.vessel_rich` |
-| Muscle tissue:blood coefficient (desflurane) | 2.3095 (= 0.97 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.muscle` |
-| Fat tissue:blood coefficient (desflurane) | 30.9524 (= 13.0 / 0.42) | dimensionless | `data/agents/desflurane.json` · `tissue_gas_partition_coefficients.fat` |
-| Reference patient weight | 70.0 | kg | `data/patients/reference_adult.json` · `weight_kg` |
-| Alveolar gas volume | 2.5 | L | `data/patients/reference_adult.json` · `alveolar_gas_volume_l` |
-| Venous blood-pool volume | 1.222 | L | `data/patients/reference_adult.json` · `venous_pool_volume_l` |
-| Vessel-rich tissue volume | 6.0 | L | `data/patients/reference_adult.json` · `tissue_groups.vessel_rich.volume_l` |
-| Muscle tissue volume | 33.0 | L | `data/patients/reference_adult.json` · `tissue_groups.muscle.volume_l` |
-| Fat tissue volume | 14.5 | L | `data/patients/reference_adult.json` · `tissue_groups.fat.volume_l` |
-| Vessel-rich flow fraction | 0.76 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.vessel_rich.perfusion_fraction` |
-| Muscle flow fraction | 0.18 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.muscle.perfusion_fraction` |
-| Fat flow fraction | 0.06 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.fat.perfusion_fraction` |
-| Default alveolar ventilation | 4.0 | L/min | `data/patients/reference_adult.json` · `default_alveolar_ventilation_l_min` |
-| Default cardiac output | 5.0 | L/min | `data/patients/reference_adult.json` · `default_cardiac_output_l_min` |
-| Breathing-circuit volume | 6.0 | L | `data/machines/reference_circle_system.json` · `circuit_volume_l` |
-| Default fresh gas flow | 4.0 | L/min | `data/machines/reference_circle_system.json` · `default_fresh_gas_flow_l_min` |
-| Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` · `max_delivered_concentration_percent` |
-| Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` · `max_delivered_concentration_percent` |
-| Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` · `max_delivered_concentration_percent` |
-| 1 MAC, single adult value with no age stated by its source (sevoflurane) | 2.0 | percent | `data/agents/sevoflurane.json` · `mac_percent` |
-| 1 MAC, single adult value with no age stated by its source (isoflurane) | 1.2 | percent | `data/agents/isoflurane.json` · `mac_percent` |
-| 1 MAC, single adult value with no age stated by its source (desflurane) | 6.0 | percent | `data/agents/desflurane.json` · `mac_percent` |
-| MAC-awake (sevoflurane) | 0.34 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.fraction_of_mac` |
-| MAC-awake standard deviation (sevoflurane) | 0.05 | fraction of 1 MAC | `data/agents/sevoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
-| MAC-awake (isoflurane) | 0.31 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.fraction_of_mac` |
-| MAC-awake standard deviation (isoflurane) | 0.05 | fraction of 1 MAC | `data/agents/isoflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
-| MAC-awake (desflurane) | 0.36 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.fraction_of_mac` |
-| MAC-awake standard deviation (desflurane) | 0.063 | fraction of 1 MAC | `data/agents/desflurane.json` · `mac_awake.standard_deviation_fraction_of_mac` |
-| Molar mass (sevoflurane) | 200.05 | g/mol | `data/agents/sevoflurane.json` · `molar_mass_g_mol` |
-| Molar mass (isoflurane) | 184.49 | g/mol | `data/agents/isoflurane.json` · `molar_mass_g_mol` |
-| Molar mass (desflurane) | 168.04 | g/mol | `data/agents/desflurane.json` · `molar_mass_g_mol` |
-| Liquid density at 20 °C (sevoflurane) | 1.5203 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.g_ml` |
-| Liquid density at 20 °C (isoflurane) | 1.5019 | g/mL | `data/agents/isoflurane.json` · `liquid_density.g_ml` |
-| Liquid density at 20 °C (desflurane) | 1.4651 | g/mL | `data/agents/desflurane.json` · `liquid_density.g_ml` |
-| Liquid density standard deviation (sevoflurane) | 0.0008 | g/mL | `data/agents/sevoflurane.json` · `liquid_density.standard_deviation_g_ml` |
-| Liquid density standard deviation (isoflurane) | 0.0006 | g/mL | `data/agents/isoflurane.json` · `liquid_density.standard_deviation_g_ml` |
-| Liquid density standard deviation (desflurane) | 0.0004 | g/mL | `data/agents/desflurane.json` · `liquid_density.standard_deviation_g_ml` |
-| Liquid density measurement temperature (sevoflurane) | 20.0 | °C | `data/agents/sevoflurane.json` · `liquid_density.measured_at_celsius` |
-| Liquid density measurement temperature (isoflurane) | 20.0 | °C | `data/agents/isoflurane.json` · `liquid_density.measured_at_celsius` |
-| Liquid density measurement temperature (desflurane) | 20.0 | °C | `data/agents/desflurane.json` · `liquid_density.measured_at_celsius` |
-
-The reference patient weight identifies which patient the volumes and flows
-describe, and no equation in this model uses it. The compartment volumes and
-flows are the source's absolute values for a 70 kg adult, not quantities scaled
-from a weight, so changing the weight alone would not rescale them. The litres
-are Gas Man's form of the data. The Workbook names Lowe and Ernst as its
-source, and that book prints the same material as per cent of a 100 kg body,
-with cardiac output an allometric function of mass.
-<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
-
-**The vessel-rich flow fraction is 0.76 here and 75.8% in one of the two
-reachable publications of the same parameter set.** Weber et al. 2021's Table 2
-prints 76.00%. The stored value comes from the
-Workbook's own page-168 table, which gives the vessel-rich relative flow as
-0.76 (read at the source on 2026-09-06). The twelve partition coefficients come
-from De Wolf et al. 2012. Their Table 1 prints 75.8, and 75.8 + 18 + 6 = 99.8.
-The model requires the flow fractions to sum to 1 within the tolerance that
-`docs/MODEL.md` § "Tissue groups" gives, so the published set could not be stored as printed,
-even if it were preferred. The difference changes the vessel-rich time constant
-by 0.26%, below the resolution of anything a learner reads off the curve. The
-De Wolf entry in the reference patient's data file (`reference_adult.json`)
-records the difference in full.
-<!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
-
-There is no "arterial blood-pool volume" row, because arterial blood has no
-volume of its own in this model (see `docs/MODEL.md` § "Model boundary").
+#### The circuit volume and the default fresh gas flow
 
 **The circuit volume and the default fresh gas flow adopt no source of any
 tier.** The reference patient adopts no primary source but does adopt tier-3
@@ -765,40 +861,42 @@ ones, so these two machine rows have the wider gap. Both describe the
 apparatus in front of the patient, so they are stored in a third kind of
 parameter file, `data/machines/reference_circle_system.json`.
 
-- **Circuit volume, 6.0 L.** The Workbook's own table on page 168 gives 8.0 L.
-  De Wolf et al. 2012 give the same 8 L in their Methods, for the simulations that
-  used the coefficients in their Table 1. The 6.0 L value came in with the first
-  circuit model on 2026-08-22, and no record gives a reason for choosing it. The
-  project owner ruled on 2026-09-01 that the exact value is not critical, so 6.0 L
-  was kept and not changed to 8.0 L. The smaller volume changes how much of the
-  early rise in inspired concentration comes from the machine itself. At the same
-  flow, $`\tau_C = V_C/\dot V_F`$ is 90 s here and 120 s at 8.0 L, so the
-  apparatus lag is 25% shorter. That lag is the part of the inspired curve that a
-  learner is most likely to attribute to uptake. So a run that reproduces a
-  published Gas Man trajectory has to set the circuit volume to 8.0 L explicitly,
-  and cannot assume that value. Like every circuit volume in this model, the
-  6.0 L is one total for the apparatus and the patient circuit together
-  (`docs/MODEL.md` § "Breathing circuit"). No source says how it divides between the two.
-  <!-- derived: 90 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
-- **Default fresh gas flow, 4.0 L/min.** No published counterpart for this
-  value exists in any source this project has reached. The Workbook's
-  parameter table gives the circuit row a volume and no flow, and describes
-  its interface defaults without numbers. The two Gas Man simulation studies
-  read here chose flows for their own purposes (De Wolf et al. used 1 L/min,
-  and Weber et al. used 10 L/min for washout). The value is a **teaching
-  default, not a clinical recommendation** (project owner, 2026-09-20,
-  ratified, over lowering it to match contemporary low-flow practice). It is
-  well inside the supported range of flows. It puts the circuit time constant
-  at 90 s: long enough for the machine lag to show as a distinct phase of the
-  early rise, and short enough to resolve within the first minutes of a
-  teaching run. The data file labels this a design rationale, not a
-  measurement. **The default is also the flow a run starts at when a machine
-  profile states none**, because no surveyed machine publishes a startup flow.
-  The authority for that fallback is this rationale, not a source. The
-  rationale applies to the stored 6.0 L circuit. A smaller circuit gives a
-  shorter lag at the same flow, as § "What real workstations hold" below
-  computes.
+**Circuit volume, 6.0 L.** The Workbook's own table on page 168 gives 8.0 L.
+De Wolf et al. 2012 give the same 8 L in their Methods, for the simulations that
+used the coefficients in their Table 1. The 6.0 L value came in with the first
+circuit model on 2026-08-22, and no record gives a reason for choosing it. It
+was kept rather than changed to 8.0 L, because the exact value is not critical
+(project owner, 2026-09-01, `PL-4YY1`). The smaller volume changes how much of
+the early rise in inspired concentration comes from the machine itself. At the
+same flow, $`\tau_C = V_C/\dot V_F`$ is 90 s here and 120 s at 8.0 L, so the
+apparatus lag is 25% shorter. That lag is the part of the inspired curve that a
+learner is most likely to attribute to uptake. So a run that reproduces a
+published Gas Man trajectory has to set the circuit volume to 8.0 L explicitly,
+and cannot assume that value. Like every circuit volume in this model, the
+6.0 L is one total for the apparatus and the patient circuit together
+(`docs/MODEL.md` § "Breathing circuit"). No source says how it divides between
+the two.
+<!-- derived: 90 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
 
+**Default fresh gas flow, 4.0 L/min.** No published counterpart for this value
+exists in any source this project has reached. The Workbook's parameter table
+gives the circuit row a volume and no flow, and describes its interface
+defaults without numbers. The two Gas Man simulation studies read here chose
+flows for their own purposes (De Wolf et al. used 1 L/min, and Weber et al.
+used 10 L/min for washout). The value is a **teaching default, not a clinical
+recommendation** (project owner, 2026-09-20, ratified, over lowering it to
+match contemporary low-flow practice). It is well inside the supported range of
+flows. It puts the circuit time constant at 90 s: long enough for the machine
+lag to show as a distinct phase of the early rise, and short enough to resolve
+within the first minutes of a teaching run. The data file labels this a design
+rationale, not a measurement. **The default is also the flow a run starts at
+when a machine profile states none**, because no surveyed machine publishes a
+startup flow. The authority for that fallback is this rationale, not a source.
+The rationale applies to the stored 6.0 L circuit. A smaller circuit gives a
+shorter lag at the same flow, as § "What real workstations hold" below
+computes.
+<!-- derived: 90 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 <!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6 -->
 <!-- not-restated: 10 L/min -->
@@ -807,7 +905,7 @@ parameter file, `data/machines/reference_circle_system.json`.
 circuit-volume row rather than replacing it.** Targ, Yasuda and Eger measured a
 conventional circle system by water filling at **9860 ml** (*Anesth Analg*
 1989 Aug;69(2):218–25, PMID 2764290). The same study lies behind the
-inert-circuit entry under `docs/MODEL.md` § "Known limitations". It was read in full text on
+inert-circuit entry under `docs/MODEL.md` § "Absorption by the circuit". It was read in full text on
 2026-09-13 from the private reference corpus. The value is not adopted, because
 the measured system included a latex reservoir bag at the Y-piece **standing in
 for the patient's lungs**. Adopting 9.86 L as the circuit volume would
@@ -904,106 +1002,9 @@ make.
 <!-- derived: 12 minutes from data/machines/reference_circle_system.json circuit_volume_l = 6.0 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
-**Two papers cited alongside Kalmar et al. in the survey do not bear on
-practice, and the survey says so.** Candries et al. randomised flows of
-0.2 to 6 L/min in 28 patients, as the protocol of a Gas Man validation study.
-Hoffmann et al. ran 0.3 to 6 L/min *in vitro* into a test lung, and describe
-those settings as reflecting clinical conditions. That range contains 4, 5 and
-6 L/min. A study's chosen flow range is not a report of practice. Treating it
-as one is the same error that the De Wolf entry guards against for its 1 L/min
-elsewhere in this section.
-
-**Dividing tissue:gas by blood:gas is the literature's own operation, and one
-published table reproduces its results.** Eger and Saidman state the operation
-in these words: "a tissue/blood partition coefficient for a given anesthetic is
-calculated by dividing a tissue/gas partition coefficient by the blood/gas
-partition coefficient for that anesthetic" (p. 1023). Yasuda, Targ and Eger
-computed their own tissue:blood table the same way, as the next subsection
-records. Both papers were read in full text from the private reference corpus.
-Eger and Saidman's p. 1023 was read on 2026-10-25. The full citation of Eger
-and Saidman is in `docs/MODEL.md` § "Known limitations".
-
-Baker and Farmery's 2011 review publishes the results as well as the
-operation. Its Table 2 (p. 572) prints two sets of tissue:blood coefficients
-for the vessel-rich, muscle and fat groups. The set that matches the derived
-rows is the one in brackets, which the table's footnote d attributes to Eger
-and Shafer's 2005 tutorial. Desflurane has only that set. The table was read in
-full text from the private reference corpus on 2026-10-25. In each cell below,
-the first figure is the derived value from the parameter table above, and the
-second is Baker's bracketed figure:
-
-| | vessel-rich | muscle | fat |
-| --- | ---: | ---: | ---: |
-| sevoflurane | 1.6923 vs 1.69 | 3.6923 vs 3.69 | 52.3077 vs 52.3 |
-| isoflurane | 1.6154 vs 1.62 | 3.4615 vs 3.46 | 53.8462 vs 53.8 |
-| desflurane | 1.2857 vs 1.29 | 2.3095 vs 2.31 | 30.9524 vs 30.9 |
-
-<!-- derived: 1.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1, blood_gas_partition_coefficient = 0.65 -->
-<!-- derived: 3.6923 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.muscle = 2.4, blood_gas_partition_coefficient = 0.65 -->
-<!-- derived: 52.3077 from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34, blood_gas_partition_coefficient = 0.65 -->
-<!-- derived: 1.6154 from data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1, blood_gas_partition_coefficient = 1.3 -->
-<!-- derived: 3.4615 from data/agents/isoflurane.json tissue_gas_partition_coefficients.muscle = 4.5, blood_gas_partition_coefficient = 1.3 -->
-<!-- derived: 53.8462 from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70, blood_gas_partition_coefficient = 1.3 -->
-<!-- derived: 1.2857 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
-<!-- derived: 2.3095 from data/agents/desflurane.json tissue_gas_partition_coefficients.muscle = 0.97, blood_gas_partition_coefficient = 0.42 -->
-<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
-
-Baker's bracketed blood:gas values are the three that the agent files store:
-0.65 for sevoflurane, 1.3 for isoflurane and 0.42 for desflurane. Eight of the
-nine tissue:blood figures are the derived value rounded to Baker's printed
-precision. Desflurane's fat coefficient is the exception: 30.9524 rounds to
-31.0, and Baker prints 30.9. The difference is 0.05, or 0.17%, in the last
-printed digit. That is too small to come from a different operation, and Baker
-does not say how the figures were rounded.
-<!-- not-restated: 0.05 -->
-<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
-<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
-<!-- provenance: data/agents/desflurane.json blood_gas_partition_coefficient = 0.42 -->
-<!-- derived: 30.9524 from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13, blood_gas_partition_coefficient = 0.42 -->
-
-**The agreement with Baker's table checks that the division is the right
-operation and was done correctly, not that the coefficients are right.** It
-shows that the stored tissue:gas values, divided by the stored blood:gas
-values, give the coefficients as the literature publishes them, which confirms
-the operation and its arithmetic. It is not a second measurement. Eger and
-Shafer's tutorial ran its simulations in Gas Man, according to its abstract.
-The stored tissue:gas values are Gas Man's figures for Yasuda, Targ and Eger's
-measurements, and the stored blood:gas values are De Wolf et al.'s. In all
-seven cells where Gas Man's figure differs from Yasuda's mean, Baker's
-bracketed figure follows Gas Man's. Isoflurane fat is the clearest: 53.8 is
-70.0 divided by 1.3, where Yasuda's 64.2 would give 49.4. So the match is one
-parameter set divided twice, not two sources agreeing. Eger and Shafer's paper
-is not held here, so it is not known which of the two took its figures from
-the other. A reader should take the table as evidence that the division is the
-right operation, and not as evidence that the coefficients are right.
-`docs/MODEL.md` § "Known limitations" says how far other laboratories' coefficients differ
-from these.
-<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70 -->
-<!-- provenance: data/agents/isoflurane.json blood_gas_partition_coefficient = 1.3 -->
-
-**Baker's other set of coefficients is not a check on the division.** The
-unbracketed figures are "Data from Fiserova-Bergerova and Diaz (26)", a 1986
-paper. They come with their own blood:gas values, 0.6 for sevoflurane and 1.4
-for isoflurane, and they differ from the derived rows by far more than
-rounding. `docs/MODEL.md` § "Known limitations" gives the differences.
-
-The citations of Baker and Farmery 2011, Eger and Shafer 2005 and
-Fiserova-Bergerova and Diaz 1986 were checked in PubMed on 2026-10-25 (PMIDs
-23737195, 16115976 and 3721592). Only Baker and Farmery was read in full text,
-and its full citation is in `docs/references/README.md`.
-
-**For developers.** The patient weight (`ReferenceAdultParameters.weight_kg`) is
-loaded and checked to be positive and finite, and nothing else reads it.
-
-Two checks each reject a set of flow fractions whose sum differs from 1.0 by
-more than the tolerance in `docs/MODEL.md` § "Tissue groups" (`FLOW_FRACTION_TOLERANCE`). One
-runs on the reference patient's data file
-(`_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one`), and the other
-runs when the patient's compartments are built (`PatientCompartments.__post_init__`).
-The tolerance stays as it is, because one loose enough to admit De Wolf's 99.8%
-would also admit a transcription error silently.
-
-The fallback starting flow comes from a constant in `core/circuit.py`
+**For developers.** The anesthesia machine's data file is
+`src/anesthesia_sim/data/machines/reference_circle_system.json`. The fallback
+starting flow comes from a constant in `core/circuit.py`
 (`TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN`). One test checks that fallback
 (`test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teaching_default`),
 and another fails if the constant and the shipped machine file's value ever
@@ -1013,18 +1014,13 @@ A design document records the decision not to fold gas-path layout into an
 effective volume (`docs/machine-abstraction.md`), and the roadmap says when
 that decision is revisited (`ROADMAP.md` planned-milestone item 39).
 
-The tissue:blood coefficients are computed by properties of the class for an
-agent's parameters (`AgentParameters`, in `core/parameters.py`). One test in
-`tests/unit/test_parameters.py`, `test_derives_tissue_blood_coefficients`,
-checks the division of tissue:gas by blood:gas, for sevoflurane.
-
 ### v0.2.0: isoflurane and desflurane
 
 Sevoflurane, isoflurane and desflurane share one set of equations, compartments and reference
-adult patient (`docs/MODEL.md` § "Governing equations"). An agent enters those equations only through its four
+adult patient (`docs/MODEL.md` § "Equations"). An agent enters those equations only through its four
 partition coefficients: one blood:gas and three tissue:gas. Its other stored values, such as its
 MAC and its vaporizer's maximum, set a control or convert a displayed amount, and the equations do
-not use them (§ "Delivery-limit and MAC parameters", `docs/MODEL.md` § "Agent amount"). All twelve coefficients
+not use them (§ "Delivery-limit and MAC parameters", § "Agent amount"). All twelve coefficients
 come from one table, so the three agents' values can be compared directly. The table is De Wolf
 et al. 2012, Table 1, from the paper already cited for sevoflurane.
 
@@ -1044,22 +1040,20 @@ cohort*. Any systematic error in that technique therefore affects every agent al
 are shown as multiples of MAC to compare agents, an error that all three share cannot make one
 agent look different from another.
 
-The three blood:gas values can be compared only because they come from one published table. They
-are Gas Man's set, at tier 3 of the source grades in § "Source hierarchy".
-
 The argument from a shared source covers the partition coefficients only. It does not cover the
 stored MAC values, which differ from Mapleson's age-40 values in opposite directions for sevoflurane
-and desflurane. § "Delivery-limit and MAC parameters" gives the differences.
+and desflurane. § "The stored MAC" gives the differences.
+
+#### Where the tissue:gas coefficients come from
 
 **Gas Man's Workbook says the nine tissue:gas coefficients come from Yasuda, Targ and Eger, and
 the paper confirms it.** The note under the Workbook's page-168 parameter table reads "Values for
 isoflurane, halothane, desflurane and sevoflurane are taken from Yasuda, Targ and Eger". That
 note alone could not raise the coefficients' source grade, because a program's statement about its
 own sources is not independent evidence (§ "Republication does not promote a value between tiers").
-The note had two further weaknesses. The Workbook's reference 45 is the 1988 ASA annual-meeting
-abstract `Anesthesiology 69:A615`, not Yasuda, Targ and Eger's 1989 *Anesthesia & Analgesia*
-paper. And the same Workbook paragraph credits sevoflurane's values to Yasuda and, one sentence
-later, to "the package insert and Abbott data".
+The Workbook's reference 45 is also the 1988 ASA annual-meeting abstract
+`Anesthesiology 69:A615`, not Yasuda, Targ and Eger's 1989 *Anesthesia &
+Analgesia* paper.
 
 So the 1989 paper itself was read in full on 2026-09-13. Its Table 1 reports tissue:**gas**
 coefficients, the quantity that the model stores. They come from 14 autopsy specimens, 6 to 10
@@ -1088,38 +1082,39 @@ All nine stored values lie within 0.71 SD of the measured mean. Two match it exa
 within 1% of it: isoflurane vessel-rich (+0.5%) and sevoflurane muscle (+0.8%). The other five
 differ from it by 2.3% to 9.0%, the most for isoflurane fat, which lies above the mean. Values from
 another source could not match this closely by chance, so the comparison confirms the Workbook's
-attribution. For sevoflurane, it also settles the Workbook's contradiction: the three stored values
-match this paper, not a package insert.
+attribution. The same Workbook paragraph credits sevoflurane's values to Yasuda and, one sentence
+later, to "the package insert and Abbott data". The comparison settles that contradiction: the
+three stored sevoflurane values match this paper, not a package insert.
 
-Two further points matter for the model:
+**The vessel-rich coefficient is Yasuda's *brain* value.** Table 1 gives brain,
+heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25, 0.78).
+Sevoflurane's stored 1.1 is 4.3% below its brain value and 0.2% above the
+equal-weight mean of its four organ values, 1.0975, so sevoflurane alone does
+not show whether Gas Man used the brain value or the mean. Isoflurane's stored
+2.1 is 0.5% above its brain value, 2.09, and desflurane's stored 0.54 equals
+its brain value (the table above). These two matches indicate that the
+vessel-rich compartment uses the brain values, and a learner reading its trace
+is reading a brain trace.
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
 
-- **The vessel-rich coefficient is Yasuda's *brain* value.** Table 1 gives
-  brain, heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25,
-  0.78). Sevoflurane's stored 1.1 is 4.3% below its brain value and 0.2% above
-  the equal-weight mean of its four organ values, 1.0975, so sevoflurane alone
-  does not show whether Gas Man used the brain value or the mean. Isoflurane's
-  stored 2.1 is 0.5% above its brain value, 2.09, and desflurane's stored 0.54
-  equals its brain value (the table above). These two matches indicate that
-  the vessel-rich compartment uses the brain values, and a learner reading its
-  trace is reading a brain trace.
-  <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
-  <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
-  <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
-- **Yasuda's paper is not a source for the stored blood:gas values.** It
-  measured none. Its Table 2 tissue:blood figures are calculated "by dividing
-  the tissue/gas partition coefficient by the published values for the
-  blood/gas coefficients adjusted for age". So Table 1 ÷ Table 2 recovers the
-  age-adjusted blood:gas of the 65.8-year-old cohort. Those recovered values
-  are 4.9–9.4% above the three round figures stored here.
+**Yasuda's paper is not a source for the stored blood:gas values.** It measured
+none. Its Table 2 tissue:blood figures are calculated "by dividing the
+tissue/gas partition coefficient by the published values for the blood/gas
+coefficients adjusted for age". So Table 1 ÷ Table 2 recovers the age-adjusted
+blood:gas of the 65.8-year-old cohort. Those recovered values are 4.9–9.4%
+above the three round figures stored here.
+
+#### Why the stored values were kept
 
 **For the nine tissue:gas coefficients, the source grade changed and the stored values did not**
-(project owner, 2026-09-13). These were two separate decisions.
+(project owner, 2026-09-13, `PL-FN5F`).
 
 *Adopted.* The nine tissue:gas coefficients trace back to a primary human measurement. So for all
 three agents, the recorded source of these coefficients is now Yasuda, Targ and Eger, at tier 1,
 the grade for a primary measurement. De Wolf et al. stays the source for the three blood:gas
-values, which this study did not measure. Only the recorded source and grade changed. No number
-did.
+values, which this study did not measure.
 
 *Declined.* Storing Yasuda's published figures instead of Gas Man's for the nine coefficients
 would change seven of the nine stored values, and the time constant of each compartment they
@@ -1155,9 +1150,11 @@ coefficients, read `docs/VERIFICATION.md` § "Desflurane's residual, and why the
 
 This section specifies two of an agent's stored values that play no part in the model's
 equations: its maximum delivered concentration and its MAC. A value that a clinician could read or
-act on is safety-critical whether or not the model uses it. `docs/MODEL.md` § "Agent amount" specifies the
+act on is safety-critical whether or not the model uses it. § "Agent amount" gives the sources of the
 agent's molar mass and liquid density, and `docs/INTERFACE.md` § "MAC-awake as a chart reference"
 specifies its MAC-awake.
+
+#### The maximum delivered concentration
 
 The maximum delivered concentration (`max_delivered_concentration_percent`) is the highest
 concentration that the agent's real vaporizer can deliver: sevoflurane 8%, isoflurane 5% and
@@ -1181,16 +1178,43 @@ and Datex-Ohmeda Isotec 5 for isoflurane, and the Tec 6 for desflurane. So desfl
 says how far a Tec 6 dial turns. Another desflurane vaporizer, or an injector that delivers into
 the circle, is not bound by it.
 
-**These vaporizers work in two different ways.** The sevoflurane and isoflurane vaporizers are
-variable-bypass vaporizers: the dial splits the fresh gas between a bypass and a chamber in which
-the gas flows over the liquid agent and leaves saturated with vapour. The Tec 6 is not a
-variable-bypass vaporizer. Dosch and Tharp call it a gas–vapour blender, which heats desflurane
-and adds pure vapour to the fresh gas (`docs/MODEL.md` § "Known limitations" gives their full
-citation). Johnston et al. 1994, the source of desflurane's maximum, describe it in their abstract
-as "an electrically heated, pressurized, electromechanically coupled dual-circuit blender". The two
-designs behave differently away from sea level (`docs/MODEL.md` § "Known limitations"). The model fixes
-ambient pressure at one atmosphere, 760 mmHg (`docs/MODEL.md` § "Assumptions"), so it does not need to know which
-design each maximum comes from.
+**For developers.** In the simulation code, the breathing circuit (`BreathingCircuit`) carries
+the maximum delivered concentration for the agent in use. The circuit itself **must reject** any
+delivered concentration above that maximum, at construction and at every later change, and must
+not lower it to the maximum instead. `test_rejects_construction_above_the_vaporizer_maximum` and
+`test_rejects_delivered_concentration_above_the_vaporizer_maximum` in `tests/unit/test_circuit.py`
+check both refusals, and `test_accepts_a_delivered_concentration_of_zero` checks that zero is
+accepted. The function that sets up the uptake simulation for an agent
+(`AgentUptakeSystem.for_agent()`) gives the circuit that maximum and sets the dial's starting
+position from the stored MAC. So the simulation code, not the controller, makes the starting
+position agent-specific.
+
+Every agent file **must** declare a MAC (`mac_percent`) that its own vaporizer can deliver. A
+cross-field check in `core/parameters.py` rejects an agent file that does not
+(`_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()`). This MAC check runs after every
+field is populated, so the order in which the fields are declared cannot defeat it.
+`test_rejects_mac_percent_exceeding_max_delivered_concentration_percent` in
+`tests/unit/test_parameters.py` checks it.
+
+The maximum is stored with the agent for two reasons:
+
+- The reference breathing system in `data/machines/reference_circle_system.json` is not a
+  machine and names no vaporizer, so a per-machine entry would only repeat the agent file's
+  number.
+- The MAC check needs the maximum and the MAC in the same file.
+
+When a machine profile mounts a vaporizer whose maximum differs from the agent file's, the
+maximum moves to the profile's per-agent limit, which `docs/machine-abstraction.md` names
+`agent_limits`. Two things move with it:
+
+- The MAC check moves to wherever the machine and the agent are paired. Otherwise a machine
+  whose limit is below an agent's MAC would reject the run at construction.
+- The code in `AgentUptakeSystem.for_agent()` that reads the maximum moves.
+
+The controller reads the maximum from the circuit, and the interface draws its dial from that
+value, so the dial follows the move.
+
+#### The stored MAC
 
 The stored MAC (`mac_percent`) is a single adult MAC. Its source, De Wolf et al. 2012, gives no age
 for it. The age-referenced values are Mapleson's MACs at age 40, which the table below compares
@@ -1200,20 +1224,6 @@ recognizable clinical anchor. Second, it is the divisor for the display in MAC m
 displayed compartment value and the chart's second axis are divided by it. The simulator refuses
 any agent whose own vaporizer cannot deliver its 1 MAC, because every run starts the dial
 at 1 MAC.
-
-No governing equation reads the stored MAC (`mac_percent`). The simulation code (`core/`) reads
-it in two places: to refuse an agent whose MAC is above its vaporizer maximum, and to set the
-dial's opening position. Specifically, the model does **not**:
-
-- compute MAC-hours or an age-adjusted MAC, or sum MAC fractions across agents;
-- model an effect-site compartment or any depth-of-anesthesia endpoint; or
-- imply that an alveolar concentration equal to the stored MAC corresponds to any particular
-  clinical state in a particular patient.
-
-Presenting a single-agent alveolar concentration as if it indicated anesthetic depth would be
-exactly the plausible but wrong clinical inference that the project's safety standard forbids. So
-the display shows a *ratio to* 1 MAC, written `×MAC`, and never a depth
-(`docs/INTERFACE.md` § "MAC multiples as a display unit").
 
 **The stored MAC carries clinical weight.** An error in it would shift every value shown in MAC
 multiples, not only a run's starting point.
@@ -1240,7 +1250,8 @@ stored values with them.
 Because the errors run in opposite directions for sevoflurane and desflurane, a comparison of the
 two in MAC multiples differs by about 22% between the stored MACs and Mapleson's. Comparing
 agents is what the MAC-multiple display exists for. The 22% is larger than the confidence limits
-of Mapleson's values. It is a limitation of the display, listed in `docs/MODEL.md` § "Known limitations".
+of Mapleson's values. It is a limitation of the display, which `docs/MODEL.md` § "MAC multiples"
+states.
 
 **The stored MACs are kept** (project owner, 2026-09-04, ratified, over adopting Mapleson's
 age-40 values). Mapleson's values are not adopted, for three reasons:
@@ -1260,42 +1271,741 @@ No planned milestone moves the MAC to a primary measurement. `ROADMAP.md`'s
 planned-milestone item 30 moves it to Mapleson's age-40 values, and item 31
 plans a primary-literature set of partition coefficients beside the stored one.
 
-**For developers.** In the simulation code, the breathing circuit (`BreathingCircuit`) carries
-the maximum delivered concentration for the agent in use. The circuit itself **must reject** any
-delivered concentration above that maximum, at construction and at every later change, and must
-not lower it to the maximum instead. The function that sets up the uptake simulation for an agent
-(`AgentUptakeSystem.for_agent()`) gives the circuit that maximum and sets the dial's starting
-position from the stored MAC. So the simulation code, not the controller, makes the starting
-position agent-specific.
-
-Every agent file **must** declare a MAC (`mac_percent`) that its own vaporizer can deliver. A
-cross-field check in `core/parameters.py` rejects an agent file that does not
-(`_AgentPayload._mac_percent_must_not_exceed_vaporizer_max()`). This MAC check runs after every
-field is populated, so the order in which the fields are declared cannot defeat it.
-
-Because the stored MAC divides every displayed compartment value, a change to it falls under the
-safety-critical standard in `CLAUDE.md`. The list of sources in each agent's file (`sources`)
+**For developers.** Because the stored MAC divides every displayed compartment value, a change to
+it falls under the safety-critical standard in `CLAUDE.md`. The list of sources in each agent's file (`sources`)
 records the citation, the tier, the Mapleson value that was not adopted, and how far the stored
 value differs from it.
 
-The maximum is stored with the agent for two reasons:
 
-- The reference breathing system in `data/machines/reference_circle_system.json` is not a
-  machine and names no vaporizer, so a per-machine entry would only repeat the agent file's
-  number.
-- The MAC check needs the maximum and the MAC in the same file.
+## Agent amount
 
-When a machine profile mounts a vaporizer whose maximum differs from the agent file's, the
-maximum moves to the profile's per-agent limit, which `docs/machine-abstraction.md` names
-`agent_limits`. Two things move with it:
+Every compartment stores its agent as an equivalent gas volume, in litres of
+pure agent gas at one reference condition: **20 °C and 760 mmHg, dry**. At that
+condition the ideal-gas molar volume is 24.055 L/mol. The condition defines the
+unit only. It does not mean that any of the agent is physically at 20 °C and
+760 mmHg. $`M_x`$ is the equivalent gas volume of the agent stored in
+compartment $`x`$.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
-- The MAC check moves to wherever the machine and the agent are paired. Otherwise a machine
-  whose limit is below an agent's MAC would reject the run at construction.
-- The code in `AgentUptakeSystem.for_agent()` that reads the maximum moves.
+**The reference condition matters only when an amount is converted out of the
+unit**, into moles, mass, or the millilitres of liquid that a vaporizer is filled
+from. Every governing equation works with dimensionless fractions and physical
+volumes, and every partition coefficient is a ratio. So the condition changes no
+concentration curve, mass balance or displayed concentration, and no other
+number under `docs/MODEL.md` § "Equations", which includes its conservation of
+agent, or under `docs/INTERFACE.md` § "Minimum displayed outputs". The ideal-gas
+molar volume is 25.450 L/mol at
+37 °C, so declaring 37 °C instead would change each converted amount by a
+factor of 1.058.
 
-The controller reads the maximum from the circuit, and the interface draws its dial from that
-value, so the dial follows the move.
+**Three reasons favour a 20 °C reference condition.**
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
-Until a profile mounts such a vaporizer, the circuit and the dial read the same number from the
-same file.
+1. **The published vapour-to-liquid constants are 20 °C constants.** The
+   consumption literature quotes one number per agent, the vapour volume
+   obtained from 1 mL of liquid. Biro gives isoflurane 195 mL, sevoflurane
+   184 mL and desflurane 210 mL. The same number can be derived from the
+   liquid's measured density, its molar mass and the molar volume. At 20 °C the
+   derivation reproduces all three within 0.7 %. At 37 °C it runs 5.1–6.3 %
+   high:
 
+   | Agent | Liquid density at 20 °C, g/mL | Molar mass, g/mol | Derived mL vapour per mL liquid, 20 °C | Biro's constant | Derived, 37 °C |
+   | --- | --- | --- | --- | --- | --- |
+   | Sevoflurane | 1.5203 | 200.05 | 182.8 | 184 | 193.4 |
+   | Isoflurane | 1.5019 | 184.49 | 195.8 | 195 | 207.2 |
+   | Desflurane | 1.4651 | 168.04 | 209.7 | 210 | 221.9 |
+
+   The densities are those of Laster, Fang and Eger, measured in four 50-mL
+   volumetric flasks at 20 °C, with a temperature coefficient of
+   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C. The molar masses are formula
+   masses, which the ChEMBL chemistry database gives to two decimals.
+
+   A model that declared 37 °C would either convert its 37 °C litres with 20 °C
+   constants, or print consumption figures 5.5 % below the published ones.
+   That 5.5 % is $`1 - 1/1.058`$, the same for every agent. For sevoflurane,
+   1 L of vapour comes from 5.47 mL of liquid at 20 °C, and would come from
+   5.17 mL at 37 °C.
+
+2. **A consumption figure is converted from amounts of fresh gas, and fresh gas
+   is at room temperature.** The delivered amount $`M_{\mathrm{delivered}}`$
+   and the exhausted amount $`M_{\mathrm{exhausted}}`$ both accumulate from
+   $`\dot V_F`$, the fresh gas flow at the common gas outlet. That flow is
+   carrier gas plus the vapour that the vaporizer added. It is on the machine
+   side of the patient, at operating-room temperature, not at 37 °C. A cost
+   or waste figure is computed from those two amounts (`ROADMAP.md`
+   "Planned milestones" item 28). Declaring 20 °C makes them exact. Declaring
+   37 °C would leave them approximate, and would need a correction from room
+   to body temperature on $`\dot V_F`$. That correction would change the
+   governing equations, not just a label.
+
+3. **Gas Man's own constants are 20 °C constants, and its litres carry no
+   condition at all.** This model takes its partition coefficients, MACs and
+   reference patient from Gas Man (`docs/PARAMETERS.md` § "Where this project stands"), so its amounts follow
+   Gas Man's arithmetic. A different reference condition would make this
+   model's litre and Gas Man's litre different quantities, although every
+   parameter behind them is shared.
+
+   Gas Man states a condition in one place only, the line
+   `Volatility=209 Vapor/Liquid volume ratio (20'C)` in its settings file,
+   `GASMAN.INI`. It states none for the litres of uptake and of delivered agent
+   that it displays. This model likewise uses the condition only where vapour is
+   converted to liquid. The 20 °C derivation reproduces all five of Gas Man's
+   printed vapour-to-liquid constants within 0.35 %, and the 37 °C derivation
+   runs 5.6–6.2 % high:
+
+   | Agent | Gas Man | Derived, 20 °C | Derived, 37 °C |
+   | --- | --- | --- | --- |
+   | Halothane | 228 | 227.7 (−0.15 %) | 240.9 (+5.6 %) |
+   | Enflurane | 198 | 198.6 (+0.29 %) | 210.1 (+6.1 %) |
+   | Isoflurane | 196 | 195.8 (−0.09 %) | 207.2 (+5.7 %) |
+   | Sevoflurane | 183 | 182.8 (−0.10 %) | 193.4 (+5.7 %) |
+   | Desflurane | 209 | 209.7 (+0.35 %) | 221.9 (+6.2 %) |
+
+   The table adds halothane and enflurane to the three agents this model
+   carries, because Laster, Fang and Eger measured their densities in the same
+   experiment.
+
+<!-- provenance: data/agents/sevoflurane.json liquid_density.g_ml = 1.5203 -->
+<!-- provenance: data/agents/isoflurane.json liquid_density.g_ml = 1.5019 -->
+<!-- provenance: data/agents/desflurane.json liquid_density.g_ml = 1.4651 -->
+<!-- provenance: data/agents/sevoflurane.json molar_mass_g_mol = 200.05 -->
+<!-- provenance: data/agents/isoflurane.json molar_mass_g_mol = 184.49 -->
+<!-- provenance: data/agents/desflurane.json molar_mass_g_mol = 168.04 -->
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- provenance: data/agents/sevoflurane.json liquid_density.measured_at_celsius = 20 -->
+<!-- provenance: data/agents/isoflurane.json liquid_density.measured_at_celsius = 20 -->
+<!-- provenance: data/agents/desflurane.json liquid_density.measured_at_celsius = 20 -->
+<!-- derived: 182.8 from data/agents/sevoflurane.json liquid_density.g_ml = 1.5203, molar_mass_g_mol = 200.05 -->
+<!-- derived: 195.8 from data/agents/isoflurane.json liquid_density.g_ml = 1.5019, molar_mass_g_mol = 184.49 -->
+<!-- derived: 209.7 from data/agents/desflurane.json liquid_density.g_ml = 1.4651, molar_mass_g_mol = 168.04 -->
+
+The sources for this section are listed below, with the route by which each
+was read.
+
+- Laster MJ, Fang Z, Eger EI II. *Specific gravities of desflurane, enflurane,
+  halothane, isoflurane, and sevoflurane.* Anesth Analg 1994;78(6):1152-3.
+  PMID 8198275, doi:10.1213/00000539-199406000-00022. Retrieved from PubMed
+  and verified against the abstract on 2026-09-17, and again on 2026-10-26,
+  when its densities were stored.
+- ChEMBL database, release 34, compounds CHEMBL1200694 (sevoflurane),
+  CHEMBL1256 (isoflurane) and CHEMBL1200733 (desflurane), for the molecular
+  formulas and the molar masses. Read through a ChEMBL connector (an MCP
+  server) on 2026-10-26. The database is tier 2 under `docs/PARAMETERS.md` § "Source hierarchy",
+  because a molar mass is computed from the formula and the standard atomic
+  weights, not measured on the agent.
+- Mohr PJ, Newell DB, Taylor BN, Tiesinga E. *CODATA recommended values of the
+  fundamental physical constants: 2022.* Rev Mod Phys 2025;97(2):025002.
+  doi:10.1103/RevModPhys.97.025002. Table XXXII gives the gas constant as the
+  product of the exact Avogadro and Boltzmann constants. Table XXXIII gives
+  the standard atmosphere, 101 325 Pa exactly, and the molar volume of an
+  ideal gas at 0 °C, which the tests use to check the 24.055 L/mol above.
+  Read in full from arXiv:2409.03787v1 on 2026-10-26.
+- Biro P. *Calculation of volatile anaesthetics consumption from agent
+  concentration and fresh gas flow.* Acta Anaesthesiol Scand
+  2014;58(8):968-72. PMID 25060161, doi:10.1111/aas.12374. Retrieved from
+  PubMed and verified against the abstract on 2026-09-17. The abstract gives
+  the four constants but does not state their temperature, so the
+  reproduction above is what shows they are 20 °C constants.
+  <!-- not-restated: 20 °C -->
+- Philip JH. *Workbook for Gas Man*. Appendix C's `GASMAN.INI` listing is the
+  source for the `Volatility` setting. Chapter 10's closed-circuit
+  liquid-injection section (printed pp. 103-105) is the source for the five
+  vapour-to-liquid constants. There the constants convert an *input*, the volume
+  of liquid injected, rather than a displayed amount. Both were read from the
+  project owner's private reference library on 2026-09-16. The reading notes are
+  in `docs/references/README.md` § "Philip — *Workbook for Gas Man*". The
+  workbook is tier 3 under `docs/PARAMETERS.md` § "Source hierarchy": it defines what Gas Man does,
+  and it measures nothing.
+
+**For developers.** The code must use the one reference condition everywhere,
+and must never add gas fractions, dissolved blood concentrations and tissue
+concentrations directly. It works in litres.
+
+## The evidence behind the known limitations
+
+`docs/MODEL.md` § "Known limitations" states each limitation for a clinician.
+This section keeps the evidence, the sources and the tests behind those
+statements that the clinician's text leaves out, in the order of the
+limitations.
+
+### Desflurane's washout through the circle system
+
+**For developers.** Four tests in
+`tests/reference/test_published_wash_in_and_elimination.py` pin the figures of
+`docs/MODEL.md` § "Elimination at five minutes: does not agree".
+`test_desflurane_washout_at_the_default_fresh_gas_flow_regression_pin` pins
+desflurane's washout at the default fresh gas flow, reading that flow from the
+circuit's parameter file.
+`test_desflurane_washout_at_a_high_flow_and_raised_ventilation_regression_pin`
+pins it at 10 L/min of fresh gas and 8 L/min of alveolar ventilation.
+`test_five_minute_elimination_ratio_regression_pin` pins the five-minute ratio
+at 10 L/min, and
+`test_five_minute_elimination_ratio_without_rebreathing_regression_pin` pins
+it with the circuit removed.
+
+<!-- not-restated: 10 L/min -->
+
+### Cardiac output and flow distribution are fixed
+
+**The anesthetic's effect on cardiac output and the perfusion fractions is
+not modeled, because the human volunteer data do not describe a relationship
+this model could represent.** Three studies measured healthy
+volunteers who were anesthetized without surgery, each against their own awake
+baseline:
+
+- Weiskopf RB, Cahalan MK, Eger EI 2nd, Yasuda N, Rampil IJ, Ionescu P,
+  Lockhart SH, Johnson BH, Freire B, Kelley S. *Cardiovascular actions of
+  desflurane in normocarbic volunteers.* Anesth Analg 1991;73(2):143-56.
+  PMID 1854029. Desflurane alone at 0.83, 1.24 and 1.66 MAC, in 12 men.
+  **Cardiac index did not change**, although stroke volume index fell and
+  filling pressure rose at every concentration. This is myocardial depression
+  with cardiac output maintained.
+- Cahalan MK, Weiskopf RB, Eger EI 2nd, Yasuda N, Ionescu P, Rampil IJ,
+  Lockhart SH, Freire B, Peterson NA. *Hemodynamic effects of
+  desflurane/nitrous oxide anesthesia in volunteers.* Anesth Analg
+  1991;73(2):157-64. PMID 1854030, doi:10.1213/00000539-199108000-00008. The
+  **same** volunteers, in the same crossover, with 60% nitrous oxide carrying
+  0.5 MAC of the total. Cardiac index now fell dose-dependently.
+- Malan TP Jr, DiNardo JA, Isner RJ, Frink EJ Jr, Goldberg M, Fenster PE,
+  Brown EA, Depa R, Hammond LC, Mata H. *Cardiovascular effects of sevoflurane
+  compared with those of isoflurane in volunteers.* Anesthesiology
+  1995;83(5):918-28. PMID 7486177, doi:10.1097/00000542-199511000-00004.
+  With sevoflurane, cardiac index fell at 1.0 and 1.5 MAC and **returned to
+  baseline at 2.0 MAC** as systemic vascular resistance fell. Isoflurane
+  behaved similarly. With both agents the depression diminished with
+  prolonged administration, and with spontaneous rather than controlled
+  ventilation.
+
+<!-- not-restated: 0.5 MAC -->
+
+Together these studies show that the *sign* of the cardiac-output change
+depends on the carrier gas, that the dose-response **changes direction**, and
+that the effect changes with time at a fixed dose and with the mode of
+ventilation. This model has no second gas, no ventilation mode, no surgical
+stimulus and no pharmacodynamic layer, so it could represent none of those
+dependencies. It could represent only a $`Q(\text{dose})`$ that moves one way
+with dose and does not change with time, which the studies above do not show.
+Teaching one would be worse than holding the flow fixed and saying so. The
+case for modeling regional flow is weaker still. The measurements this project
+could find of how anesthesia redistributes flow between the vessel-rich,
+muscle and fat groups are largely from animals. § "The fat group's blood
+flow" below gives what the human record supports, even at rest.
+
+`ROADMAP.md`'s planned-milestone item 35 carries an automatic coupling from the
+agent to the flow as a possible future option that a user would turn on, with a run's default behaviour
+unchanged. The evidence above favours an option, because an option can state
+its own uncertainty where a model's default behaviour cannot.
+
+### The fat group's blood flow
+
+These are the figures behind the fat flows that `docs/MODEL.md` § "The fat
+group's blood flow" gives from the two Yasuda 1991 papers.
+
+The stored fraction implies 2.07 mL per 100 mL per minute: 0.06 of the
+5.0 L/min default cardiac output, flowing into 14.5 L. Flow per unit of tissue
+is the partition coefficient over the time constant, so the comparison needs
+no fitted volume. This model's stored fat solubilities (fat:gas over
+blood:gas) are 52 for sevoflurane, 54 for isoflurane and 31 for desflurane. At
+those values, the fitted fat-group time constants of 2,120, 2,130, 1,340 and
+2,090 minutes (Table 4 of each paper) give 2.5, 2.5, 2.3 and 2.6. Read as
+evidence about the fat group's flow, the PET measurement puts the stored
+figure at about twice the truth, and the washout fits put it at or a little
+below the truth. `test_the_fitted_fat_time_constants_imply_the_flows_printed`
+repeats this arithmetic.
+<!-- derived: 2.07 from data/patients/reference_adult.json tissue_groups.fat.perfusion_fraction = 0.06, default_cardiac_output_l_min = 5.0, tissue_groups.fat.volume_l = 14.5 -->
+<!-- derived: 52 for sevoflurane from data/agents/sevoflurane.json tissue_gas_partition_coefficients.fat = 34.0, blood_gas_partition_coefficient = 0.65 -->
+<!-- derived: 54 for isoflurane from data/agents/isoflurane.json tissue_gas_partition_coefficients.fat = 70.0, blood_gas_partition_coefficient = 1.3 -->
+<!-- derived: 31 for desflurane from data/agents/desflurane.json tissue_gas_partition_coefficients.fat = 13.0, blood_gas_partition_coefficient = 0.42 -->
+
+### Intertissue diffusion: the missing fourth compartment
+
+**Two cautions keep the missing intertissue route a limitation rather than a missing parameter.** The
+first is that the route and its size rest on different evidence. The route has
+been measured outside Eger's group. In two dogs after 80 minutes of halothane,
+perirenal fat sampled against the kidney held 20 and 35 times the
+concentration of fat sampled far from it. Its tension was "comparable to the
+arterial tension instead of to the very low tension to be expected if the fat
+had received halothane only from its own blood supply" (Allott et al.,
+*Br J Anaesth* 1976;48:289). Eger and Saidman cite that as the direct demonstration (their ref 8),
+though they call their own group's washout fits "the most convincing
+evidence" (p. 1025). The size has not been measured that way. Their
+"approximately 30% of the anesthetic taken up" and their time constants of 200
+to 400 minutes (p. 1025) cite Carpenter et al. and the two Yasuda papers.
+Eger is an author of every one of those papers, so the figures restate the
+fits rather than confirm them. Allott et al.'s own case for lean tissue losing
+agent to fat "depends almost entirely on the improved fit to femoral venous
+tensions" (p. 290). And a fit establishes a time constant, not which tissue
+holds it. The Yasuda authors write that intertissue diffusion is what "we
+believe provides the explanation for the fourth compartment" (*Anesth Analg*
+p. 323). Hendrickx and De Wolf quote Hull as saying that assigning a tissue to
+a fitted compartment is "ill-founded because parameters of the fit to the
+uptake data contain no information that might support such assumptions". They
+add that compartment parameters relate to cardiac output and demographics in
+no straightforward way, and conclude that correlating them with tissue volumes
+and blood flows "should be done with care, if at all" (*Modern Anesthetics*,
+pp. 165–66).
+
+The second caution is that § "The fat group's blood flow" above leaves the direction
+of the fat group's own error unsettled. On its PET reading, the fat group
+already holds too much agent, which acts against this omission. On its washout
+reading, the fat group holds about what the fitted fat group would. Nothing
+here measures whether the two cancel, and neither may be read as correcting
+the other.
+
+**Nothing in `ROADMAP.md` plans a fourth tissue compartment, and the one paper
+here that approximated the route warns against the shortcut.** Allott et al.
+fitted their dogs' data by giving fat more of the cardiac output, or by giving
+lean tissue a higher solubility (Table I, p. 281). They warn that such mimicry
+is "bound to fail to varying degrees in other circumstances". In recovery,
+"metabolism will still remove halothane from the circulation … whereas extra
+fat perfusion will eventually return halothane to the circulation". And with a
+low fat/lean partition coefficient "the tension gradients for diffusion will be
+less". Each circumstance might be matched by a distortion of its own, but "the
+only general solution is to build a more elaborate model which incorporates
+direct representations of metabolism (which would be straightforward) and
+intercompartment diffusion (which would be more complex)" (p. 290).
+
+The time constants in the last column of the table in `docs/MODEL.md` § "Intertissue diffusion: the missing fourth compartment", the ratios and the crossing
+times were computed on 2026-09-26 from the published means in that table and this
+model's parameters as stored then. None of the sources below is the authority
+for a stored value:
+
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Liu J, Laster M, Taheri S,
+  Peterson NA. *Comparison of kinetics of sevoflurane and isoflurane in
+  humans.* Anesth Analg 1991;72(3):316-24. PMID 1994760,
+  doi:10.1213/00000539-199103000-00007. **Full text**, from the private
+  reference corpus: the compartment assumptions on p. 319, the interpretation
+  on p. 320, Tables 1, 2 and 4 on p. 321, Table 5 on p. 322, and the volume
+  and muscle remarks on p. 323. Seven volunteers, with 30 minutes'
+  administration and six to seven days' elimination.
+- Yasuda N, Lockhart SH, Eger EI 2nd, Weiskopf RB, Johnson BH, Freire BA,
+  Fassoulaki A. *Kinetics of desflurane, isoflurane, and halothane in humans.*
+  Anesthesiology 1991;74(3):489-98. PMID 2001028,
+  doi:10.1097/00000542-199103000-00017. **Full text**, a scan with no text
+  layer, read as page images from the private reference corpus: the
+  interpretation on p. 493, Table 1 on p. 494, Table 2 on p. 495, Tables 4 and
+  5 on p. 496. Eight volunteers, with 30 minutes' administration and five to
+  seven days' elimination.
+- Carpenter RL, Eger EI 2nd, Johnson BH, Unadkat JD, Sheiner LB.
+  *Pharmacokinetics of inhaled anesthetics in humans: measurements during and
+  after the simultaneous administration of enflurane, halothane, isoflurane,
+  methoxyflurane, and nitrous oxide.* Anesth Analg 1986;65(6):575-82. PMID
+  3706798; PubMed records no DOI. **Abstract read**, through PubMed: nine
+  patients, 2 hours' administration. The abstract does not name intertissue
+  diffusion. The Yasuda papers credit that reading to this paper, whose full
+  text has not been read.
+- Eger EI 2nd, Saidman LJ. *Illustrations of inhaled anesthetic uptake,
+  including intertissue diffusion to and from fat.* Anesth Analg
+  2005;100(4):1020-33. PMID 15781517, doi:10.1213/01.ANE.0000146961.70058.A1.
+  **Full text**, from the private reference corpus: the brain drawn apart on
+  p. 1022, Table 3 on p. 1024, the lean-tissue losses, the evidence and the
+  30% share on p. 1025, and recovery on p. 1032. PubMed classifies it as a
+  review, so it is tier 2 under `docs/PARAMETERS.md` § "Source hierarchy". Its figures need more
+  caution than most reviews' do, because the paper says they "illustrate
+  concepts but are not necessarily precise (quantitative) reflections of the
+  kinetics" (p. 1020).
+- Allott PR, Steward A, Mapleson WW. *Pharmacokinetics of halothane in the
+  dog: comparison of theory and measurement in individuals.* Br J Anaesth
+  1976;48(4):279-95. PMID 1275995, doi:10.1093/bja/48.4.279. **Full text**,
+  from the private reference corpus: the design on p. 279, Table I on p. 281,
+  and the discussion on pp. 289-90. Seven dogs were given 1% halothane for
+  80 minutes. The perirenal-fat samples are from two further dogs of another
+  series (p. 289). The paper is Eger and Saidman's ref 8, and it has no author
+  in common with their refs 3-7.
+- Perl W, Rackow H, Salanitre E, Wolf GL, Epstein RM. *Intertissue diffusion
+  effect for inert fat-soluble gases.* J Appl Physiol 1965;20(4):621-7. PMID
+  5838712, doi:10.1152/jappl.1965.20.4.621. The Workbook lists it as reference
+  32 and prints the year as 1964. It is also Eger and Saidman's ref 9, which
+  they credit with suggesting the effect "40 yr ago" (p. 1025). Allott et al.
+  credit a 1963 chapter of Perl's with first suggesting it "on theoretical
+  grounds" (p. 289). PubMed returns "[Abstract not available]". Neither text
+  has been read, so nothing is taken from either.
+- Philip JH. *Workbook for Gas Man®*, Appendix B, pp. 169-70, and Hendrickx
+  JFA, De Wolf A, *Special aspects of pharmacokinetics of inhalation
+  anesthesia*, Handb Exp Pharmacol 2008;(182):159-86, PMID 18175091,
+  doi:10.1007/978-3-540-74806-9_8, pp. 163 and 165-66. Both were read from the
+  private reference corpus. The Workbook is tier 3 and the chapter is tier 2, and
+  `docs/references/README.md` carries their entries.
+
+### The tissue:gas coefficients are carried as exact
+
+A third published set of tissue coefficients agrees less well. Baker and Farmery's 2011 review
+prints tissue:blood coefficients from Fiserova-Bergerova and Diaz 1986 beside
+the set that matches this model (*Compr Physiol* 2011;1:572, Table 2). On the tissue:blood scale,
+that set puts sevoflurane's fat coefficient at 71.7, 37% above this model's
+52.3, and isoflurane's muscle coefficient at 1.71, 51% below this model's
+3.46. Its vessel-rich figures are 28% above this model's for both agents. The
+set's own blood:gas values, 0.6 for sevoflurane and 1.4 for isoflurane, move
+these gaps in opposite directions for the two agents, so the tissue:gas scale
+that this model stores gives the fairer comparison. On that scale the set's
+sevoflurane fat coefficient is 27% above this model's and its isoflurane
+muscle coefficient 47% below. Its vessel-rich coefficient is 18% above for
+sevoflurane and 38% above for isoflurane. The set may not be a measurement.
+According to its PubMed abstract, the 1986 paper measured coefficients only
+for water-soluble solvents such as acetone and the alcohols. It then fitted
+equations that predict any substance's tissue coefficients from its blood:gas
+and fat:gas values. Baker does not say which of the anesthetic figures were
+measured and which predicted. The set has no desflurane values.
+<!-- not-restated: 18 % -->
+
+Every stored tissue:gas coefficient lies within one standard deviation of its
+cited measurement. A learner should read the muscle and fat traces as one
+well-measured parameter set, not the only set the literature supports.
+Yasuda, Targ and Eger's p. 373, Eger and Saidman's Table 1, Baker and
+Farmery's Table 2 and Hendrickx and De Wolf's p. 165 were read in full text.
+Fiserova-Bergerova and Diaz 1986 was read as its PubMed abstract only (PMID
+3721592), and the 1984 paper not at all. The full Yasuda, Targ and Eger
+citation is in `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter file was not
+changed".
+
+### One 70 kg adult
+<!-- provenance: data/patients/reference_adult.json weight_kg = 70 -->
+
+The cardiac output is kept at a fixed 5.0 L/min, rather than scaled with the
+patient's weight, for a structural reason. A time constant is
+$`V_i \lambda_{i:b} / Q_i`$, and this model stores compartment volumes as
+fixed litres. So scaling only the flow would make every time constant
+proportional to $`M^{-3/4}`$: a heavier patient would equilibrate *faster* and
+a lighter one more slowly. That is an artifact of scaling one half of a
+coupled pair. At the shipped sevoflurane coefficients, a 20 kg child under a
+weight-scaled cardiac output alone would equilibrate about 2.6 times more
+slowly than the reference adult, which is the opposite of the direction in
+which paediatric inhalational uptake runs. (Salanitre and Rackow's
+*Anesthesiology* 1969;30(4):388–94 study of pulmonary exchange in infants and
+children is the classic reference for that direction. Its PubMed record was
+retrieved, but its text has not been read, so no figure is taken from it.)
+Half of the scaling is therefore worse than none of it. Adopting the relation
+for the one patient that exists would have lengthened every time constant by
+3.30% and changed nothing else.
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
+
+### Amounts held in the body, and dry alveoli
+
+**For developers.** `test_the_reference_condition_gap_is_the_ratio_of_molar_volumes`
+computes the molar volumes at 37 °C and 20 °C from the constants in
+`core/liquid_agent.py`, and the 5.8 % and 5.5 % from their ratio.
+<!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+
+**For developers.** `test_the_humidification_dilution_follows_from_the_water_vapour_pressure`
+computes the 713 mmHg, the 6.2 % and the 6.6 % from 47 mmHg and one
+atmosphere.
+
+**The 47 mmHg is computed.** The saturation pressure of water at 37.0 °C is
+47.12 mmHg on the IAPWS-95 formulation (Wagner W, Pruß A. *The IAPWS
+Formulation 1995 for the Thermodynamic Properties of Ordinary Water Substance
+for General and Scientific Use.* J Phys Chem Ref Data 2002;31(2):387–535,
+doi:10.1063/1.1461829). The formulation's saturation equation reproduces both
+the triple-point pressure and the normal boiling point to better than one
+part in a million. The conventional 47 of the alveolar gas equation is that
+value rounded, and the two agree to 0.3 %. This project stores no such value,
+because no equation here reads it.
+
+**Applying the factor would break the validation, as a measurement shows.**
+The governing equations are linear in $`F_I`$, the property that "Published
+wash-in and elimination validation test" also rests on. So applying the factor
+to the inspired term multiplies every computed $`F_A/F_I`$ by exactly 713/760.
+$`F_A/F_I`$ is the one quantity this model is validated against, and the
+validation does not survive the factor. At the shipped defaults, the modeled
+$`F_A/F_I`$ for each of the four published wash-in cohorts lies within one
+standard deviation of the published mean. With the factor, all four fall
+outside it:
+
+| Cohort | Modeled $`F_A/F_I`$ | Now | With the factor | Then |
+| --- | --- | --- | --- | --- |
+| Sevoflurane, Anesth Analg 1991;72:316-24 | 0.8528 | +0.16 SD | 0.7999 | −2.78 SD |
+| Isoflurane, Anesth Analg 1991;72:316-24 | 0.7414 | +0.31 SD | 0.6954 | −1.39 SD |
+| Desflurane, Anesthesiology 1991;74:489-98 | 0.9079 | +0.79 SD | 0.8516 | −4.84 SD |
+| Isoflurane, Anesthesiology 1991;74:489-98 | 0.7414 | +0.38 SD | 0.6954 | −1.15 SD |
+
+<!-- not-restated: 0.31 -->
+
+These figures were computed on 2026-09-19, at the parameters stored then,
+against the published means and standard deviations. The table's factor is
+712.88/760, from the computed 47.12 mmHg.
+
+### Altitude
+
+**No altitude correction factor is stored, and the $`1/P`$ form in `docs/MODEL.md` § "Altitude" must
+not become one.** $`\%_\mathrm{cal} \times P_\mathrm{cal} / P_1`$ is the
+dilute-vapour limit of the flow-splitting physics. The fuller form is
+$`F \approx k\,\mathrm{SVP}/(P - \mathrm{SVP})`$, where SVP is the saturated
+vapour pressure, and it reduces to $`k\,\mathrm{SVP}/P`$ only where
+$`\mathrm{SVP} \ll P`$. Isoflurane's saturated vapour pressure is about
+240 mmHg at 20 °C, which is not small against 760. Carrying the denominator
+through gives a delivered partial pressure that *overshoots* rather than holds
+steady: on that arithmetic alone, about 16% high at 585 mmHg, where the
+$`1/P`$ form predicts a flat line
+(`test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form`).
+The Tec 6's response rests on its manufacturer's instruction and on Andrews and
+Johnston's description of its mechanism, both quoted in `docs/MODEL.md` § "Altitude". How large the
+variable-bypass response is, and whether its dial needs correcting, is less
+settled. Dosch and Tharp call the effect of altitude on vaporizer performance
+"controversial". They write that "Some sources state that variable bypass types
+need not be adjusted for moderate changes in barometric pressure, but the Tec 6
+must be dialed up beyond the desired dose at higher altitudes. Other sources
+disagree." They also report that Dorsch and Dorsch's *Understanding Anesthesia
+Equipment* (5th edition, 2008) says to consult the operator's manual for each
+model. That textbook could not be read for this document, so its advice is
+cited only as Dosch and Tharp report it. The size of the
+variable-bypass compensation is approximate, so no number is stored for it. An implementation of ambient pressure should
+derive the variable-bypass case from each agent's saturated vapour pressure
+rather than from the $`1/P`$ shortcut, and would owe each agent's SVP a source
+of its own. None is stored today.
+<!-- not-restated: 20 °C -->
+
+**Sources for the altitude notes above.** None of them is the authority for a stored
+value:
+
+- Weiskopf RB, Sampson D, Moore MA. The desflurane (Tec 6) vaporizer: design,
+  design considerations and performance evaluation. *Br J Anaesth*
+  1994;72:474–479. Primary, and the authority for every figure attributed to
+  it here: the 22.8 °C boiling point, the 39 °C sump, the 1460 mmHg that the
+  sump fixes and why that pressure was chosen, and the ±15% relative (or
+  ±0.5% absolute) output accuracy. Read in full text. It states the 1460 mmHg
+  twice, once for the sump and once for the regulator that reduces it to the
+  fresh-gas pressure. It says nothing about ambient pressure or altitude, so
+  it is not the source for that behaviour.
+- Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
+  1993;76:1338–1341. Primary. It is the source of the flow-ratio mechanism
+  quoted in `docs/MODEL.md` § "Altitude", which appears in the abstract.
+- James MF, White JF. Anesthetic considerations at moderate altitude. *Anesth
+  Analg* 1984;63:1097–1105. Primary. It is the source of the case for
+  reasoning in partial pressures rather than percentages at altitude, and of
+  the MAPP proposal. It predates desflurane, so it covers the variable-bypass
+  class only.
+- Datex-Ohmeda. *Tec 6 Plus Vaporizer* specification sheet AN3307-A/1100,
+  © 2000 Datex-Ohmeda Division, Instrumentarium Corp. A manufacturer
+  statement, quoted in `docs/MODEL.md` § "Altitude". It also gives a 1–18% concentration range, whose upper
+  end is the 18% that this model stores as desflurane's maximum delivered
+  concentration. Read in full.
+  **Owner-attested**: see the note below.
+- Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth
+  Crit Care Pain* 2011;11:199–203. **Tier 2** under `docs/PARAMETERS.md` § "Source hierarchy". It
+  is a secondary synthesis, taken here for the shape of the explanation and
+  the worked example, and never as the authority for a number. Its "Altitude"
+  section describes both classes side by side. Read in full.
+  **Owner-attested**: see the note below.
+- Dosch MP, Tharp D. *The Anesthesia Gas Machine*, chapter 5, "Processing:
+  Vaporizers". University of Detroit Mercy, revised February 2026.
+  https://healthprofessions.udmercy.edu/academics/na/agm/05. **Tier 2** under
+  `docs/PARAMETERS.md` § "Source hierarchy": a teaching text that draws on other sources. It is the
+  source of the two class names and of how each class works, as
+  `docs/MODEL.md` § "The agents" states them, and of the disagreement
+  about altitude quoted above. It is never the authority for a number. Read in
+  full at that address.
+
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+
+**Two of those six are owner-attested: they were read from the project
+owner's copies, and no other reader can check them.** They are the
+Datex-Ohmeda specification sheet and the Boumphrey and Marshall article. Any
+reader can reach the three journal articles above through their DOI or PMID,
+and Dosch and Tharp's chapter at its address.
+`docs/references/` cannot hold copies of these two, because the repository is
+public (`docs/references/README.md` § "Redistribution"). So three things rest
+on that reading alone: the passage quoted from Datex-Ohmeda, the 1–18% range
+beside it, and the worked example attributed to Boumphrey and Marshall.
+Nothing stored depends on any of them. A reader who wants to verify one has to
+reach the document itself.
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+
+### The tests and code behind this section
+
+**For developers.** The inert circuit is `BreathingCircuit`. The directional
+checks in `tests/reference/test_sevo_patient.py` assert that a higher cardiac
+output slows the rise of $`F_A`$. The MAC-multiple display divides by each
+agent's tier-3 `mac_percent`, and the Datex-Ohmeda 1–18% range is desflurane's
+`max_delivered_concentration_percent`. `reference_adult.json` carries both
+fat-flow comparisons. Its Heinonen et al. note gives both figures and the
+volume-to-mass conversion between them, and says
+that fat depots differ. The default cardiac output is
+`default_cardiac_output_l_min`, and no equation reads `weight_kg`. The
+reference-condition gap leaves the relative residual, which the mass-balance
+tolerance bounds, untouched.
+`core/liquid_agent.py` is where an amount leaves the unit. It converts a
+delivered or exhausted amount exactly and reads a store 5.8 % high
+(`test_the_reference_condition_gap_is_the_ratio_of_molar_volumes`), and its
+docstring says so. The humidification table was computed with
+`_wash_in_ratio` in `tests/reference/test_published_wash_in_and_elimination.py`,
+against the published means and standard deviations that the module itself
+holds.
+<!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+
+**For developers.** `docs/MODEL.md` § "Known limitations" is written for a
+clinician and names no test. The paragraphs above name the tests behind most of
+its figures. These tests compute the rest:
+
+1. `test_the_muscle_group_equilibrates_in_the_minutes_printed`: the muscle
+   group's 85 to 135 minutes, in `docs/MODEL.md` § "Intertissue diffusion: the missing fourth
+   compartment".
+2. `test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours`:
+   the hours over which the missing fourth compartment is the largest term of
+   the washout, in the same section.
+3. `test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed` and
+   `test_yasudas_fat_spreads_are_the_percents_printed`: how far the stored
+   coefficients sit from Yasuda, Targ and Eger's means, and how widely their fat
+   measurements spread, in `docs/MODEL.md` § "The tissue:gas coefficients are carried as
+   exact".
+
+The lung store's share of the fast pool, the fat fractions of 13 to 20% and
+2.3 to 3.9% after an hour, and the ambient pressures of Denver and Mexico City
+have no test yet (`PL-LP96`).
+
+## The provenance table, and the markers over restated values
+
+`tools/doc_check.py` (run by `make check` and CI) checks the provenance table
+in § "Where each stored value comes from" against the data files in both
+directions. Every row must name a key that the file
+contains and state the value stored there, and every numeric parameter in every
+data file must have exactly one row. The function that does this,
+`check_provenance`, confirms that a documented key exists and holds the stated
+value, never that the value is right or which tier its source has.
+
+Both directions start from a data file, so that check cannot see a constant
+that never entered one, such as a field default on a `core/` dataclass.
+`test_every_constant_a_core_dataclass_defaults_to_is_a_value_the_provenance_table_selects`
+looks for such a constant. It reads every numeric field default on a `core/`
+dataclass through `dataclasses.fields()`, including one written as a named
+constant, and requires each to appear in the provenance table's Selected-value column.
+It skips zero and a field's full scale (1, or 100 for a percent), which carry
+no scientific content. It matches values, not names, so it can miss a
+constant: a new one equal to a value the table already selects passes, and 6.0
+is selected for both the circuit and the vessel-rich tissue.
+
+The provenance table is not the only place these values appear. Some prose restates one:
+the reference adult's alveolar volume and ventilation, and each agent's
+blood:gas coefficient, vaporizer maximum and MAC. Each such sentence carries a
+hidden marker, an HTML comment that names the file and key it restates:
+
+```text
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+```
+
+`doc_check.py` checks both sides of that link: the key against the data file,
+and the stated value against the paragraph the marker sits under. So neither
+the file nor the sentence can change without the other. Without the markers,
+editing a data file would force an update to the provenance table but leave the prose
+around it quietly wrong.
+
+Some figures are *derived* from several stored values, and no file holds
+them. Such a figure carries a `derived:` marker that names its inputs instead.
+One figure may carry several of these markers where its inputs span more than
+one file:
+
+```text
+<!-- derived: 20.7 s from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4, default_cardiac_output_l_min = 5 -->
+```
+
+When an input changes, the checker reports that the figure must be recomputed
+and names the figure. It never recomputes the figure itself. The rounding and
+the units are matters of judgment, and a plausible wrong number in this
+document is worse than none.
+
+**Rewording a marked sentence is expected to fail the check.** The failure
+asks for the marker to be moved or updated with the sentence.
+
+A marker can also name a constant in code, such as the simulation step. It is
+written as the module's path under the package, followed by the constant's
+name:
+
+```text
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
+```
+
+**A figure that equals a stored value must carry a marker.**
+`doc_check.py` finds each figure in this document, in `docs/INTERFACE.md` and in
+`README.md` that equals a stored value, in that value's unit. The stored values are every
+number in a parameter data file, and every public constant in the package
+whose name ends in a unit, such as `_S` or `_L_MIN`. A figure that restates
+its value carries a `provenance:` or `derived:` marker. A figure that only
+coincides with one carries a `not-restated:` marker that lists it:
+
+```text
+<!-- not-restated: 2 %, 0.05 -->
+```
+
+The check never decides which kind a figure is. `2.5` appears in this document
+as an alveolar volume in litres, a flow in litres per minute and a distance in
+standard deviations, and `2%` is sevoflurane's MAC in one sentence and a dial setting in
+the next. Binding a figure to a key by its value would be confidently wrong
+where a reader trusts most. So the writer says which kind it is, and the check
+enforces only that somebody did. A marker covers only the values it names, in
+their units, so a marker for the 6 L circuit does not clear desflurane's 6%
+MAC in the same paragraph. The check reads:
+<!-- not-restated: 6 L, 6 % -->
+
+- a unit written as a word, such as "seconds", and a time in milliseconds,
+  minutes or hours, which it converts to seconds;
+- a unit in lower case, such as "l/min";
+- each number in a list joined by slashes, such as "6/33/14.5 L", with the
+  list's unit;
+- in math, a symbol given a number with `=` or `\approx`, such as
+  $`V_A = 2.5`$ L or $`V_A = 2.5\,\mathrm{L}`$, where the number ends the span
+  or comes before a comma, a semicolon or `\quad`.
+<!-- not-restated: 6 L, 33 L, 14.5 L, 2.5 L -->
+
+It reads no other number in math, because most are exponents and coefficients
+that only happen to equal a stored value, and it skips a math span split
+across two lines. A marker under a list covers the whole list, because a
+marker cannot sit inside a list item. A `not-restated:` marker fails if its
+paragraph no longer contains a figure it lists, so the declaration cannot
+outlive its sentence. A number that equals no stored value, such as a
+flow-sweep point or a worked example, needs no marker.
+
+## What the data-file format requires of a `sources` entry
+
+**The second and third of the rules for a `sources` entry in
+§ "Source hierarchy: what may be cited as the authority for a value" are part
+of the data-file format, and `make check` enforces them.** Each family of data
+file (agent, patient and machine) has its own `schema_version`, checked against
+that family's supported versions in `src/anesthesia_sim/core/parameters.py`, so
+a format change affects only its own family. Agent files must be version 4,
+because they also hold `molar_mass_g_mol` and `liquid_density`
+(§ "Agent amount"). Patient and machine files must be version 3. Each
+`sources` entry carries three required fields, and a file may carry one
+optional top-level field:
+
+- `tier`, on each `sources` entry: `primary`, `secondary` or
+  `reference-implementation`. It says which of the three tiers in `docs/PARAMETERS.md` § "Source
+  hierarchy" the *document* belongs to.
+- `adopted`, on each `sources` entry: whether this file names that source as
+  the authority for a value it stores.
+- `authority_for`, on each `sources` entry: the dotted key
+  paths of the stored values that rest on this source, spelled as the
+  provenance table spells them. The list is empty exactly when `adopted` is
+  false. The per-row counts under `docs/PARAMETERS.md` § "Where this project stands" are computed from it.
+- `provenance_gap`, optional and top level: why no primary source has been
+  adopted, in a file where none has been.
+
+`tools/doc_check.py`'s `check_source_tiers` enforces these as exact rules:
+
+- Every entry declares a tier from the closed vocabulary, an `adopted` flag
+  and an `authority_for` list.
+- That list is non-empty exactly when the entry is adopted.
+- Each path in the list is a stored value of the same file, and no stored
+  value is named by two entries.
+- A file with no entry that is both `primary` and `adopted` records a
+  non-empty `provenance_gap`.
+
+Each rule is an error that stops the build, not a warning, because none of
+them needs judgment to decide. `src/anesthesia_sim/core/parameters.py` also
+checks the vocabulary and the `authority_for` rules when it loads a file, so a
+bad entry fails as soon as the file is read.
+
+**`tier` and `adopted` are two fields because one field alone would decide
+nothing.** Every agent file cites primary measurements that it has explicitly
+*not* adopted, and so does the reference patient, which cites five. A check
+that read the tier alone would report all five of this project's parameter data files as
+primary-sourced, although the reference patient adopts no primary source and
+many of the table's rows are tier 3 (`docs/PARAMETERS.md` § "Where this project stands" gives
+the counts). That is the failure the second rule for a `sources` entry exists to prevent, so
+the check reads the adoption and not the citation list. Today each agent file
+declares four adopted primary sources: for the tissue:gas coefficients, the
+vaporizer maximum, `mac_awake` and the liquid density. `src/anesthesia_sim/data/patients/reference_adult.json` declares
+none and records the gap.
+
+**What the check does not decide is whether a citation labelled `primary`
+really is one.** That needs somebody who has read the paper. A tool that
+guessed, from the author, the journal or a product name in the title, would
+look authoritative and be wrong. The tool checks that a claim was made and is
+well-formed, and a reviewer checks that the claim is true.

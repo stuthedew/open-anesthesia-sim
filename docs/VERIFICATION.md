@@ -33,7 +33,7 @@ M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_I\,dt
 $$
 
 A machine with its surplus gas valve shut sends no agent to the exhaust. It
-needs a different model. See `docs/MODEL.md` § "Breathing circuit".
+needs a different model. See `docs/MODEL.md` § "Low flow and the closed circuit".
 
 ### Stored amount
 
@@ -44,7 +44,7 @@ M_{\mathrm{stored}} = M_C+M_A+M_v+\sum_i M_i
 $$
 
 Arterial blood contributes no separate term, because it is not a compartment
-and contains no independent amount of agent (see `docs/MODEL.md` § "Model boundary").
+and contains no independent amount of agent (see `docs/MODEL.md` § "What the model represents").
 
 ### Mass-balance identity
 
@@ -59,8 +59,8 @@ where $`\varepsilon_M`$ is the numerical mass-balance residual.
 The identity is a bookkeeping statement over whatever terms the model
 includes. It would therefore still hold, unchanged, if
 $`M_{\mathrm{exhausted}} \equiv 0`$. What would no longer hold is the
-interpretation of that term as agent lost from the system. The section
-"Breathing circuit" explains why a shut surplus gas valve is not this model
+interpretation of that term as agent lost from the system.
+`docs/MODEL.md` § "Low flow and the closed circuit" explains why a shut surplus gas valve is not this model
 with its exhaust switched off.
 
 Equivalently:
@@ -386,7 +386,7 @@ y(t+\Delta t) = \exp(A\,\Delta t)\,y(t)
 $$
 
 The model builds $`A`$ in `core/governing_equations.py`. Each entry of $`A`$ is one term of one
-balance equation in `docs/MODEL.md` § "Governing equations" or § "Conservation of agent mass". The model
+balance equation in `docs/MODEL.md` § "Equations" or § "Conservation of agent mass". The model
 computes $`\exp(A\Delta t)`$ in `core/matrix_exponential.py`, which contains no physiology. That
 module's docstring gives the method's source and how its constants were derived. Neither module
 needs an outside library.
@@ -448,7 +448,7 @@ and the difference did not grow with the step.
 
 **The step is one second so that simulated time is exact too.** Simulated time is the count of
 steps, and a computer holds a whole number of seconds exactly
-(`docs/MODEL.md` § "Simulated time is a count of steps, not a running total"). A step of a tenth of a second
+(`docs/VERIFICATION.md` § "Simulated time is a count of steps, not a running total"). A step of a tenth of a second
 cannot be held exactly: three such steps add up to 0.30000000000000004 s.
 
 **What the step costs is control resolution.** Settings are held constant across a step, so the
@@ -457,7 +457,7 @@ resolved to one second. A change made and reversed between two steps never reach
 all.
 
 **The step is about a sixth of the fastest process in the model.** That process has a time
-constant of 5.83 s, the shortest anywhere in the supported settings (`docs/MODEL.md` § "Alveolar gas" gives the
+constant of 5.83 s, the shortest anywhere in the supported settings (`docs/MODEL.md` § "Time constants" gives the
 settings at which it occurs). In one step, the fastest process closes about 16% of its remaining
 gap. So a control change that takes effect one step late can move a fast-changing value by an
 amount a reader can see, and the tables below give that amount.
@@ -1162,7 +1162,7 @@ show a percentage to two decimals.
 | Agent held, delivered and exhausted (§ "Mass-balance identity") | One part in 10⁹ of the agent handled, or 1e-12 L | Fixed |
 | $`F_A/F_I`$ above 1 in a run that is still washing in (`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio") | 1e-6 | Fixed |
 | A reading at the height of a MAC target (`docs/INTERFACE.md` § "Halting on a marked crossing") | 1e-5 of the height | Fixed |
-| The tissue perfusion fractions, against a sum of 1 (`docs/MODEL.md` § "Tissue groups") | 1e-12 | Fixed |
+| The tissue perfusion fractions, against a sum of 1 (`docs/MODEL.md` § "Blood flow to the tissue groups") | 1e-12 | Fixed |
 | The tissue blood flows, against cardiac output | One part in 10⁹ of cardiac output, plus 1e-12 L/s | Fixed |
 | A count of ticks on the chart's percent axis, against a whole number | 1e-9 of the count | Fixed |
 
@@ -1252,7 +1252,7 @@ whether each test is any good.
 
 | A reader could be misled into | What stops it | Tested by |
 | --- | --- | --- |
-| reading a run as a prediction for a real patient whose data was entered into it | the use statement stays in view. It is the disclaimer at the foot of the window. The simulated patient is always the built-in reference adult. Cardiac output and ventilation are teaching controls, and a learner can set either one to a value measured in a patient. Only the use statement stops a learner reading that run as a prediction for that patient (`docs/MODEL.md` § "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
+| reading a run as a prediction for a real patient whose data was entered into it | the use statement stays in view. It is the disclaimer at the foot of the window. The simulated patient is always the built-in reference adult. Cardiac output and ventilation are teaching controls, and a learner can set either one to a value measured in a patient. Only the use statement stops a learner reading that run as a prediction for that patient (`docs/VERIFICATION.md` § "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
 | reading a correct concentration as belonging to a different agent | agent colour is never the only cue. The agent name is always visible in every top-level window, within the limit stated in `docs/INTERFACE.md` § "Minimum displayed outputs" -> "What this list requires once the layout is the reader's". A separate tool checks the ISO 5360 agent colours and the text colour that stays readable on each (`tools/contrast_check.py`, which reads the colours from `src/anesthesia_sim/app/theme.py`) | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport controls and the banner are set from the run's status alone, never from a compartment value. A halted run therefore still shows as stopped, and does not offer Pause, even when its values cannot be read. When a run halts before any of it has been drawn on screen, its banner says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
 | reading a run that a mark stopped as one the learner paused, while two runs are compared | the status word reads "Paused — stopped on your mark". While two runs are compared, the branch control hides its own "stopped on your mark", so this status word is the only cue. A failure, or reaching the supported run length, overrides this word. A MAC target's row reads "reached" from its first crossing on. A new branch reads "Paused" at the instant it starts from its parent run, though it carries the parent's halt record, because no step of the branch stopped it | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
@@ -1293,7 +1293,7 @@ The simulator must always meet the following conditions:
 - all volumes are finite and positive;
 - fresh gas flow, alveolar ventilation, cardiac output, and tissue flows are finite and nonnegative;
 - partition coefficients are finite and positive;
-- tissue flow fractions sum to one within tolerance (`docs/MODEL.md` § "Tissue groups");
+- tissue flow fractions sum to one within tolerance (`docs/MODEL.md` § "Blood flow to the tissue groups");
 - stored agent amounts remain finite and nonnegative;
 - derived partial-pressure-equivalent fractions remain finite and within 0 through 1;
 - no compartment creates agent spontaneously;
@@ -1860,7 +1860,7 @@ its denominator, so whatever a breathing system does to $`F_I`$ divides out. Tha
 wash-in comparison is inside the published spread at every supported flow. $`F_A/F_{A0}`$ has
 no such term. It is the alveolar fraction divided by its own value five minutes earlier. So
 agent that returns to the alveoli *from the circuit* counts exactly as though it had come out
-of the patient. This model always rebreathes. Its one circuit (`docs/MODEL.md` § "Model boundary")
+of the patient. This model always rebreathes. Its one circuit (`docs/MODEL.md` § "What the model represents")
 recirculates gas, apart from the fresh gas that enters and the gas that leaves through the
 exhaust. The inspired gas *is* circuit gas. So during an elimination $`F_I`$ settles near
 $`\dot V_A/(\dot V_A + \dot V_F)`$ of $`F_A`$, where $`\dot V_F`$ is the fresh gas flow. That
@@ -1944,7 +1944,7 @@ four belong beside any statement of this result, wherever it is restated.
    described as more. The intent itself is least reliable in the wash-in
    direction, which is where this comparison looks. Gas Man's own published
    agreement with patients is materially worse during wash-in than during
-   maintenance (see `docs/MODEL.md` § "Known limitations").
+   maintenance (see `docs/MODEL.md` § "Gas Man in patients").
 3. *The breathing systems differ, and by more than the measurement's own
    spread.* The simulated results above put the difference at 3.5 to 4.2
    published standard deviations per cohort. Any statement that this model
@@ -2733,7 +2733,7 @@ the open circuit, this peak is the tail's closest approach to the curve. In
 the shipped condition, it is the tail's furthest excess over the curve. A
 fitted time constant is an apparent one, read off the whole curve, so the model's terms are
 read off its own curve in the same way (2026-10-03). They are the exponential components of the
-open-circuit model, which is the five equations of `docs/MODEL.md` § "Governing equations" with nothing
+open-circuit model, which is the five equations of `docs/MODEL.md` § "Equations" with nothing
 inspired. The table gives each term as its time constant in minutes and its amplitude in
 percent of $`F_{A0}`$, with the cohorts in the same order as the tables above. A test checks
 the model's terms to within 0.2%:
@@ -2977,8 +2977,8 @@ real measurement. Conservation then gives $`V_A = V_C(F_1-F_2)/F_2`$, where
 $`F_1`$ is the circuit's fraction when it is closed and $`F_2`$ is the fraction
 that the circuit and lungs share once they have mixed.
 
-The first procedure is not the closed-circuit technique that `docs/MODEL.md` § "Breathing
-circuit" says this model does not represent. That technique needs fresh gas
+The first procedure is not the closed-circuit technique that `docs/MODEL.md` § "Low flow and the
+closed circuit" says this model does not represent. That technique needs fresh gas
 matched to the patient's uptake. The procedure has no fresh gas and, at zero
 cardiac output, no uptake.
 
@@ -3006,7 +3006,7 @@ whole run. Agreement within a tolerance is not enough. A run branched from
 another must be identical to it at every instant the two share.
 
 The results must not depend on how the run was paced in real time, as
-`docs/MODEL.md` § "The reproducibility guarantee" states. They must be the same at every
+`docs/VERIFICATION.md` § "The reproducibility guarantee" states. They must be the same at every
 playback rate that the interface offers.
 
 **For developers.** The two runs' snapshots must match in every field, and each
@@ -3079,3 +3079,677 @@ published data.
 The five-minute elimination pin is in the same test module as the
 published-data gate. The late-washout tables are in a test module of their own.
 
+
+## Notes for developers on the model description
+
+`docs/MODEL.md` describes the model for a clinician or educator. This section
+holds what a developer needs beside it: where each part of the model is in
+the code, the rules the code must keep, and the tests behind its statements.
+Each subsection follows the part of `docs/MODEL.md` it serves.
+
+### What keeps a real patient's data out of a run
+
+Two safeguards protect today against the misuse that `docs/MODEL.md` § "What the simulator is for"
+excludes:
+
+1. The use statement at the foot of the window says that the simulator is for
+   teaching and is not a clinical prediction, monitoring or dosing tool. In
+   each built-in Workspace it stays in view, however the page scrolls.
+2. The simulated patient is always the same reference adult. No control accepts
+   a weight, age, sex, height or body composition. Every run keeps that
+   patient's compartment volumes and perfusion fractions, whatever the learner
+   sets. The planned patient factors (`ROADMAP.md` planned-milestone item 30)
+   will remove this safeguard.
+
+A learner can still set cardiac output or alveolar ventilation to a value
+measured in a real patient, because changing them is a core teaching feature.
+The run then shows the reference adult at that flow, not a prediction for that
+patient. Only the use statement guards against reading the run as one.
+
+**For developers.** The use statement is `USE_DISCLAIMER_TEXT` in `app/dashboard_frame.py`,
+and the reference adult is stored in `data/patients/reference_adult.json`. A test checks each
+way a patient could get into a run today, so adding patient factors will make it fail
+(`test_every_run_simulates_the_shipped_reference_adult`). The change that adds them must then
+rewrite this section and the hazard table's row for a real patient's data.
+
+### Software safety classification: Class C, for the whole application
+
+This project assigns **Class C to the whole application**, the interface
+included. IEC 62304 § 4.3 classifies software by the severity of the harm that
+its failure could contribute to. **Class A** applies where no injury or damage
+to health is possible, **Class B** where injury is possible but not serious, and
+**Class C** where death or serious injury is possible. The class depends on
+severity alone (Annex B.4.3). Where software sits in a sequence of events
+leading to a hazardous situation, the standard sets the probability of its failure to 1, rather than estimating it. So an argument that a failure would rarely happen does not justify a lower class.
+
+A failure of the interface could contribute to injury, which rules out Class A.
+A correct number is still a safety failure if the interface shows it with the
+wrong units, label, patient context or model version, or after it has gone out
+of date. The interface also has safety features, such as the distinction
+between a halted and a paused run, the rule on displayed precision and the
+ISO 5360 agent colours.
+
+**For developers.** A lower class for any part of the application would save no
+work, because this project checks all its code the same way. Class A, for
+example, excuses software from detailed design, unit verification and
+integration testing.
+
+Code that looks cosmetic cannot be split off into a lower class, because it
+carries clinical meaning. The chart's frame (`app/chart_frame.py`) decides what
+a chart line claims about a run. The styling file (`app/theme.py`) defines the
+ISO 5360 agent colours. The rule for which instants the chart draws is a safety
+feature of the interface. The chart computes the run's exact state at each
+instant that it draws, and every control change is one of those instants
+(`docs/INTERFACE.md` § "Interface boundary").
+
+A split would pay off only where the exempted part is large, genuinely
+non-clinical and costly to verify. None of those holds now.
+
+### This is an engineering bar, not a regulatory status
+
+The project adopts Class C for the whole application as an engineering standard,
+like WCAG 2.2 AA for accessibility (`docs/INTERFACE.md` § "Color contrast, and the standard this
+interface is held to"). The project claims no conformance to IEC 62304 or to a
+quality management system, and no regulatory status. Writing the class down gives
+anyone reviewing the code a bar to hold it to.
+
+The class does not settle whether the simulator is a medical device. FDA
+publishes examples of software functions that are *not* medical devices. They
+include software intended for health care professionals as educational tools
+for medical training. One example is "games that simulate various cardiac
+arrest scenarios to train health professionals in advanced cardiopulmonary
+resuscitation (CPR) skills" ([FDA, Examples of Software
+Functions That Are NOT Medical Devices](https://www.fda.gov/medical-devices/device-software-functions-including-mobile-medical-applications/examples-software-functions-are-not-medical-devices),
+and the guidance "Policy for Device Software Functions and Mobile Medical
+Applications"). Whether software is excluded depends on its intended use, not
+on which physiologic parameters it accepts. To qualify, the software must not
+support a health professional's assessment of a *specific patient*. That is why
+the intended-use boundary in `docs/MODEL.md` § "What the simulator is for" is drawn at a specific patient's data.
+
+Using this simulator outside the intended use in `docs/MODEL.md` § "What the simulator is for" is **reasonably foreseeable
+misuse** under ISO 14971:2019, the risk-management standard for medical devices.
+Its clause 5.2 requires documenting such misuse. The hazard table
+(`docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the hazards the presentation carries")
+has a row for it. Two safeguards protect against this misuse, and tests
+enforce them (§ "What keeps a real patient's data out of a run").
+
+**For developers.** Before you revise this section, check IEC 62304 and ISO 14971
+directly. They are not open access, so the project read their clause structure,
+the three class definitions and Annex B.4.3's probability rule from secondary
+summaries. The Class C conclusion does not depend on the standards' wording, but
+the clause numbers cited here do. The project read the FDA material at the source.
+
+### The model boundary in the code
+
+**For developers.** Before extending the model to a multi-limb system, record
+the change in `docs/MODEL.md` § "What the model represents". Such a system separates inspired gas from mean
+circuit gas, as Lerou and Booij's three-part model does. The two would then be
+tracked separately, and this model's single $`F_I`$ would no longer describe
+both.
+
+### Assumptions in the code
+
+**For developers.** The vaporizer control is `ControlInput.DELIVERED` in
+`app/control_record.py`. Each recorded change to it carries the unit *percent
+of 1 atm*. The model has no parameter for the class of vaporizer and needs none
+at sea level. A model that adds ambient pressure will need one.
+
+### Time
+
+Times are in seconds in the equations, the model's code and a saved run.
+The model keeps its own simulation time and never takes it from the computer's
+clock. That clock may still decide when the screen updates.
+
+A run stores each flow as it was set, in liters per minute. Each time the
+equations need a flow, the model converts it to liters per second:
+
+$$
+\dot V_{\mathrm{s}} = \frac{\dot V_{\mathrm{min}}}{60}
+$$
+
+**For developers.** The per-second value of each flow is never stored because
+multiplying it by 60 can give a number that differs from the setting. The tissue
+flows formed from cardiac output share that difference. Settings rebuilt from
+per-second values could therefore describe a run that nobody set up.
+
+#### Simulated time is a count of steps, not a running total
+
+A run moves forward in steps of 1 s, and it takes no step of any other
+length. Simulated time is the number of steps the run has completed, so it is
+always a whole number of seconds. A computer holds a whole number exactly. So
+no instant of a run is a rounded value, and two instants can be compared
+exactly.
+<!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
+
+A run's settings change only between two steps. So a control change takes
+effect at the next whole second, and the run records it at that second.
+`docs/VERIFICATION.md` § "Supported simulation step" gives what that delay can cost a displayed value.
+
+**For developers.** The model stores the count of completed steps
+(`SimulationState.step_count`) and returns it as the simulated time
+(`SimulationState.elapsed_s`), a whole number of seconds. A branched run
+continues the count of the run it branched from. So its time is still one
+count, and is not the instant of the branch plus a second total. Reset sets the
+count to zero.
+
+#### The reproducibility guarantee
+
+Two runs with the same inputs are **exactly identical** in every stored value at
+any step *n*, which falls at *n* seconds in both. Those inputs are the
+starting state, parameters, setting changes and order of events.
+Every comparison of one run with another relies on the guarantee. That includes
+comparing a branched run with the run it branched from, at every instant they
+share. `docs/INTERFACE.md` § "What a branch comparison asserts, and what it does not" says what such
+a comparison may and may not claim.
+
+**A slow or busy computer reaches each step later in real time, but computes and
+stores the same values as a fast one.** The screen uses the computer's clock to
+decide when to update. But the number of steps in each update follows from the
+playback rate the user chooses, and is never measured from the clock. The simulation never takes
+extra steps to catch up after a slow update, and it reads no clock. An automatic
+check keeps the model's code from reading the clock, and from drawing a random
+number that differs from run to run.
+
+**Playing a run faster does not make it a different run.** The playback rate is
+how much simulated time passes per second of real time. A faster rate takes
+more *whole steps* per second of real time, never a larger step. So a case played at
+real time and at three hundred times real time takes the same steps, in the
+same order, at the same size, and gives exactly the same results sooner.
+
+The guarantee does not cover three things, and none of them is a defect:
+
+- **A different model version.** The guarantee applies within one version of
+  the equations and one parameter set. That is why both are versioned.
+- **A different installation.** Basic arithmetic gives identical results on
+  every computer. But each step also uses an exponential function, whose last
+  digit can differ from one installation of the simulator to another.
+- **Elapsed real time.** How long a computer takes to reach step *n* is a
+  property of the computer. So is how many steps it has reached when a
+  wall-clock minute is up. Neither is a property of the model.
+
+**Every value shown, compared or branched from is a state the run stored.** A run
+stores the state that each step wrote, one for each second it reaches, and every
+reader of a reached second takes that state rather than computing it again
+(`docs/INTERFACE.md` § "Each second has one stored state"). So two readers of one
+second get exactly the same bits. The one computed state is a preview of a setting
+not yet applied, which is only drawn.
+
+**For developers.** Faster playback never enlarges the step, because a larger
+step would compute a second solution of the same equations, one that the
+guarantee does not cover. A displayed value would then depend on how fast the
+user was watching, and no label could fix that.
+
+The check on the model's code is `tools/import_boundary_check.py`. It runs in
+`make check` and CI, and it fails the build when any module under
+`src/anesthesia_sim/core/` imports `time`, `datetime`, `random`, `secrets` or
+`uuid`. If it missed any of these imports, a run could stop being reproducible
+while the check still passed. The check stops at `core/` so that the screen
+code outside it may use the clock. A table in the check (`BOUNDARIES`) gives
+the reason for each entry.
+
+Seeding cannot make `secrets` or `uuid` repeatable. Python's `secrets` module
+draws from `random.SystemRandom`, whose `seed()` is documented to do nothing
+and whose `getstate()` raises an error. The function `uuid.uuid1()` mixes the
+current time with the host's hardware address, so a run that used it would
+differ between *machines* as well as between runs.
+
+A caller cannot ask for a step of another length. The method that takes a step
+(`SimulationState.advance()`) takes no argument, and the step is the constant
+`SIMULATION_STEP_S` in `core/simulation_step.py`.
+
+The model stores each flow in the unit the user set it in
+(`UptakeEquationSettings` in `core/governing_equations.py`). Converting to a
+per-second flow and multiplying by 60 does not always return the setting. On a
+0.1 L/min grid across the supported 0 to 10 L/min range, the round trip fails
+for 7 of the 101 cardiac outputs (1.9, 3.8, 3.9 and 7.6 to 7.9 L/min).
+<!-- provenance: core/supported_ranges.py MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10 -->
+
+The exponential in each step is one `exp()` call, a library function whose last
+bit can differ between platforms, Python builds and math libraries. The
+propagator is also built from a series and a sequence of squarings, and a
+compiler may change the order in which their terms are summed.
+
+### Concentrations
+
+Every concentration that the model computes is a dimensionless
+partial-pressure-equivalent fraction. For example, $`F = 0.02`$ represents a 2%
+gas-phase concentration.
+<!-- not-restated: 2 % -->
+
+The vaporizer dial and MAC are given in percent of an atmosphere. The
+conversion between a fraction and a percent is:
+
+$$
+\text{percent} = 100F
+$$
+
+The conversion has only two uses. Where the equations need $`F_D`$, the model
+derives it from the dial's percent. The screen converts for display. The model
+treats a fraction and a percent as different kinds of number, and rejects one
+where the other is wanted.
+
+**The vaporizer setting is stored as the percent dialled.** It is the only
+concentration that is set rather than computed. Converting a fraction back to a
+percent does not always return the setting, so a value kept as a fraction could
+not give back what a learner dialled. A new run starts the dial at the agent's
+published percent, without converting it. An error message about a setting
+gives it in percent, beside the vaporizer maximum, which is also stored in
+percent. Like the vaporizer setting, the flows are stored as set (§ "Time").
+
+**A concentration's range is checked once, when the concentration is created.**
+A fraction must always be finite and satisfy:
+
+$$
+0 \leq F \leq 1
+$$
+
+A percent must be finite and lie from 0 to 100. Every place that stores a
+concentration accepts only a checked value.
+
+Each fraction computed in a step is checked before a compartment stores it. A
+value outside 0 through 1 halts the run and names the compartment, instead of
+being stored or shown. Supported settings never lead to such a value. The
+delivered concentration and each starting fraction must be at or below 0.99 of
+ambient pressure (`docs/VERIFICATION.md` § "The numerical envelope").
+<!-- provenance: core/supported_ranges.py MAXIMUM_INPUT_FRACTION = 0.99 -->
+
+**For developers.** The conversion between a fraction and a percent is written
+only in `src/anesthesia_sim/core/concentration.py`, in both directions. The two
+forms are distinct types there, `Fraction` and `Percent`, so a type checker
+rejects a percent where a fraction is wanted before the program runs. When the
+program runs, a value of the wrong form is rejected as a missed conversion
+rather than as a value out of range. The code also rejects a value that is
+already converted, or one that does not say which form it is in.
+
+The breathing circuit stores the dial's percent, and so do the record of control
+changes and the settings that a run records for each stretch. The model derives
+$`F_D`$ from that percent in both the circuit and the recorded settings. A new
+run's dial is set in `AgentUptakeSystem.for_agent()`.
+
+On a 0 to 8% dial in 0.01% steps, multiplying a fraction by 100 fails to return
+the percent it came from for 126 of the 801 settings. The first failure is at
+0.23%, and 0.9% comes back as 0.9000000000000001.
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
+
+The agent's MAC is stored as a `MacPercent`, a `Percent` that rejects zero when
+it is built. Every formatter that computes a MAC multiple accepts only that
+kind of percent as its divisor. No other lower limit is set on the MAC, so a MAC
+far below any real agent's would still give multiples too large to read. The
+shipped MACs are 1.2% to 6.0%.
+<!-- provenance: data/agents/isoflurane.json mac_percent = 1.2 -->
+<!-- provenance: data/agents/desflurane.json mac_percent = 6 -->
+
+The rules that the fraction and percent types share with the flows are written
+once, in `core/checked_number.py` (`docs/INTERFACE.md` § "Supported input ranges"): what counts as a
+number, that one checked quantity is never created from another, and that minus
+zero is stored as zero.
+
+The places that store a concentration are these:
+
+- each compartment's setter
+- the driving fraction that a compartment's own closed form takes
+- the breathing circuit, when it is built or set (`BreathingCircuit`)
+- the saved state that a rollback restores the circuit from
+  (`BreathingCircuitState`)
+- the settings that a run is built from (`UptakeEquationSettings`)
+- the parameters that an agent's data file is parsed into, which hold its MAC
+  and vaporizer maximum (`AgentParameters`)
+
+Each computed fraction is checked in `AgentUptakeSystem._write_state_vector`.
+The 0.99 input limit is there because rounding can carry a step's result a
+little above the largest fraction that the step started from. The figures
+behind the limit are recorded in `core/concentration.py`.
+
+### Symbols
+
+The **Code** column names the one place in the model's code that holds each
+symbol.
+
+| Symbol | Meaning | Unit | Code |
+| --- | --- | --- | --- |
+| $`t`$ | Elapsed simulation time | s | `SimulationState.elapsed_s` |
+| $`\Delta t`$ | An interval of simulated time. A run's step is one second (`docs/VERIFICATION.md` § "Supported simulation step") | s | — the code reads the constant `SIMULATION_STEP_S` for a run's step; a compartment stepped on its own takes its interval as an argument |
+| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
+| $`F_I`$ | Inspired agent fraction, taken as the fraction in the breathing circuit (`docs/MODEL.md` § "What the model represents" states the assumption that makes circuit gas and inspired gas one quantity, and what would break it) | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
+| $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
+| $`F_a`$ | Arterial partial-pressure-equivalent fraction, defined as $`F_a \equiv F_A`$ (`docs/MODEL.md` § "What the model represents") | dimensionless | — the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
+| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.partial_pressure_fraction` |
+| $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless | `TissueGroup.partial_pressure_fraction` |
+| $`V_C`$ | Mixed breathing-circuit volume | L gas | `BreathingCircuit.circuit_volume_l` |
+| $`V_A`$ | Modeled alveolar gas volume | L gas | `AlveolarCompartment.gas_volume_l` |
+| $`V_v`$ | Venous blood-pool volume | L blood | `VenousBloodCompartment.volume_l` |
+| $`V_i`$ | Volume of tissue group $`i`$ | L tissue | `TissueGroup.volume_l` |
+| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see `docs/MODEL.md` § "Breathing circuit") | L gas/min | `BreathingCircuit.fresh_gas_flow_l_min` |
+| $`\dot V_A`$ | Alveolar ventilation | L gas/min | `AlveolarCompartment.alveolar_ventilation_l_min` |
+| $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
+| $`Q_i`$ | Blood flow to tissue group $`i`$, formed as $`f_iQ`$ and never stored | L blood/min | `TissueGroup.blood_flow_l_min_at` |
+| $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$ | dimensionless | `TissueGroup.perfusion_fraction` |
+| $`\mathrm{MAC}_\%`$ | The agent's alveolar concentration at 1 MAC, a single adult value whose source states no age. It sets the dial's starting position and is the divisor for the display in MAC multiples. No governing equation reads it | percent | `AgentParameters.mac_percent` |
+| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient, read from the agent data files and stored once per patient in the venous pool | dimensionless | `PatientCompartments.blood_gas_partition_coefficient` |
+| $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, read from the agent data files | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
+| $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ and never stored | dimensionless | `TissueGroup.tissue_blood_partition_coefficient_for` |
+| $`M_C`$ | Agent stored in the breathing circuit | L equivalent gas | `BreathingCircuit.agent_amount_l` |
+| $`M_A`$ | Agent stored in alveolar gas | L equivalent gas | `AlveolarCompartment.agent_amount_l` |
+| $`M_v`$ | Agent stored in venous blood | L equivalent gas | `VenousBloodCompartment.agent_amount_l` |
+| $`M_i`$ | Agent stored in tissue group $`i`$ | L equivalent gas | `TissueGroup.agent_amount_l` |
+
+The symbols for the two tissue coefficients name both phases in order, because
+the primary literature has no convention that would let a reader supply a
+missing phase. Baker and Farmery's 2011 review gives one quantity three names in
+a single chapter: the tissue-gas partition coefficient (p. 569), the
+tissue-blood partition coefficient (p. 570) and the blood tissue partition
+coefficient (Table 2). The review's Eq. (4) shows that the quantity is the
+tissue:blood coefficient. The full citation is in the reference list,
+`docs/references/README.md`.
+
+The gas-phase symbols follow the inhaled-anesthetic literature:
+$`F_D \rightarrow F_I \rightarrow F_A`$. Symbols and the gas-phase cascade
+($`F_D`$, $`F_I`$, $`F_A`$) follow Hendrickx and De Wolf (pp. 161-162). They
+attribute the $`F_D - F_I`$ gradient to rebreathing (p. 169) and the
+$`F_I - F_A`$ gradient to uptake (p. 171), and describe the teaching role of
+the $`F_A/F_I`$ curve (p. 167) (Hendrickx JFA, De Wolf A. Special aspects of
+pharmacokinetics of inhalation anesthesia. In: Schüttler J, Schwilden H, eds.
+Modern Anesthetics. Handbook of Experimental Pharmacology 182. Springer,
+2008:159-186).
+
+The breathing circuit's quantities carry the subscript $`C`$: $`V_C`$ is its
+volume and $`M_C`$ is the amount of agent in it.
+
+**The symbols for inspired and tissue fractions differ only in case.** $`F_I`$
+is the inspired fraction, and $`F_i`$ is tissue group $`i`$'s fraction. Where
+both appear in one expression, the tissue index is written out.
+
+**For developers.** Each Code cell is written `ClassName.accessor`. Where a
+symbol has no place of its own in the code, its Code cell shows an em dash
+followed by what the code reads instead. $`F_a`$ is the only such symbol.
+
+A reader who knows the model's symbols should be able to follow the code
+without the Code column, so code that needs the column to be understood has a
+defect.
+
+The code's names for the two tissue coefficients give both phases in order, as
+their symbols do.
+
+The case-only difference between $`F_I`$ and $`F_i`$ stays because both are
+standard in the literature. Renaming either would make this model's symbols
+disagree with every source a reader is likely to come from.
+
+### Tissue groups and compartment capacities in the code
+
+**For developers.** In the code, the tolerance on $`\sum_i f_i = 1`$ is
+`FLOW_FRACTION_TOLERANCE = 1e-12`, defined in `core/rounding.py`.
+
+**For developers.** The model writes the blood:gas coefficient once, into the
+venous pool, and the tissue groups store none. The pool refuses a second value,
+and the patient refuses a replacement pool with a different one. If each tissue
+group kept its own copy, the copies could disagree and no check would fire. A
+pool at 0.1 beside groups at sevoflurane's 0.65 would still conserve agent, and
+the run would give uptake curves that look plausible and are wrong.
+<!-- provenance: data/agents/sevoflurane.json blood_gas_partition_coefficient = 0.65 -->
+
+**For developers.** The code computes the capacity from the tissue:gas
+coefficient, in one multiplication (`TissueGroup.capacity_l`). When the model
+sets up the patient's compartments (`PatientCompartments.from_parameters`), it
+stores the agent's blood:gas coefficient once, in the venous pool. The code
+takes that value (`PatientCompartments.blood_gas_partition_coefficient`) from
+there for the lung's uptake term and for each tissue group's tissue:blood
+coefficient.
+
+### The breathing circuit in the code
+
+**For developers.** The tests from v0.0.2 that check the equation for the
+circuit alone against its exact solution are in `docs/VERIFICATION.md` § "Preserved circuit reference
+tests".
+
+Desflurane's dial maximum is stored in `data/agents/desflurane.json` as
+`max_delivered_concentration_percent`.
+
+Never shorten the "Fresh gas flow" label to its first line to fit a layout.
+
+A machine's $`V_C`$ is stored as `circuit_volume_l` in its file in
+`data/machines/`. It holds the assembled total of apparatus and patient circuit
+until the split planned in `docs/machine-abstraction.md` stores the apparatus
+volume separately, as `apparatus_volume_l`.
+
+An apparatus figure stored alone shortens the circuit time constant by the
+patient circuit's share. At 4.0 L/min, a Perseus A500's 2.1 L apparatus volume
+gives a time constant of 31.5 s, 36% shorter than the 49.5 s from its assembled
+3.3 L. No automatic check can catch that error, because both are correctly cited
+volumes (§ "How this document is held to the tree" says what the documentation
+check confirms).
+<!-- derived: 31.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+<!-- derived: 49.5 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+
+Closed-circuit operation needs both a variable alveolar volume and a patient who
+consumes oxygen, so it is not among the three entries in `docs/MODEL.md` § "Nitrous oxide and the fixed alveolar volume"
+that come from the fixed alveolar volume alone.
+
+Setting only the exhaust's removal rate to zero does not model a closed circuit.
+The changed model runs without error and gives a plausible curve. Its circuit
+settles at $`F_I = F_A + \dot V_FF_D/\dot V_A`$.
+At the opening fresh gas flow of 4.0 L/min, with the reference adult's 4 L/min
+alveolar ventilation and a 2% dial, that is two percentage points above
+alveolar. In the steady state every litre of delivered agent reaches the
+patient, as in a closed circuit, but nothing ties the fresh gas flow to uptake.
+At 4.0 L/min and the same dial, the vaporizer adds agent about thirteen times
+faster than at the 0.3 L/min that this patient's uptake would set.
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
+<!-- not-restated: 2 % -->
+
+Closed-circuit operation is a property of the machine, and one coefficient
+switched by a condition is the wrong way to model it. The machine design in
+`docs/machine-abstraction.md` reserves a place for it, a removal strategy named
+`closed_circuit`, recorded there as not implemented.
+
+### The alveolar gas equation in the code
+
+**For developers.** With the delivered fraction set to zero, the six equations
+become $`d\mathbf{F}/dt = A_6\mathbf{F}`$. $`A_6`$ is the 6×6 block of the
+matrix of the model's equations (`build_system_matrix` in
+`core/governing_equations.py`), in that module's state order. Each of the six
+exponential terms is $`e^{\lambda_k t}`$ for one eigenvalue $`\lambda_k`$ of
+$`A_6`$, with time constant $`\tau_k = -1/\operatorname{Re}\lambda_k`$. The
+5.83 s figure comes from a search over a grid of 11 fresh gas flows, 13
+ventilations and 21 cardiac outputs for each agent, refined along cardiac
+output.
+
+Many numerical methods need steps short compared with the fastest time constant
+to keep their errors from growing. The slowest time constant is about 5 700 to
+14 900 times the fastest, so these methods would take many steps over a run
+long enough for the slowest to matter. The exact method of
+`docs/VERIFICATION.md` § "Selected method (as implemented)" does not need such short steps.
+
+The test that recomputes the table is
+`test_modal_time_constants_are_the_pinned_ones` in
+`tests/reference/test_coupled_dynamics.py`. That file holds the test's own copy
+of the equations. When the test fails, its message says to re-derive the table.
+On 2026-11-01, the eigenvalues of the matrix of the model's equations agreed
+with the table's figures, and with the values from the test's copy, to within a
+relative difference of 3e-15.
+
+In the matrix of the model's equations, the alveolar row divides each of its
+terms by the alveolar volume (`alveolar_volume_l`), which the equation settings
+hold fixed for the whole step. Two standard formulations lift the fixed-volume
+constraint, and a milestone that adds several gases could adopt either one. They
+are equivalent to first order. The first lets $`V_A`$ change over time, and the
+concentration equation gains a volume term:
+
+$$
+\frac{dV_A}{dt} = \dot V_{A,\mathrm{in}} - \dot V_{A,\mathrm{out}} - \sum_k \dot M_{\mathrm{uptake},k}
+\qquad
+\frac{dF_A}{dt} = \frac{dM_A/dt - F_A\,dV_A/dt}{V_A}
+$$
+
+The second keeps $`V_A`$ constant and replaces the volume lost to total uptake
+with inspired gas, so the effective inspired ventilation becomes
+$`\dot V_A + \sum_k \dot M_{\mathrm{uptake},k}`$. This formulation is the
+smaller change to the model, and the one that the classical treatment uses.
+
+Either way, the second-gas effect follows from the alveolus holding more than
+one gas, and needs no machinery of its own. Because the gases are coupled
+through the alveolar volume, the roadmap says to model the patient as a set of
+substances instead of bolting nitrous oxide on beside a volatile agent
+(`ROADMAP.md` planned item 6). A patient model built that way makes planned
+item 7 nearly free. Bolting nitrous oxide on instead would leave item 7
+unreachable.
+
+Adopting the 0.47 figure for nitrous oxide would need an entry of its own that
+meets the standard set in `docs/PARAMETERS.md` § "Source hierarchy".
+
+### Tissue uptake in the code
+
+**For developers.** A blood flow can be above zero and still so small that $`\tau_i`$ is larger
+than any number the computer can hold. Then the method that computes $`\tau_i`$
+(`TissueGroup.time_constant_s`) returns infinity, as it does at zero flow, and a tissue group
+stepped on its own is left unchanged. The exact change in the agent it holds is far smaller than
+any amount the simulator displays. A test in `tests/unit/test_blood_flow.py` checks this at the
+smallest flow that can be created. The venous pool's time constant
+(`VenousBloodCompartment.time_constant_s`) is infinite in the same way at a cardiac output that
+small, and a second test there checks it.
+
+## How this document is held to the tree
+
+§ "What a named test, a missing test and a date tell the reader" gives the rules
+that a reader of this document relies on. This section gives the rest, for the
+people who write it.
+
+For a figure that the model computes or the simulator displays, such as the time
+at which a compartment first shows a nonzero reading, the sentence that gives
+the figure names the test that computes it, or uses the fixed form. Where that
+test also reads the figure from this document and compares it with the model's
+output, the document cannot drift from the model without the test failing.
+
+In some parts of this document, an automatic check makes sure that each claim
+names in fixed-width type what it describes. It checks every row of the hazard
+table and every subsection of the required tests, and every output in the
+displayed-outputs list of `docs/INTERFACE.md`. It does not yet check the entries of the required invariants.
+
+In the sections that the check reads paragraph by paragraph, every number with a
+unit has something behind it. Its paragraph gives a test, the fixed form, a date
+or a published source, or links the number to the simulator's data.
+
+Outside these lists and sections, only the documentation review before a work
+item closes finds a number with nothing behind it, or a claim that does not name
+what it describes. The review does the same for a qualitative claim, such as
+which value a readout shows beside a halt, because the check cannot read one.
+
+A count in this document is dated, checked against what it counts, or copied
+from a tool that prints it. For example, a check compares the count in a heading
+with the entries under it. Nothing checks a copied count later, so it can go out
+of date.
+
+**For developers.** These rules apply in part to the project's other
+documents. The frozen lists in `ROADMAP.md` and the package map in
+`docs/ARCHITECTURE.md` promise an entry for each member of a set, and each has
+checks of its own. The check of a frozen list reads only the lines that open
+with an item id. The prose of `ROADMAP.md` is treated as dated. Every thread in
+`docs/WORKING_NOTES.md` is dated, so only the rule for dated statements applies
+to it. The rules do not apply to prose about the project's workflow tooling, in
+`.claude/`, `CONTRIBUTING.md` and `docs/resident-instructions.md`, where the
+rule on counts is only advice.
+
+The rule that a claim names what it describes also applies to two documents that
+describe the code: to every paragraph of `docs/ARCHITECTURE.md`, and to every
+paragraph of `docs/interface-provenance.md` § "What this project adopts, diverges
+from, and refuses". Each such paragraph names in fixed-width type the module,
+symbol or test it describes, or uses the fixed form ``no code yet (`PL-XXXX`)``.
+An item id alone names no code. The documentation check reads both paragraph by
+paragraph (`check_bound_families`). When something that a paragraph names
+changes, the command for the documentation review
+(`tools/doc_check.py candidates`) prints the paragraph's first and last line
+(`PL-BLN0`).
+
+A statement is about the code or its data when it says, for example, that a test
+enforces a rule, that a field exists, that a value is *N*, or that a job runs
+something. It names that thing as a test, path, symbol or field in fixed-width
+type, or with a `<!-- provenance: -->` marker over a restated number. In the
+documentation check (`tools/doc_check.py`), `check_named_tests` looks up a
+test, `check_citations` a path, `check_prose_provenance` a marker and
+`check_make_targets` a `make` command. No check looks up a symbol or a field. The strongest link for a figure from the model is a test
+that reads it from the document that states it, as
+`tests/reference/test_known_limitations_figures.py` does for
+`docs/MODEL.md` § "Known limitations".
+
+A writer may phrase the words before ``no test yet (`PL-XXXX`)`` freely, but the
+form itself is fixed, so that the documentation check can tell a forgotten link
+from a declared absence. Closing the named item without adding the link makes
+the check fail.
+
+The lists whose headings promise an entry for each member of a set are the
+invariants list, the required-tests subsections, the displayed-outputs list, the
+hazard table, a frozen gate list and a marked enumeration. The function that
+checks them (`check_bound_families`) reads only the lists and sections named in
+its table, each section paragraph by paragraph. A list or a section joins that
+table only when the change that makes it conform is merged, so that work not
+yet done never makes `make check` fail.
+
+In those sections, a published source counts only when it is cited by a DOI, a
+PubMed id, an ISBN or a journal locator such as "Anesth Analg 1991;72:316-324".
+An author and a year alone, such as "Mapleson 1963", do not count, because no
+pattern can tell them from a phrase such as "Until 2026".
+
+A paragraph's test or fixed form may sit in the note for developers below it.
+That note covers the paragraphs directly above it, back to the previous heading
+or note, and stops at the first paragraph that has a test, the fixed form, a date or a
+source of its own. A date or a
+source in the note covers only the note.
+
+A paragraph with no test, fixed form, date or source passes only if a marker
+covers each number that it states with a unit. A `provenance:` marker covers a
+value the paragraph states, in that value's unit. A `derived:` marker covers a
+figure that the paragraph works out, in the unit it writes, and each input the
+paragraph states. A `not-restated:` marker covers nothing, because it says that
+the paragraph's numbers are not stored values. So a computed figure cannot pass
+on a marker written for a figure beside it.
+
+Outside the lists and sections where the check looks for a missing name, a
+command for the documentation review (`tools/doc_check.py candidates`) prints
+each line that names a file, a definition or a data key that a change touched.
+Only the reviewer finds a number or a claim on a line that names none of these.
+
+Besides a count in a heading, a check compares a count with what it counts only
+through a marker over a data value. Any other count is dated, copied from a
+tool, or left out. This document never states the number of entries in the
+hazard table or in any other list named in this section. The function that
+checks gate counts (`check_gate_counts`) applies the rule on counts in code. It
+checks each count that a frozen list states about itself against the list: in a
+group heading, in a release table, and in the sentence that says how many
+entries are marked `not-delegable`. It refuses a count written into a lower
+heading, which it cannot check. It leaves other counts in prose alone, because a
+sentence such as "frozen at seventeen entries" records a dated fact that must
+never change.
+
+This section's rules follow requirements traceability, the established practice
+for software of this application's safety class (§ "Software safety
+classification: Class C, for the whole application"). Traceability links each
+requirement to the tests and risk controls that cover it. IEC 62304 § 5.1.1
+requires the software development plan to carry traceability between system
+requirements, software requirements, software system tests and risk control
+measures. The FDA's *General Principles of Software Validation* (2002) § 5.2.2
+names traceability analysis among the validation tasks. Gotel and Finkelstein
+set out the problem in *An analysis of the requirements traceability problem*,
+ICRE 1994, pp. 94–101.
+
+
+### What a named test, a missing test and a date tell the reader
+
+When a statement in this document, in `docs/PARAMETERS.md` or in `README.md`
+is about the simulator's code, data or output, it names the thing it describes. Where no test covers the
+statement yet, it says so in a fixed form, ``no test yet (`PL-XXXX`)``, and the
+parenthesis names the open work item for adding the test.
+
+Each name is set in fixed-width type and points to a test, a file, or a part of
+the code or its data. A number repeated from the simulator's data is linked to
+the stored value. An automatic documentation check looks up each name and link.
+Without that check, a sentence would still read as true after the test it names
+was renamed, the data it describes was removed or the value it repeats was
+changed.
+
+When a statement carries a date, sits under a dated heading or sits in a
+released version's section, it records what was true on that date. It need not
+name a test, and nothing checks it against the code. A later fact gets its own
+date, and the dated statement is never changed to carry it.
+
+`docs/MODEL.md` is written for a clinician and names no test. Where a test
+holds one of its statements, this document or `docs/PARAMETERS.md` names it.

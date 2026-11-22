@@ -765,7 +765,7 @@
   "Run # — Now: F<sub>A</sub>/F<sub>I</sub> = #.##",
   "Run #, at #m of simulated time",
   "Run #, at #m##s of simulated time",
-  "Run #: Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/MODEL.md, \"Concentrations\"). The values shown are the last completed step. Reset to start a new run.",
+  "Run #: Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/VERIFICATION.md, \"Concentrations\"). The values shown are the last completed step. Reset to start a new run.",
   "Share of the agent the run holds:\nCircuit ##%, Alveolar ##%, Mixed venous <#%,\nVessel-rich group #%, Muscle #%, Fat <#%.",
   "Stopped — simulation error",
   "Two runs are shown, so the chart draws at most # compartments at once. Every compartment's value is in the readouts above, for both runs.",
@@ -835,7 +835,7 @@
   "Stopped — simulation error"
  ],
  "dial moved on a failed run": [
-  "Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/MODEL.md, \"Concentrations\"). The values shown are the last completed step. Setting refused — the cardiac output setting cannot be changed on a stopped run, because no step will run under a new one. Reset to start a new run, which keeps every setting.",
+  "Simulation stopped — SimulationNumericalError: the simulation step of # s could not be completed and was rolled back, leaving the state the last completed step produced: fraction of -#.# is outside # to #, the range a fraction of one atmosphere takes (docs/VERIFICATION.md, \"Concentrations\"). The values shown are the last completed step. Setting refused — the cardiac output setting cannot be changed on a stopped run, because no step will run under a new one. Reset to start a new run, which keeps every setting.",
   "Stopped — simulation error"
  ],
  "dial moved at the supported run length": [

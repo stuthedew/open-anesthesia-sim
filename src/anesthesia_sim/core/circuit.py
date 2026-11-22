@@ -633,7 +633,6 @@ class BreathingCircuit:
             circuit_volume_l,
             stored_agent_l,
             "breathing circuit",
-            "Breathing circuit",
         )
 
         inspired_partial_pressure_fraction = Fraction(
@@ -717,11 +716,7 @@ class BreathingCircuit:
 
         require_nonnegative_finite("circuit agent_amount_l", agent_amount_l)
         require_within_the_capacity(
-            "circuit agent_amount_l",
-            agent_amount_l,
-            self.circuit_volume_l,
-            "breathing circuit",
-            "Gas compartments",
+            "circuit agent_amount_l", agent_amount_l, self.circuit_volume_l, "breathing circuit"
         )
 
         self.inspired_partial_pressure_fraction = Fraction(agent_amount_l / self.circuit_volume_l)

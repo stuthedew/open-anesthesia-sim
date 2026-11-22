@@ -775,7 +775,7 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
     reason = (
         "SimulationConfigurationError: alveolar partial_pressure_fraction of 1.0000001 is "
         "outside 0 to 1, the range a fraction of one atmosphere takes "
-        '(docs/MODEL.md, "Concentrations")'
+        '(docs/VERIFICATION.md, "Concentrations")'
     )
     status = RunStatus(
         is_running=False,

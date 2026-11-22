@@ -14,7 +14,7 @@ discarded; what every other module holds is a plain dataclass.
 
 **The wall clock and the process generator, to nothing under `core/`.**
 `CLAUDE.md` requires simulation time to be explicit state and never the wall
-clock, and `docs/MODEL.md` "The reproducibility guarantee" states that a run is
+clock, and `docs/VERIFICATION.md` "The reproducibility guarantee" states that a run is
 a function of its inputs and of the number of steps taken and of nothing else.
 A compartment reaching for `time`, `datetime`, `random`, `secrets` or `uuid`
 breaks that promise by an amount the machine chooses rather than the model.
@@ -184,7 +184,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "can name the commit (PL-YKF8). That is the package's first read of anything "
             "outside its own inputs, and the habit is what this confines: a module that "
             "shells out has taken a dependency on the machine, and in `core/` that would "
-            "break the same promise `time` and `datetime` below protect - `docs/MODEL.md` "
+            "break the same promise `time` and `datetime` below protect - `docs/VERIFICATION.md` "
             '"The reproducibility guarantee", that a run is a function of its inputs and '
             "of the number of steps taken and of nothing else. The one allowance reads no "
             "simulation state, reaches nothing under `core/`, and fails closed to the "
@@ -197,7 +197,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
         allowed=(),
         why=(
             "`CLAUDE.md` requires simulation time to be explicit state and never the wall "
-            'clock, and `docs/MODEL.md` "The reproducibility guarantee" promises that a run '
+            'clock, and `docs/VERIFICATION.md` "The reproducibility guarantee" promises that a run '
             "is a function of its inputs and of the number of steps taken and of nothing "
             "else. A compartment that reads a clock makes two runs of identical inputs "
             "differ by whatever the machine was doing, which is not a quantity the model "
@@ -322,7 +322,7 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "it arrives under pyqtgraph as the chart's array type, not as the model's. "
             '`docs/WORKING_NOTES.md` "Decided: no numpy" (2026-09-05) measured that the '
             "model's read path and its append-dominated write path gain nothing from it, "
-            'and `docs/MODEL.md` "The reproducibility guarantee" rests on a pure-Python '
+            'and `docs/VERIFICATION.md` "The reproducibility guarantee" rests on a pure-Python '
             "propagator whose every operation is `math` and `float`. Confining it out of "
             "`core/` keeps that a decision the tree enforces rather than one the port's "
             "dependency list quietly reopens; widening it means re-arguing that note, and "
