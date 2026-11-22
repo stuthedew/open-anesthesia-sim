@@ -887,7 +887,7 @@ class ChartFrame:
         mac_percent: The agent's 1 MAC as a percent of one atmosphere. It is
             the divisor against which every MAC-denominated mark below is
             placed.
-        mac_age_years: The patient's age, in years, that `mac_percent` is
+        mac_age_years: The age, in years, that `mac_percent` is
             the MAC for. The `1 MAC` reference line prints it.
         axis_top_percent: The top of the compartment chart's percent axis.
             It is built as a `Percent` when the frame is assembled. So the

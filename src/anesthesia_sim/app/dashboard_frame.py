@@ -3114,8 +3114,8 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
     the axis earlier in the window is still drawn clipped now. Hidden traces
     are skipped, so the notice never points at a trace that is not there. A
     trace counts as off scale only once it exceeds the ceiling by more than
-    the readouts resolve. Isoflurane's ceiling is 3 x 1.2, which in binary
-    floating point is 3.5999999999999996. A comparison with zero tolerance
+    the readouts resolve. Desflurane's ceiling is 3 x 6.6, which in binary
+    floating point is 19.799999999999997. A comparison with zero tolerance
     would report that rounding noise as an excursion. This function builds no
     checked concentration. The percents and the axis top were built when the
     frame was assembled, so this function cannot reject a value after the
@@ -3177,8 +3177,8 @@ def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
     one test of "off the scale", and both the chart's off-scale notice and the
     compartment schematic's off-scale mark use it. So the two Views cannot
     disagree about one tension (`PL-RNYV`). The margin of one display step is
-    needed because of binary rounding. For example, isoflurane's top of 3 x 1.2
-    is 3.5999999999999996 in binary. A value that the readouts print as the top
+    needed because of binary rounding. For example, desflurane's top of 3 x 6.6
+    is 19.799999999999997 in binary. A value that the readouts print as the top
     is not above it.
     """
 

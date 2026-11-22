@@ -29,7 +29,7 @@ MAPLESON_REFERENCE_AGE_YEARS = 40
 def test_the_reference_adult_s_mac_is_mapleson_s_mac_at_age_40(
     agent_id: str, expected_percent: float
 ) -> None:
-    """The reference adult is the 40-year-old whose MAC the agent file states."""
+    """The reference adult records no age, so the simulator uses Mapleson's MAC at age 40 for it."""
 
     patient_mac = mac_for_patient(
         load_agent_parameters(agent_id), load_reference_adult_parameters()

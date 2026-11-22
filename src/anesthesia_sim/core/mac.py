@@ -7,9 +7,9 @@ at age 40 and one equation for how it changes with age (Br J Anaesth
 of the agent. The MAC that a run divides by is a property of the agent *and*
 the patient, so it is built here, in one function, from both.
 
-The reference adult has no age input yet, and is the 40-year-old adult whose
-MAC the agent file states. So today `mac_for_patient` returns the agent's MAC
-at age 40, and says so in `PatientMac.age_years`. When patient age becomes an
+The reference adult's file records no age, and the simulator uses the MAC at
+age 40 for it. So today `mac_for_patient` returns the agent's MAC at age 40,
+and says so in `PatientMac.age_years`. When patient age becomes an
 input (`PL-8F9D`), Mapleson's age equation goes in `mac_for_patient`, and no
 reader of a `PatientMac` changes.
 
@@ -38,7 +38,7 @@ __all__ = ["PatientMac", "mac_for_patient"]
 
 @dataclass(frozen=True, slots=True)
 class PatientMac:
-    """One agent's 1 MAC for one patient, as a percent of one atmosphere, and the patient's age.
+    """One agent's 1 MAC for one patient, as a percent of one atmosphere, and the age it is for.
 
     The two travel together, so that a MAC is never shown without the age it
     belongs to. `mac_for_patient` builds one.
@@ -77,15 +77,16 @@ class PatientMac:
 def mac_for_patient(agent: AgentParameters, patient: ReferenceAdultParameters) -> PatientMac:
     """Return the agent's 1 MAC for this patient, with the age it belongs to.
 
-    The reference adult is the 40-year-old adult that the agent file's MAC
-    describes. So this returns `agent.mac_at_age_40_percent` at age 40. The
+    The reference adult's file records no age, and the simulator uses the
+    MAC at age 40 for it. So this returns `agent.mac_at_age_40_percent` at
+    age 40. The
     module docstring says what changes here when age becomes an input.
 
     Raises:
         TypeError: `agent` is not an `AgentParameters`, or `patient` is not a
             `ReferenceAdultParameters`. Python does not enforce the
-            annotations at run time, and the MAC at age 40 is right only for
-            the patient that the reference adult's file describes.
+            annotations at run time, and the simulator uses the MAC at age
+            40 only for the reference adult.
     """
 
     if not isinstance(agent, AgentParameters):
@@ -93,8 +94,8 @@ def mac_for_patient(agent: AgentParameters, patient: ReferenceAdultParameters) -
 
     if not isinstance(patient, ReferenceAdultParameters):
         raise TypeError(
-            "patient must be a ReferenceAdultParameters, the 40-year-old adult whose MAC "
-            f"the agent files state, and it has type {type(patient).__name__}"
+            "patient must be a ReferenceAdultParameters, the only patient the simulator "
+            f"uses the MAC at age 40 for, and it has type {type(patient).__name__}"
         )
 
     return PatientMac(percent=agent.mac_at_age_40_percent, age_years=MAC_STORED_AT_AGE_YEARS)

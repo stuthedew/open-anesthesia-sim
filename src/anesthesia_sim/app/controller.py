@@ -223,12 +223,13 @@ class RunSettings(RunStatus):
     MAC parameters" holds the value's provenance.
     """
     agent_mac_age_years: int
-    """The patient's age, in years, that `agent_mac_percent` is the MAC for.
+    """The age, in years, that `agent_mac_percent` is the MAC for.
 
     MAC falls with age, so a MAC printed without its age leaves a reader
     unable to tell which patient the divisor describes. The `1 MAC` reference
     beside the chart prints it (`formatting.format_mac_reference`). It is 40
-    for the reference adult. Both fields come from one `PatientMac`, so they
+    on every run, because the reference adult records no age and the simulator
+    uses the MAC at age 40 for it. Both fields come from one `PatientMac`, so they
     cannot describe two different patients.
     """
     fresh_gas_flow_l_min: FreshGasFlow

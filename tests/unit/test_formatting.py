@@ -695,7 +695,7 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
     [
         # Mapleson 1996 (PMID 8777094), Abstract: MAC at age 40 of 1.80%
         # sevoflurane, 1.17% isoflurane and 6.6% desflurane. The reference
-        # adult is 40.
+        # adult records no age, so the simulator uses the MAC at age 40.
         ("sevoflurane", "1 MAC sevoflurane (age 40) = 1.80%"),
         ("isoflurane", "1 MAC isoflurane (age 40) = 1.17%"),
         ("desflurane", "1 MAC desflurane (age 40) = 6.60%"),

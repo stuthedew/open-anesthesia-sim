@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: safety, science
 feature: gas-man-open-source
-touches: src/anesthesia_sim/data/agents, src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, tests
+touches: src/anesthesia_sim/data/agents, src/anesthesia_sim/core, src/anesthesia_sim/app, docs/MODEL.md, docs/INTERFACE.md, tests, docs/items/PL-8F9D-when-patient-age-becomes-an-input-roadmap.md
 added: 2026-11-14
 payoff: Every MAC multiple a learner reads is divided by a published MAC for a stated age, the same age for all three agents, so comparing agents at 1 MAC is no longer off by about 22% and age-adjusted MAC can follow without changing any reader.
 ---

@@ -685,7 +685,7 @@ def format_mac_reference(
     on the display, beside the axis it scales, makes the readouts traceable
     without opening a data file. A reader who disagrees with the divisor can
     see that they disagree, and can convert back. MAC falls with age, so the
-    line also names the patient's age that the MAC is for:
+    line also names the age that the MAC is for:
     `1 MAC sevoflurane (age 40) = 1.80%`.
 
     The MAC is printed to `CONCENTRATION_DISPLAY_DECIMALS`, the decimals of
@@ -697,9 +697,9 @@ def format_mac_reference(
 
     Args:
         agent_display_name: Running agent's display name.
-        mac_percent: That agent's 1 MAC as a percent of one atmosphere, for
-            the patient's age.
-        age_years: The patient's age, in years, that the MAC is for, from
+        mac_percent: That agent's 1 MAC as a percent of one atmosphere, at
+            `age_years`.
+        age_years: The age, in years, that the MAC is for, from
             `SimulationSnapshot.agent_mac_age_years`.
 
     Returns:
