@@ -3,12 +3,15 @@ id: PL-35L9
 title: The wash-in View writes F_A/F_I with underscores, a programmer's notation, where the anesthesia literature writes FA/FI with subscripts
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: interface-design-review
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, tests
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2213
 payoff: the wash-in View names FA/FI as the anesthesia literature typesets it, with subscripts
+tests: tests/integration/simulation_view/test_simulation_view_whole_interface.py::test_the_wash_in_view_writes_its_fractions_with_subscripts
 ---
 
 **Problem.** The wash-in View writes F_A/F_I with underscores, a programmer's notation, where the anesthesia literature writes FA/FI with subscripts

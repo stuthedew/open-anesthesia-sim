@@ -3,12 +3,15 @@ id: PL-8V6L
 title: The agent accounting View prints its residuals in programmer's e-notation, such as '<1e-13 L', which the clinicians who read the screen are not expected to read
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: interface-design-review
 touches: src/anesthesia_sim/app/formatting.py, tools/glyph_check.py, docs/INTERFACE.md, tests
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2213
 payoff: the accounting residuals read as powers of ten in a clinician's notation, not a programming language's
+tests: tests/unit/test_formatting.py::test_format_agent_residual_prints_the_power_of_ten_it_lies_below
 ---
 
 **Problem.** The agent accounting View prints its residuals in programmer's e-notation, such as '\<1e-13 L', which the clinicians who read the screen are not expected to read

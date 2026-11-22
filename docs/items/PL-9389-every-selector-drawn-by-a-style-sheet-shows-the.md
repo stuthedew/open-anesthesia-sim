@@ -3,13 +3,16 @@ id: PL-9389
 title: Every selector drawn by a style sheet shows the platform's drop-down button through its rounded frame, as a bracket and shadow in the right corner, because the sheet styles the frame and not the button
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: interface-design-review
 touches: src/anesthesia_sim/app/stylesheets.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/run_view.py, tests
 deferred-from: v0.7.0 - captured after the freeze; a drawing defect in the selectors, and no displayed value is wrong
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2213
 payoff: every selector shows one clean arrow in its own colours, with no platform button showing through its frame
+tests: tests/integration/test_qt_widgets.py::test_a_selector_draws_its_own_arrow_and_none_of_the_platform_s_button, tests/integration/simulation_view/test_simulation_view_foreground.py::test_every_selector_in_every_view_draws_its_own_arrow
 ---
 
 **Problem.** Every selector drawn by a style sheet shows the platform's drop-down button through its rounded frame, as a bracket and shadow in the right corner, because the sheet styles the frame and not the button
