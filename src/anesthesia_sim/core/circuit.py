@@ -74,8 +74,10 @@ TEACHING_DEFAULT_FRESH_GAS_FLOW_L_MIN = FreshGasFlow(4.0)
 """The fresh gas flow a run opens at when its machine profile states none.
 
 This value is a teaching default. It is not a clinical recommendation, and it is
-not a property of any machine. No surveyed workstation publishes a startup
-fresh gas flow (`docs/machine-survey.md` § "(a2) Default fresh gas flow"). So a
+not a property of any machine. No source the machine survey reached gives a
+startup fresh gas flow for any workstation, and the survey read no
+manufacturer's manual (`docs/machine-survey.md` § "(a2) Default fresh gas
+flow"). So a
 profile in `data/machines/` need not give a default flow
 (`default_fresh_gas_flow_l_min`). The opening flow is a condition of the run
 rather than of the machine, as `docs/machine-abstraction.md` § "Which values
