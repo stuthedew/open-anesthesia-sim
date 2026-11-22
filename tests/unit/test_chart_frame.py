@@ -1114,7 +1114,7 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
 
 
 @pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
-def test_at_opening_settings_fat_first_hour_spans_under_4_px_at_1_mac_and_12_px_at_vaporizer_maximum(
+def test_at_opening_settings_fat_first_hour_spans_under_4_px_at_1_mac_and_12_px_at_vaporizer_max(
     agent_id: str,
 ) -> None:
     """Hold the fat-trace figure in the hazard row on traces drawn on top of each other.
@@ -1131,9 +1131,11 @@ def test_at_opening_settings_fat_first_hour_spans_under_4_px_at_1_mac_and_12_px_
     ventilation, cardiac output and fresh gas flow, the dial held from t = 0,
     and one-second steps. The row states those settings, because raising any
     of them spreads the trace further: a blind review on 2026-11-22 measured
-    up to 21.9 px at the vaporizer maximum with all three at their highest. The height used is `theme.CHART_HEIGHT`, the
-    whole chart. The percent axis is a part of that height, so the pixel
-    figure here is an upper bound on the one a reader sees. The 12 px is the
+    up to 21.9 px at the vaporizer maximum with all three at their highest.
+
+    The height used is `theme.CHART_HEIGHT`, the whole chart. The percent
+    axis is a part of that height, so the pixel figure here is an upper bound
+    on the one a reader sees. The 12 px is the
     hover radius (`HOVER_RADIUS_PIXELS` in `app/qt_chart.py`). Below it, every
     compartment in reach answers under its own name, which is what the row
     relies on. Measured on 2026-11-22: 1.5-3.7 px at a 1 MAC dial and
