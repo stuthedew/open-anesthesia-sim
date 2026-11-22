@@ -266,6 +266,12 @@ def _block_text(block: QWidget) -> str:
     return "\n".join(texts)
 
 
+# regex: finds each decimal number in a block's free text, such as "4.2" in
+# "4.2% sevoflurane". The text is prose with units around the numbers, so no
+# parser reads it, and a string method cannot pick the numbers out of words.
+_DECIMAL_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
 def _block_values(block: QWidget, name: str | None) -> tuple[str, ...]:
     """Every number a run's block shows, in reading order, with the run's own name taken out.
 
@@ -279,7 +285,7 @@ def _block_values(block: QWidget, name: str | None) -> tuple[str, ...]:
     if name is not None:
         text = text.replace(name, "")
 
-    return tuple(re.findall(r"\d+(?:\.\d+)?", text))
+    return tuple(_DECIMAL_NUMBER.findall(text))
 
 
 def _branched_at_a_higher_flow() -> tuple[SimulationController, SimulationController]:
