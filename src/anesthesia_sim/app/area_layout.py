@@ -151,7 +151,7 @@ from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
-from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
@@ -2373,6 +2373,7 @@ class ViewScroll(QScrollArea):
         # `setWidget` makes the View fill its background from the palette,
         # which would paint over the corners of a View's rounded panel.
         view.setAutoFillBackground(filled)
+        FocusRing(self)
         self._fit()
 
     def bar_width(self) -> int:

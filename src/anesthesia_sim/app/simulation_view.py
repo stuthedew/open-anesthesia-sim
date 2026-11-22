@@ -157,6 +157,7 @@ from anesthesia_sim.app.qt_widgets import (
     BookmarkDialog,
     BookmarksPanel,
     ClauseWrappingLabel,
+    FocusRing,
     ForkPanel,
     styled_label,
 )
@@ -680,6 +681,7 @@ class SimulationView(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
         scroll.setWidget(middle)
+        FocusRing(scroll)
         # `actionTriggered` fires when the reader scrolls with the wheel, the
         # keys or the bar. It does not fire for a scroll that this view makes.
         # So this signal tells the view to stop keeping the chart in view.
@@ -749,6 +751,7 @@ class SimulationView(QWidget):
         record_scroll.setFrameShape(QFrame.Shape.NoFrame)
         record_scroll.setStyleSheet(scroll_area_stylesheet())
         record_scroll.setWidget(records)
+        FocusRing(record_scroll)
         # The record column is as tall as the run rows beside it and no taller.
         # With its height policy set to ignored, the band takes the left
         # column's height, and the record scrolls inside it.

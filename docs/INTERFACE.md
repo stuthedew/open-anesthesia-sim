@@ -3586,6 +3586,15 @@ the keyboard. Keyboard operation of the rest of the interface and
 screen-reader support are planned (`ROADMAP.md`, planned-milestone item 20)
 and are not yet commitments.
 
+**Every control that Tab reaches shows when it has the keyboard focus**, as
+SC 2.4.7 (Focus Visible) requires. The platform style draws no mark on a
+slider, a selector, a scroll area or a list. Each of those draws a 2 px ring
+inside its edge, in INK, or in the agent's foreground on the agent selector.
+Start, Pause and Reset carry the same ring, and they also look different while
+held down. The ring shows only when the keyboard moved the focus, as the
+platform's own focus marks do. A plot takes no key, so Tab does not stop on it.
+<!-- provenance: app/theme.py FOCUS_RING_WIDTH = 2 -->
+
 Two criteria carry most of the weight:
 
 - **SC 1.4.3, Contrast (Minimum)**, requires 4.5:1 for text. Every readout,
@@ -3924,6 +3933,11 @@ IEC 60601-1-8's mapping of priority to color could not be established from a
 primary source, and the secondary sources disagree. Three independent reports
 give the low-priority color as cyan, as blue, and as "green or blue". The
 alert-color decision does not depend on the mapping.
+
+**For developers.** `FocusRing` in `app/qt_widgets.py` draws the keyboard
+focus ring. `tests/integration/test_keyboard_focus.py` grabs every control
+that Tab reaches, in every kind of View and in both dialogs, with and without
+the focus, and fails where the two images match.
 
 ### The six compartment traces: what separates them
 

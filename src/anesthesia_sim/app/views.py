@@ -103,7 +103,13 @@ from anesthesia_sim.app.qt_chart import (
     WashInLegend,
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
-from anesthesia_sim.app.qt_widgets import BookmarksPanel, FocusedComboBox, ForkPanel, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    BookmarksPanel,
+    FocusedComboBox,
+    FocusRing,
+    ForkPanel,
+    styled_label,
+)
 from anesthesia_sim.app.run_presentation import NotBuilt, RunPresentation
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.stylesheets import (
@@ -487,6 +493,7 @@ class _KeyScroll(QScrollArea):
         self.viewport().setAutoFillBackground(False)
         self.setWidget(self._body)
         self._body.setAutoFillBackground(False)
+        FocusRing(self)
 
     def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """The widest row's least width with the scroll bar beside it, and the box's least height.
