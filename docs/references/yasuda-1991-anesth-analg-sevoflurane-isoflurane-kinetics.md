@@ -62,7 +62,7 @@ sample, although the paper does not say so.
 against the four ratios. The recovery values show that metabolism is negligible
 over five minutes of elimination, and `docs/MODEL.md` cites them for that.
 Because none of the six is a stored value, none needs the standing that
-`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a
 value" requires of a stored value's source.
 
 ## Where the tissue partition coefficients come from
@@ -75,7 +75,7 @@ partition coefficients. Its blood-flow estimates multiply "the tissue/blood
 partition coefficient (which we determined previously)" by a fitted rate
 constant, and its volume estimates divide a volume by "the tissue/gas partition
 coefficient" (page 319). Both cite reference 3. Each agent's data file records
-the coefficients, and `docs/MODEL.md` § "v0.2.0: isoflurane and desflurane"
+the coefficients, and `docs/PARAMETERS.md` § "v0.2.0: isoflurane and desflurane"
 checks them against the 1989 paper.
 
 ## Values from this paper recorded in other notes

@@ -212,8 +212,8 @@ than the volunteers did, a disagreement about how agent returns from the
 tissues. The model's documentation gives the numbers and the reasons
 (`docs/VERIFICATION.md` § "Published wash-in and elimination validation test").
 
-The model's documentation (`docs/MODEL.md`) therefore grades the cited source of
-every value as a primary measurement, a secondary synthesis, or the parameter set
+The model's documentation (`docs/PARAMETERS.md`) therefore grades the cited
+source of every value as a primary measurement, a secondary synthesis, or the parameter set
 of another simulator used as a reference. Moving the remaining values onto primary
 sources is open work, tracked in [`ROADMAP.md`](ROADMAP.md).
 
@@ -257,7 +257,10 @@ make run          # or: uv run anesthesia-sim
 ## Documentation
 
 - [`docs/MODEL.md`](docs/MODEL.md) — the scientific specification: equations,
-  units, conventions, parameter provenance, assumptions and known limitations.
+  units, conventions, assumptions and known limitations.
+- [`docs/PARAMETERS.md`](docs/PARAMETERS.md) — where each stored value comes
+  from: its file and key, its source, how the source was read, and why it was
+  chosen.
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the code is shown to
   solve those equations correctly: the numerical method, the properties the
   model must always keep, the required tests, and what a release must pass.

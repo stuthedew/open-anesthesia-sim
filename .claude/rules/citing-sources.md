@@ -4,6 +4,7 @@ paths:
   - "/docs/MODEL.md"
   - "/docs/INTERFACE.md"
   - "/docs/VERIFICATION.md"
+  - "/docs/PARAMETERS.md"
   - "/docs/references/**"
 ---
 
@@ -16,7 +17,7 @@ that is done from this environment. It loads on the files where a constant and
 its provenance live, which is the moment the question arises.
 
 What may be cited as the **authority** for a stored value is a different
-question, decided by `docs/MODEL.md` § "Source hierarchy: what may be cited as
+question, decided by `docs/PARAMETERS.md` § "Source hierarchy: what may be cited as
 the authority for a value". That one is about whether a document counts; this
 one is about how you reached it. Both have to be answered.
 
@@ -176,7 +177,7 @@ Four limits decide what a citation may claim:
   distribution, depth of anesthesia and the parameter set the simulator runs
   on, so a science question with no obvious paper behind it starts there rather
   than from memory or from a search. Neither is a measurement. *Modern
-  Anesthetics* is tier 2, a textbook, which `docs/MODEL.md` § "Source
+  Anesthetics* is tier 2, a textbook, which `docs/PARAMETERS.md` § "Source
   hierarchy" calls a secondary synthesis. The Workbook is tier 3, because it
   documents a reference implementation's parameter set. A textbook chapter is
   a route to a measurement, not the measurement.
@@ -199,7 +200,7 @@ Four limits decide what a citation may claim:
   named the pages it needed. What must not happen is the other two exits —
   narrowing the claim until something reachable supports it, or taking a search
   summary for a reading. Both produce a `sources` note that looks sourced, and
-  `docs/MODEL.md` § "Source hierarchy" exists to stop exactly that.
+  `docs/PARAMETERS.md` § "Source hierarchy" exists to stop exactly that.
 
   **Reading a source from the corpus owes an extraction note back here.**
   Otherwise the corpus is consulted once per *session* rather than once per

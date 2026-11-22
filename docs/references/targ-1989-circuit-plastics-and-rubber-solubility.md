@@ -12,7 +12,7 @@ I-653 is the code name desflurane carried before it had its name.
 This is the **circuit** paper. Its companion has the same authors in another
 order, and its title ends "in human tissues": Yasuda, Targ & Eger, *Anesth
 Analg* 1989;69(3):370-3, PMID 2774233. That paper is the source of the tissue
-coefficients that each agent's data file records, and `docs/MODEL.md`
+coefficients that each agent's data file records, and `docs/PARAMETERS.md`
 § "v0.2.0: isoflurane and desflurane" checks the stored coefficients against
 it.
 
@@ -51,7 +51,7 @@ on 2026-10-26 for `PL-N701`.
 ## Where the repository uses them
 
 No fact from this paper is adopted as the authority for a stored value, as
-`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a
 value" defines adoption.
 
 - **The 9860 ml volume** is recorded in the reference circle system's data

@@ -7,7 +7,7 @@ status: done
 classes: defect, docs
 feature: anesthesia-machine
 milestone: v0.6.19
-touches: docs/MODEL.md, docs/machine-abstraction.md, docs/prose-review/model-description-draft.md, docs/machine-survey.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
+touches: docs/MODEL.md, docs/PARAMETERS.md, docs/machine-abstraction.md, docs/prose-review/model-description-draft.md, docs/machine-survey.md, docs/items/PL-CR81-projects-threads-in-the-v0-7-0-project-run.md
 added: 2026-11-11
 closed: 2026-11-22
 pr: 2212
@@ -29,7 +29,7 @@ The authors conclude for "two decoupling-style anesthetic machines (ACOMA and Fa
 
 **What the three documents say instead.**
 
-- `docs/MODEL.md` § "Where each stored value comes from", the paragraph that opens "**Volume is not the whole of the difference between machines**": "Fukuda et al. moved only the fresh gas inlet, with the machine and the volume held fixed. The inspired/delivered ratio of both isoflurane and sevoflurane rose significantly at low flow".
+- `docs/PARAMETERS.md` § "Where each stored value comes from", the paragraph that opens "**Volume is not the whole of the difference between machines**": "Fukuda et al. moved only the fresh gas inlet, with the machine and the volume held fixed. The inspired/delivered ratio of both isoflurane and sevoflurane rose significantly at low flow".
 - `docs/machine-abstraction.md` § "Fresh gas inlet position is not modelled", the paragraph that opens "The survey's headline finding": "moving only the fresh gas inlet significantly raised the inspired/delivered ratio of isoflurane and of sevoflurane during low-flow anesthesia ... a machine changed it with volume held fixed". The same section also says "Every surveyed machine is such a machine, except the two that Fukuda et al. instrumented", which counts two machines where the abstract names three, one of them (the ACOMA) not in the survey's machine table.
 - `docs/prose-review/model-description-draft.md` § "6.4 The breathing circuit": "Fukuda et al. (2006) moved only the fresh gas inlet, with the machine and its volume fixed, and the inspired-to-delivered ratio of isoflurane and sevoflurane rose significantly at low flow."
 

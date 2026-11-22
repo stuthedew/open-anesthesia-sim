@@ -93,9 +93,10 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "on the surface the ring is drawn on. It is never painted from the "
         "foreground role."
     ),
-    "QSlider": (
-        "the four setting sliders. Each draws no text - the value beside it is "
-        "a label of its own - and `slider_stylesheet` declares the groove, "
+    "_SettingSlider": (
+        "the four setting sliders, each a `QSlider` (`PL-57LD`). Each draws "
+        "no text - the value beside it is a label of its own - and "
+        "`slider_stylesheet` declares the groove, "
         "the filled track and the handle, none of which is painted from the "
         "foreground role."
     ),

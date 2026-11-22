@@ -71,13 +71,14 @@ from anesthesia_sim.app.dashboard_frame import new_case_question
 from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import (
     _DECLARED_ROLES,
-    BookmarkDialog,
     ForkPanel,
+    MarkEditor,
     NewCaseDialog,
     declare_application_colours,
     declare_interface_colours,
 )
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.stylesheets import panel_stylesheet
 from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, BACKGROUND, INK, MUTED, PANEL, PRIMARY
 from anesthesia_sim.app.view_registry import REGISTERED
 from tests.integration.simulation_view.simulation_view_support import (
@@ -425,18 +426,23 @@ def test_the_border_between_two_areas_shows_the_page_rather_than_the_host(
     view.close()
 
 
-# ------------------------------------------------------- the bookmark editor
+# ------------------------------------------------------- the marks editor
 
 
-def test_the_bookmark_dialog_draws_the_theme_rather_than_the_host_palette(
+def test_the_marks_editor_draws_the_theme_rather_than_the_host_palette(
     dark_host: QApplication,
 ) -> None:
     """The editor's entries, spin boxes and lists keep this interface's surface.
 
     This is `PL-RKRY`'s regression test, and it turns the project owner's
-    screenshot into assertions. Eleven widgets in this dialog paint from a
-    palette and declared nothing, so each one showed the host's near-black
-    `Base` inside a dialog whose own surface was declared PANEL.
+    screenshot into assertions. Eleven widgets in the editor, then a dialog,
+    painted from a palette and declared nothing. So each one showed the host's
+    near-black `Base` inside a dialog whose own surface was declared PANEL.
+
+    Since `PL-CHX0` the editor sits in the Bookmarks View, which declares its
+    surface with a stylesheet. A stylesheet on a parent makes the controls
+    under it take the application palette, so the page here carries one too,
+    and each control must declare its own roles.
 
     The placeholder is checked separately because it is the role that a
     half-fix makes *worse*. Declaring a light fill without declaring
@@ -444,23 +450,25 @@ def test_the_bookmark_dialog_draws_the_theme_rather_than_the_host_palette(
     "Optional" from poorly legible to invisible.
     """
 
-    dialog = BookmarkDialog()
-    dialog.show()
+    editor = MarkEditor()
+    _shown(editor, dark_host)
+    page = editor.parentWidget()
+    assert page is not None
+    page.setObjectName("markEditorPage")
+    page.setStyleSheet(panel_stylesheet("markEditorPage"))
     dark_host.processEvents()
 
-    assert _undeclared(dialog) == []
+    assert _undeclared(editor) == []
 
-    placeholder = dialog.time_label_edit.palette().color(QPalette.ColorRole.PlaceholderText)
+    placeholder = editor.time_label_edit.palette().color(QPalette.ColorRole.PlaceholderText)
 
     assert placeholder.name().upper() == MUTED.upper()
-    assert _commonest(_colours(dialog, dark_host)) == PANEL.upper()
+    assert _commonest(_colours(editor.time_list, dark_host)) == PANEL.upper()
 
     # The vacuity guard: an entry that declares nothing, under the same host.
     bare = _shown(QLineEdit(), dark_host)
 
     assert _commonest(_colours(bare, dark_host)) != PANEL.upper()
-
-    dialog.close()
 
 
 def test_the_new_case_dialog_declares_its_surface_as_a_palette(dark_host: QApplication) -> None:
@@ -545,7 +553,10 @@ def test_a_legend_checkbox_draws_its_indicator_in_the_theme(
 def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
     dark_host: QApplication,
 ) -> None:
-    """The popups for choosing an agent, time base, playback rate and branch point draw the theme.
+    """Every selector's popup on the dashboard draws the theme rather than the host's palette.
+
+    The selectors choose the agent, the time base, the playback rate, the
+    branch point and a target's compartment.
 
     This is `PL-0NVN`'s regression test. A stylesheet on a combo box makes
     everything inside it resolve from the application palette, so every one
@@ -576,10 +587,11 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
 
     popups = [box.view() for box in view.findChildren(QComboBox)]
 
-    # The shipped Default Workspace draws one chart and one branch control. So
-    # it contains one time-base selector (`PL-L59K`) and one branch point
-    # selector, beside the agent and playback rate selectors.
-    assert len(popups) == 4
+    # The shipped Default Workspace draws one chart, one branch control and one
+    # bookmarks View. So it contains one time-base selector (`PL-L59K`), one
+    # branch point selector and the marks editor's compartment selector
+    # (`PL-CHX0`), beside the agent and playback rate selectors.
+    assert len(popups) == 5
 
     for popup in popups:
         palette = popup.palette()
@@ -649,7 +661,7 @@ def test_no_content_widget_in_the_interface_paints_from_the_host_palette(
     single instance is not what keeps costing. This defect has now arrived
     four times, in controls added months apart, because nothing failed when a
     new widget declared nothing. This test walks the whole rendered tree: the
-    dashboard and both dialogs. It fails on any widget that paints a surface
+    dashboard and the new-case dialog. It fails on any widget that paints a surface
     from a palette role and does not resolve to this interface's colours.
 
     A control that declares its own `background-color` is exempt, which is how
@@ -677,15 +689,12 @@ def test_no_content_widget_in_the_interface_paints_from_the_host_palette(
     assert len(built_view_kinds(view)) == len(REGISTERED), built_view_kinds(view)
     assert view.layout_container.too_small() == ()
 
-    editor = BookmarkDialog(view)
-    editor.show()
     confirmation = NewCaseDialog(new_case_question(controller.snapshot(), "Isoflurane", 0), view)
     confirmation.show()
     dark_host.processEvents()
 
-    for surface in (view, editor, confirmation):
+    for surface in (view, confirmation):
         assert _undeclared(surface) == [], f"{type(surface).__name__} left a surface undeclared"
 
     confirmation.close()
-    editor.close()
     view.close()

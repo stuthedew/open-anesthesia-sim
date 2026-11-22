@@ -14,7 +14,7 @@ payoff: Each difference between our curves and Gas Man for the same case is eith
 
 **Problem.** Compare the simulator's output with Gas Man's own engine, now that its source is public (rasman/gasmanonline, GPL-3.0)
 
-**Why it matters.** `docs/MODEL.md` § "Source hierarchy" calls Gas Man this project's
+**Why it matters.** `docs/PARAMETERS.md` § "Source hierarchy" calls Gas Man this project's
 reference implementation, whose parameter set "defines Gas Man's behavior, so
 this simulator can be compared with it". No test makes that comparison. The
 independent-solution test cannot stand in for it, because the independent

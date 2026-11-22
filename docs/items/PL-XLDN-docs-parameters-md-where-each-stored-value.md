@@ -1,19 +1,19 @@
 ---
 id: PL-XLDN
-title: docs/MODEL.md § 'Where each stored value comes from' says a measurement beside a tier-3 number does not source it, 'which is the second of the three rules below', but the three rules are above it, in § 'Source hierarchy'
+title: docs/PARAMETERS.md § 'Where each stored value comes from' says a measurement beside a tier-3 number does not source it, 'which is the second of the three rules below', but the three rules are above it, in § 'Source hierarchy'
 priority: P3
 effort: S
 status: blocked
 classes: defect, docs
 feature: model-md-structure
-touches: docs/MODEL.md
+touches: docs/PARAMETERS.md
 blocked-by: PL-48MX
 deferred-from: v0.7.0 - not present at the freeze: the sentence came with cfd4a4b61 on 2026-11-09, and every displayed value is correct
 added: 2026-11-10
 payoff: a clinician following the pointer to the sourcing rule finds it
 ---
 
-**Problem.** docs/MODEL.md § 'Where each stored value comes from' says a measurement beside a tier-3 number does not source it, 'which is the second of the three rules below', but the three rules are above it, in § 'Source hierarchy'
+**Problem.** docs/PARAMETERS.md § 'Where each stored value comes from' says a measurement beside a tier-3 number does not source it, 'which is the second of the three rules below', but the three rules are above it, in § 'Source hierarchy'
 
 **Where.** The paragraph that opens "**The reference patient's data file still
 adopts no primary source for any of its eleven parameters**" ends its third

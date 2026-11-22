@@ -208,7 +208,7 @@ Each file holds a `schema_version`, an `id`, the parameter values, and a
 `sources` array of citations. Each entry in `sources` has the fields `citation`,
 `url`, `note` and the three below (`core.parameters.SourceReference`):
 
-- `tier` is one of the three tiers that `docs/MODEL.md` § "Source hierarchy"
+- `tier` is one of the three tiers that `docs/PARAMETERS.md` § "Source hierarchy"
   defines (`core.parameters.SOURCE_TIERS`).
 - `adopted` says whether the file names the source as the authority for a value
   it stores, whatever the source's tier.
@@ -244,7 +244,7 @@ another.
 
 A script reads every `authority_for` and prints the source and tier behind each
 stored value, file by file and in total (`python3 tools/source_tier_counts.py`).
-Its output gives the counts that `docs/MODEL.md` states, but the script does not
+Its output gives the counts that `docs/PARAMETERS.md` states, but the script does not
 check them. It never blocks a change, by the project owner's decision
 recorded on `PL-9LXK`.
 
@@ -403,7 +403,8 @@ drawn seconds are anchored to an absolute grid measured from the case's zero,
 rather than to their position within the window. So a window that follows the
 run keeps every column it had and gains at most one (`drawn_seconds` in
 `app/chart_time_base.py`). Between two columns the chart also draws the second
-of each compartment's peak and trough (`extreme_seconds`, PL-BLZJ).
+of each compartment's peak and trough (`extreme_seconds`, PL-BLZJ), and of the
+F_A/F_I ratio's (`extreme_seconds_with_gaps`, PL-DN13).
 
 The chart-frame module (`app/chart_frame.py`) is the layer above the drawn
 window. It holds the rule of one column per pixel, with that rule's
@@ -434,9 +435,10 @@ toolkit loaded. § "Package map" gives each one's role. `app/formatting.py`
 uses the resolutions that `docs/INTERFACE.md` § "Displayed precision" derives.
 
 `app/control_timeline.py` reads a control record that is faithful to the run,
-in which a drag of one slider appears as several settings. So collapsing that
-drag into one displayed act is a claim about what the user did, not a tidier
-rendering of what the model saw.
+in which a run of key presses or held steps on one slider appears as several
+settings. A drag applies once, at the release. So collapsing such a run into
+one displayed act is a claim about what the user did, not a tidier rendering
+of what the model saw.
 
 In `app/wash_in.py`, the wash-in quotient has a domain. It is undefined before
 any agent reaches the circuit, and above 1 it stops being a wash-in fraction.
@@ -983,8 +985,8 @@ curves on the plot (`PL-G3K7`). Halting every run rewrites the branch controls
 from the case, so a failed trunk offers no branch from where it stands
 (`SimulationView._halt_every_run`, `PL-MMNX`). It also rewrites the bookmark
 standings from each run's controller, so a mark that the failed run will never
-reach is not listed as still to come (`PL-YHR3`). Every copy of both panels, and
-the marks editor with the bookmark panels, are rewritten from one list
+reach is not listed as still to come (`PL-YHR3`). Every copy of both panels,
+each bookmark panel with the marks editor inside it, is rewritten from one list
 (`SimulationView.halt_restatements`). A test fails on any dashboard control
 that is not covered by a run, a listed panel or a named exemption, so a panel
 added later is checked without anyone having to remember it
@@ -1369,10 +1371,13 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
   axis, a legend, a reference, and the compartment selection. A chart's time
   window belongs to that chart View alone (`PL-L59K`). A control that asks one
   question of the whole case, rather than of either run, also belongs to
-  `SimulationView`. The bookmark editor is the worked example (`PL-LPLD`). It
+  `SimulationView`. The marks editor is the worked example (`PL-LPLD`). It
   writes each mark to every displayed run, so that the copies the controllers
-  hold stay equal. The branch control is the second example (`PL-VKJW`). The
-  instants it offers are the trunk's keyframes, the marks the trunk has
+  hold stay equal. The editor sits in the Bookmarks View rather than in a
+  window, and the dashboard keeps what the reader has entered in it, so every
+  copy of the View shows the same entry (`PL-CHX0`). The branch control is the
+  second example (`PL-VKJW`). The instants it offers are the trunk's
+  keyframes, the marks the trunk has
   passed, and the instant at which the paused trunk stands. A copy of it in
   each run would give a branch a control that could
   only refuse. The bookmarks and the branch control are shown in Views. The

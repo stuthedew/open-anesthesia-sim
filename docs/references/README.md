@@ -9,7 +9,7 @@ The project owner keeps copies in a private repository, the private corpus
 
 **Being listed here does not make a source the authority for a stored value.**
 The model document decides that. It ranks sources in three tiers
-(`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+(`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a
 value"):
 
 1. **Tier 1, primary measurement**: a study that measured the quantity in the
@@ -71,7 +71,7 @@ same article, `10.1002/j.2040-4603.2011.tb00337.x`; both resolve, and the DOI
 above is the one to cite.
 
 This review is the closest published statement of what `docs/MODEL.md`
-specifies. It is tier 2 under `docs/MODEL.md` § "Source hierarchy: what may be
+specifies. It is tier 2 under `docs/PARAMETERS.md` § "Source hierarchy: what may be
 cited as the authority for a value". It derives single-compartment and
 multicompartment models of inert gas transfer, and from them describes
 transport between lungs, blood and other tissues. It compares the result with
@@ -80,7 +80,7 @@ gases, deriving how their transfer depends on solubility in blood and in each
 tissue. Read it when a compartment structure, a governing equation, or a
 solubility-driven assumption in `docs/MODEL.md` is being questioned or extended.
 
-Its Table 2 (p. 572) is the published check that `docs/MODEL.md` §
+Its Table 2 (p. 572) is the published check that `docs/PARAMETERS.md` §
 "Parameter provenance" cites for the tissue:blood division (`PL-H536`,
 `PL-VPF8`). The table prints two sets of coefficients, and neither is Baker's
 own. The bracketed set, which matches the derived rows, is Eger and Shafer's
@@ -104,7 +104,7 @@ and the reference list through the corpus's text layer. The rest was not read.
 > DOI [10.1213/01.ANE.0000146961.70058.A1](https://doi.org/10.1213/01.ANE.0000146961.70058.A1).
 
 It is a review, and PubMed classes it as one, so it is tier 2 under
-`docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+`docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for a
 value". It says its figures "illustrate concepts but are not necessarily precise
 (quantitative) reflections of the kinetics" (p. 1020). Its numbers come from
 other studies. Table 3's time constants, for example, are those of the two
@@ -681,7 +681,7 @@ in this order:
    figure. A value read from a figure also carries the method and its reading
    error.
 5. **Where the repository uses each value**, and its standing under
-   `docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for
+   `docs/PARAMETERS.md` § "Source hierarchy: what may be cited as the authority for
    a value": adopted as the authority for a stored value, with its tier; used
    as a reference value in a test; or cited in `docs/MODEL.md` for a
    description or a caution, for no stored value.
