@@ -7,8 +7,8 @@ paths:
 
 # Every main UI element is a View that any Area can hold
 
-`ROADMAP.md` § "v0.6.0 - the layout is the reader's" builds this interface on
-Blender's window system. The window is divided into non-overlapping, resizable
+`ROADMAP.md` § "Completed: v0.6.0 - the layout is the reader's" builds this
+interface on Blender's window system. The window is divided into non-overlapping, resizable
 **Areas**. Each Area holds one **View**, and the arrangements are kept as
 **Workspaces** that a reader switches between. The project owner ruled that
 **any main UI element is built as a View that an Area can hold** (project

@@ -23,9 +23,9 @@ breaks that promise by an amount the machine chooses rather than the model.
 toolkit the interface left, out of everything.** `docs/ARCHITECTURE.md` §
 "Layering" keeps simulation code independent of the toolkit, a rule that was a
 `CLAUDE.md` bullet until `PL-ZYHX` retired it to this check. `PySide6`,
-`pyqtgraph` and `numpy` - the three packages the Qt port (`ROADMAP.md` §
-"v0.4.26 - the interface moves to Qt") brought in - are permitted in no module
-under `core/`, declared before any of them existed in the tree so that the
+`pyqtgraph` and `numpy` - the three packages the Qt port (`ROADMAP.md`
+§ "Completed: v0.4.26 - the interface moves to Qt") brought in - are permitted
+in no module under `core/`, declared before any of them existed in the tree so that the
 first commit letting one into a compartment would fail rather than the port
 being measured after the fact. Flet is two distributions with two root packages
 - `flet` and `flet_charts` - and both are permitted in no module under `src/`
@@ -267,7 +267,8 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "package, and `PL-7SVX`'s rule - landed with that port - is that it does not "
             'come back. `docs/ARCHITECTURE.md` § "Layering" keeps simulation code '
             "independent of the UI toolkit, and the interface has left this one. While "
-            'the port ran, `ROADMAP.md` § "v0.4.26 - the interface moves to Qt" reasoned '
+            'the port ran, `ROADMAP.md` § "Completed: v0.4.26 - the interface moves to Qt" '
+            "reasoned "
             "from the count of modules importing Flet, and this entry named them: its "
             "unused-allowance error was the checklist that took each name out in the "
             "commit that freed it (PL-9KDK)"
@@ -291,8 +292,9 @@ BOUNDARIES: tuple[Boundary, ...] = (
         tree=CORE_DIR,
         allowed=(),
         why=(
-            'the toolkit the interface moves to (`ROADMAP.md` § "v0.4.26 - the interface '
-            'moves to Qt"), held to the same rule as the one it replaces: '
+            "the toolkit the interface moves to "
+            '(`ROADMAP.md` § "Completed: v0.4.26 - the interface moves to Qt"), held to the '
+            "same rule as the one it replaces: "
             '`docs/ARCHITECTURE.md` § "Layering" keeps simulation code independent of the '
             "UI toolkit, and a compartment that imports "
             "a widget library has taken a dependency on a display it does not have. "
@@ -376,8 +378,8 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "records sizes and no View identity, so a View that saves it, or reaches for the "
             "splitter it sits in, has bound itself to one layout. The adapter builds every "
             "splitter from the model (`PL-W9P6`), so it is the one module that needs the "
-            'class (`ROADMAP.md` § "v0.6.0 - the layout is the reader\'s", Required scope '
-            "entry 6, `PL-L8RN`). The tool reads imports, not attributes, so "
+            'class (`ROADMAP.md` § "Completed: v0.6.0 - the layout is the reader\'s", '
+            "Required scope entry 6, `PL-L8RN`). The tool reads imports, not attributes, so "
             "`QtWidgets.QSplitter` after `from PySide6 import QtWidgets` is not caught, and no "
             "module under `src/` imports Qt that way"
         ),

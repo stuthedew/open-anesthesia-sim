@@ -7,8 +7,8 @@ owner, 2026-09-27, ratified). This module is the one list. The adapter,
 `app/area_layout.py`, looks up each Area's tag here when it builds the widget
 tree. When this build does not register an Area's tag, that Area shows only
 the failure notice, and the model keeps the tag. So a layout saved under
-another build loses nothing when it is saved again (`ROADMAP.md` § "v0.6.0 -
-the layout is the reader's", Required scope entry 4).
+another build loses nothing when it is saved again (`ROADMAP.md`
+§ "Completed: v0.6.0 - the layout is the reader's", Required scope entry 4).
 
 **A tag is a string literal written once, below, beside its entry** (`PL-R1WQ`
 Q3). It is never derived from a class name, a module path or a title. So

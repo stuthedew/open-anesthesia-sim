@@ -102,8 +102,8 @@ a later change can give it the size it needs.
 
 **What is not here.** The Workspace tab strip is `app/workspace_tabs.py`. Only
 the main window is drawn, because v0.6.0 opens only one window (`ROADMAP.md`
-§ "v0.6.0 - the layout is the reader's", "Explicitly out of scope for
-v0.6.0").
+§ "Completed: v0.6.0 - the layout is the reader's", "Explicitly out of scope
+for v0.6.0").
 """
 
 from __future__ import annotations

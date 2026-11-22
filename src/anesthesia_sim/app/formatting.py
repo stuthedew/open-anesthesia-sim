@@ -467,7 +467,7 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # An axis that grew to fit an excursion would redraw a rising curve at a
 # smaller height partway through a lesson. A reader would then attribute that
 # change of shape to the model rather than to the axis. The paragraph "The
-# axis is fixed rather than fitted" in `docs/MODEL.md` § "F_A/F_I as a
+# axis is fixed rather than fitted" in `docs/INTERFACE.md` § "F_A/F_I as a
 # displayed ratio" settled the same question for the wash-in plot, and its
 # reasoning applies here too. Because
 # the axis is also fixed across the session, two consecutive runs can be

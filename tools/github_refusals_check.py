@@ -11,8 +11,8 @@ passed: `PL-61FT`, `PL-1ZZ0`, `PL-95BJ` and the guard leads in `PL-VZ57`.
 as the owner's account, an admin, through Anthropic's proxy. The proxy keeps
 the credential, and the Claude GitHub App may not change a ruleset or a branch
 protection rule, so a session cannot lift a rule the owner sets
-(https://code.claude.com/docs/en/github-actions § "GitHub App permissions",
-read 2026-11-11). GitHub then refuses the action whichever client sends it
+(https://code.claude.com/docs/en/github-actions, section "GitHub App
+permissions", read 2026-11-11). GitHub then refuses the action whichever client sends it
 and however the command is spelt. The session's hooks stay as early warnings.
 
 **So this check reads GitHub's rules and fails where one is missing.**
@@ -40,7 +40,7 @@ same way, and this runs beside it as a step of the `checks` job.
 **What it cannot check, and says so.**
 
 - Anthropic's proxy refuses a branch deletion and a tag sent by `git push`
-  (https://code.claude.com/docs/en/cloud-environments § "GitHub proxy", read
+  (https://code.claude.com/docs/en/cloud-environments, section "GitHub proxy", read
   2026-11-11; `docs/worker.md` § "Ref operations a session cannot perform"
   measured the `HTTP 403`). No endpoint reports that, so an escape the proxy
   refuses names the proxy and is not checked here.
