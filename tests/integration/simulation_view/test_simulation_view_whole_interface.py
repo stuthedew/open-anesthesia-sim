@@ -128,6 +128,7 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
         _concentration(view).chart,
         skip=(
             _concentration(view).hidden_traces_text,
+            _concentration(view).withheld_text,
             *_concentration(view).off_scale.lines,
             *_concentration(view).unmarked_changes.lines,
         ),
@@ -156,7 +157,11 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence(
     strings = _strings_between(
         None,
         _wash_in(view).chart,
-        skip=(*_wash_in(view).states.lines, *_wash_in(view).unmarked_changes.lines),
+        skip=(
+            _wash_in(view).withheld_text,
+            *_wash_in(view).states.lines,
+            *_wash_in(view).unmarked_changes.lines,
+        ),
     )
 
     for value in strings:

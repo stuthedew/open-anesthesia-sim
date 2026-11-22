@@ -147,12 +147,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
-from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
-from anesthesia_sim.app.run_presentation import RunPresentation
+from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
     menu_stylesheet,
@@ -559,8 +557,7 @@ class AreaLayout(QWidget):
 
     def refresh(
         self,
-        frames: Mapping[ChartTimeBase | None, ChartFrame] | None,
-        snapshots: tuple[SimulationSnapshot, ...],
+        frames: Mapping[ChartTimeBase | None, ShownFrame],
         runs: tuple[RunPresentation, ...],
         selection: CompartmentSelection,
         preferences: PreferencesInForce,
@@ -568,53 +565,47 @@ class AreaLayout(QWidget):
     ) -> None:
         """Hand every View one tick, in the reading order of their Areas.
 
-        With `frames`, each View is handed the frame for the window it asked
-        for. With None, no frame was drawn, and every View is handed a tick
-        that carries no frame and no snapshots.
+        Each View is handed the frame for the window it asked for. On a tick
+        that drew, every frame is drawn. On a tick that drew none, each is
+        kept or withheld (`run_presentation.shown_without_a_frame`).
 
-        A View that raises on a tick with a frame stops the tick there. The
-        caller halts every run, and the halt hands every View a tick with no
-        frame. A View that raises on a tick with no frame does not stop the
-        tick. On a halt that tick is the only thing that tells a View which
-        runs are left and what each one shows. If it stopped at the first
-        View that raised, each View after it would go on showing a run that
-        was removed, or the settings from before the halt (`PL-RF2S`).
+        A View that raises on a tick that drew stops the tick there. The
+        caller halts every run, and the halt hands every View a tick that
+        draws no frame. A View that raises on a tick that drew no frame does
+        not stop the tick. On a halt that tick is the only thing that tells a
+        View which runs are left and what each one shows. If it stopped at
+        the first View that raised, each View after it would go on showing a
+        run that was removed, or the settings from before the halt
+        (`PL-RF2S`).
 
         Args:
-            frames: The tick's frames, one for each window that
-                `frame_requests` returned, or None when no frame was drawn.
-            snapshots: As `ViewTick` carries them.
+            frames: The tick's frame for each window that `frame_requests`
+                returned.
             runs: As `ViewTick` carries them.
             selection: As `ViewTick` carries it.
             preferences: As `ViewTick` carries them.
             case: As `ViewTick` carries it.
 
         Raises:
-            ValueError: `frames` is None and `snapshots` is not empty. No
-                View is handed anything.
             KeyError: A View asks for a window that `frames` does not hold.
             Exception: Whatever a View raises while it is handed the tick.
-                On a tick with a frame, the Views after it are handed
-                nothing, and the caller halts every run. On a tick with no
-                frame, every View is handed the tick and the Areas are
-                settled, and then the first exception is raised.
+                On a tick that drew, the Views after it are handed nothing,
+                and the caller halts every run. On a tick that drew no frame,
+                every View is handed the tick and the Areas are settled, and
+                then the first exception is raised.
         """
 
-        if frames is None and snapshots:
-            raise ValueError(
-                f"a tick with no frame carries no snapshots, and {len(snapshots)} were given"
-            )
-
+        drew = any(shown.standing is ValuesStanding.DRAWN for shown in frames.values())
         first_error: Exception | None = None
 
         for _, view in tuple(self._views.values()):
             request = view.frame_request()
-            frame = None if request is None or frames is None else frames[request.time_base]
+            frame = None if request is None else frames[request.time_base]
 
             try:
-                view.refresh(ViewTick(frame, snapshots, runs, selection, preferences, case))
+                view.refresh(ViewTick(frame, runs, selection, preferences, case))
             except Exception as raised:
-                if frames is not None:
+                if drew:
                     raise
 
                 first_error = first_error or raised

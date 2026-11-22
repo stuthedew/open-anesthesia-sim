@@ -28,18 +28,32 @@ refusal of one of them (`PL-7DJK`). `RunValues` holds the four together.
 has started over since that frame. Then the kept values describe a run that
 was discarded, and `halted_run` uses `withheld_values` in their place. All
 four are kept or withheld as one value, so no one of them can be left behind.
+
+**A chart's frame is kept or withheld by the same rule** (`PL-RF2S`). A
+chart window's frame is assembled from every displayed run, so it is kept
+only while every run is the one it was drawn from: the same runs, in the same
+order, none of them started over since. `KeptFrames` records which runs and
+cases the last drawn frames belong to, and `shown_without_a_frame` compares
+that with the runs as they stand now. Otherwise the frame is withheld, and the
+chart shows an empty plot with the reason. A run's banner on a halt says
+whether the charts are withheld (`RunPanelState.charts_withheld`), so it
+never says that a chart shows the last frame while the chart is empty.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from types import MappingProxyType
 
 from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED, DeliveredShown, delivered_shown
+from anesthesia_sim.app.chart_frame import ChartFrame
+from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_schematic import (
     WITHHELD_SCHEMATIC,
     SchematicShown,
     schematic_shown,
 )
+from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import RunRecord, SimulationSnapshot
@@ -164,6 +178,12 @@ class RunPanelState:
         refused_reset_notice: The notice for a Reset the run refused, or None.
         pending_agent_name: The agent that an open new-case question
             proposes, or None while no such question is open.
+        reset_question: The open Reset question, restated from the runs as
+            they stand now, or None while no Reset question is open.
+        charts_withheld: Whether the charts withhold their frame on a tick
+            that draws none, because the runs they show are not the runs
+            their last frame was drawn from (`kept_frames_match`). A halt's
+            banner then says that the charts are withheld.
     """
 
     run_id: RunId
@@ -176,6 +196,8 @@ class RunPanelState:
     rejected_setting_notice: str | None
     refused_reset_notice: str | None
     pending_agent_name: str | None
+    reset_question: NewCaseQuestion | None
+    charts_withheld: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,6 +229,10 @@ class RunPresentation:
             presentation was drawn from. It is None when no such question is
             open, and on a halt. A halted run does not step, so the figures
             in the question from the last frame are still correct.
+        reset_question: The open Reset question, restated for the runs as
+            they stand at this frame (`PL-WM5P`). It is None while no such
+            question is open, and on a halt, for the same reason as
+            `new_case`.
     """
 
     run_id: RunId
@@ -221,6 +247,7 @@ class RunPresentation:
     dials: tuple[SettingReadout, ...] | NotBuilt
     delivered_line: str
     new_case: NewCaseQuestion | None
+    reset_question: NewCaseQuestion | None
 
 
 def drawn_values(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> RunValues:
@@ -306,6 +333,7 @@ def drawn_run(
         standing=ValuesStanding.DRAWN,
         values=values,
         new_case=new_case,
+        reset_question=state.reset_question,
     )
 
 
@@ -374,6 +402,7 @@ def halted_run(
             refused_reset=state.refused_reset_notice,
             branch_offered=state.branch_offered,
             started_over=started_over,
+            charts_withheld=state.charts_withheld,
         ),
         # Every halt shown from this value has failed the run or stopped it at
         # the supported run length, and both of those status words outrank a
@@ -385,6 +414,7 @@ def halted_run(
         standing=standing,
         values=values,
         new_case=None,
+        reset_question=None,
     )
 
 
@@ -411,6 +441,7 @@ def _presentation(
     standing: ValuesStanding,
     values: RunValues,
     new_case: NewCaseQuestion | None,
+    reset_question: NewCaseQuestion | None,
 ) -> RunPresentation:
     """Build the presentation's run-state parts from `record`, around `values`.
 
@@ -457,6 +488,7 @@ def _presentation(
         dials=dials,
         delivered_line=line,
         new_case=new_case,
+        reset_question=reset_question,
     )
 
 
@@ -466,3 +498,149 @@ def _delivered_line(dials: tuple[SettingReadout, ...]) -> str:
     (delivered,) = (dial for dial in dials if dial.control is ControlInput.DELIVERED)
 
     return delivered_line(delivered)
+
+
+@dataclass(frozen=True, slots=True)
+class ShownFrame:
+    """What one chart window shows on one tick: a frame drawn now, a kept frame, or none.
+
+    Attributes:
+        standing: Where `frame` came from. `DRAWN`: it was assembled this
+            tick. `KEPT`: no frame can be drawn, and every displayed run is
+            still the run that the last drawn frame was assembled from.
+            `WITHHELD`: no frame can be drawn, and a run has started over, or
+            the runs changed, since the last drawn frame.
+        frame: The frame to show. None when the frame is withheld. Also None
+            when it is kept but the last drawn frames held none for this
+            window, such as a window chosen while every frame fails. The
+            chart then keeps the plot it holds, which shows another window
+            under a control that names that window (`PL-G3K7`).
+        selection: The compartment selection that `frame` was assembled
+            from, which the legend shows. For a withheld frame it is the
+            selection in force.
+    """
+
+    standing: ValuesStanding
+    frame: ChartFrame | None
+    selection: CompartmentSelection
+
+
+@dataclass(frozen=True, slots=True)
+class KeptFrames:
+    """The frames of the last tick that drew, and which runs and cases they were assembled from.
+
+    Attributes:
+        cases: Each run the frames were assembled from, in drawing order, as
+            its `run_id` and its `RunPresentation.case`.
+        selection: The compartment selection the frames were assembled from.
+        frames: The frame drawn for each window.
+    """
+
+    cases: tuple[tuple[RunId, int], ...]
+    selection: CompartmentSelection
+    frames: Mapping[ChartTimeBase | None, ChartFrame]
+
+
+def run_cases(runs: Sequence[RunPresentation]) -> tuple[tuple[RunId, int], ...]:
+    """Return which runs these are, and how often each had started over, in drawing order."""
+
+    return tuple((run.run_id, run.case) for run in runs)
+
+
+def kept_frames(
+    frames: Mapping[ChartTimeBase | None, ChartFrame],
+    runs: Sequence[RunPresentation],
+    selection: CompartmentSelection,
+) -> KeptFrames:
+    """Return the frames that a tick drew, to keep for a tick that draws none.
+
+    Args:
+        frames: The frame drawn for each window.
+        runs: The presentations built from the snapshots the frames were
+            assembled from, one for each run the frames draw, in drawing order.
+        selection: The compartment selection the frames were assembled from.
+    """
+
+    return KeptFrames(run_cases(runs), selection, MappingProxyType(dict(frames)))
+
+
+def kept_on_a_halt(kept: KeptFrames | None) -> KeptFrames | None:
+    """Return the kept frames that a halt may go on showing, or None where it may show none.
+
+    A frame drawn while a reader held a dial carries that run's preview: the
+    trajectory the run would take under the setting being dragged. A halted
+    run refuses every setting, so after the halt the preview predicts a
+    future that cannot happen. The frame is assembled with the preview's
+    window, so the preview cannot simply be left out of it. So every frame
+    is dropped, each chart is withheld, and the banner says so (blind review
+    of `PL-RF2S`, pass 3).
+
+    Args:
+        kept: The frames of the last tick that drew, or None.
+    """
+
+    if kept is None:
+        return None
+
+    if any(run.preview is not None for frame in kept.frames.values() for run in frame.runs):
+        return None
+
+    return kept
+
+
+def kept_frames_match(kept: KeptFrames | None, cases: tuple[tuple[RunId, int], ...]) -> bool:
+    """Whether the kept frames were drawn from these runs, in this order, with none started over.
+
+    `shown_without_a_frame` keeps a chart's last frame only when this
+    returns True, and a halt's banner says that the charts are withheld
+    when it returns False (`RunPanelState.charts_withheld`). So the banner
+    and the charts are decided by one rule.
+
+    Args:
+        kept: The frames of the last tick that drew, or None when no frame
+            has been drawn for the runs the Views show.
+        cases: Each run the charts show now, in drawing order, as its
+            `run_id` and how often it has started over (`run_cases`).
+    """
+
+    return kept is not None and kept.cases == cases
+
+
+def shown_drawn(frame: ChartFrame, selection: CompartmentSelection) -> ShownFrame:
+    """Return a frame drawn this tick, from `selection`, as a chart shows it."""
+
+    return ShownFrame(ValuesStanding.DRAWN, frame, selection)
+
+
+def shown_without_a_frame(
+    kept: KeptFrames | None,
+    time_base: ChartTimeBase | None,
+    runs: Sequence[RunPresentation],
+    selection: CompartmentSelection,
+) -> ShownFrame:
+    """Return what one chart window shows on a tick that draws no frame.
+
+    The last drawn frame is kept while it describes the runs as they stand:
+    the same runs, in the same order, and none started over since
+    (`RunPresentation.case`). Otherwise it is withheld. A frame drawn before
+    a Reset or an agent change shows the discarded run's traces, and after an
+    agent change its 1 MAC line and MAC-awake band are the old agent's. A
+    frame drawn before a run was removed shows that run's traces and names it
+    in the legend. So in both cases no part of it may stay on the plot.
+
+    Args:
+        kept: The frames of the last tick that drew, or None when no frame
+            has been drawn for the runs the Views show.
+        time_base: The window the chart asks for.
+        runs: The presentations of the runs the chart shows now, in drawing
+            order.
+        selection: The compartment selection in force.
+
+    Returns:
+        The kept frame for `time_base`, or a withheld one.
+    """
+
+    if kept is None or not kept_frames_match(kept, run_cases(runs)):
+        return ShownFrame(ValuesStanding.WITHHELD, None, selection)
+
+    return ShownFrame(ValuesStanding.KEPT, kept.frames.get(time_base), kept.selection)

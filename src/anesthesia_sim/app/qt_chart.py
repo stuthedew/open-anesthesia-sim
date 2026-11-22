@@ -1141,6 +1141,8 @@ class ConcentrationChart(QWidget):
         self._grid.place(frame.tick_times_s, [position for position, _ in frame.percent_ticks])
         self._one_mac_line.setPos(frame.one_mac_percent)
         self._band.setRegion(frame.mac_awake_band_percent)
+        self._one_mac_line.show()
+        self._band.show()
 
         while len(self._runs) < len(frame.runs):
             self._runs.append(_RunItems(item, RunIndex(len(self._runs))))
@@ -1193,9 +1195,30 @@ class ConcentrationChart(QWidget):
         self._frame = frame
         self._refresh_hover()
 
+    def withhold(self) -> None:
+        """Empty the plot: no trace, no mark and no clinical reference, until the next frame.
+
+        A frame is withheld when the run has started over, or a run was
+        removed, since the last frame that drew (`run_presentation.ShownFrame`).
+        The traces, the 1 MAC line and the MAC-awake band of that frame
+        describe a run that is gone, or another agent, so none of them stays
+        on the plot. The axes lose their labels and gridlines too. The percent
+        labels fall at multiples of the agent's 1 MAC, and the time labels
+        and the time axis's title describe the window of a run that is gone.
+        """
+
+        for items in self._runs:
+            items.hide()
+
+        self._one_mac_line.hide()
+        self._band.hide()
+        _clear_axes(self._plot.getPlotItem(), self._grid, self._time_title, ("left", "right"), ())
+        self._frame = None
+        self._refresh_hover()
+
     @property
     def frame(self) -> ChartFrame | None:
-        """The frame last drawn, or `None` before the first."""
+        """The frame last drawn, or `None` before the first and after `withhold`."""
 
         return self._frame
 
@@ -1639,9 +1662,30 @@ class WashInChart(QWidget):
         self._frame = frame
         self._refresh_hover()
 
+    def withhold(self) -> None:
+        """Empty the plot until the next frame, as `ConcentrationChart.withhold` does.
+
+        The F_A/F_I axis keeps its labels and gridlines, because they do not
+        depend on the run or the agent. The time axis loses its labels, its
+        gridlines and the window in its title.
+        """
+
+        for items in self._runs:
+            items.hide()
+
+        _clear_axes(
+            self._plot.getPlotItem(),
+            self._grid,
+            self._time_title,
+            (),
+            [position for position, _ in wash_in_axis_ticks()],
+        )
+        self._frame = None
+        self._refresh_hover()
+
     @property
     def frame(self) -> ChartFrame | None:
-        """The frame last drawn, or `None` before the first."""
+        """The frame last drawn, or `None` before the first and after `withhold`."""
 
         return self._frame
 
@@ -1932,6 +1976,13 @@ class _TimeAxisTitle:
 
         return float(centre - self._axis.size().width() / 2)
 
+    def clear(self) -> None:
+        """Name the axis alone, with no window, as before the first frame."""
+
+        if self._words != TIME_AXIS_TITLE:
+            self._words = TIME_AXIS_TITLE
+            self._write()
+
     def show(self, window: str) -> None:
         """Name the axis and state `window` after the name."""
 
@@ -1958,6 +2009,37 @@ class _TimeAxisTitle:
         # title with as many lines as the old one does not resize it. The
         # axis's own resize handler places the title again.
         self._axis.resizeEvent()
+
+
+def _clear_axes(
+    item: Any,
+    grid: _GridLines,
+    title: _TimeAxisTitle,
+    value_axes: Sequence[str],
+    value_rules: Sequence[float],
+) -> None:
+    """Take the labels and gridlines of a withheld frame off a plot's axes.
+
+    The time axis always loses its labels, its gridlines and the window in its
+    title, because they describe the window of the frame that was withheld.
+
+    Args:
+        item: The plot.
+        grid: The plot's gridlines.
+        title: The time axis's title.
+        value_axes: The names of the value axes whose labels came from the
+            withheld frame, such as "left" and "right". Each loses its labels.
+        value_rules: Where the horizontal gridlines stay, because no frame
+            placed them. Every other horizontal gridline is hidden.
+    """
+
+    item.getAxis("bottom").setTicks([[]])
+
+    for name in value_axes:
+        item.getAxis(name).setTicks([[]])
+
+    grid.place((), value_rules)
+    title.clear()
 
 
 def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
@@ -2494,7 +2576,7 @@ class TraceLegend(QWidget):
         run set, and the owner already has to draw the frame that shows the
         change. When the change was announced from here, the cap that a
         second run brings drew that frame too early. It drew it from inside
-        `SimulationView._rename_runs`, before the wash-in legend or either
+        the dashboard's method that renamed the runs, before the wash-in legend or either
         run had been told there were two runs. The fork that caused the cap
         then drew its own frame.
 
