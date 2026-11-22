@@ -159,7 +159,7 @@ from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import BookmarkPanel, ForkOffer, ForkPoint
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
-from anesthesia_sim.app.qt_widgets import MarkButton, MarkEntry, MarkRefusal
+from anesthesia_sim.app.qt_widgets import DialInput, MarkButton, MarkEntry, MarkRefusal
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.layout.run_identity import RunId
@@ -278,8 +278,9 @@ class ViewRequests:
         adjustment_start: Says that the reader began an input on a dial of
             the given run, so the changes that follow are one new adjustment.
         setting: Asks for the given run's setting on the given control to
-            become the given value. The run applies it or refuses it, and
-            the next tick shows the setting in force.
+            become the given value, and says which kind of input applied it
+            (`DialInput`). The run applies it or refuses it, and the next
+            tick shows the setting in force.
         preview: Says where a held dial of the given run stands, so the
             charts can preview that value (`PL-5B1N`).
         preview_end: Says that the held dial of the given run was released.
@@ -301,7 +302,7 @@ class ViewRequests:
     agent_price: Callable[[str, AgentPrice | None], None]
     refused_entries_discard: Callable[[], None]
     adjustment_start: Callable[[RunId], None]
-    setting: Callable[[RunId, ControlInput, float], None]
+    setting: Callable[[RunId, ControlInput, float, DialInput], None]
     preview: Callable[[RunId, ControlInput, float], None]
     preview_end: Callable[[RunId], None]
     mark_entry: Callable[[MarkEntry], None]

@@ -1030,6 +1030,26 @@ class ReadoutRow(QWidget):
         self._columns = columns
 
 
+class DialInput(Enum):
+    """Whether a dial's value is followed at once by a frame of its own, or needs one.
+
+    A value set by a key, the wheel or a click on the track needs a frame.
+    The dashboard draws it at once unless it has already drawn a frame for
+    an input since the last render tick, and leaves it to that tick
+    otherwise (`SimulationView.present_input`, `PL-2WVC`). The value at which
+    a previewed thumb is released needs none, because the end of the preview
+    draws a frame at once right after it (`PL-5B1N`).
+
+    Members:
+        STEP: A value set by a key press, a wheel event or a click on the
+            track, alone or as one of a burst.
+        RELEASE: The value at which a previewed thumb was released.
+    """
+
+    STEP = "a key, the wheel or a click on the track"
+    RELEASE = "a released thumb"
+
+
 class _SettingSlider(QSlider):
     """A horizontal slider on which a press on the track is one input, and one on the handle a grab.
 
@@ -1203,7 +1223,11 @@ class ParameterSlider(QWidget):
     setting would give. Releasing the thumb applies the value once, through
     `value_changed`, and then ends the preview through `preview_ended`. In
     that order, the frame drawn at the release shows the run under its new
-    setting and no preview. Qt itself would apply the value only after
+    setting and no preview. So the value applied at the release is marked
+    `DialInput.RELEASE`, and its frame is the one that ends the preview. A
+    release ends a preview only where one started. A left click on the track
+    under macOS moves the handle to the pointer and marks it held, but starts
+    no preview, so its release draws no second frame. Qt itself would apply the value only after
     `sliderReleased`, so `_on_thumb_released` applies it first. A key press,
     a wheel step or a click on the groove is one discrete input, so it
     applies at once and previews nothing. Qt's slider tracking is switched
@@ -1233,18 +1257,18 @@ class ParameterSlider(QWidget):
             arrive: a press, a key press that is not a held key's repeat, or
             a wheel notch.
         value_changed: Emitted with the decoded value when the reader
-            applies one: on releasing a dragged thumb, or at once for a key,
-            a wheel step or a click on the groove. `set_setting` never emits
-            it.
+            applies one, and whether a frame follows it (`DialInput`): on
+            releasing a dragged thumb, or at once for a key, a wheel step or
+            a click on the groove. `set_setting` never emits it.
         preview_moved: Emitted with the decoded value at the held thumb's
             position, when the thumb is pressed and each time it moves. A
             press on the groove emits it only once the held thumb moves.
-        preview_ended: Emitted when the held thumb is released, after
-            `value_changed` has applied the value.
+        preview_ended: Emitted when a held thumb that started a preview is
+            released, after `value_changed` has applied the value.
     """
 
     adjustment_started = Signal()
-    value_changed = Signal(float)
+    value_changed = Signal(float, object)
     preview_moved = Signal(float)
     preview_ended = Signal()
 
@@ -1261,6 +1285,11 @@ class ParameterSlider(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(panel_stylesheet(self.objectName()))
         self._decimals = setting.decimals
+        # Whether a preview is shown for this slider's held thumb, which
+        # `preview_ended` ends.
+        self._previewing = False
+        # True only while `_on_thumb_released` applies the released value.
+        self._releasing = False
         self.name_label = styled_label(setting.name, color=INK, bold=True, wrap=True)
         self.qualifier_label = styled_label(
             setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True, wrap=True
@@ -1334,7 +1363,8 @@ class ParameterSlider(QWidget):
         return slider_value(self.slider.value(), self._decimals)
 
     def _on_slider_moved(self, position: int) -> None:
-        self.value_changed.emit(slider_value(position, self._decimals))
+        dial_input = DialInput.RELEASE if self._releasing else DialInput.STEP
+        self.value_changed.emit(slider_value(position, self._decimals), dial_input)
 
     def _on_thumb_pressed(self) -> None:
         """Start a preview where the handle stands, unless the press was on the groove.
@@ -1346,9 +1376,11 @@ class ParameterSlider(QWidget):
         if self.slider.jumping:
             return
 
+        self._previewing = True
         self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self._decimals))
 
     def _on_thumb_moved(self, position: int) -> None:
+        self._previewing = True
         self.preview_moved.emit(slider_value(position, self._decimals))
 
     def _on_thumb_released(self) -> None:
@@ -1360,11 +1392,18 @@ class ParameterSlider(QWidget):
         """
 
         position = self.slider.sliderPosition()
+        previewing, self._previewing = self._previewing, False
 
         if position != self.slider.value():
-            self.slider.setValue(position)
+            self._releasing = previewing
 
-        self.preview_ended.emit()
+            try:
+                self.slider.setValue(position)
+            finally:
+                self._releasing = False
+
+        if previewing:
+            self.preview_ended.emit()
 
 
 class NoticeLabel(QLabel):
