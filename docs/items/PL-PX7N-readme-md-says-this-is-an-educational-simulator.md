@@ -3,12 +3,15 @@ id: PL-PX7N
 title: README.md says 'This is an educational simulator, not a medical device', the device-status claim PL-32QH removed from docs/MODEL.md's Intended use because the project makes no regulatory claim; say what it is not intended for instead
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-md-structure
 touches: README.md
 added: 2026-11-16
+closed: 2026-11-22
+pr: 2212
 payoff: An educator reading the README meets the same intended-use statement as docs/MODEL.md, with no claim about regulatory status that the model document says the project does not make.
+verify: grep -qF 'This is a teaching simulator.' README.md
 ---
 
 **Problem.** README.md says 'This is an educational simulator, not a medical device', the device-status claim PL-32QH removed from docs/MODEL.md's Intended use because the project makes no regulatory claim; say what it is not intended for instead
@@ -38,3 +41,5 @@ claim, which `docs/MODEL.md` § "Intended use" states and `README.md` copies.
 One-off: `PL-32QH` fixed one of the two copies, and this item was filed in the
 commit that closed it as the copy it left, so it is not a fix that failed to
 hold. No head's `misread:` states this fact.
+
+**Done 2026-11-22.** The warning box now opens "**This is a teaching simulator.**" and says it is not intended for clinical prediction, dosing, monitoring a patient, or any other use as a medical device, in the words of `docs/MODEL.md` § "Intended use". It still says that nothing it displays should guide a real patient's care and that every value is a model output. Files checked for another device-status claim: `README.md` (none left, by `grep -n -i 'medical device\|regulat' README.md`), and every `*.py`, `*.md` and `*.json` file outside `docs/items/` by `grep -rn -i "not a medical device"`, which found only two item titles quoted in `ROADMAP.md`'s frozen gate list.

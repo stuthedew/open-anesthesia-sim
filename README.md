@@ -10,10 +10,10 @@ A deterministic simulator of inhaled-anesthetic uptake and distribution, built
 for teaching.
 
 > [!WARNING]
-> **This is an educational simulator, not a medical device.** It is not a
-> clinical prediction tool, a dosing tool, or a patient monitor, and nothing it
-> displays should be used to guide the care of a real patient. Every value on
-> screen is a model output, never a measurement.
+> **This is a teaching simulator.** It is not intended for clinical
+> prediction, dosing, monitoring a patient, or any other use as a medical
+> device, and nothing it displays should be used to guide the care of a real
+> patient. Every value on screen is a model output, never a measurement.
 
 ![The simulator's window after ten simulated minutes of sevoflurane delivered at 2.00% (1.00 times MAC) with a fresh gas flow of 4.0 L/min, played at 1× real time. A row of readouts gives the modelled concentrations, each also as a multiple of MAC: circuit 1.61%, alveolar 1.25%, mixed venous 0.83%, vessel-rich group 1.09%, muscle 0.06% and fat <0.01%. Below them, a chart traces each compartment over time against a dashed line at 1 MAC and a shaded MAC-awake band, beside the four setting controls.](assets/screenshots/dashboard.png)
 <!-- provenance: data/agents/sevoflurane.json mac_percent = 2 -->

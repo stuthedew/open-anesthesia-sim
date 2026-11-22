@@ -649,12 +649,14 @@ constant therefore runs from 89 s to about 50 s, a factor of about 1.8 across
 machines that a learner could meet in one department.
 
 Volume is not the whole difference between machines. Fukuda et al. (2006)
-moved only
-the fresh gas inlet, with the machine and its volume fixed, and the
-inspired-to-delivered ratio of isoflurane and sevoflurane rose significantly
-at low flow. That ratio, $`F_I/F_D`$, is what
-the circuit equation computes, and the model does not represent the layout of
-a machine's internal gas paths.
+moved the fresh gas inlet from beside the absorber to beside the patient.
+During low-flow anesthesia on two decoupling-style machines, the
+inspired-to-delivered ratio rose significantly for sevoflurane, and for
+isoflurane on the one machine where it was compared. A third machine showed no
+significant change. The abstract, which is all the project has read, does not
+say whether moving the inlet changed the circuit's volume. That ratio,
+$`F_I/F_D`$, is what the circuit equation computes, and the model does not
+represent the layout of a machine's internal gas paths.
 
 **Default fresh gas flow.** The 4.0 L/min is a teaching default. It is not a
 clinical recommendation and makes no claim about clinical practice. No
