@@ -5,7 +5,7 @@ These tests cover the readouts, including one readout block at a laptop's width.
 `simulation_view_support.py` describes the whole suite.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import pytest
 from PySide6.QtCore import QPoint
@@ -30,10 +30,17 @@ from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import ReadoutRow
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH, CHART_HEIGHT
-from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
+from anesthesia_sim.app.unconditional_set import (
+    INHALED_AGENT,
+    UnconditionalValue,
+    compartment_value,
+    unconditional_set,
+)
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
-from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.layout.tree import AreaId
 from tests.integration.simulation_view.simulation_view_support import (
     _ALVEOLAR_METRIC_QUALIFIER,
@@ -56,6 +63,94 @@ from tests.integration.simulation_view.simulation_view_support import (
 )
 
 # ------------------------------------------------------- the readouts
+
+
+def test_every_minimum_displayed_output_reads_its_value_from_its_widget(
+    application: QApplication,
+) -> None:
+    """Every value of the unconditional set is drawn, with this run's value, by its widget.
+
+    `docs/INTERFACE.md` § "Minimum displayed outputs" requires each output. Its
+    unconditional part is declared once, in `app/unconditional_set.py`, and
+    `RunView.unconditional_widgets` names the widget that draws each value. This
+    test walks that declaration, so a value added to it fails here until the
+    test says what the value should read. For each value, the widget must be
+    shown and its text must be the run's value (`PL-41YP`).
+
+    The run is isoflurane, with the dial set to 2.0% at the start and to 1.5% at
+    60 s, paused at 150 s and then halted at the supported run length, so that
+    the halt reason, a changed setting and a dial away from 1 MAC are all on
+    screen. The expected concentrations come from a fresh `AgentUptakeSystem`
+    given the same settings and steps, not from the controller or the view.
+    The expected 1 MAC is read from the agent's data file. The other expected
+    texts are written out here.
+    """
+
+    controller = SimulationController(agent_id="isoflurane")
+    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.start()
+    _advance(controller, 60)
+    controller.set_delivered_concentration_percent(Percent(1.5))
+    _advance(controller, 90)
+    controller.pause()
+    controller.halt_at_supported_limit("reached 86400 s of simulated time")
+
+    fresh = AgentUptakeSystem.for_agent("isoflurane")
+    fresh.set_delivered_concentration_percent(Percent(2.0))
+    for _ in range(60):
+        fresh.advance()
+    fresh.set_delivered_concentration_percent(Percent(1.5))
+    for _ in range(90):
+        fresh.advance()
+    fractions = {
+        UnconditionalValue.CIRCUIT_CONCENTRATION: fresh.circuit.inspired_partial_pressure_fraction,
+        UnconditionalValue.ALVEOLAR_CONCENTRATION: fresh.alveoli.partial_pressure_fraction,
+        UnconditionalValue.MIXED_VENOUS_CONCENTRATION: (
+            fresh.patient.mixed_venous_partial_pressure_fraction
+        ),
+        UnconditionalValue.VESSEL_RICH_CONCENTRATION: (
+            fresh.patient.vessel_rich.partial_pressure_fraction
+        ),
+        UnconditionalValue.MUSCLE_CONCENTRATION: fresh.patient.muscle.partial_pressure_fraction,
+        UnconditionalValue.FAT_CONCENTRATION: fresh.patient.fat.partial_pressure_fraction,
+    }
+    mac_percent = load_agent_parameters("isoflurane").mac_at_age_40_percent
+
+    expected: dict[UnconditionalValue, Callable[[str], bool]] = {
+        UnconditionalValue.SIMULATED_TIME: lambda text: text == "2m30s",
+        UnconditionalValue.PLAYBACK_RATE: lambda text: text == "1× real time",
+        UnconditionalValue.RUN_STATE: lambda text: "supported run length" in text,
+        UnconditionalValue.HALT_REASON: (
+            lambda text: "reached the supported run length of 24 hours" in text
+        ),
+        UnconditionalValue.ADMINISTERED_SUBSTANCE: lambda text: text.endswith("Isoflurane"),
+        # 1.5% over isoflurane's 1 MAC of 1.17% is 1.282, which rounds to 1.28.
+        UnconditionalValue.DELIVERED_CONCENTRATION: (
+            lambda text: text == "Delivered 1.50% (1.28 ×MAC)"
+        ),
+        UnconditionalValue.ONE_MAC: lambda text: text == f"1 MAC isoflurane (age 40) = {mac_percent}%",
+        UnconditionalValue.CONTROL_INPUT_RECORD: (
+            lambda text: "Delivered\xa0agent" in text and "1.50%" in text
+        ),
+    }
+    for value, fraction in fractions.items():
+        shown = format_percent(Fraction(fraction))
+        expected[value] = lambda text, shown=shown: text == shown
+
+    view = _shown_view(application, controller)
+    widgets = view.runs[0].unconditional_widgets()
+    required = unconditional_set(INHALED_AGENT).values
+
+    assert set(expected) == set(required)
+    assert set(widgets) >= set(required)
+
+    for value in required:
+        widget = widgets[value]
+        labels = [widget] if isinstance(widget, QLabel) else widget.findChildren(QLabel)
+        text = " ".join(label.text() for label in labels if isinstance(label, QLabel))
+
+        assert widget.isVisibleTo(view), f"{value} has a widget that is not shown"
+        assert expected[value](text), f"{value} reads {text!r}"
 
 
 def test_the_readouts_say_they_are_model_outputs_beside_the_values(
