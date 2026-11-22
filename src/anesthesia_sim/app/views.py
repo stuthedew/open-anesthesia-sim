@@ -227,9 +227,14 @@ class _RunWidgets[W: QWidget]:
                 widget.hide()
                 widget.deleteLater()
 
+        # Raising each widget in turn also puts the widget tree's children in
+        # drawing order (https://doc.qt.io/qt-6/qobject.html#children). A
+        # widget built again would otherwise sit after the later runs' widgets
+        # in the tree, which is the order Tab reads (`PL-B45W`).
         for _, widget in kept:
             self._column.addWidget(widget)
             widget.show()
+            widget.raise_()
 
         self._widgets = kept
 
