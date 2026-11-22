@@ -9,6 +9,7 @@ feature: model-md-structure
 touches: tests/unit/test_agent_simulation_validation.py
 added: 2026-11-16
 closed: 2026-11-22
+pr: 2235
 payoff: A developer reading the agent-balance test finds the threshold under the name docs/MODEL.md uses.
 verify: ! grep -qF 'its release gate' tests/unit/test_agent_simulation_validation.py
 ---

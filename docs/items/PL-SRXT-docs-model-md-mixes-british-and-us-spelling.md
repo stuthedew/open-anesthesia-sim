@@ -9,6 +9,7 @@ feature: model-md-structure
 touches: docs/MODEL.md, docs/VERIFICATION.md, docs/INTERFACE.md, docs/items/PL-KXRB-the-interface-s-labels-spell-modelled-vapour.md
 added: 2026-11-08
 closed: 2026-11-22
+pr: 2235
 payoff: the specification reads as one edited document in the project's US spelling, while every quoted interface label still matches the screen
 verify: ! grep -qF 'The ratio is a modelled value' docs/MODEL.md
 ---

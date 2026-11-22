@@ -10,6 +10,7 @@ touches: docs/VERIFICATION.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): 7ca66f0b (#1947) removed the operator split's explanation and left the term
 added: 2026-11-05
 closed: 2026-11-22
+pr: 2235
 payoff: a developer reading why the independent-solution limit does not shrink with the step learns what the earlier method was and that the code no longer uses it
 verify: grep -qF 'The earlier method was an operator split, which the exact step replaced in v0.4.4' docs/VERIFICATION.md
 ---

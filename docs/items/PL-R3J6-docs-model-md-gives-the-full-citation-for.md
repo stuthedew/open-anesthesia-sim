@@ -9,6 +9,7 @@ feature: model-md-structure
 touches: docs/MODEL.md, docs/VERIFICATION.md
 added: 2026-11-07
 closed: 2026-11-22
+pr: 2235
 payoff: each source has one full citation carrying its reading record, so a reader checking a value never has to compare two copies to find the complete one
 verify: grep -qF 'with a record of what was read in each' docs/VERIFICATION.md
 ---

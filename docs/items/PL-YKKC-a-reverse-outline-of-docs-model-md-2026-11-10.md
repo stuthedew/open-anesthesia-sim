@@ -10,6 +10,7 @@ touches: docs/MODEL.md
 blocked-by: PL-1VXY
 added: 2026-11-10
 closed: 2026-11-22
+pr: 2235
 payoff: the replaced model document is checked for the structural problems the old one had, so they are not carried over
 verify: grep -qF 'Record 2026-11-22: the five points checked against the split documents' docs/items/PL-YKKC-a-reverse-outline-of-docs-model-md-2026-11-10.md
 ---

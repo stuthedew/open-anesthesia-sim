@@ -10,6 +10,7 @@ touches: docs/INTERFACE.md, docs/PARAMETERS.md, docs/VERIFICATION.md
 blocked-by: PL-N83Z, PL-4H8Q, PL-SY7G
 added: 2026-11-07
 closed: 2026-11-22
+pr: 2235
 payoff: each section of MODEL.md reads in the order its reader needs, so a qualifying paragraph comes before the value it qualifies, and the line edit can start
 verify: grep -qF 'How far one stored value can change before the gate fails' docs/VERIFICATION.md
 ---

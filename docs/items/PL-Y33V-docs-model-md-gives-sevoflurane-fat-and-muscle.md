@@ -10,6 +10,7 @@ touches: docs/MODEL.md, docs/INTERFACE.md, docs/VERIFICATION.md
 deferred-from: v0.7.0 - not present at the freeze (817a4d88): the conflicting modal time constants came with 9ed29de4 (#1909)
 added: 2026-11-05
 closed: 2026-11-22
+pr: 2235
 payoff: a reader meeting 42 h in one chapter and 46 h in another learns that both are right and which kind each is, and can check the run-length argument against the table
 verify: grep -qF 'isolated time constant of about 42 h' docs/INTERFACE.md
 recurrences: 2026-11-21 PL-HQQZ withdrawn 2026-11-21 PL-RMNP

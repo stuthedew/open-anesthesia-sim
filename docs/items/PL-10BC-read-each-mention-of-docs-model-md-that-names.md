@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app, src/anesthesia_sim/core, src/anesthesia_sim/dat
 deferred-from: v0.7.0 - a new problem: these mentions became wrong when #2109 (6446f927, 2026-11-13, PL-CTXZ) moved the interface sections out of docs/MODEL.md after the freeze, and PL-CTXZ is closed, so there is no open entry to pair it with
 added: 2026-11-11
 closed: 2026-11-22
+pr: 2235
 payoff: A contributor who follows a docstring to the specification it names finds the interface requirement it means, instead of a document that no longer states it.
 verify: ! grep -qF 'MODEL.md` requires some Views' src/anesthesia_sim/app/view_registry.py
 ---
