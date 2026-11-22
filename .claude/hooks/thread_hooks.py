@@ -59,12 +59,16 @@ from pathlib import Path
 
 from hook_input import LOADS_PROJECT_SETTINGS, PROJECTS_ENTRYPOINT, write_atomically
 
-#: The command the setup script binds to `SessionStart`. It tests for this
-#: file first, so a checkout from before this hook, or a session with no
-#: checkout, starts without an error.
+#: The command the setup script binds to `SessionStart`. It looks for this
+#: file in the directory the session started in, then one level below it,
+#: and runs the first copy it finds. A Projects thread can start in the
+#: directory above its checkout, `/home/user`, where the direct path does not
+#: exist (`PL-4J4H`). It ends in `true`, so a checkout from before this hook,
+#: or a session with no checkout, starts without an error.
 BOOTSTRAP_COMMAND = (
-    'test -f "$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py"'
-    ' && python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py" || true'
+    'for f in "$CLAUDE_PROJECT_DIR"/.claude/hooks/thread_hooks.py'
+    ' "$CLAUDE_PROJECT_DIR"/*/.claude/hooks/thread_hooks.py;'
+    ' do if [ -f "$f" ]; then python3 "$f"; break; fi; done; true'
 )
 
 #: The longest a repository `SessionStart` command may run when this hook runs
@@ -106,27 +110,21 @@ def user_settings_path() -> Path:
 def setup_script() -> str:
     """The cloud environment's setup script, which adds this hook's entry to the user settings.
 
-    It adds the entry beside whatever the file already holds, and adds it
-    only once, so running it over existing settings loses nothing. It ends
-    in `|| true` because a setup script that fails stops the session from
-    starting at all.
+    It is one line, so the owner can paste it whole. It removes any older
+    entry that runs this file and adds the current one, so it can replace an
+    earlier version of itself and still leave a single entry. It keeps
+    everything else the file holds. It ends in `|| true` because a setup
+    script that fails stops the session from starting at all.
     """
-    group = json.dumps(_bootstrap_group())
+    command = json.dumps(BOOTSTRAP_COMMAND)
     return (
-        "mkdir -p ~/.claude\n"
-        "python3 - <<'EOF' || true\n"
-        "import json, pathlib\n"
-        'path = pathlib.Path.home() / ".claude" / "settings.json"\n'
-        "try:\n"
-        "    data = json.loads(path.read_text())\n"
-        "except (OSError, ValueError):\n"
-        "    data = {}\n"
-        f"group = {group}\n"
-        'starts = data.setdefault("hooks", {}).setdefault("SessionStart", [])\n'
-        "if group not in starts:\n"
-        "    starts.append(group)\n"
-        'path.write_text(json.dumps(data, indent=2) + "\\n")\n'
-        "EOF\n"
+        "mkdir -p ~/.claude && python3 -c 'import json, pathlib; "
+        'p = pathlib.Path.home() / ".claude" / "settings.json"; '
+        "d = json.loads(p.read_text()) if p.exists() else {}; "
+        's = d.setdefault("hooks", {}).setdefault("SessionStart", []); '
+        's[:] = [g for g in s if "thread_hooks.py" not in json.dumps(g)]; '
+        f's.append({{"hooks": [{{"type": "command", "command": {command}}}]}}); '
+        'p.write_text(json.dumps(d, indent=2) + "\\n")\' || true\n'
     )
 
 
