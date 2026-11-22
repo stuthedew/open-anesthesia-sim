@@ -44,7 +44,7 @@ can reach is declared on the palette instead, by
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from math import ceil
 from typing import Final
@@ -124,7 +124,7 @@ from anesthesia_sim.app.formatting import (
     MAC_UNIT_SUFFIX,
     format_elapsed,
 )
-from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.stylesheets import (
     filled_button_stylesheet,
     foreground_stylesheet,
@@ -1991,6 +1991,84 @@ class MarkEntry:
     time_row: int
     target_row: int
 
+    def time_bookmark(self) -> TimeBookmark:
+        """The time bookmark that the instant and the name describe.
+
+        Raises:
+            SimulationConfigurationError: If `CaseInstant` refuses the
+                instant, or `TimeBookmark` refuses the name. The editor's
+                instant control has the same range, so an instant typed there
+                is never refused.
+        """
+
+        return TimeBookmark(CaseInstant(self.instant_s), _entered_name(self.time_name))
+
+    def mac_target(self) -> MacTarget:
+        """The MAC target that the compartment, the height and the name describe.
+
+        The compartment row counts in `COMPARTMENT_QUANTITIES`, the order in
+        which the editor lists the compartments.
+
+        Raises:
+            ValueError: If the compartment row selects no compartment.
+            SimulationConfigurationError: If `MacTarget` refuses the height
+                or the name.
+        """
+
+        if not 0 <= self.compartment_row < len(COMPARTMENT_QUANTITIES):
+            raise ValueError(
+                f"the compartment row {self.compartment_row} selects none of the "
+                f"{len(COMPARTMENT_QUANTITIES)} compartments that a target can mark"
+            )
+
+        return MacTarget(
+            COMPARTMENT_QUANTITIES[self.compartment_row],
+            MacMultiple(self.height_mac),
+            _entered_name(self.target_name),
+        )
+
+    def without_names(self) -> MarkEntry:
+        """This entry with both name fields emptied, as they are after a mark is added.
+
+        The instant, the compartment and the height are kept. Adding a second
+        mark near the first is the common case. A name is emptied because
+        reusing it would give two marks the same name.
+        """
+
+        return replace(self, time_name="", target_name="")
+
+    def kept_through(self, panel: BookmarkPanel, reachable_height_mac: float) -> MarkEntry:
+        """This entry as the editor holds it once its lists show `panel` under the height bound.
+
+        A selected row past the end of its list selects nothing, so it
+        becomes -1, as `MarkEditor.select_rows` treats it. The height is held
+        within the bound, as the height control holds it. So a copy built
+        later shows what the copies on screen show (`PL-CHX0`).
+        """
+
+        return replace(
+            self,
+            height_mac=round(
+                min(max(self.height_mac, MAC_DISPLAY_RESOLUTION_MAC), reachable_height_mac),
+                MAC_DISPLAY_DECIMALS,
+            ),
+            time_row=self.time_row if 0 <= self.time_row < len(panel.times.rows) else -1,
+            target_row=self.target_row if 0 <= self.target_row < len(panel.targets.rows) else -1,
+        )
+
+
+def _entered_name(text: str) -> str | None:
+    """What a name field says, or `None` where the reader left it empty.
+
+    An empty field means "list it under its own value" rather than "name it
+    nothing". `bookmarks.TimeBookmark` refuses a blank string in order to
+    keep that distinction.
+    """
+
+    entered = text.strip()
+
+    return entered or None
+
 
 class MarkEditor(QWidget):
     """The two forms in which the reader creates and removes both kinds of mark.
@@ -2347,31 +2425,22 @@ class MarkEditor(QWidget):
         return self.target_list.currentRow()
 
     def entered_time_bookmark(self) -> TimeBookmark:
-        """The time bookmark the form currently describes.
+        """The time bookmark the form currently describes (`MarkEntry.time_bookmark`).
 
         Raises:
-            SimulationConfigurationError: If `CaseInstant` refuses the
-                entered instant, or `TimeBookmark` refuses the name. The spin
-                box's own range keeps the instant from being refused.
+            SimulationConfigurationError: As `MarkEntry.time_bookmark` raises it.
         """
 
-        return TimeBookmark(
-            CaseInstant(self.instant_spin.value()), _entered_label(self.time_label_edit)
-        )
+        return self.entry().time_bookmark()
 
     def entered_mac_target(self) -> MacTarget:
-        """The MAC target the form currently describes.
+        """The MAC target the form currently describes (`MarkEntry.mac_target`).
 
         Raises:
-            SimulationConfigurationError: If `MacTarget` refuses the entered
-                height or name.
+            SimulationConfigurationError: As `MarkEntry.mac_target` raises it.
         """
 
-        return MacTarget(
-            RecordedQuantity(self.compartment_combo.currentData()),
-            MacMultiple(self.height_spin.value()),
-            _entered_label(self.target_label_edit),
-        )
+        return self.entry().mac_target()
 
     def clear_entry(self) -> None:
         """Empty the two name fields, for a mark that has just been added.
@@ -2385,19 +2454,6 @@ class MarkEditor(QWidget):
 
         self.time_label_edit.clear()
         self.target_label_edit.clear()
-
-
-def _entered_label(field: QLineEdit) -> str | None:
-    """What a name field says, or `None` where the reader left it empty.
-
-    An empty field means "list it under its own value" rather than "name it
-    nothing". `bookmarks.TimeBookmark` refuses a blank string in order to
-    keep that distinction.
-    """
-
-    entered = field.text().strip()
-
-    return entered or None
 
 
 def _refill(widget: QListWidget, rows: Sequence[str]) -> None:

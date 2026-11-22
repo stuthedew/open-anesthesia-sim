@@ -59,7 +59,7 @@ from functools import partial
 from types import MappingProxyType
 from typing import Final, cast
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSignalBlocker, QSize, Qt
 from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QFrame,
@@ -116,6 +116,8 @@ from anesthesia_sim.app.qt_widgets import (
     FocusedComboBox,
     FocusRing,
     ForkPanel,
+    MarkButton,
+    MarkEntry,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -144,11 +146,14 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
     UNREADABLE_STATE_TEXT,
-    CaseSurfaces,
+    BranchPresentation,
+    CasePresentation,
     FrameRequest,
+    MarksPresentation,
     SavedState,
     ViewContext,
     ViewRequests,
+    ViewScope,
     ViewTick,
     unreadable_state_text,
 )
@@ -652,6 +657,8 @@ class ConcentrationView(QWidget):
         time_base_selector: The control that sets the window's width.
     """
 
+    scope = ViewScope.RUNS
+
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
@@ -794,6 +801,8 @@ class WashInView(QWidget):
         time_base_selector: The control that sets the window's width.
     """
 
+    scope = ViewScope.RUNS
+
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
@@ -895,6 +904,8 @@ class _RunPanelsView[W: QWidget](QWidget):
         build: Builds one run's widget from the run's presentation.
         write: Writes one run's widget whole from the run's presentation.
     """
+
+    scope = ViewScope.RUNS
 
     def __init__(
         self,
@@ -1104,14 +1115,15 @@ class ParameterControlsView(_RunPanelsView[RunDials]):
         return self._run_widgets.widgets
 
 
-class _CasePanelView[W: QWidget](QWidget):
-    """A View that shows one copy of a panel of the case, built on the View's first tick.
+class _CasePanelView[W: QWidget, S](QWidget):
+    """A View that shows one copy of a panel of the case, written whole from every tick.
 
     The panel belongs to the case and to no run, so the View shows one copy
-    whatever the number of runs displayed. The dashboard writes the copy on
-    every frame and restates it on a halt (`view_contract.CaseSurfaces`).
-    Where the dashboard has no such panel to give, the View shows a line that
-    says why (`PL-TH35` Q6).
+    whatever the number of runs displayed, and whatever run a Workspace is
+    pinned to (`PL-1D3Z`). The View builds its copy on the first tick that
+    holds the panel's values, and writes it from each tick after that, with a
+    frame or without one (`view_contract.CasePresentation`). Where the tick
+    holds no such panel, the View shows a line that says why (`PL-TH35` Q6).
 
     An Area may be shorter than a long mark name needs once the name wraps,
     and narrower than the branch control's row of buttons. The Area then
@@ -1119,15 +1131,11 @@ class _CasePanelView[W: QWidget](QWidget):
     (`area_layout.ViewScroll`, `PL-CBYS`).
     """
 
-    def __init__(
-        self,
-        context: ViewContext,
-        object_name: str,
-        build: Callable[[CaseSurfaces], W | None],
-        absent_text: str,
-    ) -> None:
+    scope = ViewScope.CASE
+
+    def __init__(self, context: ViewContext, object_name: str, absent_text: str) -> None:
         super().__init__()
-        self._build = build
+        self._requests = context.requests
         self._panel: W | None = None
         self._drawn = False
         self.state_notice = _state_notice_for(context)
@@ -1144,19 +1152,37 @@ class _CasePanelView[W: QWidget](QWidget):
 
         return self._panel
 
+    def _shown(self, case: CasePresentation) -> S | None:
+        """The values of this View's panel in `case`, or None where the case holds no such panel."""
+
+        raise NotImplementedError
+
+    def _built(self) -> W:
+        """Build the copy, with each of its controls asking the dashboard for its action."""
+
+        raise NotImplementedError
+
+    def _write(self, panel: W, shown: S) -> None:
+        """Write the whole copy from `shown`."""
+
+        raise NotImplementedError
+
     def refresh(self, tick: ViewTick) -> None:
-        """Build the copy on the first tick. The dashboard writes its values from then on."""
+        """Write the copy from the tick's case, building it on the first tick that holds it."""
 
-        if self._drawn:
-            return
+        shown = self._shown(tick.case)
+        self.absent_notice.setHidden(shown is not None)
 
-        self._panel = self._build(tick.case)
-
-        if self._panel is None:
-            self.absent_notice.setHidden(False)
+        if shown is None:
+            if self._panel is not None:
+                self._panel.hide()
         else:
-            # The copy goes below the state notice and above the stretch.
-            self._column.insertWidget(1, self._panel)
+            if self._panel is None:
+                self._panel = self._built()
+                # The copy goes below the state notice and above the stretch.
+                self._column.insertWidget(1, self._panel)
+
+            self._write(self._panel, shown)
             self._panel.show()
 
         self._drawn = True
@@ -1175,14 +1201,15 @@ class _CasePanelView[W: QWidget](QWidget):
         return ()
 
 
-class BookmarksView(_CasePanelView[BookmarksPanel]):
+class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
     """The case's marked instants and marked heights, with the forms that add and remove them.
 
     Every Area that shows this View lists the same marks, because the marks
     belong to the case (`PL-9YPR`). The marks are edited here rather than in a
     window, so no window opens over the readouts while a run plays (`PL-CHX0`).
     Every copy of the forms shows the same entry, because the dashboard keeps
-    it (`MarkEntry`).
+    it and hands it in every tick (`MarkEntry`). A press of a button sends the
+    copy's entry with the request, and the dashboard makes the edit.
 
     Args:
         context: What the View is built from.
@@ -1190,12 +1217,78 @@ class BookmarksView(_CasePanelView[BookmarksPanel]):
 
     def __init__(self, context: ViewContext) -> None:
         # Every dashboard has marks to list, so the line for an absent panel is never shown.
-        super().__init__(
-            context, _BOOKMARKS_VIEW_NAME, lambda case: case.build_bookmarks_panel(), ""
-        )
+        super().__init__(context, _BOOKMARKS_VIEW_NAME, "")
+        # The entry that the last tick handed this View, so that a tick
+        # rewrites the forms only when the dashboard's entry has changed.
+        self._entry_written: MarkEntry | None = None
+
+    def _shown(self, case: CasePresentation) -> MarksPresentation:
+        return case.marks
+
+    def _built(self) -> BookmarksPanel:
+        panel = BookmarksPanel()
+        editor = panel.editor
+
+        for button, pressed in (
+            (MarkButton.ADD_TIME, editor.add_time_button),
+            (MarkButton.REMOVE_TIME, editor.remove_time_button),
+            (MarkButton.ADD_TARGET, editor.add_target_button),
+            (MarkButton.REMOVE_TARGET, editor.remove_target_button),
+        ):
+            pressed.clicked.connect(partial(self._ask_for_edit, button))
+
+        editor.entry_edited.connect(self._report_entry)
+
+        return panel
+
+    def _ask_for_edit(self, button: MarkButton) -> None:
+        if self._panel is not None:
+            self._requests.mark_edit(button, self._panel.editor.entry())
+
+    def _report_entry(self) -> None:
+        if self._panel is not None:
+            self._requests.mark_entry(self._panel.editor.entry())
+
+    def _write(self, panel: BookmarksPanel, shown: MarksPresentation) -> None:
+        """Write the lists, the height bound, the entry and the refusal from one tick.
+
+        The editor's signals are blocked while the tick is written, so that
+        a bound that holds the height control down is not mistaken for the
+        reader editing it. The dashboard works out the same held entry itself
+        (`MarkEntry.kept_through`).
+
+        The forms are rewritten only when the dashboard's entry differs both
+        from the entry last handed here and from what the forms hold. Writing a
+        field moves its cursor, so the copy the reader is typing in is never
+        rewritten with its own entry. The selected rows are written on every
+        tick, because a refill of a list can leave a copy built while the
+        lists were hidden with no row selected.
+        """
+
+        editor = panel.editor
+
+        with QSignalBlocker(editor):
+            if shown.panel is None:
+                panel.withdraw()
+            else:
+                panel.set_panel(shown.panel)
+
+            if shown.reachable_height_mac is not None:
+                editor.set_reachable_height(shown.reachable_height_mac)
+
+            entry = shown.entry
+
+            if entry is not None:
+                if entry != self._entry_written and entry != editor.entry():
+                    editor.set_entry(entry)
+                else:
+                    editor.select_rows(entry)
+
+            self._entry_written = entry
+            editor.show_refusal(shown.refusal)
 
 
-class BranchView(_CasePanelView[ForkPanel]):
+class BranchView(_CasePanelView[ForkPanel, BranchPresentation]):
     """Where a learner opens a branch of the case: the point to open it at, and the buttons.
 
     The selected point belongs to the case, so every Area that shows this
@@ -1208,12 +1301,29 @@ class BranchView(_CasePanelView[ForkPanel]):
     """
 
     def __init__(self, context: ViewContext) -> None:
-        super().__init__(
-            context,
-            _BRANCH_VIEW_NAME,
-            lambda case: case.build_branch_control(),
-            NO_CASE_TO_BRANCH_TEXT,
-        )
+        super().__init__(context, _BRANCH_VIEW_NAME, NO_CASE_TO_BRANCH_TEXT)
+
+    def _shown(self, case: CasePresentation) -> BranchPresentation | None:
+        return case.branch
+
+    def _built(self) -> ForkPanel:
+        panel = ForkPanel()
+        requests = self._requests
+        panel.take_button.clicked.connect(requests.branch)
+        panel.here_button.clicked.connect(requests.branch_here)
+        panel.point_selector.currentIndexChanged.connect(self._report_point)
+
+        return panel
+
+    def _report_point(self) -> None:
+        if self._panel is not None:
+            self._requests.branch_point(self._panel.selected_point())
+
+    def _write(self, panel: ForkPanel, shown: BranchPresentation) -> None:
+        """Write the offer and the selected point. Before the first frame there is no offer."""
+
+        if shown.offer is not None:
+            panel.set_offer(shown.offer, shown.selected)
 
 
 class CompartmentSchematicView(QWidget):
@@ -1234,6 +1344,8 @@ class CompartmentSchematicView(QWidget):
     Args:
         context: What the View is built from.
     """
+
+    scope = ViewScope.RUNS
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
@@ -1326,6 +1438,8 @@ class AgentCostView(QWidget):
     Args:
         context: What the View is built from.
     """
+
+    scope = ViewScope.RUNS
 
     def __init__(self, context: ViewContext) -> None:
         super().__init__()

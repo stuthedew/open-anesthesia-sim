@@ -32,68 +32,16 @@ from anesthesia_sim.app.view_contract import (
     unreadable_state_text,
 )
 from anesthesia_sim.app.view_registry import (
-    AGENT_ACCOUNTING,
     CONCENTRATION_CHART,
-    PARAMETER_CONTROLS,
     REGISTERED,
     WASH_IN,
     RegisteredView,
 )
 from anesthesia_sim.app.views import ConcentrationView, WashInView
-from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.shipped import shipped_workspace
-from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
-from anesthesia_sim.layout.workspace import (
-    Origin,
-    ShippedWorkspaceId,
-    Workspace,
-    WorkspaceName,
-    WorkspaceSet,
-)
-
-#: One Workspace that holds every View this build registers. Each test then
-#: finds the View it reads, whichever Workspace is shipped first. The
-#: parameter controls run across the top. Under them, the concentration chart
-#: sits over the F_A/F_I plot, beside the accounting. That was the dashboard's
-#: layout before it began opening on the shipped Workspaces (`PL-2KXB`).
-_EVERY_VIEW = WorkspaceSet(
-    (
-        Workspace(
-            WorkspaceName("Every View"),
-            Origin.mine(),
-            LayoutModel(
-                (
-                    Window(
-                        Split(
-                            Orientation.COLUMN,
-                            (0.25, 0.75),
-                            (
-                                Area(AreaId(4), PARAMETER_CONTROLS),
-                                Split(
-                                    Orientation.ROW,
-                                    (0.82, 0.18),
-                                    (
-                                        Split(
-                                            Orientation.COLUMN,
-                                            (0.55, 0.45),
-                                            (
-                                                Area(AreaId(1), CONCENTRATION_CHART),
-                                                Area(AreaId(3), WASH_IN),
-                                            ),
-                                        ),
-                                        Area(AreaId(2), AGENT_ACCOUNTING),
-                                    ),
-                                ),
-                            ),
-                        )
-                    ),
-                ),
-                AreaId(5),
-            ),
-        ),
-    ),
-    0,
-)
+from anesthesia_sim.layout.tree import AreaId
+from anesthesia_sim.layout.workspace import ShippedWorkspaceId
+from tests.integration.simulation_view.simulation_view_support import _EVERY_VIEW
 
 # The notice, written out here rather than read from the module that writes it.
 _NOTICE = "This View's saved settings could not be read, so it shows its default settings."
@@ -108,6 +56,11 @@ _REQUESTS = ViewRequests(
     setting=lambda _run, _control, _value: None,
     preview=lambda _run, _control, _value: None,
     preview_end=lambda _run: None,
+    mark_entry=lambda _entry: None,
+    mark_edit=lambda _button, _entry: None,
+    branch_point=lambda _point: None,
+    branch=lambda: None,
+    branch_here=lambda: None,
 )
 
 _ENTRIES = list(REGISTERED.values())
@@ -154,7 +107,14 @@ def test_every_member_of_the_contract_has_a_call_site_in_the_adapter() -> None:
     called = {node.attr for node in ast.walk(ast.parse(source)) if isinstance(node, ast.Attribute)}
     members = get_protocol_members(View)
 
-    assert members == {"refresh", "owes_a_frame", "frame_request", "save_state", "painted_strings"}
+    assert members == {
+        "scope",
+        "refresh",
+        "owes_a_frame",
+        "frame_request",
+        "save_state",
+        "painted_strings",
+    }
     assert members <= called, f"never called by the adapter: {sorted(members - called)}"
 
 
@@ -169,6 +129,20 @@ def test_every_registered_kind_builds_a_widget_that_satisfies_the_contract(
         assert view.owes_a_frame, f"{entry.kind}: a View never drawn owes no frame"
     finally:
         view.deleteLater()
+
+
+def test_the_shared_layout_holds_every_registered_view() -> None:
+    """The layout that the run-state tests build holds every kind the registry holds (`PL-B8DL`).
+
+    Those tests walk the widgets of the layout they build. A kind left out of
+    it is outside every one of them, as the compartment schematic and the
+    agent cost View were for three weeks after they were registered.
+    """
+
+    kinds = [area.view for area in _EVERY_VIEW.current.layout.areas()]
+
+    assert sorted(kinds) == sorted(REGISTERED)
+    assert len(kinds) == len(set(kinds)), "a kind stands in two Areas"
 
 
 # ------------------------------------------------------------------ saved state
