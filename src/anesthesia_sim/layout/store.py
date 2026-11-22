@@ -12,7 +12,10 @@ application names. Qt's own table in `src/corelib/io/qstandardpaths.cpp`
 Windows `%APPDATA%\\<Org>\\<App>` and Linux `~/.local/share/<App>`. On Linux
 PySide6 returns `~/.local/share/<Org>/<App>` (measured 2026-10-19 under
 `PL-DWHG`, and again 2026-11-21), so the table omits the organization there.
-Whether macOS adds it too is `PL-RH43`. The entry
+On macOS, Qt's `src/corelib/io/qstandardpaths_mac.mm` at tag v6.11.2 adds both
+names to the Application Support directory, so the location is
+`~/Library/Application Support/<Org>/<App>`. That is read from the source, and
+no session has run it on a Mac (`PL-RH43`). The entry
 point hands that location to `user_data_directory`, which applies the one
 override, `USER_DIRECTORY_VARIABLE`, for a headless or portable run. A test
 passes `tmp_path`. On Windows the file goes in Roaming rather than Local,
