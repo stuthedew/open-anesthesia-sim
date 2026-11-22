@@ -1342,8 +1342,11 @@ either volume anywhere in the numerical envelope, 0.01 to 10 000 L, by passing a
 `CompartmentVolume`. So a 10 000 L circuit or a 0.01 L alveolar compartment is accepted.
 `SimulationController` still takes a `circuit_volume_l` argument when it is built. Such
 values are outside the verified domain, and only the numerical envelope limits them. They
-cannot be changed during a run, and the interface cannot reach them at all. They are
-chosen once, by someone who has gone to the trouble of building the model directly.
+cannot be changed during a run, and the interface cannot reach them at all. A run refuses
+its next step when a change to either volume has moved the fractions it stopped at
+(`SimulationState.advance`). The controller refuses its next step when the settings on the
+core differ from the ones it last recorded (`PL-XRN8`).
+They are chosen once, by someone who has gone to the trouble of building the model directly.
 `BreathingCircuit.set_circuit_volume` remains for the same reason. It is how the value
 reaches the circuit, and it holds the checks for agent conservation and capacity.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
@@ -3655,11 +3658,12 @@ alveolar ventilations and cardiac outputs, at the maximum fresh gas flow
 (2 646 runs, measured 2026-11-21). The largest case has no cardiac output and
 little ventilation. There the inspired fraction falls for one second while the
 alveolar fraction barely moves.
-Changing the circuit volume (`BreathingCircuit.set_circuit_volume`), however,
-keeps the agent in the circuit and changes the volume it is divided by.
-Doubling the volume between two steps therefore halves $`F_I`$ and doubles the
-ratio. No interface control changes the circuit volume today, but the plot
-should not rely on that. The ceiling is 1.05 (`WASH_IN_TERMINUS_CEILING` in
+A change to the circuit volume would move the ratio further, because the
+circuit keeps its agent and divides it by the new volume, so a doubled volume
+halves $`F_I`$. A run refuses its next step after such a change while the
+circuit holds agent (`SimulationState.advance`), so no stored state shows that
+jump. A drawn column can still land on a state later than the one measured, so
+the ceiling keeps a margin above 1.0281. The ceiling is 1.05 (`WASH_IN_TERMINUS_CEILING` in
 `app/chart_frame.py`), below the axis top of 1.15 (`WASH_IN_AXIS_MAXIMUM`), so
 even the highest crossing column it allows still has clear space above it.
 <!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
