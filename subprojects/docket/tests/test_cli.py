@@ -9839,6 +9839,57 @@ def test_generators_says_nothing_about_a_closed_heads_verdict(
     assert "spent" not in output
 
 
+def test_generators_marks_a_head_closed_early_or_on_no_mechanism(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A head closed by a check reads differently from one closed on a sweep (`PL-D8L0`).
+
+    The first head closed with a member still open and a verdict in prose, so
+    it carries both marks. The second names its check and has no member open,
+    so it carries neither.
+    """
+    (tmp_path / "early").mkdir()
+    (tmp_path / "checked").mkdir()
+    early = _store(
+        tmp_path / "early",
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator=_SPENT,
+            status="done",
+            closed="2026-08-20",
+        ),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member", status="done", closed="2026-08-21"),
+        _clustered("PL-D3D3", "A third member", status="done", closed="2026-08-21"),
+    )
+    checked = _store(
+        tmp_path / "checked",
+        _clustered(
+            "PL-4040",
+            "The shared refresh nobody owns",
+            names=_MEMBERS,
+            generator="spent - check: tools/refresh_check.py refuses a second refresh",
+            status="done",
+            closed="2026-08-20",
+        ),
+        *(
+            _clustered(identifier, "A member", status="done", closed="2026-08-21")
+            for identifier in ("PL-B1B1", "PL-C2C2", "PL-D3D3")
+        ),
+    )
+
+    assert _run("generators", "--items", str(early)) == 0
+    row = next(line for line in capsys.readouterr().out.splitlines() if "PL-4040" in line)
+    assert row.endswith("[closed with members open] [no mechanism named]")
+
+    assert _run("generators", "--items", str(checked)) == 0
+    out = capsys.readouterr().out
+    assert "[closed with members open]" not in out
+    assert "[no mechanism named]" not in out
+
+
 def test_show_on_a_head_says_how_much_of_its_cluster_is_open(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

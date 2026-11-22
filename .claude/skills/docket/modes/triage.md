@@ -298,7 +298,12 @@ again, and that is a claim about future inflow rather than about the damage
 any one member does. One whose mechanism is spent is recorded all the same,
 for the audit, and ranks on its own band. Say which it is and why in
 `generator:`, beside the `root-cause-of:` — `live - <why it is still being
-handed members>`, or `spent - <why it cannot produce another>`. Recording
+handed members>`, or `spent - <why it cannot produce another>`. **At close,
+the reason names what stops the next member**: `spent - check: <the check>`,
+`type:`, `single writer:`, or `none: <why there is none>`. `bin/docket check`
+refuses a head closed `done` without one from 2026-11-23, and `bin/docket
+generators` marks every closed head that has none, or whose members are still
+open (`PL-D8L0`). Recording
 alone does not rank; `bin/docket check` asks any open generator that has not
 answered. A *ranking* generator then takes one of exactly two
 endings: **fix it in this session, or end the reply with a ready-to-paste

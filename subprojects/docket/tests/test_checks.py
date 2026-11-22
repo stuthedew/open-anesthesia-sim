@@ -3717,6 +3717,38 @@ def test_a_closed_head_cannot_stay_live() -> None:
     assert not _has(_errors(spent, *_explained()), "`generator:`")
 
 
+def test_a_head_closed_from_the_rule_date_names_its_mechanism() -> None:
+    """A close on a sweep or on silence must not read like a close by a check (`PL-D8L0`).
+
+    Heads closed before `MECHANISM_REQUIRED_FROM` are not rewritten, so they
+    are not asked.
+    """
+
+    def head(generator: str, closed: date) -> Item:
+        return _item(
+            "PL-K7QX",
+            root_cause_of=_EXPLAINS,
+            status="done",
+            closed=closed,
+            generator=generator,
+            misread=_MISREAD,
+        )
+
+    owed = "does not name what stops the next member"
+    late = date(2026, 11, 23)
+    assert _has(_errors(head("spent - no member filed since", late), *_explained()), owed)
+    assert _has(_errors(head("", late), *_explained()), owed)
+    for named in (
+        "spent - check: tools/x_check.py refuses a second copy",
+        "spent - Single writer: store.write_item is the only writer",
+        "spent - none: the owner answered that no fix is owed",
+    ):
+        assert not _has(_errors(head(named, late), *_explained()), owed)
+    assert not _has(
+        _errors(head("spent - no member filed since", date(2026, 11, 22)), *_explained()), owed
+    )
+
+
 _MISREAD = "Who holds an item now, and whether that holder is still live"
 
 

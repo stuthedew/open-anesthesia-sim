@@ -37,6 +37,8 @@ from .model import (
     LANE_PRODUCT,
     LANE_UNPLACED,
     LANE_WORKFLOW,
+    MECHANISM_KINDS,
+    MECHANISM_REQUIRED_FROM,
     MIN_RECURRENCES,
     NO_DELEGATION,
     PRIORITIES,
@@ -50,6 +52,7 @@ from .model import (
     recurrences_of,
     split_deferred_from,
     split_generator_verdict,
+    verdict_mechanism,
 )
 from .notes import Thread
 from .picks import BUILD, BUILD_REST, HEAD, LANE, PickLine, Picks
@@ -1927,11 +1930,47 @@ def format_clusters(
             f"  {cluster.head.identifier} "
             f"{_plural(len(cluster.members), 'member', 'members')}, {_drain_phrase(cluster)}"
             f"{_verdict_phrase(cluster.head, standings.get(cluster.head.identifier))}"
+            + "".join(f" [{mark}]" for mark in _closure_marks(cluster))
         )
         lines.append(f"      {_misread_or_title(cluster.head)}")
+    if any(_closure_marks(cluster) for cluster in ordered):
+        lines += [
+            "",
+            f"  [{MEMBERS_OPEN_MARK}]: the head is done and some of its members are not.",
+            f"  [{NO_MECHANISM_MARK}]: the head is done and its generator: reason does not "
+            f"open with {', '.join(f'{kind}:' for kind in MECHANISM_KINDS)}.",
+            f"  A head closed from {MECHANISM_REQUIRED_FROM.isoformat()} must open with one; "
+            "older heads are not rewritten.",
+        ]
     lines.extend(_format_overlaps(overlaps))
     lines.extend(_outside_clusters(unsound, defects, standings, heads=clusters.keys()))
     return "\n".join(lines)
+
+
+def _closure_marks(cluster: Cluster) -> list[str]:
+    """What a closed head's close left undone, as short clauses, or none (`PL-D8L0`).
+
+    Two things make a head's close read like one made by a check when it was
+    not. Its members were still open, so the cause was closed before the
+    repairs. Or its verdict names no check, type or single writer, which is
+    how a close on a sweep, on silence or on prose reads. Heads closed before
+    `MECHANISM_REQUIRED_FROM` are marked too, since the mark records what the
+    head says and rewrites nothing.
+    """
+    head = cluster.head
+    if head.status != "done":
+        return []
+    marks = []
+    if cluster.open_items:
+        marks.append(MEMBERS_OPEN_MARK)
+    if not verdict_mechanism(head.generator):
+        marks.append(NO_MECHANISM_MARK)
+    return marks
+
+
+#: The marks `_closure_marks` puts on a closed head's line in `docket generators`.
+MEMBERS_OPEN_MARK = "closed with members open"
+NO_MECHANISM_MARK = "no mechanism named"
 
 
 def _misread_or_title(head: Item) -> str:
