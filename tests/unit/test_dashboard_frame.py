@@ -1595,6 +1595,7 @@ def test_no_module_under_app_asks_which_panel_is_the_clock_for_itself() -> None:
         text = path.read_text(encoding="utf-8")
         if path.name == "dashboard_frame.py":
             text = text.replace(owner, "")
+        # regex: the question is one comparison in either polarity, searched for through source text.
         if re.search(r"quantity is (not )?None", text):
             asking.append(path.name)
 
