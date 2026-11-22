@@ -522,8 +522,8 @@ def test_a_tab_switches_the_layout_and_leaves_the_run(
     assert view.layout_container.model == induction.layout
     assert [type(v).__name__ for v in view.layout_container.views()] == [
         "ConcentrationView",
-        "WashInView",
         "ParameterControlsView",
+        "WashInView",
         "BookmarksView",
         "BranchView",
     ]

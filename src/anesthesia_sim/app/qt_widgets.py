@@ -153,6 +153,7 @@ from anesthesia_sim.app.theme import (
     PANEL_PADDING,
     PANEL_RADIUS,
     PARAMETER_QUALIFIER_SIZE,
+    PARAMETER_SLIDER_LEAST_LENGTH,
     PRIMARY,
     WARNING,
 )
@@ -1141,11 +1142,11 @@ class _SettingSlider(QSlider):
 
 
 class ParameterSlider(QWidget):
-    """One setting: its name, its gloss, an integer slider and the value beside it.
+    """One setting: its name, its gloss, the value in force and an integer slider under it.
 
     The slider spans `slider_position(minimum)` to `slider_position(maximum)`
     in steps of one count. One count is the control's display resolution, so
-    the value the slider emits and the value printed beside it are the same
+    the value the slider emits and the value printed above it are the same
     number (`PL-25KS`, decision D4). The value label shows the settings in
     force. `set_setting` writes it from the snapshot that a frame was drawn
     from. On a halt that no frame follows, it writes the label from the
@@ -1153,10 +1154,13 @@ class ParameterSlider(QWidget):
     setting, or a drag that halted the run, the control shows what the
     simulation is actually running at.
 
-    The value label's width only grows. It is reserved from the first text
-    the label is given, and widened when a longer text arrives, but never
-    narrowed. So the slider beside it does not shorten under the pointer
-    mid-drag when the printed value loses a digit.
+    The value has a row of its own above the slider, so the slider takes the
+    card's whole width, and a printed value that gains or loses a digit
+    never moves the slider under the pointer. The slider is never shorter than
+    `PARAMETER_SLIDER_LEAST_LENGTH`, so the card's least width holds it
+    (`PL-V4Q8`). The name and its gloss break between words when the card is
+    narrow, so a long name such as "Delivered sevoflurane" does not set the
+    card's least width. The value and its unit never break (`PL-D5J4`).
 
     **A pointer drag applies on release, and previews until then**
     (`PL-5B1N`, project owner, 2026-09-27, ratified). While the thumb is held,
@@ -1186,11 +1190,10 @@ class ParameterSlider(QWidget):
         qualifier_label: The gloss under the name, hidden where the setting
             has none. No spacer keeps the line open, because the four
             controls have unequal heights by design (`SettingReadout`).
-            Only the delivered dial carries a second line, for its MAC
-            multiple.
         value_label: The setting as the snapshot prints it.
-        secondary_label: The setting in its second unit, shown only where
-            the setting has one, which is the delivered dial's MAC line.
+        secondary_label: The setting in its second unit, beside the value
+            and shown only where the setting has one, which is the delivered
+            dial's MAC multiple.
         adjustment_started: Emitted when the reader presses the thumb, so
             the run can mark one adjustment before the values arrive.
         value_changed: Emitted with the decoded value when the reader
@@ -1222,15 +1225,16 @@ class ParameterSlider(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(panel_stylesheet(self.objectName()))
         self._decimals = setting.decimals
-        self.name_label = styled_label(setting.name, color=INK, bold=True)
+        self.name_label = styled_label(setting.name, color=INK, bold=True, wrap=True)
         self.qualifier_label = styled_label(
-            setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True
+            setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True, wrap=True
         )
         self.slider = _SettingSlider()
         self.slider.setSingleStep(1)
         self.slider.setPageStep(1)
         self.slider.setTracking(False)
         self.slider.setStyleSheet(slider_stylesheet())
+        self.slider.setMinimumWidth(PARAMETER_SLIDER_LEAST_LENGTH)
         FocusRing(self.slider)
         self.value_label = styled_label(setting.value_text, color=INK)
         self.secondary_label = styled_label(
@@ -1242,10 +1246,11 @@ class ParameterSlider(QWidget):
         column.addWidget(self.name_label)
         column.addWidget(self.qualifier_label)
         row = QHBoxLayout()
-        row.addWidget(self.slider, 1)
         row.addWidget(self.value_label)
+        row.addWidget(self.secondary_label)
+        row.addStretch(1)
         column.addLayout(row)
-        column.addWidget(self.secondary_label)
+        column.addWidget(self.slider)
 
         self.slider.sliderPressed.connect(self.adjustment_started.emit)
         self.slider.sliderPressed.connect(self._on_thumb_pressed)
@@ -1263,7 +1268,7 @@ class ParameterSlider(QWidget):
 
         The position is not written while the thumb is held. The run keeps its
         setting during a drag, so writing it would pull the thumb back from
-        under the pointer on every frame. The label beside the slider is still
+        under the pointer on every frame. The value above the slider is still
         written, and it shows the setting in force.
 
         Args:
@@ -1284,9 +1289,6 @@ class ParameterSlider(QWidget):
                 self.slider.setValue(slider_position(setting.value, setting.decimals))
 
         self.value_label.setText(setting.value_text)
-        self.value_label.setMinimumWidth(
-            max(self.value_label.minimumWidth(), _advance_px(self.value_label, setting.value_text))
-        )
         self.secondary_label.setText(setting.secondary)
         self.secondary_label.setHidden(not setting.secondary)
 

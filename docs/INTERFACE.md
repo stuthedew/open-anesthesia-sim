@@ -2654,7 +2654,11 @@ application has, whatever the Workspace. Choosing a view shows it in that area.
 The exception is a Workspace pinned to a run that is not open. Each of its
 areas then says that the run is not open, in place of its view, until the
 reader removes the pin from the menu of the Workspace's tab.
-A view that needs more room than its area scrolls inside the area. The page
+A view that needs more room than its area scrolls inside the area. Three views
+never scroll: the concentration chart, the Parameters view and the Branch view.
+Their areas grow to hold all of the view, so the chart's plot, a run's dials or
+the branch control's caption cannot sit out of sight below the area's edge
+(`PL-D5J4`). The page
 grows past the window only where the window is too small for every view's least
 height or least width. So the reader sees the view itself, never only a notice
 that the area is
@@ -3424,7 +3428,7 @@ protocol or to a figure on its own.
 ### F_A/F_I as a displayed ratio
 
 **A second plot draws $`F_A/F_I`$.** The plot is a view of its own. Of the
-Workspaces supplied with the simulator, only Induction includes it, under the
+Workspaces supplied with the simulator, only Induction includes it, beside the
 compartment chart. In the others the reader shows it from an area's view
 chooser. The plot shows the modelled alveolar fraction divided by the modelled
 inspired fraction, on a fixed, dimensionless axis labelled from 0 to 1. It has
@@ -4159,7 +4163,7 @@ meet.
 
 In all six compartments, every modeled concentration and relative partial
 pressure is displayed to **0.01 percentage points**. The delivered-agent
-setting uses the same resolution, in the readout beside its slider and in the
+setting uses the same resolution, in the readout above its slider and in the
 label shown while the slider is dragged, so the setting and the values it
 produces are read at one scale. A positive value that would round to `0.00%`
 is displayed as `<0.01%`, so `0.00%` means only that no agent has arrived, as
@@ -4595,10 +4599,10 @@ covers, and so chooses the seconds per pixel (§ "The chart's time base").
 
 **Fresh gas flow, alveolar ventilation and cardiac output are displayed to
 0.1 L/min**, the resolution of the controls that set them. A slider and the
-readout beside it show one quantity, so each slider moves in steps of its
+readout above it show one quantity, so each slider moves in steps of its
 display resolution: 0.1 L/min for the three flows and 0.01 percentage points
 for the delivered dial. The value applied to the model is exactly the value
-printed beside the control. If a control could apply a value that its own label
+printed above the control. If a control could apply a value that its own label
 rounds away, a reader could not tell which value is the setting in force.
 
 **For developers.** The sliders are integer-valued. Three tests read each flow's resolution from
@@ -4935,7 +4939,7 @@ the formatter produces. The dashboard's tests (`tests/unit/test_dashboard_frame.
 follow the whole path: a real controller, a real step, and the string on the
 panel. The dashboard (`app/dashboard_frame.py`) reads the constant to set the
 delivered dial's slider position, so the value that the slider applies and the
-readout beside it cannot drift apart. Another test
+readout above it cannot drift apart. Another test
 (`tests/reference/test_coupled_dynamics.py`) restates the constant and checks it
 against the formatting module, because the ordering claim above is a property of
 the rounded values. Adding a decimal would change what that claim proves without
@@ -5497,7 +5501,7 @@ frame from the run's new current time.
 
 **A drag applies its value only when the handle is released.** The run records
 one setting change at that moment. Until then the run keeps the setting in force,
-and the value printed beside the slider is that setting. The value is applied
+and the value printed above the slider is that setting. The value is applied
 before the preview ends, so the frame drawn at release already shows the run
 under its new setting. A key press, one notch of the scroll wheel or a click on
 the slider away from its handle is a single input, so it applies at once and

@@ -89,6 +89,7 @@ from anesthesia_sim.app.theme import (
     MUTED,
     PANEL,
     PANEL_RADIUS,
+    PARAMETER_SLIDER_LEAST_LENGTH,
     WARNING,
 )
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
@@ -558,10 +559,10 @@ def _settings() -> tuple[SettingReadout, ...]:
     return setting_readouts(SimulationController().snapshot())
 
 
-def test_the_value_applied_to_the_model_is_exactly_the_value_printed_beside_the_slider(
+def test_the_value_applied_to_the_model_is_exactly_the_value_printed_above_the_slider(
     application: QApplication,
 ) -> None:
-    """A slider position and the readout beside it are one number (`PL-25KS`, D4)."""
+    """A slider position and the readout above it are one number (`PL-25KS`, D4)."""
 
     for setting in _settings():
         control = ParameterSlider(setting)
@@ -582,6 +583,26 @@ def test_the_value_applied_to_the_model_is_exactly_the_value_printed_beside_the_
             assert emitted == [slider_value(position, setting.decimals)], setting.control
             assert control.value() == emitted[0]
             assert _printed_value(setting, control.value()) == control.value(), setting.control
+
+
+def test_a_narrow_setting_card_keeps_its_slider_long_enough_to_drag(
+    application: QApplication,
+) -> None:
+    """`PL-V4Q8`: no card is laid out narrow enough to shorten its slider below the least length.
+
+    A slider spread over its whole range in a few dozen pixels moves several
+    steps for each pixel the pointer moves. Each card's least width must hold
+    a slider of `PARAMETER_SLIDER_LEAST_LENGTH`, so the layout that places the
+    card never gives the slider less.
+    """
+
+    for setting in _settings():
+        control = ParameterSlider(setting)
+        control.show()
+        control.resize(control.minimumSizeHint())
+        application.processEvents()
+
+        assert control.slider.width() >= PARAMETER_SLIDER_LEAST_LENGTH, setting.control
 
 
 def test_the_slider_steps_at_the_display_resolution(application: QApplication) -> None:
