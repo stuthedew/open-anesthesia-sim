@@ -471,9 +471,15 @@ def _plot(background: str) -> Any:
     the window and the axis sets the range. A plot that a reader could drag
     off its labelled range would show a slope that meant something different
     from the slope on the plot beside it.
+
+    So no key does anything on the plot either, and the plot is not a Tab
+    stop. A keyboard user would otherwise land on it and see nothing happen
+    (`PL-63FQ`).
     """
 
     plot = pg.PlotWidget(background=background)
+    plot.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    plot.viewport().setFocusPolicy(Qt.FocusPolicy.NoFocus)
     item = plot.getPlotItem()
     item.setMenuEnabled(False)
     item.hideButtons()

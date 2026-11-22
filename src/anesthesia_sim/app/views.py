@@ -101,7 +101,13 @@ from anesthesia_sim.app.qt_chart import (
     WashInLegend,
 )
 from anesthesia_sim.app.qt_schematic import RunSchematic
-from anesthesia_sim.app.qt_widgets import BookmarksPanel, FocusedComboBox, ForkPanel, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    BookmarksPanel,
+    FocusedComboBox,
+    FocusRing,
+    ForkPanel,
+    styled_label,
+)
 from anesthesia_sim.app.run_presentation import NotBuilt, RunPresentation
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
 from anesthesia_sim.app.stylesheets import (
@@ -219,9 +225,14 @@ class _RunWidgets[W: QWidget]:
                 widget.hide()
                 widget.deleteLater()
 
+        # Raising each widget in turn also puts the widget tree's children in
+        # drawing order (https://doc.qt.io/qt-6/qobject.html#children). A
+        # widget built again would otherwise sit after the later runs' widgets
+        # in the tree, which is the order Tab reads (`PL-B45W`).
         for _, widget in kept:
             self._column.addWidget(widget)
             widget.show()
+            widget.raise_()
 
         self._widgets = kept
 
@@ -485,6 +496,7 @@ class _KeyScroll(QScrollArea):
         self.viewport().setAutoFillBackground(False)
         self.setWidget(self._body)
         self._body.setAutoFillBackground(False)
+        FocusRing(self)
 
     def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """The widest row's least width with the scroll bar beside it, and the box's least height.

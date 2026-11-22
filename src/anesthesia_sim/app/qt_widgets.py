@@ -47,7 +47,7 @@ from collections.abc import Sequence
 from math import ceil
 from typing import Final
 
-from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QRectF, QSignalBlocker, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -55,6 +55,7 @@ from PySide6.QtGui import (
     QPainter,
     QPaintEvent,
     QPalette,
+    QPen,
     QPolygon,
     QResizeEvent,
     QWheelEvent,
@@ -134,7 +135,9 @@ from anesthesia_sim.app.theme import (
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
+    CONTROL_BORDER_WIDTH,
     CONTROL_ROW_SPACING,
+    FOCUS_RING_WIDTH,
     INK,
     MARK_ROW_BULLET,
     MARK_ROW_BULLET_SPACING,
@@ -149,6 +152,7 @@ from anesthesia_sim.app.theme import (
     NEW_CASE_DIALOG_WIDTH,
     PANEL,
     PANEL_PADDING,
+    PANEL_RADIUS,
     PARAMETER_QUALIFIER_SIZE,
     PARAMETER_SLIDER_LEAST_LENGTH,
     PRIMARY,
@@ -962,6 +966,7 @@ class ParameterSlider(QWidget):
         self.slider.setTracking(False)
         self.slider.setStyleSheet(slider_stylesheet())
         self.slider.setMinimumWidth(PARAMETER_SLIDER_LEAST_LENGTH)
+        FocusRing(self.slider)
         self.value_label = styled_label(setting.value_text, color=INK)
         self.secondary_label = styled_label(
             setting.secondary, color=MUTED, size_px=METRIC_SECONDARY_VALUE_SIZE
@@ -1714,6 +1719,7 @@ class BookmarkDialog(QDialog):
 
         for listing in (self.time_list, self.target_list):
             listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
+            FocusRing(listing)
 
         self.notice = NoticeLabel()
         self.close_button = QPushButton(CLOSE_BOOKMARKS_LABEL)
@@ -1961,6 +1967,105 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
     return QRect(left, top, width, height)
 
 
+class FocusRing(QWidget):
+    """Draws a ring inside a control's edge while the control has the keyboard focus.
+
+    Under Qt's Fusion style a slider, a combo box drawn by a style sheet, a
+    scroll area and a list look the same with and without the focus. A
+    `:focus` rule in a slider's or a selector's style sheet changed no pixel
+    (`PL-63FQ`). So a keyboard user could not see which control the arrow keys
+    would move, which WCAG 2.2 SC 2.4.7 (Focus Visible, Level AA) forbids.
+
+    The ring is a child widget that covers the control, lets the pointer
+    through and never takes the focus. So the control keeps its class, its
+    style sheet and its size, and nothing moves when the ring appears. The
+    ring is `FOCUS_RING_WIDTH` px wide.
+
+    The ring shows only when the focus came from the keyboard, which is when
+    Qt sets `WA_KeyboardFocusChange` on the window. Fusion applies the same
+    rule to the mark it draws on a button or a check box. A click that moves
+    the focus clears the attribute, so a click on a blank part of the page,
+    which gives the page's scroll area the focus, draws no ring round the
+    whole page. A click on the control that already has the focus leaves the
+    ring, as Fusion leaves its own mark.
+
+    Args:
+        control: The control to mark. The ring becomes its child.
+        colour: The ring's colour, a `theme.py` colour. None draws it in the
+            text colour that the control's style sheet sets, which the agent
+            selector needs because its text colour follows the running agent.
+        radius: The corner radius of the control's edge, in px.
+        inset: The width of the control's own edge, in px. The ring is drawn
+            inside that edge. So every pixel of the ring changes from the
+            control's fill to the ring's colour. WCAG 2.2 SC 2.4.13 (Level
+            AAA) asks for that change to be at least 3:1 over an area as
+            large as a 2 px perimeter.
+    """
+
+    def __init__(
+        self, control: QWidget, colour: str | None = INK, radius: int = 0, inset: int = 0
+    ) -> None:
+        super().__init__(control)
+        self._control = control
+        self._colour = colour
+        self._radius = radius
+        self._inset = inset
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setGeometry(control.rect())
+        control.installEventFilter(self)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        kind = event.type()
+
+        if kind == QEvent.Type.Resize:
+            self.setGeometry(self._control.rect())
+        elif kind in (QEvent.Type.FocusIn, QEvent.Type.FocusOut):
+            # A scroll bar or a viewport that the control adds later is
+            # stacked above the ring, so the ring is raised whenever it may
+            # be drawn.
+            self.raise_()
+            self.update()
+
+        return False
+
+    def showing(self) -> bool:
+        """Return whether the ring is drawn: the control has the focus, and the keyboard gave it."""
+
+        window = self._control.window()
+
+        return self._control.hasFocus() and window.testAttribute(
+            Qt.WidgetAttribute.WA_KeyboardFocusChange
+        )
+
+    def colour(self) -> QColor:
+        """Return the colour the ring is drawn in now."""
+
+        if self._colour is None:
+            return self._control.palette().color(QPalette.ColorRole.ButtonText)
+
+        return QColor(self._colour)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if not self.showing():
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, self._radius > 0)
+        pen = QPen(self.colour())
+        pen.setWidth(FOCUS_RING_WIDTH)
+        pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        # A pen is centred on its path, so the path runs half the pen's width
+        # inside the control's edge, and the whole ring lies inside that edge.
+        inset = self._inset + FOCUS_RING_WIDTH / 2
+        radius = max(self._radius - self._inset, 0)
+        ring = QRectF(self.rect()).adjusted(inset, inset, -inset, -inset)
+        painter.drawRoundedRect(ring, radius, radius)
+        painter.end()
+
+
 class SelectorComboBox(QComboBox):
     """A combo box that draws the arrow marking its list in its own text colour.
 
@@ -1972,7 +2077,19 @@ class SelectorComboBox(QComboBox):
     chooser's, in the colour the style sheet gives the text. So it is
     the running agent's foreground on the agent selector. It is drawn without
     smoothing, so each of its pixels is the text colour.
+
+    The selector also carries a `FocusRing`, in that same text colour, inside
+    its edge.
+
+    Attributes:
+        focus_ring: The ring drawn while the selector has the keyboard focus.
     """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.focus_ring = FocusRing(
+            self, colour=None, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH
+        )
 
     def paintEvent(self, event: QPaintEvent) -> None:
         super().paintEvent(event)

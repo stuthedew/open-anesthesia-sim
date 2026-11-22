@@ -851,6 +851,16 @@ class WorkspaceTabs(QWidget):
 
         return self._editor
 
+    def focus_order(self) -> list[QWidget]:
+        """Return the strip's controls in the order Tab reaches them.
+
+        The keyboard reaches the tabs in the order they stand, then "+", then
+        Dismiss while a notice is shown. The dashboard reads this order when
+        it sets the order of the whole window (`PL-B45W`).
+        """
+
+        return [*self._tabs, self.add_button, self.dismiss_button]
+
     def tab_at(self, index: int) -> WorkspaceTab:
         """The tab of the Workspace at position `index` in the set."""
 
@@ -884,9 +894,7 @@ class WorkspaceTabs(QWidget):
 
         self._separator.setVisible(0 < shipped < len(self._tabs))
 
-        # The keyboard reaches the tabs in the order they stand, then "+",
-        # then Dismiss while a notice is shown.
-        chain = [*self._tabs, self.add_button, self.dismiss_button]
+        chain = self.focus_order()
 
         for before, after in zip(chain, chain[1:], strict=False):
             QWidget.setTabOrder(before, after)
