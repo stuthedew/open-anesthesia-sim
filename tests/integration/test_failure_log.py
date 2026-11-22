@@ -7,29 +7,12 @@ with no terminal.
 """
 
 import logging
-from collections.abc import Iterator
 from pathlib import Path
-
-import pytest
 
 from anesthesia_sim.app.main import FAILURE_LOG_NAME, open_failure_log
 from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE
 
 
-@pytest.fixture
-def package_handlers() -> Iterator[None]:
-    """Remove each handler that a test added to the package's logger, and close it."""
-
-    package = logging.getLogger("anesthesia_sim")
-    before = list(package.handlers)
-    yield
-
-    for handler in package.handlers[len(before) :]:
-        package.removeHandler(handler)
-        handler.close()
-
-
-@pytest.mark.usefixtures("package_handlers")
 def test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory(tmp_path: Path) -> None:
     """A record that a run's halt logs is written to `failures.log` in the data directory."""
 
@@ -47,7 +30,6 @@ def test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory(tmp_pa
     assert "Run 1 stopped on a failure: unaccounted=6.000000e+00 L" in path.read_text("utf-8")
 
 
-@pytest.mark.usefixtures("package_handlers")
 def test_no_data_directory_keeps_no_file_and_adds_no_handler() -> None:
     """With no directory to write to, the records reach standard error only."""
 
@@ -58,7 +40,6 @@ def test_no_data_directory_keeps_no_file_and_adds_no_handler() -> None:
     assert package.handlers == before
 
 
-@pytest.mark.usefixtures("package_handlers")
 def test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on(
     tmp_path: Path,
 ) -> None:

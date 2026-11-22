@@ -2519,7 +2519,7 @@ the last completed step". It says in words that the check failed because the
 rejected step created or lost agent, and that this is a fault in the simulator
 and not a change in the patient. It does not print the totals. The panel shows
 the rejected step's amounts, and the exact totals go to the failure log, the
-file `failures.log` in the reader's data directory, beside `workspaces.json`.
+file `failures.log` in the reader's data directory, beside the saved Workspaces.
 Where that directory cannot be written, the log goes to standard error only,
 and the application still opens.
 
