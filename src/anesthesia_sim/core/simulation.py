@@ -132,6 +132,24 @@ class SimulationState:
 
         self.stored_states = copy(opening_record)
 
+    def __copy__(self) -> SimulationState:
+        """Refuse a shallow copy, which would share the run's uptake system with the original.
+
+        A copy gets a record of stored states of its own, because its
+        constructor copies the opening record. If it shared the original's
+        system, stepping either run would move the system under the other,
+        and the other's next step would store a state from the wrong time
+        without any check failing. `copy.deepcopy` copies the system too.
+
+        Raises:
+            TypeError: always.
+        """
+
+        raise TypeError(
+            "a run cannot be copied shallowly, because the copy would share its uptake system "
+            "with the original: use copy.deepcopy"
+        )
+
     def __getstate__(self) -> dict[str, object]:
         """Return the run's system, step count and stored states by name, for a pickle or a copy."""
 

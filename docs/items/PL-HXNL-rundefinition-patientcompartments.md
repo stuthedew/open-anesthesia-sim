@@ -3,13 +3,16 @@ id: PL-HXNL
 title: RunDefinition, PatientCompartments, AgentUptakeSystem and the Pydantic payloads in core/parameters.py still restore from a pickle or a copy without their checks, because none is a frozen dataclass with __post_init__ and so PL-8W1Q's restore_through_checks and its walk do not reach them; and every checked record's saved state still holds its values by position, so a reorder of two same-typed fields would load them swapped; nothing in src/ loads a pickle yet (found building PL-8W1Q)
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/core, tests/unit, docs/ARCHITECTURE.md, docs/INTERFACE.md
 deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: no path in src/ restores these records from a pickle or a copy, so nothing a learner can reach goes through an unchecked restore, and PL-8W1Q, the frozen entry it follows, is complete for the restores that exist
 added: 2026-11-14
+closed: 2026-11-22
+pr: 2242
 payoff: A saved or copied run record cannot come back holding a value its constructor would refuse, or with two values swapped, once saved runs can be loaded.
+tests: tests/unit/test_record_restores.py::test_every_class_in_core_restores_by_name_through_its_checks, tests/unit/test_record_restores.py::test_a_record_saved_before_two_fields_changed_places_loads_each_value_into_its_own_field, tests/unit/test_record_restores.py::test_a_saved_patient_whose_fractions_do_not_sum_to_one_is_refused, tests/unit/test_record_restores.py::test_a_saved_system_whose_accounting_does_not_balance_is_refused, tests/unit/test_record_restores.py::test_a_saved_definition_that_goes_back_in_time_is_refused, tests/unit/test_record_restores.py::test_a_saved_payload_whose_fractions_do_not_sum_to_one_is_refused, tests/unit/test_record_restores.py::test_a_shallow_copy_of_a_run_is_refused
 ---
 
 **Problem.** RunDefinition, PatientCompartments, AgentUptakeSystem and the Pydantic payloads in core/parameters.py still restore from a pickle or a copy without their checks, because none is a frozen dataclass with __post_init__ and so PL-8W1Q's restore_through_checks and its walk do not reach them; and every checked record's saved state still holds its values by position, so a reorder of two same-typed fields would load them swapped; nothing in src/ loads a pickle yet (found building PL-8W1Q)
@@ -29,7 +32,7 @@ holds its field values in field order, without their names, and
 the same type are reordered, a record saved before the change loads with the
 values swapped and passes every check. `LiquidDensity`'s density and its
 standard deviation are one such pair: swapped, the density would load as about
-0.01 g/mL. Both of the second pair of blind review passes on `PL-8W1Q` named it on
+0.0008 g/mL (sevoflurane's standard deviation; corrected 2026-11-22 from "about 0.01"). Both of the second pair of blind review passes on `PL-8W1Q` named it on
 2026-11-14. The
 same plain-data format closes it; a `__getstate__` returning the values by
 name would close it sooner for in-process copies.
@@ -100,9 +103,21 @@ included, through `require_state_by_name` in `core/checked_record.py`.
 `tests/unit/test_record_restores.py` walks `core/` and holds every class to
 both halves.
 
-**New problem fixed on the way.** `SimulationState` accepted any object as its
-uptake system and failed later on a missing attribute. Its `__setattr__` now
-refuses one that is not an `AgentUptakeSystem`.
+**New problems fixed on the way.** `SimulationState` accepted any object as
+its uptake system, and `AgentUptakeSystem` any object as one of its four parts,
+and each failed later on a missing attribute. Each `__setattr__` now refuses an
+object of the wrong type.
+
+**Blind review, two passes.** Pass 1 named a mid-run circuit volume change
+that leaves the system off its stored state, so a copy of that run is now
+refused (optional, filed as `PL-DQWL`), and the missing part type check
+(optional, fixed). Pass 2 named the same part type check (optional, fixed,
+repeat) and a shallow copy of a run (should-fix, fixed). The copy got a record
+of its own through its constructor but shared the original's system, so
+stepping one moved the system under the other: the original's next step
+stored an alveolar fraction of 0.00272 as its 6 s state, where a fresh run
+gives 0.00113. `SimulationState.__copy__` now refuses, and names
+`copy.deepcopy`.
 
 **The regression tests fail against the code before the fix.** A scratch
 script run on `origin/main` at `d2f987d4` loaded, through `pickle`, each of the

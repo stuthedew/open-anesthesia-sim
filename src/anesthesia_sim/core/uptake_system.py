@@ -71,8 +71,13 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from anesthesia_sim.core.validation import require_nonnegative_finite
 
-_PART_FIELDS = ("circuit", "alveoli", "patient", "agent_simulation_validator")
-"""The fields of `AgentUptakeSystem` that hold its parts, each written once, when it is built."""
+_PART_TYPES: dict[str, type] = {
+    "circuit": BreathingCircuit,
+    "alveoli": AlveolarCompartment,
+    "patient": PatientCompartments,
+    "agent_simulation_validator": AgentSimulationValidator,
+}
+"""The fields of `AgentUptakeSystem` that hold its parts, each written once, and their types."""
 
 
 @restored_through_checks
@@ -170,7 +175,7 @@ class AgentUptakeSystem:
         and the next step builds them again from the settings.
         """
 
-        return {name: getattr(self, name) for name in _PART_FIELDS}
+        return {name: getattr(self, name) for name in _PART_TYPES}
 
     def __setstate__(self, state: object) -> None:
         """Restore the system's parts, then check what a built system holds at every step.
@@ -192,16 +197,16 @@ class AgentUptakeSystem:
 
         Raises:
             TypeError: `state` is not a dict holding exactly the four part
-                names (`require_state_by_name`), or a part is refused by its
-                own type check.
+                names (`require_state_by_name`), or a part is not of its type
+                (`__setattr__`).
             SimulationConfigurationError: a part refuses a saved value, the
                 dial is above the input ceiling, or the accounting does not
                 balance.
         """
 
-        by_name = require_state_by_name(self, state, _PART_FIELDS)
+        by_name = require_state_by_name(self, state, _PART_TYPES)
 
-        for name in _PART_FIELDS:
+        for name in _PART_TYPES:
             setattr(self, name, by_name[name])
 
         self._propagator = None
@@ -314,7 +319,8 @@ class AgentUptakeSystem:
             store.
 
             The constructor, a copy and a pickle write each part onto a system
-            that has none yet, so those writes are accepted. The cached
+            that has none yet, so those writes are accepted if the part has
+            the right type. The cached
             propagator and its key are not parts. `_step_propagator` writes them
             at any step, and they are keyed by the settings they were built
             from.
@@ -322,14 +328,25 @@ class AgentUptakeSystem:
             Raises:
                 SimulationConfigurationError: `name` names a part, and the
                     system already has that part. Nothing is written.
+                TypeError: `name` names a part, and `value` is not of that
+                    part's type. Nothing is written.
             """
 
-            if name in _PART_FIELDS and hasattr(self, name):
-                raise SimulationConfigurationError(
-                    f"the system's {name} cannot be replaced once the system is built, "
-                    "because its agent accounting is anchored to the agent its parts held "
-                    "when it was built: build a new AgentUptakeSystem from the new part"
-                )
+            if name in _PART_TYPES:
+                if hasattr(self, name):
+                    raise SimulationConfigurationError(
+                        f"the system's {name} cannot be replaced once the system is built, "
+                        "because its agent accounting is anchored to the agent its parts held "
+                        "when it was built: build a new AgentUptakeSystem from the new part"
+                    )
+
+                part_type = _PART_TYPES[name]
+
+                if not isinstance(value, part_type):
+                    raise TypeError(
+                        f"the system's {name} has type {type(value).__name__}, "
+                        f"not {part_type.__name__}"
+                    )
 
             super().__setattr__(name, value)
 

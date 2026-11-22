@@ -413,11 +413,11 @@ def test_a_count_written_onto_a_built_state_is_refused_at_the_write() -> None:
     with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
         replace(state, step_count=5)  # type: ignore[arg-type]
 
-    smuggled = copy.copy(state)
+    smuggled = copy.deepcopy(state)
     object.__setattr__(smuggled, "step_count", 5)
 
     with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
-        copy.copy(smuggled)
+        copy.deepcopy(smuggled)
 
     with pytest.raises(TypeError, match="step_count of 5 was not built as StepCount"):
         pickle.loads(pickle.dumps(smuggled))

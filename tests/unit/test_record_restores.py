@@ -76,6 +76,10 @@ _REBUILDS: tuple[tuple[str, Callable[[Any], Any]], ...] = (
     ("copy.deepcopy", copy.deepcopy),
 )
 _REBUILD_IDS = [how for how, _ in _REBUILDS]
+
+# The rebuilds that copy what a record holds: a run refuses a shallow copy.
+_DEEP_REBUILDS = tuple((how, rebuild) for how, rebuild in _REBUILDS if how != "copy.copy")
+_DEEP_REBUILD_IDS = [how for how, _ in _DEEP_REBUILDS]
 _PROTOCOLS = range(pickle.HIGHEST_PROTOCOL + 1)
 
 
@@ -227,7 +231,7 @@ def _definition_of_three_stretches() -> RunDefinition:
     return definition
 
 
-@pytest.mark.parametrize(("how", "rebuild"), _REBUILDS, ids=_REBUILD_IDS)
+@pytest.mark.parametrize(("how", "rebuild"), _DEEP_REBUILDS, ids=_DEEP_REBUILD_IDS)
 def test_a_rebuilt_run_holds_what_was_saved_and_steps_on_like_it(
     how: str, rebuild: Callable[[Any], Any]
 ) -> None:
@@ -236,8 +240,7 @@ def test_a_rebuilt_run_holds_what_was_saved_and_steps_on_like_it(
     The expected values come from a second run built the same way and stepped
     once more beside the rebuilt one. A rebuild that dropped the accounting's
     compensation terms, or anchored the accounting again, would round its next
-    total differently. A shallow copy shares the original's system, so the
-    original is not stepped.
+    total differently.
     """
 
     run = _run_of(seconds=5)
@@ -389,6 +392,32 @@ def test_a_saved_run_whose_count_is_not_where_its_record_ends_is_refused(protoco
 
     with pytest.raises(SimulationConfigurationError, match="stores states up to 3 s"):
         _load_forged(_run_of(seconds=3), protocol, "step_count", StepCount(2))
+
+
+def test_a_shallow_copy_of_a_run_is_refused() -> None:
+    """A copy sharing the original's system would step it under the original (blind review).
+
+    The copy would hold a record of its own. Stepping the copy ten seconds
+    moved the shared system, and the original's next step then stored an
+    alveolar fraction of 0.00272 as its 6 s state, where a fresh run gives
+    0.00113.
+    """
+
+    with pytest.raises(TypeError, match="cannot be copied shallowly"):
+        copy.copy(_run_of(seconds=5))
+
+
+@pytest.mark.parametrize("protocol", _PROTOCOLS)
+def test_a_saved_system_holding_a_part_of_another_type_is_refused(protocol: int) -> None:
+    """A part's state record has the part's amounts but no methods, and failed at the next step."""
+
+    system = _run_of(seconds=3).uptake_system
+
+    with pytest.raises(
+        TypeError,
+        match="^the system's alveoli has type AlveolarCompartmentState, not AlveolarCompartment$",
+    ):
+        _load_forged(system, protocol, "alveoli", system.alveoli.capture_state())
 
 
 def test_a_run_whose_system_is_not_an_uptake_system_is_refused() -> None:

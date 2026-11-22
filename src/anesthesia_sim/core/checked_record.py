@@ -4,7 +4,12 @@
 its constructor. They create an empty object and pass its saved state to
 `__setstate__`. So a record whose constructor checks its fields can come back
 holding a value that the constructor would refuse, unless its `__setstate__`
-runs those checks.
+runs those checks. A saved settings record whose state held a cardiac output
+of 1000.0 as a bare `float` once loaded without error (`PL-S11T`), and so did
+a saved `Keyframe` whose `instant_s` was a bare -50.0 (`PL-8W1Q`).
+`CheckedQuantity.__reduce__` (`core/checked_number.py`) rebuilds a value
+pickled as its checked type through that type's constructor, but it does not
+protect a field whose saved state holds a bare number.
 
 Every record in `core/` therefore saves its state as a dict from each field's
 name to its value, and restores from that dict through its own checks.
@@ -17,11 +22,11 @@ that restores another way (`PL-8W1Q`, `PL-HXNL`).
 **Why by name.** The `__getstate__` that `dataclass` writes for a frozen,
 slotted record returns the field values in field order, without their names.
 A record saved before two fields of one type changed places would then load
-with the two values swapped, and both would pass every check. A liquid
-density saved as `(density, standard deviation)` would load as a density of
-about 0.01 g/mL. A dict keyed by field name loads each value into its own
-field whatever the order, and a field renamed or removed since the save is
-refused by name.
+with the two values swapped, and both would pass every check. Sevoflurane's
+liquid density of 1.5203 g/mL and its standard deviation of 0.0008 g/mL,
+swapped, would load as a density of 0.0008 g/mL. A dict keyed by field name
+loads each value into its own field whatever the order, and a field renamed
+or removed since the save is refused by name.
 
 **What this protects against.** It protects against a saved value that is
 wrong, or saved under an older shape of the record. It does not protect
