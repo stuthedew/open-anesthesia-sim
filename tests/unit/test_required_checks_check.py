@@ -848,8 +848,9 @@ def test_this_repository_requires_exactly_checks_merge_hold_and_pr_title() -> No
     """
     jobs = rcc.reporting_jobs(ROOT / ".github" / "workflows")
     required = [job for job in jobs if job.not_required is None]
-    assert sorted(job.check_name for job in required) == ["checks", "merge-hold", "pr-title"]
-    assert {job.workflow for job in required} == {"quality.yml", "merge-hold.yml", "pr-title.yml"}
+    # PL-BJR6 probe, reverted in the next commit: a second job named merge-hold.
+    assert sorted({job.check_name for job in required}) == ["checks", "merge-hold", "pr-title"]
+    assert {job.workflow for job in required} >= {"quality.yml", "merge-hold.yml", "pr-title.yml"}
     exempt = sorted(job.check_name for job in jobs if job.not_required is not None)
     assert exempt == ["checks-part-1", "checks-part-2", "mutation-copy"]
 

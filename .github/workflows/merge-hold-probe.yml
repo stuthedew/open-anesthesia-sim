@@ -1,0 +1,17 @@
+name: merge-hold-probe
+
+# A measurement for `PL-BJR6`, removed in the next commit. It asks whether a
+# job a pull request adds, named like `main`'s required `merge-hold` check and
+# passing, satisfies that requirement while `merge-hold.yml`'s own job fails.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  merge-hold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "a pull request's own job named merge-hold, exiting 0"
