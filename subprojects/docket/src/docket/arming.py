@@ -42,8 +42,8 @@ every later push while a pull request is open.
   (`JUDGE_ASK`), so a judgment nobody made fails safe rather than merging a
   clinical change unread. A record saying `needed` holds it for the owner's
   read, and so does a change to an existing test that pins this module's
-  answers (`PINS`), and so does an edit or a deletion of an existing line of
-  a test that compares the model with published data (`REFERENCE_TESTS`),
+  answers (`PINS`), and so does a change to the code of an existing test
+  that compares the model with published data (`REFERENCE_TESTS`),
   whatever the session's own record says. The pull request then waits for
   the owner's answer, which the session records as `Owner-read: given` with
   the date and their words (`READ_GIVEN`). `merge_hold` gives this same answer for a branch's
@@ -107,10 +107,13 @@ has already merged. What went unread is named beside it.
   loosening that no test pins merges unread, and so would one that also
   rewrote the check that reads the pins, since this module judges its own
   change.
-- An edit or a deletion of an existing line under `REFERENCE_TESTS` waits on
+- A change to the code of an existing test under `REFERENCE_TESTS` waits on
   the owner whatever the session records, because a widened tolerance or a
   changed expected value there is the one place a weakened test hides a wrong
-  clinical value. A branch that only adds lines there does not (`PL-XSRG`).
+  clinical value (`PL-XSRG`). A branch that only adds lines there does not,
+  and nor does one that changes only comments, docstrings or `assert`
+  failure messages, which `code_of` sets aside (project owner, 2026-11-22,
+  ratified, over holding every edited line, `PL-V9KN`).
 - A simulator change waits for its blind review passes (`PL-HDRN`). Its new
   prose held it too until 2026-11-11, when the owner removed the copy edit of
   each branch (`PL-J1ZM`). A blind review record is not undone by a later change, because close-out
@@ -337,8 +340,11 @@ READ_ASK = (
     f"gives up> | {ASK_RECOMMEND} <option> - <why its gain is worth its cost> | "
     f"{ASK_CONTEXT} - <what changed, or what the choice is about> | "
     f"{ASK_WHY} - <why the choice is the owner's rather than the session's> | {ASK_CHECKED} - "
-    f"<what was already checked>`. Give at least two options a careful person could each "
-    f"pick, and leave out {ASK_CHECKED} only when nothing was checked. For a held pull "
+    f"<what was already checked, and what the research on current best practice found, "
+    "with its sources>`. Research the question before recording it (rule 10 of "
+    ".claude/rules/instruction-writing.md): where the research shows one option clearly "
+    "correct, take it and record no question. Give at least two options a careful person "
+    f"could each pick, and leave out {ASK_CHECKED} only when nothing was checked. For a held pull "
     "request, the options are the change and what it was chosen over: what the owner asked "
     "for, the behavior it replaces, a smaller version, or the larger rework it would need. "
     "Merging against holding for changes is not a choice, because holding gains the owner "
@@ -752,11 +758,12 @@ JUDGE_ASK = (
 )
 
 
-#: The tests that compare the model with published data. An edit or a
-#: deletion of an existing line of one waits on the owner's read whatever the
-#: session's `OWNER_READ` record says, until the record is the owner's own
-#: go-ahead (`PL-XSRG`). Only adding lines does not, since a new comparison
-#: weakens none that was there.
+#: The tests that compare the model with published data. A change to the
+#: code of one waits on the owner's read whatever the session's `OWNER_READ`
+#: record says, until the record is the owner's own go-ahead (`PL-XSRG`).
+#: Only adding lines does not, since a new comparison weakens none that was
+#: there, and nor does a change that `code_of` reads as the same program
+#: (`PL-V9KN`).
 REFERENCE_TESTS = TESTS + "reference/"
 
 #: Importing this is what makes a test file the simulator's. It is the rule
@@ -1023,6 +1030,27 @@ def lines_taken(numstat: str) -> tuple[str, ...]:
     return tuple(sorted(taken))
 
 
+def code_of(source: str, filename: str = "<test>") -> str:
+    """What a test file does, as a dump of its parse tree with its prose left out.
+
+    Each docstring of the module, a class or a function is removed, and so is
+    the failure message of each `assert` statement. `ast` keeps no comments
+    and no layout. Two sources therefore give the same dump when they differ
+    only in comments, docstrings, `assert` failure messages and layout, which
+    change what a failing test says and never whether it fails. A message
+    passed to a call, such as `pytest.fail`, stays, because a call is code.
+    Raises what `ast.parse` raises on a source that will not parse.
+    """
+    tree = ast.parse(source, filename=filename)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assert):
+            node.msg = None
+        elif isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if ast.get_docstring(node, clean=False) is not None:
+                node.body = node.body[1:]
+    return ast.dump(tree)
+
+
 @dataclass(frozen=True)
 class AutoMerge:
     """What the forge says of a pull request's auto-merge: its latest switch, and when.
@@ -1229,8 +1257,12 @@ class Verdict:
       does not hold it at.
     - `pinned`: the existing tests in `PINS` that pin this module's answers
       and that the branch would change or delete.
-    - `references`: the tests under `REFERENCE_TESTS` an existing line of
-      which the branch would edit or delete.
+    - `references`: the tests under `REFERENCE_TESTS` whose code the branch
+      would change or delete.
+    - `uncompared`: the tests under `REFERENCE_TESTS` that lose a line and
+      whose code could not be compared, because a side would not parse or
+      git would not hand it over. Each waits on the owner as if its code
+      changed.
     - `switched_off`: when the owner switched the pull request's auto-merge
       off.
     - `blind_owed`: how many blind review passes the branch owes.
@@ -1262,6 +1294,7 @@ class Verdict:
     moved: bool = False
     pinned: tuple[str, ...] = ()
     references: tuple[str, ...] = ()
+    uncompared: tuple[str, ...] = ()
     switched_off: str = ""
     blind_owed: int = 0
     blind_recorded: int = 0
@@ -1319,7 +1352,7 @@ class Verdict:
         """Whether the pull request waits on the owner's read.
 
         It does for a change to a test pinning the gate's answers, for a move
-        of the gate, for an edit to an existing line under `REFERENCE_TESTS`,
+        of the gate, for a change to the code of a test under `REFERENCE_TESTS`,
         whatever the session recorded (`PL-XSRG`), and for a record saying
         needed. Any other change to the
         gate itself does not, since 2026-10-19 (`PL-9JHM`). A move does,
@@ -1335,6 +1368,7 @@ class Verdict:
             self.moved
             or bool(self.pinned)
             or bool(self.references)
+            or bool(self.uncompared)
             or (self.record is not None and self.record.needed)
         )
 
@@ -1544,10 +1578,18 @@ class Verdict:
             count = len(self.references)
             tests = "test" if count == 1 else "tests"
             reasons.append(
-                f"it edits or deletes an existing line of {count} {tests} under "
-                f"{REFERENCE_TESTS} comparing the model with published data, which waits on the "
-                f"owner's read whatever the {OWNER_READ} record says: "
-                f"{self._shown(self.references)}"
+                f"it changes the code of {count} {tests} under {REFERENCE_TESTS} comparing "
+                f"the model with published data, which waits on the owner's read whatever the "
+                f"{OWNER_READ} record says: {self._shown(self.references)}"
+            )
+        if self.uncompared:
+            count = len(self.uncompared)
+            tests = "test" if count == 1 else "tests"
+            reasons.append(
+                f"it edits {count} {tests} under {REFERENCE_TESTS} comparing the model with "
+                "published data whose code could not be compared, because a side would not "
+                "parse under this python3 or git would not hand it over, so each waits on the "
+                f"owner's read as if its code changed: {self._shown(self.uncompared)}"
             )
         return reasons
 
@@ -1784,7 +1826,8 @@ class _Change:
     `worked` is every path outside the store and the body records. `gate` says
     whether this module changed, `moved` whether it moved, `pinned` names
     the existing tests of its answers that changed, and `references` the tests
-    under `REFERENCE_TESTS` that lose an existing line.
+    under `REFERENCE_TESTS` whose code changed (`_code_changed`), and
+    `uncompared` those whose code could not be compared.
     """
 
     prefix: str
@@ -1795,6 +1838,7 @@ class _Change:
     moved: bool = False
     pinned: tuple[str, ...] = ()
     references: tuple[str, ...] = ()
+    uncompared: tuple[str, ...] = ()
     unread: tuple[str, ...] = ()
 
 
@@ -1832,12 +1876,13 @@ def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "
         pinned, unpinned = _pins_changed(base, root, run, tip=tip)
         unread = (*unread, *unpinned)
     references: tuple[str, ...] = ()
+    uncompared: tuple[str, ...] = ()
     if any(path.startswith(REFERENCE_TESTS) for path in paths):
         counted = run(
             changed_path_args("diff", "--numstat", f"{base}...{tip}", "--", REFERENCE_TESTS), root
         )
         if answered(counted):
-            references = lines_taken(counted)
+            references, uncompared = _code_changed(lines_taken(counted), base, root, run, tip=tip)
         else:
             unread = (
                 *unread,
@@ -1852,7 +1897,9 @@ def _read_change(root: Path, where: _Branch, items_dir: str, record_dir: str = "
             if arms_on_green(path, tooling) and outside_the_store(path, prefix)
         )
     )
-    return _Change(prefix, on_list, outside, worked, gate, moved, pinned, references, tuple(unread))
+    return _Change(
+        prefix, on_list, outside, worked, gate, moved, pinned, references, uncompared, tuple(unread)
+    )
 
 
 @dataclass(frozen=True)
@@ -1967,6 +2014,7 @@ def _held(
         moved=change.moved,
         pinned=change.pinned,
         references=change.references,
+        uncompared=change.uncompared,
         switched_off=switched_off,
         blind_owed=reviews.blind_owed,
         blind_recorded=reviews.blind_recorded,
@@ -2040,7 +2088,12 @@ def _owner_ask_answer(
         root, where.run, where.base, change.on_list, worked=change.worked, tip=where.tip
     )
     held = Verdict(
-        HOLD, moved=change.moved, pinned=change.pinned, references=change.references, record=record
+        HOLD,
+        moved=change.moved,
+        pinned=change.pinned,
+        references=change.references,
+        uncompared=change.uncompared,
+        record=record,
     )
     if not held.needs_owner:
         unread = (*where.unread, *change.unread, *misread, *_silenced(where))
@@ -2452,6 +2505,43 @@ def _owner_read(
             f"so it was not read: {value}",
         )
     return OwnerRead(commit=commit, needed=parsed[0], why=parsed[1]), ()
+
+
+def _code_changed(
+    paths: Sequence[str], base: str, root: Path, run: Runner, *, tip: str = "HEAD"
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The tests among `paths` whose code changed, and those whose code could not be compared.
+
+    `paths` are the published-data tests that lose an existing line. Each is
+    read at the merge base and at `tip` and compared through `code_of`. A
+    test whose two sides give the same program is in neither tuple, so it
+    arms on green. Git answers a side that holds no such file with nothing,
+    so a deleted test reads as an empty program and is among those that
+    changed. A side git would not hand over, or one that will not parse under
+    this python3, puts the test among those that could not be compared, so a
+    comparison this module could not make never releases a test that the line
+    count holds. Both tuples are sorted.
+    """
+    if not paths:
+        return (), ()
+    fork = run(["merge-base", base, tip], root).strip()
+    if not fork:
+        return (), tuple(sorted(paths))
+    changed: list[str] = []
+    uncompared: list[str] = []
+    for path in paths:
+        sides = [run(["show", f"{rev}:{path}"], root) for rev in (fork, tip)]
+        if not all(answered(side) for side in sides):
+            uncompared.append(path)
+            continue
+        try:
+            same = code_of(sides[0], path) == code_of(sides[1], path)
+        except (SyntaxError, ValueError, RecursionError):
+            uncompared.append(path)
+            continue
+        if not same:
+            changed.append(path)
+    return tuple(sorted(changed)), tuple(sorted(uncompared))
 
 
 def _pins_changed(

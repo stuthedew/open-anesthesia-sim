@@ -1,7 +1,7 @@
 """Recover stored parameters from simulated measurements.
 
 The other reference tests check that the shipped simulation step solves the
-equations in `docs/MODEL.md`. The oracle in `test_coupled_dynamics.py`
+equations in `docs/MODEL.md` § "Equations". The oracle in `test_coupled_dynamics.py`
 integrates those same equations independently, so it cannot detect an equation
 that the specification itself states wrongly. This module is a third kind of
 check. Each test runs the shipped model through a simulated measurement whose
@@ -251,7 +251,7 @@ def _volumes_recovered_from_washin(agent_id: str) -> dict[str, float]:
 
     The test treats the arterial fraction as equal to the alveolar fraction.
     The model has no arterial compartment, because it takes blood leaving the
-    lungs to equilibrate with alveolar gas (`docs/MODEL.md` § "Arterial blood").
+    lungs to equilibrate with alveolar gas (`docs/MODEL.md` § "What the model represents").
     """
 
     agent = load_agent_parameters(agent_id)
@@ -293,7 +293,8 @@ def test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value(agen
     """Each tissue group's volume, measured by the Fick principle, is the stored one.
 
     The procedure is written from the Fick principle and the meaning of a
-    partition coefficient, not from the tissue equation in `docs/MODEL.md`.
+    partition coefficient, not from the tissue equation in `docs/MODEL.md`
+    § "Tissue groups".
     It catches errors that still conserve agent. The mass-balance check cannot
     see such errors. Suppose the specification had written the tissue capacity
     as $`V_i\\lambda_{i:b}`$, leaving out the blood:gas factor, and had written

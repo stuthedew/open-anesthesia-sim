@@ -305,7 +305,7 @@ def test_washout_never_increases_total_system_mass() -> None:
     inside the run leave the endpoints in the right order, and such a rise is
     exactly what this test is meant to catch.
 
-    The test checks total stored mass only. MODEL.md states in the same section that
+    The test checks total stored mass only. The same section of `docs/VERIFICATION.md` states that
     individual tissue concentrations may temporarily rise through
     redistribution, so this test must not require every compartment to fall,
     and deliberately asserts nothing about any compartment on its own.
