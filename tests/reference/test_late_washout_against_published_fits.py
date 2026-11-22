@@ -224,7 +224,7 @@ before the stretch over which the trace runs below the measured mean. On the
 chart's linear axis, which is fixed at 3 MAC, the trace is only a few pixels
 high well before that. A higher dial setting raises $`F_{A0}`$ in proportion,
 and keeps the trace above the readout's resolution for longer. A 6%
-desflurane setting keeps it above until about the fifth hour, which is inside
+desflurane setting keeps it above until about 5.4 hours, which is inside
 desflurane's stretch below the measured mean.
 
 **Sources.** None of them is the authority for a stored value. The first two

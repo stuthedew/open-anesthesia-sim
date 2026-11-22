@@ -219,9 +219,9 @@ fourth apply to the elimination alone.
    compartment's term is the largest in the measured curve from about 1.8 to
    3.1 hours after the 30-minute administration until about 20.7 to 29.4
    hours (`docs/MODEL.md` § "Intertissue diffusion: the missing fourth
-   compartment"). At five minutes the term is about one part in twenty of
-   what remains. So the gap over those hours is measured beside this gate
-   rather than enforced by it. test_late_washout_against_published_fits.py,
+   compartment"). At five minutes the term is 4 to 5% of what remains. So
+   the gap over those hours is measured beside this gate rather than
+   enforced by it. test_late_washout_against_published_fits.py,
    in this directory, records the gap's size and direction over the first 24
    hours (docs/VERIFICATION.md, "The first 24 hours of elimination against the
    published mean curves"). It asserts no agreement.
@@ -269,7 +269,10 @@ the measured table, and these are its main points:
   mis-parameterized one.
 - **A narrow edge is not a narrow uncertainty.** Most lower edges come from
   the 12.5- and 15-minute points, where the shipped model already sits at
-  +0.75 to +0.95 SD. A small change crosses +1 SD there, so a -1% edge says
+  +0.75 to +0.95 SD. The second study's isoflurane point at 12.5 minutes is
+  already at +1.06 SD, under the regression band that
+  `EARLY_WASH_IN_DISAGREEMENTS` names. A small change crosses +1 SD at the
+  others, so a -1% edge says
   the model has used most of the band, not that the coefficient is known to
   1%. The figure's reading error is about 0.3 SD.
 - **The early points detect too large an alveolar gas volume.** The volume

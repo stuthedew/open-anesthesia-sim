@@ -1242,7 +1242,8 @@ The figures are mean ± SD, read from the two abstracts.
 
 The model lands inside the published standard deviation for every row, and
 reproduces the ordering by solubility (desflurane above sevoflurane above
-isoflurane). It does so at every fresh gas flow from 1 to 10 L/min.
+isoflurane). It does so at each of the six fresh gas flows it is run at, from 1 to
+10 L/min.
 <!-- not-restated: 10 L/min -->
 
 - **The settings were not fitted.** Alveolar ventilation and cardiac output
@@ -1284,8 +1285,8 @@ follows their isoflurane curve. No single stored coefficient, varied within
 its measured range, closes the gap. Blood:gas brings the early points within
 one SD at about 0.55 or higher, where Eger's 0.424 ± 0.024 does not reach and
 Esper et al.'s 0.57 ± 0.04 does. But the 30-minute ratio stays within one SD
-at every flow only while blood:gas is about 0.46 or lower. At 0.57 it falls
-outside at every flow, from −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. The
+at each flow tested only while blood:gas is about 0.46 or lower. At 0.57 it falls
+outside at each of them, from −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. The
 vessel-rich and muscle coefficients cannot close the gap at any value within
 Yasuda, Targ and Eger's measurements (brain 0.54 ± 0.02, muscle 0.94 ± 0.35).
 <!-- not-restated: 10 L/min, 0.54 -->
@@ -1374,8 +1375,9 @@ on screen as a prediction of how fast a patient recovers.**
    101 ± 7% for sevoflurane and 101 ± 6% for isoflurane in the first study,
    and 105 ± 25% for desflurane and 102 ± 13% for isoflurane in the second.
    Halothane gave 64 ± 9%, so the method does detect a metabolized agent. At
-   five minutes the fourth compartment's term is about one part in twenty of
-   what remains.
+   five minutes the fourth compartment's term is 4 to 5% of what remains.
+
+<!-- not-restated: 5 % -->
 
 ### What these comparisons can and cannot detect
 
@@ -1436,7 +1438,7 @@ Two limits apply to those figures:
 the readouts' 0.01 percentage points at 2.8, 4.2 and 1.9 hours for
 sevoflurane, isoflurane and desflurane, before the stretch over which it runs
 below the measured mean. A higher dial keeps the trace readable for longer. A
-6% desflurane dial keeps it there until about the fifth hour, which is inside
+6% desflurane dial keeps it there until about 5.4 hours, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the
 shortfall.
 
