@@ -8,7 +8,8 @@ themselves:
 - that a slider's position is exactly the printed value (`PL-25KS`, D4)
 - that a value written into a slider from a snapshot is never reported back as a change
 - that the new-case dialog's default choice keeps the current case
-- which cell of the bookmark editor each field sits in, and the order in which Tab visits them
+- which cell of the marks editor each field sits in, the order in which Tab visits them, and
+  how an entry and a refusal are written into it
 - where the window opens (`PL-005`)
 - that a selector draws its own arrow and none of the platform's button (`PL-9389`)
 
@@ -18,7 +19,7 @@ The widgets render on Qt's `offscreen` platform, which `tests/conftest.py` selec
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtCore import QEvent, QRect, QSize, Qt
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QPalette
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
@@ -41,11 +42,11 @@ from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_SECONDARY_VALUE,
     HEIGHT_FIELD_LABEL,
     INSTANT_FIELD_LABEL,
-    MAC_TARGET_HEADING,
     MARK_NAME_FIELD_LABEL,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
-    TIME_BOOKMARK_HEADING,
+    TARGET_FORM_HEADING,
+    TIME_FORM_HEADING,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     Readout,
@@ -61,8 +62,11 @@ from anesthesia_sim.app.formatting import format_flow, format_percent
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
-    BookmarkDialog,
     FlowLayout,
+    MarkButton,
+    MarkEditor,
+    MarkEntry,
+    MarkRefusal,
     MetricPanel,
     NewCaseDialog,
     NoticeLabel,
@@ -1018,13 +1022,13 @@ def test_the_discard_button_is_drawn_before_the_keep_button(application: QApplic
     assert dialog.discard_button.geometry().top() == dialog.keep_button.geometry().top()
 
 
-# ----------------------------------------------------- the bookmark editor
+# ----------------------------------------------------- the marks editor
 
 
-def _form(dialog: BookmarkDialog, index: int) -> QGridLayout:
+def _form(editor: MarkEditor, index: int) -> QGridLayout:
     """Return the editor's form at this index in its column: 0 for times, 1 for targets."""
 
-    column = dialog.layout()
+    column = editor.layout()
     item = None if column is None else column.itemAt(index)
     form = None if item is None else item.layout()
     assert isinstance(form, QGridLayout)
@@ -1032,16 +1036,16 @@ def _form(dialog: BookmarkDialog, index: int) -> QGridLayout:
     return form
 
 
-def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[int, ...]]:
+def _form_cells(editor: MarkEditor, form: QGridLayout) -> dict[str, tuple[int, ...]]:
     """Return the cell that each widget of one form spans, keyed by the widget's name.
 
     A cell is the widget's row and column and the number of rows and columns it
-    spans. A widget is named by the dialog attribute that holds it. No attribute
+    spans. A widget is named by the editor attribute that holds it. No attribute
     holds a heading or the label that shows a field's name, so each of those is
     named by its text. A widget placed in the grid twice fails the test.
     """
 
-    attributes = {id(value): name for name, value in vars(dialog).items()}
+    attributes = {id(value): name for name, value in vars(editor).items()}
     cells: dict[str, tuple[int, ...]] = {}
 
     for index in range(form.count()):
@@ -1061,33 +1065,41 @@ def _form_cells(dialog: BookmarkDialog, form: QGridLayout) -> dict[str, tuple[in
     return cells
 
 
-def test_the_bookmark_editor_seats_each_field_in_the_cell_it_always_had(
-    application: QApplication,
-) -> None:
-    """Each widget of both forms keeps the cell that the editor gave it by number.
+def test_the_marks_editor_seats_each_field_in_its_cell(application: QApplication) -> None:
+    """Each widget of both forms sits in the cell written here.
 
     Before `PL-4X5B`, the editor's code set each widget's row and column by
-    number. The expected cells are transcribed from those numbers, so the test
-    does not read them from the grid code that it checks. That code now places a
-    widget by where it is written in its form, and a widget written in two or
+    number. The fields keep the cells transcribed from those numbers, so the
+    test does not read them from the grid code that it checks. That code places
+    a widget by where it is written in its form, and a widget written in two or
     three neighbouring columns spans them.
+
+    `PL-CHX0` moved the editor from a window into the Bookmarks View, where an
+    Area about 150 pixels tall scrolls it. Each Remove button stays directly
+    under the list it acts on, as it was in the window. A Remove button above
+    its list could be pressed while the list was scrolled out of view, and it
+    would then remove a row the reader could not see. Each button's refusal
+    is the row directly under it, so that it is on screen next to the button
+    that was pressed.
     """
 
-    dialog = BookmarkDialog()
+    editor = MarkEditor()
 
-    assert _form_cells(dialog, _form(dialog, 0)) == {
-        TIME_BOOKMARK_HEADING: (0, 0, 1, 3),
+    assert _form_cells(editor, _form(editor, 0)) == {
+        TIME_FORM_HEADING: (0, 0, 1, 3),
         INSTANT_FIELD_LABEL: (1, 0, 1, 1),
         "instant_spin": (1, 1, 1, 1),
         "instant_preview": (1, 2, 1, 1),
         MARK_NAME_FIELD_LABEL: (2, 0, 1, 1),
         "time_label_edit": (2, 1, 1, 2),
         "add_time_button": (3, 1, 1, 1),
-        "time_list": (4, 0, 1, 3),
-        "remove_time_button": (5, 1, 1, 1),
+        "add_time_notice": (4, 0, 1, 3),
+        "time_list": (5, 0, 1, 3),
+        "remove_time_button": (6, 1, 1, 1),
+        "remove_time_notice": (7, 0, 1, 3),
     }
-    assert _form_cells(dialog, _form(dialog, 1)) == {
-        MAC_TARGET_HEADING: (0, 0, 1, 3),
+    assert _form_cells(editor, _form(editor, 1)) == {
+        TARGET_FORM_HEADING: (0, 0, 1, 3),
         COMPARTMENT_FIELD_LABEL: (1, 0, 1, 1),
         "compartment_combo": (1, 1, 1, 2),
         HEIGHT_FIELD_LABEL: (2, 0, 1, 1),
@@ -1095,12 +1107,14 @@ def test_the_bookmark_editor_seats_each_field_in_the_cell_it_always_had(
         MARK_NAME_FIELD_LABEL: (3, 0, 1, 1),
         "target_label_edit": (3, 1, 1, 2),
         "add_target_button": (4, 1, 1, 1),
-        "target_list": (5, 0, 1, 3),
-        "remove_target_button": (6, 1, 1, 1),
+        "add_target_notice": (5, 0, 1, 3),
+        "target_list": (6, 0, 1, 3),
+        "remove_target_button": (7, 1, 1, 1),
+        "remove_target_notice": (8, 0, 1, 3),
     }
 
 
-def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
+def test_the_marks_editor_tabs_through_its_controls_from_top_to_bottom(
     application: QApplication,
 ) -> None:
     """The Tab key visits the editor's controls in the order a reader reads them.
@@ -1108,36 +1122,30 @@ def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
     A keyboard user fills in the editor with Tab alone. WCAG 2.2 SC 2.4.3, Focus
     Order, asks for a focus order that "preserves meaning and operability". For the
     editor's two forms, that is the order in which they are read, from top to bottom.
-    Qt's default Tab order is the order in which widgets were added to the dialog.
-    In this dialog, the grid code adds them. So a grid that added its rows in any
+    Qt's default Tab order is the order in which widgets were added to the editor.
+    In this editor, the grid code adds them. So a grid that added its rows in any
     other order would fail here, even if every cell were correct.
     """
 
-    dialog = BookmarkDialog()
-    attributes = {id(value): name for name, value in vars(dialog).items()}
-    dialog.show()
-    application.processEvents()
-    first = application.focusWidget()
+    editor = MarkEditor()
+    attributes = {id(value): name for name, value in vars(editor).items()}
     visited: list[str] = []
-    widget = first
+    widget = editor.nextInFocusChain()
 
-    # Qt's focus chain is a ring, so the walk ends back at the first widget. The limit
+    # Qt's focus chain is a ring, so the walk ends back at the editor itself. The limit
     # on the loop makes a chain that never closes fail the test instead of hanging it.
-    for _ in range(len(dialog.findChildren(QWidget)) + 1):
-        assert widget is not None
+    for _ in range(len(editor.findChildren(QWidget)) + 1):
+        if widget is editor:
+            break
+
         name = attributes.get(id(widget))
 
         if name is not None and widget.focusPolicy() & Qt.FocusPolicy.TabFocus:
             visited.append(name)
 
         widget = widget.nextInFocusChain()
-
-        if widget is first:
-            break
     else:
-        pytest.fail("the editor's focus chain never came back to its first control")
-
-    dialog.close()
+        pytest.fail("the editor's focus chain never came back to the editor")
 
     assert visited == [
         "instant_spin",
@@ -1151,8 +1159,181 @@ def test_the_bookmark_editor_tabs_through_its_controls_from_top_to_bottom(
         "add_target_button",
         "target_list",
         "remove_target_button",
-        "close_button",
     ]
+
+
+def test_an_entry_written_into_the_editor_is_the_entry_it_returns_and_is_not_reported(
+    application: QApplication,
+) -> None:
+    """`set_entry` fills every field and selection, and does not report the write as an edit.
+
+    The dashboard copies what a reader entered in one copy of the editor into
+    the others with `set_entry` (`PL-CHX0`). If that write emitted
+    `entry_edited`, each copy would answer it by writing every other copy in
+    turn. The entry is built here, not read from an editor, so the test does
+    not check `entry` against itself.
+    """
+
+    editor = MarkEditor()
+    rows = ("10m – first", "20m – second", "30m – third")
+    editor.time_list.addItems(list(rows))
+    editor.target_list.addItems(list(rows))
+    edited: list[bool] = []
+    editor.entry_edited.connect(lambda: edited.append(True))
+    entry = MarkEntry(
+        instant_s=1800,
+        time_name="incision",
+        compartment_row=3,
+        height_mac=1.25,
+        target_name="deep",
+        time_row=2,
+        target_row=1,
+    )
+
+    editor.set_entry(entry)
+
+    assert editor.entry() == entry
+    assert editor.instant_preview.text() == "30m"
+    assert edited == []
+
+    editor.time_label_edit.setText("closure")
+
+    assert edited == [True]
+
+
+def test_a_refusal_shows_under_the_button_that_was_pressed_and_clears_the_others(
+    application: QApplication,
+) -> None:
+    """Each refusal shows under one button, and the next one replaces it.
+
+    The four buttons share one refusal at a time, as the editor's single
+    notice did before `PL-CHX0`. Each is shown under the button that was
+    pressed, so that it is in view of that button.
+    """
+
+    editor = MarkEditor()
+    notices = {
+        MarkButton.ADD_TIME: editor.add_time_notice,
+        MarkButton.REMOVE_TIME: editor.remove_time_notice,
+        MarkButton.ADD_TARGET: editor.add_target_notice,
+        MarkButton.REMOVE_TARGET: editor.remove_target_notice,
+    }
+
+    for pressed in MarkButton:
+        editor.show_refusal(MarkRefusal(pressed, f"refused by {pressed.value}"))
+
+        assert {button: notice.notice() for button, notice in notices.items()} == {
+            button: f"refused by {pressed.value}" if button is pressed else None
+            for button in MarkButton
+        }
+
+    editor.show_refusal(None)
+
+    assert [notice.isHidden() for notice in notices.values()] == [True] * 4
+
+
+def test_each_remove_button_is_drawn_below_the_list_it_removes_from(
+    application: QApplication,
+) -> None:
+    """On screen, each Remove button is drawn under its whole list, and each Add button above it.
+
+    The cells above say where the grid places each widget. This test checks the
+    drawn geometry, so a list drawn over its button also fails (`PL-CHX0`).
+    """
+
+    editor = MarkEditor()
+    editor.resize(400, 900)
+    editor.show()
+    application.processEvents()
+
+    try:
+        for add, listing, remove in (
+            (editor.add_time_button, editor.time_list, editor.remove_time_button),
+            (editor.add_target_button, editor.target_list, editor.remove_target_button),
+        ):
+            assert add.geometry().bottom() < listing.geometry().top()
+            assert listing.geometry().bottom() < remove.geometry().top()
+    finally:
+        editor.close()
+
+
+def _wheel_down(widget: QWidget) -> None:
+    """Turn the mouse wheel one notch towards the reader over `widget`'s centre.
+
+    The event enters through the window, as a real wheel's does. Qt offers an
+    ignored wheel event to the widget's parents only when it came from the
+    window system, so an event sent straight to the widget could not show
+    whether the page scrolls.
+    """
+
+    window = widget.window().windowHandle()
+    assert window is not None
+    centre = widget.mapTo(widget.window(), widget.rect().center())
+    QTest.wheelEvent(window, QPointF(centre), QPoint(0, -120))
+
+
+def test_a_mouse_wheel_over_an_unfocused_field_scrolls_the_area_and_changes_no_mark(
+    application: QApplication,
+) -> None:
+    """A wheel notch over the instant, the compartment or the height scrolls past it.
+
+    The editor sits in an Area that scrolls. Qt's combo box and spin boxes
+    change their value on a wheel event even without focus. A reader scrolling
+    past them would then change the instant, the compartment or the height
+    without seeing it, in every copy of the editor, and the next Add would mark
+    a value the reader did not choose. So each of the three takes the wheel only
+    once a click or the keyboard has given it focus, as the agent cost View's
+    selectors do (`PL-B396`, `PL-8FSN`). The expected values are the ones
+    written into the editor here, not read back from it.
+    """
+
+    editor = MarkEditor()
+    editor.set_entry(
+        MarkEntry(
+            instant_s=600,
+            time_name="",
+            compartment_row=2,
+            height_mac=1.0,
+            target_name="",
+            time_row=-1,
+            target_row=-1,
+        )
+    )
+    scroll = QScrollArea()
+    scroll.setWidget(editor)
+    scroll.setWidgetResizable(True)
+    scroll.resize(400, 120)
+    scroll.show()
+    application.processEvents()
+    bar = scroll.verticalScrollBar()
+    entered = editor.entry()
+    # Showing the window gives its first control focus. The name field takes
+    # it here, so that none of the three fields under test has it.
+    editor.time_label_edit.setFocus()
+    application.processEvents()
+
+    try:
+        for field in (editor.instant_spin, editor.compartment_combo, editor.height_spin):
+            scroll.ensureWidgetVisible(field)
+            application.processEvents()
+            before = bar.value()
+
+            assert field.hasFocus() is False
+
+            _wheel_down(field)
+            application.processEvents()
+
+            assert (
+                editor.instant_spin.value(),
+                editor.compartment_combo.currentIndex(),
+                editor.height_spin.value(),
+            ) == (600, 2, 1.0)
+            assert bar.value() > before
+            assert field.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    finally:
+        scroll.close()
+
+    assert editor.entry() == entered
 
 
 # ------------------------------------------------------------- the window

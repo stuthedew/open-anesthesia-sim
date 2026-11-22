@@ -24,7 +24,7 @@ from PySide6.QtWidgets import QApplication, QPushButton, QScrollArea, QSlider, Q
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import new_case_question
-from anesthesia_sim.app.qt_widgets import BookmarkDialog, FocusRing, NewCaseDialog, SelectorComboBox
+from anesthesia_sim.app.qt_widgets import FocusRing, NewCaseDialog, SelectorComboBox
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
@@ -133,19 +133,19 @@ def test_every_tab_stop_on_the_dashboard_shows_the_focus(
     kinds = {type(stop).__name__ for stop in stops}
 
     # The controls that drew no mark before `PL-63FQ` are all in the walk.
-    assert {"QSlider", "SelectorComboBox", "TimeBaseSelector", "FocusedComboBox"} <= kinds
+    assert {"_SettingSlider", "SelectorComboBox", "TimeBaseSelector", "FocusedComboBox"} <= kinds
     assert {"QScrollArea", "ViewScroll", "_KeyScroll"} <= kinds
     assert _unmarked(dashboard, application) == []
 
 
-def test_every_tab_stop_in_both_dialogs_shows_the_focus(
+def test_every_tab_stop_in_the_new_case_question_shows_the_focus(
     dashboard: SimulationView, application: QApplication
 ) -> None:
-    editor = BookmarkDialog(dashboard)
-    editor.show()
-    application.processEvents()
-    assert _unmarked(editor, application) == []
-    editor.close()
+    """The new-case question is a window of its own, so the dashboard's walk does not reach it.
+
+    The marks editor was the other window until `PL-CHX0` moved it into the
+    Bookmarks View, where the dashboard's walk covers it.
+    """
 
     snapshot = SimulationController(agent_id=_AGENT_ID).snapshot()
     question = new_case_question(snapshot, "Isoflurane", 0)

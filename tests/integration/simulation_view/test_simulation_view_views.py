@@ -76,6 +76,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _marks_panel,
     _no_setting,
     _paused_run_with_history,
+    _select_agent,
     _setting_controls,
     _settle,
     _shown_view,
@@ -163,6 +164,56 @@ def test_the_views_name_each_run_while_two_are_drawn_and_only_then(
     assert len(view.runs) == 1
     assert case.trunk.has_failed is frames_fail
     assert _runs_named_in_the_views(view) == lone
+
+
+def _runs_named_on_the_dials(view: SimulationView) -> list[str | None]:
+    """What each row of the first setting controls View calls its run, or None if it names none."""
+
+    return [
+        None if row.name_text.isHidden() else row.name_text.text()
+        for row in _setting_controls(view).rows
+    ]
+
+
+@pytest.mark.parametrize("frames_fail", [False, True], ids=["frames draw", "every frame fails"])
+def test_each_row_of_dials_names_its_run_while_two_are_drawn_and_only_then(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, frames_fail: bool
+) -> None:
+    """Each row of dials names its run once a branch is drawn, and no row names one after Reset.
+
+    While two runs were compared, the setting controls View showed two rows
+    of dials, and only their order said which run each belonged to
+    (`PL-CPF2`). A row names its run from the run's presentation on every
+    tick, as the other Views do. So the names follow a change to the run set
+    whether or not a frame can be drawn. The names are written out by hand,
+    as the chart's legend and the other panels call the two runs.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    assert _runs_named_on_the_dials(view) == [None]
+
+    if frames_fail:
+        monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    view.add_run(case.fork_here())
+    view.render_tick()
+    _settle(application)
+
+    assert case.trunk.has_failed is frames_fail
+    assert _runs_named_on_the_dials(view) == ["Run 1", "Run 2"]
+
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+
+    if dialog is not None:
+        dialog.discard_button.click()
+
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert _runs_named_on_the_dials(view) == [None]
 
 
 def _run_widgets_by_view(view: SimulationView) -> dict[str, tuple[QWidget, tuple[QWidget, ...]]]:
@@ -697,6 +748,113 @@ def test_only_the_compared_run_whose_thumb_is_held_previews_and_its_label_names_
     assert chart.preview_label(BRANCH_RUN_INDEX) == (
         f"{run_label(branch.run_id)} preview: Fresh gas flow 6.0 L/min, not applied"
     )
+
+
+def test_a_preview_held_across_an_agent_change_ends_rather_than_name_the_earlier_agent(
+    application: QApplication,
+) -> None:
+    """An agent change while a thumb is held ends the preview, so no label names the old agent.
+
+    The preview's label was built once, at the press. A desflurane run then
+    showed "Delivered sevoflurane 3.00%" beside the dotted trajectory
+    (`PL-1WFW`). The agent change starts the run over, and the preview
+    described the run that was discarded, so it ends there. The expected
+    labels are written out by hand.
+    """
+
+    controller = _paused_run_with_history(300)
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    control = _dials(run)._delivered_concentration_slider
+    plots = (_concentration(view).chart, _wash_in(view).chart)
+    _hold_thumb(control, 3.0, CONCENTRATION_DISPLAY_DECIMALS)
+    view.render_tick()
+    assert [plot.preview_label(0) for plot in plots] == [
+        "Preview: Delivered sevoflurane 3.00%, not applied"
+    ] * 2
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    dialog.discard_button.click()
+    _settle(application)
+    view.render_tick()
+
+    assert run.snapshot().agent_id == "desflurane"
+    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert [plot.preview_label(0) for plot in plots] == [None, None]
+    assert [plot.preview_region(0) for plot in plots] == [None, None]
+
+
+def test_a_preview_held_across_a_reset_that_drops_the_branch_ends_rather_than_name_run_1(
+    application: QApplication,
+) -> None:
+    """A Reset that drops the branch while the trunk's thumb is held ends the trunk's preview.
+
+    The label was built once, at the press, and went on reading "Run 1
+    preview" on a dashboard that held one run and named none (`PL-1WFW`).
+    The Reset starts the run over and changes the run set, so the preview
+    ends there. The expected labels are written out by hand.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    view.add_run(case.fork_at(CaseInstant(60)))
+    view.present(False)
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    control = _dials(trunk)._fresh_gas_flow_slider
+    plots = (_concentration(view).chart, _wash_in(view).chart)
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+    assert [plot.preview_label(TRUNK_RUN_INDEX) for plot in plots] == [
+        "Run 1 preview: Fresh gas flow 6.0 L/min, not applied"
+    ] * 2
+
+    trunk._reset_button.click()
+    dialog = trunk._reset_dialog
+
+    if dialog is not None:
+        dialog.discard_button.click()
+
+    _settle(application)
+    view.render_tick()
+
+    assert len(view.runs) == 1
+    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert [plot.preview_label(0) for plot in plots] == [None, None]
+    assert [plot.preview_region(0) for plot in plots] == [None, None]
+
+
+def test_a_preview_held_while_a_branch_is_opened_ends_rather_than_go_unnamed(
+    application: QApplication,
+) -> None:
+    """A branch opened while the trunk's thumb is held ends the trunk's preview.
+
+    The label was built at the press, while the trunk was alone and unnamed.
+    Once the branch is drawn, a label that names no run could be read as the
+    branch's (`PL-1WFW`). The trunk does not start over here, so only the
+    change of the run's name ends the preview.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    trunk = view.runs[TRUNK_RUN_INDEX]
+    control = _dials(trunk)._fresh_gas_flow_slider
+    chart = _concentration(view).chart
+    _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+    assert chart.preview_label(TRUNK_RUN_INDEX) == (
+        "Preview: Fresh gas flow 6.0 L/min, not applied"
+    )
+
+    view.add_run(case.fork_at(CaseInstant(60)))
+    view.render_tick()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert chart.preview_label(TRUNK_RUN_INDEX) is None
+    assert chart.preview_region(TRUNK_RUN_INDEX) is None
 
 
 # ------------------------------------- the case's panels, in more than one Area

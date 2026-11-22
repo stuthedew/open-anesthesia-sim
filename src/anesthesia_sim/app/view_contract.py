@@ -185,7 +185,7 @@ class CaseSurfaces(Protocol):
     """
 
     def build_bookmarks_panel(self) -> BookmarksPanel:
-        """Build a copy of the two lists of marks, with the button that opens their editor."""
+        """Build a copy of the two lists of marks, with the editor that adds and removes them."""
         ...
 
     def build_branch_control(self) -> ForkPanel | None:

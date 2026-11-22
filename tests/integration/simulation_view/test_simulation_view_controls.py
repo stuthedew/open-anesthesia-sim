@@ -6,15 +6,29 @@ These tests cover its constructor, transport, sliders and playback.
 """
 
 import re
+from enum import Enum
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import (
+    QApplication,
+    QProxyStyle,
+    QSlider,
+    QStyle,
+    QStyleFactory,
+    QStyleHintReturn,
+    QStyleOption,
+    QStyleOptionSlider,
+    QWidget,
+)
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import MAX_DISPLAYED_RUNS, slider_position
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
+    format_flow,
     format_playback_rate,
 )
 from anesthesia_sim.app.playback import (
@@ -23,6 +37,7 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import ParameterSlider
+from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import ACCENT_TEXT, INK, MUTED, PANEL
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
@@ -347,6 +362,258 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once(application: QApplicatio
     assert controller.record().control_timeline[0].new_value == 4.0
     assert _concentration(view).chart.control_mark_times(0) == (pytest.approx(released_at_s),)
     assert _wash_in(view).chart.control_mark_times(0) == (pytest.approx(released_at_s),)
+
+
+# --------------------------------------- a press on a slider, on each platform
+
+
+class _MacSliderHints(QProxyStyle):
+    """Qt's Fusion style, with the two slider hints that Qt's macOS style returns.
+
+    Qt's source at tag v6.11.2 was read on 2026-11-22. In
+    `src/plugins/styles/mac/qmacstyle_mac.mm`, `SH_Slider_AbsoluteSetButtons`
+    is `Qt::LeftButton|Qt::MiddleButton` and `SH_Slider_PageSetButtons` is 0.
+    In `src/widgets/styles/qcommonstyle.cpp`, which Fusion inherits, they are
+    `Qt::MiddleButton` and `Qt::LeftButton`. So on macOS a left click on the
+    track moves the handle to the pointer, and under Fusion it steps one page.
+    """
+
+    def styleHint(  # Qt spells this in camelCase.
+        self,
+        hint: QStyle.StyleHint,
+        option: QStyleOption | None = None,
+        widget: QWidget | None = None,
+        returnData: QStyleHintReturn | None = None,
+    ) -> int:
+        if hint == QStyle.StyleHint.SH_Slider_AbsoluteSetButtons:
+            return Qt.MouseButton.LeftButton.value | Qt.MouseButton.MiddleButton.value
+
+        if hint == QStyle.StyleHint.SH_Slider_PageSetButtons:
+            return 0
+
+        return super().styleHint(hint, option, widget, returnData)
+
+
+class _Platform(Enum):
+    """The slider hints a test gives a slider."""
+
+    FUSION = "Fusion"
+    MACOS = "macOS hints"
+
+
+#: Every style a test gives a slider. A widget does not own its style, so each
+#: is kept here for as long as the module runs.
+_STYLES_IN_USE: list[QStyle] = []
+
+
+def _style_slider(slider: QSlider, platform: _Platform) -> None:
+    """Give one slider Fusion, or Fusion with the macOS slider hints."""
+
+    fusion = QStyleFactory.create("Fusion")
+    style = fusion if platform is _Platform.FUSION else _MacSliderHints(fusion)
+    _STYLES_IN_USE.append(style)
+    slider.setStyle(style)
+
+
+def _handle_rect(slider: QSlider) -> tuple[int, int, int]:
+    """The handle's left edge, centre and right edge, in the slider's pixels."""
+
+    options = QStyleOptionSlider()
+    slider.initStyleOption(options)
+    handle = slider.style().subControlRect(
+        QStyle.ComplexControl.CC_Slider, options, QStyle.SubControl.SC_SliderHandle, slider
+    )
+
+    return handle.left(), handle.center().x(), handle.right()
+
+
+def _flow_slider_at_four(
+    application: QApplication, platform: _Platform
+) -> tuple[SimulationController, SimulationView, RunView, ParameterSlider, list[object]]:
+    """A run paused at 300 s at 4.0 L/min, its flow slider styled, and a list of its signals."""
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300)
+    controller.pause()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    control = _dials(run)._fresh_gas_flow_slider
+    _style_slider(control.slider, platform)
+    assert controller.settings().fresh_gas_flow_l_min == 4.0
+    signals: list[object] = []
+    control.value_changed.connect(lambda value: signals.append(("applied", value)))
+    control.preview_moved.connect(lambda value: signals.append(("preview", value)))
+    control.preview_ended.connect(lambda: signals.append("preview ended"))
+
+    return controller, view, run, control, signals
+
+
+@pytest.mark.parametrize(
+    ("platform", "button", "applied"),
+    [
+        (_Platform.FUSION, Qt.MouseButton.LeftButton, 4.1),
+        (_Platform.MACOS, Qt.MouseButton.LeftButton, 10.0),
+        (_Platform.FUSION, Qt.MouseButton.MiddleButton, 10.0),
+    ],
+    ids=["Fusion left button", "macOS left button", "Fusion middle button"],
+)
+def test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview(
+    application: QApplication, platform: _Platform, button: Qt.MouseButton, applied: float
+) -> None:
+    """A click on the track is one input on each platform, so it applies and previews nothing.
+
+    The click is at the track's right end, well clear of the handle. Under
+    Fusion a left click steps one page, which is one count of 0.1 L/min. On
+    macOS a left click, and under Fusion a middle click, moves the handle to
+    the pointer, which is the slider's maximum of 10.0 L/min
+    (`MAXIMUM_FRESH_GAS_FLOW_L_MIN` in `core/supported_ranges.py`). Before
+    the fix, the jump applied 10.0 L/min, and the chart then labelled it
+    "Preview: Fresh gas flow 10.0 L/min, not applied" for as long as the
+    button was down (`PL-57LD`).
+    """
+
+    controller, view, _, control, signals = _flow_slider_at_four(application, platform)
+    slider = control.slider
+    _, _, handle_right = _handle_rect(slider)
+    track_end = QPoint(slider.width() - 1, slider.height() // 2)
+    assert track_end.x() > handle_right + 50, "the click must land well clear of the handle"
+    plots = (_concentration(view).chart, _wash_in(view).chart)
+
+    QTest.mousePress(slider, button, Qt.KeyboardModifier.NoModifier, track_end)
+    view.render_tick()
+    held = (
+        controller.settings().fresh_gas_flow_l_min,
+        len(controller.record().control_timeline),
+        [plot.preview_label(0) for plot in plots],
+        [plot.preview_region(0) for plot in plots],
+    )
+    # The button is released before any assertion, so that a failure here
+    # leaves no button held for the tests that follow.
+    QTest.mouseRelease(slider, button, Qt.KeyboardModifier.NoModifier, track_end)
+    view.render_tick()
+
+    assert held == (applied, 1, [None, None], [None, None])
+    assert controller.settings().fresh_gas_flow_l_min == applied
+    assert len(controller.record().control_timeline) == 1
+    assert [plot.preview_label(0) for plot in plots] == [None, None]
+    assert ("applied", applied) in signals
+    assert not [
+        signal for signal in signals if isinstance(signal, tuple) and signal[0] == "preview"
+    ]
+
+
+@pytest.mark.parametrize("platform", list(_Platform), ids=[p.value for p in _Platform])
+def test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing(
+    application: QApplication, platform: _Platform
+) -> None:
+    """A press on the handle grabs it, previews the setting in force, and applies nothing.
+
+    The press is 3 px right of the handle's centre. One count of the flow
+    slider is about 2 px wide here, so with the macOS hints Qt's own press
+    moved the handle a count to 4.1 L/min and applied it before any drag
+    (`PL-57LD`). Under either style the press now previews 4.0 L/min, the
+    setting in force, and the release leaves it in force.
+    """
+
+    controller, view, _, control, signals = _flow_slider_at_four(application, platform)
+    slider = control.slider
+    _, handle_centre, handle_right = _handle_rect(slider)
+    off_centre = QPoint(handle_centre + 3, slider.height() // 2)
+    assert off_centre.x() < handle_right, "the press must land on the handle"
+    chart = _concentration(view).chart
+
+    QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, off_centre)
+    view.render_tick()
+    held_label = chart.preview_label(0)
+    QTest.mouseRelease(
+        slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, off_centre
+    )
+    view.render_tick()
+
+    assert held_label == "Preview: Fresh gas flow 4.0 L/min, not applied"
+    assert controller.settings().fresh_gas_flow_l_min == 4.0
+    assert controller.record().control_timeline == ()
+    assert chart.preview_label(0) is None
+    assert signals == [("preview", 4.0), "preview ended"]
+
+
+def _drag_from_off_centre(
+    application: QApplication, platform: _Platform, moved_px: int
+) -> tuple[float, float]:
+    """Press the flow handle 5 px right of its centre, move it, release it.
+
+    Returns the flow that the chart previews just before the release, and
+    the flow in force after it, in L/min.
+    """
+
+    controller, view, _, control, signals = _flow_slider_at_four(application, platform)
+    slider = control.slider
+    _, handle_centre, handle_right = _handle_rect(slider)
+    pressed = QPoint(handle_centre + 5, slider.height() // 2)
+    assert pressed.x() < handle_right, "the press must land on the handle"
+    moved = QPoint(pressed.x() + moved_px, pressed.y())
+
+    QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pressed)
+    QTest.mouseMove(slider, moved)
+    previews = [
+        signal[1] for signal in signals if isinstance(signal, tuple) and signal[0] == "preview"
+    ]
+    QTest.mouseRelease(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, moved)
+
+    return previews[-1], controller.settings().fresh_gas_flow_l_min
+
+
+@pytest.mark.parametrize("moved_px", [1, 12], ids=["1 px", "12 px"])
+def test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves(
+    application: QApplication, moved_px: int
+) -> None:
+    """With the macOS hints, a drag from off the handle's centre moves the setting as Fusion's does.
+
+    Fusion grabs the handle with Qt's own code, which measures the drag from
+    where the pointer pressed it, so Fusion's result for the same gesture is
+    the expected value. Before the fix, the macOS hints measured the drag
+    from the handle's centre: a press 5 px right of it and a movement of
+    1 px previewed and applied 4.2 L/min, two counts, where Fusion stays
+    within one count of 4.0 L/min (`PL-57LD`).
+    """
+
+    expected = _drag_from_off_centre(application, _Platform.FUSION, moved_px)
+
+    assert _drag_from_off_centre(application, _Platform.MACOS, moved_px) == expected
+
+
+def test_a_drag_that_follows_a_jump_to_the_pointer_previews_and_applies_at_release(
+    application: QApplication,
+) -> None:
+    """With the macOS hints, a click on the track applies the jump, and a drag after it previews.
+
+    The jump to 10.0 L/min is one input and is applied at the press. The
+    button stays down and the pointer moves left, which is a drag: it
+    previews the value under the handle, and applies that value only at
+    the release, as a drag that started on the handle does (`PL-57LD`).
+    """
+
+    controller, view, _, control, _ = _flow_slider_at_four(application, _Platform.MACOS)
+    slider = control.slider
+    track_end = QPoint(slider.width() - 1, slider.height() // 2)
+    middle = QPoint(slider.width() // 2, slider.height() // 2)
+    chart = _concentration(view).chart
+
+    QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end)
+    QTest.mouseMove(slider, middle)
+    view.render_tick()
+    held_label = chart.preview_label(0)
+    held_flow = controller.settings().fresh_gas_flow_l_min
+    QTest.mouseRelease(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, middle)
+    view.render_tick()
+    released = controller.settings().fresh_gas_flow_l_min
+
+    assert held_flow == 10.0
+    assert 4.0 < released < 10.0
+    assert held_label == f"Preview: Fresh gas flow {format_flow(released)}, not applied"
+    assert controller.record().control_timeline[-1].new_value == released
+    assert chart.preview_label(0) is None
 
 
 # ---------------------------------------------------------- the playback

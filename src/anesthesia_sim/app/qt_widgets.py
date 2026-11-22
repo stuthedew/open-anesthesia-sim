@@ -44,6 +44,8 @@ can reach is declared on the palette instead, by
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
+from enum import Enum
 from math import ceil
 from typing import Final
 
@@ -52,13 +54,13 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QFontMetrics,
+    QMouseEvent,
     QPainter,
     QPaintEvent,
     QPalette,
     QPen,
     QPolygon,
     QResizeEvent,
-    QWheelEvent,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -79,6 +81,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStyle,
     QStyleOptionComboBox,
+    QStyleOptionSlider,
     QVBoxLayout,
     QWidget,
 )
@@ -87,21 +90,18 @@ from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.dashboard_frame import (
     ADD_MARK_LABEL,
-    BOOKMARK_DIALOG_TITLE,
-    CLOSE_BOOKMARKS_LABEL,
     COMPARTMENT_FIELD_LABEL,
     DEFAULT_MAXIMUM_TARGET_MAC,
-    EDIT_BOOKMARKS_LABEL,
     FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
     INSTANT_ENTRY_SUFFIX,
     INSTANT_FIELD_LABEL,
-    MAC_TARGET_HEADING,
     MARK_NAME_FIELD_LABEL,
     MARK_NAME_PLACEHOLDER,
     REMOVE_MARK_LABEL,
     TAKE_FORK_LABEL,
-    TIME_BOOKMARK_HEADING,
+    TARGET_FORM_HEADING,
+    TIME_FORM_HEADING,
     BookmarkPanel,
     ForkOffer,
     ForkPoint,
@@ -131,7 +131,6 @@ from anesthesia_sim.app.stylesheets import (
     slider_stylesheet,
 )
 from anesthesia_sim.app.theme import (
-    BOOKMARK_DIALOG_WIDTH,
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
@@ -1027,6 +1026,120 @@ class ReadoutRow(QWidget):
         self._columns = columns
 
 
+class _SettingSlider(QSlider):
+    """A horizontal slider on which a press on the track is one input, and one on the handle a grab.
+
+    Each platform's style says which mouse buttons move the handle straight
+    to the pointer when pressed on the track (`SH_Slider_AbsoluteSetButtons`).
+    On macOS that is the left button. Under Qt's Fusion style it is the middle
+    button, and a left click on the track steps one page instead. The slider
+    keeps each platform's own convention (project owner, 2026-11-22,
+    ratified, `PL-57LD`).
+
+    Qt's `QSlider.mousePressEvent` handles such a press in two parts. It
+    applies the value at the pointer, and then it marks the handle as held,
+    which emits `sliderPressed`. `ParameterSlider` starts a preview of an
+    unapplied value on `sliderPressed`. So without this class, a click on the
+    track applied a value and then drew it labelled "not applied". A press on
+    the handle off its centre also moved the handle to the pointer, and so
+    applied a value before any drag.
+
+    This class handles the two cases apart. A press on the track applies the
+    value at the pointer, as one input, and `jumping` is true while it does
+    so, so that no preview starts. A press on the handle applies nothing. The
+    handle stays where it was, and the press then reports `sliderPressed` as
+    a grab of the handle does under any style.
+
+    Qt measures the drag that follows from where the handle would have jumped
+    to, and keeps that distance where this class cannot reach it. Left to
+    Qt, the first movement of the drag, even one pixel, would bring the
+    handle's centre under the pointer and change the setting by up to half
+    the handle's width. So this class measures that drag itself, from where
+    the pointer pressed the handle, and the handle moves only as far as the
+    pointer does.
+
+    Attributes:
+        jumping: True only while a press on the track moves the handle to
+            the pointer.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(Qt.Orientation.Horizontal)
+        self.jumping = False
+        self._grab_offset: int | None = None
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        button = event.button().value
+        moves_to_pointer = self.style().styleHint(
+            QStyle.StyleHint.SH_Slider_AbsoluteSetButtons, None, self
+        )
+
+        if button & moves_to_pointer != button:
+            super().mousePressEvent(event)
+            return
+
+        options = QStyleOptionSlider()
+        self.initStyleOption(options)
+        pressed = self.style().hitTestComplexControl(
+            QStyle.ComplexControl.CC_Slider, options, event.position().toPoint(), self
+        )
+
+        if pressed != QStyle.SubControl.SC_SliderHandle:
+            self.jumping = True
+
+            try:
+                super().mousePressEvent(event)
+            finally:
+                self.jumping = False
+
+            return
+
+        held = self.value()
+        handle = self._handle_rect()
+
+        with QSignalBlocker(self):
+            super().mousePressEvent(event)
+            self.setValue(held)
+
+        if self.isSliderDown():
+            self._grab_offset = event.position().toPoint().x() - handle.x()
+            self.sliderPressed.emit()
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        if self._grab_offset is None or not self.isSliderDown():
+            super().mouseMoveEvent(event)
+            return
+
+        options = QStyleOptionSlider()
+        self.initStyleOption(options)
+        groove = self.style().subControlRect(
+            QStyle.ComplexControl.CC_Slider, options, QStyle.SubControl.SC_SliderGroove, self
+        )
+        handle_width = self._handle_rect().width()
+        span = groove.width() - handle_width
+        handle_left = event.position().toPoint().x() - self._grab_offset - groove.x()
+        self.setSliderPosition(
+            QStyle.sliderValueFromPosition(
+                self.minimum(), self.maximum(), handle_left, span, options.upsideDown
+            )
+        )
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        self._grab_offset = None
+        super().mouseReleaseEvent(event)
+
+    def _handle_rect(self) -> QRect:
+        """Return the handle's rectangle, in this slider's pixels, as the style draws it."""
+
+        options = QStyleOptionSlider()
+        self.initStyleOption(options)
+
+        return self.style().subControlRect(
+            QStyle.ComplexControl.CC_Slider, options, QStyle.SubControl.SC_SliderHandle, self
+        )
+
+
 class ParameterSlider(QWidget):
     """One setting: its name, its gloss, an integer slider and the value beside it.
 
@@ -1059,6 +1172,14 @@ class ParameterSlider(QWidget):
     off to give exactly that split. With tracking off, `valueChanged` fires
     on release for a drag and at once for every other input.
 
+    A click on the groove steps one count under Fusion and moves the handle
+    to the pointer on macOS, as each platform's style says. Either way it
+    applies at once and draws no preview. Under Fusion, holding the button
+    there repeats the step, and each step applies. On macOS, where the
+    handle has moved to the pointer, moving the pointer with the button
+    still down is a drag, and it previews as one (`_SettingSlider`,
+    `PL-57LD`).
+
     Attributes:
         slider: The integer slider.
         name_label: The setting's name.
@@ -1077,7 +1198,8 @@ class ParameterSlider(QWidget):
             a wheel step or a click on the groove. `set_setting` never emits
             it.
         preview_moved: Emitted with the decoded value at the held thumb's
-            position, when the thumb is pressed and each time it moves.
+            position, when the thumb is pressed and each time it moves. A
+            press on the groove emits it only once the held thumb moves.
         preview_ended: Emitted when the held thumb is released, after
             `value_changed` has applied the value.
     """
@@ -1104,7 +1226,7 @@ class ParameterSlider(QWidget):
         self.qualifier_label = styled_label(
             setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True
         )
-        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider = _SettingSlider()
         self.slider.setSingleStep(1)
         self.slider.setPageStep(1)
         self.slider.setTracking(False)
@@ -1177,6 +1299,15 @@ class ParameterSlider(QWidget):
         self.value_changed.emit(slider_value(position, self._decimals))
 
     def _on_thumb_pressed(self) -> None:
+        """Start a preview where the handle stands, unless the press was on the groove.
+
+        A press on the groove has already applied its value, so a preview
+        would label an applied value "not applied" (`PL-57LD`).
+        """
+
+        if self.slider.jumping:
+            return
+
         self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self._decimals))
 
     def _on_thumb_moved(self, position: int) -> None:
@@ -1476,40 +1607,37 @@ class MarkListingLabel(QWidget):
 
 
 class BookmarksPanel(QWidget):
-    """The case's two collections of marks, with the control that opens the editor.
+    """The case's two collections of marks, and below them the editor that changes them.
 
     Each Area that holds a `views.BookmarksView` shows its own copy of this
-    panel (`PL-9YPR`).
-
-    The panel is read-only. Marks are created and removed in
-    `BookmarkDialog`. So the panel in front of the reader while a case runs
-    shows what is marked, and offers nothing that a mis-click could use to
-    change a run.
+    panel (`PL-9YPR`). The two lists come first, so an Area too short for the
+    whole panel shows what is marked before it shows the forms. The forms are
+    in the same View rather than in a window of their own, so no window opens
+    over the readouts when a reader edits a mark (`PL-CHX0`).
 
     Attributes:
-        times: The marked instants.
-        targets: The marked heights.
-        edit_button: Opens the dialog; `clicked` is connected by the view.
+        times: The marked instants, with each run's standing on each.
+        targets: The marked heights, with each run's standing on each.
+        editor: The forms in which the reader adds and removes marks. The
+            view connects their buttons.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.times = MarkListingLabel()
         self.targets = MarkListingLabel()
-        self.edit_button = QPushButton(EDIT_BOOKMARKS_LABEL)
-        self.edit_button.setStyleSheet(outlined_button_stylesheet())
+        self.editor = MarkEditor()
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_SECTION_SPACING)
         column.addWidget(self.times)
         column.addWidget(self.targets)
-        actions = QHBoxLayout()
-        actions.addWidget(self.edit_button)
-        actions.addStretch(1)
-        column.addLayout(actions)
+        column.addWidget(self.editor)
 
     def set_panel(self, panel: BookmarkPanel) -> None:
-        """Draw both collections from one tick's result, and show them again if withdrawn.
+        """Draw both collections and the editor's lists from one tick's result.
+
+        Each list that a halt withdrew is shown again.
 
         Args:
             panel: `dashboard_frame.bookmark_panel`'s result this tick.
@@ -1519,22 +1647,24 @@ class BookmarksPanel(QWidget):
         self.targets.set_listing(panel.targets)
         self.times.show()
         self.targets.show()
+        self.editor.set_panel(panel)
 
     def withdraw(self) -> None:
-        """Hide both lists of marks, because the halt could not work out their standings.
+        """Hide every list of marks, because the halt could not work out their standings.
 
         A mark's standing says whether the run has reached it. The halt path calls this
         method when restating the panel raised an exception
-        (`SimulationView._restate_bookmark_panel`). The rows on screen come from the
-        last frame. On a failed run, a row that still shows a mark as still to come is
-        a stale claim. The halt restates the panel to remove that claim (`PL-YHR3`). The
-        button that opens the editor stays on screen. The editor hides its own lists at
-        the same moment (`BookmarkDialog.withdraw`). The next call to `set_panel` shows
-        both lists again.
+        (`SimulationView._restate_bookmark_panel`). The rows on screen come from the last
+        frame. On a failed run, a row that still shows a mark as still to come is a stale
+        claim. The halt restates the panel to remove that claim (`PL-YHR3`). The editor
+        hides its own lists and Remove buttons at the same moment (`MarkEditor.withdraw`),
+        and keeps its forms on screen. The next call to `set_panel` shows every list
+        again.
         """
 
         self.times.hide()
         self.targets.hide()
+        self.editor.withdraw()
 
 
 class ForkPanel(QWidget):
@@ -1774,29 +1904,91 @@ def _form_grid(*rows: tuple[QWidget | None, ...]) -> QGridLayout:
     return grid
 
 
-class BookmarkDialog(QDialog):
-    """The dialog in which the reader creates, lists and removes both kinds of mark.
+class MarkButton(Enum):
+    """One of the marks editor's four buttons, each of which shows its own refusal."""
 
-    One dialog serves both kinds of mark. The reference simulator uses that
+    ADD_TIME = "add time"
+    REMOVE_TIME = "remove time"
+    ADD_TARGET = "add target"
+    REMOVE_TARGET = "remove target"
+
+
+@dataclass(frozen=True, slots=True)
+class MarkRefusal:
+    """Why an edit of the marks was refused, and the button that asked for it.
+
+    Attributes:
+        button: The button the reader pressed. The refusal is shown under it.
+        text: What the refusal says.
+    """
+
+    button: MarkButton
+    text: str
+
+
+@dataclass(frozen=True, slots=True)
+class MarkEntry:
+    """What the reader has entered in the marks editor's two forms, and which rows are selected.
+
+    The dashboard keeps the last entry and writes it into every copy of the
+    editor (`MarkEditor.set_entry`). So two Areas that show the Bookmarks View
+    show the same entry. A copy built after a switch of Workspace shows the
+    entry that the reader left there (`PL-CHX0`).
+
+    Attributes:
+        instant_s: The instant to mark, in whole seconds.
+        time_name: The text of the time bookmark's name field.
+        compartment_row: The selected row of the compartment selector.
+        height_mac: The height, in multiples of the running agent's 1 MAC.
+        target_name: The text of the target's name field.
+        time_row: The selected row of the list of time bookmarks, or -1 for none.
+        target_row: The selected row of the list of targets, or -1 for none.
+    """
+
+    instant_s: int
+    time_name: str
+    compartment_row: int
+    height_mac: float
+    target_name: str
+    time_row: int
+    target_row: int
+
+
+class MarkEditor(QWidget):
+    """The two forms in which the reader creates and removes both kinds of mark.
+
+    The editor sits in the Bookmarks View, below the two lists of marks. Each
+    Area that shows that View holds its own copy (`BookmarksPanel`). The
+    editor opens no window. A window could cover the readouts that
+    `docs/INTERFACE.md` § "Minimum displayed outputs" requires while a run
+    plays, and on Wayland the application can neither place a window nor find
+    out where the reader has dragged it. An Area cannot cover those readouts,
+    because the layout keeps them in a region outside every Area (`PL-CHX0`).
+
+    One editor serves both kinds of mark. The reference simulator uses that
     shape, and `PL-LPLD` was scoped on it. Both forms are visible at once,
     and each has its own add button. A tab or a kind selector would turn the
     choice of which kind is being added into a mode. The two collections also
     have different fields, not the same fields under a different kind, so a
     shared form would have nothing in common to hold.
 
-    The dialog is non-modal, and it is shown with `show()` rather than
-    `open()` or `exec()`. Both of those make a dialog modal, and `exec()`
-    would also block a test that drives it. It is non-modal deliberately. A run
-    may be playing, and a modal window over a moving chart would lock the
-    reader out of the transport controls with a window about something else.
+    **Each Remove button sits directly under the list it acts on, and each
+    button shows its own refusal directly under it.** In the Default Workspace
+    at 1366 by 768 pixels the Bookmarks Area is about 150 pixels tall, so the
+    View scrolls. A Remove button above its list could be pressed with the
+    list scrolled out of view. After a removal the next row is selected at
+    once, so a second press would then remove a mark the reader never chose,
+    from every run. Under the list, the button is in view only with the rows
+    above it. Add stays with the fields it reads. A refusal under any other
+    button could be out of sight of the button that was pressed.
 
-    **The surface is declared as a palette**, and the six input controls are
-    drawn from the same palette (`PL-RKRY`). Their fills, the spin boxes'
-    steppers, the lists' rows and scrollbars and the compartment popup all
-    paint from palette roles. Under a dark host appearance they were drawn
-    near-black inside this light dialog. A one-rule stylesheet on the dialog
-    was what stopped them inheriting the dialog's colours.
-    `declare_interface_colours` gives the reasoning and the roles.
+    **Each input control declares its own colours, as a palette**
+    (`PL-RKRY`). Their fills, the spin boxes' steppers, and the lists' rows
+    and scroll bars paint from palette roles. The View that holds the editor
+    declares its surface with a stylesheet, and a stylesheet on a parent makes
+    the controls under it take the application palette rather than the
+    parent's. So each control declares the roles itself
+    (`declare_interface_colours`).
 
     **The height a target may be set to is bounded by the running agent.**
     The bound is here rather than on `MacTarget`, because it belongs to the
@@ -1810,29 +2002,38 @@ class BookmarkDialog(QDialog):
     is computed from do.
 
     Attributes:
+        entry_edited: Emitted when a field or a list's selection changes,
+            unless `set_entry` wrote the change. The dashboard connects it and
+            writes the new entry into every other copy of the editor.
         instant_spin: The instant to mark, in seconds.
         instant_preview: That instant in the compound form the clock uses, so
             that no reader has to convert between the entry and the display.
         time_label_edit: The optional name for a time bookmark.
         add_time_button: Adds the time bookmark. The view connects its
             `clicked` signal.
+        add_time_notice: Why the last press of `add_time_button` was
+            refused, hidden when there is nothing to say.
         time_list: The marked instants, selectable for removal.
         remove_time_button: Removes the selected instant.
+        remove_time_notice: Why the last press of `remove_time_button` was
+            refused.
         compartment_combo: The compartment whose value a target is compared
             against.
         height_spin: The height, in multiples of the running agent's 1 MAC.
         target_label_edit: The optional name for a target.
         add_target_button: Adds the target.
+        add_target_notice: Why the last press of `add_target_button` was
+            refused.
         target_list: The marked heights, selectable for removal.
         remove_target_button: Removes the selected target.
-        notice: Why an add was refused, hidden when there is nothing to say.
+        remove_target_notice: Why the last press of `remove_target_button`
+            was refused.
     """
+
+    entry_edited = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle(BOOKMARK_DIALOG_TITLE)
-        declare_interface_colours(self)
-        self.setMinimumWidth(BOOKMARK_DIALOG_WIDTH)
 
         self.instant_spin = QSpinBox()
         self.instant_spin.setRange(0, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
@@ -1844,10 +2045,13 @@ class BookmarkDialog(QDialog):
         self.time_label_edit = QLineEdit()
         self.time_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_time_button = QPushButton(ADD_MARK_LABEL)
+        self.add_time_notice = NoticeLabel()
         self.time_list = QListWidget()
         self.remove_time_button = QPushButton(REMOVE_MARK_LABEL)
+        self.remove_time_notice = NoticeLabel()
 
-        self.compartment_combo = QComboBox()
+        self.compartment_combo = FocusedComboBox()
+        self.compartment_combo.setStyleSheet(selector_stylesheet())
 
         for quantity in COMPARTMENT_QUANTITIES:
             self.compartment_combo.addItem(trace_style(quantity).label, userData=quantity.value)
@@ -1859,18 +2063,27 @@ class BookmarkDialog(QDialog):
         self.target_label_edit = QLineEdit()
         self.target_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_target_button = QPushButton(ADD_MARK_LABEL)
+        self.add_target_notice = NoticeLabel()
         self.target_list = QListWidget()
         self.remove_target_button = QPushButton(REMOVE_MARK_LABEL)
+        self.remove_target_notice = NoticeLabel()
 
         for listing in (self.time_list, self.target_list):
             listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
             FocusRing(listing)
 
-        self.notice = NoticeLabel()
-        self.close_button = QPushButton(CLOSE_BOOKMARKS_LABEL)
-        self.close_button.setDefault(True)
-        self.close_button.setStyleSheet(filled_button_stylesheet())
-        self.close_button.clicked.connect(self.accept)
+        for field in (self.instant_spin, self.height_spin):
+            wheel_only_with_focus(field)
+
+        for control in (
+            self.instant_spin,
+            self.time_label_edit,
+            self.time_list,
+            self.height_spin,
+            self.target_label_edit,
+            self.target_list,
+        ):
+            declare_interface_colours(control)
 
         for button in (
             self.add_time_button,
@@ -1878,53 +2091,63 @@ class BookmarkDialog(QDialog):
             self.add_target_button,
             self.remove_target_button,
         ):
-            button.setAutoDefault(False)
             button.setStyleSheet(outlined_button_stylesheet())
+
+        self.instant_spin.valueChanged.connect(self.entry_edited)
+        self.time_label_edit.textChanged.connect(self.entry_edited)
+        self.time_list.currentRowChanged.connect(self.entry_edited)
+        self.compartment_combo.currentIndexChanged.connect(self.entry_edited)
+        self.height_spin.valueChanged.connect(self.entry_edited)
+        self.target_label_edit.textChanged.connect(self.entry_edited)
+        self.target_list.currentRowChanged.connect(self.entry_edited)
 
         self._build_layout()
         self.set_reachable_height(DEFAULT_MAXIMUM_TARGET_MAC)
 
     def _build_layout(self) -> None:
-        """Lay the two forms out one above the other, each over its own list."""
+        """Lay out the two forms one above the other, each over its list and Remove button."""
 
         column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_SECTION_SPACING)
 
-        times_heading = styled_label(TIME_BOOKMARK_HEADING, color=INK, bold=True)
+        times_heading = styled_label(TIME_FORM_HEADING, color=INK, bold=True)
         instant_name = styled_label(INSTANT_FIELD_LABEL, color=MUTED)
         time_label_name = styled_label(MARK_NAME_FIELD_LABEL, color=MUTED)
-        column.addLayout(
-            _form_grid(
-                (times_heading, times_heading, times_heading),
-                (instant_name, self.instant_spin, self.instant_preview),
-                (time_label_name, self.time_label_edit, self.time_label_edit),
-                (None, self.add_time_button, None),
-                (self.time_list, self.time_list, self.time_list),
-                (None, self.remove_time_button, None),
-            )
+        times_form = _form_grid(
+            (times_heading, times_heading, times_heading),
+            (instant_name, self.instant_spin, self.instant_preview),
+            (time_label_name, self.time_label_edit, self.time_label_edit),
+            (None, self.add_time_button, None),
+            (self.add_time_notice, self.add_time_notice, self.add_time_notice),
+            (self.time_list, self.time_list, self.time_list),
+            (None, self.remove_time_button, None),
+            (self.remove_time_notice, self.remove_time_notice, self.remove_time_notice),
         )
 
-        targets_heading = styled_label(MAC_TARGET_HEADING, color=INK, bold=True)
+        targets_heading = styled_label(TARGET_FORM_HEADING, color=INK, bold=True)
         compartment_name = styled_label(COMPARTMENT_FIELD_LABEL, color=MUTED)
         height_name = styled_label(HEIGHT_FIELD_LABEL, color=MUTED)
         target_label_name = styled_label(MARK_NAME_FIELD_LABEL, color=MUTED)
-        column.addLayout(
-            _form_grid(
-                (targets_heading, targets_heading, targets_heading),
-                (compartment_name, self.compartment_combo, self.compartment_combo),
-                (height_name, self.height_spin, None),
-                (target_label_name, self.target_label_edit, self.target_label_edit),
-                (None, self.add_target_button, None),
-                (self.target_list, self.target_list, self.target_list),
-                (None, self.remove_target_button, None),
-            )
+        targets_form = _form_grid(
+            (targets_heading, targets_heading, targets_heading),
+            (compartment_name, self.compartment_combo, self.compartment_combo),
+            (height_name, self.height_spin, None),
+            (target_label_name, self.target_label_edit, self.target_label_edit),
+            (None, self.add_target_button, None),
+            (self.add_target_notice, self.add_target_notice, self.add_target_notice),
+            (self.target_list, self.target_list, self.target_list),
+            (None, self.remove_target_button, None),
+            (self.remove_target_notice, self.remove_target_notice, self.remove_target_notice),
         )
 
-        column.addWidget(self.notice)
-        actions = QHBoxLayout()
-        actions.addStretch(1)
-        actions.addWidget(self.close_button)
-        column.addLayout(actions)
+        for form in (times_form, targets_form):
+            # The field names keep the width they need, and the two columns of
+            # controls share the rest. A wide Area then widens the controls
+            # rather than the gap between a name and its field.
+            form.setColumnStretch(1, 1)
+            form.setColumnStretch(2, 1)
+            column.addLayout(form)
 
     def _refresh_instant_preview(self, seconds: int) -> None:
         """Restate the entered instant in the form the clock and the axis use."""
@@ -1946,9 +2169,9 @@ class BookmarkDialog(QDialog):
     def set_panel(self, panel: BookmarkPanel) -> None:
         """Redraw both lists from one tick's result, keeping each selection.
 
-        The rows are the same strings the panel beside the chart draws, from
-        the same `dashboard_frame` call, so a reader moving between the two
-        is reading one listing in two places rather than two listings.
+        The rows are the strings that the lists above the editor draw, from the
+        same `dashboard_frame` call. So the editor and those lists are one
+        listing in two places rather than two listings.
 
         Args:
             panel: `dashboard_frame.bookmark_panel`'s result this tick.
@@ -1963,12 +2186,12 @@ class BookmarkDialog(QDialog):
     def withdraw(self) -> None:
         """Hide both lists and their Remove buttons, because the standings could not be worked out.
 
-        A mark's standing says whether the run has reached it. The halt path calls this
-        method together with `BookmarksPanel.withdraw`, when restating the marks raised an
-        exception (`SimulationView._restate_bookmark_panel`). The rows come from the last
-        frame. On a failed run, a row that still lists a mark as still to come is a stale
-        claim. The panel beside the chart has already hidden the same rows (`PL-F5KT`).
-        The rows are hidden rather than cleared, because Remove selects a mark by its row.
+        A mark's standing says whether the run has reached it. `BookmarksPanel.withdraw`
+        calls this method when a halt could not restate the marks
+        (`SimulationView._restate_bookmark_panel`). The rows come from the last frame. On
+        a failed run, a row that still lists a mark as still to come is a stale claim.
+        The lists above the editor hide the same rows at the same moment (`PL-F5KT`). The
+        rows are hidden rather than cleared, because Remove selects a mark by its row.
         Each Remove button is hidden with its list, so the reader cannot remove a mark
         through a row they cannot see. The two forms stay on screen. The next call to
         `set_panel` shows the lists and buttons again.
@@ -1986,6 +2209,92 @@ class BookmarkDialog(QDialog):
             self.target_list,
             self.remove_target_button,
         )
+
+    def show_refusal(self, refusal: MarkRefusal | None) -> None:
+        """Show why the last edit was refused under the button that asked for it, clearing the rest.
+
+        Args:
+            refusal: The last refusal, or None where the last edit was accepted.
+        """
+
+        for button, notice in (
+            (MarkButton.ADD_TIME, self.add_time_notice),
+            (MarkButton.REMOVE_TIME, self.remove_time_notice),
+            (MarkButton.ADD_TARGET, self.add_target_notice),
+            (MarkButton.REMOVE_TARGET, self.remove_target_notice),
+        ):
+            notice.set_notice(
+                refusal.text if refusal is not None and refusal.button is button else None
+            )
+
+    def entry(self) -> MarkEntry:
+        """Return what the two forms hold now, with the selected row of each list."""
+
+        return MarkEntry(
+            instant_s=self.instant_spin.value(),
+            time_name=self.time_label_edit.text(),
+            compartment_row=self.compartment_combo.currentIndex(),
+            height_mac=self.height_spin.value(),
+            target_name=self.target_label_edit.text(),
+            time_row=self.time_list.currentRow(),
+            target_row=self.target_list.currentRow(),
+        )
+
+    def set_entry(self, entry: MarkEntry) -> None:
+        """Write `entry` into the two forms without emitting `entry_edited`.
+
+        The dashboard calls this method to copy what the reader entered in one
+        copy of the editor into the others. Each field's signals are blocked,
+        so that the copy is not mistaken for the reader editing this one. The
+        height control keeps its own range, so a height above the running
+        agent's reach is held at that reach, as a typed one is.
+
+        Args:
+            entry: The entry to show.
+        """
+
+        fields: tuple[QWidget, ...] = (
+            self.instant_spin,
+            self.time_label_edit,
+            self.time_list,
+            self.compartment_combo,
+            self.height_spin,
+            self.target_label_edit,
+            self.target_list,
+        )
+        blockers = [QSignalBlocker(field) for field in fields]
+        self.instant_spin.setValue(entry.instant_s)
+        self.time_label_edit.setText(entry.time_name)
+        self.compartment_combo.setCurrentIndex(entry.compartment_row)
+        self.height_spin.setValue(entry.height_mac)
+        self.target_label_edit.setText(entry.target_name)
+
+        for blocker in blockers:
+            blocker.unblock()
+
+        self.select_rows(entry)
+        self._refresh_instant_preview(self.instant_spin.value())
+
+    def select_rows(self, entry: MarkEntry) -> None:
+        """Select the rows that `entry` names in both lists, without emitting `entry_edited`.
+
+        A row past the end of its list selects nothing in that list. The
+        dashboard calls this method after every refill of the lists, as well as
+        through `set_entry`. A copy built while the lists were hidden had no
+        rows to select, and this call selects the reader's row once the rows
+        are back. The fields are not written again, because writing a field
+        moves its cursor while the reader is typing in it.
+
+        Args:
+            entry: The entry whose `time_row` and `target_row` to select.
+        """
+
+        for listing, row in (
+            (self.time_list, entry.time_row),
+            (self.target_list, entry.target_row),
+        ):
+            with QSignalBlocker(listing):
+                listing.setCurrentRow(row)
 
     def selected_time_index(self) -> int:
         """Which marked instant is selected, or -1 for none."""
@@ -2054,12 +2363,22 @@ def _entered_label(field: QLineEdit) -> str | None:
 def _refill(widget: QListWidget, rows: Sequence[str]) -> None:
     """Rewrite `widget`'s rows, leaving the selected position where it was.
 
+    A list whose rows have not changed is left alone. The dashboard calls this
+    function on every frame while a run plays. Setting the selected row again
+    after a rewrite scrolls the list back to that row, so a list rewritten on
+    every frame could not be scrolled (`PL-CHX0`).
+
     Qt clears the current row when the model empties, so the index is saved
     before the rewrite and set again afterwards, rather than trusted to
     survive it. When the list no longer has a row at the selected position,
     such as after a reader removes the last row, nothing is selected. That is
     what a reader expects of a list they have just shortened.
     """
+
+    shown = [widget.item(row).text() for row in range(widget.count())]
+
+    if shown == list(rows):
+        return
 
     selected = widget.currentRow()
 
@@ -2261,47 +2580,67 @@ class SelectorComboBox(QComboBox):
         painter.end()
 
 
-class FocusedComboBox(SelectorComboBox):
-    """A combo box that a mouse wheel changes only once it has focus.
+class _WheelOnlyWithFocus(QObject):
+    """An event filter that hands a wheel event to the widget's parent while the widget lacks focus.
 
-    Qt's combo box changes its item on a wheel event even without focus, and
-    emits `activated` as if the reader had picked. The Areas sit in a page
-    that scrolls. So a reader scrolling past the agent cost View would change
-    its unit, or the agent whose price is shown, without meaning to
-    (`PL-B396`). A click or the keyboard gives the
-    selector focus, and the wheel then works as usual.
+    `wheel_only_with_focus` installs one on each widget it is given.
+    """
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if (
+            event.type() is QEvent.Type.Wheel
+            and isinstance(watched, QWidget)
+            and not watched.hasFocus()
+        ):
+            # Ignoring the event makes Qt offer it to each parent in turn, so
+            # the scroll area that holds the widget scrolls instead.
+            event.ignore()
+            return True
+
+        return False
+
+
+def wheel_only_with_focus(widget: QWidget) -> None:
+    """Make `widget` change its value on a mouse wheel only once it has focus.
+
+    Qt's combo box, spin boxes and date field change their value on a wheel
+    event even without focus. The Areas sit in a page that scrolls, and a View
+    taller than its Area scrolls inside it. So a reader scrolling past such a
+    control would change its value without meaning to, and often without seeing
+    the change (`PL-B396`, `PL-8FSN`, `PL-CHX0`). Once the control has this
+    filter, a wheel over it scrolls whatever holds it. A click or the keyboard
+    gives the control focus, and the wheel then works as usual.
+
+    The focus policy becomes `StrongFocus`. A spin box's default policy,
+    `WheelFocus`, would give the control focus on the first wheel event and
+    so let that event change it.
+    """
+
+    widget.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+    widget.installEventFilter(_WheelOnlyWithFocus(widget))
+
+
+class FocusedComboBox(SelectorComboBox):
+    """A combo box that a mouse wheel changes only once it has focus (`wheel_only_with_focus`).
+
+    Without it, a wheel over the agent cost View's selectors would change the
+    unit, or the agent whose price is shown, and emit `activated` as if the
+    reader had picked (`PL-B396`).
     """
 
     def __init__(self) -> None:
         super().__init__()
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        if not self.hasFocus():
-            event.ignore()
-            return
-
-        super().wheelEvent(event)
+        wheel_only_with_focus(self)
 
 
 class FocusedDateEdit(QDateEdit):
-    """A date field that a mouse wheel changes only once it has focus.
+    """A date field that a mouse wheel changes only once it has focus (`wheel_only_with_focus`).
 
-    Qt's date field steps its date on a wheel event even without focus, as its
-    combo box does (`FocusedComboBox`). The price form sits in a View that
-    scrolls. So a reader scrolling past the form would change the date of a
-    price without meaning to, and the form would then keep that date as one the
-    reader chose (`PL-8FSN`). A click or the keyboard gives the field focus,
-    and the wheel then works as usual.
+    Without it, a wheel over the price form would step the date of a price,
+    and the form would then keep that date as one the reader chose
+    (`PL-8FSN`).
     """
 
     def __init__(self) -> None:
         super().__init__()
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        if not self.hasFocus():
-            event.ignore()
-            return
-
-        super().wheelEvent(event)
+        wheel_only_with_focus(self)
