@@ -619,8 +619,9 @@ COMPARING_FORK_LOCK_TEMPLATE: Final = (
 # instead. Pressing "Branch" asks for a branch, not for a different
 # Workspace, and the WCAG Understanding document for Success Criterion 3.2.2
 # holds a change of context appropriate "only when it is clear that such a
-# change will happen in response to the user's action". The sentence is worked out from the pin on every tick, so it goes
-# as soon as the learner unpins the Workspace or switches to another one.
+# change will happen in response to the user's action". The sentence is
+# worked out from the pin on every tick, so it goes as soon as the learner
+# unpins the Workspace or switches to another one.
 COMPARISON_PINNED_AWAY_TEMPLATE: Final = (
     "This Workspace is pinned to {pinned}, so it does not draw this comparison. "
     "Unpin it from the Workspace's tab to compare {trunk} and {branch}."
