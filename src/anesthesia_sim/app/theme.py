@@ -247,11 +247,11 @@ CHART_HEIGHT = 360
 CHART_LEAST_HEIGHT = 160
 
 # The least height of the box that holds the rows above a chart View's plot:
-# the statement of the window shown, the reference values and the legend. In
-# a View too short for those rows and the plot, the box is squeezed to this
-# height and the reader scrolls the rows inside it. 36 px shows the first two
-# rows. It is a placeholder that `PL-CBYS` chose. A smaller value leaves the
-# plot more of a short Area, and shows fewer rows without scrolling.
+# the lines that qualify the plot and the legend. In a View too short for
+# those rows and the plot, the box is squeezed to this height and the reader
+# scrolls the rows inside it. 36 px shows the first two rows. It is a
+# placeholder that `PL-CBYS` chose. A smaller value leaves the plot more of a
+# short Area, and shows fewer rows without scrolling.
 CHART_KEY_LEAST_HEIGHT = 36
 
 PAGE_PADDING = 16
@@ -266,6 +266,17 @@ VIEW_ROW_SPACING = 6
 VIEW_HEADING_SPACING = 8
 
 PANEL_RADIUS = 10
+
+# The width of the ring that marks the control with the keyboard focus, in px
+# (`PL-63FQ`). WCAG 2.2 SC 2.4.13 (AAA) asks for an indicator at least as large
+# as a 2 CSS px perimeter of the control. The look is a placeholder until the
+# visual pass.
+FOCUS_RING_WIDTH = 2
+
+# The width of the edge of a selector and of a run button, in px. `FocusRing`
+# draws inside it, so every pixel of the ring changes from the control's fill
+# to the ring's colour.
+CONTROL_BORDER_WIDTH = 1
 
 # The size of the arrow that marks the View chooser's menu, and the space on
 # each side of it, in px (`PL-R5G4`). Both are placeholders until the visual
@@ -387,8 +398,10 @@ LEGEND_ENTRY_SPACING = 16
 # This gap separates two lines of a legend. It is the same whether the second
 # line starts a new row or continues a row that wrapped, so a wrapped row is
 # spaced like the rows around it. The three legend gaps are placeholders until
-# planned-milestone item 33's visual pass.
-LEGEND_LINE_SPACING = 6
+# planned-milestone item 33's visual pass. This one was 6 px until `PL-K4CZ`
+# narrowed it, which gave the concentration plot back 10 px of a laptop
+# screen's height under a wide font.
+LEGEND_LINE_SPACING = 4
 
 # The two chart references are furniture, meaning chart marks that are not
 # data. They are drawn in the interface's own ink and label colours rather

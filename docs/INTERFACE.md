@@ -2293,11 +2293,12 @@ entry are the tests that check whether the output is drawn on the display.
   § "MAC multiples as a display unit" for what the multiple asserts and why both
   units are shown;
 - the running agent's population MAC-awake, drawn on the chart as a band. The
-  band was derived from two numbers. Its label gives the first, MAC-awake as a
-  fraction of the agent's 1 MAC, with the percent that the fraction comes to
-  and the band's two edges in percent. The line of text above the label gives
-  the second, that 1 MAC in percent. The band's legend entry names the trace
-  to read the band against. A visually distinct line on the chart
+  band was derived from two numbers. The band's legend entry gives the first,
+  MAC-awake as a fraction of the agent's 1 MAC, with the percent that the
+  fraction comes to and the band's two edges in percent. The 1 MAC line's
+  legend entry, just before it, gives the second, that 1 MAC in percent. The
+  band's legend entry also names the trace to read the band against. A
+  visually distinct line on the chart
   marks the agent's nominal 1 MAC
   (`test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from`,
   `test_the_interface_says_which_trace_the_band_is_read_against`,
@@ -3040,8 +3041,8 @@ keeps doubling the width. Early in a run, it can also use widths narrower than
 any the reader can choose.
 
 **Every axis label carries its own unit, and each chart states its width.** A
-label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. Beside the plot, the chart
-names the width in words. It says whether the reader chose the width, or it is
+label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. The time axis's title names
+the width in words, after "simulated time". It says whether the reader chose the width, or it is
 the whole run so far, or the window is centred on the current time for a
 preview.
 
@@ -3585,6 +3586,15 @@ the keyboard. Keyboard operation of the rest of the interface and
 screen-reader support are planned (`ROADMAP.md`, planned-milestone item 20)
 and are not yet commitments.
 
+**Every control that Tab reaches shows when it has the keyboard focus**, as
+SC 2.4.7 (Focus Visible) requires. The platform style draws no mark on a
+slider, a selector, a scroll area or a list. Each of those draws a 2 px ring
+inside its edge, in INK, or in the agent's foreground on the agent selector.
+Start, Pause and Reset carry the same ring, and they also look different while
+held down. The ring shows only when the keyboard moved the focus, as the
+platform's own focus marks do. A plot takes no key, so Tab does not stop on it.
+<!-- provenance: app/theme.py FOCUS_RING_WIDTH = 2 -->
+
 Two criteria carry most of the weight:
 
 - **SC 1.4.3, Contrast (Minimum)**, requires 4.5:1 for text. Every readout,
@@ -3923,6 +3933,11 @@ IEC 60601-1-8's mapping of priority to color could not be established from a
 primary source, and the secondary sources disagree. Three independent reports
 give the low-priority color as cyan, as blue, and as "green or blue". The
 alert-color decision does not depend on the mapping.
+
+**For developers.** `FocusRing` in `app/qt_widgets.py` draws the keyboard
+focus ring. `tests/integration/test_keyboard_focus.py` grabs every control
+that Tab reaches, in every kind of View and in both dialogs, with and without
+the focus, and fails where the two images match.
 
 ### The six compartment traces: what separates them
 

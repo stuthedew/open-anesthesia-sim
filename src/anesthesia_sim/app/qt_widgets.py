@@ -47,7 +47,7 @@ from collections.abc import Sequence
 from math import ceil
 from typing import Final
 
-from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QRectF, QSignalBlocker, QSize, Qt, Signal
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -55,6 +55,7 @@ from PySide6.QtGui import (
     QPainter,
     QPaintEvent,
     QPalette,
+    QPen,
     QPolygon,
     QResizeEvent,
     QWheelEvent,
@@ -134,7 +135,9 @@ from anesthesia_sim.app.theme import (
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
+    CONTROL_BORDER_WIDTH,
     CONTROL_ROW_SPACING,
+    FOCUS_RING_WIDTH,
     INK,
     MARK_ROW_BULLET,
     MARK_ROW_BULLET_SPACING,
@@ -149,6 +152,7 @@ from anesthesia_sim.app.theme import (
     NEW_CASE_DIALOG_WIDTH,
     PANEL,
     PANEL_PADDING,
+    PANEL_RADIUS,
     PARAMETER_QUALIFIER_SIZE,
     PRIMARY,
     WARNING,
@@ -417,6 +421,140 @@ def _with_declared_roles(existing: QPalette) -> QPalette:
     return palette
 
 
+def _clauses(words: str) -> list[str]:
+    """Return `words` cut after each word that ends in a comma or a semicolon."""
+
+    clauses = [""]
+
+    for word in words.split(" "):
+        clauses[-1] = f"{clauses[-1]} {word}" if clauses[-1] else word
+
+        if word.endswith((",", ";")):
+            clauses.append("")
+
+    return [clause for clause in clauses if clause]
+
+
+def clause_lines(words: str, metrics: QFontMetrics, width: int) -> list[str]:
+    """Return `words` as lines that each fit in `width` px, broken only after a clause.
+
+    A clause ends at a word that ends in a comma or a semicolon. A clause
+    wider than `width` on its own still takes one line, because a break
+    inside it could part a value from its unit.
+
+    Args:
+        words: The words on one line.
+        metrics: The metrics of the font that the words are drawn in.
+        width: The width each line should fit in, in px.
+
+    Returns:
+        The lines, in order.
+    """
+
+    lines: list[str] = []
+
+    for clause in _clauses(words):
+        if lines and metrics.horizontalAdvance(f"{lines[-1]} {clause}") <= width:
+            lines[-1] = f"{lines[-1]} {clause}"
+        else:
+            lines.append(clause)
+
+    return lines
+
+
+class ClauseWrappingLabel(QLabel):
+    """Words that keep to one line where there is room, and break only after a clause.
+
+    The words break only at a space after a comma or a semicolon. So a value
+    keeps its unit, and a range keeps both its edges, on one line: the
+    MAC-awake entry never ends a line on "0.58–" or between "±1" and "SD".
+    Qt's own word wrap breaks at any space, and it also wraps at a width it
+    guesses, even in a row wide enough for one line. This label asks for its
+    one-line width instead. A `FlowLayout` row gives an entry narrower than
+    that its own width and the height its lines need there, and the label
+    breaks only as many clauses onto new lines as that width needs.
+
+    `text()` returns the words as broken at the current width. `words()`
+    returns them on one line, and the dashboard's walk over what is on
+    screen reads that, so a narrow View states the same text as a wide one.
+
+    Args:
+        text: The words on one line.
+        color: The value of a `theme.py` colour name, for the words.
+    """
+
+    def __init__(self, text: str, *, color: str) -> None:
+        super().__init__(text)
+        self._words = text
+        self.setStyleSheet(foreground_stylesheet(color))
+
+    def setText(self, text: str) -> None:  # Qt spells this in camelCase.
+        # A chart View rewrites its legend on every frame. Unchanged words
+        # leave the layout alone, as `QLabel.setText` does.
+        if text == self._words:
+            return
+
+        self._words = text
+        super().setText(self._lines_at(self.width() - self._extra_px()))
+        self.updateGeometry()
+
+    def words(self) -> str:
+        """The words on one line, as the entry states them wherever it is laid out."""
+
+        return self._words
+
+    def _lines_at(self, width: int) -> str:
+        """Return the words with a line break after each clause that does not fit in `width`."""
+
+        return "\n".join(clause_lines(self._words, self.fontMetrics(), width))
+
+    def _extra_px(self) -> int:
+        margins = self.contentsMargins()
+
+        return margins.left() + margins.right() + 2 * self.margin()
+
+    def _height_of(self, text: str) -> int:
+        margins = self.contentsMargins()
+        rows = text.count("\n") + 1
+
+        return (
+            rows * self.fontMetrics().lineSpacing()
+            + margins.top()
+            + margins.bottom()
+            + 2 * self.margin()
+        )
+
+    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
+        return True
+
+    def heightForWidth(self, width: int) -> int:  # Qt spells this in camelCase.
+        return self._height_of(self._lines_at(width - self._extra_px()))
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        # One pixel more than the text's advance, so the layout's rounding
+        # cannot leave the words a fraction too narrow and break them.
+        width = self.fontMetrics().horizontalAdvance(self._words) + 1 + self._extra_px()
+
+        return QSize(width, self._height_of(self._words))
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        # The height is one line's. A layout widens an item's size hint to its
+        # minimum, so the height of the narrowest layout here would be
+        # reserved at every width. The height at a given width is
+        # `heightForWidth`'s.
+        metrics = self.fontMetrics()
+        widest = max(metrics.horizontalAdvance(clause) for clause in _clauses(self._words))
+
+        return QSize(widest + 1 + self._extra_px(), self._height_of(self._words))
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
+        super().resizeEvent(event)
+        lines = self._lines_at(self.width() - self._extra_px())
+
+        if lines != self.text():
+            super().setText(lines)
+
+
 class FlowLayout(QLayout):
     """A row of items that wraps onto further lines when the width runs out.
 
@@ -429,6 +567,9 @@ class FlowLayout(QLayout):
     hold any one of its items, so no item is ever laid out outside it. The
     legend rows use this layout so that six compartment entries on one line
     cannot hold the whole chart column to their combined width (`PL-25KS`).
+    An item wider than the row whose height depends on its width, such as
+    words that wrap, is given the row's width and the height it needs at
+    that width (`PL-K4CZ`).
     """
 
     def __init__(
@@ -520,6 +661,14 @@ class FlowLayout(QLayout):
 
         for item in self._laid_items():
             size = item.sizeHint()
+
+            # An item wider than the row, whose height depends on its width,
+            # takes the row's width and the height it needs there. A legend
+            # entry whose words wrap is such an item, and it would otherwise
+            # run past the right edge.
+            if size.width() > inner.width() and item.hasHeightForWidth():
+                size = QSize(inner.width(), item.heightForWidth(inner.width()))
+
             next_x = x + size.width() + self._horizontal_spacing
 
             if next_x - self._horizontal_spacing > inner.right() and line_height > 0:
@@ -960,6 +1109,7 @@ class ParameterSlider(QWidget):
         self.slider.setPageStep(1)
         self.slider.setTracking(False)
         self.slider.setStyleSheet(slider_stylesheet())
+        FocusRing(self.slider)
         self.value_label = styled_label(setting.value_text, color=INK)
         self.secondary_label = styled_label(
             setting.secondary, color=MUTED, size_px=METRIC_SECONDARY_VALUE_SIZE
@@ -1714,6 +1864,7 @@ class BookmarkDialog(QDialog):
 
         for listing in (self.time_list, self.target_list):
             listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
+            FocusRing(listing)
 
         self.notice = NoticeLabel()
         self.close_button = QPushButton(CLOSE_BOOKMARKS_LABEL)
@@ -1961,6 +2112,105 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
     return QRect(left, top, width, height)
 
 
+class FocusRing(QWidget):
+    """Draws a ring inside a control's edge while the control has the keyboard focus.
+
+    Under Qt's Fusion style a slider, a combo box drawn by a style sheet, a
+    scroll area and a list look the same with and without the focus. A
+    `:focus` rule in a slider's or a selector's style sheet changed no pixel
+    (`PL-63FQ`). So a keyboard user could not see which control the arrow keys
+    would move, which WCAG 2.2 SC 2.4.7 (Focus Visible, Level AA) forbids.
+
+    The ring is a child widget that covers the control, lets the pointer
+    through and never takes the focus. So the control keeps its class, its
+    style sheet and its size, and nothing moves when the ring appears. The
+    ring is `FOCUS_RING_WIDTH` px wide.
+
+    The ring shows only when the focus came from the keyboard, which is when
+    Qt sets `WA_KeyboardFocusChange` on the window. Fusion applies the same
+    rule to the mark it draws on a button or a check box. A click that moves
+    the focus clears the attribute, so a click on a blank part of the page,
+    which gives the page's scroll area the focus, draws no ring round the
+    whole page. A click on the control that already has the focus leaves the
+    ring, as Fusion leaves its own mark.
+
+    Args:
+        control: The control to mark. The ring becomes its child.
+        colour: The ring's colour, a `theme.py` colour. None draws it in the
+            text colour that the control's style sheet sets, which the agent
+            selector needs because its text colour follows the running agent.
+        radius: The corner radius of the control's edge, in px.
+        inset: The width of the control's own edge, in px. The ring is drawn
+            inside that edge. So every pixel of the ring changes from the
+            control's fill to the ring's colour. WCAG 2.2 SC 2.4.13 (Level
+            AAA) asks for that change to be at least 3:1 over an area as
+            large as a 2 px perimeter.
+    """
+
+    def __init__(
+        self, control: QWidget, colour: str | None = INK, radius: int = 0, inset: int = 0
+    ) -> None:
+        super().__init__(control)
+        self._control = control
+        self._colour = colour
+        self._radius = radius
+        self._inset = inset
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setGeometry(control.rect())
+        control.installEventFilter(self)
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        kind = event.type()
+
+        if kind == QEvent.Type.Resize:
+            self.setGeometry(self._control.rect())
+        elif kind in (QEvent.Type.FocusIn, QEvent.Type.FocusOut):
+            # A scroll bar or a viewport that the control adds later is
+            # stacked above the ring, so the ring is raised whenever it may
+            # be drawn.
+            self.raise_()
+            self.update()
+
+        return False
+
+    def showing(self) -> bool:
+        """Return whether the ring is drawn: the control has the focus, and the keyboard gave it."""
+
+        window = self._control.window()
+
+        return self._control.hasFocus() and window.testAttribute(
+            Qt.WidgetAttribute.WA_KeyboardFocusChange
+        )
+
+    def colour(self) -> QColor:
+        """Return the colour the ring is drawn in now."""
+
+        if self._colour is None:
+            return self._control.palette().color(QPalette.ColorRole.ButtonText)
+
+        return QColor(self._colour)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        if not self.showing():
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, self._radius > 0)
+        pen = QPen(self.colour())
+        pen.setWidth(FOCUS_RING_WIDTH)
+        pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        # A pen is centred on its path, so the path runs half the pen's width
+        # inside the control's edge, and the whole ring lies inside that edge.
+        inset = self._inset + FOCUS_RING_WIDTH / 2
+        radius = max(self._radius - self._inset, 0)
+        ring = QRectF(self.rect()).adjusted(inset, inset, -inset, -inset)
+        painter.drawRoundedRect(ring, radius, radius)
+        painter.end()
+
+
 class SelectorComboBox(QComboBox):
     """A combo box that draws the arrow marking its list in its own text colour.
 
@@ -1972,7 +2222,19 @@ class SelectorComboBox(QComboBox):
     chooser's, in the colour the style sheet gives the text. So it is
     the running agent's foreground on the agent selector. It is drawn without
     smoothing, so each of its pixels is the text colour.
+
+    The selector also carries a `FocusRing`, in that same text colour, inside
+    its edge.
+
+    Attributes:
+        focus_ring: The ring drawn while the selector has the keyboard focus.
     """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.focus_ring = FocusRing(
+            self, colour=None, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH
+        )
 
     def paintEvent(self, event: QPaintEvent) -> None:
         super().paintEvent(event)

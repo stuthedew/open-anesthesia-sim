@@ -109,7 +109,7 @@ for v0.6.0").
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from enum import Enum
@@ -151,7 +151,7 @@ from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationSnapshot
-from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
@@ -227,7 +227,7 @@ from anesthesia_sim.layout.sizing import (
     pixel_sizes,
     settle,
 )
-from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind
+from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, areas_in
 
 __all__ = [
     "AREA_MENU_LABEL",
@@ -521,6 +521,36 @@ class AreaLayout(QWidget):
         """Every View drawn now, in the reading order of the Areas that show them."""
 
         return tuple(_widget(view) for _, view in self._views.values())
+
+    def focus_order(self, focusable: Sequence[QWidget]) -> list[QWidget]:
+        """Return the widgets of `focusable` inside the Areas, in the order Tab reaches them.
+
+        Each Area comes in reading order. Its View chooser comes first, then
+        the controls inside the Area in the order `focusable` lists them. The
+        Area borders and any other widget of the Areas come last, so that a
+        reader who tabs to an Area reaches its View's controls next
+        (`PL-B45W`). The caller passes the window's focusable widgets in the
+        order the widget tree holds them. A widget outside the Areas is left
+        out.
+        """
+
+        inside = [widget for widget in focusable if self.isAncestorOf(widget)]
+        ordered: list[QWidget] = []
+
+        for area in areas_in(self._model.windows[MAIN_WINDOW].tree):
+            frame = self._frames.get(area.id)
+
+            if frame is None:
+                continue
+
+            ordered.append(frame.chooser)
+            ordered.extend(
+                widget
+                for widget in inside
+                if widget is not frame.chooser and frame.isAncestorOf(widget)
+            )
+
+        return ordered + [widget for widget in inside if widget not in ordered]
 
     def refresh(
         self,
@@ -2373,6 +2403,7 @@ class ViewScroll(QScrollArea):
         # `setWidget` makes the View fill its background from the palette,
         # which would paint over the corners of a View's rounded panel.
         view.setAutoFillBackground(filled)
+        FocusRing(self)
         self._fit()
 
     def bar_width(self) -> int:

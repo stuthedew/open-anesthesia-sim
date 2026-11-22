@@ -789,7 +789,8 @@ def format_mac_awake_reference(
     parameters rather than one: a published fraction and the divisor it is
     applied to. This line gives the fraction, the percent it lands at and the
     band's two edges in percent. The divisor, the agent's 1 MAC in percent,
-    is on the line that `format_mac_reference` writes beside it. So a reader
+    is in the text that `format_mac_reference` writes, which the 1 MAC
+    line's legend entry shows beside it. So a reader
     who disagrees with either can see which one they disagree with.
 
     The fraction is shown at the resolution of the MAC readouts. The

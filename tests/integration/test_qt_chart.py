@@ -65,7 +65,6 @@ from anesthesia_sim.app.qt_chart import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
     HOVER_RADIUS_PIXELS,
-    MAC_AWAKE_BAND_LEGEND_LABEL,
     WASH_IN_TRACE_LEGEND_LABEL,
     ConcentrationChart,
     TraceLegend,
@@ -1071,6 +1070,106 @@ def test_each_dashed_pen_paints_its_dash_pattern(application: QApplication) -> N
         assert runs[:whole] == [round(length) for length in pattern] * (whole // len(pattern))
 
 
+def test_the_time_axis_title_states_the_window_and_breaks_only_after_a_comma(
+    application: QApplication,
+) -> None:
+    """`PL-K4CZ`: the time axis's title states the window, on one line where the axis has room.
+
+    The window had a line of its own above the plot, which took the plot's
+    height at 1366 by 768. On a narrow plot the title breaks after a comma,
+    so the span keeps its unit, and it is one line again once the plot is
+    wide.
+    """
+
+    chart = ConcentrationChart()
+    window = "15 minutes shown, centred on now during the preview"
+    chart.show_time_window(window)
+    chart.resize(1200, 400)
+    chart.show()
+    application.processEvents()
+
+    assert chart.time_axis_title == "simulated time, " + window
+    assert chart.time_axis_lines == (chart.time_axis_title,)
+
+    chart.resize(300, 400)
+    application.processEvents()
+    lines = chart.time_axis_lines
+
+    assert len(lines) > 1
+    assert all(line.endswith(",") for line in lines[:-1])
+    assert any("15 minutes shown," in line for line in lines)
+    assert " ".join(lines) == chart.time_axis_title
+    assert chart.axis_titles()[1] == chart.time_axis_title
+
+    chart.resize(1200, 400)
+    application.processEvents()
+
+    assert chart.time_axis_lines == (chart.time_axis_title,)
+
+    # A new title with as many lines as the old one is centred again under
+    # the plot, and not left where the old, shorter title began.
+    chart.show_time_window("15 minutes shown")
+    application.processEvents()
+
+    assert chart.time_axis_lines == ("simulated time, 15 minutes shown",)
+    assert abs(chart.time_axis_title_offset_px) <= 1
+
+    chart.show_time_window(window)
+    application.processEvents()
+
+    assert len(chart.time_axis_lines) == 1
+    assert abs(chart.time_axis_title_offset_px) <= 1
+    chart.close()
+
+
+def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wrap(
+    application: QApplication,
+) -> None:
+    """`PL-K4CZ`: the 1 MAC and MAC-awake entries carry their values, and the band's wraps.
+
+    The values had a line each above the legend, which took the plot's height
+    at 1366 by 768. In a legend wide enough, the band's entry is one line.
+    In a narrow one its words wrap inside the legend, so the entry neither
+    runs past the right edge nor raises the legend's least width.
+    """
+
+    legend = TraceLegend()
+    one_mac = "1 MAC sevoflurane = 2.0%"
+    mac_awake = "MAC-awake sevoflurane = 0.34 ×MAC (0.68%), band ±1 SD 0.58–0.78%"
+    legend.show_references(one_mac, mac_awake)
+    legend.resize(2000, legend.heightForWidth(2000))
+    legend.show()
+    application.processEvents()
+    band = next(
+        label for label in legend.findChildren(QLabel) if label.text() == legend.band_mark.label
+    )
+    one_line = band.height()
+
+    assert legend.one_mac_text == one_mac + ", reference adult (alveolar, wide dash)"
+    assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
+    assert band.heightForWidth(band.width()) == one_line
+
+    narrow = legend.minimumSizeHint().width()
+    legend.resize(narrow, legend.heightForWidth(narrow))
+    application.processEvents()
+    entry = band.parentWidget()
+
+    assert entry is not None
+    assert band.height() > one_line
+    assert entry.geometry().right() < legend.width()
+    assert narrow < band.sizeHint().width()
+    # The words break only after a comma or a semicolon, so no value is
+    # parted from its unit and no range from either of its edges.
+    lines = band.text().split("\n")
+
+    assert len(lines) > 1
+    assert all(line.endswith((",", ";")) for line in lines[:-1])
+    assert "MAC-awake sevoflurane = 0.34 ×MAC (0.68%)," in lines
+    assert any(line.startswith("band ±1 SD 0.58–0.78%;") for line in lines)
+    assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
+    legend.close()
+
+
 def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
     application: QApplication,
 ) -> None:
@@ -1091,7 +1190,7 @@ def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
     application.processEvents()
     mark = legend.band_mark
 
-    assert mark.label == MAC_AWAKE_BAND_LEGEND_LABEL
+    assert mark.label == "MAC-awake; population, read against vessel-rich trace"
     assert mark.edge_pen.color().name() == MAC_AWAKE_BAND_COLOR.lower()
     assert mark.edge_pen.widthF() == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
     assert mark.edge_pen.dashPattern() == []
@@ -1284,7 +1383,7 @@ def test_the_legend_rows_wrap_under_a_narrow_chart_and_stand_on_one_line_under_a
     """
 
     legend = TraceLegend()
-    compartments, compared, references, record = _legend_rows(legend)
+    references, compartments, compared, record = _legend_rows(legend)
     one_line = compartments.minimumSize().height()
 
     # The per-run row is hidden entirely while one run is drawn, because the

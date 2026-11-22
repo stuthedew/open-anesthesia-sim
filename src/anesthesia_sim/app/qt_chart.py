@@ -51,6 +51,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from html import escape
 from math import ceil
 from typing import Any, Final, cast
 
@@ -68,7 +69,16 @@ from PySide6.QtCore import (
     Signal,
     SignalInstance,
 )
-from PySide6.QtGui import QBrush, QColor, QImage, QMouseEvent, QPainter, QPaintEvent, QPen
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QFontMetrics,
+    QImage,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+)
 from PySide6.QtWidgets import (
     QCheckBox,
     QGraphicsView,
@@ -117,8 +127,13 @@ from anesthesia_sim.app.dashboard_frame import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
     FIT_RUN_LABEL,
-    MAC_AWAKE_BAND_LEGEND_LABEL,
+    MAC_AWAKE_BAND_LEGEND_NAME,
+    MAC_AWAKE_BAND_LEGEND_TEMPLATE,
     MAX_DISPLAYED_RUNS,
+    ONE_MAC_LINE_LEGEND_NAME,
+    ONE_MAC_LINE_LEGEND_TEMPLATE,
+    TIME_AXIS_TITLE,
+    TIME_AXIS_TITLE_TEMPLATE,
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
     compared_trace_legend_label,
@@ -126,7 +141,13 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_chart_time_label, format_time_base
-from anesthesia_sim.app.qt_widgets import FlowLayout, SelectorComboBox, declare_interface_colours
+from anesthesia_sim.app.qt_widgets import (
+    ClauseWrappingLabel,
+    FlowLayout,
+    SelectorComboBox,
+    clause_lines,
+    declare_interface_colours,
+)
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.stylesheets import foreground_stylesheet, selector_stylesheet
 from anesthesia_sim.app.theme import (
@@ -176,7 +197,6 @@ __all__ = [
     "CONTROL_MARK_LEGEND_LABEL",
     "EQUILIBRIUM_LEGEND_LABEL",
     "HOVER_RADIUS_PIXELS",
-    "MAC_AWAKE_BAND_LEGEND_LABEL",
     "WASH_IN_TRACE_LEGEND_LABEL",
     "BandMark",
     "ConcentrationChart",
@@ -471,9 +491,15 @@ def _plot(background: str) -> Any:
     the window and the axis sets the range. A plot that a reader could drag
     off its labelled range would show a slope that meant something different
     from the slope on the plot beside it.
+
+    So no key does anything on the plot either, and the plot is not a Tab
+    stop. A keyboard user would otherwise land on it and see nothing happen
+    (`PL-63FQ`).
     """
 
     plot = pg.PlotWidget(background=background)
+    plot.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    plot.viewport().setFocusPolicy(Qt.FocusPolicy.NoFocus)
     item = plot.getPlotItem()
     item.setMenuEnabled(False)
     item.hideButtons()
@@ -1010,7 +1036,7 @@ class ConcentrationChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", DisplayUnit.CONCENTRATION.axis_title, color=MUTED)
-        item.setLabel("bottom", "simulated time", color=MUTED)
+        self._time_title = _TimeAxisTitle(item)
         item.showAxis("right")
         item.getAxis("right").setLabel(DisplayUnit.MAC_MULTIPLE.axis_title, color=MUTED)
 
@@ -1275,7 +1301,35 @@ class ConcentrationChart(QWidget):
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the chart's axes, so a walk over the whole interface finds them."""
 
-        return _axis_titles(self._plot)
+        return _axis_titles(self._plot, self._time_title.words)
+
+    def show_time_window(self, window: str) -> None:
+        """Write the window the plot shows into the time axis's title.
+
+        Args:
+            window: What `dashboard_frame.time_axis_caption` says of the
+                frame just drawn.
+        """
+
+        self._time_title.show(window)
+
+    @property
+    def time_axis_title(self) -> str:
+        """The time axis's title on one line, however the axis breaks it."""
+
+        return self._time_title.words
+
+    @property
+    def time_axis_lines(self) -> tuple[str, ...]:
+        """The time axis's title as the axis draws it, one line at a time."""
+
+        return self._time_title.lines
+
+    @property
+    def time_axis_title_offset_px(self) -> float:
+        """How far the title's centre is from the time axis's centre, in px."""
+
+        return self._time_title.offset_px
 
     def painted(self) -> QImage:
         """The chart as painted, so a test can check what is on screen."""
@@ -1450,7 +1504,7 @@ class WashInChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", WASH_IN_RATIO_NAME, color=MUTED)
-        item.setLabel("bottom", "simulated time", color=MUTED)
+        self._time_title = _TimeAxisTitle(item)
         # The axis is fixed rather than fitted to the data. It is labelled at
         # its own gridlines, at its own resolution, as `docs/INTERFACE.md`
         # § "F_A/F_I as a displayed ratio" specifies.
@@ -1668,7 +1722,35 @@ class WashInChart(QWidget):
     def axis_titles(self) -> tuple[str, ...]:
         """The titles of the plot's axes, so a walk over the whole interface finds them."""
 
-        return _axis_titles(self._plot)
+        return _axis_titles(self._plot, self._time_title.words)
+
+    def show_time_window(self, window: str) -> None:
+        """Write the window the plot shows into the time axis's title.
+
+        Args:
+            window: What `dashboard_frame.time_axis_caption` says of the
+                frame just drawn.
+        """
+
+        self._time_title.show(window)
+
+    @property
+    def time_axis_title(self) -> str:
+        """The time axis's title on one line, however the axis breaks it."""
+
+        return self._time_title.words
+
+    @property
+    def time_axis_lines(self) -> tuple[str, ...]:
+        """The time axis's title as the axis draws it, one line at a time."""
+
+        return self._time_title.lines
+
+    @property
+    def time_axis_title_offset_px(self) -> float:
+        """How far the title's centre is from the time axis's centre, in px."""
+
+        return self._time_title.offset_px
 
     def painted(self) -> QImage:
         """The plot as painted, so a test can check what is on screen."""
@@ -1747,12 +1829,87 @@ class WashInChart(QWidget):
         return self._hover.shown_box()
 
 
-def _axis_titles(plot: Any) -> tuple[str, ...]:
-    """The non-empty axis titles of a plot, in left, bottom, right order."""
+def _axis_titles(plot: Any, time_title: str) -> tuple[str, ...]:
+    """The non-empty axis titles of a plot, in left, bottom, right order.
+
+    The time axis's title is given on one line, as `_TimeAxisTitle.words`
+    states it. The axis itself may hold it broken across lines.
+    """
 
     item = plot.getPlotItem()
-    titles = (str(item.getAxis(name).labelText) for name in ("left", "bottom", "right"))
-    return tuple(title for title in titles if title)
+    left, right = (str(item.getAxis(name).labelText) for name in ("left", "right"))
+    return tuple(title for title in (left, time_title, right) if title)
+
+
+class _TimeAxisTitle:
+    """The title of a plot's time axis, which names the axis and states the window shown.
+
+    The window had a line of its own above the plot, which took the plot's
+    height at 1366 by 768 (`PL-K4CZ`). The title keeps to one line where the
+    axis is wide enough. On a narrower axis it breaks after a comma, as the
+    MAC-awake legend entry does, so a span never loses its unit. The title is
+    broken again whenever the axis changes width.
+
+    Args:
+        item: The plot whose bottom axis is the time axis.
+    """
+
+    def __init__(self, item: Any) -> None:
+        self._item = item
+        self._axis = item.getAxis("bottom")
+        self._words = TIME_AXIS_TITLE
+        self._lines: tuple[str, ...] = ()
+        self._width = -1.0
+        self._axis.geometryChanged.connect(self._refit)
+        self._write()
+
+    @property
+    def words(self) -> str:
+        """The title on one line."""
+
+        return self._words
+
+    @property
+    def lines(self) -> tuple[str, ...]:
+        """The title as the axis draws it, one line at a time."""
+
+        return self._lines
+
+    @property
+    def offset_px(self) -> float:
+        """How far the title's centre is from the axis's centre, in px."""
+
+        label = self._axis.label
+        centre = label.pos().x() + label.boundingRect().width() / 2
+
+        return float(centre - self._axis.size().width() / 2)
+
+    def show(self, window: str) -> None:
+        """Name the axis and state `window` after the name."""
+
+        words = TIME_AXIS_TITLE_TEMPLATE.format(window=window)
+
+        if words != self._words:
+            self._words = words
+            self._write()
+
+    def _refit(self) -> None:
+        # Writing the title changes the axis's height and never its width, so
+        # this runs once for each new width and does not loop.
+        if self._axis.size().width() != self._width:
+            self._write()
+
+    def _write(self) -> None:
+        self._width = self._axis.size().width()
+        label = self._axis.label
+        room = int(self._width - 2 * label.document().documentMargin())
+        self._lines = tuple(clause_lines(self._words, QFontMetrics(label.font()), room))
+        title = "<br>".join(escape(line) for line in self._lines)
+        self._item.setLabel("bottom", title, color=MUTED)
+        # pyqtgraph centres the title only when the axis is resized, and a new
+        # title with as many lines as the old one does not resize it. The
+        # axis's own resize handler places the title again.
+        self._axis.resizeEvent()
 
 
 def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
@@ -2079,7 +2236,7 @@ class TimeBaseSelector(SelectorComboBox):
 class TraceLegend(QWidget):
     """This widget shows the chart's four legend rows, and its compartment row is also a control.
 
-    The rows are the compartments, the compared runs, the references and the
+    The rows are the references, the compartments, the compared runs and the
     run record. The compared-runs row is empty, and takes no height, when a
     single run is drawn.
 
@@ -2155,6 +2312,51 @@ class TraceLegend(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(LEGEND_LINE_SPACING)
+        # Each reference names the compartment it is read against.
+        # `docs/INTERFACE.md` § "Interface boundary" requires that of a
+        # reference, in the same passage that exempts a reference from the
+        # drawn-trace rule. The band names vessel-rich, not alveolar. The
+        # model has no effect-site compartment, and it defines the arterial
+        # fraction as the alveolar one. So the alveolar trace is the fastest
+        # patient trace on the chart, and the furthest from where
+        # responsiveness returns. The 1 MAC line names alveolar, because MAC is defined for
+        # the alveolar concentration.
+        #
+        # Each entry also states its reference's value, from `show_references`.
+        # The values had a line each above the legend, which repeated the
+        # entries' names and took the plot's height at 1366 by 768
+        # (`PL-K4CZ`). The row comes first in the legend, so where the box
+        # above the plot is squeezed to its first two rows, the 1 MAC value
+        # is still on screen, as it was on its own line. Its 1 MAC entry
+        # comes first, because the band's fraction is a fraction of that
+        # 1 MAC. The band's entry is the longest in the legend, so its words
+        # wrap in a narrow View rather than set the View's least width.
+        self._one_mac_label = _legend_label(
+            ONE_MAC_LINE_LEGEND_TEMPLATE.format(reference=ONE_MAC_LINE_LEGEND_NAME)
+        )
+        self._band_label = ClauseWrappingLabel(
+            MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference=MAC_AWAKE_BAND_LEGEND_NAME), color=INK
+        )
+        layout.addLayout(
+            _legend_row(
+                "Clinical references:",
+                [
+                    (
+                        _LineSwatch(
+                            dashed_pen(
+                                ONE_MAC_LINE_COLOR,
+                                ONE_MAC_LINE_STROKE_WIDTH,
+                                ONE_MAC_LINE_DASH_PATTERN,
+                            ),
+                            LEGEND_SWATCH_WIDTH,
+                            LEGEND_SWATCH_HEIGHT,
+                        ),
+                        self._one_mac_label,
+                    ),
+                    (self._band_swatch, self._band_label),
+                ],
+            )
+        )
         layout.addLayout(_legend_row("Compartments:", compartments))
         # The compare row has one entry per curve actually drawn, and each
         # entry names both the compartment and the run. Once a curve stands
@@ -2170,35 +2372,6 @@ class TraceLegend(QWidget):
             for _ in range(COMPARED_COMPARTMENT_CAP * MAX_DISPLAYED_RUNS)
         ]
         layout.addLayout(self._compared_row)
-        # Each reference names the compartment it is read against.
-        # `docs/INTERFACE.md` § "Interface boundary" requires that of a
-        # reference, in the same passage that exempts a reference from the
-        # drawn-trace rule. The band names vessel-rich, not alveolar. The
-        # model has no effect-site compartment, and it defines the arterial
-        # fraction as the alveolar one. So the alveolar trace is the fastest
-        # patient trace on the chart, and the furthest from where
-        # responsiveness returns. The 1 MAC line names alveolar, because MAC is defined for
-        # the alveolar concentration.
-        layout.addLayout(
-            _legend_row(
-                "Clinical references:",
-                [
-                    (self._band_swatch, _legend_label(MAC_AWAKE_BAND_LEGEND_LABEL)),
-                    (
-                        _LineSwatch(
-                            dashed_pen(
-                                ONE_MAC_LINE_COLOR,
-                                ONE_MAC_LINE_STROKE_WIDTH,
-                                ONE_MAC_LINE_DASH_PATTERN,
-                            ),
-                            LEGEND_SWATCH_WIDTH,
-                            LEGEND_SWATCH_HEIGHT,
-                        ),
-                        _legend_label("1 MAC, reference adult (alveolar) (wide dash)"),
-                    ),
-                ],
-            )
-        )
         # A third row, because a control mark is neither of the two kinds
         # above it. A compartment trace is a modelled quantity, and a
         # clinical reference is a published constant. A control mark is a
@@ -2381,12 +2554,31 @@ class TraceLegend(QWidget):
         for entry in self._compared_entries[len(entries) :]:
             entry.hide()
 
+    def show_references(self, one_mac: str, mac_awake: str) -> None:
+        """Write each clinical reference's value into its entry.
+
+        Args:
+            one_mac: The 1 MAC line's value, as `mac_reference_caption` writes
+                it, such as "1 MAC sevoflurane = 2.0%".
+            mac_awake: The band's fraction, centre and edges, as
+                `mac_awake_caption` writes them.
+        """
+
+        self._one_mac_label.setText(ONE_MAC_LINE_LEGEND_TEMPLATE.format(reference=one_mac))
+        self._band_label.setText(MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference=mac_awake))
+
+    @property
+    def one_mac_text(self) -> str:
+        """The 1 MAC line's entry words, as they are drawn."""
+
+        return self._one_mac_label.text()
+
     @property
     def band_mark(self) -> BandMark:
         """The MAC-awake band's entry: its words, its edge pen and its fill."""
 
         return BandMark(
-            MAC_AWAKE_BAND_LEGEND_LABEL, self._band_swatch.edge_pen, self._band_swatch.fill_brush
+            self._band_label.words(), self._band_swatch.edge_pen, self._band_swatch.fill_brush
         )
 
     @property
