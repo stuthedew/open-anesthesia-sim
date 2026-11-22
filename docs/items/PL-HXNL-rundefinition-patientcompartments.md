@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: replay-findings
+milestone: v0.6.21
 touches: src/anesthesia_sim/core, tests/unit, docs/ARCHITECTURE.md, docs/INTERFACE.md
 deferred-from: v0.7.0 - present at the freeze, deferred on a stated reason: no path in src/ restores these records from a pickle or a copy, so nothing a learner can reach goes through an unchecked restore, and PL-8W1Q, the frozen entry it follows, is complete for the restores that exist
 added: 2026-11-14

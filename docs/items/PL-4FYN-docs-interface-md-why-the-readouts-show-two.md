@@ -3,6 +3,7 @@ id: PL-4FYN
 title: docs/INTERFACE.md § 'Why the readouts show two decimals' quotes differences from the independent solution measured on 2026-09-06 at the retired 0.1 s step (1.6e-12 and 5.2e-12 percentage points), which no test asserts; state the reason from the test's limits instead
 status: done
 feature: floating-point-domain
+milestone: v0.6.21
 touches: docs/INTERFACE.md
 added: 2026-11-22
 closed: 2026-11-22

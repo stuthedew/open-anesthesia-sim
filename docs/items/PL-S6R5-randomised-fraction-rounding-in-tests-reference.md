@@ -3,6 +3,7 @@ id: PL-S6R5
 title: RANDOMISED_FRACTION_ROUNDING in tests/reference/test_coupled_dynamics.py is a relative 1e-14 that its comment calls 'a few units in the last place', but it is about 45; record where the number comes from, as test-oracles rule 7 asks
 status: done
 feature: floating-point-domain
+milestone: v0.6.21
 touches: tests/reference/test_coupled_dynamics.py, docs/VERIFICATION.md
 added: 2026-11-22
 closed: 2026-11-22

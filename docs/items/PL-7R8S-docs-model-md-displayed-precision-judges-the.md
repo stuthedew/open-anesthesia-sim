@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: model-claims-held-by-tests
+milestone: v0.6.21
 touches: docs/INTERFACE.md, tests/unit/test_formatting.py, tests/unit/test_agent_cost.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/currency_code.py, pyproject.toml, uv.lock, tools/import_boundary_check.py, docs/ARCHITECTURE.md
 deferred-from: v0.7.0 - a new problem: the cost display and its three-significant-figures paragraph came with 7baae320 (2026-11-02), after the freeze
 added: 2026-11-04

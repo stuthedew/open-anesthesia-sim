@@ -5,6 +5,7 @@ priority: P2
 status: done
 classes: defect
 feature: window-is-the-frame
+milestone: v0.6.21
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_workspace_tabs.py, tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json, tests/integration/simulation_view/test_simulation_view_halt.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): the Branch View became usable in a Workspace pinned to a run that is not open in #2231, built 2026-11-22; not live: checked 2026-11-22, #2231 has not merged
 added: 2026-11-22

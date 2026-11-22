@@ -3,6 +3,7 @@ id: PL-C11P
 title: The docstring of BranchedCase.fork_points_s says fork_at rejects any instant that is not a keyframe, but fork_at accepts any whole second the trunk has reached since whole-second stepping
 status: done
 feature: run-computed-one-way
+milestone: v0.6.21
 touches: src/anesthesia_sim/app/controller.py
 added: 2026-11-22
 closed: 2026-11-22
