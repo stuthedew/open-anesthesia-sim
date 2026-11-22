@@ -12,7 +12,7 @@ patient. The envelope states only where the arithmetic has been checked
 against a high-precision evaluation, and how accurate it was found to be. It is
 set far outside every shipped value, so no real parameter set comes near its
 edges. A value inside it can still describe no patient: a 10 mL lung is not a
-lung. `docs/MODEL.md` § "The numerical envelope" states the two claims side by
+lung. `docs/VERIFICATION.md` § "The numerical envelope" states the two claims side by
 side.
 
 **What the envelope guarantees.** The intervals are closed, and every value in
@@ -59,7 +59,7 @@ unchanged settings longer than about 1,610 s needs more than 32 squarings. So
 `matrix_exponential` refuses that stretch rather than return a propagator for
 it. A run stepped at the stiffest corners is halted sooner, by the mass-balance
 check. There, the rounding from step after step passes the check's tolerance
-of one part in 10**9 within seconds to minutes. `docs/MODEL.md`
+of one part in 10**9 within seconds to minutes. `docs/VERIFICATION.md`
 § "The numerical envelope" gives the measurement against a 70-digit evaluation
 and the measured halt times.
 
@@ -124,7 +124,7 @@ MINIMUM_PARTITION_COEFFICIENT = 1e-3
 # coefficient of 70.0.
 MAXIMUM_PARTITION_COEFFICIENT = 1e4
 
-_ENVELOPE_SECTION = '(docs/MODEL.md, "The numerical envelope")'
+_ENVELOPE_SECTION = '(docs/VERIFICATION.md, "The numerical envelope")'
 
 
 def _require_within_envelope(

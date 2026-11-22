@@ -3,13 +3,15 @@ id: PL-CXYV
 title: Start, Pause and Reset look the same pressed, keyboard-focused and at rest
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
-touches: src/anesthesia_sim/app/stylesheets.py, tests
+touches: src/anesthesia_sim/app/stylesheets.py, src/anesthesia_sim/app/run_view.py, tests/integration/test_keyboard_focus.py
 deferred-from: v0.7.0 - captured after the freeze; no displayed value is wrong, and it belongs with the interface pass rather than the schematic
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2216
 payoff: a learner who presses or tabs to Start, Pause or Reset sees which button acted or will act
-verify: grep -rq 'def test_each_run_button_draws_a_pressed_and_a_focused_state' tests/
+tests: tests/integration/test_keyboard_focus.py::test_each_run_button_draws_a_pressed_and_a_focused_state
 ---
 
 **Problem.** Start, Pause and Reset look the same pressed, keyboard-focused and at rest
@@ -108,3 +110,18 @@ mark and a pressed state on these three buttons can land alone.
 **Generator check.** A one-off so far. The fact is which states a button styled by a style sheet draws. The earlier fix that added the disabled state to `transport_button_stylesheet`, after declaring `:enabled` only, is a first instance, so a third would make this a generator. No head's `misread:` states it.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. `transport_button_stylesheet` in `src/anesthesia_sim/app/stylesheets.py` still declares only the enabled and disabled states. The two `:focus` rules in that file belong to tool buttons (the View chooser and the Workspace tabs), not to Start, Pause and Reset. No test named in `verify:` exists. The only commit since 2026-11-11 to touch that file was #2134, and it did not add a state.
+
+**Built 2026-11-22, with `PL-63FQ`.** The measurement of 2026-11-10 gave the
+focus outside a Tab key event, which clears `WA_KeyboardFocusChange`, so it
+missed the mark Fusion draws. Under real Tab presses Start, Pause and Reset
+already drew one: a pale fill behind the label. They drew no pressed state.
+`transport_button_stylesheet` now declares one: while the button is held
+down it is drawn in reverse, a PANEL label on an INK fill. A BACKGROUND fill
+was tried first, and the second blind review pass found it too faint, at
+about 1.07:1 against PANEL. Each button also carries the same
+`FocusRing` as every other control, because Fusion's pale fill is hard to see.
+The look is a placeholder until the visual pass.
+`test_each_run_button_draws_a_pressed_and_a_focused_state` in
+`tests/integration/test_keyboard_focus.py` failed on `f8424d33` with
+"AssertionError: Start", the pressed and resting images being equal.
+

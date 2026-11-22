@@ -36,7 +36,7 @@ agent's 1 MAC dial setting, with the reference adult's ventilation and cardiac
 output and the reference circle system's opening fresh gas flow, which is what
 `AgentUptakeSystem.for_agent` builds. The accounting-panel test also runs at the
 agent's dial maximum and 10 L/min. The settings do not change during a run, so
-the propagator over any interval is exact (`docs/MODEL.md` § "Selected method
+the propagator over any interval is exact (`docs/VERIFICATION.md` § "Selected method
 (as implemented)"). The runs are therefore read every second for the first
 hour and every minute from then to 24 h, the longest run the simulator
 supports, without taking the one-second steps between two minutes one at a

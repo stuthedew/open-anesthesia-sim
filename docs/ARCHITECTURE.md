@@ -852,7 +852,7 @@ different treatment:
   written into some compartments and not others.
   Each compartment captures its own state (`capture_state()` /
   `restore_state()`). So a dynamic field added without a matching capture is
-  an omission local to that compartment. `docs/MODEL.md`, "Step atomicity",
+  an omission local to that compartment. `docs/VERIFICATION.md`, "Step atomicity",
   is the contract.
 
 Both timer slots pass the halt gate, as every other slot does (`halt_gate`, in

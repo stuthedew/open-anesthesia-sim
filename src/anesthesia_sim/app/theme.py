@@ -267,6 +267,17 @@ VIEW_HEADING_SPACING = 8
 
 PANEL_RADIUS = 10
 
+# The width of the ring that marks the control with the keyboard focus, in px
+# (`PL-63FQ`). WCAG 2.2 SC 2.4.13 (AAA) asks for an indicator at least as large
+# as a 2 CSS px perimeter of the control. The look is a placeholder until the
+# visual pass.
+FOCUS_RING_WIDTH = 2
+
+# The width of the edge of a selector and of a run button, in px. `FocusRing`
+# draws inside it, so every pixel of the ring changes from the control's fill
+# to the ring's colour.
+CONTROL_BORDER_WIDTH = 1
+
 # The size of the arrow that marks the View chooser's menu, and the space on
 # each side of it, in px (`PL-R5G4`). Both are placeholders until the visual
 # pass.

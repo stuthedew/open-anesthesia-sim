@@ -1179,9 +1179,9 @@ def test_the_supported_limit_notice_says_why_the_model_is_not_claimed_past_the_s
 
     The banner may not say instead that the model is "not validated" past the
     span. A reader would take that to mean it is validated inside it, which
-    `docs/MODEL.md` § "Published wash-in and elimination validation test"
+    `docs/VERIFICATION.md` § "Published wash-in and elimination validation test"
     does not claim. Nor may it call the fat flow wrong: the two human sources
-    that § "Known limitations" weighs disagree about which way it errs. What
+    that `docs/MODEL.md` § "Known limitations" weighs disagree about which way it errs. What
     is true for every agent is that both limitations are present from the
     start and their cost grows with the run.
     """

@@ -385,7 +385,7 @@ def test_a_tissue_blood_quotient_outside_the_envelope_is_refused_where_the_patie
     assert str(raised.value) == (
         "the fat tissue group's tissue:gas partition coefficient of 34.0 cannot be written "
         "again, as 10000.0, once the group is built, because the patient checks the group's "
-        "tissue:blood coefficient only when the group is put in its place (docs/MODEL.md, "
+        "tissue:blood coefficient only when the group is put in its place (docs/VERIFICATION.md, "
         '"The numerical envelope"): replace the group with one built with the new coefficient'
     )
 

@@ -18,7 +18,7 @@ EQUILIBRIUM_FRACTION_TOLERANCE = 1e-12
 # The conservation bound that the reference runs must meet. It is restated here
 # rather than imported, for the reason `tests/unit/test_agent_simulation_validation.py`
 # gives: a bound that followed the constant it tests would move wherever that
-# constant moved. `docs/MODEL.md` § "Mass-balance identity" is the documented
+# constant moved. `docs/VERIFICATION.md` § "Mass-balance identity" is the documented
 # basis and carries the derivation.
 #
 # The bound is relative, not absolute. The mass-balance residual is rounding
@@ -110,7 +110,7 @@ def test_wash_in_and_washout_validates_agent_simulation(agent_id: str) -> None:
 
 @pytest.mark.parametrize("agent_id", ["isoflurane", "desflurane"])
 def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
-    """Required test from docs/MODEL.md, repeated per agent.
+    """Required test from docs/VERIFICATION.md, repeated per agent.
 
     If F_C = F_A = F_a = F_v = F_i, every internal transfer rate must be
     zero regardless of which agent's partition coefficients are in use.

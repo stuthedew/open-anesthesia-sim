@@ -216,7 +216,7 @@ class TissueGroup:
                         f"{self.tissue_gas_partition_coefficient} cannot be written again, as "
                         f"{value}, once the group is built, because the patient checks the "
                         "group's tissue:blood coefficient only when the group is put in its "
-                        'place (docs/MODEL.md, "The numerical envelope"): replace the group '
+                        'place (docs/VERIFICATION.md, "The numerical envelope"): replace the group '
                         "with one built with the new coefficient"
                     )
             elif name == "agent_amount_l":

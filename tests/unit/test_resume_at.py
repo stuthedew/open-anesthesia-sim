@@ -235,7 +235,7 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
 def test_two_systems_resumed_at_one_state_step_identically() -> None:
     """Two systems resumed at one state step identically, as a comparison of branches needs.
 
-    `docs/MODEL.md` § "Deterministic replay test" requires element-for-element
+    `docs/VERIFICATION.md` § "Deterministic replay test" requires element-for-element
     agreement rather than agreement within a tolerance. A fork is the most
     likely place for two runs to acquire a difference that neither learner
     caused.
@@ -281,7 +281,7 @@ def test_a_resumed_system_continues_the_case_s_cumulative_totals() -> None:
 def test_a_resumed_system_still_balances() -> None:
     """The mass-balance identity still holds after resuming, and the residual stays in bounds.
 
-    `docs/MODEL.md`'s mass-balance identity is checked after every step at a
+    `docs/VERIFICATION.md`'s mass-balance identity is checked after every step at a
     tolerance tight enough to halt a run. Resuming writes the compartments and
     the two totals from separate entries of one canonical state. So nothing
     guarantees by construction that the identity closes, and that is the point
@@ -304,7 +304,7 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
     """Show why `initial_agent_l` is an argument and not a calculation.
 
     The tempting alternative is to derive the anchor as the value that closes
-    `docs/MODEL.md`'s mass-balance identity exactly: stored + exhausted -
+    `docs/VERIFICATION.md`'s mass-balance identity exactly: stored + exhausted -
     delivered. That quantity is the canonical path's own conservation residual
     with its sign reversed. A residual has no reason to fall on the positive
     side. But an anchor is an *amount* of agent, which

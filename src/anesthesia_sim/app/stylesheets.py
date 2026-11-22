@@ -26,6 +26,7 @@ interim decision that D9 accepts. The interface pass, planned-milestone item
 from anesthesia_sim.app.theme import (
     ACCENT,
     BACKGROUND,
+    CONTROL_BORDER_WIDTH,
     GRIDLINE,
     INK,
     MENU_ARROW_GAP,
@@ -173,7 +174,8 @@ def selector_stylesheet() -> str:
     """
 
     return (
-        f"QComboBox {{ background-color: {PANEL}; color: {INK}; border: 1px solid {MUTED}; "
+        f"QComboBox {{ background-color: {PANEL}; color: {INK}; "
+        f"border: {CONTROL_BORDER_WIDTH}px solid {MUTED}; "
         f"border-radius: {PANEL_RADIUS}px; padding: {_SELECTOR_PADDING}; }} "
         + _drop_down_stylesheet()
         + popup_stylesheet()
@@ -316,15 +318,25 @@ def transport_button_stylesheet() -> str:
     Softening the edge for the disabled state would have added a second
     visual channel but lost the boundary.
 
+    **A pressed button is drawn in reverse, its label in `PANEL` on an `INK`
+    fill** (`PL-CXYV`). A sheet that declares no pressed state draws none, so
+    a learner who clicked Start saw no response from the button. A
+    `BACKGROUND` fill was tried first, but it differs from `PANEL` by only
+    about 1.07:1, too little to see. `RunView` also
+    gives each button a `FocusRing`, because the mark that Fusion draws for the
+    keyboard focus is a pale fill behind the label that is hard to see.
+
     `tools/contrast_check.py` measures all three pairs. A check enforces this
     (`check_authored_disabled_colours_are_measured`), and accepts a
     `:disabled` rule only from a function that a requirement cites.
     """
 
     return (
-        f"QPushButton {{ background-color: {PANEL}; border: 1px solid {MUTED}; "
+        f"QPushButton {{ background-color: {PANEL}; "
+        f"border: {CONTROL_BORDER_WIDTH}px solid {MUTED}; "
         f"border-radius: {PANEL_RADIUS}px; padding: 4px 12px; }} "
         f"QPushButton:enabled {{ color: {INK}; }} "
+        f"QPushButton:pressed {{ background-color: {INK}; color: {PANEL}; border-color: {INK}; }} "
         f"QPushButton:disabled {{ color: {MUTED}; }}"
     )
 
@@ -385,7 +397,8 @@ def agent_selector_stylesheet(scheme: AgentColorScheme) -> str:
 
     return (
         f"QComboBox {{ background-color: {scheme.fill}; color: {scheme.foreground}; "
-        f"border: 1px solid {scheme.foreground}; border-radius: {PANEL_RADIUS}px; "
+        f"border: {CONTROL_BORDER_WIDTH}px solid {scheme.foreground}; "
+        f"border-radius: {PANEL_RADIUS}px; "
         f"padding: {_SELECTOR_PADDING}; font-weight: bold; }} "
         + _drop_down_stylesheet()
         + popup_stylesheet()

@@ -4,7 +4,7 @@ title: Move docs/MODEL.md § Parameter provenance, word for word, to a new param
 priority: P1
 owner-priority: P1, 2026-11-11, ratified
 effort: M
-status: blocked
+status: ready
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md, tools/doc_check.py, CLAUDE.md, .claude/rules/expert-review.md, src/anesthesia_sim/, tests/

@@ -72,7 +72,7 @@ MOST_SQUARINGS = 22
 """The most squarings that the one-second step needs at any envelope corner, measured on 2026-11-21.
 
 The 0.1 s step that a run took until `PL-SZ6G` needed 19 there.
-`docs/MODEL.md` § "The numerical envelope" states the count.
+`docs/VERIFICATION.md` § "The numerical envelope" states the count.
 """
 
 SHIPPED_DAY_SQUARINGS = 19
@@ -106,7 +106,7 @@ def _refusal(envelope: Envelope, value: float) -> str:
         f"envelope of "
         f"{envelope.minimum:g} to {envelope.maximum:g}{envelope.unit}, the range over which "
         "core's arithmetic has been checked against a high-precision evaluation "
-        r'\(docs/MODEL\.md, "The numerical envelope"\)$'
+        r'\(docs/VERIFICATION\.md, "The numerical envelope"\)$'
     )
 
 

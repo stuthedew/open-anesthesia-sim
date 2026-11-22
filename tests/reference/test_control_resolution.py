@@ -8,7 +8,7 @@ invisible to the model until the step ends. A change therefore takes effect up
 to one whole step late.
 
 That makes the tolerance a measurement rather than a definition, and
-`docs/MODEL.md` § "Supported simulation step" publishes it as one. The table
+`docs/VERIFICATION.md` § "Supported simulation step" publishes it as one. The table
 gives three manoeuvres, each with its worst displacement over all three agents,
 in percentage points of one atmosphere. `core/simulation_step.py` repeats two of
 the figures in the comment on the constant. Before this module, only
@@ -100,7 +100,7 @@ REFERENCE_FRESH_GAS_FLOW_L_MIN = 4.0
 #: value kept.
 SETTLE_S = 120
 
-#: How far a measurement may sit from the figure that `docs/MODEL.md` prints and
+#: How far a measurement may sit from the figure that `docs/VERIFICATION.md` prints and
 #: still count as that figure.
 #:
 #: Both tables are published to two significant figures, so half a unit in the
@@ -108,7 +108,7 @@ SETTLE_S = 120
 #: that much. A measurement inside this band is a value the document already
 #: states. A measurement outside it is a value the document no longer states,
 #: which is the failure this module exists to catch. Tightening the band would
-#: pin digits that `docs/MODEL.md` does not publish. A drift smaller than the
+#: pin digits that `docs/VERIFICATION.md` does not publish. A drift smaller than the
 #: publication's own precision does not make a reader's understanding of the
 #: tolerance wrong.
 PUBLICATION_RELATIVE_TOLERANCE = 0.05
@@ -226,7 +226,7 @@ def _ventilator_start(agent_id: str) -> Manoeuvre:
     )
 
 
-#: The three manoeuvres that `docs/MODEL.md` § "Supported simulation step"
+#: The three manoeuvres that `docs/VERIFICATION.md` § "Supported simulation step"
 #: tabulates. Each comes with the displacement it is published as producing at
 #: the shipped step, and with the agent published as binding it, meaning the
 #: agent that produces the worst figure.
@@ -258,7 +258,7 @@ PUBLISHED_TOLERANCE = {
 #: tables consistent.
 PUBLISHED_DISPLACEMENT_PER_GRID_STEP_PP = {1: 1.3, 5: 1.3, 20: 2.5, 60: 5.8, 300: 1.0e1}
 
-#: The second-worst manoeuvre's displacement at each rate. `docs/MODEL.md`
+#: The second-worst manoeuvre's displacement at each rate. `docs/VERIFICATION.md`
 #: publishes it as the column beside the bound, so that a reader can see how
 #: much room the bound has. At 300x the two round to the same published figure
 #: (`PL-WT07`), so the numbers alone cannot show the gap.
@@ -266,7 +266,7 @@ PUBLISHED_DISPLACEMENT_PER_GRID_STEP_PP = {1: 1.3, 5: 1.3, 20: 2.5, 60: 5.8, 300
 PUBLISHED_SECOND_WORST_PER_GRID_STEP_PP = {1: 5.0e-1, 5: 5.0e-1, 20: 9.8e-1, 60: 2.8, 300: 1.0e1}
 
 #: The published ratio of the worst manoeuvre's displacement to the second
-#: worst's. `docs/MODEL.md` states the bound's headroom as this ratio. The ratio
+#: worst's. `docs/VERIFICATION.md` states the bound's headroom as this ratio. The ratio
 #: is checked more tightly than `PUBLICATION_RELATIVE_TOLERANCE` on purpose. The
 #: 300x entry is 1.03, and a 5% band there would admit the reversal that this
 #: column exists to make visible.
@@ -418,7 +418,7 @@ def _ranked_over_manoeuvres(grid_step_s: int) -> list[tuple[str, float, str]]:
 
     The per-rate table publishes the top two of this ranking and the margin
     between them, so the ordering is part of the measurement, not a convenience.
-    `PL-WT07` found `docs/MODEL.md` quoting a margin against the third-placed
+    `PL-WT07` found `docs/VERIFICATION.md` quoting a margin against the third-placed
     manoeuvre while the second sat 3% away at 300x.
     """
 
@@ -436,7 +436,7 @@ def _grid_step_s(rate: PlaybackRate) -> int:
     A tick takes all of its steps with nothing in between. So the grid step is
     the most steps one tick takes, and never less than one step. It is read
     from the rate rather than restated, because `tests/unit/test_playback.py`
-    already checks it against the grid that `docs/MODEL.md` publishes. What
+    already checks it against the grid that `docs/VERIFICATION.md` publishes. What
     this module adds is the cost of one such grid step.
     """
 
@@ -447,7 +447,7 @@ def _grid_step_s(rate: PlaybackRate) -> int:
 def test_the_control_resolution_tolerance_table(manoeuvre_name: str) -> None:
     """The model meets the tolerance that `SIMULATION_STEP_S` declares.
 
-    This test asserts the table in `docs/MODEL.md` § "Supported simulation step"
+    This test asserts the table in `docs/VERIFICATION.md` § "Supported simulation step"
     that sits under "The tolerance, in percentage points of one atmosphere". The
     comment on the constant in `core/simulation_step.py` repeats the
     case-opening and ventilator-start rows of that table. Since `PL-X9KD` retired
@@ -467,13 +467,13 @@ def test_the_control_resolution_tolerance_table(manoeuvre_name: str) -> None:
     assert measured_pp == pytest.approx(published_pp, rel=PUBLICATION_RELATIVE_TOLERANCE), (
         f"the {manoeuvre_name} manoeuvre now displaces a displayed compartment by "
         f"{measured_pp:.3g} pp per step, not the {published_pp:.3g} pp published in "
-        'docs/MODEL.md "Supported simulation step"; re-measure the whole table, and '
+        'docs/VERIFICATION.md "Supported simulation step"; re-measure the whole table, and '
         "update it and the SIMULATION_STEP_S comment in "
         "src/anesthesia_sim/core/simulation_step.py together"
     )
     assert binding_agent == published_binding_agent, (
         f"the {manoeuvre_name} manoeuvre is now worst for {binding_agent}, not the "
-        f'{published_binding_agent} published in docs/MODEL.md "Supported simulation step"'
+        f'{published_binding_agent} published in docs/VERIFICATION.md "Supported simulation step"'
     )
 
 
@@ -496,7 +496,7 @@ def test_the_displacement_per_grid_step_at_each_playback_rate(rate: PlaybackRate
 
     assert rate.multiplier in PUBLISHED_DISPLACEMENT_PER_GRID_STEP_PP, (
         f"{rate.multiplier}x is offered but what one of its grid steps costs is "
-        'published nowhere; measure it and add the row to docs/MODEL.md "Supported '
+        'published nowhere; measure it and add the row to docs/VERIFICATION.md "Supported '
         'simulation step" first'
     )
 
@@ -509,7 +509,7 @@ def test_the_displacement_per_grid_step_at_each_playback_rate(rate: PlaybackRate
 
     assert measured_pp == pytest.approx(published_pp, rel=PUBLICATION_RELATIVE_TOLERANCE), (
         f"at {rate.multiplier}x the {grid_step_s:g} s control grid now costs "
-        f"{measured_pp:.3g} pp, not the {published_pp:.3g} pp published in docs/MODEL.md "
+        f"{measured_pp:.3g} pp, not the {published_pp:.3g} pp published in docs/VERIFICATION.md "
         '"Supported simulation step"; re-measure the whole per-rate table'
     )
 
@@ -529,7 +529,7 @@ def test_every_published_displacement_belongs_to_an_offered_rate() -> None:
 def test_the_ventilator_start_binds_the_per_rate_table_at_every_rate() -> None:
     """Check the claim that one manoeuvre is the worst case at every rate.
 
-    `docs/MODEL.md` states that "at every rate the worst is the ventilator
+    `docs/VERIFICATION.md` states that "at every rate the worst is the ventilator
     start with desflurane and the second worst is the unperfused load then dial
     off". That is a claim about every rate at once rather than about any one row,
     so no per-rate assertion above can check it. The table would still pass with
@@ -551,7 +551,7 @@ def test_the_ventilator_start_binds_the_per_rate_table_at_every_rate() -> None:
         assert (worst_name, binding_agent) == ("ventilator start", "desflurane"), (
             f"at {rate.multiplier}x the worst displacement is now the {worst_name} "
             f"manoeuvre with {binding_agent}, not the ventilator start with desflurane "
-            'that docs/MODEL.md "Supported simulation step" names as binding throughout'
+            'that docs/VERIFICATION.md "Supported simulation step" names as binding throughout'
         )
 
 
@@ -559,7 +559,7 @@ def test_the_ventilator_start_binds_the_per_rate_table_at_every_rate() -> None:
 def test_the_second_worst_manoeuvre_and_the_margin_above_it(rate: PlaybackRate) -> None:
     """Check the two columns that `PL-WT07` added, and the manoeuvre they belong to.
 
-    `docs/MODEL.md` publishes the runner-up beside the bound so that a reader
+    `docs/VERIFICATION.md` publishes the runner-up beside the bound so that a reader
     can see how much room the bound has. Before `PL-WT07`, the section quoted
     the bound's headroom against the *case opening*. Those figures were correct,
     but the case opening is the third-placed manoeuvre. The actual runner-up sat
@@ -582,7 +582,7 @@ def test_the_second_worst_manoeuvre_and_the_margin_above_it(rate: PlaybackRate) 
     assert (second_name, second_agent) == ("unperfused load then dial off", "desflurane"), (
         f"at {rate.multiplier}x the second-worst displacement is now the {second_name} "
         f"manoeuvre with {second_agent}, not the unperfused load then dial off with "
-        'desflurane that docs/MODEL.md "Supported simulation step" publishes as the '
+        'desflurane that docs/VERIFICATION.md "Supported simulation step" publishes as the '
         "second-worst column"
     )
 
@@ -590,7 +590,7 @@ def test_the_second_worst_manoeuvre_and_the_margin_above_it(rate: PlaybackRate) 
 
     assert second_pp == pytest.approx(published_second_pp, rel=PUBLICATION_RELATIVE_TOLERANCE), (
         f"at {rate.multiplier}x the second-worst manoeuvre now costs {second_pp:.3g} pp, "
-        f"not the {published_second_pp:.3g} pp published in docs/MODEL.md "
+        f"not the {published_second_pp:.3g} pp published in docs/VERIFICATION.md "
         '"Supported simulation step"; re-measure the whole per-rate table'
     )
 
@@ -599,7 +599,7 @@ def test_the_second_worst_manoeuvre_and_the_margin_above_it(rate: PlaybackRate) 
     assert worst_pp / second_pp == pytest.approx(published_margin, rel=MARGIN_RELATIVE_TOLERANCE), (
         f"at {rate.multiplier}x the bound leads the {second_name} manoeuvre by "
         f"{worst_pp / second_pp:.3g}x, not the {published_margin:.3g}x published in "
-        'docs/MODEL.md "Supported simulation step"; the margin column is what tells a '
+        'docs/VERIFICATION.md "Supported simulation step"; the margin column is what tells a '
         "reader how much room the bound has, and it is computed before rounding, so "
         "dividing the published columns will not reproduce it"
     )
@@ -610,7 +610,7 @@ def test_the_second_worst_manoeuvre_and_the_margin_above_it(rate: PlaybackRate) 
 def test_the_case_opening_stays_milder_than_the_binding_manoeuvre_at_every_rate() -> None:
     """Check the published relation between an ordinary action and the worst one.
 
-    `docs/MODEL.md` presents the per-rate table with the case opening beside it.
+    `docs/VERIFICATION.md` presents the per-rate table with the case opening beside it.
     That way a reader knows that the tens of percentage points at 300x belong to
     an abrupt manoeuvre rather than to changing a dial. The gap narrows as the
     grid coarsens. The ventilator start's transient has largely run its course by
@@ -630,7 +630,7 @@ def test_the_case_opening_stays_milder_than_the_binding_manoeuvre_at_every_rate(
     assert min(ratios.values()) > 5.0, (
         f"the case opening is no longer an order milder than the ventilator start at "
         f"every rate (narrowest ratio {min(ratios.values()):.3g}x at "
-        f"{min(ratios, key=lambda m: ratios[m])}x); docs/MODEL.md "
+        f"{min(ratios, key=lambda m: ratios[m])}x); docs/VERIFICATION.md "
         '"Supported simulation step" reads the per-rate table on that relation'
     )
     assert ratios[1] == pytest.approx(20.0, rel=0.1)
@@ -656,7 +656,7 @@ def test_the_tolerance_is_measured_at_the_supported_step() -> None:
 
     assert SIMULATION_STEP_S == MEASURED_STEP_S, (
         f"a run now steps by {SIMULATION_STEP_S} s, but the control-resolution "
-        f"tolerance published in docs/MODEL.md 'Supported simulation step' is measured "
+        f"tolerance published in docs/VERIFICATION.md 'Supported simulation step' is measured "
         f"at {MEASURED_STEP_S} s; re-measure both tables at the new step, and update "
         "that section and the SIMULATION_STEP_S comment in "
         "src/anesthesia_sim/core/simulation_step.py together"

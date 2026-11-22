@@ -162,3 +162,10 @@ pin test fails at `assert max(dial_heights[:4]) < min(dial_heights[4:])` with
 `assert 516 < 396`. With the focus given while building instead of at the
 first show, the new-window test fails with the same `QScrollArea ... is
 SelectorComboBox` message as on main.
+
+**Added 2026-11-22 (`PL-63FQ`).** The concentration chart's and the wash-in
+chart's plots are no longer Tab stops, so the order above loses "the plot".
+Each scroll area is still a stop even when its content fits and there is
+nothing to scroll: each Area's View holder, each chart's key and the page. The
+ordering work could make a scroll area a stop only while it can scroll.
+
