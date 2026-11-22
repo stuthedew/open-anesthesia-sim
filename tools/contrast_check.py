@@ -567,9 +567,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the '+' under the pointer, and the 1px edge a tab carries with the "
         "keyboard focus (`workspace_tab_stylesheet`, `WorkspaceTab`, PL-QW1Z Q2). "
         "Also the ring that marks the keyboard focus on the page's scroll area "
-        "and the control-change record's (`FocusRing`, PL-63FQ), and the label "
-        "and edge of a pressed transport button, whose fill is BACKGROUND "
-        "while it is held down (`transport_button_stylesheet`, PL-CXYV)",
+        "and the control-change record's (`FocusRing`, PL-63FQ)",
     ),
     Requirement(
         "INK",
@@ -590,7 +588,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the Area header's PANEL surface (`ViewChooser`, `AreaFrame`, PL-RBXL, "
         "PL-MS34), the 1px edge it carries with the keyboard focus "
         "(`view_chooser_stylesheet`), and every entry of the menu it opens "
-        "(`menu_stylesheet`). Also the ring that marks the keyboard focus on a "
+        "(`menu_stylesheet`). Also a pressed transport button, drawn in "
+        "reverse with its PANEL label on an INK fill, the same pair "
+        "(`transport_button_stylesheet`, PL-CXYV). Also the ring that marks "
+        "the keyboard focus on a "
         "slider, a selector, a run button, the scroll area that holds a View "
         "or a chart's "
         "key, and a list in the bookmark dialog (`FocusRing`, PL-63FQ), a "

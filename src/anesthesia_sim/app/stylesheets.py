@@ -318,9 +318,11 @@ def transport_button_stylesheet() -> str:
     Softening the edge for the disabled state would have added a second
     visual channel but lost the boundary.
 
-    **A pressed button is filled in `BACKGROUND` and edged in `INK`**
-    (`PL-CXYV`). A sheet that declares no pressed state draws none, so a
-    learner who clicked Start saw no response from the button. `RunView` also
+    **A pressed button is drawn in reverse, its label in `PANEL` on an `INK`
+    fill** (`PL-CXYV`). A sheet that declares no pressed state draws none, so
+    a learner who clicked Start saw no response from the button. A
+    `BACKGROUND` fill was tried first, but it differs from `PANEL` by only
+    about 1.07:1, too little to see. `RunView` also
     gives each button a `FocusRing`, because the mark that Fusion draws for the
     keyboard focus is a pale fill behind the label that is hard to see.
 
@@ -334,7 +336,7 @@ def transport_button_stylesheet() -> str:
         f"border: {CONTROL_BORDER_WIDTH}px solid {MUTED}; "
         f"border-radius: {PANEL_RADIUS}px; padding: 4px 12px; }} "
         f"QPushButton:enabled {{ color: {INK}; }} "
-        f"QPushButton:pressed {{ background-color: {BACKGROUND}; border-color: {INK}; }} "
+        f"QPushButton:pressed {{ background-color: {INK}; color: {PANEL}; border-color: {INK}; }} "
         f"QPushButton:disabled {{ color: {MUTED}; }}"
     )
 

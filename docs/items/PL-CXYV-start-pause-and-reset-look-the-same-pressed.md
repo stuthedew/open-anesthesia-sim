@@ -115,8 +115,10 @@ mark and a pressed state on these three buttons can land alone.
 focus outside a Tab key event, which clears `WA_KeyboardFocusChange`, so it
 missed the mark Fusion draws. Under real Tab presses Start, Pause and Reset
 already drew one: a pale fill behind the label. They drew no pressed state.
-`transport_button_stylesheet` now declares one, a BACKGROUND fill and an INK
-edge while the button is held down. Each button also carries the same
+`transport_button_stylesheet` now declares one: while the button is held
+down it is drawn in reverse, a PANEL label on an INK fill. A BACKGROUND fill
+was tried first, and the second blind review pass found it too faint, at
+about 1.07:1 against PANEL. Each button also carries the same
 `FocusRing` as every other control, because Fusion's pale fill is hard to see.
 The look is a placeholder until the visual pass.
 `test_each_run_button_draws_a_pressed_and_a_focused_state` in

@@ -78,9 +78,13 @@ Start drew the same image at rest and pressed.
 by a style sheet draws only the states that the sheet declares, and Fusion's
 focus mark does not reach every control. The other two are the disabled
 transport state added after `:enabled` alone (`PL-DHBX`) and `PL-CXYV`. The
-focus half now fails a test for any control added to any View or dialog,
-because the test walks the built interface rather than a list. The pressed
+focus half now fails a test for any control added to any View or either
+dialog that is shown when the dashboard opens, because the test walks the
+built interface rather than a list. A control shown only later, such as the
+agent cost View's keep and discard buttons, is outside the walk. Each such
+control today is a push button or a selector, kinds that the walk checks
+elsewhere. The pressed
 half is tested only for Start, Pause and Reset, and the pressed state of the
 other push buttons belongs to the interface pass (`PL-BVC5`). So no live
-generator remains for the focus mark.
+generator remains for the focus mark, as far as the walk reaches.
 

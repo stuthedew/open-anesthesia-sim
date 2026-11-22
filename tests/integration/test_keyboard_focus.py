@@ -17,16 +17,23 @@ from collections.abc import Iterator
 
 import pytest
 from pyqtgraph import PlotWidget
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QPushButton, QSlider, QWidget
+from PySide6.QtWidgets import QApplication, QPushButton, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import new_case_question
 from anesthesia_sim.app.qt_widgets import BookmarkDialog, FocusRing, NewCaseDialog, SelectorComboBox
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, FOCUS_RING_WIDTH, INK
+from anesthesia_sim.app.theme import (
+    AGENT_COLOR_SCHEMES,
+    CONTROL_BORDER_WIDTH,
+    FOCUS_RING_WIDTH,
+    INK,
+    PANEL,
+    PANEL_RADIUS,
+)
 from anesthesia_sim.app.view_registry import REGISTERED
 from tests.integration.simulation_view.simulation_view_support import (
     EVERY_REGISTERED_VIEW_SIZE_PX,
@@ -169,7 +176,13 @@ def _left_edge(control: QWidget) -> list[QColor]:
 
 
 def test_the_ring_shows_after_a_tab_press_and_not_after_a_click(application: QApplication) -> None:
-    """A click gives the focus without the ring, and the keyboard gives it with the ring in INK."""
+    """The keyboard gives the focus with the ring in INK, and a later click gives it without.
+
+    The click comes after a Tab press, so the window has already recorded a
+    keyboard focus change, and the ring must still stay off. A click on a
+    blank part of the page gives the page's scroll area the focus, and must
+    not draw a ring round the whole page.
+    """
 
     case = BranchedCase(SimulationController(agent_id=_AGENT_ID))
     view = SimulationView((case.trunk,), case=case)
@@ -179,20 +192,39 @@ def test_the_ring_shows_after_a_tab_press_and_not_after_a_click(application: QAp
     application.processEvents()
     view.present(False)
     application.processEvents()
-    slider = next(slider for slider in view.findChildren(QSlider) if slider.isVisible())
-    ring = slider.findChild(FocusRing)
+    first, second = [slider for slider in view.findChildren(QSlider) if slider.isVisible()][:2]
+    ring = first.findChild(FocusRing)
     assert ring is not None
 
-    slider.setFocus(Qt.FocusReason.MouseFocusReason)
+    QTest.keyClick(view, Qt.Key.Key_Tab)
+    _focus(first, application)
+    assert ring.showing()
+    assert ring.colour() == QColor(INK)
+    assert _left_edge(first) == [QColor(INK)] * FOCUS_RING_WIDTH
+
+    QTest.mouseClick(second, Qt.MouseButton.LeftButton, pos=QPoint(second.width() - 3, 3))
     application.processEvents()
-    assert slider.hasFocus()
+    second_ring = second.findChild(FocusRing)
+    assert second_ring is not None
+    assert second.hasFocus()
+    assert not second_ring.showing()
     assert not ring.showing()
 
     QTest.keyClick(view, Qt.Key.Key_Tab)
-    _focus(slider, application)
-    assert ring.showing()
-    assert ring.colour() == QColor(INK)
-    assert _left_edge(slider) == [QColor(INK)] * FOCUS_RING_WIDTH
+    page = next(
+        area
+        for area in view.findChildren(QScrollArea)
+        if type(area) is QScrollArea and area.widget().findChild(QSlider)
+    )
+    blank = page.widget()
+    QTest.mouseClick(
+        blank, Qt.MouseButton.LeftButton, pos=QPoint(blank.width() - 5, blank.height() - 5)
+    )
+    application.processEvents()
+    page_ring = page.findChild(FocusRing)
+    assert page_ring is not None
+    assert page.hasFocus()
+    assert not page_ring.showing()
     view.close()
 
 
@@ -258,6 +290,10 @@ def _assert_three_looks(button: QPushButton, elsewhere: QWidget, application: QA
     _focus(button, application)
     focused = button.grab().toImage()
 
-    assert rest != pressed, button.text()
+    # A pressed button is filled in INK, so the whole fill changes from
+    # PANEL to INK while it is held down.
+    fill = QPoint(CONTROL_BORDER_WIDTH + PANEL_RADIUS, pressed.height() // 2)
+    assert rest.pixelColor(fill) == QColor(PANEL), button.text()
+    assert pressed.pixelColor(fill) == QColor(INK), button.text()
     assert rest != focused, button.text()
     assert pressed != focused, button.text()

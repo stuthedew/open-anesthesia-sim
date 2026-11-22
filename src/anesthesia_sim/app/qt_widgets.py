@@ -1983,9 +1983,11 @@ class FocusRing(QWidget):
 
     The ring shows only when the focus came from the keyboard, which is when
     Qt sets `WA_KeyboardFocusChange` on the window. Fusion applies the same
-    rule to the mark it draws on a button or a check box. A click on a blank
-    part of the page gives the page's scroll area the focus, and a ring round
-    the whole page at every click would distract.
+    rule to the mark it draws on a button or a check box. A click that moves
+    the focus clears the attribute, so a click on a blank part of the page,
+    which gives the page's scroll area the focus, draws no ring round the
+    whole page. A click on the control that already has the focus leaves the
+    ring, as Fusion leaves its own mark.
 
     Args:
         control: The control to mark. The ring becomes its child.
