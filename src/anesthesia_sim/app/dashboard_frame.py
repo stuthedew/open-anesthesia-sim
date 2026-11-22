@@ -2693,7 +2693,10 @@ def case_marks(
     marks = bookmarks[0]
     heights = tuple(reachable_mark_height_mac(run) for run in settings)
 
-    for label, run_marks, height in zip(labels, bookmarks, heights, strict=True):
+    # The lengths were checked above, so `strict` can change nothing here.
+    each_run = zip(labels, bookmarks, heights, strict=True)  # pragma: no mutate
+
+    for label, run_marks, height in each_run:
         if run_marks != marks:
             raise ValueError(
                 f"{label} holds different marks from {labels[0]}, and the marks belong to the case"
@@ -2705,11 +2708,10 @@ def case_marks(
                 f"{heights[0]} x MAC, and the bound belongs to the case's one agent"
             )
 
+    runs = zip(labels, standings, strict=True)  # pragma: no mutate
+
     return CaseMarks(
-        bookmark_panel(
-            marks, tuple(RunMarks(label, run) for label, run in zip(labels, standings, strict=True))
-        ),
-        heights[0],
+        bookmark_panel(marks, tuple(RunMarks(label, run) for label, run in runs)), heights[0]
     )
 
 

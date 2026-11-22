@@ -16,7 +16,7 @@ import json
 from collections.abc import Iterator
 from dataclasses import fields, is_dataclass, replace
 from importlib.resources import files
-from typing import NoReturn
+from typing import Any, NoReturn, cast
 
 import pytest
 
@@ -51,6 +51,7 @@ from anesthesia_sim.app.run_presentation import (
     halted_run,
     kept_frames,
     kept_frames_match,
+    kept_on_a_halt,
     shown_drawn,
     shown_without_a_frame,
     withheld_values,
@@ -525,6 +526,27 @@ def test_a_halt_s_banner_says_the_charts_are_withheld_only_when_they_are() -> No
     assert "the readouts and the charts are withheld" in started_over.notice
     assert charts_withheld.standing is ValuesStanding.KEPT
     assert charts_withheld.values == charts_kept.values
+
+
+def test_a_halt_keeps_the_frames_only_while_none_shows_a_preview() -> None:
+    """A halt drops every kept frame once one of them shows a held dial's preview.
+
+    A halted run refuses every setting, so a preview drawn before the halt
+    predicts a future the run cannot reach. With no preview the frames are
+    kept as they are, and with nothing kept there is nothing to keep.
+    """
+
+    trunk = _run_at(90)
+    selection = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 2)
+    frame = _frame_of(trunk, "Run 1")
+    kept = kept_frames({None: frame}, (_drawn(trunk, _state()),), selection)
+    # Any value stands for a preview here: the rule asks only whether one is drawn.
+    previewing = replace(frame, runs=(replace(frame.runs[0], preview=cast(Any, object())),))
+    kept_with_a_preview = replace(kept, frames={None: frame, TIME_BASE_LADDER[0]: previewing})
+
+    assert kept_on_a_halt(kept) is kept
+    assert kept_on_a_halt(kept_with_a_preview) is None
+    assert kept_on_a_halt(None) is None
 
 
 @pytest.mark.parametrize(

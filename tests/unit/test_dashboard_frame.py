@@ -2962,6 +2962,20 @@ def test_each_run_s_wash_in_state_line_counts_its_own_undrawn_stretches() -> Non
     )
 
 
+def test_a_wash_in_state_line_states_the_count_of_its_run_s_undrawn_stretches() -> None:
+    """A run with stretches the window left undrawn says how many, in its own line."""
+
+    controller = _fake_controller(history=_run_history(40))
+    frame = _compared_frame(controller, _fake_controller(history=_run_history(40)))
+    frame = replace(
+        frame, runs=(replace(frame.runs[0], undrawn_wash_in_stretches=3), frame.runs[1])
+    )
+    reading = _reading(controller.snapshot())
+
+    assert wash_in_state(reading, 3) != wash_in_state(reading, 0)
+    assert wash_in_state_lines(frame)[0] == compared_run_line(wash_in_state(reading, 3), frame, 0)
+
+
 def test_each_run_s_wash_in_state_line_states_its_own_run_s_reading() -> None:
     """Two runs at different F_A/F_I each get their own reading, under their own name.
 
@@ -4464,5 +4478,40 @@ def test_the_case_s_marks_need_one_entry_per_run_in_each_list() -> None:
     with pytest.raises(ValueError, match="one entry per run"):
         case_marks(("Run 1", "Run 2"), (marks,), (_unreached(marks),) * 2, (settings,) * 2)
 
-    with pytest.raises(ValueError, match="at least one run"):
+    with pytest.raises(
+        ValueError, match="^the case's marks are read from at least one run; none was given$"
+    ):
         case_marks((), (), (), ())
+
+
+def test_a_refused_bound_names_the_first_run_and_its_own_bound() -> None:
+    """The refusal names the run that differs, and the first run with the first run's bound."""
+
+    marks = BookmarkSet()
+    sevoflurane = SimulationController(agent_id="sevoflurane").settings()
+    desflurane = SimulationController(agent_id="desflurane").settings()
+
+    with pytest.raises(ValueError) as refused:
+        case_marks(
+            ("Run 1", "Run 2"), (marks, marks), (_unreached(marks),) * 2, (sevoflurane, desflurane)
+        )
+
+    message = str(refused.value)
+    _, named, after = message.partition("and Run 1 up to ")
+    assert named, message
+    assert float(after.split(" x MAC")[0]) == pytest.approx(_reachable_height("sevoflurane"))
+
+
+def test_the_case_s_marks_name_each_run_whose_standing_differs() -> None:
+    """Where two runs stand differently on a mark, the row names each run by its own label."""
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
+    settings = SimulationController().settings()
+    passed = _standings(marks, elapsed_s=120)
+    unreached = _standings(marks, elapsed_s=10)
+
+    shown = case_marks(("Run 1", "Run 2"), (marks, marks), (passed, unreached), (settings,) * 2)
+
+    (row,) = shown.panel.times.rows
+    assert "Run 1" in row
+    assert "Run 2" in row
