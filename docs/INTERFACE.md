@@ -5492,11 +5492,15 @@ convention** (`PL-57LD`). The simulator sets no style of its own, so Qt's style
 for the platform decides it. On macOS, and under Qt's Windows 11 style, a left
 click moves the handle to the pointer. Under Qt's Fusion style a left click
 moves the handle one step towards the pointer, and a middle click moves it to
-the pointer. Each of these is one input, so it is applied at once and draws no
-preview. If the button then stays down and the pointer moves, the movement is a
-drag, which previews until the release. A press on the handle itself applies
-nothing until the handle is dragged, on every platform, even where the press is
-off the handle's centre.
+the pointer. Holding the left button down there repeats the step while it stays
+down. Each step and each jump is one input, so it is applied at once and
+draws no preview. If the button then stays down and the pointer moves, the
+movement is a drag, which previews until the release. A press on the handle
+itself applies nothing until the handle is dragged, on every platform, even
+where the press is off the handle's centre. On macOS and under the Windows 11
+style, the first movement after such a press brings the handle's centre under
+the pointer. A movement of one pixel can then change the value by more than one
+step. The preview shows that value, and the release applies it.
 
 **A stopped run accepts no new setting and draws no preview.** A run stops when
 it fails or reaches the end of the longest run the simulator supports.
