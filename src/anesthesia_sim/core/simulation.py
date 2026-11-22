@@ -125,9 +125,11 @@ class SimulationState:
         ):
             raise SimulationConfigurationError(
                 f"the uptake system does not stand at the state the opening record stores for "
-                f"{reached_s} s, so the run's next step would not continue that record: place "
-                "the system with AgentUptakeSystem.resume_at, and pass the record's last state "
-                "and its compensation terms (StoredStates.compensation_at)"
+                f"{reached_s} s, so the run's next step would not continue that record. A branch "
+                "places its system there with AgentUptakeSystem.resume_at, passing the record's "
+                "last state and its compensation terms (StoredStates.compensation_at). A run "
+                "that is copied or loaded fails this check when its circuit volume, its alveolar "
+                "gas volume or a compartment's contents changed after its last step"
             )
 
         self.stored_states = copy(opening_record)
@@ -359,9 +361,23 @@ class SimulationState:
         The record refuses only a state that the equations cannot be applied
         to, which a completed step does not produce.
 
+        A step starts only from the state the record holds for the second the
+        run has reached. A change between two steps to anything that state
+        depends on, such as the circuit volume, moves the system off it. The
+        circuit keeps its agent when its volume changes, so its inspired
+        fraction changes too. The record would then hold a state for that
+        second that the next step did not start from, and a branch or a copy
+        opened there would start from a different state than the run went on
+        from (`PL-DQWL`). So the step is refused instead. The circuit volume
+        and the alveolar gas volume are fixed for a run (`docs/MODEL.md`),
+        and `reset()` or a new run is how to apply a changed one.
+
         Raises:
             SimulationDomainLimitError: the run has reached the supported run
                 length.
+            SimulationConfigurationError: the uptake system no longer stands at
+                the state the record holds for the second the run has reached
+                (`AgentUptakeSystem.stands_at`). Nothing was stepped.
             SimulationNumericalError: `AgentUptakeSystem.advance()` could not
                 complete the step, and has rolled it back.
             SimulationConfigurationError: the record of stored states refused
@@ -370,6 +386,7 @@ class SimulationState:
         """
 
         require_supported_run_length(self.step_count)
+        self._require_system_at_the_record_s_end()
 
         state_before_step = self.uptake_system.capture_state()
         result = self.uptake_system.advance()
@@ -385,6 +402,26 @@ class SimulationState:
         self.step_count = StepCount(self.step_count + 1)
 
         return result
+
+    def _require_system_at_the_record_s_end(self) -> None:
+        """Refuse a step from a system that has left the state the record holds for its last second.
+
+        Raises:
+            SimulationConfigurationError: the uptake system does not stand at
+                the record's last state and its compensation terms.
+        """
+
+        reached_s = self.stored_states.reached_s
+
+        if not self.uptake_system.stands_at(
+            self.stored_states.state_at(reached_s), self.stored_states.compensation_at(reached_s)
+        ):
+            raise SimulationConfigurationError(
+                f"the uptake system has changed since the run stored its state for {reached_s} s, "
+                "so the next step would not continue the record: the circuit volume, the "
+                "alveolar gas volume or a compartment's contents changed between two steps. "
+                "These are fixed for a run, so reset the run or build a new one to apply them"
+            )
 
     def reset(self) -> None:
         """Clear dynamic state while preserving user settings.

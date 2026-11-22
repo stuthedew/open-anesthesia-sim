@@ -1,5 +1,6 @@
 import copy
 import pickle
+from collections.abc import Callable
 from dataclasses import replace
 
 import pytest
@@ -683,3 +684,118 @@ def test_the_stored_states_cannot_be_replaced_or_copied_out_of_step() -> None:
 
     assert duplicate.stored_states.reached_s == 4
     assert state.stored_states.reached_s == 3
+
+
+_CHANGED_BETWEEN_STEPS = "has changed since the run stored its state for 20 s"
+
+
+def _refuses_the_next_step_and_stays_put(state: SimulationState) -> None:
+    """Check that the next step is refused and leaves the clock, record and system as they were."""
+
+    held = state.uptake_system.capture_state()
+
+    with pytest.raises(SimulationConfigurationError, match=_CHANGED_BETWEEN_STEPS):
+        state.advance()
+
+    assert state.elapsed_s == 20
+    assert state.stored_states.reached_s == 20
+    assert state.uptake_system.capture_state() == held
+
+
+def test_a_circuit_volume_changed_between_two_steps_refuses_the_next_step() -> None:
+    """The circuit keeps its agent, so its fraction changes and leaves the record (`PL-DQWL`).
+
+    Before the fix the run stepped on from the changed system. Its record
+    still held the 20 s state from before the change, so a branch or a copy
+    opened at 20 s started from a state the run did not go on from.
+    """
+
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent("sevoflurane"))
+    _advance_for(state, duration_s=20)
+    fraction_before = state.uptake_system.circuit.inspired_partial_pressure_fraction
+
+    state.uptake_system.circuit.set_circuit_volume(
+        CompartmentVolume(state.uptake_system.circuit.circuit_volume_l * 1.5)
+    )
+
+    # The change moved the circuit's fraction, which is what the record holds.
+    assert state.uptake_system.circuit.inspired_partial_pressure_fraction != fraction_before
+
+    _refuses_the_next_step_and_stays_put(state)
+
+
+def test_an_alveolar_gas_volume_changed_between_two_steps_refuses_the_next_step() -> None:
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent("sevoflurane"))
+    _advance_for(state, duration_s=20)
+
+    state.uptake_system.alveoli.gas_volume_l = CompartmentVolume(
+        state.uptake_system.alveoli.gas_volume_l * 1.5
+    )
+
+    _refuses_the_next_step_and_stays_put(state)
+
+
+def test_contents_put_back_to_an_earlier_second_refuse_the_next_step() -> None:
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent("sevoflurane"))
+    _advance_for(state, duration_s=10)
+    at_10_s = state.uptake_system.capture_state()
+    _advance_for(state, duration_s=10)
+
+    state.uptake_system.restore_state(at_10_s)
+
+    _refuses_the_next_step_and_stays_put(state)
+
+
+def test_a_setting_changed_between_two_steps_still_takes_effect_at_the_next_step() -> None:
+    """A control moves the inputs of the next step and leaves the state the record holds alone."""
+
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent("sevoflurane"))
+    _advance_for(state, duration_s=20)
+
+    state.uptake_system.set_fresh_gas_flow(FreshGasFlow(1.0))
+    state.uptake_system.set_delivered_concentration_percent(Percent(4.0))
+    state.uptake_system.set_alveolar_ventilation(AlveolarVentilation(3.0))
+    state.uptake_system.set_cardiac_output(CardiacOutput(3.5))
+    state.advance()
+
+    assert state.stored_states.reached_s == 21
+
+
+def test_a_reset_applies_a_changed_circuit_volume_as_a_fresh_run_would() -> None:
+    changed = CompartmentVolume(9.0)
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent("sevoflurane"))
+    _advance_for(state, duration_s=20)
+    state.uptake_system.circuit.set_circuit_volume(changed)
+
+    state.reset()
+    _advance_for(state, duration_s=5)
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.circuit.set_circuit_volume(changed)
+    fresh = SimulationState(uptake_system=system)
+    _advance_for(fresh, duration_s=5)
+
+    for second in range(6):
+        assert state.stored_states.state_at(CaseInstant(second)) == fresh.stored_states.state_at(
+            CaseInstant(second)
+        )
+
+
+@pytest.mark.parametrize(
+    "rebuild",
+    [copy.deepcopy, lambda run: pickle.loads(pickle.dumps(run))],
+    ids=["deepcopy", "pickle"],
+)
+def test_a_run_whose_circuit_volume_changed_after_its_last_step_cannot_be_copied(
+    rebuild: Callable[[SimulationState], SimulationState],
+) -> None:
+    """The copy's message names the change, not only the branch's way of placing a system."""
+
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent("sevoflurane"))
+    _advance_for(state, duration_s=20)
+    state.uptake_system.circuit.set_circuit_volume(CompartmentVolume(9.0))
+
+    with pytest.raises(
+        SimulationConfigurationError, match="circuit volume, its alveolar gas volume"
+    ):
+        rebuild(state)
