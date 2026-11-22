@@ -617,10 +617,14 @@ last paragraph of this section says why it outlives the decision.
 
 The survey's headline finding is that **apparatus volume alone does not explain
 the measured differences between machines**, and its sharpest instance is
-Fukuda et al.'s randomised patient study: moving only the fresh gas inlet
-significantly raised the inspired/delivered ratio of isoflurane and of
-sevoflurane during low-flow anesthesia. $`F_I/F_D`$ is the ratio this model's
-circuit equation *is*, and a machine changed it with volume held fixed.
+Fukuda et al.'s randomised patient study. They moved the fresh gas inlet from
+beside the absorber to beside the patient. During low-flow anesthesia on two
+decoupling-style machines, the inspired/delivered ratio rose significantly for
+sevoflurane, and for isoflurane on the one machine where it was compared. A
+third machine showed no significant change. $`F_I/F_D`$ is the ratio this
+model's circuit equation *is*, and on two machines the inlet's position changed
+it. The abstract, which is all this project has read, does not say whether
+moving the inlet changed the circuit's volume.
 
 A single well-mixed compartment has no place to put that. The survey named
 three options and refused one. Besides the decline above, they are:
@@ -644,8 +648,10 @@ three options and refused one. Besides the decline above, they are:
 **Declining is not merely the cheap option: it is needed under *either*
 answer.** Even once planned-milestone item 39 is built, a machine whose inlet
 position is unknown still needs the interface's statement that inlet position
-is not modelled. Every surveyed machine is such a machine, except the two that
-Fukuda et al. instrumented. Building item 39 first would change which machines
+is not modelled. The survey records an inlet position for few machines. Shin
+et al. describe where the inlet joins the circle on three Dräger machines, and
+Fukuda et al. compared two positions on the Dräger Fabius GS without saying
+which one the machine ships with. Building item 39 first would change which machines
 the statement covers, not whether the statement is required.
 
 ## Question 5: naming a real machine in the interface
@@ -682,9 +688,14 @@ Three facts decide where the trade name goes, and none is a matter of taste:
    indistinguishable on volume: 2.1 L against 2.0 L of apparatus, 3.3 L
    against 3.2 L with the 1.2 L patient circuit, and time constants of 6.6
    against 6.4 min at 0.5 L/min. The two still differed significantly in time
-   to target, and Shin et al. attributed the remaining difference to inlet
-   position, decoupling, ventilator drive and delivery mode. Every one of those
-   is in this model's `not_modelled` list.
+   to target. Shin et al. posit that equipment factors other than circuit
+   volume and fresh gas flow caused the difference. Both machines have a
+   blower-driven ventilator, and neither has fresh gas decoupling. The factors
+   the authors name that differ between the two are the fresh gas inlet, which
+   sits closer to the patient on the Perseus, and the Zeus's injection
+   vaporizer, which in fresh gas mode mixes the agent in a chamber next to the
+   ventilator. The model represents neither: its circuit is one well-mixed
+   compartment, so it has no inlet position and no separate mixing chamber.
 2. **The decline in § "Fresh gas inlet position is not modelled" makes some
    machines identical here.** Under a trade-name label the interface would
    offer two names that produce one curve, with nothing saying why. Under an
