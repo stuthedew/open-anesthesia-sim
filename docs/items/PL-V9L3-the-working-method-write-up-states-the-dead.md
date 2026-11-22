@@ -72,3 +72,5 @@ position is that its numbers are attached to be checked. The item stays open
 until he decides.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and the remaining choice is the owner's. A read of the artifact on 2026-11-22 found its closing paragraph unchanged: it still says "nine lines, about 2 KB" and "The instrumentation went in last week and has no data yet." Today `tools/dead_ends.py emit` prints 7 lines and 2,249 bytes at session start. The read-side instrumentation is still gone since `PL-3HQ6`.
+
+**Decision needed.** How to correct the owner's published write-up, whose closing paragraph still says the dead-ends instrumentation "went in last week", though it merged the day the page was published and was removed on 2026-11-03. **Recommendation:** a visible, dated correction rather than a silent edit, because readers may already have relied on the paragraph. Put to the owner on 2026-11-22.
