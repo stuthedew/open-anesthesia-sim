@@ -52,7 +52,7 @@ conclude. `ControlChange.elapsed_s` is `SimulationState.elapsed_s` at the
 moment of the call, and the new setting acts over the step that begins
 there, at every rate. So the recorded timeline is exact, and no displayed
 value is stale against it. Only the choice of instants becomes coarser.
-`docs/MODEL.md` § "Supported simulation step" measures what one grid step
+`docs/VERIFICATION.md` § "Supported simulation step" measures what one grid step
 of that coarsening costs a displayed compartment. At 300x on an abrupt
 manoeuvre, the cost is about ten percentage points.
 
@@ -199,7 +199,7 @@ class PlaybackRate:
         grid is one step where a tick owes one step or less, and otherwise
         the most steps that one tick takes. With the shipped 100 ms tick it
         is 1 s at 1x and 5x, and 2, 6 and 30 s at 20x, 60x and 300x.
-        `docs/MODEL.md` § "Supported simulation step" states what one grid
+        `docs/VERIFICATION.md` § "Supported simulation step" states what one grid
         step costs a displayed compartment at each rate.
 
         Raises:
@@ -277,7 +277,7 @@ class OwedSimulatedTime:
 #:
 #: Each rung faster than 5x also pays for its speed in control resolution
 #: (`PlaybackRate.control_grid_s`): 1, 1, 2, 6 and 30 s. So adding a rung also
-#: adds a row to `docs/MODEL.md` § "Supported simulation step", and
+#: adds a row to `docs/VERIFICATION.md` § "Supported simulation step", and
 #: `test_the_control_grid_at_each_rate_is_the_one_two_documents_publish`
 #: fails until that row has been written.
 SUPPORTED_PLAYBACK_RATES: Final[tuple[PlaybackRate, ...]] = (

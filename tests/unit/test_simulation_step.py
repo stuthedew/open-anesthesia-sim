@@ -20,7 +20,7 @@ from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 def test_the_step_is_one_whole_second() -> None:
     """The step is the `int` 1, so a count of steps is a count of seconds.
 
-    The expected value is written here as a literal. `docs/MODEL.md`
+    The expected value is written here as a literal. `docs/VERIFICATION.md`
     § "Supported simulation step" states it, and the control-resolution figures
     in `tests/reference/test_control_resolution.py` are measured at it. A `bool`
     equals 1 in Python and a `float` 1.0 does too, so the type is checked

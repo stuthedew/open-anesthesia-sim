@@ -5,7 +5,7 @@ a defect filed against them, and `PL-TBQS` on twenty more. One generalist
 reviewer, run blind, named about half of what was later filed, as many as a
 three-specialist panel. So every simulator pull request gets one blind
 generalist pass before it merges, and one that changes the model's code, its
-parameter files, `docs/MODEL.md` or `docs/INTERFACE.md` gets a second (project
+parameter files or a specification document gets a second (project
 owner, 2026-10-24,
 ratified, `PL-TDV9`). Close-out step 9 in `.claude/skills/docket/modes/close-out.md`
 says when the passes run and what happens to their findings.

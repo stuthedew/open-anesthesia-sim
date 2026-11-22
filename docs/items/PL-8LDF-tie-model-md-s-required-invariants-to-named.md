@@ -19,7 +19,7 @@ verify: grep -qF 'heading="Required invariants"' tools/doc_check.py
 > family entry this pass adds is a `tools/doc_check.py` edit, so `touches` now
 > names that file beside `docs/MODEL.md`.
 
-**Problem.** `docs/MODEL.md`'s eighteen "Required invariants" state what the
+**Problem.** `docs/VERIFICATION.md`'s eighteen "Required invariants" state what the
 implementation must preserve, with nothing connecting each to the test that
 holds it.
 
@@ -27,7 +27,7 @@ holds it.
 its test answers "how do I know this holds?" for a future reviewer, and makes
 a deleted or renamed test detectable rather than silent.
 
-**Where.** `docs/MODEL.md` § "Required invariants", `tools/doc_check.py`.
+**Where.** `docs/VERIFICATION.md` § "Required invariants", `tools/doc_check.py`.
 
 **Notes.** Raised while deciding PL-036. The check is the cheap half — the
 same shape as the existing citation checks, finding `def test_...` across
@@ -42,7 +42,7 @@ whether the test is any good.
 named test does not resolve.
 
 **Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
-This is the annotation pass for `docs/MODEL.md` § "Required invariants" under
+This is the annotation pass for `docs/VERIFICATION.md` § "Required invariants" under
 clause 2: every bullet gains a code-spanned test name, or the declared-none
 form naming an open item, and the family joins `BOUND_FAMILIES` in
 `tools/doc_check.py` as the pass lands. The check half is already built -
@@ -53,4 +53,4 @@ suite on 2026-09-19 found 36 of 38 held by a test whose body asserts the
 statement directly, 2 held in part and none unheld, so the declared-none form
 is expected to be needed nowhere.
 
-**Checked 2026-11-22** against `d4e8200`: still applies. `docs/MODEL.md` § "Required invariants" has 21 bullets and none names a test. `BOUND_FAMILIES` in `tools/doc_check.py` lists the hazard table, § "Minimum displayed outputs" and § "Required tests", but not § "Required invariants". `PL-6PPZ` (the move of the six verification sections to a new document) moves this section and is in flight, so the annotation pass should land after it and edit the new document.
+**Checked 2026-11-22** against `d4e8200`: still applies. `docs/VERIFICATION.md` § "Required invariants" has 21 bullets and none names a test. `BOUND_FAMILIES` in `tools/doc_check.py` lists the hazard table, § "Minimum displayed outputs" and § "Required tests", but not § "Required invariants". `PL-6PPZ` (the move of the six verification sections to a new document) moves this section and is in flight, so the annotation pass should land after it and edit the new document.

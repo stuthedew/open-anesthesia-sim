@@ -455,8 +455,9 @@ workflow_paths = [
 # declaring the path that pair it only with apparatus paths, against only with
 # product paths.
 #
-# - `src`, `docs/MODEL.md`, `docs/INTERFACE.md` and `README.md` are CLAUDE.md's
-#   own enumeration of the simulator, recorded as data.
+# - `src`, `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md` and
+#   `README.md` are CLAUDE.md's own enumeration of the simulator, recorded as
+#   data.
 # - `ROADMAP.md` and `docs/releases` are product direction. They name
 #   simulator milestones and what shipped in them, so a session scoping the
 #   next release is doing product work even though no `src/` file moves.
@@ -499,6 +500,7 @@ product_paths = [
   "docs/ARCHITECTURE.md",
   "docs/INTERFACE.md",
   "docs/MODEL.md",
+  "docs/VERIFICATION.md",
   "docs/consultant-brief.md",
   "docs/interface-provenance.md",
   "docs/machine-abstraction.md",
@@ -567,9 +569,9 @@ open_draft_command = "python3 tools/open_pull_requests.py --open-draft"
 
 # How `bin/docket arm` counts the blind generalist review passes a simulator
 # branch owes (`PL-HDRN`): one, or two where it changes the model's code, its
-# parameter files, `docs/MODEL.md` or `docs/INTERFACE.md` (`PL-TDV9`). `arm` holds the branch until
-# its newest `Blind-review:` trailer records at least that many passes, and
-# holds where the script exits non-zero. It runs under `uv run python` and not
+# parameter files, or a document of the specification (`PL-TDV9`). `arm`
+# holds the branch until its newest `Blind-review:` trailer records at least
+# that many passes, and holds where the script exits non-zero. It runs under `uv run python` and not
 # the bare `python3`, because it parses each changed test under `tests/` to
 # tell a test of the tooling from the simulator's, and those tests may use
 # grammar newer than the bare interpreter reads, which is the 3.11 tools floor
@@ -657,6 +659,7 @@ protected_paths = [
   "src/anesthesia_sim/data",
   "docs/MODEL.md",
   "docs/INTERFACE.md",
+  "docs/VERIFICATION.md",
 ]
 
 # Paths holding the machinery that identifies and ranks *generators*. An item
@@ -788,6 +791,7 @@ simulator = [
   "src/anesthesia_sim/data/",
   "docs/MODEL.md",
   "docs/INTERFACE.md",
+  "docs/VERIFICATION.md",
 ]
 interface = ["src/anesthesia_sim/app/"]
 

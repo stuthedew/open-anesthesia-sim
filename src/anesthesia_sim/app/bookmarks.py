@@ -668,7 +668,7 @@ class BookmarkSet:
         halt up to one tick's steps past the value the learner marked, which
         is 30 simulated seconds at 300×. The same bookmark would
         then stop the run at a different concentration depending on the
-        playback speed (`PL-NBWP`, `docs/MODEL.md` § "Supported simulation
+        playback speed (`PL-NBWP`, `docs/VERIFICATION.md` § "Supported simulation
         step").
 
         Args:

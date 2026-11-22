@@ -7,7 +7,7 @@ happened at an extreme input that the constructors accepted. Each fix guarded
 its own operation and said nothing about the next.
 
 The `PL-58D7` fix gives every input a declared interval, and refuses a value
-outside that interval when the value is built. `docs/MODEL.md` § "The numerical
+outside that interval when the value is built. `docs/VERIFICATION.md` § "The numerical
 envelope" lists the intervals. So every value inside its interval should give a
 correct result, and every value outside it should be refused. This module tests
 both halves of that claim.
@@ -671,7 +671,7 @@ EDGES = (
     Edge("a fraction the coupled system opens from", _build_coupled_system_opening_at, 0.0, 0.99),
     Edge("PerfusionFraction", PerfusionFraction, SMALLEST_SUBNORMAL, 1.0),
 )
-"""Every input with an interval of its own, and the interval that `docs/MODEL.md` records for it.
+"""Every input with an interval of its own, and the interval `docs/VERIFICATION.md` records for it.
 
 The bounds are written out here rather than read from the modules that define
 them. So a bound that moves fails this test and is noticed. A case instant and
@@ -775,7 +775,7 @@ CEILING_REFUSAL_AT_A_FULL_DIAL = (
     "delivered_concentration_percent of 100.0% is above 99% of the ambient pressure, the highest "
     "partial pressure the coupled model starts from. It is kept below 1 so that no partial "
     "pressure the model computes exceeds the ambient pressure, which the model fixes at one "
-    'atmosphere (docs/MODEL.md, "The numerical envelope")'
+    'atmosphere (docs/VERIFICATION.md, "The numerical envelope")'
 )
 """The whole message a learner reads when a dial of 100% is refused, written out by hand."""
 
@@ -929,7 +929,7 @@ def test_every_shipped_agent_steps_with_at_most_three_squarings_at_any_supported
     more than one part in 10**9 (`AGENT_ACCOUNTING_RELATIVE_TOLERANCE`). Each
     squaring in a step's propagator can double its rounding error. At the
     stiffest envelope corners a step needs 22, and the check then halts a
-    correct run within seconds (`docs/MODEL.md` § "The numerical envelope").
+    correct run within seconds (`docs/VERIFICATION.md` § "The numerical envelope").
 
     The tolerance is fixed, and it is below the derived bound on a long run's
     rounding. `run_rounding` gives that bound as a share of the largest
