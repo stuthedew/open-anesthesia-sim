@@ -12,7 +12,7 @@ added: 2026-11-04
 closed: 2026-11-22
 pr: 2241
 payoff: a learner reads a cost as an ordinary money figure, to the cent, and the document gives a reason that agrees with the display
-tests: tests/unit/test_formatting.py::test_a_cost_is_shown_to_its_currency_s_minor_unit, tests/unit/test_formatting.py::test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent, tests/unit/test_agent_cost.py::test_each_run_is_priced_at_its_own_agent_s_price
+tests: tests/unit/test_formatting.py::test_a_cost_is_shown_to_its_currency_s_minor_unit, tests/unit/test_formatting.py::test_a_cost_too_large_to_show_to_its_minor_unit_is_refused, tests/unit/test_formatting.py::test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent, tests/unit/test_agent_cost.py::test_each_run_is_priced_at_its_own_agent_s_price
 verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 ---
 
@@ -51,3 +51,5 @@ verify: ! grep -qF 'At four it would be 0.010 %' docs/INTERFACE.md
 4. **The price per millilitre keeps four significant figures.** Its old reason measured it against the cost's three-figure step, which no longer exists. `docs/INTERFACE.md` now gives the plain reason: most prices per millilitre are less than one unit of the currency, and four figures move the price by at most 0.05 %.
 
 Files checked in the doc sweep: `docs/INTERFACE.md` (§ "Agent amounts in millilitres, and the cost", its note for developers, and § "A cost at the reader's price"), `docs/VERIFICATION.md` (the two cost hazard rows, still true), `docs/MODEL.md`, `docs/PARAMETERS.md`, `README.md` (no cost precision), `docs/ARCHITECTURE.md` (the `currency_code.py` line, updated), `pyproject.toml`.
+
+**Blind review, 2026-11-22.** Both passes found that rounding to a fixed count of decimals raised the decimal module's `InvalidOperation` for a cost of about 1e26 or more, which a mistyped bottle price can give, and that froze the agent cost View. A cost is now shown only where two neighbouring floats are at most half a minor unit apart, about USD 3.5 × 10^13. Above that the cents would be the float's rounding, so the readout gives its "too large or too small to compute" reason (`cost_is_exact_to_its_minor_unit` in `app/formatting.py`). Pass 1 also found a stale sentence in `docs/INTERFACE.md` § "A cost at the reader's price" saying the cost's decimals depend on the price, now rewritten. Pass 2 found that a negative zero printed `USD -0.00`, now `USD 0.00`.

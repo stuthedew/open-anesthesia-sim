@@ -5643,7 +5643,9 @@ these four cases:
   in `tests/integration/test_agent_cost_view.py`);
 - the price per millilitre is not a positive finite number, or the cost is not
   finite, which extreme entries can cause, such as a bottle price of 10 to the
-  power 308 for a 0.5 mL bottle; or
+  power 308 for a 0.5 mL bottle. The same applies to a cost too large to be held
+  to its minor unit, above about USD 3.5 × 10^13, where the cents shown would
+  come from the computer's rounding rather than from the price; or
 - the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
@@ -5770,8 +5772,8 @@ read for this section.
 The shown liquid volume times the shown price per millilitre differs from the
 cost by at most half a unit of the volume's last shown digit times the price per
 millilitre, plus the volume times half a unit of the price's last shown digit.
-The cost's precision is not a fixed count of decimals, because how many decimals
-a cost can justify depends on the price (§ "Displayed precision", `PL-0S0V`).
+The cost is shown to its currency's minor unit (§ "Agent amounts in millilitres,
+and the cost").
 
 The two rows in the hazard table (`docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the
 hazards the presentation carries") name the tests for this section. The cost is

@@ -448,6 +448,9 @@ def test_a_price_refused_when_the_file_was_read_is_named_and_never_replaced() ->
         pytest.param(1e308, 0.5, 26.0, PRICE_PER_ML_NOT_SHOWN_TEXT, id="price per mL overflows"),
         pytest.param(1e-300, 1e300, 26.0, PRICE_PER_ML_NOT_SHOWN_TEXT, id="price per mL is zero"),
         pytest.param(1e308, 1.0, 26.0, COST_NOT_COMPUTED_TEXT, id="cost overflows"),
+        pytest.param(
+            1e26, 1.0, 26.0, COST_NOT_COMPUTED_TEXT, id="cost too large to show to the cent"
+        ),
         pytest.param(5e-324, 1.0, 0.4, COST_NOT_COMPUTED_TEXT, id="cost underflows to zero"),
         pytest.param(20.47, 100.0, None, COST_NOT_CONVERTED_TEXT, id="amount not converted"),
     ],

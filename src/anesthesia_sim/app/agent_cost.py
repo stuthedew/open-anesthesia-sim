@@ -62,6 +62,7 @@ from anesthesia_sim.app.display_units import (
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_UNIT_DISPLAY,
     AgentAmountUnit,
+    cost_is_exact_to_its_minor_unit,
     format_agent_cost,
     format_delivered_agent,
     format_elapsed,
@@ -408,7 +409,11 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
     # A product of two positive finite floats can overflow to infinity, or
     # underflow to zero, which would show a run that has delivered agent as
     # costing nothing.
-    if not isfinite(cost) or (cost == 0.0 and delivered.liquid_ml > 0.0):
+    if (
+        not isfinite(cost)
+        or not cost_is_exact_to_its_minor_unit(cost, price.currency)
+        or (cost == 0.0 and delivered.liquid_ml > 0.0)
+    ):
         return _no_cost(delivered, COST_NOT_COMPUTED_TEXT)
 
     return CostShown(

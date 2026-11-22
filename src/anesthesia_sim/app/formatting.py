@@ -55,7 +55,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum
-from math import floor, isfinite
+from math import floor, isfinite, ulp
 from types import MappingProxyType
 from typing import Final
 
@@ -98,6 +98,7 @@ __all__ = [
     "agent_amount_display_precision",
     "chart_axis_top_percent",
     "chart_grid_interval_percent",
+    "cost_is_exact_to_its_minor_unit",
     "format_agent_cost",
     "format_agent_residual",
     "format_agent_volume",
@@ -1740,6 +1741,19 @@ def _require_currency_code(currency: str) -> None:
         raise ValueError(f"a currency is three capital letters, not {currency!r}")
 
 
+def cost_is_exact_to_its_minor_unit(cost: float, currency: str) -> bool:
+    """Return whether `cost` is held finely enough to be shown to its currency's minor unit.
+
+    A float holds about 16 significant digits. Above about 3.5e13 USD, two
+    neighbouring floats are more than half a cent apart, so the cents shown
+    would come from the float's rounding, not from the price. `cost_shown`
+    shows no cost for such a cost, and `format_agent_cost` refuses one.
+    The caller checks that `cost` is finite first.
+    """
+
+    return ulp(cost) <= 0.5 * 10.0 ** -minor_unit_decimals(currency)
+
+
 def format_agent_cost(cost: float, currency: str) -> str:
     """Render the cost of the delivered agent at the reader's price, as money with its code first.
 
@@ -1766,17 +1780,24 @@ def format_agent_cost(cost: float, currency: str) -> str:
     Raises:
         TypeError: If `cost` is not a number or is a `bool`, or if `currency`
             is not a str.
-        ValueError: If `cost` is negative or not finite, or if `currency` is
-            not three capital letters. The cost readout shows no cost in
-            either case, so such a value arriving here is a defect upstream.
+        ValueError: If `cost` is negative or not finite, if `currency` is not
+            three capital letters, or if `cost` is too large for
+            `cost_is_exact_to_its_minor_unit`. The cost readout shows no cost
+            in each case, so such a value arriving here is a defect upstream.
     """
 
     _require_currency_amount(cost, "a cost")
     _require_currency_code(currency)
 
+    if not cost_is_exact_to_its_minor_unit(cost, currency):
+        raise ValueError(
+            f"a cost of {cost!r} {currency} is too large to show to its currency's minor unit"
+        )
+
     decimals = minor_unit_decimals(currency)
     minor_unit = Decimal(1).scaleb(-decimals)
-    rounded = Decimal(cost).quantize(minor_unit, rounding=ROUND_HALF_EVEN)
+    # Adding 0.0 turns a negative zero into zero, so it never reads `USD -0.00`.
+    rounded = Decimal(cost + 0.0).quantize(minor_unit, rounding=ROUND_HALF_EVEN)
 
     if rounded == 0 and cost > 0.0:
         return f"{currency} <{minor_unit:.{decimals}f}"

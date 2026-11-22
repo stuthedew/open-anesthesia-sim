@@ -45,6 +45,7 @@ from anesthesia_sim.app.formatting import (
     agent_amount_display_precision,
     chart_axis_top_percent,
     chart_grid_interval_percent,
+    cost_is_exact_to_its_minor_unit,
     format_agent_cost,
     format_agent_residual,
     format_agent_volume,
@@ -2176,6 +2177,8 @@ def test_a_share_that_is_not_a_number_is_refused(share: object) -> None:
         pytest.param(9.996, "USD", "USD 10.00", id="rounds up into the next unit"),
         pytest.param(0.004, "USD", "USD <0.01", id="below a cent"),
         pytest.param(0.0, "USD", "USD 0.00", id="nothing delivered"),
+        pytest.param(-0.0, "USD", "USD 0.00", id="negative zero has no sign"),
+        pytest.param(2.0**44, "USD", "USD 17592186044416.00", id="largest power of two to the cent"),
         pytest.param(1099.98, "JPY", "JPY 1100", id="yen has no minor unit"),
         pytest.param(0.4, "JPY", "JPY <1", id="below one yen"),
         pytest.param(0.0, "JPY", "JPY 0", id="nothing delivered in yen"),
@@ -2304,6 +2307,28 @@ def test_a_cost_that_is_not_a_number_is_refused() -> None:
 
     with pytest.raises(TypeError, match="^a currency is an ISO 4217 code, not 840$"):
         format_agent_cost(1.0, 840)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("cost", "currency"),
+    [
+        pytest.param(2.0**45, "USD", id="neighbouring floats a cent apart"),
+        pytest.param(1e26, "USD", id="past the decimal context's 28 digits"),
+        pytest.param(2.0**42, "KWD", id="three decimals refuse sooner"),
+    ],
+)
+def test_a_cost_too_large_to_show_to_its_minor_unit_is_refused(cost: float, currency: str) -> None:
+    """A float's spacing past half a minor unit would make the last digits noise.
+
+    At 2^44 two neighbouring floats are 2^-8 apart, under half a cent. At 2^45
+    they are 2^-7, or 0.0078, over it. Blind review of `PL-7R8S` found that 1e26
+    raised the decimal module's InvalidOperation instead of a refusal.
+    """
+
+    assert not cost_is_exact_to_its_minor_unit(cost, currency)
+
+    with pytest.raises(ValueError, match="too large to show to its currency's minor unit"):
+        format_agent_cost(cost, currency)
 
 
 def test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_percent() -> None:
