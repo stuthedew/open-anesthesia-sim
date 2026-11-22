@@ -200,3 +200,25 @@ their findings document by document.
    limitations" still read as the end of a section they no longer follow.
    Their opening sentences now name what they are about. The subheadings
    that section needs are part of `PL-N83Z`, which sorts that document.
+
+*Step 6, decided 2026-11-22.* What differs from the draft the owner accepted
+is of three kinds:
+
+1. Facts that `docs/MODEL.md` took from the 21 commits merged after the draft
+   was written, which step 1 carried in. Examples are the stored MAC as one
+   adult value with no stated age (`PL-2BG1`), whole-second steps (#2180) and
+   the rounding bounds (#2121). Each merged after its own review.
+2. The three heading choices listed above.
+3. The corrections the blind reviews found, listed above.
+
+One of these changes what a stated limitation tells a learner. The draft's
+§ 7.2 said a control change was timed to a tenth of a second, and that only an
+abrupt ventilator start moved a reading more than one standard deviation of a
+coefficient does. With whole-second steps, an ordinary control change moves a
+displayed concentration by up to 0.066 percentage points for desflurane. That
+is more than one standard deviation of the vessel-rich or fat coefficient
+moves one, and less than one of the blood:gas or muscle coefficient. The
+owner is asked about that paragraph alone, quoted before and after. The rest
+is not put to the owner, who said on 2026-11-02 that a reply cannot let them
+re-check a rewording that reviews already checked (`PL-BGN1`), and on
+2026-11-22 asked threads to put to them only what needs a clinician.
