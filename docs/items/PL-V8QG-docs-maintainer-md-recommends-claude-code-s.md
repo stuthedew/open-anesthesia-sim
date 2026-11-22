@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs, defect
-feature: model-capability-routing
+feature: model-evidence
 milestone: v0.4.31
 touches: docs/maintainer.md
 added: 2026-09-19

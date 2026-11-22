@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: done
 classes: defect
-feature: reader-first-prose
+feature: prose-quality
 milestone: v0.6.15
 touches: .claude/rules/plain-writing.md, docs/prose-review/prompt.md, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - captured after the freeze; it changes how sessions write prose, not a displayed value

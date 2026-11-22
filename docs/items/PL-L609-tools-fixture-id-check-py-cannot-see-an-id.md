@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
-feature: one-id-grammar
+feature: read-facts-through-docket
 milestone: v0.5.2
 touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
 added: 2026-09-21

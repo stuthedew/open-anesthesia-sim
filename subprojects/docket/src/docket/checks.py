@@ -3584,6 +3584,48 @@ def _check_retired_features(report: Report, config: Config) -> None:
             )
 
 
+def _check_registered_features(report: Report, config: Config) -> None:
+    """An item whose feature the registry does not list, or a listed name no item carries.
+
+    A feature name alone does not say what belongs in it, so a session filing
+    an item guessed which group to join and often made a new one. The registry
+    holds one description per name, and it describes only what is in use, so
+    both directions are errors: each is exact, and each has one fix that the
+    message names. Matched on the literal name, because the registry's
+    spelling is the one to use and `_check_feature_spellings` already reports
+    the variants. Closed items count too: they keep their names, and
+    `docket feature` still describes a finished feature (`PL-Q3BN`). A name
+    the registry redirects is refused with the name it was merged into, and is
+    never "listed but unused", since no item carrying it is the point of a
+    merge (`PL-LRWK`).
+    """
+    if not config.features_file:
+        return
+    listed = {name for name, _ in config.feature_descriptions}
+    carried: set[str] = set()
+    for item in report.items:
+        if not item.feature:
+            continue
+        carried.add(item.feature)
+        merged = config.feature_redirect(item.feature)
+        if merged:
+            report.errors.append(
+                f"{_where(item)}: feature '{item.feature}' was merged into '{merged}' in "
+                f"{config.features_file}; use `docket set --feature {merged}`"
+            )
+        elif item.feature not in listed:
+            report.errors.append(
+                f"{_where(item)}: feature '{item.feature}' is not in {config.features_file}. "
+                f"Use a feature listed there, or add the line "
+                f'{item.feature} = "<what belongs in it, in one sentence>"'
+            )
+    for name in sorted(listed - carried):
+        report.errors.append(
+            f"{config.features_file}: feature '{name}' is listed but no item carries it - "
+            "delete its line, or give it to the items it describes"
+        )
+
+
 def analyze(
     items: list[Item],
     today: date,
@@ -3681,6 +3723,7 @@ def analyze(
     _check_generator_band(report, settings)
     _check_feature_spellings(report)
     _check_retired_features(report, settings)
+    _check_registered_features(report, settings)
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
     _check_gone_touches(report, gone, settings)

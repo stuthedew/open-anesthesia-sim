@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
-feature: resident-gauge-basis
+feature: instruction-staleness-audit
 milestone: v0.5.33
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21

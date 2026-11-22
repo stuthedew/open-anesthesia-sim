@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
-feature: one-id-grammar
+feature: read-facts-through-docket
 milestone: v0.5.9
 touches: tools/fixture_id_check.py, subprojects/docket/src/docket/store.py
 added: 2026-09-23

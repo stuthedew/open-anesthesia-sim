@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: ux
-feature: supported-run-length-text
+feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tools/contrast_check.py, tests/integration/simulation_view
 added: 2026-10-25
 payoff: a correct stop at the supported run length no longer looks like a fault, so the interface's one warning colour keeps meaning a real failure

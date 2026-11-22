@@ -5,7 +5,7 @@ priority: P1
 effort: M
 status: done
 classes: science, test
-feature: late-washout-evidence
+feature: validation-resolving-power
 milestone: v0.5.23
 touches: docs/MODEL.md, tests/reference/test_late_washout_against_published_fits.py
 added: 2026-09-27

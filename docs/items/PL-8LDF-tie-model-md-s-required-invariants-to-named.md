@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: docs, test
-feature: model-requirements-tested
+feature: model-claims-held-by-tests
 touches: docs/MODEL.md, tools/doc_check.py
 added: 2026-08-25
 verify: grep -qF 'heading="Required invariants"' tools/doc_check.py
