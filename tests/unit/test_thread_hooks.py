@@ -253,10 +253,26 @@ def test_a_session_start_command_runs_only_on_the_starts_its_matcher_names(
     assert commands == ([("echo x", float(thread_hooks.COMMAND_TIMEOUT_S))] if runs else [])
 
 
-def test_the_setup_script_adds_the_entry_once_and_keeps_what_the_file_held(tmp_path: Path) -> None:
+#: The entry the setup script wrote until 2026-11-22. It ran this file only
+#: when the session started in the checkout itself (`PL-4J4H`).
+OLD_BOOTSTRAP = {
+    "hooks": [
+        {
+            "type": "command",
+            "command": 'test -f "$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py"'
+            ' && python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/thread_hooks.py" || true',
+        }
+    ]
+}
+
+
+def test_the_setup_script_replaces_an_older_entry_and_keeps_what_the_file_held(
+    tmp_path: Path,
+) -> None:
     home = tmp_path / "home"
     (home / ".claude").mkdir(parents=True)
-    (home / ".claude" / "settings.json").write_text(json.dumps({"theme": "dark"}), encoding="utf-8")
+    held = {"theme": "dark", "hooks": {"SessionStart": [OLD_BOOTSTRAP]}}
+    (home / ".claude" / "settings.json").write_text(json.dumps(held), encoding="utf-8")
     script = thread_hooks.setup_script()
 
     for _ in range(2):
@@ -271,6 +287,63 @@ def test_the_setup_script_adds_the_entry_once_and_keeps_what_the_file_held(tmp_p
         hook["command"] for group in user["hooks"]["SessionStart"] for hook in group["hooks"]
     ]
     assert commands == [thread_hooks.BOOTSTRAP_COMMAND]
+
+
+def test_the_setup_script_writes_the_entry_when_there_is_no_settings_file(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+
+    result = subprocess.run(
+        ["bash", "-c", thread_hooks.setup_script()],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        check=False,
+    )
+
+    assert result.returncode == 0
+    user = json.loads((home / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    assert user == {"hooks": {"SessionStart": [thread_hooks._bootstrap_group()]}}
+
+
+@pytest.mark.parametrize("start", ["checkout", "parent"])
+def test_the_setup_script_s_entry_finds_the_hook_from_the_checkout_or_its_parent(
+    tmp_path: Path, start: str
+) -> None:
+    """`PL-4J4H`: a thread that starts in the directory above its checkout still runs the hook.
+
+    On 2026-11-14 and 2026-11-22 a Projects thread started in `/home/user`,
+    which holds the one checkout, and the entry then looked for this file in
+    `/home/user/.claude/hooks/`. A stand-in hook prints the payload it reads,
+    which also shows that the entry passes Claude Code's payload on.
+    """
+    checkout = tmp_path / "checkout"
+    (checkout / ".claude" / "hooks").mkdir(parents=True)
+    (checkout / ".claude" / "hooks" / "thread_hooks.py").write_text(
+        "import sys\nprint('ran with', sys.stdin.read())\n", encoding="utf-8"
+    )
+    (tmp_path / "other").mkdir()
+    project_dir = checkout if start == "checkout" else tmp_path
+
+    result = subprocess.run(
+        ["bash", "-c", thread_hooks.BOOTSTRAP_COMMAND],
+        input='{"source": "startup"}',
+        env={"CLAUDE_PROJECT_DIR": str(project_dir), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert (result.returncode, result.stdout) == (0, 'ran with {"source": "startup"}\n')
+
+
+def test_the_setup_script_s_entry_starts_cleanly_with_no_hook_to_find(tmp_path: Path) -> None:
+    result = subprocess.run(
+        ["bash", "-c", thread_hooks.BOOTSTRAP_COMMAND],
+        env={"CLAUDE_PROJECT_DIR": str(tmp_path), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
 
 
 def test_the_owner_s_copy_of_the_setup_script_is_the_one_the_hook_prints() -> None:
