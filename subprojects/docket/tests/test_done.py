@@ -120,6 +120,90 @@ def test_a_method_is_found_under_its_class_and_not_under_another() -> None:
     assert "does not define" in _faults([f"{TEST_FILE}::TestB::test_it"], here, there=None)[0]
 
 
+TABLE_TEST = (
+    "import pytest\n"
+    "from thing import measure, other\n\n"
+    "CASES = {\n    'a': 1,\n}\n\n\n"
+    "@pytest.mark.parametrize('case', list(CASES))\n"
+    "def test_cases(case):\n    assert measure(case) == CASES[case]\n"
+)
+
+
+def test_a_case_added_to_the_table_a_test_reads_is_a_change() -> None:
+    """`parametrize` makes each entry of a module-level table a case of the test (`PL-YKQP`)."""
+    here = TABLE_TEST.replace("'a': 1,\n", "'a': 1,\n    'b': 2,\n")
+
+    assert _faults([f"{TEST_FILE}::test_cases"], here, there=TABLE_TEST) == []
+
+
+def test_a_change_reached_through_the_table_is_a_change() -> None:
+    """The table is built from a constant, and the constant changed."""
+    before = TABLE_TEST.replace("'a': 1", "'a': LIMIT").replace("CASES =", "LIMIT = 1\nCASES =")
+    here = before.replace("LIMIT = 1", "LIMIT = 2")
+
+    assert _faults([f"{TEST_FILE}::test_cases"], here, there=before) == []
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        ("\n\n\n@pytest", "\n\nUNUSED = 3\n\n\n@pytest"),
+        ("from thing import measure, other", "from thing import measure, other, third"),
+        ("'a': 1,\n}", "'a': 1,  # the first case\n}"),
+    ],
+    ids=["a new name the test does not use", "another name on its import line", "a comment"],
+)
+def test_a_module_change_the_test_does_not_use_is_no_change(edit: tuple[str, str]) -> None:
+    here = TABLE_TEST.replace(*edit)
+    assert here != TABLE_TEST
+
+    (fault,) = _faults([f"{TEST_FILE}::test_cases"], here, there=TABLE_TEST)
+
+    assert "neither added nor changed" in fault
+
+
+def test_a_changed_fixture_or_helper_the_test_uses_is_a_change() -> None:
+    before = (
+        "import pytest\n\n\n@pytest.fixture\ndef patient():\n    return 70\n\n\n"
+        "def test_dose(patient):\n    assert patient > 0\n"
+    )
+
+    here = before.replace("return 70", "return 80")
+
+    assert _faults([f"{TEST_FILE}::test_dose"], here, there=before) == []
+
+
+def test_a_change_to_another_test_is_no_change() -> None:
+    """Two tests that read one table are unchanged when only the other's own lines change."""
+    before = TABLE_TEST + "\n\ndef test_other():\n    assert CASES\n"
+    here = before.replace("    assert CASES\n", "    assert len(CASES) == 1\n")
+
+    (fault,) = _faults([f"{TEST_FILE}::test_cases"], here, there=before)
+
+    assert "neither added nor changed" in fault
+
+
+def test_a_changed_method_of_the_test_s_own_class_is_a_change_when_it_is_used() -> None:
+    before = (
+        "class TestA:\n    def _dose(self):\n        return 1\n\n"
+        "    def test_it(self):\n        assert self._dose()\n\n"
+        "    def test_other(self):\n        assert 2\n"
+    )
+    here = before.replace("return 1", "return 3")
+
+    assert _faults([f"{TEST_FILE}::TestA::test_it"], here, there=before) == []
+    assert _faults([f"{TEST_FILE}::TestA::test_other"], here, there=before)
+
+
+def test_a_decorator_on_the_class_of_a_method_is_a_change() -> None:
+    before = "class TestA:\n    def test_it(self):\n        assert 1\n"
+    here = "@pytest.mark.slow\n" + before
+
+    assert _faults([f"{TEST_FILE}::TestA::test_it"], here, there=before) == []
+    added = before + "\n    def test_new(self):\n        assert 2\n"
+    assert _faults([f"{TEST_FILE}::TestA::test_it"], added, there=before)
+
+
 def test_a_file_the_tokenizer_refuses_is_unread_and_not_a_pass() -> None:
     faults, unread = done.test_faults(
         [NODE], _reader(**{TEST_FILE: "def test_new(:\n  '''"}), _fork()

@@ -2988,7 +2988,11 @@ tests/test_thing.py::test_new` writes the first. `set` and `check` both refuse
 an entry of `tests` whose file the tree does not hold, whose test the file
 does not define, or whose test the branch neither added nor changed. A test
 counts as changed when its code differs from the copy at the commit where the
-branch left the default branch. Comments and line breaks are not code. Where
+branch left the default branch. Its code includes every module-level table,
+fixture and helper in its file that it uses, followed through the definitions
+they use in turn, so a case added to a table that `parametrize` reads changes
+the test. Code in another file, such as `conftest.py`, is not read. Comments
+and line breaks are not code. Where
 that commit or a test file cannot be read, `check` says so under the checks
 that could not run and refuses nothing.
 
