@@ -458,7 +458,6 @@ def _snapshot(
         ),
         stored_agent_l=stored_agent_l,
         unaccounted_agent_l=1.5e-13,
-        agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         control_timeline=control_timeline,
         bookmarks=BookmarkSet() if bookmarks is None else bookmarks,
@@ -2365,7 +2364,7 @@ def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
-    """Amounts show one decimal of a litre (`PL-TG60`), and each residual shows a power of ten."""
+    """Amounts show one decimal of a litre (`PL-TG60`), and the residual shows a power of ten."""
 
     panel = accounting(_snapshot(passes_validation=True))
 
@@ -2376,9 +2375,30 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
         "Delivered: <0.1 L\n"
         "Exhausted: <0.1 L\n"
         "Stored: <0.1 L\n"
-        "Unaccounted: <10⁻¹² L\n"
-        "Absolute error: <10⁻¹² L"
+        "Unaccounted: <10⁻¹² L"
     )
+
+
+def test_the_accounting_panel_prints_the_residual_once() -> None:
+    """The residual is one line, "Unaccounted", for a negative residual too (`PL-XFWG`).
+
+    The panel prints a residual only as the power of ten it lies below, without its
+    sign. An absolute-error line would then repeat the unaccounted line word for
+    word, so the panel prints the residual once (project owner, 2026-10-03,
+    ratified). -5.601e-14 L lies below 10⁻¹³, worked out by hand, and is negative
+    so that a line printing its magnitude would read the same as one printing it.
+    """
+
+    panel = accounting(replace(_snapshot(), unaccounted_agent_l=-5.601e-14))
+    lines = panel.amounts.splitlines()
+
+    assert [line.split(": ")[0] for line in lines] == [
+        "Delivered",
+        "Exhausted",
+        "Stored",
+        "Unaccounted",
+    ]
+    assert [line for line in lines if line.endswith("<10⁻¹³ L")] == ["Unaccounted: <10⁻¹³ L"]
 
 
 def test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre() -> None:
@@ -2477,7 +2497,6 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
 
     assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
         "Unaccounted: <10¹ L",
-        "Absolute error: <10¹ L",
     ]
 
 
@@ -2491,7 +2510,7 @@ def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
     check = validator.check_agent_accounting(currently_stored_agent_l=14.0)
     monkeypatch.setattr(
         "anesthesia_sim.app.dashboard_frame.ACCOUNTING_AMOUNT_NAMES",
-        ("Delivered", "Exhausted", "Stored", "Unaccounted"),
+        ("Delivered", "Exhausted", "Stored"),
     )
 
     with pytest.raises(ValueError, match=r"^zip\(\) argument 2 is longer than argument 1$"):
@@ -2516,7 +2535,6 @@ def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None
         "Exhausted: —",
         "Stored: —",
         "Unaccounted: —",
-        "Absolute error: —",
     ]
 
 

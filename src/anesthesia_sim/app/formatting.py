@@ -1521,11 +1521,10 @@ _SUPERSCRIPT_DIGITS: Final = str.maketrans("0123456789-", "⁰¹²³⁴⁵⁶⁷
 
 
 def format_agent_residual(litres: float) -> str:
-    """Render a residual of the accounting panel as the power of ten it lies below.
+    """Render the accounting panel's residual as the power of ten it lies below.
 
-    This function renders the unaccounted amount and the absolute error. Those
-    two lines exist to show how far below the amounts' resolution the
-    conservation check sits. At 1e-12 L, the fixed form of
+    This function renders the unaccounted amount. That line exists to show how
+    far below the amounts' resolution the conservation check sits. At 1e-12 L, the fixed form of
     `format_agent_volume` would show `0.0 L` and say nothing (`PL-TG60`). Each
     line instead prints the smallest power of ten that its magnitude is
     strictly less than. So `5.601e-14` is shown as `<10⁻¹³ L`, where the `<`
@@ -1540,7 +1539,7 @@ def format_agent_residual(litres: float) -> str:
     arithmetic ran, not by anything modelled, and a correct last-bit change
     to the propagator changes them. `docs/INTERFACE.md` § "Displayed precision"
     has the measurement. Any finer form would print a digit that is noise.
-    So both lines use the same form. The signed values are still shown when
+    The signed values are still shown when
     they mean something: a failing check halts the run, and the failure
     notice prints the signed unaccounted amount with six decimal places, such
     as `1.000000e+00 L`.
