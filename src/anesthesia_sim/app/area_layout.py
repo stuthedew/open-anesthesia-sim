@@ -1489,11 +1489,12 @@ class AreaLayout(QWidget):
         View, and the reader scrolls the View up and down where its content is
         taller than the Area (`ViewScroll`). Where the entry carries `whole`,
         the height is instead the larger of that minimum and the least height
-        of the View's content at the width the View is drawn, so the View
-        never scrolls up and down (`PL-D5J4`). That height counts every line
-        of a label that wraps, as `ViewScroll` does when it sizes the View. An
-        Area that has not been drawn yet measures it at the View's least
-        width, where a wrapped label takes the most lines. Its width is the
+        of the View's content, so the View never scrolls up and down
+        (`PL-D5J4`). That height counts every line of a label that wraps, as
+        `ViewScroll` does when it sizes the View, at the Area's least width,
+        where a wrapped label takes the most lines. It is measured there, and
+        not at the width the Area is drawn, so the need does not depend on the
+        last layout and one settle gives the same sizes as the next. Its width is the
         larger of the declared minimum width and the least width Qt would hold
         the View's widget to, with room beside the View for the scroll bar. So
         a View is never scrolled sideways, and a row of controls is never cut
@@ -1510,8 +1511,8 @@ class AreaLayout(QWidget):
         height = declared.height_px
 
         if entry.whole:
-            drawn_width = max(scroll.viewport().width(), content_width)
-            height = max(height, _least_height_at(widget, drawn_width))
+            least_width = max(declared.width_px, content_width)
+            height = max(height, _least_height_at(widget, least_width))
 
         return PixelSize(max(declared.width_px, content_width + scroll.bar_width()), height)
 

@@ -74,8 +74,10 @@ What changed, all of it placement and look, decided as placeholders:
    registry entries set `whole`, so the adapter holds each Area at the View's
    whole content height where that is more than the declared least height
    (`area_layout._view_need`). The height counts every line of a wrapped label
-   at the width the View is drawn (`area_layout._least_height_at`, which
-   `ViewScroll._fit` now shares). A first review found that with a branch open
+   at the Area's least width (`area_layout._least_height_at`, which
+   `ViewScroll._fit` now shares). Measuring at the drawn width made the need
+   depend on the last layout, and CI on `6fe53ea` found the page 2 px taller
+   than its least height in one test. A first review found that with a branch open
    the Parameters View shows two rows of dials in 224 px, and a 110 px Area hid
    the second run's row in every Workspace; main had shown both rows at 1920
    by 1080. The chart's rows above its plot also grow with a second run, to

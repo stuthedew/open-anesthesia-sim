@@ -684,10 +684,12 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
 
     Each rebuild of the layout gives every View a new frame and a new scroll
     box. In the Maintenance Workspace at 1366 by 768, with a branch open, the
-    compartment schematic scrolls inside its Area. Before the fix, a reader who had
-    scrolled such a View to the end found it back at the top after splitting a
-    different Area, though the same View was kept. Before `PL-CBYS` the scroll
-    sat inside the View and moved with it.
+    compartment schematic scrolls inside its Area. Before the fix, a reader who
+    had scrolled such a View partway down found it back at the top after
+    splitting a different Area, though the same View was kept. Before
+    `PL-CBYS` the scroll sat inside the View and moved with it. The split can
+    change the Area's height by a pixel, so the test scrolls to the middle,
+    where that change cannot move the position.
     """
 
     from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
@@ -700,8 +702,9 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
     assert scroll is not None
     bar = scroll.verticalScrollBar()
     assert bar.maximum() > 0, "the schematic does not scroll at this size"
-    bar.setValue(bar.maximum())
+    bar.setValue(bar.maximum() // 2)
     scrolled_to = bar.value()
+    assert scrolled_to > 0
     other = next(
         area
         for area in areas.model.areas()
