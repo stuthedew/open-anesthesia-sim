@@ -1,10 +1,13 @@
 ---
 id: PL-WK2B
 title: docs/INTERFACE.md says each chart point is computed by formula from the run's definition and that no stored series lies behind a trace, but the chart reads the run's stored states
-status: untriaged
+status: done
 feature: interface-matches-its-spec
 touches: docs/INTERFACE.md
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2234
+verify: ! grep -qF 'No stored series of values lies behind a trace' docs/INTERFACE.md
 ---
 
 **Problem.** docs/INTERFACE.md says each chart point is computed by formula from the run's definition and that no stored series lies behind a trace, but the chart reads the run's stored states
@@ -38,3 +41,7 @@ statements that predate whole-second stepping.
 
 **Found by** the first pass of `PL-SY7G`, 2026-11-22, and checked against
 `drawn_window`'s docstring.
+
+**Generator check.** A one-off. The three passages described the chart's design before whole-second stepping (#2180, PL-MH9J) brought in the stored states, and that change rewrote the sections it knew of but not these. The interface document's sort (`PL-SY7G`) read every paragraph against the code, and its blind review caught them. The cause, a design change that leaves an older description elsewhere in the specification, is what the sort by reader and its reviews exist to find.
+
+**Closed 2026-11-22 by `PL-SY7G`** (#2234). Its review fold rewrote the three passages: each drawn point is now the state the run stored for that second (`SimulationController.drawn_window`, `SimulationState.stored_states`), and the state drawn at a control change is the stored one, like every other.

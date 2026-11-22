@@ -7,7 +7,7 @@ status: blocked
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md
-blocked-by: PL-N83Z, PL-4H8Q, PL-SY7G
+blocked-by: PL-1VXY
 added: 2026-11-10
 payoff: the replaced model document is checked for the structural problems the old one had, so they are not carried over
 ---

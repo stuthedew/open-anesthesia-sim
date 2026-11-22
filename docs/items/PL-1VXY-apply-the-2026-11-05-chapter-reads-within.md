@@ -3,7 +3,7 @@ id: PL-1VXY
 title: Apply the 2026-11-05 chapter reads' within-section findings to docs/MODEL.md: PL-BSMF applied only the outline read, and the 30 chapter reads in /mnt/project-files/v0.7.0/repo-copy-edit/runs/docs-MODEL-md/structure/chapter-NN.txt also move paragraphs within a section and fix headings; their row numbers are from cfb15a4a, before the restructure
 priority: P2
 effort: L
-status: blocked
+status: ready
 classes: docs
 feature: model-md-structure
 touches: docs/MODEL.md

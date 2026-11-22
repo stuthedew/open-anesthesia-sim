@@ -3,13 +3,16 @@ id: PL-SY7G
 title: Sort the interface document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its sections (stage 3 of the split PL-P3GZ decided)
 priority: P2
 effort: L
-status: ready
+status: done
 classes: docs
 feature: model-md-structure
 touches: docs/INTERFACE.md
 blocked-by: PL-48MX
 added: 2026-11-11
+closed: 2026-11-22
+pr: 2234
 payoff: each paragraph of the document is for its reader, and none restates what a docstring, a test or an item already says
+verify: grep -qF '#### What a separate window shows' docs/INTERFACE.md
 ---
 
 **Problem.** Sort the interface document by reader after the split: move or cut each paragraph the reverse outline gives another home, and apply the structure findings for its sections (stage 3 of the split PL-P3GZ decided)
