@@ -13,18 +13,30 @@ value, so each is an independent check:
 - The Gas Man Workbook's Exercises 14-1 and 14-2, which print the cost of the
   isoflurane delivered in two hour-long anesthetics.
 
+The last test checks the figures that `docs/PARAMETERS.md` § "Agent amount"
+prints from these comparisons: its two tables, the ranges it states and the
+sevoflurane example. It reads each published input from the section, as
+`tests/reference/test_known_limitations_figures.py` does.
+
 The tests import only the agent loader and the conversion.
 `docs/ARCHITECTURE.md` § "Tests (`tests/`)" lets a test in this directory
 import a parameter loader but not use a solver in `core/`. The conversion is a
 closed-form expression, not a solver.
+The last test also imports the physical constants that the conversion is
+built from, and one unit factor.
 """
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 import pytest
 
+from anesthesia_sim.core import liquid_agent
 from anesthesia_sim.core.liquid_agent import liquid_volume_ml
 from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE
 
 # Biro P. Calculation of volatile anaesthetics consumption from agent
 # concentration and fresh gas flow. Acta Anaesthesiol Scand. 2014;58(8):968-72.
@@ -154,3 +166,177 @@ def test_the_conversion_reproduces_gas_mans_published_delivered_costs(
 
     allowed_usd = 0.005 + printed_cost_usd * 0.5 / 196.0
     assert abs(model_cost_usd - printed_cost_usd) <= allowed_usd
+
+
+PARAMETERS_PATH = Path(__file__).resolve().parents[2] / "docs" / "PARAMETERS.md"
+AGENT_AMOUNT_HEADING = "## Agent amount"
+BODY_TEMPERATURE_CELSIUS = 37.0
+MILLILITRES_PER_LITRE = 1000.0
+
+# The two agents in the section's Gas Man table that this model does not carry.
+# Laster MJ, Fang Z, Eger EI. Specific gravities of desflurane, enflurane,
+# halothane, isoflurane, and sevoflurane. Anesth Analg. 1994;78(6):1152-3.
+# doi:10.1213/00000539-199406000-00022. Abstract: "enflurane 1.5230 +/- 0.0003
+# g/mL (mean +/- SD); halothane 1.8680 +/- 0.0007 g/mL", at 20 degrees C. Read
+# from PubMed (PMID 8198275) on 2026-11-22, abstract only. The molar masses are
+# ChEMBL's full molecular weights for CHEMBL931 (halothane, C2HBrClF3) and
+# CHEMBL1257 (enflurane, C3H2ClF5O), read through the ChEMBL connector on
+# 2026-11-22.
+UNCARRIED_AGENTS_DENSITY_AND_MOLAR_MASS = {
+    "halothane": (1.8680, 197.38),
+    "enflurane": (1.5230, 184.49),
+}
+
+
+def _agent_amount_text() -> str:
+    """`docs/PARAMETERS.md` § "Agent amount", with each run of whitespace made one space."""
+
+    text = PARAMETERS_PATH.read_text(encoding="utf-8")
+    start = text.index(AGENT_AMOUNT_HEADING)
+    end = text.find("\n## ", start + len(AGENT_AMOUNT_HEADING))
+
+    return " ".join(text[start : end if end >= 0 else None].split())
+
+
+def _printed(pattern: str) -> tuple[str, ...]:
+    """The groups of the one match of `pattern` in the section, or a failure naming it."""
+
+    # regex: a search for one sentence's or row's figures through the section's prose.
+    matches = re.findall(pattern, _agent_amount_text())
+    assert len(matches) == 1, f"the section matches {pattern!r} {len(matches)} times: {matches}"
+    found = matches[0]
+
+    return found if isinstance(found, tuple) else (found,)
+
+
+def _places(value: float, printed: str) -> str:
+    """`value` to as many decimal places as `printed` has."""
+
+    places = len(printed.split(".")[1]) if "." in printed else 0
+
+    return f"{value:.{places}f}"
+
+
+def _molar_volume_l_mol(celsius: float) -> float:
+    """V_m = R T / p at one standard atmosphere, in litres per mole."""
+
+    kelvin = celsius + liquid_agent.CELSIUS_ZERO_K
+
+    return (
+        liquid_agent.MOLAR_GAS_CONSTANT_J_MOL_K
+        * kelvin
+        / liquid_agent.STANDARD_ATMOSPHERE_PA
+        * LITRES_PER_CUBIC_METRE
+    )
+
+
+def _vapour_ml_per_liquid_ml(density_g_ml: float, molar_mass_g_mol: float, celsius: float) -> float:
+    """Millilitres of vapour from 1 mL of liquid: density over molar mass times V_m."""
+
+    return density_g_ml / molar_mass_g_mol * _molar_volume_l_mol(celsius) * MILLILITRES_PER_LITRE
+
+
+def _signed_percent(derived: float, published: float) -> float:
+    return (derived / published - 1.0) * 100.0
+
+
+def test_the_agent_amount_section_prints_what_its_inputs_give() -> None:
+    """Every figure in the section's two tables and its ranges follows from its inputs.
+
+    The molar volumes are R T / p at 20 and 37 °C. Each derived ratio is the
+    agent's density over its molar mass times a molar volume. The carried
+    agents' densities and molar masses must be the stored ones, and their
+    published constants must be the ones this module transcribed. Biro's and
+    Gas Man's constants for the two agents this model does not carry are read
+    from the section. A figure printed to more places than its inputs support,
+    or one left behind when an input changed, fails at the decimals printed.
+    """
+
+    at_20 = _molar_volume_l_mol(20.0)
+    at_37 = _molar_volume_l_mol(BODY_TEMPERATURE_CELSIUS)
+    (printed_20,) = _printed(r"At that condition the ideal-gas molar volume is (\d+\.\d+) L/mol")
+    printed_37, factor = _printed(
+        r"molar volume is (\d+\.\d+) L/mol at 37 °C, so declaring 37 °C instead would change "
+        r"each converted amount by a factor of (\d\.\d+)"
+    )
+    assert _places(at_20, printed_20) == printed_20
+    assert at_20 == pytest.approx(liquid_agent.REFERENCE_MOLAR_VOLUME_L_MOL, rel=1e-12)
+    assert _places(at_37, printed_37) == printed_37
+    assert _places(at_37 / at_20, factor) == factor
+
+    biro_gaps, biro_gaps_37 = [], []
+    for agent_id in AGENTS:
+        agent = load_agent_parameters(agent_id)
+        density, molar_mass, derived_20, biro, derived_37 = _printed(
+            rf"\| {agent_id.capitalize()} \| (\d\.\d+) \| (\d+\.\d+) \| (\d+\.\d) \| (\d+) \| "
+            r"(\d+\.\d) \|"
+        )
+        assert float(density) == float(agent.liquid_density.g_ml)
+        assert float(molar_mass) == float(agent.molar_mass_g_mol)
+        assert float(biro) == BIRO_2014_VAPOUR_ML_PER_LIQUID_ML[agent_id]
+        ratio_20 = _vapour_ml_per_liquid_ml(float(density), float(molar_mass), 20.0)
+        ratio_37 = _vapour_ml_per_liquid_ml(
+            float(density), float(molar_mass), BODY_TEMPERATURE_CELSIUS
+        )
+        assert _places(ratio_20, derived_20) == derived_20, f"{agent_id} at 20 °C: {ratio_20!r}"
+        assert _places(ratio_37, derived_37) == derived_37, f"{agent_id} at 37 °C: {ratio_37!r}"
+        biro_gaps.append(abs(_signed_percent(ratio_20, float(biro))))
+        biro_gaps_37.append(_signed_percent(ratio_37, float(biro)))
+    within, low, high = _printed(
+        r"derivation reproduces all three within (\d\.\d) %\. At 37 °C it runs "
+        r"(\d\.\d)–(\d\.\d) % high"
+    )
+    # "Within" is a bound, so the largest gap may round below it, but not exceed it.
+    assert max(biro_gaps) <= float(within), f"the 20 °C gaps from Biro are {biro_gaps}"
+    assert (_places(min(biro_gaps_37), low), _places(max(biro_gaps_37), high)) == (low, high)
+
+    fewer, sevoflurane_20, sevoflurane_37 = _printed(
+        r"print consumption figures (\d\.\d) % below the published ones\. .*? For sevoflurane, "
+        r"1 L of vapour comes from (\d\.\d+) mL of liquid at 20 °C, and would come from "
+        r"(\d\.\d+) mL at 37 °C"
+    )
+    sevoflurane = load_agent_parameters("sevoflurane")
+    density_g_ml = float(sevoflurane.liquid_density.g_ml)
+    molar_mass_g_mol = float(sevoflurane.molar_mass_g_mol)
+    assert _places((1.0 - at_20 / at_37) * 100.0, fewer) == fewer
+    for celsius, printed in ((20.0, sevoflurane_20), (BODY_TEMPERATURE_CELSIUS, sevoflurane_37)):
+        millilitres = MILLILITRES_PER_LITRE / _vapour_ml_per_liquid_ml(
+            density_g_ml, molar_mass_g_mol, celsius
+        )
+        assert _places(millilitres, printed) == printed, f"at {celsius} °C: {millilitres!r} mL"
+
+    gas_man_gaps, gas_man_gaps_37 = [], []
+    inputs = {
+        agent_id: (
+            float(load_agent_parameters(agent_id).liquid_density.g_ml),
+            float(load_agent_parameters(agent_id).molar_mass_g_mol),
+        )
+        for agent_id in AGENTS
+    } | UNCARRIED_AGENTS_DENSITY_AND_MOLAR_MASS
+    for agent_id, (density_g_ml, molar_mass_g_mol) in inputs.items():
+        gas_man, derived_20, gap_20, derived_37, gap_37 = _printed(
+            rf"\| {agent_id.capitalize()} \| (\d+) \| (\d+\.\d) \(([−+]\d\.\d+) %\) \| "
+            r"(\d+\.\d) \(\+(\d\.\d) %\) \|"
+        )
+        if agent_id in GAS_MAN_VAPOUR_ML_PER_LIQUID_ML:
+            assert float(gas_man) == GAS_MAN_VAPOUR_ML_PER_LIQUID_ML[agent_id]
+        ratio_20 = _vapour_ml_per_liquid_ml(density_g_ml, molar_mass_g_mol, 20.0)
+        ratio_37 = _vapour_ml_per_liquid_ml(
+            density_g_ml, molar_mass_g_mol, BODY_TEMPERATURE_CELSIUS
+        )
+        signed_20 = _signed_percent(ratio_20, float(gas_man))
+        signed_37 = _signed_percent(ratio_37, float(gas_man))
+        assert _places(ratio_20, derived_20) == derived_20, f"{agent_id} at 20 °C: {ratio_20!r}"
+        assert _places(ratio_37, derived_37) == derived_37, f"{agent_id} at 37 °C: {ratio_37!r}"
+        assert _places(signed_20, gap_20).replace("-", "−") == gap_20.replace("+", ""), (
+            f"{agent_id}: {signed_20!r} % from Gas Man at 20 °C"
+        )
+        assert _places(signed_37, gap_37) == gap_37, f"{agent_id}: {signed_37!r} % at 37 °C"
+        gas_man_gaps.append(abs(signed_20))
+        gas_man_gaps_37.append(signed_37)
+    within, low, high = _printed(
+        r"printed vapour-to-liquid constants within (\d\.\d+) %, and the 37 °C derivation runs "
+        r"(\d\.\d)–(\d\.\d) % high"
+    )
+    assert max(gas_man_gaps) <= float(within), f"the 20 °C gaps from Gas Man are {gas_man_gaps}"
+    assert (_places(min(gas_man_gaps_37), low), _places(max(gas_man_gaps_37), high)) == (low, high)

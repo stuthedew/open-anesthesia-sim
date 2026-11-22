@@ -4665,8 +4665,10 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 #
 # `PL-B6YV` added the first section held by its numeric paragraphs, "Displayed
 # precision", whose numbers a learner reads directly. The other sections join
-# with the passes the `model-claims-held-by-tests` feature files, first
-# `PL-19W8`, which decides whether the rest run.
+# with the passes the `model-claims-held-by-tests` feature files. `PL-19W8`
+# added the evidence behind the known limitations, and `PL-H94Q` the
+# mass-balance identity, the selected method, the concentrations and the agent
+# amount.
 #
 # `PL-BLN0` added the two families whose paragraphs describe the code: the
 # whole of `docs/ARCHITECTURE.md`, bound at its title so that a chapter added
@@ -4687,6 +4689,14 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 # chain: it proves the value still travels, never that a widget still draws it,
 # and a value travelling to a display that no longer shows it is the failure
 # that section's own subsection calls silent.
+#: What a section held by its numeric paragraphs promises, which is the same for
+#: every such section.
+NUMERIC_PARAGRAPH_PROMISE = (
+    "every paragraph stating a number with a unit names the test that computes it, "
+    "itself or in the For-developers note below it, cites its published source, "
+    "or is dated, unless a provenance: or derived: marker ties each of its numbers "
+    "with a unit"
+)
 BOUND_FAMILIES = (
     BoundFamily(
         document=VERIFICATION,
@@ -4726,12 +4736,7 @@ BOUND_FAMILIES = (
         level=3,
         kind=FIGURE_ENTITY,
         members=_numeric_paragraph_members,
-        promise=(
-            "every paragraph stating a number with a unit names the test that computes it, "
-            "itself or in the For-developers note below it, cites its published source, "
-            "or is dated, unless a provenance: or derived: marker ties each of its numbers "
-            "with a unit"
-        ),
+        promise=NUMERIC_PARAGRAPH_PROMISE,
     ),
     BoundFamily(
         document=PARAMETERS,
@@ -4739,12 +4744,39 @@ BOUND_FAMILIES = (
         level=2,
         kind=FIGURE_ENTITY,
         members=_numeric_paragraph_members,
-        promise=(
-            "every paragraph stating a number with a unit names the test that computes it, "
-            "itself or in the For-developers note below it, cites its published source, "
-            "or is dated, unless a provenance: or derived: marker ties each of its numbers "
-            "with a unit"
-        ),
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Mass-balance identity",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Selected method (as implemented)",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Concentrations",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=PARAMETERS,
+        heading="Agent amount",
+        level=2,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
     ),
     BoundFamily(
         document=ARCHITECTURE,
