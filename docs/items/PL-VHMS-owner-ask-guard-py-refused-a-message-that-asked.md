@@ -11,6 +11,7 @@ touches: .claude/hooks/owner_ask_guard.py, tests/unit/test_owner_ask_guard.py
 added: 2026-11-02
 closed: 2026-11-02
 pr: 1948
+filed-pr: 1944
 payoff: a session can tell the owner that later pull requests will hold for the read without the guard refusing the reply
 verify: grep -q '_foretold' .claude/hooks/owner_ask_guard.py && grep -q 'each will wait for your read' tests/unit/test_owner_ask_guard.py
 reenters: PL-TLPH

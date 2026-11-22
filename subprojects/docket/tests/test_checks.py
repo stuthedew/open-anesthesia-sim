@@ -4525,6 +4525,14 @@ def test_a_pr_value_with_a_leading_zero_is_refused() -> None:
     assert any("`pr` is '07'" in line for line in report.errors)
 
 
+def test_a_filed_pr_value_that_is_no_pull_request_number_is_refused() -> None:
+    """`docket inflow` compares it with a `pr:`, so it is read by the same rule (`PL-C47M`)."""
+    report = analyze([_item(filed_pr="#71")], TODAY)
+
+    assert any("`filed-pr` is '#71'" in line for line in report.errors)
+    assert analyze([_item(filed_pr="71")], TODAY).errors == []
+
+
 @pytest.mark.parametrize(
     ("named", "fault"),
     [

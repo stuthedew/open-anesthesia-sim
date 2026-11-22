@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-01
 closed: 2026-10-01
 pr: 1271
+filed-pr: 1270
 payoff: which branch is the base is one answer in docket and in every CI tool, so a clone where main is only local, or a renamed default, cannot split them
 verify: ! grep -qF 'BRANCH = "main"' tools/main_ci_status.py && ! grep -qF 'BRANCH = "main"' tools/tag_release.py && ! grep -qF 'default="main"' tools/update_armed.py
 reenters: PL-PVW2

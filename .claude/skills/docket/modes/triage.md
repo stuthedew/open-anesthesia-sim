@@ -409,8 +409,8 @@ function or check already encodes that fact. Land on one of these:
 - **An instance of a head's fact, filed after the head closed.** The head's
   `misread:` states the fact, and `bin/docket generators` gives the head's
   close date. The head's fix did not stop the mechanism, and nothing else in
-  the store can record that: every attributed child to date was filed in the
-  commit that closed its parent (`PL-04KR`).
+  the store can record that: a head's `root-cause-of:` names only the members
+  filed while it was open (`PL-04KR`).
 - **A re-entry**: the same defect, or the same mechanism at a sibling site, as
   an item closed within 30 days whose fix should have covered it.
 - **One fact misread by two or more other items, and no head's `misread:`
@@ -438,7 +438,12 @@ three filings re-enter - the three post-close instances above - and it reads
 nothing from the prose line (`PL-WXKD`). It counts the three per fact: a
 filing that names any head of a fact counts against the first head that stated
 it, so name whichever head you found (`PL-YSV3`). `bin/docket inflow --lane product`
-does the same for product filings (`PL-K5CX`).
+does the same for product filings (`PL-K5CX`). It leaves out a named item whose
+`pr:` is the filing's `filed-pr:`, the pull request that `bin/docket new`
+recorded as adding it. That filing was found while the fix was being built,
+before it shipped, so it cannot show the fix failed (`PL-C47M`). Where `new`
+could not ask the forge, record the number with `bin/docket set <id>
+--filed-pr N`.
 
 **On a grooming pass, compare the heads with each other** (`PL-5MYR`). The
 check above asks one item about the heads. Nothing else asks the heads about

@@ -783,6 +783,14 @@ class Item:
     #: outlives it. Defaulted empty like the fields below, so an item written
     #: before the field existed still parses.
     pr: str = ""
+    #: The pull request open on the branch that filed this item, as a bare
+    #: number, written by `docket new` when the forge names one. It is the
+    #: one record of which pull request added the item. `docket inflow` reads
+    #: it to tell a filing found while a fix was being built, which the same
+    #: pull request filed and closed, from a fix that shipped and then did not
+    #: hold (`PL-C47M`). Empty where the filing had no pull request open, or
+    #: the forge could not be asked.
+    filed_pr: str = ""
     #: One plain-language line of what closing this item buys - faster, fewer
     #: bugs reaching `main`, a check that stops lying, a release that stops
     #: needing a person to remember a step. The consequence, never a
@@ -2271,6 +2279,7 @@ def parse_item(text: str, path: str = "") -> Item:
         closed=_parse_date(fields.get("closed", "")),
         commit=fields.get("commit", ""),
         pr=fields.get("pr", ""),
+        filed_pr=fields.get("filed-pr", ""),
         reason=fields.get("reason", ""),
         payoff=fields.get("payoff", ""),
         tests=lists["tests"],
@@ -2323,6 +2332,7 @@ FIELD_ORDER = (
     "closed",
     "commit",
     "pr",
+    "filed-pr",
     "reason",
     "payoff",
     "tests",
@@ -2364,6 +2374,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "closed": item.closed.isoformat() if item.closed else "",
         "commit": item.commit,
         "pr": item.pr,
+        "filed-pr": item.filed_pr,
         "reason": item.reason,
         "payoff": item.payoff,
         "tests": ", ".join(item.tests),

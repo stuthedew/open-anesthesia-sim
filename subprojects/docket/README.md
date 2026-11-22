@@ -1769,7 +1769,8 @@ not reported: nearly every filing names a path something closed within the
 month before it, so the column would read the same every week (`PL-WXKD`).
 Re-entry is read from its record instead: `re-entry` counts the filings whose
 `reenters:` names a `done` item, closed by the filing's `added:` date, whose fix
-should have covered them, as triage's generator check judged it, and any closed
+should have covered them, as triage's generator check judged it, less any
+named item that the filing's own pull request closed (its `filed-pr:`), and any closed
 item three filings re-enter is named under the table as a generator whose fix
 did not hold. The three are counted per fact. A filing that re-enters a head
 counts against the first head that stated the same `misread:` fact, so the
@@ -2945,6 +2946,14 @@ was open, two in the whole store after it closed. `docket inflow` counts it
 per period and names any closed item three filings re-enter (`PL-WXKD`). Where
 the item named is a head, the filing counts against the fact that head states,
 together with the filings that name the fact's other heads (`PL-YSV3`).
+
+`filed-pr` names the pull request that added the item, as a bare number.
+`docket new` writes it from the pull request the forge names as open on the
+branch, and writes nothing under `--no-remote` or where none is open. `docket
+inflow` does not count a `reenters:` id whose item's `pr:` is the same number,
+because that filing was found while the fix was being built and the fix had
+not shipped (`PL-C47M`). The field was written onto the 206 items carrying
+`reenters:` on 2026-11-22, from the squash commit that added each one.
 
 `no-successor` records the answer to such a line when no successor head is
 owed. It goes on the item that gives the answer, through `docket set

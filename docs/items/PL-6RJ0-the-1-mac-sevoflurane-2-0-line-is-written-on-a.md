@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_fr
 added: 2026-10-25
 closed: 2026-10-26
 pr: 1840
+filed-pr: 1830
 payoff: the 1 MAC line always states the divisor of the ×MAC numbers beside it, including while a halt is shown
 verify: grep -q 'def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent_s_1_mac' tests/integration/test_simulation_view.py
 reenters: PL-X7D5

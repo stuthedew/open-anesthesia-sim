@@ -1416,9 +1416,10 @@ def cmd_new(args: argparse.Namespace) -> int:
     # Offered only where a registry describes the features: without one there
     # is no description to judge a suggestion by (`PL-LRWK`).
     groups = feature_profiles(items, config) if config.features_file else {}
+    filed_pr = _filing_pull_request(args)
     captures: list[Item] = []
     for title in args.title:
-        captures.append(_captured(new_id(taken), title, args))
+        captures.append(with_fields(_captured(new_id(taken), title, args), filed_pr=filed_pr))
         taken.add(captures[-1].identifier)
     # Every capture's file is read back before the first is written, so a value
     # the reader would not read as typed - a title holding a line break, most
@@ -1451,6 +1452,30 @@ def cmd_new(args: argparse.Namespace) -> int:
         if groups and not capture.feature:
             print(render.format_feature_suggestions(identifier, suggest(capture.title, groups)))
     return 0
+
+
+def _filing_pull_request(args: argparse.Namespace) -> str:
+    """The pull request open on this branch, as `filed-pr:` records it, or `""`.
+
+    Asked once per call, since every capture in it is filed from one branch.
+    It is the moment the fact is known: the pull request that adds a capture
+    is the one open on the branch that writes it, which `claim` opens as a
+    draft before any work. Nothing else records it, and the squash commit's
+    subject is no record (`PL-C47M`). A branch with no pull request open, or a
+    forge that could not be asked, leaves the field empty, and `docket inflow`
+    then counts the filing's re-entries as it always did and says how many it
+    could not check.
+    """
+    inv = _invocation(args)
+    opened = _open_pull_requests(args, inv.root, inv.config)
+    if opened is None or inv.git is None:
+        return ""
+    branch = head_branch(inv.root, inv.git)
+    if not branch:
+        return ""
+    answer = opened()
+    number = answer.get(branch) if answer else None
+    return str(number) if number is not None else ""
 
 
 def _train_refusal(args: argparse.Namespace) -> int:
@@ -1891,6 +1916,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("impairs-generators", "impairs_generators"),
     ("reenters", "reenters"),
     ("no-successor", "no_successor"),
+    ("filed-pr", "filed_pr"),
     ("sweep", "sweep"),
 )
 
@@ -6297,6 +6323,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     new.add_argument("--feature", default=None, help="group this with related work")
     new.add_argument(
+        "--no-remote",
+        action="store_true",
+        default=False,
+        help="do not ask the forge which pull request is open on this branch, so no "
+        "filed-pr: is written; for an offline checkout",
+    )
+    new.add_argument(
         "--resource",
         choices=RESOURCES,
         default=None,
@@ -6370,6 +6403,11 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--impairs-generators", metavar="WHY")
     setter.add_argument(
         "--sweep", metavar="WHAT", help="record that this item's work is a deliberate sweep"
+    )
+    setter.add_argument(
+        "--filed-pr",
+        metavar="N",
+        help="the pull request that added this item, where `new` could not ask the forge",
     )
     setter.add_argument(
         "--overwrite", action="store_true", help="replace a value the item already records"

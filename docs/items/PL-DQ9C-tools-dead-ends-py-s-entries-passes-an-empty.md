@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-10
 closed: 2026-10-12
 pr: 1434
+filed-pr: 1391
 payoff: The session-start digest never prints a dead end cut short with its retrieval id lost; an entry the walker declines is named instead
 verify: grep -q 'def test_an_entry_carried_on_from_the_margin_is_not_emitted_short' tests/unit/test_dead_ends.py
 reenters: PL-F5B9

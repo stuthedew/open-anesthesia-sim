@@ -11,6 +11,7 @@ touches: .claude/rules/plain-writing.md, .claude/skills/docket/modes/close-out.m
 added: 2026-11-02
 closed: 2026-11-02
 pr: 1943
+filed-pr: 1935
 payoff: every later change to the model specification gets the same plain-prose review as a docstring, and each section rewrite can show the reader what it removed
 verify: grep -qF 'A table cell or paragraph that has grown into an essay' .claude/rules/plain-writing.md && uv run pytest -q -p no:cacheprovider tests/unit/test_model_rewrite.py tests/unit/test_new_prose.py
 reenters: PL-PRCS

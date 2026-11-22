@@ -9,6 +9,7 @@ feature: chrome-colour-audit
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py
 deferred-from: v0.7.0 - present at the freeze, with no real connection to the frozen list or to v0.7.0's Required scope: a lettering weight under the Mac's Dark appearance changes no value and no layout the milestone builds, and its fix needs a Mac
 added: 2026-11-11
+filed-pr: 2118
 payoff: The interface's lettering reads the same on a Mac set to Dark as under Light, as the declared appearance promises.
 reenters: PL-KRZW
 ---

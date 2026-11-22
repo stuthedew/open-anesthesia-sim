@@ -935,6 +935,11 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{where}: `pr` is '{item.pr}'; it holds a pull request number and "
             "nothing else, written without the `#`"
         )
+    if item.filed_pr and pr_number(item.filed_pr) is None:
+        report.errors.append(
+            f"{where}: `filed-pr` is '{item.filed_pr}'; it holds a pull request number and "
+            "nothing else, written without the `#`"
+        )
     if item.status == "dropped" and not item.reason:
         report.errors.append(
             f"{where}: marked dropped but records no `reason`; an item closed without "

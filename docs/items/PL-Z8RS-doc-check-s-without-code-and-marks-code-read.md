@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 closed: 2026-10-04
 pr: 1332
+filed-pr: 1288
 payoff: a TeX delimiter in prose after a code span wrapped across lines is checked instead of silently read as code
 verify: grep -q 'def test_without_code_reads_a_span_wrapped_across_lines' tests/unit/test_doc_check.py
 reenters: PL-KGYT

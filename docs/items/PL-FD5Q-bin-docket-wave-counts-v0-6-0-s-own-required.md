@@ -11,6 +11,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-23
 closed: 2026-09-23
 pr: 970
+filed-pr: 928
 payoff: the session-start Beat line reports how much the gate really waits on outside the milestone - five items today, not ten
 verify: grep -q 'def test_outside_items_leave_out_what_required_scope_names' subprojects/docket/tests/test_roadmap.py
 reenters: PL-J6HP

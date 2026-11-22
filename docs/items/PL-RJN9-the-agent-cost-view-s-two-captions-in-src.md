@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/display_un
 added: 2026-11-07
 closed: 2026-11-11
 pr: 2136
+filed-pr: 2063
 payoff: the agent cost View's captions always name the temperature and pressure the conversion used, so a change to either cannot leave a correct figure under a wrong label
 verify: ! grep -qF 'at 20 degrees C' src/anesthesia_sim/app/agent_cost.py
 reenters: PL-40SJ

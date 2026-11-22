@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 closed: 2026-10-05
 pr: 1363
+filed-pr: 1353
 payoff: a session reading cmd_withdraw is told the true extent of what a withdrawal rewrites, so nobody trusts a one-line diff a wrapped recurrences value does not give, or narrows the write to match and orphans the tail
 verify: ! grep -qF 'replaces one line' subprojects/docket/src/docket/cli.py && ! grep -qF 'whose diff is *one* line' subprojects/docket/src/docket/model.py
 reenters: PL-9HD1

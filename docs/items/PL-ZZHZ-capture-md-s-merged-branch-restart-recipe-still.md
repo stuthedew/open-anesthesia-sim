@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-30
 closed: 2026-09-30
 pr: 1247
+filed-pr: 1238
 payoff: a session restarting a merged branch leaves its remote copy to the branch sweep and hands the owner only a branch the sweep keeps, whichever of the two copies of the rule it read
 verify: grep -qF 'python3 tools/branch_sweep.py' .claude/skills/docket/modes/capture.md && grep -qF 'left to the branch sweep and the project owner' .claude/hooks/no-prune-guard.sh
 reenters: PL-G424

@@ -11,6 +11,7 @@ touches: src/anesthesia_sim/core/liquid_agent.py, ROADMAP.md
 added: 2026-11-09
 closed: 2026-11-16
 pr: 2168
+filed-pr: 2052
 payoff: a rename of the Known-limitations note on the reference condition is caught by the doc check, so the liquid-agent docstring never points a developer at a note that no longer exists
 verify: ! grep -qF '"Known limitations", "One reference' src/anesthesia_sim/core/liquid_agent.py && ! grep -qF 'The note "One reference condition' ROADMAP.md
 reenters: PL-93LV

@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026
 added: 2026-11-10
 closed: 2026-11-22
 pr: 2231
+filed-pr: 2090
 payoff: a value left over from an earlier run in the compartment schematic, the agent cost View or any later View fails a test, so a learner never reads one run's amount under another run's settings
 tests: tests/integration/test_view_contract.py::test_the_shared_layout_holds_every_registered_view
 reenters: PL-J5GC

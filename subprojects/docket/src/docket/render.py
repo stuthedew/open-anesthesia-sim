@@ -4377,7 +4377,8 @@ def format_inflow(report: Inflow) -> str:
         "  filed      filings no head or sweep explained when they arrived. /day divides by",
         "             the days the period has, so a short final period compares with the rest.",
         "  re-entry   of filed, those whose reenters: names a closed item whose fix should",
-        "             have covered them, as triage's generator check judged it.",
+        "             have covered them, as triage's generator check judged it. A name the",
+        "             filing's own pull request closed is left out: that fix had not shipped.",
         "  +head      filed while a head whose root-cause-of names them was open: the head's",
         "             own sweep, or new instances of a cause already found. Kept apart so",
         "             a deliberate sweep does not read as regression.",
@@ -4397,6 +4398,13 @@ def format_inflow(report: Inflow) -> str:
             "+sweep is ? because git could not say which item's work filed each item, so a",
             "sweep's filings are counted in filed. The reason:",
             f"  {report.sweeps_unread}.",
+        ]
+    if report.unchecked_reentries:
+        lines += [
+            "",
+            f"{report.unchecked_reentries} re-entering filing(s) record no filed-pr:, so whether",
+            "the pull request that closed the item they name also filed them was not checked.",
+            "They are counted.",
         ]
     # A line a successor head answers is listed apart, naming the head: under
     # the first heading it read as a question nobody had answered, and only a

@@ -9,6 +9,7 @@ feature: model-claims-held-by-tests
 touches: docs/MODEL.md, docs/INTERFACE.md
 deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: REFERENCE_TEMPERATURE_CELSIUS is 20.0, and test_the_reference_condition_gap_is_the_ratio_of_molar_volumes computes the 5.8 % and 5.5 % from it, so every figure agrees with the constant and no learner can see a wrong value now
 added: 2026-11-11
+filed-pr: 2142
 payoff: A change to the reference temperature can no longer leave the documents giving a clinician the wrong size for the liquid-conversion bias.
 reenters: PL-5L84
 ---

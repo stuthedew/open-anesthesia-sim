@@ -13,6 +13,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) and not
 added: 2026-10-03
 closed: 2026-10-12
 pr: 1439
+filed-pr: 1308
 payoff: A frozen entry can leave what the gate is asked to clear only through a disposition its section records, so bin/docket wave cannot report Gate 2 clear while an entry like PL-VV6N sits undecided behind a prerequisite no list holds
 verify: grep -q 'def test_an_open_frozen_entry_waiting_outside_with_no_disposition_is_an_error' subprojects/docket/tests/test_checks.py
 reenters: PL-WD5Z, PL-J6HP

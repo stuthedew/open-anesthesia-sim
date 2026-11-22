@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-25
 closed: 2026-10-18
 pr: 1587
+filed-pr: 1031
 payoff: a pull request that could loosen arm's answer through a pinned test waits on the owner's read, at about one read in ninety docket commits
 verify: grep -q 'def test_arm_holds_a_change_to_an_existing_test_arm_test' subprojects/docket/tests/test_cli.py
 reenters: PL-K6B2

@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze, and not safety or science
 added: 2026-09-25
 closed: 2026-10-18
 pr: 1588
+filed-pr: 1015
 payoff: a commit pushed after its pull request merged is reported as left behind even when it deletes a file, so bin/docket stranded stops calling lost work accounted for
 verify: grep -q 'def test_orphaned_reports_a_left_behind_commit_that_also_deletes_a_file' subprojects/docket/tests/test_vcs.py
 reenters: PL-GHHW

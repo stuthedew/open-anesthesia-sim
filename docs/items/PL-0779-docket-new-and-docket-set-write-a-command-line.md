@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-04
 closed: 2026-10-05
 pr: 1363
+filed-pr: 1353
 payoff: a line break typed into a title or field is refused where it is typed, instead of landing as a stray line the next check refuses or as a second status line that hides an open item from list and next
 verify: grep -q 'def test_new_and_set_refuse_a_value_holding_a_newline' subprojects/docket/tests/test_cli.py
 reenters: PL-9HD1

@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science
 added: 2026-09-26
 closed: 2026-10-18
+filed-pr: 1065
 reason: gone: PL-2FY6 (#1250, 2026-09-30) retired the printed tag line release.tag_commands made; tools/tag_release.py now tags each cut, declines a shallow clone before it looks the cut up (is_shallow, tools/tag_release.py:118), and tests/unit/test_tag_release.py::test_a_shallow_clone_is_declined pins it; checked 2026-10-18 at origin/main 03d9d272
 payoff: a tag line run in a shallow clone stops instead of tagging the clone's oldest fetched commit as the release
 verify: grep -q 'def test_tag_line_refuses_a_shallow_clone' subprojects/docket/tests/test_release.py

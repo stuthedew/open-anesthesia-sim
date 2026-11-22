@@ -10,6 +10,7 @@ touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, pyproject.tom
 added: 2026-10-24
 closed: 2026-10-24
 pr: 1753
+filed-pr: 1728
 payoff: a branch that loosens a test of a displayed value, its unit or its label is refused before it merges, instead of passing with a note
 verify: grep -q 'def test_a_branch_that_weakens_a_display_test_is_refused' tests/unit/test_diff_mutation.py && grep -qF 'src/anesthesia_sim/app/dashboard_frame.py' pyproject.toml
 reenters: PL-CZXN

@@ -41,6 +41,8 @@ def _item(
     no_successor: tuple[str, ...] = (),
     sweep: str = "",
     misread: str = "",
+    pr: str = "",
+    filed_pr: str = "",
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -63,6 +65,8 @@ def _item(
         no_successor=no_successor,
         sweep=sweep,
         misread=misread,
+        pr=pr,
+        filed_pr=filed_pr,
     )
 
 
@@ -179,6 +183,37 @@ def test_a_reentry_is_counted_in_the_period_it_was_filed() -> None:
 
     assert [p.reentries for p in report.periods] == [1, 1, 0]
     assert report.reentered == {}  # two re-entries no head explains, under the floor of three
+
+
+def test_a_filing_the_closing_pull_request_added_is_not_a_reentry() -> None:
+    """A finding made while the fix was built cannot show that the fix failed (`PL-C47M`).
+
+    Eight of the eleven filings `PL-BB16` read that re-entered an item closed
+    on their own filing day were added by the pull request that closed it.
+    Only the filing a later pull request added is a fix that did not hold,
+    and a filing that records no `filed-pr:` is counted and reported.
+    """
+    fixed = replace(FIXED, pr="900")
+    report = analyze(
+        [
+            fixed,
+            _item("PL-0SM1", date(2026, 8, 25), reenters=("PL-FXD0",), filed_pr="900"),
+            _item("PL-0LT1", date(2026, 8, 26), reenters=("PL-FXD0",), filed_pr="912"),
+            _item("PL-0UN1", date(2026, 8, 27), reenters=("PL-FXD0",)),
+        ],
+        CONFIG,
+        today=date(2026, 8, 31),
+    )
+
+    assert [p.reentries for p in report.periods] == [2]
+    assert report.unchecked_reentries == 1
+    assert "1 re-entering filing(s) record no filed-pr:" in format_inflow(report)
+
+    three = [
+        _item(f"PL-0SM{n}", date(2026, 8, 25), reenters=("PL-FXD0",), filed_pr="900")
+        for n in (1, 2, 3)
+    ]
+    assert analyze([fixed, *three], CONFIG, today=date(2026, 8, 31)).reentered == {}
 
 
 def test_a_closed_item_three_filings_reenter_is_named() -> None:

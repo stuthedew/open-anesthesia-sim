@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-10-03
 closed: 2026-10-12
 pr: 1439
+filed-pr: 1309
 payoff: Gate 3's frozen list carries every entry the v0.6.0 gate deferred to it, the two non-debt ones included
 verify: grep -qi 'deferr' .claude/skills/docket/modes/release.md
 reenters: PL-J6HP

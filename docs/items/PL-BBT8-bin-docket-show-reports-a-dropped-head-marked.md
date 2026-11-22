@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and no
 added: 2026-09-22
 closed: 2026-09-23
 pr: 944
+filed-pr: 915
 payoff: show stops telling a reader that a closed head is ranked, so a mechanism its own verdict calls live gets recorded where it can rank instead of being taken as handled
 verify: grep -q 'def test_show_on_a_closed_head_says_it_ranks_on_no_tier' subprojects/docket/tests/test_cli.py
 impairs-generators: cli.cmd_show reports rank from model.ranks_as_generator and model.impairs_generators_soundly, which test no status, so a done or dropped item carrying generator: live or a sound impairs-generators: is shown as ranked on the generator tier while plan.recommend ranks only startable items - a still-live mechanism on a closed head reads as ranked and is ranked by nothing

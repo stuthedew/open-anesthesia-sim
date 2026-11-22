@@ -34,7 +34,7 @@ from docket.cli import _run_forge_command, build_parser, main, merge_shared
 from docket.config import Config
 from docket.model import parse_item, recurrence_count
 from docket.release import TAG_SCRIPT, notes_ids, tag_confirmation
-from docket.store import filename_for
+from docket.store import filename_for, read_items
 from docket.vcs import FETCHED, Fetch, leading_ids, lost, records_on_base
 
 READY = """---
@@ -657,6 +657,33 @@ def _filed_once(root: Path, *, on_base: bool) -> tuple[Path, Path]:
 
 
 VERIFY_PY = "subprojects/docket/src/docket/verify.py"
+
+
+def test_new_records_the_pull_request_open_on_its_branch(tmp_path: Path) -> None:
+    """`filed-pr:` is the one record of which pull request added an item (`PL-C47M`).
+
+    Written from the forge's answer for the branch, and not at all under
+    `--no-remote` or where the forge names no pull request for the branch.
+    """
+    store = tmp_path / "items"
+    store.mkdir()
+    git = ["git", "-C", str(tmp_path)]
+    for command in (
+        ["git", "init", "-q", "-b", "claude/work", str(tmp_path)],
+        [*git, "config", "user.email", "t@example.com"],
+        [*git, "config", "user.name", "T"],
+        [*git, "commit", "-q", "--allow-empty", "-m", "base"],
+    ):
+        subprocess.run(command, check=True, capture_output=True)
+    _forge(tmp_path, 'printf "claude/other 12\\nclaude/work 2238\\n"')
+
+    assert _run_with_git("new", "Found while building", "--items", str(store)) == 0
+    assert _run_with_git("new", "Filed offline", "--no-remote", "--items", str(store)) == 0
+    _forge(tmp_path, 'printf "claude/other 12\\n"')
+    assert _run_with_git("new", "Nothing open here", "--items", str(store)) == 0
+
+    filed = {item.title: item.filed_pr for item in read_items(store)}
+    assert filed == {"Found while building": "2238", "Filed offline": "", "Nothing open here": ""}
 
 
 def test_new_records_nothing_on_an_item_this_branch_filed(

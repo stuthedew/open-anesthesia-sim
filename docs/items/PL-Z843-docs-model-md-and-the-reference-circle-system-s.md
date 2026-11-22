@@ -9,6 +9,7 @@ feature: machine-docs-structure
 touches: docs/MODEL.md, docs/PARAMETERS.md, src/anesthesia_sim/data/machines/reference_circle_system.json
 deferred-from: v0.7.0 - present at the freeze, with no real connection to v0.7.0's Required scope: it matters when a second machine profile is written, which the deferred PL-WZVZ and PL-B4P7 wait on and no release schedules
 added: 2026-11-11
+filed-pr: 2112
 payoff: A contributor writing a machine profile is told to look for the machine's own startup flow rather than assuming none is published.
 reenters: PL-4FBP
 ---

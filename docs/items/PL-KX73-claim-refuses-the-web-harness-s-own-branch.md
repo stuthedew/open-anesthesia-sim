@@ -12,6 +12,7 @@ deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21) by PL-P
 added: 2026-09-25
 closed: 2026-09-25
 pr: 1020
+filed-pr: 1007
 payoff: a web session's first claim on a branch the harness made tracking main is written and pushed at once, instead of refused until the session repairs the branch's upstream by hand
 verify: grep -q 'def test_a_branch_tracking_the_default_branch_is_pushed_with_an_upstream_of_its_own' subprojects/docket/tests/test_claiming.py
 reenters: PL-4Q9B
