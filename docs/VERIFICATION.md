@@ -1586,6 +1586,8 @@ flow still. Because the exchanges were solved one after another rather than toge
 the step as a whole had an error proportional to its length, even though each exchange
 was solved exactly. § "Selected method (as implemented)" describes the exact step.
 
+#### The runs the test covers
+
 The comparison covers *trajectories*, runs whose settings change over time, as well as
 runs at fixed settings. A run of the application is a sequence of settings, each held
 until someone moves a slider. A slider move puts an approximate method under the most
@@ -1631,6 +1633,8 @@ to the very end of a slider's range, so zero ventilation, zero perfusion and zer
 fresh gas flow are all reached. These runs must meet the same $`4\times10^{-13}`$
 limit as the five above, and they stay below the worst of them.
 
+#### Checks at every step of the random runs
+
 A second test drives the same random runs through the full simulation. It checks
 that every step runs without error and is counted, and that the agent accounting
 adds up after each one. It also checks that each of the six concentrations stays
@@ -1638,13 +1642,15 @@ finite, at or above zero, and at or below the highest concentration delivered so
 far. No compartment can hold agent at a higher concentration than was ever
 delivered, because each is fed only from the others and from the vaporizer.
 
+#### The tests and the figures behind the comparison
+
 The comparison is in `tests/reference/test_coupled_dynamics.py`,
 where the independent solution is called the oracle. The five runs are compared by
 `test_exact_step_matches_the_independent_solution_everywhere`, and the random runs by
 `test_exact_step_matches_the_independent_solution_on_randomised_trajectories`. The two tests that enforce the
 restriction check what the oracle imports and what its functions call
 (`test_oracle_imports_no_solver_from_core`,
-`test_oracle_bodies_call_no_solver_from_core`). Each figure in this note is an
+`test_oracle_bodies_call_no_solver_from_core`). Each figure in this subsection is an
 absolute difference in fraction, taken as the largest over the whole run.
 
 - **Why the limit is not a multiple of the step.** The earlier method had an
@@ -2459,9 +2465,8 @@ records the agent it adds or removes, so the model's check that the amount of
 agent is conserved still passes.
 
 The five desflurane points from 1 to 10 minutes and the isoflurane point at 12.5
-minutes are checked against a regression band, from −1 to +2.5 SD, instead of within one SD. A regression band guards the model's own result against change and claims no agreement with the data. The band's upper edge is above the largest distance simulated, +2.10 SD,
-so the gap cannot grow past +2.5 SD without a test failing.
-<!-- not-restated: 2.10 -->
+minutes are checked against a regression band, from −1 to +2.5 SD, instead of within one SD. A regression band guards the model's own result against change and claims no agreement with the data. The band's upper edge is above desflurane's largest distance in the table
+above, so the gap cannot grow past +2.5 SD without a test failing.
 
 #### What the published-data gate can and cannot resolve
 
@@ -2478,10 +2483,14 @@ each cohort, and both solubility orderings.
 <!-- provenance: core/supported_ranges.py MAXIMUM_FRESH_GAS_FLOW_L_MIN = 10 -->
 
 The regression pins are not part of the published-data gate, because they compare the model
-with its own output. They include the 5-minute elimination pin above and the
-late-washout tables. A pin fails on any change at all, so it catches an
-accidental edit. It cannot show whether a comparison with published data would
-have caught a wrong stored value.
+with its own output. They include the 5-minute elimination pin above, the
+late-washout tables, and the reference states recorded
+in `tests/reference/test_coupled_dynamics.py` (`PINNED_REFERENCE_STATES`). A pin
+fails on any change at all, so it catches an accidental edit. It cannot show
+whether a comparison with published data would have caught a wrong stored value,
+so no pin may be cited as validation of a stored value.
+
+##### How far one stored value can change before the gate fails
 
 Each cell of the table below covers one stored parameter for one agent. It gives
 the lower and upper edges of the range of change over which the published-data gate still
@@ -2515,10 +2524,6 @@ were wrong.
 
 A tissue's volume and its tissue:gas coefficient give the same edges, because a
 run depends only on their product, the tissue's capacity.
-
-**Two tests keep the table in step with the code.** One fails if the published-data gate stops
-detecting a change that it detects today. The other fails if the published-data gate starts to
-detect a change that this section says it cannot.
 
 **The table supports these conclusions about a pass of the published-data gate:**
 
@@ -2561,30 +2566,9 @@ detect a change that this section says it cannot.
 
 <!-- not-restated: 2.1, 8 % -->
 
-The wash-in ratio at 30 minutes and the elimination ratio at 5 minutes respond
-to almost separate sets of parameters, which is why the edges fall where they
-do. The table below shows how far each ratio moves when one coefficient is
-raised by 10%, in units of that ratio's own published SD (from model runs on
-2026-09-06):
-
-| Perturbed coefficient | Wash-in | Elimination |
-| --- | --- | --- |
-| Blood:gas | −0.57 to −0.64 | +0.09 to +0.17 |
-| Vessel-rich tissue:gas | −0.02 to −0.06 | +0.45 to +0.55 |
-| Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
-| Fat tissue:gas | −0.00 | −0.00 |
-
-<!-- not-restated: 0.06 -->
-
-Wash-in at 30 minutes depends mostly on blood:gas and barely on the vessel-rich
-group. Elimination at five minutes depends mostly on the vessel-rich group and
-barely on blood:gas. This fits the rebreathing explanation above. The circuit
-sets *where* the elimination ratio sits against the published mean, as an
-offset fixed by the reference settings.
-
-The regression pins include the reference states recorded
-in `tests/reference/test_coupled_dynamics.py` (`PINNED_REFERENCE_STATES`). No
-pin may be cited as validation of a stored value.
+**Two tests keep the table in step with the code.** One fails if the published-data gate stops
+detecting a change that it detects today. The other fails if the published-data gate starts to
+detect a change that this section says it cannot.
 
 The test that expects the published-data gate to fail checks every agent at blood:gas ×0.90
 and ×1.15, vessel-rich tissue:gas ×0.80 and ×1.75, and alveolar gas volume
@@ -2606,6 +2590,29 @@ Each factor in the two tests sits well clear of its edge, because a test placed
 at an edge would be 0.01 to 0.03 SD from flipping. Both tests run the published-data gate at
 its shipped limit (`AGREEMENT_TOLERANCE_SD`). The limit is the published
 spread, not the band.
+
+##### Which stored values each ratio responds to
+
+The wash-in ratio at 30 minutes and the elimination ratio at 5 minutes respond
+to almost separate sets of parameters, which is why the edges fall where they
+do. The table below shows how far each ratio moves when one coefficient is
+raised by 10%, in units of that ratio's own published SD (from model runs on
+2026-09-06):
+
+| Perturbed coefficient | Wash-in | Elimination |
+| --- | --- | --- |
+| Blood:gas | −0.57 to −0.64 | +0.09 to +0.17 |
+| Vessel-rich tissue:gas | −0.02 to −0.06 | +0.45 to +0.55 |
+| Muscle tissue:gas | −0.08 to −0.15 | −0.09 to −0.12 |
+| Fat tissue:gas | −0.00 | −0.00 |
+
+<!-- not-restated: 0.06 -->
+
+Wash-in at 30 minutes depends mostly on blood:gas and barely on the vessel-rich
+group. Elimination at five minutes depends mostly on the vessel-rich group and
+barely on blood:gas. This fits the rebreathing explanation above. The circuit
+sets *where* the elimination ratio sits against the published mean, as an
+offset fixed by the reference settings.
 
 #### The first 24 hours of elimination against the published mean curves
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
