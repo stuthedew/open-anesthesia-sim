@@ -75,6 +75,7 @@ from .plan import (
 )
 from .release import (
     NOTES_DIR,
+    PATCH,
     PLANNED,
     RESERVED,
     Readiness,
@@ -3554,7 +3555,9 @@ def format_status(
         if elsewhere := _cut_elsewhere(cuts):
             lines.append(f"  {elsewhere}")
         elif offer.kind == RESERVED:
-            lines.append(f"  {_reserved_refusal(offer, '`docket wave` for what is due')}")
+            lines.append(f"  {reserved_refusal(offer, '`docket wave` for what is due')}")
+        elif offer.kind == PATCH:
+            lines.append(f"  Next version would be {offer.version}. {patch_reason(offer)}")
         else:
             lines.append(f"  Next version would be {offer.version}.")
     # The legend's blank says no section places an unmarked id, which a list
@@ -3996,7 +3999,7 @@ def _cut_elsewhere(cuts: CutsInFlight | None) -> str:
     earlier (`PL-331V`).
 
     The digest's `Releasable:` line and `status`'s `Unreleased:` line both say
-    it, for `_reserved_refusal`'s reason. `status` read no cut at all until
+    it, for `reserved_refusal`'s reason. `status` read no cut at all until
     `PL-53Y6`, so it said `Next version would be 0.5.11` beneath a digest
     saying another branch was cutting 0.5.11.
     """
@@ -4015,7 +4018,7 @@ def _cut_elsewhere(cuts: CutsInFlight | None) -> str:
     return "; ".join(said) + "; do not offer another until it merges."
 
 
-def _reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:
+def reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:
     """The one sentence both release surfaces say when the plan owns the number.
 
     `format_status` and `_release_advice` each branched on `offer.kind` and
@@ -4031,18 +4034,31 @@ def _reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:
     already on the next line would be prose restating what a command prints,
     which is the bloat `.claude/rules/apparatus-standard.md` cuts.
 
-    The second sentence is the way out. Every other release refusal names one
-    (`PL-66FP`), and this one named only its evidence, so a patch track running
-    beside a reserved milestone read as having nothing to cut (`PL-SYG4`). It
-    names no number, by the owner's choice of 2026-09-17 over offering the next
-    unreserved patch, so it says what the cut path's own refusal says - a number
-    the roadmap leaves free - with the command that takes one, and `bin/docket
-    release` refuses a reserved number whichever is named (`PL-Z85N`).
+    It is said only where no patch is free either, because `release_offer`
+    offers the next patch wherever one is (`PL-49J8`). So the second sentence
+    says why nothing can be cut, and what would change that: a milestone the
+    plan places ahead holds the next patch number or a number below it.
     """
     return (
         f'No release to offer: the roadmap gives {offer.version} to "{offer.milestone}", '
-        f"which is unfinished - {pointer}. A patch cut under a number the roadmap "
-        "leaves free is still available: `make release VERSION=` that number."
+        f"which is unfinished - {pointer}. The next patch number is also spent, or "
+        "lies past a milestone the roadmap places ahead, so nothing can be cut until "
+        "that milestone ships or `ROADMAP.md` moves it."
+    )
+
+
+def patch_reason(offer: ReleaseOffer) -> str:
+    """Why a `PATCH` offer names a patch rather than the version the bump reached.
+
+    One wording for the survey, the digest and `bin/docket release`'s dry run,
+    so a change to it cannot leave one surface saying the old thing
+    (`PL-C6XD`). It names the reserved number and the milestone that holds it,
+    so a reader sees why the guess is a patch and not the minor bump that a
+    feature-classed item makes (`PL-49J8`).
+    """
+    return (
+        f"It is a patch, because the roadmap gives {offer.passed_over} to "
+        f'"{offer.milestone}", which is unfinished.'
     )
 
 
@@ -4057,7 +4073,9 @@ def _release_advice(ready: Readiness, plan: Wave | None) -> str:
     """
     offer = release_offer(ready, plan)
     if offer.kind == RESERVED:
-        return _reserved_refusal(offer, "the beat below is what is due")
+        return reserved_refusal(offer, "the beat below is what is due")
+    if offer.kind == PATCH:
+        return f"Offer {offer.version} before taking new work. {patch_reason(offer)}"
     if offer.kind == PLANNED:
         return (
             f"Offer {offer.version} before taking new work - the version the plan names, "

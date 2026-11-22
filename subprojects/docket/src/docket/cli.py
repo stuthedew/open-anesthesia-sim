@@ -126,6 +126,9 @@ from .plan import (
 )
 from .release import (
     NOTES_DIR,
+    PATCH,
+    PLANNED,
+    RESERVED,
     SEMVER_GRAMMAR,
     SEMVER_RE,
     TAG_SCRIPT,
@@ -145,6 +148,7 @@ from .release import (
     read_version,
     readiness,
     release_notes,
+    release_offer,
     reservation,
     restate_references,
     stamp,
@@ -1132,6 +1136,26 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _suggestion(ready: Readiness, plan: Wave | None) -> str:
+    """The version `release --dry-run` suggests, with the plan folded in.
+
+    It printed `ready.suggested_version`, the bump's arithmetic alone, as a
+    "mechanical guess". A feature-classed item makes that the next minor
+    number, which is nearly always the next milestone's, so the dry run
+    suggested a version the cut then refuses, and sessions concluded no cut was
+    due (`PL-49J8`). This reads the same `release_offer` the survey and the
+    digest read, so the three cannot disagree.
+    """
+    offer = release_offer(ready, plan)
+    if offer.kind == PATCH:
+        return f"Suggested: {offer.version}. {render.patch_reason(offer)}"
+    if offer.kind == RESERVED:
+        return render.reserved_refusal(offer, "`docket wave` for what is due")
+    if offer.kind == PLANNED:
+        return f"Suggested: {offer.version}, the version the roadmap names for this release."
+    return f"Suggested: {offer.version}."
+
+
 def _plan(root: Path, items: Sequence[Item], config: Config) -> Wave | None:
     """Where the project stands on its own timeline, or `None` if that is unclear.
 
@@ -1249,9 +1273,9 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     a session shown no `Releasable:` line has nothing to be warned off. That
     gate means there is finished work to cut, whether or not a version is free
     to cut it at, so it is not the release offer: where the roadmap has
-    reserved the number a bump would reach, the line says `No release to offer`
-    and the walk still runs, which between milestones is the usual case
-    (`PL-FT3M`). It does not fetch - the digest's hook already did, and this
+    reserved the number a bump would reach, the line offers the next patch or
+    says `No release to offer`, and the walk runs either way (`PL-FT3M`,
+    `PL-49J8`). It does not fetch - the digest's hook already did, and this
     must stay answerable in a checkout with no network. The remote's branch
     list it reads deleted branches out by is the snapshot's (`PL-MT3R`),
     which the command has taken before asking.
@@ -3945,8 +3969,8 @@ def cmd_release(args: argparse.Namespace) -> int:
             return 1
         print(
             "This project chooses versions by the capability boundary a release "
-            "crosses, not by incrementing. Name the version to cut it "
-            f"(mechanical guess, for reference only: {ready.suggested_version})."
+            "crosses, not by incrementing. Name the version to cut it. "
+            f"{_suggestion(ready, _plan(root, items, config))}"
         )
         if unread:
             print(
