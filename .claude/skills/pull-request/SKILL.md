@@ -136,7 +136,10 @@ the document still holds. A number it marks as restated, such as 4e-4 written
 as 0.04%, has the same value, so it counts as kept and its new form does not
 count as added (`PL-TZ7R`). The owner then reads only a sentence whose meaning
 needs a clinician's judgment, such as what a hazard row promises, and the ask
-quotes it. Workflow items need no merge confirmation (project owner, 2026-10-12,
+quotes it. **A change of on-screen wording is housekeeping unless it changes
+clinical meaning.** The session rewrites the approved wording list itself, and
+the docstring of `tests/integration/test_interface_wording.py` names the four
+kinds of change that need the owner (`PL-NRP7`). Workflow items need no merge confirmation (project owner, 2026-10-12,
 `PL-KPM2`). `arm` gives one of three answers:
 
 - **`arm`**: mark the pull request ready and arm auto-merge. Name in the report
