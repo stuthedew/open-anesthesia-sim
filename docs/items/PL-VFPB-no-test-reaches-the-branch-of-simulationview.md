@@ -3,13 +3,15 @@ id: PL-VFPB
 title: No test reaches the branch of SimulationView._require_unconditional_values that refuses a declared value inside the layout container, because both cases of the refusal test fail through the "outside the region" branch first, so deleting that branch leaves the suite green
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test
 feature: replay-findings
 touches: tests/integration/simulation_view
 added: 2026-10-25
+closed: 2026-11-22
+pr: 2258
 payoff: the one check that stops the unconditional region from moving into a closable Area is under test
-verify: grep -rq 'def test_a_region_placed_inside_the_layout_container_is_refused' tests/integration/simulation_view/
+tests: tests/integration/simulation_view/test_simulation_view_branch_display.py::test_a_region_placed_inside_the_layout_container_is_refused
 ---
 
 **Problem.** The guard refuses a widget that is outside the region (`app/simulation_view.py`). It also refuses one that sits inside the Areas. `test_a_run_whose_region_lacks_a_declared_value_is_refused` points ONE_MAC at a View in the Areas, and that View is outside the region, so the test fails through the first branch (`tests/integration/simulation_view/`). The second branch guards against the region itself ending up inside the layout container.
@@ -21,3 +23,5 @@ verify: grep -rq 'def test_a_region_placed_inside_the_layout_container_is_refuse
 **Found by.** `PL-TBQS` reviewer replay on #1585, finding r02 F3, checked against main on 2026-10-25 by reading the guard and the test.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. `SimulationView._require_unconditional_values` in `src/anesthesia_sim/app/simulation_view.py` still has both branches, and the second one (`_within(widget, self._areas)`) is still reached by no test. Since #2152 split the dashboard tests, the refusal test is `test_a_run_whose_region_lacks_a_declared_value_is_refused` in `tests/integration/simulation_view/test_simulation_view_branch_display.py`. Its second case still points the 1 MAC value at the first View in the splitter tree, which fails through the first branch. No test of the name in the done-when exists.
+
+**Done 2026-11-22.** `test_a_region_placed_inside_the_layout_container_is_refused` moves the whole region into the layout container and adds a branch, so every value is still inside the region and the guard's second check is the one that refuses it. Deleting that check makes the test fail. Documents checked for the guard: `docs/INTERFACE.md`, `docs/ARCHITECTURE.md`; neither describes the guard's branches.

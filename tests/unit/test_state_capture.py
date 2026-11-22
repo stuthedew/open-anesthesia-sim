@@ -392,28 +392,54 @@ def test_the_system_state_covers_every_part_of_the_system() -> None:
     )
 
 
-def test_the_propagator_cache_is_not_restored_by_a_rollback() -> None:
-    """A rollback leaves the cache alone, because it cannot invalidate it.
+def test_a_rollback_across_a_setting_change_rebuilds_the_propagator() -> None:
+    """A step after a rollback uses the propagator for the settings in force now.
 
-    The exemption above is safe only if it is true. What makes it true is that a
-    propagator depends on settings rather than on the trajectory. Capture a
-    state, change nothing but the trajectory, and restore. The same propagator
-    must then still be the right one, which shows up as the next step producing
-    exactly what it produced the first time.
+    The exemption above is safe only if this is true. A rollback restores the
+    trajectory and leaves the settings as they are, so the propagator cached
+    before the rollback may belong to settings that have since moved. Here the
+    cache holds the matrix for the first cardiac output when the setting
+    changes and the state is restored. The next step must match a system that
+    never rolled back and stepped under the new setting from the same state.
+    A cache that is never rebuilt fails the comparison.
+
+    The second half checks the other direction. With no setting changed, the
+    restore leaves the cached propagator in place, because nothing has made it
+    wrong.
     """
 
-    system = AgentUptakeSystem.for_agent("sevoflurane")
+    rolled_back = AgentUptakeSystem.for_agent("sevoflurane")
+    rolled_back.advance()
+    captured = rolled_back.capture_state()
+    rolled_back.advance()
+    rolled_back.set_cardiac_output(CardiacOutput(10.0))
+    rolled_back.restore_state(captured)
+    rolled_back.advance()
 
-    system.advance()
+    never_rolled_back = AgentUptakeSystem.for_agent("sevoflurane")
+    never_rolled_back.advance()
+    never_rolled_back.set_cardiac_output(CardiacOutput(10.0))
+    never_rolled_back.advance()
 
-    captured = system.capture_state()
-    system.advance()
-    after_first_l = system.total_stored_agent_l
+    stale = AgentUptakeSystem.for_agent("sevoflurane")
+    stale.advance()
+    stale_propagator = stale._step_propagator()
 
-    system.restore_state(captured)
-    system.advance()
+    assert rolled_back.state_vector() == never_rolled_back.state_vector()
+    assert rolled_back.total_stored_agent_l == never_rolled_back.total_stored_agent_l
+    assert rolled_back._step_propagator() != stale_propagator, (
+        "the comparison above cannot fail unless the setting change alters the propagator"
+    )
 
-    assert system.total_stored_agent_l == after_first_l
+    unchanged = AgentUptakeSystem.for_agent("sevoflurane")
+    unchanged.advance()
+    captured = unchanged.capture_state()
+    unchanged.advance()
+    cached = unchanged._propagator
+    unchanged.restore_state(captured)
+
+    assert cached is not None
+    assert unchanged._propagator is cached
 
 
 def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:

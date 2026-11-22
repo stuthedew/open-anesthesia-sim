@@ -731,6 +731,28 @@ def test_a_run_whose_region_lacks_a_declared_value_is_refused(
         SimulationView((SimulationController(),))
 
 
+def test_a_region_placed_inside_the_layout_container_is_refused(
+    application: QApplication,
+) -> None:
+    """A region moved into the Areas is refused, though every value is still inside it.
+
+    The test above fails each of its cases through the guard's first check,
+    because the misplaced value is outside the region. This test reaches the
+    second check. It moves the whole region inside the layout container, so
+    every value of the branch is still inside the region, and every one of
+    them now sits where a learner could close it with its Area. The guard is
+    the only thing that stops a later layout change from putting the region
+    there (`PL-VFPB`).
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    view.unconditional_region.setParent(view.layout_container)
+
+    with pytest.raises(RuntimeError, match="does not hold simulated_time"):
+        view.add_run(case.fork_at(CaseInstant(60)))
+
+
 def test_a_run_refused_for_a_missing_unconditional_value_leaves_no_widgets(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
