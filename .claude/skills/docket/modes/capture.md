@@ -79,7 +79,7 @@ like, and add its line to the file first, because `docket new` and `docket
 check` refuse a feature the file does not list (`PL-Q3BN`). Give a lone finding
 no feature. `docket new` with no `--feature` prints the three features the
 title reads most like; take one only where its line fits (project owner,
-2026-11-22, `PL-LRWK`).
+2026-11-22, ratified, over each session naming features freely, `PL-LRWK`).
 
 ```bash
 docket new --feature session-start-cost \

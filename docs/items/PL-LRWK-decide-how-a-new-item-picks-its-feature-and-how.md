@@ -1,10 +1,16 @@
 ---
 id: PL-LRWK
 title: Decide how a new item picks its feature, and how features that belong together are found later
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: feature, planning
 feature: feature-registry
 touches: subprojects/docket/src/docket/feature_match.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/README.md, subprojects/docket/tests/test_feature_match.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, subprojects/docket/tests/test_portability.py, docs/features.toml, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/release.md
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2205
+tests: subprojects/docket/tests/test_feature_match.py::test_a_title_is_offered_the_features_whose_words_it_shares_strongest_first, subprojects/docket/tests/test_feature_match.py::test_retired_and_unlisted_names_are_never_offered, subprojects/docket/tests/test_feature_match.py::test_the_closest_features_are_paired_and_unrelated_ones_are_not, subprojects/docket/tests/test_feature_match.py::test_open_items_with_no_feature_are_matched_and_paired_only_on_a_shared_path, subprojects/docket/tests/test_feature_match.py::test_an_open_item_alone_in_its_feature_is_named, subprojects/docket/tests/test_checks.py::test_an_item_carrying_a_folded_feature_is_told_the_name_to_use, subprojects/docket/tests/test_config.py::test_a_folded_feature_redirects_only_to_a_described_one, subprojects/docket/tests/test_cli.py::test_new_redirects_a_folded_feature_and_suggests_one_when_none_is_given
 ---
 
 **Problem.** Decide how a new item picks its feature, and how features that belong together are found later

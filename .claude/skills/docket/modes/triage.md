@@ -486,11 +486,13 @@ reply says so. Each outcome is an item rather than a fix-now edit, because
 keeping a check is a defensible choice.
 
 **On a grooming pass, regroup the features** (project owner, 2026-11-22,
-`PL-LRWK`). Run `bin/docket feature --similar` and read its four lists. For
+ratified, over regrouping only when someone notices, `PL-LRWK`). Run `bin/docket feature --similar` and read its four lists. For
 each pair of features that read alike, open both groups' items and merge them
-where they are one goal: retag every item with `bin/docket set ID --feature
-NEW --overwrite`, and replace the folded name's line in `docs/features.toml`
-with `old = { use = "new" }`. Give an open item with no feature the one it
+where they are one goal. First replace the folded name's line in
+`docs/features.toml` with `old = { use = "new" }`, and widen the kept name's
+line to cover what it takes in. Then retag every item with `bin/docket set ID
+--feature NEW --overwrite`. The order matters, because `bin/docket set` refuses
+a retag that would leave a listed name with no item. Give an open item with no feature the one it
 reads like where that feature's description covers it. Name a new feature for
 two or more open items that share a goal and a path. Fold an open feature
 holding one item into its nearest neighbour, or take the feature off. The

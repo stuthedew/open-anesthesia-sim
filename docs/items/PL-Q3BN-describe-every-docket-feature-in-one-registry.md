@@ -1,10 +1,16 @@
 ---
 id: PL-Q3BN
 title: Describe every docket feature in one registry, show each description in status and feature, and refuse an item whose feature is not listed
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: feature, infra
 feature: feature-registry
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_config.py, docs/features.toml, docket.toml, tools/rules_paths_check.py, .claude/skills/docket/modes/capture.md, .claude/skills/docket/modes/ideas.md, docs/items
 added: 2026-11-22
+closed: 2026-11-22
+pr: 2205
+tests: subprojects/docket/tests/test_checks.py::test_an_item_whose_feature_the_registry_does_not_list_is_an_error, subprojects/docket/tests/test_checks.py::test_a_listed_feature_that_no_item_carries_is_an_error, subprojects/docket/tests/test_checks.py::test_a_registered_feature_raises_nothing_and_no_registry_checks_nothing, subprojects/docket/tests/test_config.py::test_the_feature_registry_is_read_from_the_file_the_config_names, subprojects/docket/tests/test_config.py::test_a_feature_registry_that_is_missing_or_undescribed_is_refused, subprojects/docket/tests/test_cli.py::test_status_and_feature_print_each_feature_s_description, subprojects/docket/tests/test_cli.py::test_new_refuses_a_feature_the_registry_does_not_list
 ---
 
 **Problem.** Describe every docket feature in one registry, show each description in status and feature, and refuse an item whose feature is not listed
@@ -120,3 +126,11 @@ names become 153.
 | `model-capability-routing` | `model-evidence` |
 | `open-item-overlap-detection` | `recurrence-signal` |
 | `settings-panel-prerequisite` | `preferences-store` |
+
+**Documents checked, 2026-11-22**, for both this item and `PL-LRWK`:
+`subprojects/docket/README.md` (the configuration list and § "The feature
+registry"), `.claude/skills/docket/modes/capture.md`, `ideas.md`, `triage.md`
+and `release.md`, `docs/features.toml`'s header, `docket.toml`'s comment on
+`features_file`, and `docs/apparatus.md`'s line for `tools/rules_paths_check.py`.
+`tools/doc_check.py candidates --base origin/main` named no other line that the
+change made untrue.

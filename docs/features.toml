@@ -9,8 +9,8 @@
 # Closed features stay listed, because their items keep the name (PL-Q3BN).
 #
 # A name merged into another feature stays as `old = { use = "new" }`. Then
-# `bin/docket new` turns a capture that still uses the old name to the new
-# one, and `bin/docket check` refuses an item that carries it (PL-LRWK).
+# `bin/docket new` refuses the old name and gives the new one, and
+# `bin/docket check` refuses an item that carries it (PL-LRWK).
 
 agent-worktrees = "Tools that walk the checkout and mistake an agent's worktree under .claude/worktrees/ for repository source."
 anesthesia-machine = "Surveying real anesthesia machines and making a difference between two simulated machines traceable to its parameter."
