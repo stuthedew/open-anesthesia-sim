@@ -143,10 +143,11 @@ _FOLLOWING_WIDTH_S = 15 * 60
 #: (`PL-J0F7`).
 _EDGE_TOLERANCE_PX = 0.5
 
-#: How far a box placed at the plot's far edge may sit from that edge, in
-#: pixels. A box anchored at the right edge was measured 0.5 px inside it on
-#: 2026-11-22, so the limit is twice that (`PL-YJ7N`).
-_FAR_EDGE_TOLERANCE_PX = 1.0
+#: How far a box placed against an edge may sit from it, in pixels. The edge
+#: is the plot's far edge or the hovered point's time. A box anchored at the
+#: plot's right edge was measured 0.5 px inside it on 2026-11-22, so the limit
+#: is twice that (`PL-YJ7N`).
+_BOX_EDGE_TOLERANCE_PX = 1.0
 
 #: How many drawn points apart the least-height hover test samples the
 #: F_A/F_I stretch: about one point every 25 px of a 1600 px window.
@@ -818,15 +819,66 @@ def test_a_box_that_fits_neither_above_nor_below_its_point_goes_to_the_far_side(
         right_half = x > area.center().x()
         sides.add(right_half)
         if right_half:
-            far = abs(box.left() - area.left()) <= _FAR_EDGE_TOLERANCE_PX and box.right() < x
+            far = abs(box.left() - area.left()) <= _BOX_EDGE_TOLERANCE_PX and box.right() < x
         else:
-            far = abs(box.right() - area.right()) <= _FAR_EDGE_TOLERANCE_PX and box.left() > x
-        if not far or abs(box.top() - area.top()) > _FAR_EDGE_TOLERANCE_PX:
+            far = abs(box.right() - area.right()) <= _BOX_EDGE_TOLERANCE_PX and box.left() > x
+        if not far or abs(box.top() - area.top()) > _BOX_EDGE_TOLERANCE_PX:
             beside.append((time_s, percent, box))
 
     # Points in both halves, or the test shows only one of the two placements.
     assert sides == {False, True}, sides
     assert not beside, f"{len(beside)} of {len(points)} boxes are not at the far edge: {beside[:3]}"
+
+
+def test_a_box_wider_than_the_room_at_the_far_edge_stays_beside_its_point(
+    application: QApplication, induction_dashboard: SimulationView, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A box at the far edge must not lie over the point it reports.
+
+    In a narrow chart the box can be wider than half the plot. At the far edge
+    it would then reach past the hovered point and hide it, so it stays beside
+    the point, where it ends at the point's time (`PL-YJ7N`). The test makes
+    the box count as one pixel taller than the plot, as the far-edge test does,
+    and as wide as the plot, so no room at the far edge is wide enough.
+    """
+
+    frame = _concentration(induction_dashboard).chart.frame
+    assert frame is not None
+    chart = ConcentrationChart()
+    chart.resize(_WINDOW_WIDTH_PX, chart.minimumSizeHint().height())
+    chart.show()
+    application.processEvents()
+    chart.draw(frame)
+    chart.grab()
+    application.processEvents()
+    area = chart.plot_area()
+    monkeypatch.setattr(qt_chart._HoverReadout, "_box_height_px", lambda self: area.height() + 1)
+    monkeypatch.setattr(qt_chart._HoverReadout, "_box_width_px", lambda self: area.width())
+    points = [
+        (time_s, percent)
+        for quantity in frame.visible
+        for time_s, percent in list(zip(*chart.drawn_points(0, quantity), strict=True))[
+            ::_LEAST_HEIGHT_POINT_STRIDE
+        ]
+        if area.contains(QPointF(*chart.plot_pixel(time_s, percent)))
+    ]
+    sides = set()
+    away = []
+
+    for time_s, percent in points:
+        _painted_with_the_pointer_off(chart)
+        _hover_on(chart, time_s, percent)
+        box = chart.hover_box()
+        assert box is not None, f"no hover answered at {time_s} s"
+        x, _ = chart.plot_pixel(time_s, percent)
+        right_half = x > area.center().x()
+        sides.add(right_half)
+        edge = box.right() if right_half else box.left()
+        if abs(edge - x) > _BOX_EDGE_TOLERANCE_PX:
+            away.append((time_s, percent, box))
+
+    assert sides == {False, True}, sides
+    assert not away, f"{len(away)} of {len(points)} boxes do not end at their point: {away[:3]}"
 
 
 def test_no_hover_box_is_left_outside_a_plot_that_shrinks_under_a_resting_pointer(

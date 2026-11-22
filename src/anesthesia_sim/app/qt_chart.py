@@ -722,7 +722,9 @@ class _HoverReadout:
         # box is almost as tall as the plot. Beside the anchor it hid the curve
         # on that side, which is what the value is read against, so it goes to
         # the far edge of the plot instead, on the side away from the anchor
-        # (`PL-YJ7N`).
+        # (`PL-YJ7N`). A box wider than the room between that edge and the
+        # anchor would lie over the hovered point there, so it stays beside the
+        # anchor, where it never covers the point.
         anchor = target.anchor
         past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
         box_height_px = self._box_height_px()
@@ -740,8 +742,14 @@ class _HoverReadout:
             # Past the middle the anchor is in the right half, so the box takes
             # the left edge, and the other way round.
             far_side = 0 if past_middle else 1
-            self._text.setAnchor((far_side, 0))
-            self._text.setPos(x_range[far_side], self._top_value())
+            far_edge = x_range[far_side]
+
+            if self._box_width_px() <= self._width_between_px(far_edge, anchor.time_s):
+                self._text.setAnchor((far_side, 0))
+                self._text.setPos(far_edge, self._top_value())
+            else:
+                self._text.setAnchor((horizontal, 0))
+                self._text.setPos(anchor.time_s, self._top_value())
 
         self._dot.show()
         # This uses `setVisible` rather than `show`. `show` goes straight to
@@ -759,6 +767,17 @@ class _HoverReadout:
         top = self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).top()
 
         return float(anchor.y() - top)
+
+    def _width_between_px(self, first_time_s: float, second_time_s: float) -> float:
+        """Return how many pixels lie between two times on the plot's horizontal axis."""
+
+        view_box = self._plot.getPlotItem().getViewBox()
+        first, second = (
+            self._plot.mapFromScene(view_box.mapViewToScene(QPointF(time_s, 0.0))).x()
+            for time_s in (first_time_s, second_time_s)
+        )
+
+        return float(abs(second - first))
 
     def _plot_height_px(self) -> float:
         """Return the plot's height in pixels, between its top and bottom axes."""
@@ -782,6 +801,11 @@ class _HoverReadout:
         """
 
         return float(self._text.boundingRect().height())
+
+    def _box_width_px(self) -> float:
+        """Return the box's width in pixels, for the text it now holds, read as its height is."""
+
+        return float(self._text.boundingRect().width())
 
     def hide(self) -> None:
         self._dot.hide()
