@@ -11,7 +11,7 @@ added: 2026-11-21
 closed: 2026-11-22
 pr: 2214
 payoff: a learner reading how far F_A/F_I fell after a dial change reads the true trough, not a column value above it
-tests: tests/integration/controller/test_controller_stored_states.py::test_a_trough_of_the_ratio_between_two_chart_columns_is_drawn_at_its_stored_value, tests/unit/test_chart_time_base.py::test_a_second_with_no_value_is_neither_returned_nor_compared_with
+tests: tests/integration/controller/test_controller_stored_states.py::test_a_trough_of_the_ratio_between_two_chart_columns_is_drawn_at_its_stored_value, tests/unit/test_chart_time_base.py::test_a_second_with_no_value_is_neither_returned_nor_compared_with, tests/unit/test_chart_time_base.py::test_a_trace_that_starts_after_zero_is_searched_only_between_the_drawn_seconds, tests/unit/test_controller_drawn_seconds.py::test_an_alveolar_series_longer_than_the_inspired_one_is_refused
 ---
 
 **Problem.** The F_A/F_I plot draws the alveolar fraction divided by the inspired fraction at each second that the chart draws (`DrawnWindow.wash_in_quotients` in `app/run_series.py`). Since `PL-BLZJ` (draw each peak between two columns), `SimulationController.drawn_window` also draws the second at which each compartment's fraction is highest or lowest between two columns. The ratio of two fractions can turn at a second where neither fraction does. After the dial is raised, the inspired fraction rises faster than the alveolar one, so the ratio falls for some seconds and then recovers. The raising is drawn, and the lowest ratio is drawn only if it falls on a column or on a second that one of the six fractions turns at.
