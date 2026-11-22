@@ -856,9 +856,9 @@ settings record (`UptakeEquationSettings` in `core/governing_equations.py`). The
 controller refuses or undoes a setting that the settings record refuses.
 
 The control timeline's fields are declared as plain `float` and are not checked, so a setting
-read back from it is rebuilt as its type. Nothing in `src/` loads a pickle yet, and a run
-definition (`RunDefinition`), the patient's compartments and the parameter payloads that the
-data files load into do not yet check their values on load. If a halt comes before the screen
+read back from it is rebuilt as its type. Nothing in `src/` loads a pickle yet. Every record in
+`core/`, the parameter payloads that the data files load into among them, saves its values by
+field name and checks them again when a pickle or a copy rebuilds it. If a halt comes before the screen
 is redrawn, every withheld value is hidden before the dials are written, because writing a dial
 can raise an exception.
 

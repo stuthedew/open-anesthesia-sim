@@ -90,7 +90,7 @@ from dataclasses import dataclass
 from math import isfinite
 
 from anesthesia_sim.core.blood_flow import BloodFlow, require_blood_flow
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -292,6 +292,7 @@ def require_canonical_state(state: object) -> None:
         )
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class TissueGroupEquationSettings:
     """One tissue group's parameters, as its balance equation needs them.
@@ -342,11 +343,6 @@ class TissueGroupEquationSettings:
             self.tissue_blood_partition_coefficient,
         )
 
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-S11T`)."""
-
-        restore_through_checks(self, state)
-
     @property
     def blood_flow_l_s(self) -> float:
         """Return $`Q_i`$ in litres per second, the unit its balance equation is written in."""
@@ -368,6 +364,7 @@ class TissueGroupEquationSettings:
         return self.blood_flow_l_s / (self.volume_l * self.tissue_blood_partition_coefficient)
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class UptakeEquationSettings:
     """Everything that the governing equations need and a step does not change,
@@ -571,11 +568,6 @@ class UptakeEquationSettings:
                 f"but cardiac output is {self.cardiac_output_l_min} L/min; the venous balance "
                 "returns what the tissues receive, so the two must agree"
             )
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-S11T`)."""
-
-        restore_through_checks(self, state)
 
     @property
     def delivered_partial_pressure_fraction(self) -> Fraction:

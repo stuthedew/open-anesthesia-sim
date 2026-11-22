@@ -43,7 +43,7 @@ from math import expm1, inf
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.checked_number import shown
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -97,6 +97,7 @@ unit test fails if this value and the file's value ever differ
 """
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class DeliverableFreshGasFlowRange:
     """The fresh gas flows that one anesthesia machine can actually set.
@@ -132,11 +133,6 @@ class DeliverableFreshGasFlowRange:
                 "deliverable_fresh_gas_flow_range has a minimum above its maximum "
                 f"({self.minimum_l_min} L/min minimum, {self.maximum_l_min} L/min maximum)"
             )
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 def _accepted_fresh_gas_flow_range_l_min(
@@ -264,6 +260,7 @@ def _require_deliverable_flow(
         )
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class FreshGasExchange:
     """The agent that enters with fresh gas and leaves with the exhaust in one step."""
@@ -278,6 +275,7 @@ def _agent_held_l(circuit_volume_l: float, inspired_partial_pressure_fraction: f
     return circuit_volume_l * inspired_partial_pressure_fraction
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class BreathingCircuitState:
     """The circuit's run state: the values that one simulation step can change.
@@ -319,11 +317,6 @@ class BreathingCircuitState:
         )
         require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
 
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
-
     @property
     def agent_amount_l(self) -> float:
         """Return the agent the circuit held when this record was captured, in litres."""
@@ -331,6 +324,7 @@ class BreathingCircuitState:
         return _agent_held_l(self.circuit_volume_l, self.inspired_partial_pressure_fraction)
 
 
+@restored_through_checks
 @dataclass(slots=True)
 class BreathingCircuit:
     """Ideal, well-mixed breathing circuit with constant volume.
@@ -457,10 +451,8 @@ class BreathingCircuit:
             They were a sevoflurane dial of `Percent(50.0)` (above its 8%
             maximum), a zero circuit volume, and an inspired fraction of `1.5`.
             A copy, a pickle and `dataclasses.replace` also write through this
-            method. This is a `slots=True` dataclass, and a copy or a pickle
-            restores its state one field at a time through `__setattr__`. If
-            the class had a `__dict__`, a copy would update that dictionary
-            directly and bypass the check. When a value is rejected, nothing is
+            method, because each of them runs the constructor
+            (`core/checked_record.py`). When a value is rejected, nothing is
             written and the field keeps its old value. The constructor makes no
             check of its own.
 

@@ -173,8 +173,8 @@ def test_an_amount_at_capacity_is_written_and_a_copy_is_held_to_it_too() -> None
 
     An amount equal to the capacity is a partial pressure of exactly one
     atmosphere, and it is written. `dataclasses.replace` builds a new pool
-    through its constructor's writes. A copy and a pickle restore the fields
-    one at a time through `__setattr__`. So an amount planted by bypassing the
+    through its constructor's writes. A copy and a pickle run the same
+    constructor (`core/checked_record.py`). So an amount planted by bypassing the
     guard is refused when the copy or the pickle is made, rather than carried
     into the new pool (`PL-19Y0`).
     """

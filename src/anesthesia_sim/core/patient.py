@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from anesthesia_sim.core.blood import VenousBloodCompartment, VenousBloodCompartmentState
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import PartitionCoefficient
 from anesthesia_sim.core.parameters import (
@@ -33,6 +34,7 @@ _TISSUE_GROUP_FIELDS = ("vessel_rich", "muscle", "fat")
 """The patient's tissue group fields, in the order `PatientCompartments.tissues` gives them."""
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class PatientCompartmentsState:
     """The patient side's run state, one entry per compartment.
@@ -49,6 +51,7 @@ class PatientCompartmentsState:
     venous_blood: VenousBloodCompartmentState
 
 
+@restored_through_checks
 @dataclass(slots=True)
 class PatientCompartments:
     """The vessel-rich group (VRG), muscle, fat, and mixed-venous blood of one patient."""

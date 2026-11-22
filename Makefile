@@ -215,7 +215,10 @@ check: sync
 	python3 tools/pr_record_check.py --discover
 # Whether a rule's declared scope is the one it will actually get. Reads only
 # the frontmatter of `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
-	python3 tools/rules_paths_check.py
+# `--write` first rewrites the apparatus standard's `paths:` from
+# `workflow_paths`, so a path added to the lane needs no second edit. CI runs
+# it without `--write`, and so refuses a list nobody committed (`PL-C3K1`).
+	python3 tools/rules_paths_check.py --write
 # Beside the guards above and, like them, bare: it reads the apparatus trees -
 # `tools/`, `subprojects/docket/src/docket/` and `.claude/hooks/` - which are
 # held to the floor themselves, so the floor interpreter parses all of it. It

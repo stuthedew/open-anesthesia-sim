@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from math import inf
 from typing import TYPE_CHECKING
 
+from anesthesia_sim.core.checked_record import restored_through_checks
 from anesthesia_sim.core.concentration import Fraction, require_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.exponential_approach import exponential_approach
@@ -35,6 +36,7 @@ from anesthesia_sim.core.validation import (
 )
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class VenousBloodCompartmentState:
     """The venous pool's run state: what a step can change.
@@ -47,6 +49,7 @@ class VenousBloodCompartmentState:
     agent_amount_l: float
 
 
+@restored_through_checks
 @dataclass(slots=True)
 class VenousBloodCompartment:
     """One ideal, well-mixed venous blood compartment.

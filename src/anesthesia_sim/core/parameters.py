@@ -31,14 +31,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib.resources import files
 from math import isfinite
-from typing import Annotated, Final
+from typing import Annotated, Any, Final, Self
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core.blood_flow import PerfusionFraction, require_perfusion_fraction
 from anesthesia_sim.core.checked_number import shown
-from anesthesia_sim.core.checked_record import restore_through_checks
+from anesthesia_sim.core.checked_record import require_state_by_name, restored_through_checks
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import (
     MacMultiple,
@@ -60,6 +60,7 @@ from anesthesia_sim.core.rounding import FLOW_FRACTION_TOLERANCE
 from anesthesia_sim.core.validation import require_positive_finite
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class SupportedSchemaVersions:
     """The `schema_version` values that one family of data files may declare.
@@ -117,11 +118,6 @@ class SupportedSchemaVersions:
                 f"it still reads correctly, or raise minimum to {self.current} "
                 "(see SupportedSchemaVersions)"
             )
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 #: The age, in years, at which every agent file states its MAC. The key that
@@ -236,6 +232,7 @@ def _collected_by_pydantic() -> Iterator[None]:
 SOURCE_TIERS: tuple[str, ...] = ("primary", "secondary", "reference-implementation")
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class SourceReference:
     """Provenance for one scientific or physiologic parameter set.
@@ -266,6 +263,7 @@ class SourceReference:
     note: str
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class MacAwakeReference:
     """Population MAC-awake for one agent, as a fraction of that agent's MAC.
@@ -361,6 +359,7 @@ def mac_awake_band_fractions(
     return lower, upper
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class AgentParameters:
     """Validated partition parameters for one volatile anesthetic.
@@ -486,11 +485,6 @@ class AgentParameters:
         # the molar mass is positive and finite.
         _ = self.vapour_volume_per_liquid_volume
 
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
-
     @property
     def vapour_volume_per_liquid_volume(self) -> float:
         """Derive the millilitres of vapour that one millilitre of this liquid agent gives."""
@@ -528,6 +522,7 @@ class AgentParameters:
         )
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class ReferenceAdultParameters:
     """Validated physiologic defaults for the v0.1.0 reference adult.
@@ -582,11 +577,6 @@ class ReferenceAdultParameters:
         ):
             require_perfusion_fraction(field, getattr(self, field))
 
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
-
     @property
     def total_perfusion_fraction(self) -> float:
         """Sum the tissue-group perfusion fractions, which must equal 1 within tolerance."""
@@ -598,6 +588,7 @@ class ReferenceAdultParameters:
         )
 
 
+@restored_through_checks
 @dataclass(frozen=True, slots=True)
 class BreathingCircuitParameters:
     """Validated breathing-system parameters: what is in front of the patient.
@@ -658,11 +649,6 @@ class BreathingCircuitParameters:
         """
 
         require_compartment_volume("circuit_volume_l", self.circuit_volume_l)
-
-    def __setstate__(self, state: object) -> None:
-        """Restore an unpickled or copied record through the constructor's checks (`PL-8W1Q`)."""
-
-        restore_through_checks(self, state)
 
 
 def _validate_nonempty_string(value: object) -> str:
@@ -920,6 +906,44 @@ class _StrictPayload(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+    def __getstate__(self) -> dict[Any, Any]:
+        """Return the payload's fields by name, as plain data, for a pickle (`PL-HXNL`)."""
+
+        return self.model_dump()
+
+    def __setstate__(self, state: object) -> None:
+        """Rebuild an unpickled payload by validating its saved fields again.
+
+        Pydantic's own `__setstate__` writes the saved fields straight into
+        the payload, so no validator runs. This one validates the saved fields
+        as a new payload, which runs every check that loading a file runs, and
+        then takes that payload's state.
+
+        Raises:
+            TypeError: `state` is not a dict holding exactly the payload's
+                field names (`require_state_by_name`).
+            pydantic.ValidationError: a validator refuses a saved value.
+        """
+
+        by_name = require_state_by_name(self, state, tuple(type(self).model_fields))
+        validated = type(self).model_validate(by_name)
+
+        super().__setstate__(BaseModel.__getstate__(validated))
+
+    def __copy__(self) -> Self:
+        """Return a copy built by validating this payload's fields again.
+
+        Pydantic's own `__copy__` and `__deepcopy__` copy the fields without
+        running a validator, and neither calls `__setstate__`.
+        """
+
+        return type(self).model_validate(self.model_dump())
+
+    def __deepcopy__(self, memo: dict[int, Any] | None = None) -> Self:
+        """Return a copy built by validating this payload's fields again, as `__copy__` does."""
+
+        return self.__copy__()
 
 
 class _SourcePayload(_StrictPayload):
