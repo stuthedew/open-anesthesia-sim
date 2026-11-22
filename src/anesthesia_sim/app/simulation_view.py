@@ -276,6 +276,11 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
             yield InterfaceText(widget.itemText(index), seen and index == current)
 
 
+#: The Qt property that `SimulationView._order_focus` sets on each widget it
+#: places in Tab's order, so that a widget built since can be told apart.
+_TAB_ORDERED: Final = "placedInTabOrder"
+
+
 def _focusable_widgets(window: QWidget) -> list[QWidget]:
     """Return each widget under `window` that Tab can reach, in the widget tree's order.
 
@@ -288,10 +293,8 @@ def _focusable_widgets(window: QWidget) -> list[QWidget]:
     a selector's list of choices, is left out, because Tab does not move
     between windows.
 
-    The list comes from `findChildren`. Walking Qt's focus chain with
-    `nextInFocusChain` on every draw made one keyboard test crash inside a
-    chart's layout several steps later, and the cause is not yet known
-    (`PL-2D9Z`).
+    The list comes from `findChildren`, which returns the widgets in the
+    tree's order.
     """
 
     return [
@@ -852,9 +855,23 @@ class SimulationView(QWidget):
         self._focus_order_owed = True
 
     def _order_focus_if_owed(self) -> None:
-        """Set Tab's order where something has changed which widgets the dashboard holds."""
+        """Set Tab's order where something has changed which widgets the dashboard holds.
 
-        if self._focus_order_owed:
+        Three changes mark the order as stale: a run placed, a Workspace
+        change and a View replaced (`_owe_focus_order`). A View can also build
+        a control on any later draw, such as a run's dials built again after
+        a halt in which they could not be built. Qt puts a newly built widget
+        at the end of the window's focus chain, so that control would be
+        reached after every Area and border. So the widgets themselves are
+        read too: `_order_focus` marks each widget it places, and a focusable
+        widget without the mark was built since (`PL-81YL`). The mark is a
+        property of the Qt object, so a widget built where a deleted one stood
+        in memory does not carry it.
+        """
+
+        if self._focus_order_owed or any(
+            widget.property(_TAB_ORDERED) is None for widget in _focusable_widgets(self)
+        ):
             self._focus_order_owed = False
             self._order_focus()
 
@@ -892,6 +909,9 @@ class SimulationView(QWidget):
 
         for before, after in zip(order, order[1:], strict=False):
             QWidget.setTabOrder(before, after)
+
+        for widget in order:
+            widget.setProperty(_TAB_ORDERED, True)
 
     def showEvent(self, event: QShowEvent) -> None:
         """Give the first run's first control the focus when the dashboard is first shown.

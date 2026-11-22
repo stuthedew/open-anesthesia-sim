@@ -76,7 +76,17 @@ dependencies = [
     # Qt modules this interface draws with (Core, Gui, Widgets) and none of
     # the Addons (WebEngine, Multimedia, 3D), which are the bulk of the full
     # distribution's download and are imported by nothing here.
-    "PySide6-Essentials>=6.9,<7.0",
+    #
+    # A floor of 6.12. PySide6 6.11.2 and 6.11.3 free a Python function
+    # object inside Shiboken's lookup of a Python override of a C++ virtual,
+    # and read it afterwards, so a dashboard whose draws walk Qt's focus
+    # chain crashed with a segmentation fault (measured with valgrind on
+    # 2026-11-22, on Python 3.14 and 3.15). 6.12.0 does not, and its release
+    # notes list PYSIDE-3469, a crash from stale wrappers of layout items, and
+    # the first support for Python 3.15, which this project requires
+    # (https://doc.qt.io/qtforpython-6/release_notes/pyside6_release_notes.html,
+    # read 2026-11-22; `PL-2D9Z`).
+    "PySide6-Essentials>=6.12,<7.0",
     "pyqtgraph>=0.13.7,<0.15",
     # The chart hands pyqtgraph its points as `numpy.ndarray`s, which is the
     # form pyqtgraph's performance guidance asks for (`app/qt_chart.py`,
