@@ -176,6 +176,7 @@ amount is converted into moles, mass or milliliters of liquid. It changes no
 concentration, because every equation works with fractions, physical volumes
 and partition coefficients, which are ratios.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 24.055 L/mol from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 The model physically has two conditions under that one label. The circuit
 volume is at ambient temperature and the fresh gas flow is a flow at the
@@ -191,6 +192,9 @@ that the amounts held in the body read high under it. The circuit's amount
 and the delivered and exhausted totals are exact, so the liquid volume and
 cost of the agent delivered are exact too.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 5.5% from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 5.8% from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
+<!-- derived: 1.058 from core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 | Symbol | Meaning | Unit |
 | --- | --- | --- |
@@ -451,7 +455,7 @@ flows, with the 6 L circuit.
 - The fastest time constant is 13.7 to 16.6 s at the default flows and 6.02 to
   7.17 s at the maximum flows. The fastest at any supported setting is
   isoflurane's 5.83 s, at 10 L/min of fresh gas, 12 L/min of ventilation and
-  9.32 L/min of cardiac output. Nothing in the model changes faster.
+  about 9.3 L/min of cardiac output. Nothing in the model changes faster.
 - The slowest is the fat group's, at 47 000 s (13 hours) to 187 000 s
   (52 hours).
 - Every group changes more slowly than its isolated time constant
