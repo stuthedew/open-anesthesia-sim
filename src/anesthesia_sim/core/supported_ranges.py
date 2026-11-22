@@ -317,8 +317,8 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # a few hours would cut off the one thing the fat trace exists to show.
 #
 # **The 24-hour span is not inside the measured exposure range** (`PL-MLPT`).
-# The review above reports how sevoflurane's metabolism scales with dose only
-# from 0.35 to 9.5 MAC-hours. The cap limits elapsed time, not exposure. A
+# In the studies that the review above draws on, sevoflurane was given over
+# 0.35 to 9.5 MAC-hours only. The cap limits elapsed time, not exposure. A
 # MAC-hour is conventionally counted at the end-tidal concentration, which is
 # this model's alveolar fraction. A run whose alveolar fraction is held near
 # 1 MAC accumulates about one MAC-hour per hour. So such a run leaves the
