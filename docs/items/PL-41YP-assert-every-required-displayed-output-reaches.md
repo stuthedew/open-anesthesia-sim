@@ -3,12 +3,14 @@ id: PL-41YP
 title: Assert every required displayed output reaches the rendered view
 priority: P2
 effort: M
-status: ready
+status: done
 classes: test
 feature: model-claims-held-by-tests
 touches: tests/
 added: 2026-08-25
-verify: grep -rqE 'def test_every_minimum_displayed_output\w*widget' tests/integration/
+closed: 2026-11-22
+pr: 2248
+tests: tests/integration/simulation_view/test_simulation_view_readouts.py::test_every_minimum_displayed_output_reads_its_value_from_its_widget
 ---
 
 > **Groomed 2026-09-22 (`PL-Y4YG`): still owed, and its premise has moved.**
@@ -64,3 +66,5 @@ list of its own, as `PL-NWTM`'s Done when asks.
 **Checked 2026-11-21**, by `PL-5FMC` (the check of `docs/INTERFACE.md` against the code), at `2452b9b4e`. Every output that § "Minimum displayed outputs" requires has a test that reaches a widget, though no single test covers them all. `test_every_layout_operation_leaves_the_unconditional_set_on_screen` already asserts that each widget of the unconditional set is visible after every layout operation. What is still missing is one test that walks the section's own list and reads each value's text from its widget.
 
 **Checked 2026-11-22** against `d4e8200`: partly done, as the check of 2026-11-21 found. Every output that § "Minimum displayed outputs" requires has some test that reaches a widget, and `test_every_layout_operation_leaves_the_unconditional_set_on_screen` (`tests/integration/test_layout_safety.py`) holds the unconditional set on screen after every layout operation. What is left is one test that walks the section's list, through `RunView.unconditional_widgets` and `app/unconditional_set.py`, and reads each value's text from its widget. No test named `test_every_minimum_displayed_output...widget` exists yet.
+
+**Closed 2026-11-22.** `test_every_minimum_displayed_output_reads_its_value_from_its_widget`, in `tests/integration/simulation_view/test_simulation_view_readouts.py`, walks `unconditional_set(INHALED_AGENT)`, finds each value's widget through `RunView.unconditional_widgets`, and checks that the widget is shown and reads this run's value. The run is isoflurane with a dial change, halted at the supported run length, so the halt reason and the control record are on screen. The expected concentrations come from a fresh `AgentUptakeSystem` given the same settings, and the expected 1 MAC from the agent's data file. Wiring the 1 MAC value to the delivered line's widget made it fail with `one_mac reads 'Delivered 1.50% (1.28 ×MAC)'`. Files checked: `docs/INTERFACE.md` § "Minimum displayed outputs" (its note for developers now names the test), `app/unconditional_set.py`'s docstring (still true).

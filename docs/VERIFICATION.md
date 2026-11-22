@@ -3774,8 +3774,8 @@ output, the document cannot drift from the model without the test failing.
 
 In some parts of this document, an automatic check makes sure that each claim
 names in fixed-width type what it describes. It checks every row of the hazard
-table and every subsection of the required tests, and every output in the
-displayed-outputs list of `docs/INTERFACE.md`. It does not yet check the entries of the required invariants.
+table, every entry of the required invariants, every subsection of the required
+tests, and every output in the displayed-outputs list of `docs/INTERFACE.md`.
 
 In the sections that the check reads paragraph by paragraph, every number with a
 unit has something behind it. Its paragraph gives a test, the fixed form, a date
