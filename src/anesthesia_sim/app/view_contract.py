@@ -78,13 +78,23 @@ preferences and saves them (`app/preferences.py`). Each tick shows them to
 every View in `ViewTick.preferences`, and a View asks for a change through
 `ViewRequests.agent_cost_unit` or `ViewRequests.agent_price` (`PL-1P15`).
 
-**Each View that shows a panel of the case gets a copy of its own**
-(`PL-9YPR`). The bookmarks and the branch control belong to the case, and no
-run owns them. A View that shows one asks `ViewTick.case` for its copy on its
-first tick. That tick can be one with no frame, which carries the case as a
-tick with a frame does. The dashboard then writes every live copy on each
-frame, and restates it on a halt. So two Areas can show the bookmarks at once,
-and neither View holds the case.
+**A tick carries the case's panels as values** (`PL-9YPR`, `PL-RF2S`). The
+bookmarks and the branch control belong to the case, and no run owns them.
+`ViewTick.case` holds what they show: the marks with each run's standing, the
+editor's entry and refusal, and the branch offer with its selected point
+(`CasePresentation`). A View that shows one builds its own widgets and writes
+them whole from the tick, on a tick with a frame and on one without. It asks
+for an edit of the marks, a selected point or a branch through `ViewRequests`.
+So two Areas can show the bookmarks at once, and neither View holds the case.
+
+**A View says whether it shows the runs or the case** (`PL-1D3Z`).
+`View.scope` is `ViewScope.RUNS` for a View that draws the displayed runs and
+`ViewScope.CASE` for one that draws only the case. A Workspace pinned to a run
+draws that run alone in each View of the runs, and names it in their Area
+headers. A View of the case shows the whole case whatever the pin, and its
+Area header names no run. While the pinned run is not open, the Areas of the
+runs say so in place of their Views, and the Views of the case are still
+handed a tick, which names no run.
 
 **What a View is drawn from** (Q3). Each View states which frame it draws,
 through `View.frame_request`. The request gives the window and the plot width
@@ -132,22 +142,24 @@ that size wherever the layout can give it. Where the layout cannot, the
 container hides the View and shows a notice stating the size the View needs
 and the size the Area has (`layout/sizing.py`). So a View never has to draw
 itself in less than it asked for, and is never clipped. A Workspace that
-pins a run draws that run alone, in every one of its Views (`PL-7Z84`).
-Every other Workspace's Views draw every displayed run.
+pins a run draws that run alone, in every one of its Views of the runs
+(`PL-7Z84`). Every other Workspace's Views draw every displayed run.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from enum import Enum
 from typing import Final, Protocol, runtime_checkable
 
 from anesthesia_sim.app.chart_time_base import ChartTimeBase
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_record import ControlInput
+from anesthesia_sim.app.dashboard_frame import BookmarkPanel, ForkOffer, ForkPoint
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
-from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
+from anesthesia_sim.app.qt_widgets import MarkButton, MarkEntry, MarkRefusal
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.layout.run_identity import RunId
@@ -155,14 +167,17 @@ from anesthesia_sim.layout.run_identity import RunId
 __all__ = [
     "STATE_VERSION_KEY",
     "UNREADABLE_STATE_TEXT",
-    "CaseSurfaces",
+    "BranchPresentation",
+    "CasePresentation",
     "FrameRequest",
+    "MarksPresentation",
     "PreferencesInForce",
     "SavedState",
     "View",
     "ViewContext",
     "ViewFactory",
     "ViewRequests",
+    "ViewScope",
     "ViewTick",
     "unreadable_state_text",
 ]
@@ -181,26 +196,66 @@ UNREADABLE_STATE_TEXT: Final = (
 )
 
 
-class CaseSurfaces(Protocol):
-    """The panels of the displayed case that a View may show, each built as a new copy.
+class ViewScope(Enum):
+    """What a View shows: the displayed runs, or the case that no run owns (`PL-1D3Z`)."""
 
-    `SimulationView` satisfies this protocol. Each method builds a new copy
-    that shows what the case shows now. From then on, the dashboard writes
-    every live copy on each frame, and restates it on a halt (`PL-9YPR`). A
-    View holds the copy and never the case.
+    RUNS = "runs"
+    CASE = "case"
+
+
+@dataclass(frozen=True, slots=True)
+class MarksPresentation:
+    """What every copy of the bookmarks panel shows on one tick.
+
+    Attributes:
+        panel: Both lists of marks, with each run's standing on each mark.
+            None before the first frame has listed them, and while a halt
+            could not work out the standings. The lists are then hidden,
+            because a row from an earlier frame would say that a mark is
+            still to come on a run that has failed (`PL-YHR3`).
+        reachable_height_mac: The highest mark the height control accepts,
+            as a multiple of the agent's 1 MAC, or None before the first
+            frame.
+        entry: What the reader entered in the editor's forms, and the rows
+            selected in its lists, or None before the reader entered
+            anything. Every copy shows this one entry (`PL-CHX0`).
+        refusal: Why the reader's last edit was refused, or None.
     """
 
-    def build_bookmarks_panel(self) -> BookmarksPanel:
-        """Build a copy of the two lists of marks, with the editor that adds and removes them."""
-        ...
+    panel: BookmarkPanel | None
+    reachable_height_mac: float | None
+    entry: MarkEntry | None
+    refusal: MarkRefusal | None
 
-    def build_branch_control(self) -> ForkPanel | None:
-        """Build a copy of the branch control, or None where the dashboard holds no case.
 
-        A dashboard that was handed loose runs has no case to branch, so a
-        control there could only refuse.
-        """
-        ...
+@dataclass(frozen=True, slots=True)
+class BranchPresentation:
+    """What every copy of the branch control shows on one tick.
+
+    Attributes:
+        offer: The points at which a branch may be opened, and why none may
+            be, or None before the first frame.
+        selected: The point shown as selected in every copy, or None for no
+            point (`dashboard_frame.kept_fork_selection`).
+    """
+
+    offer: ForkOffer | None
+    selected: ForkPoint | None
+
+
+@dataclass(frozen=True, slots=True)
+class CasePresentation:
+    """What the case's panels show on one tick. No run owns either panel.
+
+    Attributes:
+        marks: The bookmarks panel.
+        branch: The branch control, or None where the dashboard was handed
+            loose runs. It then has no case to branch, so a control could
+            only refuse.
+    """
+
+    marks: MarksPresentation
+    branch: BranchPresentation | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,6 +283,16 @@ class ViewRequests:
         preview: Says where a held dial of the given run stands, so the
             charts can preview that value (`PL-5B1N`).
         preview_end: Says that the held dial of the given run was released.
+        mark_entry: Says that the reader changed the entry in a copy of the
+            marks editor, so that every other copy shows it too.
+        mark_edit: Asks for the edit that the given button makes, with the
+            entry of the copy whose button the reader pressed. The case
+            makes the edit on every run or refuses it, and the next tick
+            shows the marks and any refusal.
+        branch_point: Says that the reader selected the given point in a
+            copy of the branch control, or no point.
+        branch: Asks for a branch at the selected point.
+        branch_here: Asks for a branch where the trunk is paused.
     """
 
     frame: Callable[[], None]
@@ -239,6 +304,11 @@ class ViewRequests:
     setting: Callable[[RunId, ControlInput, float], None]
     preview: Callable[[RunId, ControlInput, float], None]
     preview_end: Callable[[RunId], None]
+    mark_entry: Callable[[MarkEntry], None]
+    mark_edit: Callable[[MarkButton, MarkEntry], None]
+    branch_point: Callable[[ForkPoint | None], None]
+    branch: Callable[[], None]
+    branch_here: Callable[[], None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -291,19 +361,21 @@ class ViewTick:
             `View.frame_request`, over every displayed run: drawn this tick,
             kept from the last tick that drew, or withheld. None for a View
             that asked for none.
-        runs: What each displayed run's panel shows on this tick, in drawing
-            order. On a tick with a frame, each was built from the snapshot
-            that the frame was assembled from.
+        runs: What each run that the View shows displays on this tick, in
+            drawing order. On a tick with a frame, each was built from the
+            snapshot that the frame was assembled from. Empty on a tick
+            handed only to the Views of the case while the Workspace is
+            pinned to a run that is not open.
         selection: The compartment selection every frame was assembled from.
         preferences: The reader's preferences, and any notice about them.
-        case: The displayed case's panels, which no run owns.
+        case: What the case's panels show, which no run owns.
     """
 
     frame: ShownFrame | None
     runs: tuple[RunPresentation, ...]
     selection: CompartmentSelection
     preferences: PreferencesInForce
-    case: CaseSurfaces
+    case: CasePresentation
 
 
 @runtime_checkable
@@ -313,6 +385,11 @@ class View(Protocol):
     A View is also a `QWidget`. The adapter refuses a factory that returns
     anything else.
     """
+
+    @property
+    def scope(self) -> ViewScope:
+        """Whether this View shows the displayed runs or the case (`PL-1D3Z`)."""
+        ...
 
     def refresh(self, tick: ViewTick) -> None:
         """Draw `tick`.

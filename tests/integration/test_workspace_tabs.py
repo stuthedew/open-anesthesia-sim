@@ -19,16 +19,24 @@ import pytest
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QContextMenuEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QAbstractButton, QApplication, QComboBox, QLabel, QListWidget, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
+from anesthesia_sim.app.area_layout import AreaFrame
+from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import slider_position
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.view_registry import WASH_IN
-from anesthesia_sim.app.views import ConcentrationView, ParameterControlsView
+from anesthesia_sim.app.view_contract import View, ViewScope
+from anesthesia_sim.app.view_registry import BOOKMARKS, BRANCH, CONCENTRATION_CHART, WASH_IN
+from anesthesia_sim.app.views import (
+    BookmarksView,
+    BranchView,
+    ConcentrationView,
+    ParameterControlsView,
+)
 from anesthesia_sim.app.workspace_tabs import (
     DELETE_LABEL,
     DUPLICATE_LABEL,
@@ -47,11 +55,14 @@ from anesthesia_sim.app.workspace_tabs import (
     tab_operations,
 )
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.exceptions import ShippedWorkspaceError
+from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, RunIdentities, SessionToken
 from anesthesia_sim.layout.shipped import shipped_workspace, shipped_workspaces
-from anesthesia_sim.layout.tree import AreaId
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import (
+    Origin,
     ShippedWorkspaceId,
     Workspace,
     WorkspaceName,
@@ -471,6 +482,12 @@ def _dashboard(
     return view
 
 
+def _shows_the_case(frame: AreaFrame) -> bool:
+    """Whether the Area's View shows the case rather than the runs (`PL-1D3Z`)."""
+
+    return isinstance(frame.content, View) and frame.content.scope is ViewScope.CASE
+
+
 def _ran(seconds: float) -> SimulationController:
     controller = SimulationController()
 
@@ -605,11 +622,21 @@ def test_a_pinned_workspace_draws_its_run_alone_and_names_it_on_every_area(
     assert view.workspaces.current.pinned_run == _RUN_2
     assert _concentration(view).legend._run_names == ("Run 2",)
 
+    case_areas = 0
+
     for area in view.layout_container.model.areas():
         frame = view.layout_container.frame(area.id)
-        assert frame.pin_label.isVisible()
-        assert frame.pin_label.text() == "Run 2"
         assert frame.content.isVisible()
+
+        if _shows_the_case(frame):
+            # The View shows the whole case, so its header names no run (`PL-1D3Z`).
+            case_areas += 1
+            assert not frame.pin_label.isVisible()
+        else:
+            assert frame.pin_label.isVisible()
+            assert frame.pin_label.text() == "Run 2"
+
+    assert case_areas > 0, "the Workspace shows no View of the case, so the test reads none"
 
     # Both runs are still open, and the region still shows both.
     assert len(view.runs) == 2
@@ -664,13 +691,15 @@ def test_a_dial_moved_in_a_workspace_pinned_to_the_second_run_sets_that_run_alon
 def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(
     application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt says in every Area that the pinned run is gone, as a drawn frame does.
+    """A halt says in every Area of the runs that the pinned run is gone, as a drawn frame does.
 
     The Workspace is pinned to the branch. While every frame fails, the
-    trunk's Reset drops the branch. No View is handed anything for a pinned
-    run that is not open, so each View still holds the branch's panels. The
-    halt therefore names the pinned run on every Area, and each Area shows
-    its notice in place of its View (`PL-RF2S`).
+    trunk's Reset drops the branch. No View of the runs is handed anything
+    for a pinned run that is not open, so each still holds the branch's
+    panels. The halt therefore names the pinned run on each of their Areas,
+    and each shows its notice in place of its View (`PL-RF2S`). A View of the
+    case still shows the case, under a header that names no run
+    (`PL-1D3Z`).
     """
 
     def failing(*args: object, **kwargs: object) -> NoReturn:
@@ -707,13 +736,20 @@ def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(
     for area in view.layout_container.model.areas():
         frame = view.layout_container.frame(area.id)
         notice = frame.absent_notice
+
+        if _shows_the_case(frame):
+            assert notice is None or not notice.isVisible()
+            assert frame.content.isVisible()
+            assert not frame.pin_label.isVisible()
+            continue
+
         assert notice is not None
         assert notice.isVisible()
         assert notice.title_label.text() == "Run 2 is not open."
         assert not frame.content.isVisible()
 
 
-def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_is_shown(
+def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_of_the_runs(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
     """A run from an earlier session with the same number is a different run (`PL-7Z84`).
@@ -731,6 +767,13 @@ def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_
     for area in view.layout_container.model.areas():
         frame = view.layout_container.frame(area.id)
         notice = frame.absent_notice
+
+        if _shows_the_case(frame):
+            assert notice is None or not notice.isVisible()
+            assert frame.content.isVisible()
+            assert not frame.pin_label.isVisible()
+            continue
+
         assert notice is not None
         assert notice.isVisible()
         assert notice.title_label.text() == "A run from an earlier session is not open."
@@ -769,3 +812,161 @@ def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_and_no_other_run_
         frame = view.layout_container.frame(area.id)
         assert frame.absent_notice is None or not frame.absent_notice.isVisible()
         assert frame.content.isVisible()
+
+
+def _case_words(view: SimulationView) -> dict[str, list[str]]:
+    """The words a learner reads in each View of the case, keyed by the View's class.
+
+    A widget the View hides is left out, so two Views give the same words
+    only when a learner reads the same in both.
+    """
+
+    words: dict[str, list[str]] = {}
+
+    for drawn in view.layout_container.views():
+        if not isinstance(drawn, BookmarksView | BranchView):
+            continue
+
+        read: list[str] = []
+
+        for child in drawn.findChildren(QWidget):
+            if not child.isVisibleTo(drawn):
+                continue
+
+            if isinstance(child, QLabel | QAbstractButton):
+                read.append(child.text())
+            elif isinstance(child, QComboBox):
+                read.extend(child.itemText(index) for index in range(child.count()))
+            elif isinstance(child, QListWidget):
+                read.extend(child.item(row).text() for row in range(child.count()))
+
+        words[type(drawn).__name__] = read
+
+    return words
+
+
+def _case_with_a_branch() -> BranchedCase:
+    """A trunk run for 60 s and paused, with a mark at 30 s, before any branch is taken."""
+
+    trunk = SimulationController()
+    trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "first look"))
+    trunk.start()
+
+    for _ in range(round(60.0 / SIMULATION_STEP_S)):
+        trunk.advance()
+
+    trunk.pause()
+
+    return BranchedCase(trunk)
+
+
+def _case_dashboard(
+    application: QApplication, shown: list[SimulationView], workspaces: WorkspaceSet
+) -> SimulationView:
+    case = _case_with_a_branch()
+    view = SimulationView(
+        (case.trunk,), case=case, run_identities=RunIdentities(_SESSION), workspaces=workspaces
+    )
+    shown.append(view)
+    view.resize(1400, 1000)
+    view.show()
+    application.processEvents()
+    view.present(False)
+
+    return view
+
+
+def test_a_workspace_pinned_to_a_run_that_is_not_open_still_shows_the_case_s_marks_and_branch(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """The Bookmarks and Branch Views show the case whatever run the Workspace is pinned to.
+
+    The marks and the branch points belong to the case, and no run owns them.
+    The Workspace here is pinned to a run of an earlier session, which is
+    not open. Before `PL-1D3Z`, the pin's notice covered both Views, and the
+    learner lost the marks and the branch control until they unpinned the
+    Workspace. Each View must read as it reads in the same Workspace unpinned,
+    built afresh over a case built the same way: the mark at 30 s is listed,
+    and the branch control offers induction and the mark. Neither Area's
+    header names the pinned run.
+    """
+
+    layout = _case_views_layout()
+    unpinned = _case_dashboard(application, shown, layout)
+    expected = _case_words(unpinned)
+    earlier = RunId(SessionToken("f" * 32), 1)
+    pinned = _case_dashboard(
+        application, shown, layout.replace(0, layout.current.pinned_to(earlier))
+    )
+
+    assert sorted(expected) == ["BookmarksView", "BranchView"]
+    assert any("first look" in word for word in expected["BookmarksView"])
+    assert _case_words(pinned) == expected
+
+    for area in pinned.layout_container.model.areas():
+        frame = pinned.layout_container.frame(area.id)
+
+        if area.view in (BOOKMARKS, BRANCH):
+            assert frame.content.isVisible(), f"the {area.view} View is covered"
+            assert not frame.pin_label.isVisible(), f"the {area.view} header names the pin"
+            assert frame.absent_notice is None or not frame.absent_notice.isVisible()
+        else:
+            assert not frame.content.isVisible()
+            assert frame.absent_notice is not None and frame.absent_notice.isVisible()
+
+
+def test_a_case_view_s_header_never_names_the_open_run_a_workspace_is_pinned_to(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """While the pinned run is open, the headers of the Views of the case name no run (`PL-1D3Z`).
+
+    The Bookmarks and Branch Views show the whole case while the Workspace is
+    pinned to the trunk, so a header naming the trunk would say that the
+    marks and the branch points are the trunk's alone. The chart's header
+    names the trunk, as `PL-7Z84` asks of a View that shows one run.
+    """
+
+    layout = _case_views_layout()
+    view = _case_dashboard(application, shown, layout)
+    expected = _case_words(view)
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Pin Run 1"))
+
+    assert _case_words(view) == expected
+
+    for area in view.layout_container.model.areas():
+        frame = view.layout_container.frame(area.id)
+        assert frame.content.isVisible()
+        assert frame.pin_label.isVisible() is (area.view not in (BOOKMARKS, BRANCH)), area.view
+
+        if frame.pin_label.isVisible():
+            assert frame.pin_label.text() == "Run 1"
+
+
+def _case_views_layout() -> WorkspaceSet:
+    """One Workspace of three Areas: the concentration chart, the bookmarks and the branch."""
+
+    return WorkspaceSet(
+        (
+            Workspace(
+                WorkspaceName("Case"),
+                Origin.mine(),
+                LayoutModel(
+                    (
+                        Window(
+                            Split(
+                                Orientation.COLUMN,
+                                (0.5, 0.25, 0.25),
+                                (
+                                    Area(AreaId(1), CONCENTRATION_CHART),
+                                    Area(AreaId(2), BOOKMARKS),
+                                    Area(AreaId(3), BRANCH),
+                                ),
+                            )
+                        ),
+                    ),
+                    AreaId(4),
+                ),
+            ),
+        ),
+        0,
+    )

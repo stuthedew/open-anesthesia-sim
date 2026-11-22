@@ -110,6 +110,11 @@ _REQUESTS = ViewRequests(
     setting=lambda _run, _control, _value: None,
     preview=lambda _run, _control, _value: None,
     preview_end=lambda _run: None,
+    mark_entry=lambda _entry: None,
+    mark_edit=lambda _button, _entry: None,
+    branch_point=lambda _point: None,
+    branch=lambda: None,
+    branch_here=lambda: None,
 )
 
 # A container of this size leaves 800 px for the two children of a split, once

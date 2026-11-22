@@ -177,12 +177,13 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.view_contract import (
-    CaseSurfaces,
+    CasePresentation,
     PreferencesInForce,
     SavedState,
     View,
     ViewContext,
     ViewRequests,
+    ViewScope,
     ViewTick,
 )
 from anesthesia_sim.app.view_registry import (
@@ -561,9 +562,11 @@ class AreaLayout(QWidget):
         runs: tuple[RunPresentation, ...],
         selection: CompartmentSelection,
         preferences: PreferencesInForce,
-        case: CaseSurfaces,
+        case: CasePresentation,
+        *,
+        only: ViewScope | None = None,
     ) -> None:
-        """Hand every View one tick, in the reading order of their Areas.
+        """Hand every View one tick, or each View of one scope, in the reading order of the Areas.
 
         Each View is handed the frame for the window it asked for. On a tick
         that drew, every frame is drawn. On a tick that drew none, each is
@@ -585,6 +588,10 @@ class AreaLayout(QWidget):
             selection: As `ViewTick` carries it.
             preferences: As `ViewTick` carries them.
             case: As `ViewTick` carries it.
+            only: The scope of the Views to hand the tick to, or None for
+                every View. The dashboard names `ViewScope.CASE` while the
+                Workspace is pinned to a run that is not open, and when only
+                the case's panels changed (`PL-1D3Z`).
 
         Raises:
             KeyError: A View asks for a window that `frames` does not hold.
@@ -599,6 +606,9 @@ class AreaLayout(QWidget):
         first_error: Exception | None = None
 
         for _, view in tuple(self._views.values()):
+            if only is not None and view.scope is not only:
+                continue
+
             request = view.frame_request()
             frame = None if request is None else frames[request.time_base]
 
@@ -1167,20 +1177,33 @@ class AreaLayout(QWidget):
             self._build(kept)
 
     def show_pin(self, run_name: str | None, *, absent: bool) -> None:
-        """Name the Workspace's pinned run on every Area, and say on each whether it is absent.
+        """Name the Workspace's pinned run on every Area of the runs, and say whether it is absent.
 
         A pinned run is absent while it is not open. The pin is kept across
-        rebuilds, so an Area made by a split shows it too. See
-        `AreaFrame.show_pin`.
+        rebuilds, so an Area made by a split shows it too. An Area whose View
+        shows the case is given no pin at all: its View shows the whole case
+        whatever the pin, so its header names no run and no notice covers it
+        (`PL-1D3Z`). See `AreaFrame.show_pin`.
         """
 
         if self._pin == (run_name, absent):
             return
 
         self._pin = (run_name, absent)
+        self._show_pin_on_every_area()
 
-        for frame in self._frames.values():
-            frame.show_pin(run_name, absent=absent)
+    def _show_pin_on_every_area(self) -> None:
+        """Write the pin into each Area's frame, as its View's scope allows (`show_pin`)."""
+
+        run_name, absent = self._pin
+
+        for area_id, frame in self._frames.items():
+            drawn = self._views.get(area_id)
+
+            if drawn is not None and drawn[1].scope is ViewScope.CASE:
+                frame.show_pin(None, absent=False)
+            else:
+                frame.show_pin(run_name, absent=absent)
 
     def view_states(self) -> dict[AreaId, dict[ViewKind, SavedState]]:
         """Return each View's state, keyed by its Area and kind, as a Workspace keeps it.
@@ -1270,8 +1293,7 @@ class AreaLayout(QWidget):
         self._column.addWidget(root)
         self._root = root
 
-        for frame in self._frames.values():
-            frame.show_pin(self._pin[0], absent=self._pin[1])
+        self._show_pin_on_every_area()
 
         self._settle(kept)
         self._overlay.raise_()

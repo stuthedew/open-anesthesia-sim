@@ -106,56 +106,80 @@ from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 
-#: One Workspace that holds each View these tests read. Each test then
-#: finds the View it reads, whichever Workspace is shipped first. The
+#: The Areas that tests read by number, row by row from the top. The
 #: parameter controls run across the top. Under them, the concentration chart
 #: sits over the F_A/F_I plot, beside the accounting. That was the dashboard's
 #: layout before it began opening on the shipped Workspaces (`PL-2KXB`). The
-#: bookmarks and the branch control share the row at the foot, where that
+#: bookmarks and the branch control share the row under that, where that
 #: layout had them before they became Views (`PL-9YPR`).
-_EVERY_VIEW = WorkspaceSet(
-    (
-        Workspace(
-            WorkspaceName("Every View"),
-            Origin.mine(),
-            LayoutModel(
-                (
-                    Window(
-                        Split(
-                            Orientation.COLUMN,
-                            (0.2, 0.6, 0.2),
-                            (
-                                Area(AreaId(4), PARAMETER_CONTROLS),
-                                Split(
-                                    Orientation.ROW,
-                                    (0.82, 0.18),
-                                    (
-                                        Split(
-                                            Orientation.COLUMN,
-                                            (0.55, 0.45),
-                                            (
-                                                Area(AreaId(1), CONCENTRATION_CHART),
-                                                Area(AreaId(3), WASH_IN),
-                                            ),
-                                        ),
-                                        Area(AreaId(2), AGENT_ACCOUNTING),
-                                    ),
-                                ),
-                                Split(
-                                    Orientation.ROW,
-                                    (0.5, 0.5),
-                                    (Area(AreaId(5), BOOKMARKS), Area(AreaId(6), BRANCH)),
-                                ),
-                            ),
-                        )
-                    ),
-                ),
-                AreaId(7),
+_ARRANGED_ROWS: Final[tuple[Area | Split, ...]] = (
+    Area(AreaId(4), PARAMETER_CONTROLS),
+    Split(
+        Orientation.ROW,
+        (0.82, 0.18),
+        (
+            Split(
+                Orientation.COLUMN,
+                (0.55, 0.45),
+                (Area(AreaId(1), CONCENTRATION_CHART), Area(AreaId(3), WASH_IN)),
             ),
+            Area(AreaId(2), AGENT_ACCOUNTING),
         ),
     ),
-    0,
+    Split(Orientation.ROW, (0.5, 0.5), (Area(AreaId(5), BOOKMARKS), Area(AreaId(6), BRANCH))),
 )
+
+#: The share of the window's height each row of `_ARRANGED_ROWS` takes, and
+#: then the row of every other registered View.
+_ARRANGED_ROW_SHARES: Final = (0.15, 0.5, 0.15)
+_LAST_ROW_SHARE: Final = 0.2
+
+
+def _areas_of(node: Area | Split) -> tuple[Area, ...]:
+    """Every Area under `node`, in the order the tree holds them."""
+
+    if isinstance(node, Area):
+        return (node,)
+
+    return tuple(area for child in node.children for area in _areas_of(child))
+
+
+def _every_view() -> WorkspaceSet:
+    """Return one Workspace that holds every View this build registers, each in its own Area.
+
+    The Areas in `_ARRANGED_ROWS` keep their numbers, because tests choose a
+    View for an Area by its number. Every registered kind that those rows
+    leave out stands in one more row at the foot, numbered on from them. The
+    kinds are read from the registry, so a kind registered later is in the
+    Workspace with no edit here, and every test that restates a run's state
+    builds it (`PL-B8DL`).
+    """
+
+    placed = {area.view for row in _ARRANGED_ROWS for area in _areas_of(row)}
+    rest = tuple(
+        Area(AreaId(7 + index), kind)
+        for index, kind in enumerate(kind for kind in REGISTERED if kind not in placed)
+    )
+    rows: tuple[Area | Split, ...] = _ARRANGED_ROWS
+    shares: tuple[float, ...] = _ARRANGED_ROW_SHARES
+
+    if len(rest) == 1:
+        rows, shares = (*rows, rest[0]), (*shares, _LAST_ROW_SHARE)
+    elif rest:
+        last = Split(Orientation.ROW, (1 / len(rest),) * len(rest), rest)
+        rows, shares = (*rows, last), (*shares, _LAST_ROW_SHARE)
+
+    total = sum(shares)
+    tree = Split(Orientation.COLUMN, tuple(share / total for share in shares), rows)
+    layout = LayoutModel((Window(tree),), AreaId(7 + len(rest)))
+
+    return WorkspaceSet((Workspace(WorkspaceName("Every View"), Origin.mine(), layout),), 0)
+
+
+#: One Workspace that holds every View this build registers (`_every_view`).
+#: Each test then finds the View it reads, whichever Workspace is shipped
+#: first.
+_EVERY_VIEW = _every_view()
 
 #: The size of a window in which every Area of `every_registered_view` is large
 #: enough for its View, so that each View is drawn and none is replaced by the
@@ -207,7 +231,7 @@ _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 1000
 # A window tall enough that the concentration plot has its preferred height,
 # `theme.CHART_HEIGHT`, in the test Workspace (`PL-CBYS`).
-_TALL_WINDOW_HEIGHT_PX = 2200
+_TALL_WINDOW_HEIGHT_PX = 2800
 
 #: The two required glosses, restated rather than imported so an edit to the
 #: application cannot move both sides of the assertion at once.
@@ -1049,7 +1073,15 @@ def _widget_attributes(run: RunView) -> dict[str, QWidget]:
 
 
 def _widget_state(widget: QWidget) -> tuple[object, ...]:
-    """What a reader can see of one widget, its children apart."""
+    """What a reader can see of one widget, its children apart.
+
+    A widget that paints text without a label, such as the compartment
+    schematic's canvas or any View, says what it paints through
+    `painted_strings` (`SchematicCanvas.painted_strings`,
+    `view_contract.View.painted_strings`). That text is part of its state,
+    so a painted amount left from an earlier run reads as a difference here,
+    as a label's text does (`PL-0G2P`).
+    """
 
     state: list[object] = [
         type(widget).__name__,
@@ -1066,6 +1098,11 @@ def _widget_state(widget: QWidget) -> tuple[object, ...]:
 
     if isinstance(widget, QAbstractSlider):
         state.extend((widget.minimum(), widget.maximum(), widget.value()))
+
+    painted = getattr(widget, "painted_strings", None)
+
+    if callable(painted):
+        state.append(painted())
 
     return tuple(state)
 

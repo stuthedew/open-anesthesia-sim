@@ -28,6 +28,7 @@ from anesthesia_sim.app.dashboard_frame import CONTROL_TIMELINE_HEADING, run_lab
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_elapsed
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS, REGISTERED
+from anesthesia_sim.app.views import CompartmentSchematicView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
@@ -748,3 +749,96 @@ def test_each_compared_value_is_shown_under_its_own_run(application: QApplicatio
     # per run are compared too, but at these settings they read the same for
     # both runs. A walk that found fewer kinds would check too little.
     assert len(checked) >= 4, f"only {checked} showed the two runs' different values"
+
+
+def _painted_amounts(view: SimulationView) -> tuple[str, ...]:
+    """The text that every compartment schematic in the dashboard paints, in reading order.
+
+    The schematic paints each container's name, tension and amount without a
+    label, so the walk of a dashboard's labels cannot read them. Each canvas
+    returns the strings that it paints (`SchematicCanvas.painted_strings`).
+    """
+
+    return tuple(
+        text
+        for drawn in view.layout_container.views()
+        if isinstance(drawn, CompartmentSchematicView)
+        for text in drawn.painted_strings()
+    )
+
+
+def _start_over(view: SimulationView, how: str) -> None:
+    """Make the dashboard's one run start over by a Reset, or by a change to desflurane.
+
+    The run has recorded ten minutes, so a change of agent asks first, and
+    the reader discards the run.
+    """
+
+    run = view.runs[0]
+
+    if how == "reset":
+        run._reset_button.click()
+    else:
+        _select_agent(run, "desflurane")
+        dialog = run._new_case_dialog
+        assert dialog is not None, "the change of agent did not ask before discarding the run"
+        dialog.discard_button.click()
+
+
+def _fresh_run_after(how: str, changed: SimulationController) -> SimulationController:
+    """A run built directly in the state that a start over by `how` is meant to produce.
+
+    A Reset keeps every setting and goes back to 0 s. A change of agent goes
+    back to 0 s with the new agent, at the delivered concentration that the
+    changed run now holds, which is the reader's setting and not a value
+    under test.
+    """
+
+    if how == "reset":
+        return _run_at(0)
+
+    fresh = SimulationController("desflurane")
+    fresh.set_delivered_concentration_percent(
+        Percent(float(changed.settings().delivered_concentration_percent))
+    )
+
+    return fresh
+
+
+@pytest.mark.parametrize("how", ["reset", "agent change"])
+@pytest.mark.parametrize("frame_drawn", [True, False], ids=["drawn", "halted"])
+def test_the_schematic_paints_no_amount_left_from_before_a_start_over(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, how: str, frame_drawn: bool
+) -> None:
+    """After a Reset or an agent change, each painted amount is the one a fresh run paints.
+
+    The schematic paints its amounts on a canvas rather than in labels, so
+    the tests that read every label could not see an amount left from the
+    run before it started over (`PL-0G2P`). The run here has delivered
+    sevoflurane for ten minutes, so every compartment holds agent. After the
+    start over, the dashboard is compared with one built afresh over a run in
+    the state the start over is meant to produce. Where no frame draws after
+    the start over, both dashboards halt on their first frame, so each
+    schematic withholds its amounts rather than painting the discarded
+    run's.
+    """
+
+    view = _shown_view(application, _run_at(_COMPARED_AT_S))
+    before = _painted_amounts(view)
+    assert before, "the dashboard shows no schematic, so the test reads nothing"
+
+    if not frame_drawn:
+        monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+
+    _start_over(view, how)
+    _settle(application)
+    after = _painted_amounts(view)
+    changed = view.runs[0].controller
+    assert changed.has_failed is not frame_drawn
+    assert changed.agent_id == ("sevoflurane" if how == "reset" else "desflurane")
+    # Building the fresh dashboard deletes this one.
+    fresh = _shown_view(application, _fresh_run_after(how, changed))
+
+    assert fresh.runs[0].controller.has_failed is not frame_drawn
+    assert after != before, "the schematic still paints the run from before the start over"
+    assert after == _painted_amounts(fresh)

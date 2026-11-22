@@ -59,7 +59,6 @@ from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.preferences import Preferences
-from anesthesia_sim.app.qt_widgets import BookmarksPanel, ForkPanel
 from anesthesia_sim.app.run_presentation import ShownFrame, ValuesStanding, shown_drawn
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.theme import (
@@ -70,11 +69,14 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
+    CasePresentation,
     FrameRequest,
+    MarksPresentation,
     PreferencesInForce,
     SavedState,
     ViewContext,
     ViewRequests,
+    ViewScope,
     ViewTick,
 )
 from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
@@ -104,18 +106,17 @@ _REQUESTS = ViewRequests(
     setting=lambda _run, _control, _value: None,
     preview=lambda _run, _control, _value: None,
     preview_end=lambda _run: None,
+    mark_entry=lambda _entry: None,
+    mark_edit=lambda _button, _entry: None,
+    branch_point=lambda _point: None,
+    branch=lambda: None,
+    branch_here=lambda: None,
 )
 _PREFERENCES = PreferencesInForce(Preferences(), None)
 
 
-class _NoCase:
-    """The case's panels for a tick here. No View under test asks for one, so each build fails."""
-
-    def build_bookmarks_panel(self) -> BookmarksPanel:
-        raise AssertionError("no View under test shows the bookmarks")
-
-    def build_branch_control(self) -> ForkPanel | None:
-        raise AssertionError("no View under test shows the branch control")
+#: The case's panels for a tick here: no marks listed yet, and no case to branch.
+_NO_CASE = CasePresentation(MarksPresentation(None, None, None, None), None)
 
 
 class _TestView(QWidget):
@@ -133,6 +134,8 @@ class _TestView(QWidget):
         # What `refresh` raises once it has recorded the tick, or None to raise nothing.
         self.failure: Exception | None = None
         self.setting = 0
+        # What the View shows. A test of a View of the case sets it.
+        self.scope = ViewScope.RUNS
         # Small enough that Qt's own minimum never stops a drag here.
         self.setMinimumSize(10, 10)
         _BUILT.append(self)
@@ -1082,7 +1085,7 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
 
     assert container.owes_a_frame
 
-    container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
+    container.refresh(frames, (), selection, _PREFERENCES, _NO_CASE)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert [view.ticks[0].frame for view in _BUILT] == [frames[None], None, frames[zoomed]]
@@ -1111,7 +1114,7 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
     _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
 
     with pytest.raises(KeyError):
-        container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
+        container.refresh(frames, (), selection, _PREFERENCES, _NO_CASE)
 
 
 def test_a_tick_with_no_frame_reaches_every_view_and_carries_each_window_s_frame_as_shown(
@@ -1131,7 +1134,7 @@ def test_a_tick_with_no_frame_reaches_every_view_and_carries_each_window_s_frame
     _BUILT[1].request = FrameRequest(zoomed, 300.0)
     withheld = ShownFrame(ValuesStanding.WITHHELD, None, selection)
 
-    case = _NoCase()
+    case = _NO_CASE
 
     container.refresh({zoomed: withheld}, (), selection, _PREFERENCES, case)
 
@@ -1161,7 +1164,7 @@ def test_a_tick_with_no_frame_reaches_every_view_though_one_raises(
     _BUILT[1].failure = RuntimeError("the second View could not show the tick")
 
     with pytest.raises(RuntimeError, match="the first View could not show the tick"):
-        container.refresh({}, (), selection, _PREFERENCES, _NoCase())
+        container.refresh({}, (), selection, _PREFERENCES, _NO_CASE)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
     assert _REFRESHED == _BUILT
@@ -1182,7 +1185,7 @@ def test_a_tick_with_a_frame_stops_at_the_first_view_that_raises(
     _BUILT[1].failure = RuntimeError("the second View could not draw the frame")
 
     with pytest.raises(RuntimeError, match="the second View could not draw the frame"):
-        container.refresh(frames, (), selection, _PREFERENCES, _NoCase())
+        container.refresh(frames, (), selection, _PREFERENCES, _NO_CASE)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 0]
 

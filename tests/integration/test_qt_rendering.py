@@ -58,51 +58,10 @@ from anesthesia_sim.app.theme import (
     ONE_MAC_LINE_COLOR,
     PANEL,
 )
-from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, CONCENTRATION_CHART, WASH_IN
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
-from anesthesia_sim.layout.model import LayoutModel
-from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
-from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
-
-#: One Workspace that holds the charts and the accounting. Each test then finds
-#: the View it reads, whichever Workspace is shipped first. The concentration
-#: chart sits over the F_A/F_I plot, beside the accounting. That was the
-#: dashboard's layout before it began opening on the shipped Workspaces
-#: (`PL-2KXB`). These tests read no setting control, so the parameter controls
-#: are left out and the plots keep the height they were drawn at then.
-_EVERY_VIEW = WorkspaceSet(
-    (
-        Workspace(
-            WorkspaceName("Charts and accounting"),
-            Origin.mine(),
-            LayoutModel(
-                (
-                    Window(
-                        Split(
-                            Orientation.ROW,
-                            (0.82, 0.18),
-                            (
-                                Split(
-                                    Orientation.COLUMN,
-                                    (0.55, 0.45),
-                                    (
-                                        Area(AreaId(1), CONCENTRATION_CHART),
-                                        Area(AreaId(3), WASH_IN),
-                                    ),
-                                ),
-                                Area(AreaId(2), AGENT_ACCOUNTING),
-                            ),
-                        )
-                    ),
-                ),
-                AreaId(4),
-            ),
-        ),
-    ),
-    0,
-)
+from tests.integration.simulation_view.simulation_view_support import _EVERY_VIEW
 
 #: The size at which the dashboard is rendered. It is wide enough for the
 #: page's own minimum width to fit inside the viewport. That minimum is set by
@@ -114,7 +73,7 @@ _WINDOW_WIDTH_PX = 1600
 _WINDOW_HEIGHT_PX = 1000
 # A window tall enough that the concentration plot has its preferred height,
 # `theme.CHART_HEIGHT`, in the test Workspace (`PL-CBYS`).
-_TALL_WINDOW_HEIGHT_PX = 2200
+_TALL_WINDOW_HEIGHT_PX = 2800
 
 #: How far inside the badge's left edge the fill is sampled: past the
 #: one-pixel border and before the padding ends and the text begins.
