@@ -1151,6 +1151,29 @@ class ReadoutPanel:
     qualifier: str | None
     quantity: RecordedQuantity | None
 
+    @property
+    def is_clock(self) -> bool:
+        """Whether this is the clock's panel.
+
+        This is the one place that asks which panel is the clock. A second
+        panel with no compartment, or a clock given one, then changes the
+        answer everywhere at once (`PL-J791`).
+        """
+
+        return self.quantity is None
+
+    def compartment(self) -> RecordedQuantity:
+        """Return the compartment this panel shows.
+
+        Raises:
+            ValueError: This is the clock's panel, which shows no compartment.
+        """
+
+        quantity = self.quantity
+        if quantity is None:
+            raise ValueError(f"the {self.name!r} panel is the clock and shows no compartment")
+        return quantity
+
 
 # The seven panels in row order. The gloss is "end-tidal-equivalent", never
 # "end-tidal". `docs/INTERFACE.md` § "Minimum displayed outputs" requires the
@@ -1170,6 +1193,21 @@ READOUT_PANELS: Final[tuple[ReadoutPanel, ...]] = (
     ReadoutPanel("Muscle", None, RecordedQuantity.MUSCLE),
     ReadoutPanel("Fat", None, RecordedQuantity.FAT),
 )
+
+#: Each panel that shows a compartment, in row order (`PL-J791`).
+COMPARTMENT_PANELS: Final[tuple[ReadoutPanel, ...]] = tuple(
+    panel for panel in READOUT_PANELS if not panel.is_clock
+)
+
+
+def clock_playback_line(playback_rate: PlaybackRate) -> str:
+    """Return the clock panel's second line, the rate at which the run is played.
+
+    Every readout row builds the line here, live or withheld, so the two cannot
+    word it differently (`PL-J791`).
+    """
+
+    return format_playback_rate(playback_rate.multiplier)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1245,11 +1283,11 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
     for panel in READOUT_PANELS:
         qualifier = panel.qualifier if panel.qualifier is not None else EMPTY_METRIC_QUALIFIER
 
-        if panel.quantity is None:
+        if panel.is_clock:
             value = format_elapsed(snapshot.elapsed_s)
-            secondary = format_playback_rate(playback_rate.multiplier)
+            secondary = clock_playback_line(playback_rate)
         else:
-            fraction = compartment_fraction(snapshot, panel.quantity)
+            fraction = compartment_fraction(snapshot, panel.compartment())
             value = format_percent(fraction)
             secondary = format_mac_multiple(fraction, mac_percent)
 
@@ -1268,7 +1306,7 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
 # measures the chosen string in its font.
 WIDEST_READOUT_VALUE: Final = format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
 WIDEST_READOUT_SECONDARY: Final = max(
-    (format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES), key=len
+    (clock_playback_line(rate) for rate in SUPPORTED_PLAYBACK_RATES), key=len
 )
 #: The widest strings a compartment column can show: the percent at a whole
 #: atmosphere, and that fraction as a multiple of the smallest 1 MAC any
@@ -1315,7 +1353,7 @@ SETTING_CONTROLS_NOT_SHOWN_TEXT: Final = "This run's setting controls cannot be 
 #: its unit (`PL-3355`, `PL-8M05`).
 READOUT_RESERVATIONS: Final[tuple[tuple[str, str], ...]] = tuple(
     (WIDEST_READOUT_VALUE, WIDEST_READOUT_SECONDARY)
-    if panel.quantity is None
+    if panel.is_clock
     else (WIDEST_COMPARTMENT_VALUE, WIDEST_COMPARTMENT_SECONDARY)
     for panel in READOUT_PANELS
 )
@@ -1342,10 +1380,8 @@ def withheld_readouts(playback_rate: PlaybackRate) -> tuple[Readout, ...]:
         Readout(
             panel.name,
             panel.qualifier if panel.qualifier is not None else EMPTY_METRIC_QUALIFIER,
-            WITHHELD_ELAPSED_TIME_TEXT if panel.quantity is None else WITHHELD_CONCENTRATION_TEXT,
-            format_playback_rate(playback_rate.multiplier)
-            if panel.quantity is None
-            else WITHHELD_MAC_MULTIPLE_TEXT,
+            WITHHELD_ELAPSED_TIME_TEXT if panel.is_clock else WITHHELD_CONCENTRATION_TEXT,
+            clock_playback_line(playback_rate) if panel.is_clock else WITHHELD_MAC_MULTIPLE_TEXT,
         )
         for panel in READOUT_PANELS
     )

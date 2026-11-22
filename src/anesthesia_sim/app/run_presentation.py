@@ -53,6 +53,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RunStatement,
     SettingReadout,
     accounting,
+    clock_playback_line,
     compared_run_notice,
     delivered_line,
     halt_notice,
@@ -64,7 +65,7 @@ from anesthesia_sim.app.dashboard_frame import (
     setting_readouts,
     withheld_readouts,
 )
-from anesthesia_sim.app.formatting import format_mac_reference, format_playback_rate
+from anesthesia_sim.app.formatting import format_mac_reference
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.layout.run_identity import RunId
 
@@ -393,8 +394,8 @@ def _at_playback_rate(
     """Return kept readouts with the clock's playback line restated at `playback_rate`."""
 
     return tuple(
-        replace(readout, secondary=format_playback_rate(playback_rate.multiplier))
-        if panel.quantity is None
+        replace(readout, secondary=clock_playback_line(playback_rate))
+        if panel.is_clock
         else readout
         for panel, readout in zip(READOUT_PANELS, kept, strict=True)
     )
