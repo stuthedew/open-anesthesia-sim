@@ -9252,6 +9252,18 @@ GATE_ONLY: dict[str, tuple[str, str]] = {
         "title and skips silently with no token, no network or no pull request, so it "
         "can never be the merge gate's answer, and CI reads the event instead (`PL-J3BB`)",
     ),
+    "tools/rules_paths_check.py": (
+        "ci",
+        "the refusing mode: CI must not rewrite the apparatus standard's `paths:`, "
+        "because a gate that writes the list it checks passes a branch whose committed "
+        "list is stale, so it refuses one, and `make check` runs `--write` below (`PL-C3K1`)",
+    ),
+    "tools/rules_paths_check.py --write": (
+        "local",
+        "the writing mode: it rewrites the apparatus standard's `paths:` from "
+        "`workflow_paths` before checking, so a path added to the lane needs no second "
+        "edit, and CI runs the refusing mode above in its place (`PL-C3K1`)",
+    ),
     "tools/required_checks_check.py": (
         "ci",
         "its answer is not in the tree: it reads the repository's required status "
