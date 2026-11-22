@@ -1026,7 +1026,7 @@ is absent (`PL-7Z84`). The design follows `PL-SSQW` (project owner, 2026-09-27,
 ratified) and question Q4 of `PL-WV9K` (project owner, 2026-09-27, specified).
 
 - **Where.** The file is saved in the directory that Qt reports for `QStandardPaths.AppDataLocation`. On macOS the directory is
-  `~/Library/Application Support/<App>`. On Windows it is
+  `~/Library/Application Support/<Org>/<App>`. On Windows it is
   `%APPDATA%\<Org>\<App>`, in the Roaming folder, because the file holds no
   window geometry and its sizes are fractions. On Linux it is
   `~/.local/share/<Org>/<App>`. In these paths, `<Org>` is the organization name

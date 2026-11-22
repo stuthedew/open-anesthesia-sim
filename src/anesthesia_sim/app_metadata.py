@@ -152,7 +152,9 @@ APP_BUNDLE_ID = "org.openanesthesia.simulator"
 
 #: The organization name that `main()` gives Qt. Qt files the reader's data
 #: under this name and under `APP_DISPLAY_NAME`. On Linux the saved Workspaces
-#: are in `~/.local/share/OpenAnesthesia/Open Anesthesia Simulator/`. It is the
+#: are in `~/.local/share/OpenAnesthesia/Open Anesthesia Simulator/`, and on
+#: macOS in `~/Library/Application Support/OpenAnesthesia/Open Anesthesia
+#: Simulator/` (`PL-RH43`). It is the
 #: organization part of `APP_BUNDLE_ID`. Changing either name moves that
 #: directory, so a reader's saved Workspaces would no longer be found
 #: (`PL-DWHG`).

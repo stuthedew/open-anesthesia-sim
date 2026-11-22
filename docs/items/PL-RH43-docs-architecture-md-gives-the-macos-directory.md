@@ -3,13 +3,16 @@ id: PL-RH43
 title: docs/ARCHITECTURE.md gives the macOS directory of the saved Workspaces as ~/Library/Application Support/<App>, which nobody has run on a Mac, and on Linux Qt adds the organization name
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: interface-matches-its-spec
-touches: docs/ARCHITECTURE.md, src/anesthesia_sim/app_metadata.py
+touches: docs/ARCHITECTURE.md, src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/layout/store.py
 deferred-from: v0.7.0 - present at the freeze, with no real connection to the frozen list or to v0.7.0's Required scope: the sentence states where Qt files user data on macOS, which no v0.7.0 entry wrote or depends on, and the preferences section that v0.7.0 added names no platform path
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2225
 payoff: A reader on a Mac is told the right place to find, back up or delete their saved Workspaces and prices.
+verify: grep -qF 'Application Support/<Org>/<App>' docs/ARCHITECTURE.md
 ---
 
 **Problem.** docs/ARCHITECTURE.md gives the macOS directory of the saved Workspaces as ~/Library/Application Support/\<App>, which nobody has run on a Mac, and on Linux Qt adds the organization name
@@ -29,3 +32,5 @@ uv run python -c 'from PySide6.QtCore import QCoreApplication, QStandardPaths; f
 **Done when.** The macOS sentence states the directory that Qt reports on a Mac, and the item records where that reading came from.
 
 **Generator check.** A one-off. The misread fact is what Qt reports for `AppDataLocation` on one platform, an outside behaviour that nothing in the tree models. `PL-5FMC` corrected the Linux sibling in the same paragraph from Qt's own output, and no head's `misread:` states this fact.
+
+**Done 2026-11-22, from Qt's source.** `src/corelib/io/qstandardpaths_mac.mm` at qtbase tag v6.11.2, the PySide6 version this project locks, was read in full for the macOS standard paths. `writableLocation` calls `baseWritableLocation(type, NSUserDomainMask, true)`, which maps `AppDataLocation` to `NSApplicationSupportDirectory` and then calls `appendOrganizationAndApp`. That function appends the organization name and then the application name, each where it is set. So the macOS directory is `~/Library/Application Support/<Org>/<App>`. No session has run it on a Mac, and the owner's one-line command in this brief would confirm it. `docs/ARCHITECTURE.md` § "User state: the saved Workspaces", the module docstring of `src/anesthesia_sim/layout/store.py` and the comment on `APP_ORGANIZATION_NAME` in `src/anesthesia_sim/app_metadata.py` now give that path. Files checked: those three, `README.md` and `docs/INTERFACE.md` (`git grep "Application Support"` finds no other statement of the path).
