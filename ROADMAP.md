@@ -36,7 +36,7 @@ The accounting panel and the schematic name the 20 °C and 1 atm at which an
 agent amount is stated, and the agent cost View says on its face that its
 figures are modelled. Every shipped Workspace fits the window without a page
 scroll, and the bookmarks and the branch control are Views. The release has
-139 items. It is a patch on both halves of the patch test in § "Versioning
+141 items. It is a patch on both halves of the patch test in § "Versioning
 decision": the schematic milestone is not finished, and v0.7.0 is given to a
 milestone section, so no patch release may take that number. v0.6.19 finishes
 six features: `copy-editor`, `effort-trial`, `interface-provenance-adoptions`,
@@ -45,7 +45,7 @@ six features: `copy-editor`, `effort-trial`, `interface-provenance-adoptions`,
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
 has cleared and the project owner has test-driven `main`. The Required scope
 has closed: its last two ids, `PL-HQPF` and `PL-RJN9`, close in this release.
-When v0.6.19 was cut, 171 of the gate's 200 entries had cleared, 8 were open
+When v0.6.19 was cut, 173 of the gate's 200 entries had cleared, 6 were open
 for this gate to clear, and 21 were deferred to the next gate.
 
 **The model's step changed, so a run can differ from v0.6.18. No equation or
@@ -258,7 +258,7 @@ so no release's notes name it (`PL-KRS6`).
 | v0.6.16 | Completed | **The release where the copy editor cuts a repeated fact, words a fact does not need and a fact meant for another reader, and is back in use; where the rest of `docs/MODEL.md`'s interface sections, and its section on how the document is held to the tree, are rewritten for a clinician reader; where `README.md` is copy edited with the fixed copy editor; and where the writing rule says a model limitation earns a sentence only where it could change what a clinician concludes from a displayed value.** | 11 items | `PL-80PZ` |
 | v0.6.17 | Completed | **The release where the agent cost View shows the delivered agent in whole millilitres of liquid, because a tenth implied more precision than the measured density supports, and where `docs/MODEL.md` gives each fact one home and is line edited with every dropped statement restored.** | 96 items | `PL-FNJ3` |
 | v0.6.18 | Completed | **The release where GitHub's own settings refuse a forced push, the deletion of `main` and the merge of a pull request that the project holds, and where the order of work, the learner and the tasks for the interface pass are agreed.** | 6 items | `PL-MH1H` |
-| v0.6.19 | Completed / current baseline | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 139 items | `PL-572Q` |
+| v0.6.19 | Completed / current baseline | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 141 items | `PL-572Q` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.

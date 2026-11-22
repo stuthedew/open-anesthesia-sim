@@ -1,12 +1,12 @@
 ---
 id: PL-572Q
-title: Cut v0.6.19 from the 139 items finished since v0.6.18
+title: Cut v0.6.19 from the 141 items finished since v0.6.18
 status: untriaged
 resource: release-train
 added: 2026-11-22
 ---
 
-**Problem.** Cut v0.6.19 from the 139 items finished since v0.6.18
+**Problem.** Cut v0.6.19 from the 141 items finished since v0.6.18
 
 **The cut, 2026-11-22.** The version is 0.6.19 and the notes are in
 `docs/releases/v0.6.19.md`, with 134 items stamped. The first cut ran on a
@@ -44,3 +44,8 @@ after the cut, closing six items, and `#2206` changed `src/`. The cut was
 reopened, `main` merged, and `make release VERSION=0.6.19` re-run: 139 items.
 `core/`, `data/` and `tests/reference/` did not move, so the trajectory
 comparison stands.
+
+**Re-cut again, 2026-11-22.** `#2212` merged during the check and closed two
+gate entries, `PL-PX7N` and `PL-4G3N`, so the cut is 141 items and the gate
+stands at 173 of 200 cleared, 6 open for it and 21 deferred. `#2212` changed
+`README.md` and documents only.
