@@ -161,8 +161,8 @@ def test_the_variable_bypass_overshoot_at_altitude_follows_from_the_fuller_form(
     the ratio at 760 mmHg is the overshoot.
     """
 
-    (svp,) = _one(r"Isoflurane's saturated vapour pressure is about (\d+) mmHg at 20 °C")
-    overshoot, ambient = _one(r"about (\d+)% high at (\d+) mmHg")
+    (svp,) = _one(r"Isoflurane's (?:saturated vapour pressure )?is about (\d+) mmHg at 20 °C")
+    overshoot, ambient = _one(r"about (\d+)%(?: high)? at (\d+) mmHg")
     svp_mmhg = float(svp)
 
     def partial_pressure(ambient_mmhg: float) -> float:
@@ -194,7 +194,10 @@ def test_the_fitted_fat_time_constants_imply_the_flows_printed() -> None:
         r"are (\d+) for sevoflurane, (\d+) for isoflurane and (\d+) for desflurane"
     )
     time_constants = _one(r"time constants of ([\d,]+), ([\d,]+), ([\d,]+) and ([\d,]+) minutes")
-    flows = _one(r"\(Table 4 of each paper\) give (\d\.\d), (\d\.\d), (\d\.\d) and (\d\.\d)")
+    flows = _one(
+        r"(?:\(Table 4 of each paper\)|their fitted time constants) give "
+        r"(\d\.\d), (\d\.\d), (\d\.\d) and (\d\.\d)"
+    )
 
     for agent_id, printed in (
         ("sevoflurane", sevoflurane),

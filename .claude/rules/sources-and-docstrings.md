@@ -136,7 +136,7 @@ without being told. Leave out what the signature, the body or a named type
 already shows.
 
 "Return this group's blood flow $`Q_i = f_iQ`$ at a cardiac output, in
-L/min. `docs/MODEL.md` § "Tissue groups" defines it. The group stores no flow
+L/min. `docs/MODEL.md` § "Blood flow to the tissue groups" defines it. The group stores no flow
 of its own, so no write can leave its flow out of step with the cardiac output
 (`PL-HQF5`). Raises: TypeError: `cardiac_output_l_min` was not built as a
 `CardiacOutput` (`core/supported_ranges.py`)."

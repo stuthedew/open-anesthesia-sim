@@ -175,3 +175,28 @@ the interface in `docs/INTERFACE.md`. Nothing was added there.
 items) and `PL-XLDN` (the pointer to the second sourcing rule) move to ready.
 `PL-1VXY` and `PL-YKKC` now wait on the three sorting items, which apply
 their findings document by document.
+
+*Blind review, two passes.* Each finding and what was done:
+
+1. The control-delay paragraph said a one-second-late control change moves a
+   reading less than one SD of any coefficient. The table beside it shows the
+   vessel-rich and fat shifts are smaller than the timing error. The paragraph
+   now states the comparison as the numbers give it. `docs/VERIFICATION.md`
+   has the same two wrong sentences, and `PL-3MMJ` corrects them.
+2. The precision table gave one row for every agent amount. It now gives the
+   run totals, a compartment's amount in the schematic and the cost view's
+   totals as three rows, each at the precision the code formats.
+3. About 84 citations in 21 files still named a section that moved. Each now
+   names the section that holds the text. Pass 2 named this again.
+4. The test of the known-limitation figures did not compare its two copies.
+   Three of its patterns now match both, so a copy that changes alone fails.
+5. The "common gas outlet" line under the fresh gas flow control lost its
+   stated reason with the replaced text. `docs/INTERFACE.md` § "Minimum
+   displayed outputs" now states it, and `docs/MODEL.md` § "Breathing
+   circuit" says why the label is worded so. The same review found that no
+   specification states the circuit readout's "inspired" line, and
+   `PL-NMZS` records that.
+6. Passages in `docs/PARAMETERS.md` § "The evidence behind the known
+   limitations" still read as the end of a section they no longer follow.
+   Their opening sentences now name what they are about. The subheadings
+   that section needs are part of `PL-N83Z`, which sorts that document.

@@ -4032,7 +4032,7 @@ findings and `safety`/`science` findings, which re-enter this gate.
   than counted, and a reset frees the run to take a different step. The
   interface's own cadence is still 0.1 s. A step-refinement study can still
   take a whole run at a smaller step. `docs/VERIFICATION.md` states the guarantee,
-  and the four things it does not cover, under § "The reproducibility
+  and the three things it does not cover, under § "The reproducibility
   guarantee".
 - **A playback multiplier** (queue item PL-SN2C). It offers five rates (1, 5,
   20, 60, 300x). It is implemented as more steps per tick and never as a

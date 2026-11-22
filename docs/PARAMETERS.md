@@ -1454,20 +1454,24 @@ This section keeps the evidence, the sources and the tests behind those
 statements that the clinician's text leaves out, in the order of the
 limitations.
 
-**For developers.** `test_desflurane_washout_at_the_default_fresh_gas_flow_regression_pin`
-in `tests/reference/test_published_wash_in_and_elimination.py` pins the figure
-at the default fresh gas flow, reading that flow from the circuit's parameter
-file. `test_desflurane_washout_at_a_high_flow_and_raised_ventilation_regression_pin`
-pins the figure at 10 L/min of fresh gas and 8 L/min of alveolar ventilation.
-`test_five_minute_elimination_ratio_regression_pin` pins the figure at
-10 L/min, and
-`test_five_minute_elimination_ratio_without_rebreathing_regression_pin` the
-figure with the circuit removed.
+**For developers.** Four tests in
+`tests/reference/test_published_wash_in_and_elimination.py` pin the figures of
+`docs/MODEL.md` § "Elimination at five minutes: does not agree".
+`test_desflurane_washout_at_the_default_fresh_gas_flow_regression_pin` pins
+desflurane's washout at the default fresh gas flow, reading that flow from the
+circuit's parameter file.
+`test_desflurane_washout_at_a_high_flow_and_raised_ventilation_regression_pin`
+pins it at 10 L/min of fresh gas and 8 L/min of alveolar ventilation.
+`test_five_minute_elimination_ratio_regression_pin` pins the five-minute ratio
+at 10 L/min, and
+`test_five_minute_elimination_ratio_without_rebreathing_regression_pin` pins
+it with the circuit removed.
 
 <!-- not-restated: 10 L/min -->
 
-**It is not modeled because the human volunteer data do not describe a
-relationship this model could represent.** Three studies measured healthy
+**The anesthetic's effect on cardiac output and the perfusion fractions is
+not modeled, because the human volunteer data do not describe a relationship
+this model could represent.** Three studies measured healthy
 volunteers who were anesthetized without surgery, each against their own awake
 baseline:
 
@@ -1667,8 +1671,8 @@ and fat:gas values. Baker does not say which of the anesthetic figures were
 measured and which predicted. The set has no desflurane values.
 <!-- not-restated: 18 % -->
 
-Every stored coefficient lies within one standard deviation of its cited
-measurement. A learner should read the muscle and fat traces as one
+Every stored tissue:gas coefficient lies within one standard deviation of its
+cited measurement. A learner should read the muscle and fat traces as one
 well-measured parameter set, not the only set the literature supports.
 Yasuda, Targ and Eger's p. 373, Eger and Saidman's Table 1, Baker and
 Farmery's Table 2 and Hendrickx and De Wolf's p. 165 were read in full text.
@@ -1677,7 +1681,8 @@ Fiserova-Bergerova and Diaz 1986 was read as its PubMed abstract only (PMID
 citation is in `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter file was not
 changed".
 
-The fixed value is kept for a structural reason. A time constant is
+The cardiac output is kept at a fixed 5.0 L/min, rather than scaled with the
+patient's weight, for a structural reason. A time constant is
 $`V_i \lambda_{i:b} / Q_i`$, and this model stores compartment volumes as
 fixed litres. So scaling only the flow would make every time constant
 proportional to $`M^{-3/4}`$: a heavier patient would equilibrate *faster* and
@@ -1692,6 +1697,7 @@ retrieved, but its text has not been read, so no figure is taken from it.)
 Half of the scaling is therefore worse than none of it. Adopting the relation
 for the one patient that exists would have lengthened every time constant by
 3.30% and changed nothing else.
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 
 **For developers.** `test_the_reference_condition_gap_is_the_ratio_of_molar_volumes`
 computes the molar volumes at 37 °C and 20 °C from the constants in

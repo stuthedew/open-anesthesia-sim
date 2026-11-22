@@ -23,8 +23,9 @@ build is the port's definition of done. Three of the strings are safety
 requirements rather than wording choices: the "Alveolar" readout with the
 gloss "end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout with the gloss
 "inspired" (`PL-8M05`), and the "Fresh gas flow" control with the gloss
-"common gas outlet" (`PL-71CF`). Each is stated in `docs/MODEL.md` and
-enforced by an exact-string test.
+"common gas outlet" (`PL-71CF`). `docs/INTERFACE.md` § "Minimum displayed
+outputs" states the first and the third, and an exact-string test enforces
+each of the three.
 """
 
 from collections.abc import Callable, Mapping, Sequence

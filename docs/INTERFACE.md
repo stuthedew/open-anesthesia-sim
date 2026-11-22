@@ -2357,6 +2357,14 @@ compartment, which is the value a monitor's end-tidal reading estimates in a
 real patient. The model has no dead space, airway sampling delay or shunt, so
 this readout is not a simulated end-tidal measurement.
 
+The fresh gas flow control is labelled "Fresh gas flow", with "common gas
+outlet" on the line below. The flow it sets is the whole stream leaving the
+common gas outlet, carrier gas plus vapour, which is up to 22% above the
+flowmeter setting (`docs/MODEL.md` § "Breathing circuit"). "Fresh gas flow"
+alone is the name on a real machine's flowmeter bank. Neither this label nor
+the alveolar readout's is shortened to its first line to fit a layout.
+<!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
+
 Arterial concentration is **not** in the list above. In this model the arterial
 fraction is defined as the alveolar one, $`F_a \equiv F_A`$ (see
 `docs/MODEL.md` § "What the model represents"). A separate arterial readout would show the alveolar number

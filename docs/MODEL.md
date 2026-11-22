@@ -330,7 +330,9 @@ At 2% delivered, $`\dot V_F`$ is 2% above the flowmeter setting. At the top of
 the desflurane dial, 18%, it is 22% above, so flowmeters set to 2 L/min
 deliver about 2.44 L/min. A reader who takes the simulator's fresh gas flow
 control for a flowmeter setting misjudges the circuit time constant by the
-same factor.
+same factor. So the control is labelled "Fresh gas flow" with "common gas
+outlet" on the line below it, because "Fresh gas flow" alone is the name on a
+real machine's flowmeter bank.
 <!-- provenance: data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 <!-- derived: 2.44 L/min from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
@@ -867,13 +869,16 @@ it is made, so its timing is accurate to one second and no better. A slider
 move is resolved to one second, and a change made and reversed within one
 second never reaches the model.
 
-For an ordinary control action, the delay matters less than the parameters
-do. When a case opens with the dial moved from off to 1 MAC, a change that
-takes effect one second late displaces a displayed concentration by up to
-0.066 percentage points, for desflurane. In the first hour at 1 MAC, one
-standard deviation of the blood:gas coefficient displaces a displayed
-compartment by up to 0.082 percentage points, and each tissue coefficient's
-shift is larger.
+For an ordinary control action, the delay matters less than the uncertainty
+in the blood:gas and muscle coefficients does, and more than the uncertainty
+in the vessel-rich and fat coefficients. When a case opens with the dial moved
+from off to 1 MAC, a change that takes effect one second late displaces a
+displayed concentration by up to 0.066 percentage points, for desflurane. In
+the first hour at 1 MAC, one standard deviation of the blood:gas coefficient
+displaces a displayed compartment by up to 0.082 percentage points, and one of
+the muscle coefficient by up to 0.90. One standard deviation of the
+vessel-rich or fat coefficient displaces one by up to 0.049 or 0.036
+percentage points (§ "Precision").
 
 **An abrupt ventilation change is the exception.** A ventilator start that
 takes effect one second late shifts the alveolar reading by up to 1.3
@@ -1126,16 +1131,18 @@ plot can be laid beside a published figure.
 | MAC multiple | 0.01 MAC (0.02 percentage points of sevoflurane, 0.012 of isoflurane, 0.06 of desflurane) |
 | Simulated time | 1 s, one step |
 | Fresh gas flow, alveolar ventilation, cardiac output | 0.1 L/min |
-| Agent amounts | 0.1 L of equivalent pure agent gas |
+| A run's delivered, exhausted or stored total | 0.1 L of equivalent pure agent gas |
+| One compartment's amount, in the schematic | Two significant figures of millilitres of vapour, and never finer than 0.01 mL |
+| The delivered or exhausted total, in the cost view | 1 mL of liquid |
 <!-- not-restated: 0.06 -->
 <!-- provenance: core/simulation_step.py SIMULATION_STEP_S = 1 -->
 
 A positive concentration that would round to `0.00%` is displayed as
 `<0.01%`, so `0.00%` means that no agent has arrived. Each slider moves in
 steps of its display resolution, so the value applied to the model is exactly
-the value printed beside the control. Amounts are labelled as litres of
-equivalent pure agent gas, because a bare "L" beside an anesthetic invites a
-reader to take it as litres of liquid.
+the value printed beside the control. An amount of agent gas is labelled "L
+vapour" or "mL vapour", and an amount of liquid "mL of liquid", because a bare
+"L" or "mL" beside an anesthetic invites a reader to take it as liquid.
 
 **Each digit shown is accurate for this model with its parameters. No
 displayed value can be trusted to its last digit as a prediction about a
