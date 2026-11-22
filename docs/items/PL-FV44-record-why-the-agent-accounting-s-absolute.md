@@ -3,13 +3,16 @@ id: PL-FV44
 title: Record why the agent accounting's absolute tolerance is 1e-12 L, which no item, comment or commit message states
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: floating-point-domain
-touches: src/anesthesia_sim/core/rounding.py
+touches: src/anesthesia_sim/core/rounding.py, docs/VERIFICATION.md
 deferred-from: v0.7.0 - continues PL-GJ1W (every rounding bound stated in one place), a frozen entry this gate deferred, and is worked with it. Hazard not live, checked 2026-11-22 at d4e8200c: the 1 picolitre limit governs only while a run has handled less than a millilitre of agent gas, and the largest unaccounted amount in the 3600 s runs (1.1e-12 L) passed on the relative limit, so no displayed value depends on the missing reason
 added: 2026-11-21
+closed: 2026-11-22
+pr: 2221
 payoff: The limit that decides when a step is refused for unaccounted agent has a stated reason, so a later change to it can be judged against that reason rather than guessed at.
+verify: grep -qF 'so the fixed limit can only admit an error, never' docs/VERIFICATION.md
 ---
 
 **Problem.** `AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L` in `src/anesthesia_sim/core/rounding.py` is `1e-12` L, and no record says why. The value is already in commit `875ba0850` ("Build v0.1.0 sevo patient simulation", 2026-08-22), which `git log -S'1e-12' --reverse -- src` lists first. Its docstring cited the largest unaccounted amount in a 3600 s run as if that explained it, but the measurement was made on 2026-09-06, after the value was chosen.
@@ -32,3 +35,14 @@ freeze (`0947408`).
 exact one, and so what a limit on it proves. `PL-GJ1W` (every rounding bound
 in one place) states it and is still open, so this is one more instance under
 that head and not a re-entry.
+
+**Done 2026-11-22.** `git log -S'1e-12' -- src` found no reason for the value,
+so the docstring now says it is a fixed allowance from v0.1.0 with no recorded
+reason, gives the one derivation that holds (it equals the relative limit
+applied to 1 mL, so it decides only while less than 1 mL has been handled), and
+names what it was checked against. `docs/VERIFICATION.md` § "Selected method
+(as implemented)" said the fixed limit "catches a gross error early". A step
+passes on either limit, so the fixed limit can only admit an error, and that
+sentence is corrected. Files checked: `docs/VERIFICATION.md`, `docs/MODEL.md`,
+`docs/INTERFACE.md`, `docs/PARAMETERS.md`, `docs/ARCHITECTURE.md` and
+`README.md`, searched for "picolitre", "absolute limit" and "fixed limit".
