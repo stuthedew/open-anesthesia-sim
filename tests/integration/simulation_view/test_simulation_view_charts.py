@@ -295,7 +295,7 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     # Mapleson 1996 (PMID 8777094), Abstract: MAC at age 40 of 1.80% sevoflurane and
     # 6.6% desflurane. The reference adult is 40.
     assert _concentration(view).legend.one_mac_text == (
-        "1 MAC sevoflurane (age 40) = 1.80%" + _ONE_MAC_ENTRY_WORDS
+        "1 MAC sevoflurane (age 40) = 1.8%" + _ONE_MAC_ENTRY_WORDS
     )
     assert chart.one_mac_line() == 1.8
     assert chart.axis_ticks("right")[-1][1] == "3.0"
@@ -307,7 +307,7 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     mac_awake = load_agent_parameters("desflurane").mac_awake
 
     assert _concentration(view).legend.one_mac_text == (
-        "1 MAC desflurane (age 40) = 6.60%" + _ONE_MAC_ENTRY_WORDS
+        "1 MAC desflurane (age 40) = 6.6%" + _ONE_MAC_ENTRY_WORDS
     )
     assert _concentration(view).legend.band_mark.label == (
         format_mac_awake_reference(

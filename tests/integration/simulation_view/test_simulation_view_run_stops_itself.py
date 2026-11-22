@@ -650,7 +650,7 @@ def test_a_halt_after_an_agent_change_shows_no_mac_multiple_beside_another_agent
     assert run._one_mac_text.text() == format_mac_reference(
         record.agent_display_name, record.agent_mac_percent, age_years=record.agent_mac_age_years
     )
-    assert run._one_mac_text.text() == "1 MAC desflurane (age 40) = 6.60%"
+    assert run._one_mac_text.text() == "1 MAC desflurane (age 40) = 6.6%"
     # No card keeps sevoflurane's percent under the desflurane heading, or its multiple
     # under desflurane's 1 MAC (`PL-J5GC`). The clock is withheld with the cards, because
     # it states their instant (adversarial review of `PL-J5GC`).
@@ -1705,7 +1705,7 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting(
 
     row = _setting_row(run)
 
-    assert run._one_mac_text.text() == "1 MAC desflurane (age 40) = 6.60%"
+    assert run._one_mac_text.text() == "1 MAC desflurane (age 40) = 6.6%"
     assert dials == []
     assert row.controls is None
     assert row.not_shown_text.text() == "This run's setting controls cannot be shown."

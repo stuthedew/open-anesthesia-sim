@@ -2559,7 +2559,7 @@ class TraceLegend(QWidget):
 
         Args:
             one_mac: The 1 MAC line's value, as `mac_reference_caption` writes
-                it, such as "1 MAC sevoflurane (age 40) = 1.80%".
+                it, such as "1 MAC sevoflurane (age 40) = 1.8%".
             mac_awake: The band's fraction, centre and edges, as
                 `mac_awake_caption` writes them.
         """

@@ -2943,7 +2943,7 @@ the difference between a ratio and a depth, so the sign is the only thing that
 marks it.
 
 **The agent's 1 MAC is shown beside the chart with the age it is stated
-for**, for example as "1 MAC sevoflurane (age 40) = 1.80%". A reader can
+for**, for example as "1 MAC sevoflurane (age 40) = 1.8%". A reader can
 compare this 1 MAC with the value they use for their own patient, and can
 convert a MAC multiple back to the percent that the model computes. The 1 MAC
 is also the vaporizer's starting position. In each agent's data file, the
@@ -2952,10 +2952,17 @@ each agent's MAC at age 40. `docs/PARAMETERS.md` § \"Delivery-limit and MAC
 parameters" gives the source of each agent's 1 MAC and its confidence limits.
 <!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 
-**The 1 MAC prints with two decimals**, as the percent readouts do, so each
-agent's 1 MAC is stated at the resolution of the dial that opens at it. This
-shows isoflurane's 1.17% in full. Mapleson reports desflurane's MAC to one
-decimal, so the last digit of "6.60%" is the display's and not the source's.
+**The 1 MAC prints with at most two decimals and no trailing zero**: 1.8%
+sevoflurane, 1.17% isoflurane and 6.6% desflurane. Two decimals show
+isoflurane's 1.17% in full. A trailing zero would claim a digit that the MAC's
+uncertainty does not support, because Mapleson's 95% limits are about ±7% of
+the MAC (±10% for desflurane). The GUM rounds an estimate to be consistent with
+its uncertainty (JCGM 100:2008, *Evaluation of measurement data: Guide to the
+expression of uncertainty in measurement*, § 7.2.6). The Joint Commission's
+"Do Not Use" list allows a trailing zero only where it shows the precision of
+the value reported. The line then reads as the 1 MAC gridline's axis label
+does. The dial and the percent readouts keep two decimals, because they show a
+setting and a computed concentration at the dial's step.
 <!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
 <!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 

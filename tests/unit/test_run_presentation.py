@@ -167,7 +167,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     assert shown.values.schematic.instant == "1m30s"
     assert shown.values.delivered.instant == "1m30s"
     assert shown.values.accounting.status.text == "Valid"
-    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.80%"
+    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
     assert shown.statement.agent_id == "sevoflurane"
     assert shown.delivered_line == "Delivered 1.80% (1.00 ×MAC)"
     assert not isinstance(shown.dials, NotBuilt)
@@ -368,7 +368,7 @@ def test_a_halt_after_a_start_over_withholds_every_value_of_the_discarded_run() 
         assert withheld != getattr(frame.values, field.name), field.name
         assert withheld == getattr(withheld_values(state.playback_rate), field.name), field.name
 
-    assert shown.one_mac == "1 MAC desflurane (age 40) = 6.60%"
+    assert shown.one_mac == "1 MAC desflurane (age 40) = 6.6%"
 
 
 def _naming_no_agent(text: str) -> str:
@@ -575,7 +575,7 @@ def test_dials_that_cannot_be_built_are_carried_and_everything_else_is_still_sta
     assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
     assert shown.notice is not None
     assert shown.statement.transport.start_enabled is False
-    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.80%"
+    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
 
 
 @pytest.mark.parametrize(
@@ -587,13 +587,13 @@ def test_dials_that_cannot_be_built_are_carried_and_everything_else_is_still_sta
         pytest.param(
             {"delivered_concentration_percent": 150.0},
             TypeError,
-            "1 MAC sevoflurane (age 40) = 1.80%",
+            "1 MAC sevoflurane (age 40) = 1.8%",
             id="a delivered setting not built as Percent",
         ),
         pytest.param(
             {"fresh_gas_flow_l_min": 2.03},
             ValueError,
-            "1 MAC sevoflurane (age 40) = 1.80%",
+            "1 MAC sevoflurane (age 40) = 1.8%",
             id="a fresh gas flow between two steps of its dial",
         ),
     ],
@@ -660,5 +660,5 @@ def test_dials_refused_by_the_core_are_carried_like_any_other_refusal(
     assert isinstance(shown.dials, NotBuilt)
     assert type(shown.dials.error) is SimulationConfigurationError
     assert shown.delivered_line == _WITHHELD_DELIVERED_LINE
-    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.80%"
+    assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
     assert shown.statement.transport.start_enabled is False

@@ -2637,7 +2637,7 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     assert mac_reference_caption(_frame(_fake_controller())) == format_mac_reference(
         "Sevoflurane", MacPercent(1.8), age_years=40
     )
-    assert mac_reference_caption(_frame(_fake_controller())) == "1 MAC sevoflurane (age 40) = 1.80%"
+    assert mac_reference_caption(_frame(_fake_controller())) == "1 MAC sevoflurane (age 40) = 1.8%"
 
     desflurane = _fake_controller(
         agent_id="desflurane",
@@ -2645,7 +2645,7 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
         max_delivered_concentration_percent=18.0,
     )
 
-    assert mac_reference_caption(_frame(desflurane)) == "1 MAC desflurane (age 40) = 6.60%"
+    assert mac_reference_caption(_frame(desflurane)) == "1 MAC desflurane (age 40) = 6.6%"
 
 
 @pytest.mark.parametrize("agent_id", AGENT_DATA_FILENAMES)

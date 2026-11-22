@@ -674,7 +674,7 @@ def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
     run = view.runs[0]
 
     assert run._delivered_text.text() == "Delivered 1.80% (1.00 ×MAC)"
-    assert run._one_mac_text.text() == "1 MAC sevoflurane (age 40) = 1.80%"
+    assert run._one_mac_text.text() == "1 MAC sevoflurane (age 40) = 1.8%"
 
     controller.set_delivered_concentration_percent(
         Percent(3.0, name="delivered_concentration_percent")

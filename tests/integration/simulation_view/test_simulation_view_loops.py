@@ -777,7 +777,7 @@ def test_a_halt_whose_dials_and_1_mac_line_cannot_be_built_is_still_stated(
     controller = SimulationController()
     view = _shown_view(application, controller)
     run = view.runs[0]
-    assert run._one_mac_text.text() == "1 MAC sevoflurane (age 40) = 1.80%"
+    assert run._one_mac_text.text() == "1 MAC sevoflurane (age 40) = 1.8%"
     record = controller.record
 
     def record_with_an_unchecked_mac() -> RunRecord:

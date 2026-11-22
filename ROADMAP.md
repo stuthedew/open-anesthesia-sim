@@ -2512,7 +2512,7 @@ stored MAC made this move ahead of age, in v0.7.0 (`PL-LBVN`, project owner,
 2026-11-14). Each agent file now stores the MAC at age 40 from Mapleson's
 meta-analysis (Br J Anaesth 1996;76(2):179-85): sevoflurane 1.80%,
 isoflurane 1.17% and desflurane 6.6%. Every 1 MAC line on screen names the
-age that its value belongs to, as in "1 MAC sevoflurane (age 40) = 1.80%".
+age that its value belongs to, as in "1 MAC sevoflurane (age 40) = 1.8%".
 
 What this item still adds is the adjustment for age. When age becomes an
 input, the MAC that divides every MAC multiple, the 1 MAC line and the

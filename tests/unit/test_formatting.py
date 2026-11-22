@@ -667,9 +667,12 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
     can then convert back. MAC falls with age, so the line names the age the
     MAC is for.
 
-    The MAC prints to the hundredths of the percent readout. So isoflurane's
-    1.17% is printed in full rather than as 1.2%, which is a different MAC
-    by 2.6% (`PL-RMNP`).
+    The MAC is rounded to the hundredths of the percent readout. So
+    isoflurane's 1.17% is printed in full rather than as 1.2%, which is a
+    different MAC by 2.6% (`PL-RMNP`). A trailing zero is dropped, because it
+    would claim a digit that the MAC's uncertainty does not support (GUM,
+    JCGM 100:2008, 7.2.6), so 1.80% and 6.60% print as 1.8% and 6.6%, and a
+    whole number prints with no decimal point.
     """
 
     assert (
@@ -678,15 +681,27 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
     )
     assert (
         format_mac_reference("Sevoflurane", MacPercent(1.8), age_years=40)
-        == "1 MAC sevoflurane (age 40) = 1.80%"
+        == "1 MAC sevoflurane (age 40) = 1.8%"
     )
     assert (
         format_mac_reference("Desflurane", MacPercent(6.6), age_years=40)
-        == "1 MAC desflurane (age 40) = 6.60%"
+        == "1 MAC desflurane (age 40) = 6.6%"
     )
     assert (
         format_mac_reference("Sevoflurane", MacPercent(2.5), age_years=1)
-        == "1 MAC sevoflurane (age 1) = 2.50%"
+        == "1 MAC sevoflurane (age 1) = 2.5%"
+    )
+    assert (
+        format_mac_reference("Desflurane", MacPercent(6.0), age_years=40)
+        == "1 MAC desflurane (age 40) = 6%"
+    )
+    assert (
+        format_mac_reference("Desflurane", MacPercent(10.0), age_years=40)
+        == "1 MAC desflurane (age 40) = 10%"
+    )
+    assert (
+        format_mac_reference("Isoflurane", MacPercent(1.174), age_years=40)
+        == "1 MAC isoflurane (age 40) = 1.17%"
     )
 
 
@@ -696,9 +711,9 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
         # Mapleson 1996 (PMID 8777094), Abstract: MAC at age 40 of 1.80%
         # sevoflurane, 1.17% isoflurane and 6.6% desflurane. The reference
         # adult records no age, so the simulator uses the MAC at age 40.
-        ("sevoflurane", "1 MAC sevoflurane (age 40) = 1.80%"),
+        ("sevoflurane", "1 MAC sevoflurane (age 40) = 1.8%"),
         ("isoflurane", "1 MAC isoflurane (age 40) = 1.17%"),
-        ("desflurane", "1 MAC desflurane (age 40) = 6.60%"),
+        ("desflurane", "1 MAC desflurane (age 40) = 6.6%"),
     ],
 )
 def test_a_run_states_its_agent_s_mac_at_age_40_in_full(agent_id: str, reference_line: str) -> None:

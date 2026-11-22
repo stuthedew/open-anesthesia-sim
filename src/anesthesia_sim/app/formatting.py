@@ -686,14 +686,19 @@ def format_mac_reference(
     without opening a data file. A reader who disagrees with the divisor can
     see that they disagree, and can convert back. MAC falls with age, so the
     line also names the age that the MAC is for:
-    `1 MAC sevoflurane (age 40) = 1.80%`.
+    `1 MAC sevoflurane (age 40) = 1.8%`.
 
-    The MAC is printed to `CONCENTRATION_DISPLAY_DECIMALS`, the decimals of
-    the percent readouts and of the delivered dial's step. So isoflurane's
-    stored 1.17% is printed in full, and the line shows the same digits as
-    the dial does when it stands at 1 MAC. Desflurane's 6.6% prints as
-    6.60%, the dial's own reading of it. `docs/PARAMETERS.md`
-    § "Delivery-limit and MAC parameters" gives each MAC's provenance.
+    The MAC is rounded to `CONCENTRATION_DISPLAY_DECIMALS`, the decimals of
+    the percent readouts, and a trailing zero is dropped. So isoflurane's
+    1.17% is printed in full, and sevoflurane's 1.80% and desflurane's 6.6%
+    print as 1.8% and 6.6%, as the 1 MAC gridline's axis label does. A
+    trailing zero would claim a digit that the MAC's own uncertainty does
+    not support: Mapleson's 95% limits are about 7% of the MAC (10% for
+    desflurane), and the GUM (JCGM 100:2008, 7.2.6) rounds an estimate to be
+    consistent with its uncertainty. The Joint Commission's "Do Not Use"
+    list allows a trailing zero only where it shows the precision of the
+    value reported. `docs/PARAMETERS.md` § "Delivery-limit and MAC
+    parameters" gives each MAC's provenance.
 
     Args:
         agent_display_name: Running agent's display name.
@@ -708,15 +713,13 @@ def format_mac_reference(
     Raises:
         TypeError: `mac_percent` was not built as a `MacPercent`, which
             refuses a zero MAC when it is built (`core/concentration.py`,
-            `PL-F9TC`). A zero MAC would print `1 MAC = 0.00%`.
+            `PL-F9TC`). A zero MAC would print `1 MAC = 0%`.
     """
 
     require_mac_percent("mac_percent", mac_percent)
+    rounded = f"{mac_percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}".rstrip("0").rstrip(".")
 
-    return (
-        f"1 MAC {agent_display_name.lower()} (age {age_years}) = "
-        f"{mac_percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}{_PERCENT}"
-    )
+    return f"1 MAC {agent_display_name.lower()} (age {age_years}) = {rounded}{_PERCENT}"
 
 
 def mac_awake_band_percent(

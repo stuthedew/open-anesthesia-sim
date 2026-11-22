@@ -1,8 +1,8 @@
 {
  "not started": [
   "",
-  "# MAC sevoflurane (age ##) = #.##%",
-  "# MAC sevoflurane (age ##) = #.##%, reference adult (alveolar, wide dash)",
+  "# MAC sevoflurane (age ##) = #.#%",
+  "# MAC sevoflurane (age ##) = #.#%, reference adult (alveolar, wide dash)",
   "# hour",
   "# hours",
   "# mL of liquid",
@@ -139,8 +139,8 @@
  ],
  "2 min": [
   "",
-  "# MAC sevoflurane (age ##) = #.##%",
-  "# MAC sevoflurane (age ##) = #.##%, reference adult (alveolar, wide dash)",
+  "# MAC sevoflurane (age ##) = #.#%",
+  "# MAC sevoflurane (age ##) = #.#%, reference adult (alveolar, wide dash)",
   "# hour",
   "# hours",
   "# mL of liquid",
@@ -282,8 +282,8 @@
  ],
  "10 min": [
   "",
-  "# MAC sevoflurane (age ##) = #.##%",
-  "# MAC sevoflurane (age ##) = #.##%, reference adult (alveolar, wide dash)",
+  "# MAC sevoflurane (age ##) = #.#%",
+  "# MAC sevoflurane (age ##) = #.#%, reference adult (alveolar, wide dash)",
   "# hour",
   "# hours",
   "# mL of liquid",
@@ -424,8 +424,8 @@
  ],
  "desflurane, 2 min": [
   "",
-  "# MAC desflurane (age ##) = #.##%",
-  "# MAC desflurane (age ##) = #.##%, reference adult (alveolar, wide dash)",
+  "# MAC desflurane (age ##) = #.#%",
+  "# MAC desflurane (age ##) = #.#%, reference adult (alveolar, wide dash)",
   "# hour",
   "# hours",
   "# mL of liquid",
