@@ -1089,46 +1089,120 @@ def test_a_slot_that_raises_inside_the_halt_does_not_start_the_halt_again(
     assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
 
 
-def test_every_dashboard_control_is_restated_on_a_halt(application: QApplication) -> None:
-    """Every control on the dashboard is in a run's panel, in a View, or in the layout's own chrome.
+#: The controls outside every run that stay live on a halted dashboard. Each
+#: key names where the control sits. A bare class name matches a control
+#: inside a widget of that class. A name of the form `Class.attribute`
+#: matches the widget that the attribute holds, and every control inside it.
+#: Each value is the reason the control may stay live while every run has
+#: failed. The test below checks this table in both directions: a live
+#: control that no entry matches fails, and so does an entry that matches no
+#: live control (`PL-5JTH`, `PL-RF2S`).
+LIVE_ON_A_HALT: Final[dict[str, str]] = {
+    "WorkspaceTabs": (
+        "the Workspace tabs choose and rename layouts. A layout is the reader's "
+        "arrangement of Areas, so it acts on no run."
+    ),
+    "ViewChooser": "an Area's View chooser picks what the Area shows, which acts on no run.",
+    "TimeBaseSelector": (
+        "a chart's time base is the chart's own drawing setting. It touches no "
+        "simulation state, and it is never disabled (`PL-012`)."
+    ),
+    "TraceLegend": (
+        "the legend's boxes ask the dashboard which compartments to draw. The "
+        "selection is the dashboard's display state and acts on no run (`PL-VN6M`)."
+    ),
+    "AgentCostView.unit_selector": (
+        "the unit the agent cost View shows is one of the reader's preferences, "
+        "which acts on no run (`PL-B396`)."
+    ),
+    "PriceEntry": (
+        "the price form sets the reader's price for an agent, one of the reader's "
+        "preferences, which acts on no run (`PL-1P15`)."
+    ),
+    "BookmarksPanel": (
+        "the marks editor stays open on a halt so that a reader can still read and "
+        "remove the case's marks. The halt rewrites its lists from the standings it "
+        "hands the Bookmarks View (`PL-YHR3`), and each edit passes the halt gate."
+    ),
+}
 
-    A `RunView` restates its own widgets on a halt (`PL-X7D5`). The halt hands
-    every View a tick that carries the runs and the case's panels, so a
-    control inside a View is written from the halt's values (`PL-RF2S`). The
-    tab strip and each Area's header choose what the layout shows, and act on
-    no run. A control anywhere else would keep offering its action over a run
-    that every other control says has failed, as the branch panel did
-    (`PL-MMNX`) and the bookmark panel did (`PL-YHR3`) before each became a
-    View. The test builds the dashboard with a case, so that the branch
-    control is offered, and a mark, which the marks editor lists. It finds the
-    places by the dashboard's structure, so a control added later in any of
-    them needs no entry here (`PL-5JTH`).
+
+def _live_on_a_halt_entries(chain: Sequence[QWidget]) -> set[str]:
+    """The keys of `LIVE_ON_A_HALT` that match a control, given the control and its ancestors."""
+
+    held = {id(widget) for widget in chain}
+    matched: set[str] = set()
+
+    for key in LIVE_ON_A_HALT:
+        owner, _, attribute = key.partition(".")
+
+        for widget in chain:
+            if type(widget).__name__ != owner:
+                continue
+
+            if not attribute or id(getattr(widget, attribute, None)) in held:
+                matched.add(key)
+
+    return matched
+
+
+def test_every_dashboard_control_is_restated_on_a_halt(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After a halt, every live control outside a run's panel acts on no run, by a named reason.
+
+    A `RunView` restates its own widgets on a halt (`PL-X7D5`). Any other
+    control that still offers its action once every run has failed would
+    offer it over a failed run, as the branch panel did (`PL-MMNX`) and the
+    bookmark panel did (`PL-YHR3`). So the test makes every frame fail, which
+    halts every run, and then reads every control outside a run's panel that
+    is still shown and enabled. Each must sit where an entry of
+    `LIVE_ON_A_HALT` names, with the reason it acts on no run. A control added
+    later to any View therefore fails here unless the halt disables or hides
+    it, or an entry is written for it. An entry that matches no live control
+    fails too, so the table cannot outlive what it excuses. The dashboard has
+    a case, so that the branch control is offered, and a mark, which the
+    marks editor lists.
     """
 
     case = _branched_case()
     case.trunk.add_time_bookmark(TimeBookmark(CaseInstant(30), "check"))
     view = _case_view(application, case)
-    containers = (
-        *(widget for run in view.runs for widget in _widget_attributes(run).values()),
-        *view.layout_container.views(),
-        view.tab_strip,
-        *(
-            view.layout_container.frame(area.id).header
-            for area in view.layout_container.model.areas()
-        ),
-    )
-    held = {id(widget) for widget in containers}
-    unrestated = [
-        " < ".join(type(widget).__name__ for widget in chain[:6])
-        for chain in (_ancestry(control) for control in _controls(view))
-        if not any(id(widget) in held for widget in chain)
-    ]
+    view.present(False)
+    offered = _fork_panel(view).take_button
+    assert offered.isEnabled() and offered.isVisibleTo(view), "the case offers no branch"
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+    assert [run.controller.has_failed for run in view.runs] == [True] * len(view.runs)
+
+    run_widgets = {id(widget) for run in view.runs for widget in _widget_attributes(run).values()}
+    entries_used: set[str] = set()
+    unexcused: list[str] = []
+
+    for control in _controls(view):
+        chain = _ancestry(control)
+
+        if any(id(widget) in run_widgets for widget in chain):
+            continue
+
+        if not (control.isEnabled() and control.isVisibleTo(view)):
+            continue
+
+        entries = _live_on_a_halt_entries(chain)
+        entries_used.update(entries)
+
+        if not entries:
+            unexcused.append(" < ".join(type(widget).__name__ for widget in chain[:6]))
 
     assert _mark_editor(view).time_list.count() == 1
-    assert sorted(set(unrestated)) == [], (
-        "these controls are in no RunView, in no View and in no part of the layout's own "
-        "chrome, so a halt does not write them: put each in a View, which the halt hands "
-        "its values"
+    assert sorted(set(unexcused)) == [], (
+        "these controls are in no RunView and still offer their action after every run "
+        "halted: disable or hide each on a halt, or name its place in LIVE_ON_A_HALT with "
+        "the reason it acts on no run"
+    )
+    assert sorted(set(LIVE_ON_A_HALT) - entries_used) == [], (
+        "these entries of LIVE_ON_A_HALT match no control that is live after a halt - remove each"
     )
 
 

@@ -1012,9 +1012,12 @@ from the case, so a failed trunk offers no branch from where it stands
 standings from each run's controller, so a mark that the failed run will never
 reach is not listed as still to come (`PL-YHR3`). The halt then hands every
 View of the case a tick carrying the new values, so every Area showing either
-panel is rewritten from them. A test fails on any dashboard control that is
-not inside a run's view, a View, the Workspace tab strip or an Area's header,
-so a control added later is checked without anyone having to remember it
+panel is rewritten from them. A test halts every run and then reads every
+control outside a run's view that is still shown and enabled. It fails on any
+such control that a named exemption does not cover with the reason it acts on
+no run, and on an exemption that no longer covers a live control. So a
+control added later to a View fails the test unless the halt disables or
+hides it, or someone writes the reason it may stay live
 (`test_every_dashboard_control_is_restated_on_a_halt`, `PL-5JTH`). The trunk
 records that its dashboard failed, so it then also offers no keyframe and no
 passed mark. A branch opened at one of them would be drawn by the same
