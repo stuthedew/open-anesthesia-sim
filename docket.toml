@@ -474,7 +474,7 @@ workflow_paths = [
 #   the workflow side: 59 items had paired it only with apparatus paths, eight
 #   of them open, most of them through the `tools/` inventory.
 # - `docs/references` is the register of source documents behind
-#   `docs/MODEL.md`'s provenance, which `.claude/rules/citing-sources.md`
+#   `docs/PARAMETERS.md`'s provenance, which `.claude/rules/citing-sources.md`
 #   scopes with it (4 against 8).
 # - `docs/consultant-brief.md`, `docs/interface-provenance.md`,
 #   `docs/machine-abstraction.md` and `docs/machine-survey.md` are the

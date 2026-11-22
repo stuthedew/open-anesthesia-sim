@@ -847,7 +847,7 @@ says what it is cited for. A review or a textbook chapter is tier 2.
   measured sevoflurane concentrations on two workstations, the FLOW-i and the
   Zeus, and reports materially worse agreement during wash-in than during
   maintenance. Gas Man is the program this simulator is compared against, tier 3
-  under `docs/MODEL.md`'s source hierarchy.
+  under `docs/PARAMETERS.md`'s source hierarchy.
   Its flow range is a protocol, not a report of practice — see § "(a2)". The
   abstract was read again on 2026-11-11 (`PL-KZ60`). It gives a median absolute
   performance error of 21% over the first 15 minutes against 6% over the last

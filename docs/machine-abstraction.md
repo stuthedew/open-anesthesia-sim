@@ -382,7 +382,7 @@ does and adding the two bindings the rules above need:
 value, unit                what the model reads
 consumer                   "model" or "attribution" (the comparison table)
 effect                     one clause: which rate or bound this changes
-source, tier, adopted      docs/MODEL.md's source hierarchy, unchanged
+source, tier, adopted      docs/PARAMETERS.md's source hierarchy, unchanged
 ```
 
 The fields the survey's evidence admits. "Required" means a profile must give a
@@ -416,7 +416,7 @@ work.
 **The maximum delivered concentration (`max_delivered_concentration_percent`)
 is in the wrong place today**, and the survey proves it: desflurane's 18% is the
 calibrated maximum of the Tec 6, which Johnston et al. characterised *"from 1%
-to 18%"*, and `docs/MODEL.md` already names that provenance. Nothing about
+to 18%"*, and `docs/PARAMETERS.md` already names that provenance. Nothing about
 desflurane itself sets its maximum at 18%. It belongs on the (machine, agent)
 pair, as `agent_limits`. Today it is a field of each agent's data file under
 `src/anesthesia_sim/data/agents/`, and no machine limits the dial. Moving it

@@ -68,7 +68,7 @@
             "tier": "primary",
             "adopted": true,
             "authority_for": ["max_delivered_concentration_percent"],
-            "note": "Primary source for a device capability: docs/MODEL.md's source hierarchy concerns measured physiologic quantities, and a calibrated dial maximum is not one. Studies the two standard isoflurane vaporizers in current clinical use (Penlon Sigma Delta, Datex-Ohmeda Isotec 5), both calibrated 0-5%. Used here as max_delivered_concentration_percent. This is a device-capability limit on the delivered-concentration control, not a scientific model parameter; it does not affect the governing equations."
+            "note": "Primary source for a device capability: docs/PARAMETERS.md's source hierarchy concerns measured physiologic quantities, and a calibrated dial maximum is not one. Studies the two standard isoflurane vaporizers in current clinical use (Penlon Sigma Delta, Datex-Ohmeda Isotec 5), both calibrated 0-5%. Used here as max_delivered_concentration_percent. This is a device-capability limit on the delivered-concentration control, not a scientific model parameter; it does not affect the governing equations."
         },
         {
             "citation": "Nickalls RWD, Mapleson WW. Age-related iso-MAC charts for isoflurane, sevoflurane and desflurane in man. British Journal of Anaesthesia. 2003;91(2):170-174.",

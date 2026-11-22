@@ -7,7 +7,7 @@ effort: M
 status: done
 classes: docs
 feature: model-md-structure
-touches: docs/MODEL.md, tools/doc_check.py, CLAUDE.md, .claude/rules/expert-review.md, src/anesthesia_sim/, tests/
+touches: docs/, tools/, CLAUDE.md, .claude/, README.md, ROADMAP.md, docket.toml, subprojects/docket/, src/anesthesia_sim/, tests/
 blocked-by: PL-6PPZ
 added: 2026-11-11
 closed: 2026-11-22

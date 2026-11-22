@@ -244,7 +244,7 @@ another.
 
 A script reads every `authority_for` and prints the source and tier behind each
 stored value, file by file and in total (`python3 tools/source_tier_counts.py`).
-Its output gives the counts that `docs/MODEL.md` states, but the script does not
+Its output gives the counts that `docs/PARAMETERS.md` states, but the script does not
 check them. It never blocks a change, by the project owner's decision
 recorded on `PL-9LXK`.
 
