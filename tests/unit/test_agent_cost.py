@@ -397,8 +397,8 @@ def test_each_run_is_priced_at_its_own_agent_s_price() -> None:
     cost = cost_shown(delivered_shown(switched.snapshot()), preferences)
     liquid_ml = 4800.0 / _vapour_ml_per_liquid_ml("sevoflurane")
 
-    assert cost.cost == f"EUR {liquid_ml * 240.34 / 250.0:.1f}"
-    assert cost.cost == "EUR 25.2"
+    assert cost.cost == f"EUR {liquid_ml * 240.34 / 250.0:.2f}"
+    assert cost.cost == "EUR 25.24"
     assert "EUR 0.9614 per mL of liquid" in cost.working
     assert "sevoflurane" in cost.label
     assert "USD" not in " ".join((cost.cost, cost.working, cost.price))
@@ -409,7 +409,7 @@ def test_a_run_that_has_delivered_nothing_costs_zero_at_a_set_price() -> None:
 
     cost = cost_shown(delivered_shown(snapshot), _priced(_GAS_MAN_ISOFLURANE))
 
-    assert cost.cost == "USD 0"
+    assert cost.cost == "USD 0.00"
     assert cost.working.startswith("0 mL of liquid x")
 
 
@@ -448,6 +448,9 @@ def test_a_price_refused_when_the_file_was_read_is_named_and_never_replaced() ->
         pytest.param(1e308, 0.5, 26.0, PRICE_PER_ML_NOT_SHOWN_TEXT, id="price per mL overflows"),
         pytest.param(1e-300, 1e300, 26.0, PRICE_PER_ML_NOT_SHOWN_TEXT, id="price per mL is zero"),
         pytest.param(1e308, 1.0, 26.0, COST_NOT_COMPUTED_TEXT, id="cost overflows"),
+        pytest.param(
+            1e26, 1.0, 26.0, COST_NOT_COMPUTED_TEXT, id="cost too large to show to the cent"
+        ),
         pytest.param(5e-324, 1.0, 0.4, COST_NOT_COMPUTED_TEXT, id="cost underflows to zero"),
         pytest.param(20.47, 100.0, None, COST_NOT_CONVERTED_TEXT, id="amount not converted"),
     ],
@@ -467,6 +470,23 @@ def test_no_cost_is_shown_where_one_cannot_be_trusted(
 
     assert cost.cost == reason.format(agent="isoflurane")
     assert (cost.working, cost.price, cost.rounded) == ("", "", "")
+
+
+def test_the_largest_cost_shown_depends_on_its_own_currency() -> None:
+    """A yen cost is shown where the same figure in dollars could not be held to the cent.
+
+    2^50 yen lies where neighbouring floats are 2^-2 apart: within half a yen,
+    but not within half a cent. So the readout shows it in JPY and refuses it in
+    USD. Branch audit of `PL-7R8S` found no test that told the two currencies
+    apart here.
+    """
+
+    def shown(currency: str) -> str:
+        price = AgentPrice("isoflurane", 2.0**50, 1.0, currency, date(2026, 1, 2))
+        return cost_shown(_shown_with_liquid(1.0), _priced(price)).cost
+
+    assert shown("JPY") == "JPY 1125899906842624"
+    assert shown("USD") == COST_NOT_COMPUTED_TEXT.format(agent="isoflurane")
 
 
 def test_the_withheld_cost_names_no_agent_and_no_figure() -> None:
