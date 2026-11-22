@@ -1068,7 +1068,8 @@ class _SettingSlider(QSlider):
     key repeats its press, and Qt marks each repeat as such
     (`QKeyEvent.isAutoRepeat`). A repeat announces nothing, so the whole hold
     is one adjustment, and the earlier marks on the chart are not pushed off
-    by one held key.
+    by one held key. A trackpad swipe is announced only where it begins, for
+    the same reason.
 
     Attributes:
         jumping: True only while a press on the track moves the handle to
@@ -1091,7 +1092,13 @@ class _SettingSlider(QSlider):
         super().keyPressEvent(event)
 
     def wheelEvent(self, event: QWheelEvent) -> None:  # Qt spells this in camelCase.
-        self.input_started.emit()
+        # A mouse wheel sends each notch as an event with no scroll phase. A
+        # trackpad swipe sends one event that begins the gesture and then many
+        # small ones, its momentum included, so it is announced only where it
+        # begins and is one adjustment however far it moves the value.
+        if event.phase() in (Qt.ScrollPhase.NoScrollPhase, Qt.ScrollPhase.ScrollBegin):
+            self.input_started.emit()
+
         super().wheelEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.

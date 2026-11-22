@@ -343,7 +343,8 @@ The interface declares an adjustment at the start of each input on a slider:
 a press on it, a key press and a wheel notch. Each change carries the number of
 its adjustment. A held key sends its press again and again, and Qt marks each
 repeat as such. A repeat declares nothing, so a held key is one adjustment, and
-it cannot fill the chart's marks and push the earlier ones off. A change that
+it cannot fill the chart's marks and push the earlier ones off. A trackpad
+swipe declares an adjustment only where it begins, for the same reason. A change that
 arrives with no declared adjustment, such as a call from code, joins the
 adjustment open on the same control, or opens one. Code must never group
 changes by the time between them. A playback multiplier changes how much

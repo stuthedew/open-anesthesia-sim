@@ -373,24 +373,30 @@ class _Input(Enum):
     TRACK = "click on the track"
 
 
+def _scroll_up(slider: QSlider, phase: Qt.ScrollPhase) -> None:
+    """Send the slider one wheel event of one notch, 120 units, upward, in the given phase."""
+
+    centre = QPointF(slider.width() / 2, slider.height() / 2)
+    notch = QWheelEvent(
+        centre,
+        slider.mapToGlobal(centre),
+        QPoint(),
+        QPoint(0, 120),
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        phase,
+        False,
+    )
+    QApplication.sendEvent(slider, notch)
+
+
 def _step_up(slider: QSlider, step: _Input) -> None:
     """Step a Fusion-styled slider up by one count with one input of the given kind."""
 
     if step is _Input.KEY:
         QTest.keyClick(slider, Qt.Key.Key_Right)
     elif step is _Input.WHEEL:
-        centre = QPointF(slider.width() / 2, slider.height() / 2)
-        notch = QWheelEvent(
-            centre,
-            slider.mapToGlobal(centre),
-            QPoint(),
-            QPoint(0, 120),
-            Qt.MouseButton.NoButton,
-            Qt.KeyboardModifier.NoModifier,
-            Qt.ScrollPhase.NoScrollPhase,
-            False,
-        )
-        QApplication.sendEvent(slider, notch)
+        _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
     else:
         track_end = QPoint(slider.width() - 1, slider.height() // 2)
         QTest.mouseClick(
@@ -474,6 +480,42 @@ def test_a_held_arrow_key_is_one_adjustment_and_the_next_press_another(
         "2m10s · Fresh gas flow 4.3 L/min -> 4.4 L/min",
         "10s–1m40s · Fresh gas flow 4.0 L/min -> 4.3 L/min (3 settings)",
     ]
+    assert _concentration(view).chart.control_mark_times(0) == (10.0, 130.0)
+    assert _wash_in(view).chart.control_mark_times(0) == (10.0, 130.0)
+
+
+def test_a_trackpad_swipe_is_one_adjustment_and_the_next_swipe_another(
+    application: QApplication,
+) -> None:
+    """A swipe that begins at 10 s and coasts to 100 s is marked once, and the next swipe again.
+
+    A trackpad sends one event that begins the swipe, then updates, then
+    momentum after the fingers lift. Were each event at a new instant an
+    adjustment, one swipe on a playing run could fill the chart's marks, as a
+    held key could (`PL-PXTT`). Each event here moves the flow one count.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+
+    for elapsed_s, phase in (
+        (10, Qt.ScrollPhase.ScrollBegin),
+        (40, Qt.ScrollPhase.ScrollUpdate),
+        (100, Qt.ScrollPhase.ScrollMomentum),
+        (130, Qt.ScrollPhase.ScrollBegin),
+    ):
+        _advance(controller, elapsed_s - controller.snapshot().elapsed_s)
+        _scroll_up(slider, phase)
+
+    view.present(False)
+
+    timeline = controller.record().control_timeline
+    assert [change.elapsed_s for change in timeline] == [10, 40, 100, 130]
+    assert [change.adjustment for change in timeline] == [1, 1, 1, 2]
     assert _concentration(view).chart.control_mark_times(0) == (10.0, 130.0)
     assert _wash_in(view).chart.control_mark_times(0) == (10.0, 130.0)
 
