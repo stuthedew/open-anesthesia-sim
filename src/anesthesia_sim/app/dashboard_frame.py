@@ -905,9 +905,18 @@ EQUILIBRIUM_LEGEND_LABEL: Final = (
     f"Equilibrium, {ALVEOLAR_FRACTION_NAME} = {INSPIRED_FRACTION_NAME} (wide dash)"
 )
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
-#: The MAC-awake band's legend words: a population value with its spread,
-#: and the trace that the band is read against (`PL-90Y6`).
-MAC_AWAKE_BAND_LEGEND_LABEL: Final = "MAC-awake (population, ±1 SD; read against vessel-rich trace)"
+#: The 1 MAC line's legend words. `{reference}` is the line's value, as
+#: `mac_reference_caption` writes it, so the value and the line's style are
+#: stated once, in one entry (`PL-K4CZ`). Before the first frame it is the
+#: bare name, `ONE_MAC_LINE_LEGEND_NAME`.
+ONE_MAC_LINE_LEGEND_TEMPLATE: Final = "{reference}, reference adult (alveolar, wide dash)"
+ONE_MAC_LINE_LEGEND_NAME: Final = "1 MAC"
+#: The MAC-awake band's legend words: the band's values, as
+#: `mac_awake_caption` writes them, that they are a population's, and the
+#: trace that the band is read against (`PL-90Y6`, `PL-K4CZ`). Before the
+#: first frame `{reference}` is the bare name, `MAC_AWAKE_BAND_LEGEND_NAME`.
+MAC_AWAKE_BAND_LEGEND_TEMPLATE: Final = "{reference}; population, read against vessel-rich trace"
+MAC_AWAKE_BAND_LEGEND_NAME: Final = "MAC-awake"
 #: What assistive technology announces for a compartment's legend box. It
 #: names the action the box performs, not the pattern words beside it, which
 #: describe the line rather than the control. It is carried over from the Flet
@@ -2976,8 +2985,9 @@ def mac_reference_caption(frame: ChartFrame) -> str:
 def mac_awake_caption(snapshot: SimulationSnapshot) -> str:
     """Return what the MAC-awake band was drawn from: its published fraction and the divisor.
 
-    This line names the published fraction. The divisor, the agent's 1 MAC in
-    percent, is on the 1 MAC reference line beside it (`mac_reference_caption`).
+    This text names the published fraction, and the band's legend entry
+    shows it. The divisor, the agent's 1 MAC in percent, is in the 1 MAC
+    line's entry beside it (`mac_reference_caption`, `PL-K4CZ`).
     So both free parameters are on screen, and a reader who disagrees with
     either one can see which one it is (`PL-F52R`).
 

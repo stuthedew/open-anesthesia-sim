@@ -429,6 +429,9 @@ class FlowLayout(QLayout):
     hold any one of its items, so no item is ever laid out outside it. The
     legend rows use this layout so that six compartment entries on one line
     cannot hold the whole chart column to their combined width (`PL-25KS`).
+    An item wider than the row whose height depends on its width, such as
+    words that wrap, is given the row's width and the height it needs at
+    that width (`PL-K4CZ`).
     """
 
     def __init__(
@@ -520,6 +523,14 @@ class FlowLayout(QLayout):
 
         for item in self._laid_items():
             size = item.sizeHint()
+
+            # An item wider than the row, whose height depends on its width,
+            # takes the row's width and the height it needs there. A legend
+            # entry whose words wrap is such an item, and it would otherwise
+            # run past the right edge.
+            if size.width() > inner.width() and item.hasHeightForWidth():
+                size = QSize(inner.width(), item.heightForWidth(inner.width()))
+
             next_x = x + size.width() + self._horizontal_spacing
 
             if next_x - self._horizontal_spacing > inner.right() and line_height > 0:

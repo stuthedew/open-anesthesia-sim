@@ -282,6 +282,13 @@ def test_reset_leaves_the_selected_time_base_alone(application: QApplication) ->
     assert _concentration(view).time_base_selector.currentData() == "1800.0"
 
 
+# The words that follow each reference's value in its legend entry
+# (`PL-K4CZ`). They are written out here rather than read from the templates,
+# so a change to the entries' words fails this module.
+_ONE_MAC_ENTRY_WORDS = ", reference adult (alveolar, wide dash)"
+_BAND_ENTRY_WORDS = "; population, read against vessel-rich trace"
+
+
 def test_the_mac_axis_and_references_follow_the_agent(application: QApplication) -> None:
     """The divisor line, the 1 MAC line and the right axis are the running agent's."""
 
@@ -289,8 +296,8 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     view = _shown_view(application, controller)
     chart = _concentration(view).chart
 
-    assert _concentration(view).mac_reference_text.text() == format_mac_reference(
-        "Sevoflurane", MacPercent(2.0)
+    assert _concentration(view).legend.one_mac_text == (
+        format_mac_reference("Sevoflurane", MacPercent(2.0)) + _ONE_MAC_ENTRY_WORDS
     )
     assert chart.one_mac_line() == 2.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
@@ -301,14 +308,17 @@ def test_the_mac_axis_and_references_follow_the_agent(application: QApplication)
     # which would agree with a band the switch failed to rebuild (`PL-JPS2`).
     mac_awake = load_agent_parameters("desflurane").mac_awake
 
-    assert _concentration(view).mac_reference_text.text() == format_mac_reference(
-        "Desflurane", MacPercent(6.0)
+    assert _concentration(view).legend.one_mac_text == (
+        format_mac_reference("Desflurane", MacPercent(6.0)) + _ONE_MAC_ENTRY_WORDS
     )
-    assert _concentration(view).mac_awake_reference_text.text() == format_mac_awake_reference(
-        "Desflurane",
-        fraction_of_mac=mac_awake.fraction_of_mac,
-        standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-        mac_percent=MacPercent(6.0),
+    assert _concentration(view).legend.band_mark.label == (
+        format_mac_awake_reference(
+            "Desflurane",
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
+            mac_percent=MacPercent(6.0),
+        )
+        + _BAND_ENTRY_WORDS
     )
     assert chart.one_mac_line() == 6.0
     assert chart.axis_ticks("right")[-1][1] == "3.0"
@@ -347,11 +357,14 @@ def test_the_mac_awake_band_after_a_switch_is_the_new_agents_own(
     assert _concentration(view).chart.mac_awake_band() == pytest.approx(
         ((fraction - spread) * own.mac_percent, (fraction + spread) * own.mac_percent)
     )
-    assert _concentration(view).mac_awake_reference_text.text() == format_mac_awake_reference(
-        own.display_name,
-        fraction_of_mac=fraction,
-        standard_deviation_fraction_of_mac=spread,
-        mac_percent=own.mac_percent,
+    assert _concentration(view).legend.band_mark.label == (
+        format_mac_awake_reference(
+            own.display_name,
+            fraction_of_mac=fraction,
+            standard_deviation_fraction_of_mac=spread,
+            mac_percent=own.mac_percent,
+        )
+        + _BAND_ENTRY_WORDS
     )
 
 

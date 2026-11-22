@@ -11,7 +11,12 @@ from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BOOKMARKS, WASH_IN
+from anesthesia_sim.app.view_registry import (
+    AGENT_ACCOUNTING,
+    BOOKMARKS,
+    CONCENTRATION_CHART,
+    WASH_IN,
+)
 from anesthesia_sim.app.views import AccountingView, ConcentrationView, WashInView
 from anesthesia_sim.layout.tree import AreaId
 from anesthesia_sim.layout.workspace import WorkspaceName
@@ -369,6 +374,26 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
         top = chart.mapTo(area.viewport(), QPoint(0, 0)).y()
         assert 0 <= top, f"the plot's top is {-top} px above a scroll box"
         assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
+
+
+def test_the_concentration_plot_takes_half_its_area_on_a_laptop(application: QApplication) -> None:
+    """`PL-K4CZ`: in the Default Workspace at 1366 by 768, the plot has at least half the Area.
+
+    Before the fix the 1 MAC and MAC-awake values had a line each above the
+    legend, as well as an entry each in it. The plot widget was then 209 px
+    of a 488 px Area, and the rows that explain the plot took more height
+    than the plot. Each entry now states its value. Every row above the plot
+    is still on screen, because the box that holds them does not scroll.
+    """
+
+    view = _shipped_view_at(application, "Default", 1366, 768)
+    areas = view.layout_container
+    (area,) = (area for area in areas.model.areas() if area.view == CONCENTRATION_CHART)
+    chart_view = _concentration(view)
+    (key,) = chart_view.findChildren(QScrollArea)
+
+    assert 2 * chart_view.chart.height() >= areas.frame(area.id).height()
+    assert key.verticalScrollBar().maximum() == 0
 
 
 @pytest.mark.parametrize("workspace", ("Default", "Induction"))

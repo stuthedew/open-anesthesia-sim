@@ -65,7 +65,6 @@ from anesthesia_sim.app.qt_chart import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
     HOVER_RADIUS_PIXELS,
-    MAC_AWAKE_BAND_LEGEND_LABEL,
     WASH_IN_TRACE_LEGEND_LABEL,
     ConcentrationChart,
     TraceLegend,
@@ -1071,6 +1070,45 @@ def test_each_dashed_pen_paints_its_dash_pattern(application: QApplication) -> N
         assert runs[:whole] == [round(length) for length in pattern] * (whole // len(pattern))
 
 
+def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wrap(
+    application: QApplication,
+) -> None:
+    """`PL-K4CZ`: the 1 MAC and MAC-awake entries carry their values, and the band's wraps.
+
+    The values had a line each above the legend, which took the plot's height
+    at 1366 by 768. In a legend wide enough, the band's entry is one line.
+    In a narrow one its words wrap inside the legend, so the entry neither
+    runs past the right edge nor raises the legend's least width.
+    """
+
+    legend = TraceLegend()
+    one_mac = "1 MAC sevoflurane = 2.0%"
+    mac_awake = "MAC-awake sevoflurane = 0.34 ×MAC (0.68%), band ±1 SD 0.58–0.78%"
+    legend.show_references(one_mac, mac_awake)
+    legend.resize(2000, legend.heightForWidth(2000))
+    legend.show()
+    application.processEvents()
+    band = next(
+        label for label in legend.findChildren(QLabel) if label.text() == legend.band_mark.label
+    )
+    one_line = band.height()
+
+    assert legend.one_mac_text == one_mac + ", reference adult (alveolar, wide dash)"
+    assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
+    assert band.heightForWidth(band.width()) == one_line
+
+    narrow = legend.minimumSizeHint().width()
+    legend.resize(narrow, legend.heightForWidth(narrow))
+    application.processEvents()
+    entry = band.parentWidget()
+
+    assert entry is not None
+    assert band.height() > one_line
+    assert entry.geometry().right() < legend.width()
+    assert narrow < band.sizeHint().width()
+    legend.close()
+
+
 def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
     application: QApplication,
 ) -> None:
@@ -1091,7 +1129,7 @@ def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
     application.processEvents()
     mark = legend.band_mark
 
-    assert mark.label == MAC_AWAKE_BAND_LEGEND_LABEL
+    assert mark.label == "MAC-awake; population, read against vessel-rich trace"
     assert mark.edge_pen.color().name() == MAC_AWAKE_BAND_COLOR.lower()
     assert mark.edge_pen.widthF() == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
     assert mark.edge_pen.dashPattern() == []

@@ -117,8 +117,11 @@ from anesthesia_sim.app.dashboard_frame import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
     FIT_RUN_LABEL,
-    MAC_AWAKE_BAND_LEGEND_LABEL,
+    MAC_AWAKE_BAND_LEGEND_NAME,
+    MAC_AWAKE_BAND_LEGEND_TEMPLATE,
     MAX_DISPLAYED_RUNS,
+    ONE_MAC_LINE_LEGEND_NAME,
+    ONE_MAC_LINE_LEGEND_TEMPLATE,
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
     compared_trace_legend_label,
@@ -176,7 +179,6 @@ __all__ = [
     "CONTROL_MARK_LEGEND_LABEL",
     "EQUILIBRIUM_LEGEND_LABEL",
     "HOVER_RADIUS_PIXELS",
-    "MAC_AWAKE_BAND_LEGEND_LABEL",
     "WASH_IN_TRACE_LEGEND_LABEL",
     "BandMark",
     "ConcentrationChart",
@@ -2179,11 +2181,24 @@ class TraceLegend(QWidget):
         # patient trace on the chart, and the furthest from where
         # responsiveness returns. The 1 MAC line names alveolar, because MAC is defined for
         # the alveolar concentration.
+        #
+        # Each entry also states its reference's value, from `show_references`.
+        # The values had a line each above the legend, which repeated the
+        # entries' names and took the plot's height at 1366 by 768
+        # (`PL-K4CZ`). The 1 MAC entry comes first, because the band's
+        # fraction is a fraction of that 1 MAC. The band's entry is the
+        # longest in the legend, so its words wrap in a narrow View rather
+        # than set the View's least width.
+        self._one_mac_label = _legend_label(
+            ONE_MAC_LINE_LEGEND_TEMPLATE.format(reference=ONE_MAC_LINE_LEGEND_NAME)
+        )
+        self._band_label = _WrappingLegendLabel(
+            MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference=MAC_AWAKE_BAND_LEGEND_NAME)
+        )
         layout.addLayout(
             _legend_row(
                 "Clinical references:",
                 [
-                    (self._band_swatch, _legend_label(MAC_AWAKE_BAND_LEGEND_LABEL)),
                     (
                         _LineSwatch(
                             dashed_pen(
@@ -2194,8 +2209,9 @@ class TraceLegend(QWidget):
                             LEGEND_SWATCH_WIDTH,
                             LEGEND_SWATCH_HEIGHT,
                         ),
-                        _legend_label("1 MAC, reference adult (alveolar) (wide dash)"),
+                        self._one_mac_label,
                     ),
+                    (self._band_swatch, self._band_label),
                 ],
             )
         )
@@ -2381,12 +2397,31 @@ class TraceLegend(QWidget):
         for entry in self._compared_entries[len(entries) :]:
             entry.hide()
 
+    def show_references(self, one_mac: str, mac_awake: str) -> None:
+        """Write each clinical reference's value into its entry.
+
+        Args:
+            one_mac: The 1 MAC line's value, as `mac_reference_caption` writes
+                it, such as "1 MAC sevoflurane = 2.0%".
+            mac_awake: The band's fraction, centre and edges, as
+                `mac_awake_caption` writes them.
+        """
+
+        self._one_mac_label.setText(ONE_MAC_LINE_LEGEND_TEMPLATE.format(reference=one_mac))
+        self._band_label.setText(MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference=mac_awake))
+
+    @property
+    def one_mac_text(self) -> str:
+        """The 1 MAC line's entry words, as they are drawn."""
+
+        return self._one_mac_label.text()
+
     @property
     def band_mark(self) -> BandMark:
         """The MAC-awake band's entry: its words, its edge pen and its fill."""
 
         return BandMark(
-            MAC_AWAKE_BAND_LEGEND_LABEL, self._band_swatch.edge_pen, self._band_swatch.fill_brush
+            self._band_label.text(), self._band_swatch.edge_pen, self._band_swatch.fill_brush
         )
 
     @property
@@ -2578,3 +2613,33 @@ def _legend_label(text: str) -> QLabel:
     label.setStyleSheet(foreground_stylesheet(INK))
 
     return label
+
+
+class _WrappingLegendLabel(QLabel):
+    """Legend words that keep to one line where the row has room, and wrap where it has not.
+
+    A word-wrapped `QLabel` asks for a width that Qt guesses, and wraps
+    there even in a row wide enough for one line. This label asks for its
+    one-line width instead. A `FlowLayout` row gives an entry narrower than
+    that its own width and the height its words need there, so the words
+    wrap only in a row too narrow for them.
+    """
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text)
+        self.setWordWrap(True)
+        self.setStyleSheet(foreground_stylesheet(INK))
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        margins = self.contentsMargins()
+        # One pixel more than the text's advance, so the layout's rounding
+        # cannot leave the words a fraction too narrow and wrap them.
+        width = (
+            self.fontMetrics().horizontalAdvance(self.text())
+            + 1
+            + margins.left()
+            + margins.right()
+            + 2 * self.margin()
+        )
+
+        return QSize(width, self.heightForWidth(width))
