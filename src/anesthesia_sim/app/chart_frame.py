@@ -887,6 +887,8 @@ class ChartFrame:
         mac_percent: The agent's 1 MAC as a percent of one atmosphere. It is
             the divisor against which every MAC-denominated mark below is
             placed.
+        mac_age_years: The patient's age, in years, that `mac_percent` is
+            the MAC for. The `1 MAC` reference line prints it.
         axis_top_percent: The top of the compartment chart's percent axis.
             It is built as a `Percent` when the frame is assembled. So the
             off-scale notice, which converts it back, cannot reject it after
@@ -920,6 +922,7 @@ class ChartFrame:
     columns: int
     plot_width_px: float
     mac_percent: MacPercent
+    mac_age_years: int
     axis_top_percent: Percent
     grid_interval_percent: float
     percent_ticks: tuple[tuple[float, str], ...]
@@ -1127,6 +1130,7 @@ def assemble_chart_frame(
         columns=columns,
         plot_width_px=plot_width_px,
         mac_percent=mac_percent,
+        mac_age_years=reference.agent_mac_age_years,
         axis_top_percent=top_percent,
         grid_interval_percent=grid_percent,
         percent_ticks=percent_axis_ticks(top_percent, grid_percent),

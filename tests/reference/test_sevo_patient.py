@@ -62,13 +62,13 @@ def _synthetic_agent(blood_gas_partition_coefficient: float) -> AgentParameters:
     """
 
     payload = {
-        "schema_version": 4,
+        "schema_version": 5,
         "id": "synthetic-solubility-test-agent",
         "display_name": "Synthetic solubility test agent",
         "blood_gas_partition_coefficient": blood_gas_partition_coefficient,
         "tissue_gas_partition_coefficients": {"vessel_rich": 1.1, "muscle": 2.4, "fat": 34.0},
         "max_delivered_concentration_percent": 8.0,
-        "mac_percent": 2.0,
+        "mac_at_age_40_percent": 2.0,
         "mac_awake": {
             "fraction_of_mac": 0.34,
             "standard_deviation_fraction_of_mac": 0.05,
@@ -112,7 +112,7 @@ def _build_system_with_blood_gas_coefficient(
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
             circuit_volume_l=load_reference_circle_system_parameters().circuit_volume_l,
-            delivered_concentration_percent=agent.mac_percent,
+            delivered_concentration_percent=agent.mac_at_age_40_percent,
             max_delivered_concentration_percent=agent.max_delivered_concentration_percent,
         ),
         alveoli=AlveolarCompartment(

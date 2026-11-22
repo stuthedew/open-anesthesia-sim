@@ -2,7 +2,7 @@
 
 `docs/INTERFACE.md` § "MAC-awake as a chart reference" gives one emergence
 measured on the model. Sevoflurane runs for 3 hours at the opening vaporizer
-dial setting of 2.0% and the default fresh gas flow of 4 L/min. Then the
+dial setting of 1.80% and the default fresh gas flow of 4 L/min. Then the
 vaporizer is turned off and the fresh gas flow is raised to 10 L/min. The
 section prints figures from that run, and a learner takes them as what the
 model does. They depend on the partition coefficients, the volumes, the
@@ -65,8 +65,6 @@ class Washout:
     band_centre_percent: float
     alveolar_crossing_min: float
     vessel_rich_crossing_min: float
-    mapleson_band_centre_percent: float
-    vessel_rich_mapleson_crossing_min: float
 
 
 @dataclass(frozen=True)
@@ -85,9 +83,6 @@ class PrintedFigures:
     crossing_ratio: str
     band_centre_percent: str
     vessel_rich_crossing_min_again: str
-    mapleson_band_centre_percent: str
-    mapleson_mac_percent: str
-    vessel_rich_mapleson_crossing_min: str
 
 
 def _section_text() -> str:
@@ -140,10 +135,6 @@ def _printed() -> PrintedFigures:
         rf"{number} min",
         text,
     )
-    mapleson_centre, mapleson_mac, mapleson_crossing = _one(
-        rf"It crosses {number}%, the same fraction of Mapleson's {number}%, at {number} min", text
-    )
-
     return PrintedFigures(
         maintenance_hours=hours,
         opening_dial_percent=dial,
@@ -157,9 +148,6 @@ def _printed() -> PrintedFigures:
         crossing_ratio=ratio,
         band_centre_percent=centre,
         vessel_rich_crossing_min_again=again,
-        mapleson_band_centre_percent=mapleson_centre,
-        mapleson_mac_percent=mapleson_mac,
-        vessel_rich_mapleson_crossing_min=mapleson_crossing,
     )
 
 
@@ -203,20 +191,15 @@ def washout() -> Washout:
 
     printed = _printed()
     agent = load_agent_parameters(AGENT_ID)
-    mac_percent = float(agent.mac_percent)
+    mac_percent = float(agent.mac_at_age_40_percent)
     # The centre of the band as the chart draws it, through the function the
     # chart calls, so a change to how the band is placed reaches this test.
     band_lower, band_upper = mac_awake_band_percent(
         fraction_of_mac=agent.mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=agent.mac_awake.standard_deviation_fraction_of_mac,
-        mac_percent=agent.mac_percent,
+        mac_percent=agent.mac_at_age_40_percent,
     )
     band_centre = (band_lower + band_upper) / 2.0 / 100.0
-    # The section's Mapleson MAC is a published value restated beside its
-    # citation in the same section, so the test reads it from there.
-    mapleson_centre = (
-        float(agent.mac_awake.fraction_of_mac) * float(printed.mapleson_mac_percent) / 100.0
-    )
 
     system = AgentUptakeSystem.for_agent(AGENT_ID)
     # The section says the run opened at the stored 1 MAC and the default
@@ -245,11 +228,7 @@ def washout() -> Washout:
             "alveolar": lambda s: s.alveoli.partial_pressure_fraction,
             "vessel_rich": lambda s: s.patient.vessel_rich.partial_pressure_fraction,
         },
-        {
-            "alveolar": band_centre,
-            "vessel_rich": band_centre,
-            "vessel_rich:mapleson": mapleson_centre,
-        },
+        {"alveolar": band_centre, "vessel_rich": band_centre},
     )
 
     return Washout(
@@ -259,8 +238,6 @@ def washout() -> Washout:
         band_centre_percent=band_centre * 100.0,
         alveolar_crossing_min=crossings["alveolar"],
         vessel_rich_crossing_min=crossings["vessel_rich"],
-        mapleson_band_centre_percent=mapleson_centre * 100.0,
-        vessel_rich_mapleson_crossing_min=crossings["vessel_rich:mapleson"],
     )
 
 
@@ -293,14 +270,6 @@ FIGURES: dict[str, Callable[[Washout, PrintedFigures], tuple[float, str]]] = {
     "vessel-rich crossing, restated": lambda w, p: (
         w.vessel_rich_crossing_min,
         p.vessel_rich_crossing_min_again,
-    ),
-    "band centre at Mapleson's MAC": lambda w, p: (
-        w.mapleson_band_centre_percent,
-        p.mapleson_band_centre_percent,
-    ),
-    "vessel-rich crossing of the band at Mapleson's MAC": lambda w, p: (
-        w.vessel_rich_mapleson_crossing_min,
-        p.vessel_rich_mapleson_crossing_min,
     ),
 }
 

@@ -294,7 +294,8 @@ def test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart(
 
     _pick(first, AgentAmountUnit.LITRES_OF_VAPOUR)
 
-    vapour_l = 2.0 / 100.0 * 4.0 * 10.0
+    # Ten minutes of 4 L/min at the opening dial, sevoflurane's 1.80%.
+    vapour_l = 1.8 / 100.0 * 4.0 * 10.0
     for cost_view in (first, second):
         assert cost_view.unit_selector.currentData() is AgentAmountUnit.LITRES_OF_VAPOUR
         assert cost_view.panels[0].amount_text.text() == f"{vapour_l:.1f} L vapour"
@@ -634,8 +635,9 @@ def test_the_panel_follows_its_run_through_an_agent_change_and_a_comparison(
 
     assert len(view.runs) == 2
     first, second = cost_view.panels
-    trunk_ml = _liquid_ml("sevoflurane", 0.02 * 4.0 * 1.0 + 0.02 * 2.0 * 1.0)
-    branch_ml = _liquid_ml("sevoflurane", 0.02 * 4.0 * 1.0 + 0.08 * 4.0 * 3.0)
+    # Each run opens at sevoflurane's 1.80% dial.
+    trunk_ml = _liquid_ml("sevoflurane", 0.018 * 4.0 * 1.0 + 0.018 * 2.0 * 1.0)
+    branch_ml = _liquid_ml("sevoflurane", 0.018 * 4.0 * 1.0 + 0.08 * 4.0 * 3.0)
     assert first.name_text.text().startswith("Run 1, at ")
     assert second.name_text.text().startswith("Run 2, at ")
     assert first.amount_text.text() == f"{trunk_ml:.0f} mL of liquid"

@@ -101,7 +101,12 @@ from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
-from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
+from anesthesia_sim.core.mac import mac_for_patient
+from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
+    load_agent_parameters,
+    load_reference_adult_parameters,
+)
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -736,11 +741,14 @@ MARK_NAME_PLACEHOLDER: Final = "Optional"
 # because a run stands only on whole seconds (`core/simulation_step.py`).
 INSTANT_ENTRY_SUFFIX: Final = " s"
 # The upper bound of the height control before an agent has been named. Every
-# shipped agent's vaporizer reaches at least this multiple of its own 1 MAC.
-# So this value is a lower bound on the real limit rather than a guess at it.
+# shipped agent's vaporizer reaches at least this multiple of its own 1 MAC
+# for the reference adult. The least is desflurane's, 18% / 6.6% = 2.73 MAC.
+# So this value is a lower bound on the real limit rather than a guess at it,
+# and `test_every_agent_reaches_the_default_target_ceiling` holds it there.
+# It was 3.0 while desflurane's MAC was 6.0% (`PL-LBVN`).
 # `MarkEditor.set_reachable_height` replaces it with the running agent's
 # own limit the first time a frame is drawn.
-DEFAULT_MAXIMUM_TARGET_MAC: Final = 3.0
+DEFAULT_MAXIMUM_TARGET_MAC: Final = 2.5
 
 REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
 """Conditional text, which is where a sentence is appropriate.
@@ -1271,11 +1279,17 @@ WIDEST_READOUT_SECONDARY: Final = max(
 )
 #: The widest strings a compartment column can show: the percent at a whole
 #: atmosphere, and that fraction as a multiple of the smallest 1 MAC any
-#: shipped agent has, since the smallest divisor prints the most digits.
+#: shipped agent has for the reference adult, since the smallest divisor
+#: prints the most digits.
 WIDEST_COMPARTMENT_VALUE: Final = format_percent(Fraction(1.0))
 WIDEST_COMPARTMENT_SECONDARY: Final = max(
     (
-        format_mac_multiple(Fraction(1.0), load_agent_parameters(agent_id).mac_percent)
+        format_mac_multiple(
+            Fraction(1.0),
+            mac_for_patient(
+                load_agent_parameters(agent_id), load_reference_adult_parameters()
+            ).percent,
+        )
         for agent_id in AGENT_DATA_FILENAMES
     ),
     key=len,
@@ -2988,7 +3002,9 @@ def mac_reference_caption(frame: ChartFrame) -> str:
         The reference line.
     """
 
-    return format_mac_reference(frame.runs[0].agent_display_name, frame.mac_percent)
+    return format_mac_reference(
+        frame.runs[0].agent_display_name, frame.mac_percent, age_years=frame.mac_age_years
+    )
 
 
 def mac_awake_caption(snapshot: SimulationSnapshot) -> str:

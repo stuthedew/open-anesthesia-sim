@@ -314,16 +314,16 @@ def test_the_relative_sds_are_those_the_section_states(
 # agents of the worst shift of any readout, in percentage points, in the first
 # hour and over the whole 24 h run.
 DISPLACEMENT_TABLE_PP = {
-    BLOOD_GAS: (2.0e-2, 8.2e-2),
-    VESSEL_RICH: (1.0e-2, 4.9e-2),
-    MUSCLE: (1.5e-1, 9.0e-1),
-    FAT: (3.4e-3, 3.6e-2),
+    BLOOD_GAS: (2.0e-2, 9.0e-2),
+    VESSEL_RICH: (1.0e-2, 5.4e-2),
+    MUSCLE: (1.5e-1, 9.9e-1),
+    FAT: (3.4e-3, 4.0e-2),
 }
 DISPLACEMENT_TABLE_WHOLE_RUN_PP = {
-    BLOOD_GAS: (2.4e-2, 1.2e-1),
-    VESSEL_RICH: (1.0e-2, 4.9e-2),
-    MUSCLE: (2.1e-1, 9.5e-1),
-    FAT: (7.6e-2, 4.0e-1),
+    BLOOD_GAS: (2.4e-2, 1.3e-1),
+    VESSEL_RICH: (1.0e-2, 5.4e-2),
+    MUSCLE: (2.1e-1, 1.0),
+    FAT: (7.4e-2, 4.4e-1),
 }
 
 
@@ -347,22 +347,22 @@ def test_one_sd_of_each_coefficient_displaces_the_readouts_as_the_table_states(
         assert max(shifts, key=shifts.__getitem__) == "desflurane", window_s
 
 
-def test_one_sd_is_a_third_of_a_count_to_ninety_counts_of_the_last_digit() -> None:
+def test_one_sd_is_a_third_of_a_count_to_ninety_nine_counts_of_the_last_digit() -> None:
     """The counts that the section derives from the table, for the bound on the last digit."""
 
     smallest = min(low for low, _ in DISPLACEMENT_TABLE_PP.values()) / ONE_COUNT_PP
     largest = max(high for _, high in DISPLACEMENT_TABLE_PP.values()) / ONE_COUNT_PP
 
-    assert (round(smallest, 2), round(largest)) == (0.34, 90)
+    assert (round(smallest, 2), round(largest)) == (0.34, 99)
 
 
 # The exhausted total's shift from one SD, as `docs/INTERFACE.md`
 # § "The agent-accounting panel" states it: the largest over the four
 # coefficients, in litres of vapour, at 1 h and at 24 h.
 EXHAUSTED_SHIFT_L = {
-    (False, "desflurane"): (0.089, 0.68),
-    (False, "sevoflurane"): (0.033, 0.61),
-    (False, "isoflurane"): (0.026, 0.62),
+    (False, "desflurane"): (0.097, 0.74),
+    (False, "sevoflurane"): (0.030, 0.55),
+    (False, "isoflurane"): (0.025, 0.61),
     (True, "desflurane"): (0.32, 2.1),
     (True, "sevoflurane"): (0.17, 2.5),
     (True, "isoflurane"): (0.16, 2.8),
@@ -482,10 +482,10 @@ def test_one_sd_shifts_each_compartment_s_amount_by_the_share_the_section_states
 
     widest = max(_amount_shifts(), key=lambda s: s.shift_ml)
     assert (widest.agent_id, widest.compartment, widest.time_s, two_figures(widest.shift_ml)) == (
-        "isoflurane",
+        "desflurane",
         "muscle",
         86400,
-        700.0,
+        770.0,
     )
 
 
@@ -507,7 +507,7 @@ def _displayed_step_ml(amount_ml: float) -> float:
     return max(10.0 ** (leading - figures + 1), 10.0**-COMPARTMENT_AMOUNT_FINEST_DECIMALS)
 
 
-def test_a_two_figure_amount_s_finest_step_is_a_twenty_eighth_of_an_sd() -> None:
+def test_a_two_figure_amount_s_finest_step_is_a_thirty_first_of_an_sd() -> None:
     """Where the amount label's step is finest against one SD, and how fine.
 
     Amounts below half the finest step read `<0.01 mL vapour` and show no
@@ -520,12 +520,12 @@ def test_a_two_figure_amount_s_finest_step_is_a_twenty_eighth_of_an_sd() -> None
         key=lambda s: _displayed_step_ml(s.amount_ml) / s.shift_ml,
     )
     assert (finest.agent_id, finest.compartment, finest.time_s, round(finest.amount_ml)) == (
-        "isoflurane",
+        "sevoflurane",
         "muscle",
-        12840,
-        993,
+        15180,
+        995,
     )
-    assert round(finest.shift_ml / _displayed_step_ml(finest.amount_ml)) == 28
+    assert round(finest.shift_ml / _displayed_step_ml(finest.amount_ml)) == 31
 
 
 def test_one_sd_moves_a_compartment_s_share_by_at_most_thirteen_percentage_points() -> None:

@@ -361,9 +361,12 @@ def test_the_references_stand_at_the_running_agent_s_own_values_and_follow_it(
                 mac_percent=snapshot.agent_mac_percent,
             )
         )
-        assert chart.one_mac_line() == own.mac_percent
+        assert chart.one_mac_line() == own.mac_at_age_40_percent
         assert chart.mac_awake_band() == pytest.approx(
-            ((fraction - spread) * own.mac_percent, (fraction + spread) * own.mac_percent)
+            (
+                (fraction - spread) * own.mac_at_age_40_percent,
+                (fraction + spread) * own.mac_at_age_40_percent,
+            )
         )
 
 

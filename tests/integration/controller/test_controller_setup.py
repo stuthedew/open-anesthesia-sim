@@ -42,23 +42,26 @@ def test_default_controller_starts_with_sevoflurane() -> None:
     assert snapshot.agent_id == "sevoflurane"
     assert snapshot.agent_display_name == "Sevoflurane"
     assert snapshot.max_delivered_concentration_percent == 8.0
-    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.02)
+    # Mapleson 1996 (abstract): sevoflurane's MAC at age 40 is 1.80%.
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.018)
 
 
 def test_default_controller_starts_each_agent_at_its_own_one_mac() -> None:
     """A freshly constructed controller starts at 1 MAC, the standard
-    clinical starting point, not a fixed raw percentage.
+    clinical starting point, not a fixed raw percentage. The expected
+    values are Mapleson 1996's MACs at age 40, from its abstract: 1.80%,
+    1.17% and 6.6%.
     """
 
     assert SimulationController(
         agent_id="sevoflurane"
-    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.02)
+    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.018)
     assert SimulationController(
         agent_id="isoflurane"
-    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.012)
+    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.0117)
     assert SimulationController(
         agent_id="desflurane"
-    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.06)
+    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.066)
 
 
 def test_explicit_delivered_concentration_above_the_agent_max_is_rejected() -> None:
@@ -89,7 +92,7 @@ def test_setting_a_delivered_concentration_above_the_agent_max_is_rejected() -> 
     snapshot = controller.snapshot()
 
     assert snapshot.max_delivered_concentration_percent == 5.0
-    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.012)
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.0117)
 
 
 def test_delivered_concentration_exactly_at_the_agent_max_is_accepted() -> None:
@@ -253,8 +256,8 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
 
 def test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac() -> None:
     """Switching agents must not carry over the old agent's raw percentage:
-    the same percent means a different clinical depth per agent (e.g. 2%
-    is 1 MAC of sevoflurane but only about a third of a MAC of desflurane).
+    the same percent means a different clinical depth per agent (e.g. 1.8%
+    is 1 MAC of sevoflurane but only about a quarter of a MAC of desflurane).
     """
 
     controller = SimulationController(
@@ -265,7 +268,7 @@ def test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac() -> 
     snapshot = controller.snapshot()
 
     assert snapshot.max_delivered_concentration_percent == 5.0
-    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.012)
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.0117)
 
 
 def test_controller_can_be_constructed_for_a_different_agent() -> None:
@@ -310,7 +313,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
 
     assert snapshot.circuit_volume_l == 5.0
     assert snapshot.fresh_gas_flow_l_min == 3.0
-    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.06)
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.066)
     assert snapshot.alveolar_ventilation_l_min == 5.5
     assert snapshot.cardiac_output_l_min == 6.0
 
@@ -352,7 +355,7 @@ def _switched_after_a_run_of(previous_agent_id: str, new_agent_id: str) -> Simul
     run.start()
     _advance_for(run, duration_s=60)
     run.set_delivered_concentration_percent(
-        Percent(1.5 * load_agent_parameters(previous_agent_id).mac_percent)
+        Percent(1.5 * load_agent_parameters(previous_agent_id).mac_at_age_40_percent)
     )
     _advance_for(run, duration_s=30)
     assert run.snapshot().stored_agent_l > 0.0
@@ -378,7 +381,8 @@ def test_an_agent_switch_runs_exactly_as_a_fresh_run_of_that_agent(
     A switch from sevoflurane to desflurane that kept sevoflurane's
     compartments passed every other test. Its run, labelled desflurane, showed
     an alveolar fraction of 2.95% (0.49 ×MAC) at 5 minutes, where a fresh
-    desflurane run shows 3.59% (0.60 ×MAC).
+    desflurane run shows 3.59% (0.60 ×MAC). Those figures are from a dial
+    that opened at the 6.0% MAC stored then.
 
     The comparison is exact, not within a tolerance. Both runs take the same
     steps from the same state, and the simulator is deterministic.

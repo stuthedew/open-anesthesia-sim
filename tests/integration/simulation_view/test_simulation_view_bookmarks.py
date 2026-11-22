@@ -133,11 +133,15 @@ def test_the_height_control_stops_at_what_the_running_agent_can_reach(
         snapshot.agent_mac_percent,
     )
 
-    assert editor.height_spin.maximum() == pytest.approx(reachable)
+    # Sevoflurane's 8% maximum over its 1.80% MAC is 4.444 MAC. The control
+    # holds two decimals, so it stops at 4.44, which a run can still reach.
+    assert reachable == pytest.approx(8.0 / 1.8)
+    assert editor.height_spin.maximum() == pytest.approx(4.44)
+    assert editor.height_spin.maximum() <= reachable
 
     editor.height_spin.setValue(reachable * 2.0)
 
-    assert editor.height_spin.value() == pytest.approx(reachable)
+    assert editor.height_spin.value() == pytest.approx(4.44)
 
 
 def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
@@ -409,9 +413,9 @@ def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
 
     view = _halted_branch_view(application)
 
-    # The crossing lies between 114.6 s and 114.7 s (`_halted_branch_view`), and
+    # The crossing lies between 109 s and 110 s (`_halted_branch_view`), and
     # the run stops on the first whole second after it.
-    assert view.runs[1].snapshot().elapsed_s == 115
+    assert view.runs[1].snapshot().elapsed_s == 110
     assert view.runs[1].is_running is False
 
     listed = _marks_panel(view).targets.text()

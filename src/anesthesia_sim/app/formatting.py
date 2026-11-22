@@ -55,7 +55,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum
-from math import isfinite
+from math import floor, isfinite
 from types import MappingProxyType
 from typing import Final
 
@@ -71,6 +71,7 @@ from anesthesia_sim.core.concentration import (
     require_mac_percent,
 )
 from anesthesia_sim.core.parameters import mac_awake_band_fractions
+from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 from anesthesia_sim.core.units import MILLILITRES_PER_LITRE, SECONDS_PER_HOUR, SECONDS_PER_MINUTE
 
@@ -409,10 +410,11 @@ _RUN_TOTAL_LITRES: Final = agent_amount_display_precision(
 # (`docs/INTERFACE.md` § "Displayed precision" gives the reason). The rule fits in
 # one line: use the finest power of ten that is nowhere finer than the percent
 # resolution converted into MAC. That conversion depends on the agent. A step
-# of 0.01 percentage points is 0.005 MAC for sevoflurane, 0.0083 for isoflurane
-# and 0.0017 for desflurane. So the binding agent is the one with the largest
-# quotient, isoflurane at 0.0083 MAC, and 0.01 is the finest power of ten at or
-# above it. `test_the_mac_resolution_is_derived_from_the_percent_resolution` in
+# of 0.01 percentage points is 0.0056 MAC for sevoflurane, 0.0085 for
+# isoflurane and 0.0015 for desflurane, at each agent's MAC at age 40. So the
+# binding agent is the one with the largest quotient, isoflurane at 0.0085 MAC,
+# and 0.01 is the finest power of ten at or above it.
+# `test_the_mac_resolution_is_derived_from_the_percent_resolution` in
 # `tests/unit/test_formatting.py` repeats that arithmetic for every shipped
 # agent. So adding an agent or changing the percent resolution makes that test
 # fail, rather than letting this value silently over-claim.
@@ -454,11 +456,13 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # comparing desflurane's wash-in with sevoflurane's was comparing shapes that
 # had been silently rescaled. No label prevents that misreading.
 #
-# Three is not a round number chosen for tidiness. It is exactly
-# desflurane's dial maximum (18 % / 6 % = 3.00). So the shared ceiling is
-# anchored to a real device limit rather than to a preference, and the agent
-# whose vaporizer is most limited has no empty band at the top of its plot.
-# A ceiling of three also puts 1 MAC at one third of the plot height,
+# Three was chosen as desflurane's dial maximum in MAC while its stored MAC
+# was 6.0% (18 % / 6 % = 3.00), so the shared ceiling was anchored to a real
+# device limit. At Mapleson's MAC at age 40, 6.6%, the dial maximum is 2.73
+# MAC, so desflurane's plot has an empty band from 18% to the 19.8% top. The
+# ceiling stayed at three, because it is the same ruler for every agent and
+# a 2.73 MAC top would put no labelled MAC value at the top of the axis
+# (`PL-LBVN`). A ceiling of three also puts 1 MAC at one third of the plot height,
 # comfortably inside the plot rather than on its frame. Unlike a 2 MAC
 # ceiling, it also keeps on the plot the 2-3x MAC range in which overpressure
 # induction works.
@@ -474,7 +478,8 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # compared as well.
 #
 # Sevoflurane and isoflurane can be dialled above this ceiling. For example,
-# 8 % is 4.00 MAC and is a common inhalational-induction setting. So a trace
+# 8 % sevoflurane is 4.44 MAC at age 40 and is a common inhalational-induction
+# setting. So a trace
 # can leave the top of the plot. The interface reports that, rather than
 # letting the trace look like a plateau (see
 # `dashboard_frame.OFF_SCALE_NOTICE_TEMPLATE`).
@@ -613,9 +618,10 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPer
     rendered.
 
     The below-resolution form matters more here than in percent, not less.
-    0.01 MAC is 0.02 percentage points of sevoflurane and 0.06 of
-    desflurane. So a compartment's value reaches this unit's last digit
-    later than it reaches the last digit of the percent readout beside it.
+    0.01 MAC is 0.018 percentage points of sevoflurane and 0.066 of
+    desflurane, at each agent's MAC at age 40. So a compartment's value
+    reaches this unit's last digit later than it reaches the last digit of
+    the percent readout beside it.
     A `0.00 ×MAC` on a fat compartment that the percent line already shows
     filling would make the two readouts contradict each other.
 
@@ -668,37 +674,49 @@ def render_mac_multiple(multiple: MacMultiple) -> str:
     return f"{rendered}{MAC_UNIT_SUFFIX}"
 
 
-def format_mac_reference(agent_display_name: str, mac_percent: MacPercent) -> str:
-    """State the divisor every MAC multiple on screen was produced with.
+def format_mac_reference(
+    agent_display_name: str, mac_percent: MacPercent, *, age_years: int
+) -> str:
+    """State the divisor every MAC multiple on screen was produced with, and the age it is for.
 
     `CLAUDE.md` requires a clinically meaningful displayed value to be
     traceable to the exact transformation that produced it. A MAC multiple
     has exactly one free parameter, the MAC it divides by. Naming that MAC
     on the display, beside the axis it scales, makes the readouts traceable
     without opening a data file. A reader who disagrees with the divisor can
-    see that they disagree, and can convert back.
+    see that they disagree, and can convert back. MAC falls with age, so the
+    line also names the patient's age that the MAC is for:
+    `1 MAC sevoflurane (age 40) = 1.80%`.
 
-    The value is deliberately shown to one decimal, which is the
-    precision the three stored values actually carry. `docs/PARAMETERS.md`
-    § "Delivery-limit and MAC parameters" gives their provenance and the
-    limitation that follows from it.
+    The MAC is printed to `CONCENTRATION_DISPLAY_DECIMALS`, the decimals of
+    the percent readouts and of the delivered dial's step. So isoflurane's
+    stored 1.17% is printed in full, and the line shows the same digits as
+    the dial does when it stands at 1 MAC. Desflurane's 6.6% prints as
+    6.60%, the dial's own reading of it. `docs/PARAMETERS.md`
+    § "Delivery-limit and MAC parameters" gives each MAC's provenance.
 
     Args:
         agent_display_name: Running agent's display name.
-        mac_percent: That agent's 1 MAC as a percent of one atmosphere.
+        mac_percent: That agent's 1 MAC as a percent of one atmosphere, for
+            the patient's age.
+        age_years: The patient's age, in years, that the MAC is for, from
+            `SimulationSnapshot.agent_mac_age_years`.
 
     Returns:
-        A one-line statement of the agent's 1 MAC in percent.
+        A one-line statement of the agent's 1 MAC in percent, with its age.
 
     Raises:
         TypeError: `mac_percent` was not built as a `MacPercent`, which
             refuses a zero MAC when it is built (`core/concentration.py`,
-            `PL-F9TC`). A zero MAC would print `1 MAC = 0.0%`.
+            `PL-F9TC`). A zero MAC would print `1 MAC = 0.00%`.
     """
 
     require_mac_percent("mac_percent", mac_percent)
 
-    return f"1 MAC {agent_display_name.lower()} = {mac_percent:.1f}{_PERCENT}"
+    return (
+        f"1 MAC {agent_display_name.lower()} (age {age_years}) = "
+        f"{mac_percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}{_PERCENT}"
+    )
 
 
 def mac_awake_band_percent(
@@ -716,13 +734,13 @@ def mac_awake_band_percent(
     reference" states what the band asserts and which trace it is read
     against.
 
-    The band multiplies the *fraction* by the stored `mac_percent`, rather
+    The band multiplies the *fraction* by the run's `mac_percent`, rather
     than storing an absolute percent. That keeps the band's height
     consistent with the axis it is drawn on, by construction. A published
     MAC-awake percent was measured in a population that has its own MAC. For
     desflurane, that MAC is not this project's. Chortkoff's 2.60% sits
-    against a MAC of 7.25%. Importing that percent onto an axis scaled by a
-    MAC of 6.0% would raise the band by 20%. Concentration falls during
+    against a MAC of 7.25%. Importing that percent onto an axis scaled by
+    desflurane's MAC at age 40, 6.6%, would raise the band by 9.4%. Concentration falls during
     washout, so a trace crosses a band drawn too high sooner. That band would
     teach an earlier wake-up than the source supports.
 
@@ -929,14 +947,18 @@ def mac_axis_ticks(max_percent: float, mac_percent: MacPercent) -> tuple[tuple[f
     # for whole-MAC steps. The count is derived from the spacing rather than
     # fixed, so a label never shows a digit that the spacing cannot change.
     decimals = max(0, len(f"{step_mac:.2f}".rstrip("0").partition(".")[2]))
+    # `floor()` keeps the last tick at or below the top of the axis, and the
+    # `+ 1` makes the range include it. A tick above `max_percent` would be
+    # drawn outside the plotted area. Rounding can leave the quotient just
+    # below the whole number it equals: desflurane's top, 3 x 6.6%, is
+    # 19.799999999999997, and divided by 6.6 it gives 2.9999999999999996 MAC.
+    # Without the allowance the axis lost its 3.0 label (`PL-LBVN`). The
+    # percent axis's ticks make the same allowance (`chart_frame`).
+    count = floor(span_mac / step_mac + WHOLE_COUNT_TOLERANCE)
 
     return tuple(
         (index * step_mac * mac_percent, f"{index * step_mac:.{decimals}f}")
-        # `int()` truncates toward zero, so the last tick is the last one
-        # at or below the top of the axis. The `+ 1` makes the range include
-        # that tick. A tick above `max_percent` would be drawn outside the
-        # plotted area.
-        for index in range(int(span_mac / step_mac) + 1)
+        for index in range(count + 1)
     )
 
 

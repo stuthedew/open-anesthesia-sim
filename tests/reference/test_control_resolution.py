@@ -160,7 +160,7 @@ def _case_opening(agent_id: str) -> Manoeuvre:
         alveolar_ventilation_l_min=patient.default_alveolar_ventilation_l_min,
         cardiac_output_l_min=patient.default_cardiac_output_l_min,
     )
-    one_mac = load_agent_parameters(agent_id).mac_percent
+    one_mac = load_agent_parameters(agent_id).mac_at_age_40_percent
 
     return Manoeuvre(closed, _with_dial(closed, one_mac), hold_s=60)
 
@@ -239,7 +239,7 @@ def _ventilator_start(agent_id: str) -> Manoeuvre:
 #: module drives them to answer a different question, and it is free to change
 #: them for its own reasons.
 PUBLISHED_TOLERANCE = {
-    "case opening": (_case_opening, 6.6e-2, "desflurane"),
+    "case opening": (_case_opening, 7.3e-2, "desflurane"),
     "unperfused load then dial off": (_unperfused_load_then_dial_off, 5.0e-1, "desflurane"),
     "ventilator start": (_ventilator_start, 1.3, "desflurane"),
 }
@@ -280,7 +280,7 @@ MARGIN_RELATIVE_TOLERANCE = 0.01
 #: The displacement that the case opening reaches at the coarsest grid the
 #: interface offers. It is published in the prose beneath the per-rate table, as
 #: the measure of how much milder an ordinary action is than the binding one.
-PUBLISHED_CASE_OPENING_AT_300X_PP = 1.5
+PUBLISHED_CASE_OPENING_AT_300X_PP = 1.7
 
 
 def _max_dial(agent_id: str) -> float:
@@ -633,8 +633,8 @@ def test_the_case_opening_stays_milder_than_the_binding_manoeuvre_at_every_rate(
         f"{min(ratios, key=lambda m: ratios[m])}x); docs/VERIFICATION.md "
         '"Supported simulation step" reads the per-rate table on that relation'
     )
-    assert ratios[1] == pytest.approx(20.0, rel=0.1)
-    assert ratios[300] == pytest.approx(6.9, rel=0.1)
+    assert ratios[1] == pytest.approx(18.5, rel=0.1)
+    assert ratios[300] == pytest.approx(6.2, rel=0.1)
 
     case_opening_at_300x_pp, _ = _worst_over_agents(
         "case opening",

@@ -97,7 +97,8 @@ def test_each_run_draws_only_its_own_recorded_values(application: QApplication) 
 
     single = SimulationController()
     double = SimulationController()
-    double.set_delivered_concentration_percent(Percent(4.0))
+    # Twice the opening dial, sevoflurane's 1.80% MAC at age 40.
+    double.set_delivered_concentration_percent(Percent(3.6))
     single.start()
     double.start()
     _advance(single, 60)

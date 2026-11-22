@@ -262,9 +262,11 @@ class MacPercent(Percent):
     zero would leave every multiple undefined. So the check that a MAC is
     above zero is made once, when one of these is built. The check sets no
     other lower bound. A MAC far smaller than any real agent's, such as
-    0.01%, still prints as `1 MAC = 0.0%`, and one near the smallest float
-    makes the multiples overflow. The shipped MACs are 1.2% to 6.0%.
-    `AgentParameters` holds the agent's MAC as a `MacPercent`, and each
+    0.001%, still prints as `= 0.00%` in the reference line, and one near
+    the smallest float makes the multiples overflow. The shipped MACs at
+    age 40 are 1.17% to 6.6%. `AgentParameters` holds the agent's MAC at
+    age 40 as a `MacPercent`, `core/mac.py`'s `PatientMac` holds the MAC a
+    run divides by as one, and each
     formatter in `app/formatting.py` that divides by a MAC takes one
     (`PL-F9TC`). Before that, `AgentParameters` refused a zero MAC through
     `require_positive_finite`, and `app/formatting.py` tested

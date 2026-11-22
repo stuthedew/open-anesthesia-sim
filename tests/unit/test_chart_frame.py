@@ -627,6 +627,7 @@ def _frame(
         columns=CHART_COLUMN_BUDGET_PER_SERIES,
         plot_width_px=_PLOT_WIDTH_PX,
         mac_percent=MacPercent(2.0),
+        mac_age_years=40,
         axis_top_percent=Percent(6.0),
         grid_interval_percent=1.0,
         percent_ticks=percent_axis_ticks(6.0, 1.0),

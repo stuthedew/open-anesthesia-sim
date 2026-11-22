@@ -368,12 +368,13 @@ def test_the_mac_resolution_is_derived_from_the_percent_resolution() -> None:
     This test repeats that arithmetic for every shipped agent. Adding an
     agent, or changing the percent resolution, therefore fails here rather
     than silently over-claiming on the display. The agent that sets the limit
-    today is isoflurane: 0.01 percentage points of a 1.2% MAC is 0.0083 MAC,
+    today is isoflurane: 0.01 percentage points of a 1.17% MAC is 0.0085 MAC,
     and 0.01 is the finest power of ten at or above that.
     """
 
     coarsest_supported = max(
-        CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / load_agent_parameters(agent_id).mac_percent
+        CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+        / load_agent_parameters(agent_id).mac_at_age_40_percent
         for agent_id in AGENT_DATA_FILENAMES
     )
 
@@ -397,7 +398,7 @@ def test_no_mac_readout_claims_more_than_the_percent_beside_it() -> None:
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
-        mac_percent = load_agent_parameters(agent_id).mac_percent
+        mac_percent = load_agent_parameters(agent_id).mac_at_age_40_percent
         one_mac_count_in_percentage_points = MAC_DISPLAY_RESOLUTION_MAC * mac_percent
 
         assert one_mac_count_in_percentage_points >= CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, (
@@ -409,16 +410,16 @@ def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
     """Show the MAC readout changing while the percent readout beside it does not.
 
     `docs/INTERFACE.md` § "Displayed precision" says this can happen. Each pair sits
-    0.001 percentage points below and above 0.015 MAC, where the MAC readout
-    changes from 0.01 to 0.02. The expected strings were worked by hand from the
-    stored MAC:
+    just below and just above 0.015 MAC, where the MAC readout changes from 0.01
+    to 0.02. The expected strings were worked by hand from Mapleson 1996's MAC
+    at age 40, which the agent files store:
 
-    - Sevoflurane, MAC 2.0%: 0.029% and 0.031% are 0.0145 and 0.0155 MAC.
+    - Sevoflurane, MAC 1.80%: 0.026% and 0.028% are 0.0144 and 0.0156 MAC.
       Both read 0.03%.
-    - Isoflurane, MAC 1.2%: 0.017% and 0.019% are 0.0142 and 0.0158 MAC.
+    - Isoflurane, MAC 1.17%: 0.017% and 0.018% are 0.0145 and 0.0154 MAC.
       Both read 0.02%.
-    - Desflurane, MAC 6.0%: 0.089% and 0.091% are 0.0148 and 0.0152 MAC.
-      Both read 0.09%.
+    - Desflurane, MAC 6.6%: 0.098% and 0.100% are 0.0148 and 0.0152 MAC.
+      Both read 0.10%.
 
     A changed stored MAC, or an agent with no entry in `cases`, fails the test.
     """
@@ -426,14 +427,14 @@ def test_the_mac_digit_can_move_alone_at_a_rounding_boundary() -> None:
     # agent: (MAC used in the hand calculation, lower percent, upper percent,
     #         percent readout for both, MAC readout below, MAC readout above)
     cases = {
-        "sevoflurane": (2.0, 0.029, 0.031, "0.03%", "0.01 ×MAC", "0.02 ×MAC"),
-        "isoflurane": (1.2, 0.017, 0.019, "0.02%", "0.01 ×MAC", "0.02 ×MAC"),
-        "desflurane": (6.0, 0.089, 0.091, "0.09%", "0.01 ×MAC", "0.02 ×MAC"),
+        "sevoflurane": (1.8, 0.026, 0.028, "0.03%", "0.01 ×MAC", "0.02 ×MAC"),
+        "isoflurane": (1.17, 0.017, 0.018, "0.02%", "0.01 ×MAC", "0.02 ×MAC"),
+        "desflurane": (6.6, 0.098, 0.100, "0.10%", "0.01 ×MAC", "0.02 ×MAC"),
     }
 
     assert set(cases) == set(AGENT_DATA_FILENAMES)
     for agent_id, (mac, lower, upper, percent_text, mac_below, mac_above) in cases.items():
-        mac_percent = load_agent_parameters(agent_id).mac_percent
+        mac_percent = load_agent_parameters(agent_id).mac_at_age_40_percent
         assert mac_percent == mac, f"{agent_id}: the stored MAC moved; rework the example"
 
         lower_fraction = fraction_from_percent(Percent(lower))
@@ -450,11 +451,11 @@ def test_one_mac_of_every_agent_reads_as_one() -> None:
 
     This is the whole reason for the second unit. The same clinical depth
     shows as the same number whichever agent is running. The percent line
-    shows 2.00%, 1.20% and 6.00% for the identical situation.
+    shows 1.80%, 1.17% and 6.60% for the identical situation.
     """
 
     for agent_id in AGENT_DATA_FILENAMES:
-        mac_percent = load_agent_parameters(agent_id).mac_percent
+        mac_percent = load_agent_parameters(agent_id).mac_at_age_40_percent
 
         assert mac_multiple(fraction_from_percent(mac_percent), mac_percent) == pytest.approx(1.0)
         assert format_mac_multiple(fraction_from_percent(mac_percent), mac_percent) == "1.00 ×MAC"
@@ -539,7 +540,7 @@ def test_a_mac_not_built_as_one_refuses_to_produce_a_number(bad_mac: float) -> N
         chart_grid_interval_percent(bad_mac)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match=refusal):
-        format_mac_reference("Sevoflurane", bad_mac)  # type: ignore[arg-type]
+        format_mac_reference("Sevoflurane", bad_mac, age_years=40)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match=refusal):
         mac_awake_band_percent(
@@ -594,7 +595,9 @@ def test_every_shipped_agent_gets_the_same_mac_axis_spacing() -> None:
 
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
-        ticks = mac_axis_ticks(agent.max_delivered_concentration_percent, agent.mac_percent)
+        ticks = mac_axis_ticks(
+            agent.max_delivered_concentration_percent, agent.mac_at_age_40_percent
+        )
         labels = [float(label) for _, label in ticks]
 
         assert labels[0] == 0.0
@@ -627,6 +630,26 @@ def test_the_mac_axis_coarsens_rather_than_crowding_a_wide_range() -> None:
         assert expected_step in MAC_AXIS_STEP_LADDER_MAC
 
 
+@pytest.mark.parametrize("mac_percent", [1.8, 1.17, 6.6])
+def test_the_mac_axis_labels_its_top_at_3_mac_for_each_shipped_mac(mac_percent: float) -> None:
+    """The axis top, 3 MAC, carries its label whatever rounding the MAC brings.
+
+    The MACs are Mapleson 1996's at age 40 (PMID 8777094, Abstract). For
+    desflurane, 3 x 6.6 is 19.799999999999997 in floating point, and that
+    divided by 6.6 is 2.9999999999999996. Truncating that count dropped the
+    3.0 label from the top of desflurane's axis, so the last label read 2.5
+    (`PL-LBVN`). Each expected tick is a half MAC, worked here by hand.
+    """
+
+    mac = MacPercent(mac_percent)
+    ticks = mac_axis_ticks(chart_axis_top_percent(mac), mac)
+
+    assert [label for _, label in ticks] == ["0.0", "0.5", "1.0", "1.5", "2.0", "2.5", "3.0"]
+    assert [position for position, _ in ticks] == pytest.approx(
+        [index * 0.5 * mac_percent for index in range(7)]
+    )
+
+
 def test_the_mac_axis_is_unlabelled_rather_than_invented_for_an_empty_range() -> None:
     """No plotted range means no scale to label, and none is guessed."""
 
@@ -641,18 +664,56 @@ def test_format_mac_reference_states_the_divisor_the_readouts_used() -> None:
     traceable to the transformation that produced it. A MAC multiple has
     exactly one transformation, the division by MAC. Naming the divisor beside
     the axis lets a reader who disagrees with it see that they disagree. They
-    can then convert back.
+    can then convert back. MAC falls with age, so the line names the age the
+    MAC is for.
+
+    The MAC prints to the hundredths of the percent readout. So isoflurane's
+    1.17% is printed in full rather than as 1.2%, which is a different MAC
+    by 2.6% (`PL-RMNP`).
     """
 
-    assert format_mac_reference("Sevoflurane", MacPercent(2.0)) == "1 MAC sevoflurane = 2.0%"
-    assert format_mac_reference("Desflurane", MacPercent(6.0)) == "1 MAC desflurane = 6.0%"
+    assert (
+        format_mac_reference("Isoflurane", MacPercent(1.17), age_years=40)
+        == "1 MAC isoflurane (age 40) = 1.17%"
+    )
+    assert (
+        format_mac_reference("Sevoflurane", MacPercent(1.8), age_years=40)
+        == "1 MAC sevoflurane (age 40) = 1.80%"
+    )
+    assert (
+        format_mac_reference("Desflurane", MacPercent(6.6), age_years=40)
+        == "1 MAC desflurane (age 40) = 6.60%"
+    )
+    assert (
+        format_mac_reference("Sevoflurane", MacPercent(2.5), age_years=1)
+        == "1 MAC sevoflurane (age 1) = 2.50%"
+    )
 
-    for agent_id in AGENT_DATA_FILENAMES:
-        agent = load_agent_parameters(agent_id)
-        reference = format_mac_reference(agent.display_name, agent.mac_percent)
 
-        assert agent.display_name.lower() in reference
-        assert f"{agent.mac_percent:.1f}%" in reference
+@pytest.mark.parametrize(
+    ("agent_id", "reference_line"),
+    [
+        # Mapleson 1996 (PMID 8777094), Abstract: MAC at age 40 of 1.80%
+        # sevoflurane, 1.17% isoflurane and 6.6% desflurane. The reference
+        # adult is 40.
+        ("sevoflurane", "1 MAC sevoflurane (age 40) = 1.80%"),
+        ("isoflurane", "1 MAC isoflurane (age 40) = 1.17%"),
+        ("desflurane", "1 MAC desflurane (age 40) = 6.60%"),
+    ],
+)
+def test_a_run_states_its_agent_s_mac_at_age_40_in_full(agent_id: str, reference_line: str) -> None:
+    """A fresh run's `1 MAC` line names the age and prints Mapleson's MAC in full."""
+
+    snapshot = SimulationController(agent_id=agent_id).snapshot()
+
+    assert (
+        format_mac_reference(
+            snapshot.agent_display_name,
+            snapshot.agent_mac_percent,
+            age_years=snapshot.agent_mac_age_years,
+        )
+        == reference_line
+    )
 
 
 def test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac() -> None:
@@ -672,25 +733,27 @@ def test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac() ->
         lower, upper = mac_awake_band_percent(
             fraction_of_mac=mac_awake.fraction_of_mac,
             standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-            mac_percent=agent.mac_percent,
+            mac_percent=agent.mac_at_age_40_percent,
         )
 
-        deviation_percent = mac_awake.standard_deviation_fraction_of_mac * agent.mac_percent
-        centre_percent = mac_awake.fraction_of_mac * agent.mac_percent
+        deviation_percent = (
+            mac_awake.standard_deviation_fraction_of_mac * agent.mac_at_age_40_percent
+        )
+        centre_percent = mac_awake.fraction_of_mac * agent.mac_at_age_40_percent
 
         assert lower == pytest.approx(centre_percent - deviation_percent)
         assert upper == pytest.approx(centre_percent + deviation_percent)
-        assert 0.0 < lower < upper < agent.mac_percent
+        assert 0.0 < lower < upper < agent.mac_at_age_40_percent
 
 
 def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() -> None:
     """Pin the denominator trap as arithmetic.
 
     Desflurane's published MAC-awake of 2.60% is 36% of a MAC of about 7.25%,
-    which is Rampil's figure for ages 18-30. This project stores Rampil's
-    figure for ages 31-65, which is 6.0%. Importing the *percent* would place
-    the band at 2.60%, where the fraction places it at 2.16%. That is 20% too
-    high. A falling trace crosses a reference drawn too high too soon, so the
+    which is Rampil's figure for ages 18-30. This project stores Mapleson's
+    MAC at age 40, which is 6.6%. Importing the *percent* would place the band
+    at 2.60%, where the fraction places it at 2.38%. That is 9.4% too high.
+    A falling trace crosses a reference drawn too high too soon, so the
     chart would teach an earlier wake-up than the literature supports.
     `docs/INTERFACE.md` § "MAC-awake as a chart reference" gives the reasoning.
 
@@ -698,12 +761,14 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
     preference. The test therefore treats the wrong band as a value that the
     interface must not be able to produce.
 
-    The band is also compared with an independent measurement. That
-    measurement is the non-jaundiced control arm of Song et al. 2005, in the
-    population that the 31-65 year divisor describes. The comparison is
-    coarse. Its tolerance is Song's standard deviation, so it fails only when
-    the stored fraction is more than about 11% too low or 12% too high, that
-    is, outside 0.320-0.403 of MAC.
+    The fraction is also compared with an independent measurement. That
+    measurement is the non-jaundiced control arm of Song et al. 2005, in
+    middle-aged and elderly patients. Their MAC is Rampil's 31-65 year figure
+    of 6.0%, not the 40-year-old's 6.6% that the band is drawn against, so
+    the comparison is made at 6.0%. It is coarse. Its tolerance is Song's
+    standard deviation, so it fails only when the stored fraction is more
+    than about 11% too low or 12% too high, that is, outside 0.320-0.403 of
+    MAC.
     `test_mac_awake_matches_its_adopted_primary_source` in
     `tests/unit/test_parameters.py` pins the fraction exactly (`PL-H1JH`).
     """
@@ -714,46 +779,50 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
     lower, upper = mac_awake_band_percent(
         fraction_of_mac=mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-        mac_percent=desflurane.mac_percent,
+        mac_percent=desflurane.mac_at_age_40_percent,
     )
     centre = (lower + upper) / 2.0
 
-    assert centre == pytest.approx(2.16)
+    # 0.36 times Mapleson 1996's 6.6% at age 40.
+    assert centre == pytest.approx(2.376)
     # Song et al. 2005 (PMID 15731594), Abstract, read through PubMed on
-    # 2026-10-17: the control group's MAC-awake was "2.17 +/- 0.25%" (mean +/-
-    # SD). The centre lies within one of Song's standard deviations of that
-    # mean. The bound is not the display's resolution. The difference between
-    # 2.16 and 2.17 falls exactly on that resolution in decimal arithmetic, and
-    # only float rounding let a strict `<` pass there.
-    assert abs(centre - 2.17) <= 0.25
+    # 2026-11-22: the control group's MAC-awake was "2.17 +/- 0.25%" (mean +/-
+    # SD). Rampil et al. 1991 (PMID 2001020), Abstract, read through PubMed on
+    # 2026-11-22: desflurane's MAC in oxygen was "6.0 +/- 0.29 in the
+    # 31-65-yr group". The stored fraction times that MAC lies within one of
+    # Song's standard deviations of Song's mean. The bound is not the
+    # display's resolution.
+    assert abs(mac_awake.fraction_of_mac * 6.0 - 2.17) <= 0.25
     # The stored fraction must not reproduce Chortkoff's absolute percent,
     # because that percent belongs to a different population's MAC.
     assert centre != pytest.approx(2.60)
     # Also rule out the mistake of dividing that absolute percent by the
     # stored MAC.
-    assert mac_awake.fraction_of_mac != pytest.approx(2.60 / desflurane.mac_percent, abs=1e-3)
+    assert mac_awake.fraction_of_mac != pytest.approx(
+        2.60 / desflurane.mac_at_age_40_percent, abs=1e-3
+    )
 
 
 @pytest.mark.parametrize(
     ("agent_id", "band_percent", "reference_line"),
     [
-        # 0.34 +/- 0.05 times 2.0%
+        # 0.34 +/- 0.05 times 1.80%
         (
             "sevoflurane",
-            (0.58, 0.78),
-            "MAC-awake sevoflurane = 0.34 ×MAC (0.68%), band ±1 SD 0.58–0.78%",
+            (0.522, 0.702),
+            "MAC-awake sevoflurane = 0.34 ×MAC (0.61%), band ±1 SD 0.52–0.70%",
         ),
-        # 0.31 +/- 0.05 times 1.2%
+        # 0.31 +/- 0.05 times 1.17%
         (
             "isoflurane",
-            (0.312, 0.432),
-            "MAC-awake isoflurane = 0.31 ×MAC (0.37%), band ±1 SD 0.31–0.43%",
+            (0.3042, 0.4212),
+            "MAC-awake isoflurane = 0.31 ×MAC (0.36%), band ±1 SD 0.30–0.42%",
         ),
-        # 0.36 +/- 0.063 times 6.0%
+        # 0.36 +/- 0.063 times 6.6%
         (
             "desflurane",
-            (1.782, 2.538),
-            "MAC-awake desflurane = 0.36 ×MAC (2.16%), band ±1 SD 1.78–2.54%",
+            (1.9602, 2.7918),
+            "MAC-awake desflurane = 0.36 ×MAC (2.38%), band ±1 SD 1.96–2.79%",
         ),
     ],
     ids=["sevoflurane", "isoflurane", "desflurane"],
@@ -767,10 +836,11 @@ def test_each_shipped_mac_awake_band_lands_at_its_published_values(
     hand as the published mean minus or plus one standard deviation, times
     the MAC that the display divides by. The fractions are Katoh et al.'s and
     Chortkoff et al.'s, and `test_mac_awake_matches_its_adopted_primary_source`
-    in `tests/unit/test_parameters.py` gives their locators. The MACs are De
-    Wolf et al.'s. The other band tests in this file compute their expected
-    band from the loaded file. None of them can therefore detect a value that
-    was wrong when it was stored (`PL-H1JH`).
+    in `tests/unit/test_parameters.py` gives their locators. The MACs are
+    Mapleson 1996's at age 40 (PMID 8777094, Abstract). The other band
+    tests in this file compute their expected band from the loaded file.
+    None of them can therefore detect a value that was wrong when it was
+    stored (`PL-H1JH`).
     """
 
     snapshot = SimulationController(agent_id=agent_id).snapshot()
@@ -1061,12 +1131,12 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
             agent.display_name,
             fraction_of_mac=mac_awake.fraction_of_mac,
             standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-            mac_percent=agent.mac_percent,
+            mac_percent=agent.mac_at_age_40_percent,
         )
         lower, upper = mac_awake_band_percent(
             fraction_of_mac=mac_awake.fraction_of_mac,
             standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-            mac_percent=agent.mac_percent,
+            mac_percent=agent.mac_at_age_40_percent,
         )
 
         assert agent.display_name.lower() in rendered

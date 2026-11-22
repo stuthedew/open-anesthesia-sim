@@ -72,7 +72,7 @@ def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio(
     view = _shown_view(application, SimulationController())
     strings = _visible_strings(view)
 
-    assert "1 MAC sevoflurane = 2.0%" in " ".join(sorted(strings))
+    assert "1 MAC sevoflurane (age 40) = 1.80%" in " ".join(sorted(strings))
     # The readouts write the unit as a ratio, never as a bare "MAC".
     assert any(value.endswith(" ×MAC") for value in strings)
 
@@ -96,11 +96,14 @@ def test_the_screen_states_the_band_fraction_and_the_divisor_for_every_agent(
                 agent.display_name,
                 fraction_of_mac=agent.mac_awake.fraction_of_mac,
                 standard_deviation_fraction_of_mac=agent.mac_awake.standard_deviation_fraction_of_mac,
-                mac_percent=agent.mac_percent,
+                mac_percent=agent.mac_at_age_40_percent,
             )
             in joined
         )
-        assert format_mac_reference(agent.display_name, agent.mac_percent) in joined
+        assert (
+            format_mac_reference(agent.display_name, agent.mac_at_age_40_percent, age_years=40)
+            in joined
+        )
 
 
 def test_the_interface_says_which_trace_the_band_is_read_against(application: QApplication) -> None:
@@ -138,9 +141,9 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
         assert not value.rstrip().endswith("."), value
 
     joined = " ".join(sorted(strings))
-    assert "1 MAC sevoflurane = 2.0%" in joined
+    assert "1 MAC sevoflurane (age 40) = 1.80%" in joined
     assert "read against vessel-rich trace" in joined
-    assert "1 MAC sevoflurane = 2.0%, reference adult (alveolar, wide dash)" in joined
+    assert "1 MAC sevoflurane (age 40) = 1.80%, reference adult (alveolar, wide dash)" in joined
     assert "Compartments:" in joined
     assert "Clinical references:" in joined
     assert "Run record:" in joined

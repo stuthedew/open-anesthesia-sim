@@ -15,6 +15,7 @@ from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.concentration import MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.mac import mac_for_patient
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
@@ -461,7 +462,9 @@ def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.Monke
 
     trunk = _trunk_with_two_changes()
     on_file = load_agent_parameters(trunk.snapshot().agent_id)
-    edited = dataclasses.replace(on_file, mac_percent=MacPercent(on_file.mac_percent + 0.1))
+    edited = dataclasses.replace(
+        on_file, mac_at_age_40_percent=MacPercent(on_file.mac_at_age_40_percent + 0.1)
+    )
     monkeypatch.setattr(
         "anesthesia_sim.app.controller.load_agent_parameters", lambda agent_id: edited
     )
@@ -469,9 +472,11 @@ def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.Monke
     with pytest.raises(SimulationConfigurationError) as refusal:
         trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
 
+    patient = load_reference_adult_parameters()
+
     assert (
-        f"agent_mac_percent is {on_file.mac_percent!r} in this run and "
-        f"{edited.mac_percent!r} on the branch"
+        f"agent_mac is {mac_for_patient(on_file, patient)!r} in this run and "
+        f"{mac_for_patient(edited, patient)!r} on the branch"
     ) in str(refusal.value)
 
 

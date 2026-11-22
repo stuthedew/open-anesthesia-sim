@@ -548,8 +548,8 @@ def test_a_percent_reaching_a_fraction_parameter_is_refused() -> None:
 def test_a_mac_handed_in_as_a_fraction_is_refused() -> None:
     """A MAC given as a fraction shrinks the divisor of every displayed MAC multiple a hundredfold.
 
-    Sevoflurane's MAC is 2%, which is 0.02 as a fraction. Stored as the
-    percent, 0.02 would show 1 MAC as "100.00 ×MAC". The agent's parameters
+    Sevoflurane's MAC at age 40 is 1.8%, which is 0.018 as a fraction. Stored
+    as the percent, 0.018 would show 1 MAC as "100.00 ×MAC". The agent's parameters
     refuse it when they are built, and `dataclasses.replace` builds them. So a
     MAC edited in a test or a notebook meets the same check as a MAC in a file.
     """
@@ -557,9 +557,9 @@ def test_a_mac_handed_in_as_a_fraction_is_refused() -> None:
     sevoflurane = load_sevoflurane_parameters()
 
     with pytest.raises(
-        TypeError, match="^mac_percent of 0.02 is a Fraction, not a Percent: convert it"
+        TypeError, match="^mac_at_age_40_percent of 0.018 is a Fraction, not a Percent: convert it"
     ):
-        replace(sevoflurane, mac_percent=Fraction(0.02))  # type: ignore[arg-type]
+        replace(sevoflurane, mac_at_age_40_percent=Fraction(0.018))  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("value", [nextafter(0.0, 1.0), 1.2, 2.0, 6.0, 100.0])
@@ -734,8 +734,8 @@ def test_a_bare_float_is_refused_wherever_a_concentration_is_held() -> None:
     with pytest.raises(TypeError, match="^max_delivered_concentration_percent of 8.0 was not"):
         replace(agent, max_delivered_concentration_percent=8.0)  # type: ignore[arg-type]
 
-    with pytest.raises(TypeError, match="^mac_percent of 2.0 was not built"):
-        replace(agent, mac_percent=2.0)  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="^mac_at_age_40_percent of 1.8 was not built"):
+        replace(agent, mac_at_age_40_percent=1.8)  # type: ignore[arg-type]
 
 
 def test_fraction_from_percent_refuses_a_bare_float() -> None:
@@ -828,8 +828,10 @@ def test_a_percent_past_100_is_refused_where_it_is_built_and_the_maximum_where_i
     assert circuit.delivered_concentration_percent == 0.0
 
 
+# Mapleson 1996 (PMID 8777094), Abstract: MAC at age 40 of 1.80% sevoflurane,
+# 1.17% isoflurane and 6.6% desflurane.
 @pytest.mark.parametrize(
-    ("agent", "mac_percent"), [("sevoflurane", 2.0), ("isoflurane", 1.2), ("desflurane", 6.0)]
+    ("agent", "mac_percent"), [("sevoflurane", 1.8), ("isoflurane", 1.17), ("desflurane", 6.6)]
 )
 def test_a_run_opens_with_its_dial_built_as_a_setting_not_as_the_mac(
     agent: str, mac_percent: float
@@ -840,8 +842,8 @@ def test_a_run_opens_with_its_dial_built_as_a_setting_not_as_the_mac(
     it passed a MAC check until the learner first moved the dial. So a dial
     setting passed to a formatter in place of the MAC showed a correct-looking
     1.00 ×MAC when the run opened, and failed only later, mid-run (`PL-F9TC`,
-    blind review). The expected MACs are the values in the shipped data files,
-    typed out here by hand.
+    blind review). The expected MACs are Mapleson 1996's MACs at age 40,
+    typed out here by hand, because the reference adult is 40.
     """
     dial = AgentUptakeSystem.for_agent(agent).circuit.delivered_concentration_percent
 
