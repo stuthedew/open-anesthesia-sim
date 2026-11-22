@@ -44,8 +44,8 @@ decision, under the rule set out after the three tiers.
    species, population and conditions that the model claims to represent, and
    reports the value, its dispersion and its reference conditions. Examples
    are Strum and Eger's sevoflurane blood:gas measurement
-   (0.686 ± 0.047 at 37 °C, n=19) and Yasuda, Targ and Eger's human
-   tissue:gas coefficients.
+   (0.686 ± 0.047 at 37 °C, n=19; *Anesth Analg* 1987;66(7):654-6) and
+   Yasuda, Targ and Eger's human tissue:gas coefficients.
 2. **Secondary synthesis.** A source in this tier is a review, textbook,
    monograph or consensus document that collects primary measurements without
    making one. It is a good way to find the primary source, and to record the
@@ -171,6 +171,10 @@ the truth of each declaration, and the third rule value by value.
 **For developers.** § "What the data-file format requires of a `sources` entry"
 names the field of a data file that records each of these, and the exact rules
 its check enforces.
+`test_the_stored_blood_gas_coefficients_sit_below_the_measured_ones_as_printed`
+recomputes the range of blood:gas differences above, and each difference in
+§ "The blood:gas coefficients", from the stored values and the measurements
+that each agent file cites.
 
 ### Where each stored value comes from
 
@@ -1086,17 +1090,21 @@ differ from it by 2.3% to 9.0%, the most for isoflurane fat, which lies above th
 another source could not match this closely by chance, so the comparison confirms the Workbook's
 attribution. The same Workbook paragraph credits sevoflurane's values to Yasuda and, one sentence
 later, to "the package insert and Abbott data". The comparison settles that contradiction: the
-three stored sevoflurane values match this paper, not a package insert.
+three stored sevoflurane values match this paper, not a package insert. A test recomputes the
+figures in this paragraph from the table's rows
+(`test_the_stored_tissue_coefficients_lie_as_close_to_yasudas_means_as_printed`).
 
 **The vessel-rich coefficient is Yasuda's *brain* value.** Table 1 gives brain,
-heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25, 0.78).
+heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25, 0.78;
+*Anesth Analg* 1989;69(3):370-3).
 Sevoflurane's stored 1.1 is 4.3% below its brain value and 0.2% above the
 equal-weight mean of its four organ values, 1.0975, so sevoflurane alone does
 not show whether Gas Man used the brain value or the mean. Isoflurane's stored
 2.1 is 0.5% above its brain value, 2.09, and desflurane's stored 0.54 equals
 its brain value (the table above). These two matches indicate that the
 vessel-rich compartment uses the brain values, and a learner reading its trace
-is reading a brain trace.
+is reading a brain trace. A test recomputes the percents and the mean in this
+paragraph (`test_the_vessel_rich_coefficients_match_yasudas_brain_values_as_printed`).
 <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
@@ -1104,9 +1112,15 @@ is reading a brain trace.
 **Yasuda's paper is not a source for the stored blood:gas values.** It measured
 none. Its Table 2 tissue:blood figures are calculated "by dividing the
 tissue/gas partition coefficient by the published values for the blood/gas
-coefficients adjusted for age". So Table 1 ÷ Table 2 recovers the age-adjusted
-blood:gas of the 65.8-year-old cohort. Those recovered values are 4.9–9.4%
-above the three round figures stored here.
+coefficients adjusted for age" (*Anesth Analg* 1989;69(3):370-3). So Table 1 ÷
+Table 2 recovers the age-adjusted blood:gas of the 65.8-year-old cohort. The
+abstract gives Table 2's brain column: 1.70 for sevoflurane, 1.57 for isoflurane
+and 1.29 for desflurane (PMID 2774233). Dividing the brain values above by them,
+it recovers 0.676, 1.331 and 0.419. These are 4.1% and 2.4% above the stored
+sevoflurane and isoflurane values and 0.3% below the stored desflurane value
+(`test_yasudas_brain_column_recovers_the_blood_gas_coefficients_printed`).
+Whether the other tissues' columns give the same values has no test yet
+(`PL-S5JJ`), because the full Table 2 is not in this repository.
 
 #### Why the stored values were kept
 
@@ -1139,7 +1153,9 @@ coefficient, which makes that coefficient the obvious suspect. It is not the cau
 
 **For developers.** Each agent's partition coefficients are in
 `data/agents/*.json`, whose `tier` and `adopted` fields record each value's
-source. The reference adult patient's physiologic parameters are in
+source. `test_storing_yasudas_means_would_move_the_time_constants_as_printed`
+recomputes the time-constant changes in the *Declined* paragraph above. The
+reference adult patient's physiologic parameters are in
 `data/patients/reference_adult.json`. Storing Yasuda's figures would require
 recomputing every pinned reference state under `tests/reference/`, because
 those states are this parameter set's solution. `tests/unit/test_parameters.py` checks each
@@ -1225,9 +1241,9 @@ value, so the dial follows the move.
 #### The stored MAC
 
 The stored MAC (`mac_at_age_40_percent`) is each agent's MAC at age 40 from
-Mapleson's 1996 meta-analysis: sevoflurane 1.80%, isoflurane 1.17% and desflurane
-6.6%. The reference adult has no age, so every run uses the MAC at age 40, and the
-display states that age beside the MAC. The stored MAC has two uses, and both are
+Mapleson's 1996 meta-analysis (*Br J Anaesth* 1996;76(2):179-85): sevoflurane
+1.80%, isoflurane 1.17% and desflurane 6.6%. The reference adult has no age, so
+every run uses the MAC at age 40, and the display states that age beside the MAC. The stored MAC has two uses, and both are
 presentation. First, it sets the dial's starting position, so that each new run
 begins at a recognizable clinical anchor. Second, it is the divisor for the display
 in MAC multiples: every displayed compartment value and the chart's second axis are
@@ -1265,9 +1281,9 @@ Three points decide how far a displayed MAC multiple can be trusted:
    MAC comes from Mapleson. So each displayed multiple is a ratio between values from different
    sources. Comparing agents in MAC multiples is what the display exists for, and that comparison
    now rests on one MAC source for every agent.
-3. With confidence limits of ±7-10%, no MAC source makes a comparison between agents exact. The
-   display shows the MAC it divides by, with its age, instead of presenting the estimate as
-   settled.
+3. With Mapleson's confidence limits of ±7-10% (PMID 8777094), no MAC source makes a
+   comparison between agents exact. The display shows the MAC it divides by, with its age,
+   instead of presenting the estimate as settled.
 
 No planned milestone moves the MAC to a primary measurement. `ROADMAP.md`'s planned-milestone
 item 30 makes the MAC follow the patient's age once age is an input, and item 31 plans a
@@ -1277,6 +1293,8 @@ primary-literature set of partition coefficients beside the stored one.
 it falls under the safety-critical standard in `CLAUDE.md`. The list of sources in each agent's file (`sources`)
 records Mapleson 1996 as the adopted source, with its tier, and records De Wolf et al.'s value that
 the file stored before and how far it differed.
+`test_the_stored_mac_is_mapleson_1996_s_mac_at_age_40` in `tests/unit/test_parameters.py` checks
+each stored MAC against the figure in Mapleson's abstract.
 
 
 #### The MAC-awake fractions
@@ -1319,7 +1337,8 @@ each tissue group. Katoh's compartment is the brain alone, though, while this
 model's vessel-rich group pools the brain with the heart, liver, kidney and
 viscera.
 
-Katoh computed every patient's flow and volume from the same formulas. Cerebral
+Katoh computed every patient's flow and volume from the same formulas
+(*Anesth Analg* 1993;77(5):1012-7). Cerebral
 blood flow $`CBF`$ is 14.3% of a cardiac output set by a cardiac index of
 3.5 L/min/m², so it scales with body surface area. Brain volume $`V_{Brain}`$
 is 21 mL/kg, so it scales with body weight. The brain's time constant therefore
@@ -1335,7 +1354,7 @@ Equation 2 sets it equal to the end-tidal value. Equation 3 (p. 1016) corrects
 the end-tidal value for 20% dead-space gas, as
 $`P_{Art} = (P_{ET} - 0.2\,P_I)/0.8`$. During fast washout, the calculated
 brain concentration at first eye opening was 0.30 of MAC for sevoflurane and
-0.26 for isoflurane under equation 2 (Table 1, p. 1014).
+0.26 for isoflurane under equation 2 (Table 1, p. 1014; PMID 8214700).
 Under equation 3 it was 0.34 and 0.30 (Table 3, p. 1016). The abstract quotes
 the equation 3 figures and calls them
 "nearly equal to MAC-Awake obtained by slow alveolar washout". So the stored
@@ -1366,10 +1385,10 @@ would mix ascending and descending determinations.
 atmosphere.** Each source expresses MAC-awake as a ratio to MAC, and Katoh does so explicitly, "as a ratio to
 age-adjusted MAC". A published *percent*, by contrast, is tied to whichever MAC
 its own population was measured against. Desflurane shows the risk. Chortkoff's
-MAC-awake of 2.60% is 36% of a MAC of about 7.25%, Rampil's figure for ages
-18-30. The stored MAC is Mapleson's 6.6% at age 40. Dividing 2.60% by 6.6% would
-give 0.394 instead of the published 0.36, so the band would be drawn 9.4% too
-high and crossed too soon. Storing the fraction avoids that error. For
+MAC-awake of 2.60% is 36% of a MAC of about 7.25% (PMID 7574003), Rampil's
+figure for ages 18-30 (PMID 2001020). The stored MAC is Mapleson's 6.6% at
+age 40. Dividing 2.60% by 6.6% would give 0.394 instead of the published 0.36,
+so the band would be drawn 9.4% too high and crossed too soon. Storing the fraction avoids that error. For
 desflurane, storing the fraction allows an independent check. The band's centre
 is 0.36 of the stored 6.6%, or 2.38%. Song et al. measured 2.17 ± 0.25% in the
 non-jaundiced control arm, so the centre lies within one SD of that mean.
@@ -1381,8 +1400,8 @@ it is 2.16%, within 0.01 percentage points of Song's mean.
 
 **The comparison with Katoh's own MAC at age 40 shows the band slightly low**,
 so it teaches a slightly late wake-up (`PL-P319`). Katoh's fractions are ratios to each patient's
-age-adjusted MAC, which comes from two linear equations on p. 1013. For
-isoflurane it is 1.43 − 0.0061 × age (yr) percent, and for sevoflurane
+age-adjusted MAC, which comes from two linear equations on p. 1013
+(PMID 8214700). For isoflurane it is 1.43 − 0.0061 × age (yr) percent, and for sevoflurane
 2.56 − 0.0156 × age (yr) percent. The paper cites four MAC studies for the
 equations but does not say how the equations were derived from those studies.
 At age 40 the equations give 1.94% for sevoflurane and 1.19% for isoflurane.
@@ -1404,6 +1423,13 @@ the age the paragraph above uses for Katoh's equations.
 <!-- derived: 1.3% from data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
 <!-- derived: 0.612 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_at_age_40_percent = 1.8 -->
 <!-- derived: 0.363 percent from data/agents/isoflurane.json mac_awake.fraction_of_mac = 0.31, mac_at_age_40_percent = 1.17 -->
+
+**For developers.** Two tests in `tests/reference/test_parameter_source_figures.py`
+recompute the arithmetic in the last two paragraphs.
+`test_a_desflurane_percent_over_the_stored_mac_gives_the_figures_printed` recomputes
+the desflurane figures from the stored MAC and MAC-awake fraction.
+`test_katohs_mac_equations_at_age_40_give_the_figures_printed` recomputes Katoh's MAC
+at age 40 and the band centres from the stored values.
 
 
 ## Agent amount

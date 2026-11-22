@@ -797,6 +797,10 @@ ventilation and cardiac output that its patient profile states. Without the refu
 would sit on a neighbouring step beside a rounded readout, and both would show a flow that the
 run does not have. The patient supplied with the simulator, the reference adult, opens at 4.0
 and 5.0 L/min, both on a step, so the refusal changes nothing that the simulator displays.
+One test checks the refusal and the steps it names
+(`test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused`), and another
+checks the reference adult's two opening flows (`test_loads_reference_adult_parameters`).
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 
 **The maxima for fresh gas flow, ventilation and cardiac output come from no source.** Each was
@@ -817,8 +821,10 @@ the third decides it:
   lungs per unit time. This is one of the central results in uptake and distribution, and this
   model reproduces it. With sevoflurane at 1 MAC and the reference adult's other defaults,
   $`F_A/F_I`$ at five minutes is 0.60 at 10 L/min, 0.68 at 5 L/min, 0.75 at 2.5 L/min, 0.85 at
-  1 L/min, and 0.96 at zero. Refusing zero would cut the demonstration off one step before its
-  clearest case. The same argument applies to alveolar ventilation at zero, which is apnoea.
+  1 L/min, and 0.96 at zero
+  (`test_alveolar_wash_in_at_five_minutes_quickens_as_cardiac_output_falls`). Refusing zero
+  would cut the demonstration off one step before its clearest case. The same argument applies
+  to alveolar ventilation at zero, which is apnoea.
 
 <!-- not-restated: 10 L/min, 5 L/min -->
 
@@ -960,8 +966,9 @@ survey does not say what it requires.
 moves in steps of 0.1 L/min, the flow's displayed resolution. Where an end of the offered range
 falls between two steps, the slider offers the step just inside it. For a machine with a minimum
 flow of 0.25 L/min, the slider's lowest setting is 0.3 L/min, never the 0.2 L/min that the machine
-would refuse. An offered range that contains no step is an error, because otherwise the slider
-could offer only a flow that the run refuses.
+would refuse (`test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it`). An
+offered range that contains no step is an error, because otherwise the slider could offer only a
+flow that the run refuses.
 
 **A machine whose starting flow is not one of the slider's steps is refused when the dashboard
 sets up its controls.** A user reads the slider's position like a displayed value. If a run
@@ -992,12 +999,11 @@ without any change to `core/supported_ranges.py`. A run in the extended range wo
 number, computed outside everything that was checked and shown just like one inside it. Take a
 machine with no true off position at its common gas outlet and a minimum flow of 0.5 L/min. The
 merged pair would either fail to represent it or move the model's lower limit for every other
-machine.
+machine. A test checks both refusals with one machine that has both features, a range from 0.5
+to 15 L/min (`test_machine_deliverable_flow_range_is_separate_from_model_envelope` in
+`tests/unit/test_supported_ranges.py`).
 
-A test checks both refusals
-(`test_machine_deliverable_flow_range_is_separate_from_model_envelope` in
-`tests/unit/test_supported_ranges.py`). A machine range that does not overlap the envelope is
-refused when it is reassigned on a built circuit, as well as when the circuit is built
+A machine range that does not overlap the envelope is refused when it is reassigned on a built circuit, as well as when the circuit is built
 (`test_a_direct_write_is_held_to_the_constructors_checks` and
 `test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built` in
 `tests/unit/test_circuit.py`).
@@ -1053,7 +1059,10 @@ bookmark accepts only a time that has already been checked against the limit.
 **The 24 hours belong to the case, not to each run.** The limit is argued from what the
 model leaves out, which depends on how long the *patient* has been anesthetized. So a branch
 shares the 24 hours its parent was using, and its elapsed time carries on from the point where
-the branch was taken. A branch taken at 23 h has one hour left.
+the branch was taken. A branch taken at 23 h has one hour left. A test checks that a branch
+carries on the case's count of steps
+(`test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s` in
+`tests/integration/controller/test_controller_branching.py`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ##### What happens when a run reaches the limit
@@ -1084,8 +1093,8 @@ Sevoflurane is the agent for which the missing metabolism matters most, so it is
 that constrains this limit. For sevoflurane, 2% to 5% of the absorbed dose is metabolized,
 against far less for isoflurane and desflurane. Its metabolism begins immediately, and
 fluoride and HFIP appear in plasma within minutes of the start of administration. Kharasch's
-review, cited below, reports these figures. It also finds that metabolism "does not
-contribute to the termination of clinical drug effect". That finding is what makes omitting
+review, cited below (PMID 7486145), reports these figures. It also finds that metabolism
+"does not contribute to the termination of clinical drug effect". That finding is what makes omitting
 metabolism safe over a case. It holds while ventilation and perfusion dominate the trace,
 and becomes progressively false once the only thing still moving is the slow tail, to which
 this model gives no sink.
@@ -1095,8 +1104,8 @@ this model gives no sink.
   1995;81(6 Suppl):S27-38. PMID 7486145,
   doi:10.1097/00000539-199512001-00005.
 
-**No stored value comes from Kharasch's review.** As a review, it is tier 2 under
-`docs/PARAMETERS.md` § "Source hierarchy", and a tier-2 source is the authority for a stored value only on a
+**No stored value comes from Kharasch's review** (PMID 7486145). As a review, it is tier 2
+under `docs/PARAMETERS.md` § "Source hierarchy", and a tier-2 source is the authority for a stored value only on a
 recorded decision. No such decision has been taken for this review, and there would be
 nothing for one to authorize. The 24 hours is not computed from 2% to 5%, and no parameter in
 this model descends from that paper. What the review supplies is the magnitude and the
@@ -1107,9 +1116,9 @@ be a different and better limit than this one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The 24 hours are not inside the exposure range over which sevoflurane's metabolism was
-measured.** Kharasch's review measured how sevoflurane's metabolism scales with dose only from
-0.35 to 9.5 MAC-hours. The limit bounds elapsed time, not exposure. A MAC-hour is usually
-counted at the end-tidal concentration, which in this model is the alveolar fraction. A run
+measured.** The studies of plasma fluoride that Kharasch's review summarizes gave
+sevoflurane doses from 0.35 to 9.5 MAC-hours (PMID 7486145). The limit bounds elapsed time, not exposure. A MAC-hour is
+usually counted at the end-tidal concentration, which in this model is the alveolar fraction. A run
 whose alveolar fraction is held near 1 MAC gains about one MAC-hour per hour. So it leaves the
 measured range at about 9.5 hours, and reaches about 24 MAC-hours at the limit. Every agent's
 dial opens at that agent's 1 MAC. The alveolar fraction stays below the dial during uptake,
@@ -1119,7 +1128,9 @@ MAC-hours. A long run at or above 1 MAC end-tidal therefore leaves the measured 
 before 24 hours, and past that range even the size of the omission is unmeasured. The 24
 hours rest not on the measured range but on the argument above, that the omission grows
 steadily once only the slow tail is still moving, with no sudden break. Because isoflurane
-and desflurane are metabolized far less, the same span omits less for them.
+and desflurane are metabolized far less, the same span omits less for them. A test recomputes
+the hours and MAC-hours in this paragraph
+(`test_a_long_sevoflurane_run_leaves_the_measured_exposure_range_as_printed`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
@@ -1138,7 +1149,9 @@ slowest term is somewhat longer than the isolated time constant, so 24 hours is 
 fraction of it. `docs/MODEL.md` § "Time constants" gives that term and says why it is
 longer. A run of a few hours would stop that trace near its start. The minimum says
 nothing about how far above it a run may go. The span is also far longer than any
-anesthetic this simulator is built to teach.
+anesthetic this simulator is built to teach. A test recomputes the time constant and the
+fractions in this paragraph
+(`test_the_run_length_is_the_fraction_of_the_fat_time_constant_printed`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Volatile sedation in intensive care is out of scope, deliberately.** It runs for days
@@ -1159,15 +1172,15 @@ intertissue-diffusion note under `docs/MODEL.md` § "Known limitations" has the 
 arithmetic. All else equal, a tail without that store falls faster than the measured one
 from about the third hour of elimination. Measured against the published mean curves over
 the whole supported run, the shipped tail does so (`docs/VERIFICATION.md` § "The first 24 hours of elimination
-against the published mean curves"). It runs about a third below the curves from about the
-seventh hour until about the twenty-first. For desflurane it runs below them by half, from
-3.4 to 15.3 hours. In the hours before that, it runs a fifth to a half above them, while
+against the published mean curves"). Two tests compute these hours and ratios from the
+model and hold them to the values recorded there
+(`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours` and
+`test_the_first_24_hours_of_elimination_against_the_published_mean_curves`). It runs about a
+third below the curves from about the seventh hour until about the twenty-first. For desflurane it runs below them by half, from
+3.4 to 15.3 hours. In the hours before that, it runs above them by 12 to 52% at the widest, while
 the rebreathing circuit and the muscle group's slow return hold it up. At 23.5 hours of
 elimination it runs above them again, by 12 to 24%, or by a factor of 2.1 for desflurane.
-That is because this model's fat group returns more agent than the fitted fat term. In
-that subsection's open-circuit run, which has no rebreathing, the tissue return alone falls
-after the first hour as low as a third to a half of the mean curve, near hour 8 for
-desflurane and near hour 13 for the others.
+That is because this model's fat group returns more agent than the fitted fat term.
 <!-- not-restated: 2.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
