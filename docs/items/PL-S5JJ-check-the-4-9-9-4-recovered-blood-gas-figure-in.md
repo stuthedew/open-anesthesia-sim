@@ -15,4 +15,4 @@ The figures that can be read do not give that range. The paper's abstract (*Anes
 
 **Done when.** Someone with the full text of Yasuda et al. 1989 (the references corpus holds it, according to the agent files) has recomputed the range from both tables, the documents and agent files state the computed range, and a test computes it from the tables transcribed with their page.
 
-Found 2026-11-22 by the `PL-5C1H` pass, which held the paragraph by its citation only.
+Found 2026-11-22 by the `PL-5C1H` pass. That pass replaced the range in `docs/PARAMETERS.md` with the brain column's figures, which a test computes, and declared the other tissues as having no test yet against this item. The agent files' notes still carry the 4.9–9.4% sentence, and this item corrects them too.

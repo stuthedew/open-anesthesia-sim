@@ -953,7 +953,8 @@ days:
 <!-- not-restated: 5 % -->
 
 The 24 hours are not inside the exposure range over which sevoflurane's
-metabolism was measured. Kharasch's review covers 0.35 to 9.5 MAC-hours. A run
+metabolism was measured. The studies of plasma fluoride that Kharasch's review
+summarizes gave doses from 0.35 to 9.5 MAC-hours. A run
 whose alveolar fraction is held near 1 MAC gains about one MAC-hour per hour,
 so it leaves the measured range at about 9.5 hours and reaches about 24
 MAC-hours at the limit. Counted at the dial, a run held at sevoflurane's 8%

@@ -392,3 +392,48 @@ def test_katohs_mac_equations_at_age_40_give_the_figures_printed() -> None:
         assert 0 < difference < float(katoh_sd) / 2.0, (
             f"{agent_id}: the band sits {difference:.3f} of Katoh's MAC below Katoh's own centre"
         )
+
+
+#: Yasuda, Targ and Eger's brain:blood partition coefficients, which their
+#: abstract gives (Anesth Analg 1989;69(3):370-3, PMID 2774233, read on PubMed
+#: on 2026-11-22): 1.70 for sevoflurane, 1.57 for isoflurane and 1.29 for
+#: I-653, which is desflurane. Table 2's brain column holds the same figures.
+YASUDA_BRAIN_BLOOD = {"sevoflurane": 1.70, "isoflurane": 1.57, "desflurane": 1.29}
+
+
+def test_yasudas_brain_column_recovers_the_blood_gas_coefficients_printed() -> None:
+    """Table 1's brain value over Table 2's recovers each blood:gas coefficient printed.
+
+    Table 2 divides each tissue:gas coefficient by an age-adjusted blood:gas
+    coefficient, so dividing Table 1 by Table 2 gives that blood:gas back.
+    The brain tissue:gas means are the vessel-rich column of the Yasuda table
+    in § "Where the tissue:gas coefficients come from". The paragraph that
+    opens "The vessel-rich coefficient is Yasuda's brain value" identifies
+    them as the brain values. The test checks the three recovered values and how far each lies
+    from the stored blood:gas coefficient, at the printed decimals.
+    """
+
+    recovered_printed = _one(
+        r"it recovers (\d\.\d+), (\d\.\d+) and (\d\.\d+)\. These are (\d\.\d)% and "
+        r"(\d\.\d)% above the stored sevoflurane and isoflurane values and (\d\.\d)% below "
+        r"the stored desflurane value"
+    )
+    recovered = {
+        agent_id: _yasuda_table()[agent_id, "vessel_rich"][1] / YASUDA_BRAIN_BLOOD[agent_id]
+        for agent_id in YASUDA_TABLE_AGENTS
+    }
+    gaps = {
+        agent_id: _signed_percent(
+            recovered[agent_id], _agent(agent_id).blood_gas_partition_coefficient
+        )
+        for agent_id in YASUDA_TABLE_AGENTS
+    }
+
+    printed_values = recovered_printed[:3]
+    for agent_id, printed in zip(YASUDA_TABLE_AGENTS, printed_values, strict=True):
+        assert _as_printed(recovered[agent_id], printed) == printed, (agent_id, recovered)
+    sevoflurane_gap, isoflurane_gap, desflurane_gap = recovered_printed[3:]
+    assert gaps["sevoflurane"] > 0.0 and gaps["isoflurane"] > 0.0 and gaps["desflurane"] < 0.0
+    assert _as_printed(gaps["sevoflurane"], sevoflurane_gap) == sevoflurane_gap, gaps
+    assert _as_printed(gaps["isoflurane"], isoflurane_gap) == isoflurane_gap, gaps
+    assert _as_printed(-gaps["desflurane"], desflurane_gap) == desflurane_gap, gaps

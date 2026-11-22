@@ -1116,8 +1116,8 @@ be a different and better limit than this one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The 24 hours are not inside the exposure range over which sevoflurane's metabolism was
-measured.** In the studies that Kharasch's review draws on, sevoflurane was given over 0.35 to
-9.5 MAC-hours only (PMID 7486145). The limit bounds elapsed time, not exposure. A MAC-hour is
+measured.** The studies of plasma fluoride that Kharasch's review summarizes gave
+sevoflurane doses from 0.35 to 9.5 MAC-hours (PMID 7486145). The limit bounds elapsed time, not exposure. A MAC-hour is
 usually counted at the end-tidal concentration, which in this model is the alveolar fraction. A run
 whose alveolar fraction is held near 1 MAC gains about one MAC-hour per hour. So it leaves the
 measured range at about 9.5 hours, and reaches about 24 MAC-hours at the limit. Every agent's
@@ -1172,11 +1172,12 @@ intertissue-diffusion note under `docs/MODEL.md` § "Known limitations" has the 
 arithmetic. All else equal, a tail without that store falls faster than the measured one
 from about the third hour of elimination. Measured against the published mean curves over
 the whole supported run, the shipped tail does so (`docs/VERIFICATION.md` § "The first 24 hours of elimination
-against the published mean curves"). Two tests check these hours and ratios
+against the published mean curves"). Two tests compute these hours and ratios from the
+model and hold them to the values recorded there
 (`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours` and
 `test_the_first_24_hours_of_elimination_against_the_published_mean_curves`). It runs about a
 third below the curves from about the seventh hour until about the twenty-first. For desflurane it runs below them by half, from
-3.4 to 15.3 hours. In the hours before that, it runs a fifth to a half above them, while
+3.4 to 15.3 hours. In the hours before that, it runs above them by 12 to 52% at the widest, while
 the rebreathing circuit and the muscle group's slow return hold it up. At 23.5 hours of
 elimination it runs above them again, by 12 to 24%, or by a factor of 2.1 for desflurane.
 That is because this model's fat group returns more agent than the fitted fat term.

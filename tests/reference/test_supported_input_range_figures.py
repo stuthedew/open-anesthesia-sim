@@ -7,7 +7,7 @@ figures that no other test computed:
 1. how $F_A/F_I$ at five minutes rises as cardiac output falls toward zero,
    which `docs/MODEL.md` § "The four controls" repeats;
 2. how far a long sevoflurane run goes past the exposure range of the
-   studies that Kharasch's review of its metabolism draws on;
+   studies of plasma fluoride that Kharasch's review summarizes;
 3. what fraction of sevoflurane's fat time constant the 24 hours are.
 
 Each test reads the figures from the text as printed, with a narrow pattern
@@ -177,7 +177,7 @@ def test_a_long_sevoflurane_run_leaves_the_measured_exposure_range_as_printed() 
 
     agent = load_agent_parameters(SEVOFLURANE)
     run_length_h = MAXIMUM_ELAPSED_SIMULATION_TIME_S / SECONDS_PER_HOUR
-    _lowest, highest = _one(r"over (\d+\.\d+) to (\d+\.\d) MAC-hours only")
+    _lowest, highest = _one(r"doses from (\d+\.\d+) to (\d+\.\d) MAC-hours")
     leaves_h, at_limit = _one(
         r"leaves the measured range at about (\d+\.\d) hours, and reaches about (\d+) "
         r"MAC-hours at the limit"

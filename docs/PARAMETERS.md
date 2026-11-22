@@ -1113,8 +1113,14 @@ paragraph (`test_the_vessel_rich_coefficients_match_yasudas_brain_values_as_prin
 none. Its Table 2 tissue:blood figures are calculated "by dividing the
 tissue/gas partition coefficient by the published values for the blood/gas
 coefficients adjusted for age" (*Anesth Analg* 1989;69(3):370-3). So Table 1 ÷
-Table 2 recovers the age-adjusted blood:gas of the 65.8-year-old cohort. Those
-recovered values are 4.9–9.4% above the three round figures stored here.
+Table 2 recovers the age-adjusted blood:gas of the 65.8-year-old cohort. The
+abstract gives Table 2's brain column: 1.70 for sevoflurane, 1.57 for isoflurane
+and 1.29 for desflurane (PMID 2774233). Dividing the brain values above by them,
+it recovers 0.676, 1.331 and 0.419. These are 4.1% and 2.4% above the stored
+sevoflurane and isoflurane values and 0.3% below the stored desflurane value
+(`test_yasudas_brain_column_recovers_the_blood_gas_coefficients_printed`).
+Whether the other tissues' columns give the same values has no test yet
+(`PL-S5JJ`), because the full Table 2 is not in this repository.
 
 #### Why the stored values were kept
 

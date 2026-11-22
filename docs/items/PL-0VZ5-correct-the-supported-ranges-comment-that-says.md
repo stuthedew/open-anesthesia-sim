@@ -14,6 +14,6 @@ verify: ! grep -qF 'scales with dose only' src/anesthesia_sim/core/supported_ran
 
 **Done when.** The comment says that the studies the review draws on gave sevoflurane over 0.35 to 9.5 MAC-hours, as `docs/INTERFACE.md` now does.
 
-**Closed 2026-11-22.** The comment now says that in the studies the review draws on, sevoflurane was given over 0.35 to 9.5 MAC-hours only, as `docs/INTERFACE.md` does since `PL-5C1H`. Only a comment changed.
+**Closed 2026-11-22.** The comment now says that the studies of plasma fluoride that the review summarizes gave sevoflurane doses from 0.35 to 9.5 MAC-hours, as `docs/INTERFACE.md` and `docs/MODEL.md` do since `PL-5C1H`. Only a comment changed.
 
 **Generator check.** The fact is whether a sentence about a cited source says what the source says. The `PL-5C1H` pass found the same overstatement in `docs/INTERFACE.md` and fixed both copies together, and no third copy exists (`grep -rn 'scales with dose only'` over `docs/` and `src/` found none on 2026-11-22). So this is one instance, not a generator.
