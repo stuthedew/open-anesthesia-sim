@@ -55,6 +55,7 @@ import pytest
 from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app.area_layout import AreaNotice
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.preferences import AgentPrice, LoadedPreferences, Preferences
@@ -197,6 +198,26 @@ def _strings_of(application: QApplication, view: SimulationView) -> list[str]:
     return sorted({_masked(text) for text in view.interface_strings()})
 
 
+def _strings_but_area_notices(application: QApplication, view: SimulationView) -> list[str]:
+    """Every string `view` holds now, masked and sorted, except an Area notice's.
+
+    A dashboard that the run-state tests built is laid out in their smaller
+    window, where some Areas are too small for their View. Which Area that is
+    depends on the fonts: the container's font found the concentration chart's
+    Area too small, and CI's found the Parameters Area too small (2026-11-22).
+    The notice is about the layout and not about the run's state, so it is
+    left out here (`PL-P6TK`).
+    """
+
+    notices = {
+        _masked(label.text())
+        for notice in view.findChildren(AreaNotice)
+        for label in (notice.title_label, notice.body_label)
+    }
+
+    return [text for text in _strings_of(application, view) if text not in notices]
+
+
 def _strings_shown(
     application: QApplication,
     controller: SimulationController,
@@ -324,7 +345,7 @@ def _marks_on_compared_runs(application: QApplication, _patch: pytest.MonkeyPatc
         editor.add_target_button.click()
         view.runs[0].halt(_real_step_failure())
         view.present(False)
-        return _strings_of(application, view)
+        return _strings_but_area_notices(application, view)
     finally:
         _delete_shown_views(application)
 
@@ -393,7 +414,7 @@ def _in_the_run_state_scenario(
         assert isinstance(view, SimulationView), type(view)
 
         try:
-            return _strings_of(application, view)
+            return _strings_but_area_notices(application, view)
         finally:
             _delete_shown_views(application)
 
