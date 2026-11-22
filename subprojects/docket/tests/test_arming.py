@@ -484,9 +484,9 @@ def test_an_edited_reference_test_holds_for_the_owner(tmp_path: Path) -> None:
     assert edited.references == (REFERENCE,)
     assert edited.needs_owner
     assert (
-        "it edits or deletes an existing line of 1 test under tests/reference/ comparing the "
-        f"model with published data, which waits on the owner's read whatever the Owner-read "
-        f"record says: {REFERENCE}"
+        "it changes the code of 1 test under tests/reference/ comparing the model with "
+        "published data, which waits on the owner's read whatever the Owner-read record says: "
+        f"{REFERENCE}"
     ) in edited.lines[0]
 
     _record(git, 'Owner-read: given - 2026-11-14, "Fine to widen it."')
@@ -499,3 +499,123 @@ def test_a_deleted_or_binary_reference_test_counts_as_losing_a_line() -> None:
     listing = "0\t3\ttests/reference/b.py\0" + "2\t0\ttests/reference/a.py\0" + "-\t-\tc.bin\0"
 
     assert arming.lines_taken(listing) == ("c.bin", "tests/reference/b.py")
+
+
+# A published-data test written with each kind of prose `code_of` sets aside:
+# a module, class and function docstring, a comment, and an `assert` message.
+PROSE_BEFORE = """\"\"\"Compares the model with docs/MODEL.md.\"\"\"
+
+import anesthesia_sim
+
+TOLERANCE = 0.01  # the band in docs/MODEL.md
+
+
+class TestWashIn:
+    \"\"\"Wash-in at 30 minutes.\"\"\"
+
+    def test_agrees(self) -> None:
+        \"\"\"See docs/MODEL.md.\"\"\"
+        assert abs(0.5 - 0.5) <= TOLERANCE, "re-measure docs/MODEL.md"
+
+
+async def test_waits() -> None:
+    \"\"\"An async test.\"\"\"
+"""
+
+PROSE_AFTER = """\"\"\"Compares the model with docs/VERIFICATION.md, "Wash-in".\"\"\"
+
+import anesthesia_sim
+
+# The band is in docs/VERIFICATION.md.
+TOLERANCE = 0.01
+
+
+class TestWashIn:
+    \"\"\"Wash-in at 30 minutes, against the published mean.\"\"\"
+
+    def test_agrees(self) -> None:
+        \"\"\"See docs/VERIFICATION.md, "Wash-in".\"\"\"
+        assert abs(0.5 - 0.5) <= TOLERANCE, (
+            "re-measure docs/VERIFICATION.md, 'Wash-in'"
+        )
+
+
+async def test_waits() -> None:
+    \"\"\"An async test, reworded.\"\"\"
+"""
+
+
+def test_code_of_sets_aside_only_prose() -> None:
+    """Docstrings, comments, layout and `assert` messages are prose; all else is code (`PL-V9KN`).
+
+    A widened tolerance, a changed condition, a message passed to a call such
+    as `pytest.fail`, a docstring replaced by a statement and an emptied file
+    each change the program, so each would still hold.
+    """
+    before = arming.code_of(PROSE_BEFORE)
+
+    assert arming.code_of(PROSE_AFTER) == before
+    for changed in (
+        PROSE_BEFORE.replace("TOLERANCE = 0.01", "TOLERANCE = 0.05"),
+        PROSE_BEFORE.replace("<= TOLERANCE", "<= 2 * TOLERANCE"),
+        PROSE_BEFORE.replace('    """An async test."""', "    pass"),
+        "",
+    ):
+        assert arming.code_of(changed) != before, changed
+    failing_call = 'import pytest\n\npytest.fail("{}")\n'
+    assert arming.code_of(failing_call.format("a")) != arming.code_of(failing_call.format("b"))
+    with pytest.raises(SyntaxError):
+        arming.code_of("def (\n")
+
+
+def test_a_prose_only_edit_to_a_reference_test_arms(tmp_path: Path) -> None:
+    """An edit to a published-data test that leaves its code alone arms on green (`PL-V9KN`).
+
+    A file that will not parse holds as if its code changed, and says so,
+    and a deleted test holds as a change to its code. The owner's go-ahead
+    releases both.
+    """
+    root, git = _repo(tmp_path)
+    git("checkout", "-q", "main")
+    _change(root, git, REFERENCE, PROSE_BEFORE)
+    git("push", "-q", "origin", "main")
+    git("checkout", "-q", "claude/prose")
+    git("merge", "-q", "--ff-only", "main")
+    owed = arming.CommandCount(count=1)
+
+    _change(root, git, REFERENCE, PROSE_AFTER)
+    _record(git, NOT_NEEDED, PASS_ONE)
+
+    reworded = _arm(root, lambda: owed)
+
+    assert reworded.answer == arming.ARM, reworded.lines
+    assert reworded.references == ()
+
+    _change(root, git, REFERENCE, PROSE_AFTER + "\ndef (\n")
+    _record(git, NOT_NEEDED, PASS_ONE)
+
+    unparsed = _arm(root, lambda: owed)
+
+    assert unparsed.answer == arming.HOLD, unparsed.lines
+    assert unparsed.uncompared == (REFERENCE,)
+    assert unparsed.needs_owner
+    assert (
+        "it edits 1 test under tests/reference/ comparing the model with published data whose "
+        "code could not be compared, because a side would not parse under this python3 or git "
+        f"would not hand it over, so each waits on the owner's read as if its code changed: "
+        f"{REFERENCE}"
+    ) in unparsed.lines[0]
+
+    (root / REFERENCE).unlink()
+    git("add", "-A")
+    git("commit", "-qm", f"delete {REFERENCE}")
+    _record(git, NOT_NEEDED, PASS_ONE)
+
+    deleted = _arm(root, lambda: owed)
+
+    assert deleted.answer == arming.HOLD, deleted.lines
+    assert deleted.references == (REFERENCE,)
+
+    _record(git, 'Owner-read: given - 2026-11-22, "Agree with recs"')
+
+    assert _arm(root, lambda: owed).answer == arming.ARM
