@@ -643,6 +643,20 @@ COMPARISON_PINNED_AWAY_TEMPLATE: Final = (
     "This Workspace is pinned to {pinned}, so it does not draw this comparison. "
     "Unpin it from the Workspace's tab to compare {trunk} and {branch}."
 )
+# The same pin, said before a branch is taken (`PL-RXR8`). The template above
+# reports the pin after the press, once the one comparison slot is filled. A
+# branch cannot be undone short of the trunk's Reset, which starts the case
+# over, so the Branch View also says it before the press, while only one run is
+# open. Telling a reader what an action will do before they act is what
+# Vermeulen et al. (CHI 2013, doi:10.1145/2470654.2466255) call feedforward,
+# and the Nielsen Norman Group's "Preventing User Errors: Avoiding Conscious
+# Mistakes" asks for a preview of the result "wherever possible". It is a
+# state caption in `MUTED`, like the lock, and not a warning: nothing is wrong
+# yet, and the press stays offered. The wording is a placeholder.
+PINNED_FORK_NOTICE_TEMPLATE: Final = (
+    "This Workspace is pinned to {pinned}, so it will not draw a branch taken here "
+    "beside it. Unpin it from the Workspace's tab to compare the two runs here."
+)
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 
 # The fork where the paused trunk stands. It is a second control rather than
@@ -2899,6 +2913,12 @@ class ForkOffer:
             the notice banner, or None. It is never set while `locked`. The
             control that produced the refusal is gone, so the message would
             be about something the reader can no longer see.
+        pinned_notice: What the panel says above its controls while the
+            current Workspace is pinned to one run and a branch is still
+            offered, or the empty string. A branch taken there would not be
+            drawn in the Workspace (`PINNED_FORK_NOTICE_TEMPLATE`). It is
+            empty while `locked`, because the lock caption then names the pin
+            itself (`comparing_fork_lock_text`), and while nothing is offered.
     """
 
     points: tuple[ForkPoint, ...]
@@ -2907,6 +2927,7 @@ class ForkOffer:
     here_offered: bool
     here_label: str
     refusal: str | None
+    pinned_notice: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -2980,6 +3001,7 @@ def fork_offer(
     comparing: ComparedRuns | None,
     here: HereForkPoint | None,
     refusal: str | None = None,
+    pinned_to: str | None = None,
 ) -> ForkOffer:
     """Return what the branch control shows for one tick of the trunk.
 
@@ -3045,6 +3067,12 @@ def fork_offer(
         refusal: Why the most recently requested branch was not taken, or
             None. It is dropped while the control is locked, because it
             describes a press of a control that the reader can no longer see.
+        pinned_to: The name of the run that the current Workspace is pinned
+            to, or None while it is not pinned. The dashboard reads it as it
+            reads `ComparedRuns.pinned_away`, so the sentence before a branch
+            and the sentence after it name the same run (`PL-RXR8`). It is
+            ignored while `comparing` is set, because the lock caption then
+            says it, and while nothing is offered.
 
     Returns:
         The points to offer, each labelled and carrying the method through
@@ -3067,14 +3095,24 @@ def fork_offer(
     # The comparison cap refuses every way of branching. So it is applied
     # once, here, rather than checked separately for each field.
     offered_here = None if comparing is not None else here
+    points = tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s))
+    # The pin is said only beside a branch that can be taken. While two runs
+    # are open the lock caption names it, and with nothing offered there is no
+    # press for it to come before.
+    branch_offered = comparing is None and (bool(points) or offered_here is not None)
 
     return ForkOffer(
-        points=tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s)),
+        points=points,
         locked=comparing is not None,
         lock_reason="" if comparing is None else comparing_fork_lock_text(comparing),
         here_offered=offered_here is not None,
         here_label="" if offered_here is None else _here_fork_label(offered_here),
         refusal=None if comparing is not None else refusal,
+        pinned_notice=(
+            PINNED_FORK_NOTICE_TEMPLATE.format(pinned=pinned_to)
+            if branch_offered and pinned_to is not None
+            else ""
+        ),
     )
 
 

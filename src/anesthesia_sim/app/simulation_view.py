@@ -1607,6 +1607,7 @@ class SimulationView(QWidget):
             comparing=self._compared_runs(),
             here=case.here_fork_point,
             refusal=self._fork_refusal,
+            pinned_to=self._pinned_to(),
         )
 
     def _show_fork_offer(self, offer: ForkOffer) -> None:
@@ -1671,16 +1672,29 @@ class SimulationView(QWidget):
             return None
 
         trunk, branch = self._runs
+
+        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id), self._pinned_to())
+
+    def _pinned_to(self) -> str | None:
+        """The name of the run that the current Workspace is pinned to, or None while it is not.
+
+        A pinned Workspace draws that run alone, so it never draws a
+        comparison. Both the lock caption after a branch (`_compared_runs`)
+        and the notice before one (`_fork_offer_now`) read the pin here, so
+        the two cannot name different runs (`PL-RXR8`). A pin to a run of an
+        earlier session is named by `pinned_run_label`.
+        """
+
         workspace = self._workspaces.current
         shown = workspace.shown_runs(self._open_runs())
-        pinned_away: str | None = None
 
         if isinstance(shown, PinnedRunAbsent):
-            pinned_away = pinned_run_label(shown.pinned, self._run_identities.session)
-        elif workspace.pinned_run is not None:
-            pinned_away = run_label(workspace.pinned_run)
+            return pinned_run_label(shown.pinned, self._run_identities.session)
 
-        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id), pinned_away)
+        if workspace.pinned_run is not None:
+            return run_label(workspace.pinned_run)
+
+        return None
 
     # ---------------------------------------------------------- presenting
 

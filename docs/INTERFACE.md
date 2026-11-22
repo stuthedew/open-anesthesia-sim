@@ -2665,6 +2665,19 @@ to the user's action"
 and `test_a_branch_taken_in_a_workspace_pinned_to_the_trunk_says_so_until_it_is_unpinned`
 in `tests/integration/test_workspace_tabs.py`).
 
+**A pinned Workspace says so before a branch is taken, too** (`PL-RXR8`). A
+branch cannot be undone short of the trunk's Reset, which starts the case over,
+so the learner is told before pressing rather than only after. While one run is
+open and a branch is offered, the Branch View says above its control that the
+Workspace will not draw a branch taken there ("This Workspace is pinned to Run
+1, so it will not draw a branch taken here beside it. Unpin it from the
+Workspace's tab to compare the two runs here."). Both buttons stay offered. The
+sentence reads the pin where the caption after a branch reads it, so the two
+name the same run
+(`test_a_pinned_workspace_says_before_a_branch_that_it_will_not_draw_it` and
+`test_a_workspace_pinned_to_a_run_that_is_not_open_says_so_before_a_branch` in
+`tests/integration/test_workspace_tabs.py`).
+
 A view shows its run's name whenever a reader could mistake its values for
 another run's: while another run is drawn anywhere in the application, while the
 view is pinned to a run, and always in a window broken out of the main one.
