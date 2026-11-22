@@ -49,7 +49,6 @@ palette that is drawn.
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from math import ceil
@@ -2656,7 +2655,17 @@ class _WrappingLegendLabel(QLabel):
         return self._words
 
     def _clauses(self) -> list[str]:
-        return re.split(r"(?<=[,;]) ", self._words)
+        """Return the words cut after each word that ends in a comma or a semicolon."""
+
+        clauses = [""]
+
+        for word in self._words.split(" "):
+            clauses[-1] = f"{clauses[-1]} {word}" if clauses[-1] else word
+
+            if word.endswith((",", ";")):
+                clauses.append("")
+
+        return [clause for clause in clauses if clause]
 
     def _lines_at(self, width: int) -> str:
         """Return the words with a line break after each clause that does not fit in `width`."""
