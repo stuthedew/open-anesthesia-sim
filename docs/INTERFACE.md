@@ -5559,8 +5559,10 @@ it does at the run's opening, where all six traces start together.
 the plot wherever the plot is at least as tall as the box. A shorter plot, as a
 narrow View or a larger desktop font can leave at the chart's least height,
 gets the box moved up over the time axis until all of it is inside the chart.
-Where the font makes the tallest box taller than the chart's least height, the
-chart's least height grows to hold it. A cut through a row of digits can turn
+A box wider than the room beside its point goes to the other side of the
+point, and where it fits on neither side it is moved across into the chart,
+over the point. Where the font makes the tallest box taller than the chart's
+least height, the chart's least height grows to hold it. A cut through a row of digits can turn
 one digit into another, as the top tick label's "6" once read as "0"
 (`PL-571L`).
 
@@ -5580,7 +5582,9 @@ axis's title takes two lines, in the container's font, in the font the CI
 runners draw in, and in a 13-pixel font. The test reads the painted pixels of
 the box's top and bottom edges, because the box's rectangle stays whole when
 something clips it
-(`test_the_tallest_hover_box_is_drawn_whole_at_the_least_height`). A 24-pixel
+(`test_the_tallest_hover_box_is_drawn_whole_at_the_least_height`). On a
+narrow chart, boxes beside points in the middle of the plot stay inside the
+chart (`test_no_hover_box_runs_past_the_side_of_a_narrow_chart`). A 24-pixel
 font set while the app runs makes the chart taller than its least height, and
 the box is drawn whole in it
 (`test_a_font_too_large_for_the_least_height_makes_the_chart_taller`).

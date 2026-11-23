@@ -79,6 +79,7 @@ from anesthesia_sim.app.qt_widgets import FlowLayout
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.stylesheets import foreground_stylesheet
 from anesthesia_sim.app.theme import (
+    CHART_HEIGHT,
     CHART_LEAST_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
@@ -1046,6 +1047,133 @@ def test_the_tallest_hover_box_is_drawn_whole_at_the_least_height(
         if width_px == _NARROW_CHART_WIDTH_PX or pixel_size is not None:
             # The case the fix is for: the plot is shorter than the box.
             assert area.height() < box.height(), (area, box)
+    finally:
+        application.setFont(old_font)
+
+
+#: How many drawn points the side-edge test skips between two it hovers. Each
+#: hover waits for the box, so hovering all 156 points in the middle of the
+#: plot would take minutes.
+_SIDE_EDGE_POINT_STRIDE = 7
+
+
+def test_no_hover_box_runs_past_the_side_of_a_narrow_chart(application: QApplication) -> None:
+    """A box beside a point near the middle of a narrow plot stays whole inside the chart.
+
+    The box goes to the right of a point in the left half and to the left of
+    a point in the right half. On a narrow chart a box is wider than half the
+    plot, so a box beside a point near the middle ran past the chart's side
+    and lost its value column or its compartment name. The review of
+    `PL-HXSD`'s change found it. The box now goes to the other side of the
+    point where it does not fit, and is moved across into the chart where it
+    fits on neither side. The test hovers drawn points across the whole
+    width of a narrow chart, in the CI runners' font, which draws the widest
+    lines.
+    """
+
+    old_font = application.font()
+    _set_font(application, "DejaVu Sans", None)
+
+    try:
+        controller = SimulationController(agent_id="desflurane")
+        controller.start()
+        _advance(controller, 600)
+        controller.pause()
+        frame = _frame(controller, span_s=900.0)
+        chart = ConcentrationChart()
+        chart.resize(_NARROW_CHART_WIDTH_PX, CHART_HEIGHT)
+        chart.show()
+        application.processEvents()
+        chart.draw(frame)
+        chart.grab()
+        application.processEvents()
+        area = chart.plot_area()
+        whole = QRectF(0.0, 0.0, chart.width(), chart.height())
+        # The points in the middle fifth of the plot, where a box beside a
+        # point has the least room on either side.
+        points = [
+            point
+            for quantity in frame.visible
+            for point in zip(*chart.drawn_points(0, quantity), strict=True)
+            if area.contains(QPointF(*chart.plot_pixel(*point)))
+            and abs(chart.plot_pixel(*point)[0] - area.center().x()) < area.width() / 10
+        ][::_SIDE_EDGE_POINT_STRIDE]
+        widths = []
+        outside = []
+
+        for time_s, percent in points:
+            pixel = QPoint(*chart.plot_pixel(time_s, percent))
+            # Off the plot first, so that the box measured is the one this
+            # point raised, not the previous point's.
+            _leave(chart, pixel)
+            _wait_for_hover(chart, None)
+            _move_pointer(chart, pixel)
+            deadline = QDeadlineTimer(_HOVER_WAIT_MS)
+            while chart.hover_box() is None and not deadline.hasExpired():
+                QTest.qWait(10)
+            box = chart.hover_box()
+            assert box is not None, f"no hover answered at {time_s} s"
+            widths.append(box.width())
+
+            if not _widened(whole).contains(box):
+                outside.append((time_s, percent, box))
+
+        # A box wider than half the plot, or no box could run past the side.
+        assert max(widths) > area.width() / 2, (max(widths), area.width())
+        assert not outside, f"{len(outside)} of {len(widths)} boxes leave {whole}: {outside[:3]}"
+    finally:
+        application.setFont(old_font)
+
+
+def test_a_box_on_show_is_placed_again_when_the_font_changes(application: QApplication) -> None:
+    """A font change places the box on show again, as a resize does (`PL-HXSD`).
+
+    The box takes the new font, and so a new height. A box placed above its
+    point keeps its top, so without being placed again it grew down over the
+    point, until the pointer next moved. The review of `PL-HXSD`'s change
+    found it.
+    """
+
+    old_font = application.font()
+
+    try:
+        controller = SimulationController(agent_id="desflurane")
+        controller.start()
+        _advance(controller, 600)
+        controller.pause()
+        frame = _frame(controller, span_s=900.0)
+        chart = ConcentrationChart()
+        chart.resize(int(_PLOT_WIDTH_PX), CHART_HEIGHT)
+        chart.show()
+        application.processEvents()
+        chart.draw(frame)
+        chart.grab()
+        application.processEvents()
+        area = chart.plot_area()
+        # A point low on the plot, so the box goes above it in either font.
+        time_s, percent = min(
+            (
+                point
+                for point in zip(*chart.drawn_points(0, RecordedQuantity.FAT), strict=True)
+                if area.contains(QPointF(*chart.plot_pixel(*point)))
+                and point[0] > frame.start_s + 60.0
+            ),
+            key=lambda point: point[1],
+        )
+        x_px, y_px = chart.plot_pixel(time_s, percent)
+        _move_pointer(chart, QPoint(x_px, y_px))
+        _wait_for_hover(chart, chart.readout_at(time_s, percent))
+        before = chart.hover_box()
+        assert before is not None
+        assert before.bottom() <= y_px + _BOX_EDGE_TOLERANCE_PX, (before, y_px)
+
+        _set_font(application, None, _LARGER_FONT_PX)
+        application.processEvents()
+        after = chart.hover_box()
+
+        assert after is not None
+        assert after.height() > before.height(), (before, after)
+        assert after.bottom() <= y_px + _BOX_EDGE_TOLERANCE_PX, (after, y_px)
     finally:
         application.setFont(old_font)
 

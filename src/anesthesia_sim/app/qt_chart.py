@@ -775,7 +775,7 @@ class _HoverReadout:
         # edge of the plot instead, on the side away from the anchor
         # (`PL-YJ7N`). A box wider than the room between that edge and the
         # anchor would lie over the hovered point there, so it stays beside
-        # the anchor, where it never covers the point.
+        # the anchor.
         anchor = self._pixel(target.anchor.time_s, target.anchor.value)
         past_middle = target.anchor.time_s > (x_range[0] + x_range[1]) / 2.0
         plot = _plot_area(self._plot)
@@ -806,13 +806,27 @@ class _HoverReadout:
         # it is inside the widget, over the time axis if need be. This is the
         # shift that tooltip libraries make at a window's edge (Floating UI's
         # `shift`). The widget is never shorter than the tallest box
-        # (`hold_the_tallest_box`), so no line of the box is cut off. The box
-        # needs no such shift across. Beside the anchor it lies in the half of
-        # the plot away from the near edge, with that half and the axis
-        # beyond it to fill, which is wider than the box at any width a View
-        # allows.
+        # (`hold_the_tallest_box`), so no line of the box is cut off.
         bottom_px = float(self._plot.viewport().height())
         top_px = max(0.0, min(top_px, bottom_px - height_px))
+        # On a narrow plot a box can be wider than the room beside its point.
+        # It then goes to the other side of the point, as tooltip libraries
+        # flip one (Floating UI's `flip`). Where it fits on neither side, it is
+        # moved across until all of it is inside the widget, even though it
+        # then covers the point, because a value cut off at the widget's edge
+        # can be misread and a covered point cannot (`PL-HXSD`).
+        width_px = self._box_width_px()
+        right_px = float(self._plot.viewport().width())
+        left_px = x_px - side * width_px
+
+        if left_px < 0.0 or left_px + width_px > right_px:
+            flipped_px = x_px - (1 - side) * width_px
+
+            if 0.0 <= flipped_px and flipped_px + width_px <= right_px:
+                side = 1 - side
+            else:
+                x_px = max(0.0, min(left_px, right_px - width_px)) + side * width_px
+
         self._text.setAnchor((side, 0))
         self._text.setPos(self._plot.viewportTransform().inverted()[0].map(QPointF(x_px, top_px)))
 
@@ -1306,6 +1320,9 @@ class ConcentrationChart(QWidget):
 
         if event.type() == QEvent.Type.FontChange:
             self._hover.hold_the_tallest_box()
+            # A box on show has the new font, and so a new size, but stays
+            # where the old size put it until it is placed again.
+            self._refresh_hover()
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """As wide as the plot asks and `theme.CHART_HEIGHT` tall.
@@ -1753,6 +1770,9 @@ class WashInChart(QWidget):
 
         if event.type() == QEvent.Type.FontChange:
             self._hover.hold_the_tallest_box()
+            # A box on show has the new font, and so a new size, but stays
+            # where the old size put it until it is placed again.
+            self._refresh_hover()
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall.
