@@ -365,7 +365,18 @@ VESSEL_RICH_COLOR = "#DC2626"
 
 MUSCLE_COLOR = "#D17206"
 
-FAT_COLOR = "#64748B"
+# The fat trace is a dark olive, not a grey. Grey is the colour this chart
+# gives its furniture: the 1 MAC line, the control marks and the gridlines are
+# drawn in `MUTED` or lighter, so a reader takes a grey line for a reference
+# rather than for data. A grey fat trace was almost as light as the dashed
+# `MUTED` 1 MAC line, so after a long case, when fat is nearly flat, only the
+# dash rhythm told the two apart (`PL-6W49`). The band's edges are flat lines
+# in `INK`, and the nearly flat fat trace lies near the band, so fat has to be
+# told apart from them too. This olive's lightness lies midway between the
+# two, which puts it at least 1.5:1 from each in all four vision models.
+# `tools/contrast_check.py` holds both pairs to that minimum, and no lighter
+# or darker fat colour can meet it for both.
+FAT_COLOR = "#5D5510"
 
 # This is the width of the colour swatch that every line's legend entry draws.
 # Every such swatch has this width, in any of the four legend rows, so that a
@@ -430,10 +441,14 @@ MAC_AWAKE_BAND_COLOR = INK
 ONE_MAC_LINE_COLOR = MUTED
 
 # The band's fill is decoration. Each of the band's two boundaries is drawn as
-# a stroke in `MAC_AWAKE_BAND_COLOR`, and that colour is what
-# `tools/contrast_check.py` measures. The fill is light enough for six traces
-# to stay legible across it. A fill that met 3:1 on its own would not be.
-MAC_AWAKE_BAND_FILL_OPACITY = 0.14
+# a stroke in `MAC_AWAKE_BAND_COLOR`, and those strokes show where the band is.
+# Inside the band, each trace is drawn against the fill over the panel, so that
+# composite is the adjacent colour each trace needs 3:1 against (WCAG 2.2 SC
+# 1.4.11). The band is where a reader compares the crossings, so a darker fill
+# would fail exactly where the traces matter most (`PL-GT8W`).
+# `tools/contrast_check.py` measures every trace against the composite in all
+# four vision models, so a darker fill fails `make check`.
+MAC_AWAKE_BAND_FILL_OPACITY = 0.035
 
 # The band is stroked on both edges. That is the geometry its mark type
 # depends on, not a styling choice. One standard deviation either side of the
@@ -552,10 +567,16 @@ PREVIEW_WIDTH_STEP = 1
 # stroked in MUTED, as the references and the marks are, so they add no new
 # colour pair for `tools/contrast_check.py` to measure. The fill is
 # decoration, for the same reason that the MAC-awake band's fill is
-# (`PL-HKTB`). The edge and the label carry the information, and the fill is
-# light enough that every trace stays legible across it.
+# (`PL-HKTB`). The edge and the label carry the information. The region has
+# no fill, because any fill that could be seen drops a trace below 3:1 where
+# the region overlaps the MAC-awake band: the muscle trace is 3.03:1 under
+# deuteranopia against the band's fill alone, so a preview fill of 0.015 over
+# it already reaches 2.98:1 (`PL-GT8W`). `tools/contrast_check.py` measures
+# every trace against this fill, alone and over the band, in all four vision
+# models, so a fill added here fails `make check` unless every trace still
+# clears 3:1.
 PREVIEW_REGION_COLOR = MUTED
-PREVIEW_REGION_FILL_OPACITY = 0.10
+PREVIEW_REGION_FILL_OPACITY = 0.0
 PREVIEW_REGION_EDGE_STROKE_WIDTH = 1.5
 
 # The widest a field of the agent cost View's price form is drawn. The fields
@@ -792,15 +813,15 @@ WASH_IN_AXIS_LABEL_SIZE = 34
 # The grey is not darkened, and that decision comes from the chart's hierarchy
 # rather than from the criterion. The lightest trace, `MUSCLE_COLOR`, is 3.43:1
 # on the panel. So a ruling at 3:1 would be 87% as dark as the lightest data
-# line, and only a hue step away from `FAT_COLOR` at 4.76:1. Furniture would
-# then weigh as much as data. The chart rests on an order: this ruling sits
-# under the `MUTED` reference lines at 5.00:1, which sit under the traces at
-# 3.43-6.02:1, and widths of 1 / 1.5 / 2-3 px say the same. A ruling at 3:1
-# would collapse the bottom rung of that order. 1.31:1 is where charting
-# practice puts a ruling on purpose. ggplot2's `theme_bw` rules its panel at
-# grey92, which is 1.19:1 on white. Matplotlib's default `grid.color` is
-# `#b0b0b0`, which is 2.17:1. It is the darker of the two and still less than
-# 3:1 (both read at the source, 2026-09-27). Making the grey a little darker
-# without claiming 3:1 was also refused, because it would be a change with no
-# standard behind it, which is the state this record exists to end.
+# line. Furniture would then weigh as much as data. The chart rests on an
+# order: this ruling sits under the `MUTED` reference lines at 5.00:1, which
+# sit under the traces at 3.43-7.57:1, and widths of 1 / 1.5 / 2-3 px say the
+# same. A ruling at 3:1 would collapse the bottom rung of that order. 1.31:1 is
+# where charting practice puts a ruling on purpose. ggplot2's `theme_bw` rules
+# its panel at grey92, which is 1.19:1 on white. Matplotlib's default
+# `grid.color` is `#b0b0b0`, which is 2.17:1. It is the darker of the two and
+# still less than 3:1 (both read at the source, 2026-09-27). Making the grey a
+# little darker without claiming 3:1 was also refused, because it would be a
+# change with no standard behind it, which is the state this record exists to
+# end.
 GRIDLINE = "#D9E2EC"
