@@ -542,6 +542,20 @@ coefficients, the ideal wash-in line, and the authors' reading for desflurane.
 It was read in full on 2026-09-13 and checked again on 2026-10-26 for
 `PL-N701`.
 
+### Yasuda, Targ & Eger 1989 — anesthetic solubility in human tissues
+
+**Not held here. Held in the private corpus.**
+
+> Yasuda N, Targ AG, Eger EI 2nd. *Solubility of I-653, sevoflurane,
+> isoflurane, and halothane in human tissues.* Anesth Analg
+> 1989;69(3):370-3. PMID [2774233](https://pubmed.ncbi.nlm.nih.gov/2774233/).
+
+What has been taken from it, with the pages, is in
+`docs/references/yasuda-1989-tissue-solubility.md`: the tissue:gas
+coefficients that the agent files adopt, and both full tables, which test how
+far the stored blood:gas coefficients lie from what this cohort implies. It
+was read in full on 2026-11-23 for `PL-S5JJ`.
+
 ### Yasuda et al. 1991 — the two human kinetics papers
 
 **Not held here. Held in the private corpus.**

@@ -1112,15 +1112,28 @@ paragraph (`test_the_vessel_rich_coefficients_match_yasudas_brain_values_as_prin
 **Yasuda's paper is not a source for the stored blood:gas values.** It measured
 none. Its Table 2 tissue:blood figures are calculated "by dividing the
 tissue/gas partition coefficient by the published values for the blood/gas
-coefficients adjusted for age" (*Anesth Analg* 1989;69(3):370-3). So Table 1 ÷
-Table 2 recovers the age-adjusted blood:gas of the 65.8-year-old cohort. The
+coefficients adjusted for age" (*Anesth Analg* 1989;69(3):370-3). So dividing
+Table 1 by Table 2 should recover the age-adjusted blood:gas values that the
+paper used, for patients whose mean age was 65.8 years. The
 abstract gives Table 2's brain column: 1.70 for sevoflurane, 1.57 for isoflurane
 and 1.29 for desflurane (PMID 2774233). Dividing the brain values above by them,
 it recovers 0.676, 1.331 and 0.419. These are 4.1% and 2.4% above the stored
 sevoflurane and isoflurane values and 0.3% below the stored desflurane value
 (`test_yasudas_brain_column_recovers_the_blood_gas_coefficients_printed`).
-Whether the other tissues' columns give the same values has no test yet
-(`PL-S5JJ`), because the full Table 2 is not in this repository.
+
+Both full tables are on page 371 of the paper. Each prints its means to two or
+three significant figures, so rounding alone can move a recovered value by up
+to 1.8%. The heart, liver and kidney columns recover values close to the
+brain's. Across those four organs, the value recovered is 4% to 5% above the
+stored sevoflurane value, 2% to 4% above the stored isoflurane value, and
+within 1% of the stored desflurane value. The muscle and fat columns recover
+more, by more than rounding explains: 17% and 10% above the stored value for
+sevoflurane, 16% and 10% for isoflurane, and 11% and 5% for desflurane. So the
+tables do not give one blood:gas value for each agent, and the paper does not
+say why its muscle and fat columns differ from the other four
+(`test_yasudas_full_tables_recover_the_blood_gas_ranges_printed`).
+<!-- not-restated: 1.8 % -->
+<!-- not-restated: 5 % -->
 
 #### Why the stored values were kept
 

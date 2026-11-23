@@ -679,6 +679,12 @@ def test_the_references_answer_no_hover_and_clear_space_answers_none(
 
     assert chart.readout_at(between, frame.one_mac_percent) is None
     assert chart.readout_at(run.times_s[10], frame.axis_top_percent * 0.95) is None
+    # The MAC-awake band, at its centre, and the dial change's mark, high above
+    # every trace, answer no hover either.
+    band_centre = sum(frame.mac_awake_band_percent) / 2.0
+    (mark_s,) = run.control_marks_s
+    assert chart.readout_at(between, band_centre) is None
+    assert chart.readout_at(mark_s, frame.axis_top_percent * 0.95) is None
 
 
 def test_the_hover_answers_while_the_run_is_playing(application: QApplication) -> None:
@@ -1593,8 +1599,8 @@ def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wra
     """
 
     legend = TraceLegend()
-    one_mac = "1 MAC sevoflurane = 2.0%"
-    mac_awake = "MAC-awake sevoflurane = 0.34 ×MAC (0.68%), band ±1 SD 0.58–0.78%"
+    one_mac = "1 MAC sevoflurane = 1.8%"
+    mac_awake = "MAC-awake sevoflurane = 0.34 ×MAC (0.61%), band ±1 SD 0.52–0.70%"
     legend.show_references(one_mac, mac_awake)
     legend.resize(2000, legend.heightForWidth(2000))
     legend.show()
@@ -1623,8 +1629,8 @@ def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wra
 
     assert len(lines) > 1
     assert all(line.endswith((",", ";")) for line in lines[:-1])
-    assert "MAC-awake sevoflurane = 0.34 ×MAC (0.68%)," in lines
-    assert any(line.startswith("band ±1 SD 0.58–0.78%;") for line in lines)
+    assert "MAC-awake sevoflurane = 0.34 ×MAC (0.61%)," in lines
+    assert any(line.startswith("band ±1 SD 0.52–0.70%;") for line in lines)
     assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
     legend.close()
 

@@ -786,6 +786,7 @@ class SimulationView(QWidget):
         self._unconditional_region = region
         self._run_rows = run_rows
         self._record_scroll = record_scroll
+        self._records = records
 
         return region
 
@@ -1011,6 +1012,7 @@ class SimulationView(QWidget):
             readout_section,
             _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
         )
+        self._hold_record_column_width()
         # A later run's readouts join the first run's panels, so two runs
         # appear as one block of seven (`PL-F2YS`). The readouts leave with the
         # run. The first run's heading then states the substance and the 1 MAC
@@ -1038,6 +1040,20 @@ class SimulationView(QWidget):
         self._owe_focus_order()
 
         return run
+
+    def _hold_record_column_width(self) -> None:
+        """Keep the record column at least as wide as its records need.
+
+        A scroll area takes no minimum width from what it holds, so without
+        this the region would give the whole of a narrow window's shortfall
+        to the record column, and its lines would be cut off behind a
+        horizontal scroll bar (`PL-6XPZ`). The width includes the vertical
+        scroll bar, which takes its width from the records when the column
+        is taller than the run rows beside it.
+        """
+
+        scroll_bar = self._record_scroll.verticalScrollBar().sizeHint().width()
+        self._record_scroll.setMinimumWidth(self._records.minimumSizeHint().width() + scroll_bar)
 
     def _a_question_is_open(self) -> bool:
         """Whether a window-modal question is open, in which case every run holds.

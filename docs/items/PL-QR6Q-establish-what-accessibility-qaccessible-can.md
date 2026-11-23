@@ -3,14 +3,16 @@ id: PL-QR6Q
 title: Establish what accessibility QAccessible can deliver, and settle ROADMAP item 20 against it
 priority: P3
 effort: M
-status: ready
+status: done
 classes: planning
 feature: presentation-safety
 touches: ROADMAP.md, src/anesthesia_sim/app
 blocked-by: PL-25KS
 added: 2026-09-13
+closed: 2026-11-23
+pr: 2277
 payoff: stops ROADMAP item 20 promising screen-reader support nobody has checked the shipped toolkit can deliver, before Phase 2 builds controls on top of it
-verify: grep -A6 '^20\. ' ROADMAP.md | grep -qF 'QAccessible'
+verify: grep -qF 'so the work left is this project' ROADMAP.md
 ---
 
 **Problem.** Establish what accessibility QAccessible can deliver, and settle
@@ -103,3 +105,9 @@ resolves as soon as a milestone is scoped, and the port was scoped long before
 it was built.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. `ROADMAP.md` § "20. Accessibility" still promises screen-reader support with no statement of what the toolkit delivers, and `QAccessible` appears nowhere in `src/`. Only three files under `src/anesthesia_sim/app/` set an accessible name. One fault in the front matter: the `verify:` search `grep -A6 '^20\. '` now matches a different numbered list near the end of `ROADMAP.md` ("20. **The look and the edge states..."), not the heading `#### 20. Accessibility`. So it could pass on the wrong text.
+
+**Closed 2026-11-23.** The toolkit can deliver what item 20 promises, so the item was not narrowed; the gaps were filed instead. Sources read in this session: Qt's QAccessible class reference (https://doc.qt.io/qt-6/qaccessible.html, Qt 6.12, read in full), which names the three platform bridges, `installFactory`, and the announcement event and its two priorities since Qt 6.8; and W3C's Understanding SC 1.1.1 (https://www.w3.org/WAI/WCAG21/Understanding/non-text-content), for a chart's text alternative. Qt's page "Accessibility for QWidget Applications" refused automated readers through robots.txt on 2026-11-23, so its guidance on buddies and accessible names is not cited; the buddy and `setAccessibleName` behaviour stated in `ROADMAP.md` was measured instead, on a `QSpinBox` and a `QSlider` under PySide6 6.12 offscreen.
+
+The measurement walked `QAccessible.queryAccessibleInterface` over the built dashboard (`open_dashboard` in a `QMainWindow`, 1600 x 1000, offscreen) and printed each node's role, name, value and description. What it found is in `ROADMAP.md` § "20. Accessibility" and in the six items it filed: `PL-9QY5` (setting sliders give an unnamed step count), `PL-N5JB` (readout values without their compartment), `PL-RK9Z` (unnamed controls, and a test to keep them named), `PL-T9RB` (the chart's text alternative), `PL-J7Z5` (banner notices not announced) and `PL-H1D9` (a run under VoiceOver on the owner's Mac). The approach's question 2, keyboard reach and focus visibility, already has its own items: the run buttons' focus mark is `PL-CXYV`, and the focus order was built under #2219. Files checked in the docs sweep: `ROADMAP.md`, `docs/INTERFACE.md` (two passages call screen-reader support planned and not yet a commitment, which is still true, and one of them, on the pinned-Workspace caption, is now part of `PL-J7Z5`), `README.md` (makes no accessibility claim).
+
+The `verify:` field searched with `grep -A6 '^20\. '`, which matched another numbered list in `ROADMAP.md`. It now searches for a phrase that only the new paragraph holds.
