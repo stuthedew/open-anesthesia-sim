@@ -2,11 +2,11 @@
 id: PL-TLKY
 title: At the one-second step the agent balance's fixed limit of one part in 10**9 is below one propagator's derived rounding bound at the stiffest envelope corners (9.3e-9 at 22 squarings), so the check refuses the first step at 8 of the 96 corners, and it is two thirds of the derived bound for a shipped agent's longest run (1.5e-9); decide whether the limit should widen by what squarings add, which PL-D88N recorded as the shape for the day a shipped step first needed a squaring
 priority: P1
-effort: S
+effort: M
 status: ready
 classes: safety
 feature: floating-point-domain
-touches: src/anesthesia_sim/core/rounding.py, src/anesthesia_sim/core/agent_simulation_validation.py, docs/MODEL.md, tests/unit/test_numerical_envelope_sweep.py
+touches: src/anesthesia_sim/core/rounding.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/stored_states.py, docs/MODEL.md, docs/VERIFICATION.md, tests/unit/test_numerical_envelope_sweep.py
 deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: the fixed limit refuses only at the envelope's stiffest corners (alveolar volume 0.01 L, blood:gas coefficient 10 000), which no shipped agent or patient file reaches; a shipped agent's step needs at most three squarings and its 24-hour residual was at most 9.8e-12, and the limit errs only toward a halt, so no learner can see a wrong value now
 added: 2026-11-21
 payoff: The check that halts a run whose agent does not add up neither halts a correct run nor lets a real accounting error pass, at every step a run can take.
@@ -35,3 +35,30 @@ payoff: The check that halts a run whose agent does not add up neither halts a c
 **Answered 2026-11-22 (project owner, 2026-11-22, ratified, over keeping the fixed 1e-9 for every run).** The owner asked that each item needing him be settled by standard practice. The limit widens by what the run's own squarings add, `PL-D88N`'s option C, and 1e-9 stays the least it can be. Standard practice in floating-point work is that a tolerance for a computed quantity comes from a rounding error analysis of the computation, not from a fixed number chosen once. `core/rounding.py` already derives the propagator's bound that way, from the model in Higham and Mary, "A new approach to probabilistic rounding error analysis", MIMS EPrint 2018.33, eq. 1.2 and Lemma 2.2 (cited in that module and read there on 2026-11-22). The owner's rule of 2026-11-14 is that published error bounds are derived and measured values serve only as checks. A fixed limit below the derived bound breaks that rule. For a shipped agent's longest run the limit becomes at most 2.3e-9, as worked out above. A real accounting error larger than the derived bound still halts the run.
 
 **Done when, as answered.** The agent balance's limit is the larger of 1e-9 and the derived rounding bound for the run's own squarings and step count, read from `core/rounding.py`. `docs/MODEL.md` states the limit and its reason. A test shows that a correct one-second step at the stiffest envelope corners passes, and that an imbalance just above the derived bound still halts.
+
+**Checked 2026-11-23, before building (thread for the v0.7.0 P1 items).** Two
+findings change the work, so it was not started in that thread.
+
+1. **The answered formula is stated two ways.** The recommendation the owner
+   ratified is `PL-D88N`'s option C, which adds what the squarings add to the
+   fixed limit: 1e-9 plus 10 times (2**s - 1) times `MACHINE_EPSILON` for each
+   step, which is at most 2.3e-9 for a shipped agent's longest run, as the
+   answer itself works out. "Done when, as answered" instead says "the larger
+   of 1e-9 and the derived rounding bound", which is `PL-D88N`'s option A,
+   the one the owner turned down on 2026-10-31. It would give 1.53e-9 for the
+   same run. The ratified option and its worked figure are option C, so build
+   option C, and correct the "Done when" line in the same commit.
+2. **The item is larger than S.** The validator does not know the squarings
+   of the step it checks, and an allowance summed over the steps of an
+   accounting period is run state. It has to be captured and restored with
+   the totals, and carried by a resumed run, as `TotalsCompensation` carries
+   the compensation terms through `AgentUptakeSystem.resume_at` and the record
+   of stored states. Otherwise a resumed run would be held to a tighter limit
+   than the run it came from, and identical inputs would no longer give
+   identical results. The squaring count also has to leave
+   `core/matrix_exponential.py`, which keeps it private in `_squarings_for`.
+   The work touches `core/agent_simulation_validation.py`,
+   `core/uptake_system.py`, `core/matrix_exponential.py`,
+   `core/stored_states.py`, the record-write and restore registries in
+   `tests/unit/`, and `docs/VERIFICATION.md` § "Mass-balance identity". It is
+   M, not S.
