@@ -2126,7 +2126,7 @@ count of the steps taken. Whether the run keeps pace with real time depends on
 the computer. When the computer cannot run a tick in time, the tick is lost,
 and no extra steps make it up. The **delivered rate** is the set rate times the
 fraction of ticks that ran. In a measurement on 2026-09-27, every rate from 1×
-to 300× delivered 99.0 to 99.9% of its setting over 8 to 30 s. On a computer
+to 300× delivered 98.9 to 99.9% of its setting over 8 to 30 s. On a computer
 that loses ticks, the run plays slower than the label says, and nothing on
 screen shows the delivered rate.
 
@@ -2415,12 +2415,20 @@ compartment, which is the value a monitor's end-tidal reading estimates in a
 real patient. The model has no dead space, airway sampling delay or shunt, so
 this readout is not a simulated end-tidal measurement.
 
+The circuit readout is labelled "Circuit", with "inspired" on the line below.
+The model's circuit is one well-mixed volume with no separate inspiratory limb,
+so the gas the patient breathes in is the circuit gas (`docs/MODEL.md`
+§ "What the model represents"). The gloss names the circuit concentration as
+the one a monitor's inspired reading estimates. Without it, "Circuit" can be
+read as the vaporizer dial or the fresh gas. At a steady dial, while the patient
+takes up agent, rebreathing holds the inspired concentration below both.
+
 The fresh gas flow control is labelled "Fresh gas flow", with "common gas
 outlet" on the line below. The flow it sets is the whole stream leaving the
 common gas outlet, carrier gas plus vapour, which is up to 22% above the
 flowmeter setting (`docs/MODEL.md` § "Breathing circuit"). "Fresh gas flow"
-alone is the name on a real machine's flowmeter bank. Neither this label nor
-the alveolar readout's is shortened to its first line to fit a layout.
+alone is the name on a real machine's flowmeter bank. None of these three
+labels is shortened to its first line to fit a layout.
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 Arterial concentration is **not** in the list above. In this model the arterial
@@ -2515,7 +2523,13 @@ its lines between drawn instants could be wider than a pixel.
 the failure, the panel shows the same result from the run's record. The run
 stops, and the model undoes the failed step, so the run's own accounting passes
 again. The banner names the panel as the one exception to "the values shown are
-the last completed step".
+the last completed step". It says in words that the check failed because the
+rejected step created or lost agent, and that this is a fault in the simulator
+and not a change in the patient. It does not print the totals. The panel shows
+the rejected step's amounts, and the exact totals go to the failure log, the
+file `failures.log` in the reader's data directory, beside the saved Workspaces.
+Where that directory cannot be written, the log goes to standard error only,
+and the application still opens.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2548,7 +2562,16 @@ displayed value unchanged
 (`test_a_failed_step_leaves_every_displayed_value_bit_identical`), and a stopped
 run refuses every setting
 (`test_a_stopped_run_refuses_every_setting_and_records_nothing`), both in
-`tests/integration/controller/test_controller_running.py`.
+`tests/integration/controller/test_controller_running.py`. The banner after a
+failed accounting check shows no e-notation and no code name, and the log keeps
+the totals
+(`test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals`, in
+the same file as the first test). The failure log is written to the data
+directory (`test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory`
+in `tests/integration/test_failure_log.py`), and a directory that cannot be made
+does not stop the launch
+(`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`,
+in the same file).
 
 ### Naming the run in a comparison
 
@@ -2654,6 +2677,19 @@ to the user's action"
 (`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`
 and `test_a_branch_taken_in_a_workspace_pinned_to_the_trunk_says_so_until_it_is_unpinned`
 in `tests/integration/test_workspace_tabs.py`).
+
+**A pinned Workspace says so before a branch is taken, too** (`PL-RXR8`). A
+branch cannot be undone short of the trunk's Reset, which starts the case over,
+so the learner is told before pressing rather than only after. While one run is
+open and a branch is offered, the Branch View says above its control that the
+Workspace will not draw a branch taken there ("This Workspace is pinned to Run
+1, so it will not draw a branch taken here beside it. Unpin it from the
+Workspace's tab to compare the two runs here."). Both buttons stay offered. The
+sentence reads the pin where the caption after a branch reads it, so the two
+name the same run
+(`test_a_pinned_workspace_says_before_a_branch_that_it_will_not_draw_it` and
+`test_a_workspace_pinned_to_a_run_that_is_not_open_says_so_before_a_branch` in
+`tests/integration/test_workspace_tabs.py`).
 
 A view shows its run's name whenever a reader could mistake its values for
 another run's: while another run is drawn anywhere in the application, while the
@@ -2780,7 +2816,7 @@ held to".
 
 **The agent accounting must stay reachable, though not always visible.** It
 consists of cumulative agent delivered, cumulative agent exhausted, total agent
-stored, and the mass-balance residual with its absolute error. These five
+stored, and the mass-balance residual. These four
 amounts show whether the model is conserving mass, and a reader does not
 titrate against them. A Workspace may leave the amounts out, because their
 absence makes no clinical reading wrong, but nothing may remove them from the
@@ -2977,7 +3013,7 @@ The view chooser is built in `app/area_layout.py`. The view registry marks the
 accounting view as required to be reachable (`required_reachable`, in
 `app/view_registry.py`), and a build that does not register that view fails
 when the module is imported. Each area that shows the accounting view builds a
-copy of its own, so two such areas both show the five amounts (`PL-TH35`). A
+copy of its own, so two such areas both show the four amounts (`PL-TH35`). A
 test checks the chooser's route to the accounting view from every area of each
 Workspace supplied with the simulator
 (`tests/integration/test_view_chooser.py`).
@@ -3774,6 +3810,17 @@ Two criteria carry most of the weight:
 
 <!-- not-restated: 4.5 -->
 
+**No control that carries the agent's identity is ever drawn disabled.** SC
+1.4.3 sets no contrast requirement for text in an inactive control, and W3C's
+Understanding document for that criterion gives a disabled button with grey
+text as its example. Qt draws a disabled control's text in the platform's grey,
+over whatever color the interface set. A disabled agent selector would
+therefore conform to AA and still lose the agent's name against its
+identification color. The interface does not use this exemption for those
+controls. While a run holds the agent fixed, the selector is hidden rather than
+disabled, and the running-agent label takes its place. The label has no
+disabled state.
+
 #### Where the chart goes beyond AA
 
 The interface goes beyond AA in two places:
@@ -3870,8 +3917,8 @@ words for a run that halted on a mark or at the supported run length appear in
 the muted color. "Stopped — simulation
 error" and "Validation failed" appear in the alert color.
 
-The agent selector and the header back the written name with the
-agent-identification color of ISO 5360:2016 Table 2 ("Dimensions and colours
+The agent selector, the header and the running-agent label back the written
+name with the agent-identification color of ISO 5360:2016 Table 2 ("Dimensions and colours
 of agent-specific bottle collars and connectors"): yellow for sevoflurane,
 purple for isoflurane, and blue for desflurane. Footnote b of that table is why
 the color appears at all: "if a colour is used on a vaporizer, bottle, or
@@ -3881,6 +3928,10 @@ displaying a color an obligation to display the correct one, which is a
 stronger reason than SC 1.4.1 for never using color as the only cue. A second
 cue keeps a mis-seen color from becoming a mis-identified agent, so the agent
 name always accompanies the color.
+
+The running-agent label stands in the selector's place while a run holds the
+agent fixed, which is most of the time a reader is looking at the screen. It
+names the agent on the same fill and in the same text color as the selector.
 
 The displayed fills are two approximations away from the standard's own color.
 Table 2 footnote c states that "Munsell colour is the original" and that the
@@ -3967,6 +4018,13 @@ rest of the argument.
 `make check`. It reads the color constants from `app/theme.py`, which contains
 every one of them. A second check (`check_colors_live_in_the_theme`) keeps them
 there.
+
+A third check (`tools/agent_identity_check.py`) keeps every control that
+carries the agent's color from being drawn disabled. It allows a control to be
+disabled only where the same condition also hides it. The running-agent label
+is `_running_agent_display` in `app/run_view.py`, and
+`_apply_agent_color_scheme` there is the one method that writes the agent's
+colors.
 
 Each entry in the contrast check's requirement table names the colors, the
 criterion and the reason for the minimum. The table records which colors
@@ -4753,11 +4811,11 @@ concentration moves it down tenfold.
 
 #### The agent-accounting panel
 
-**The panel's three amounts are displayed to 0.1 L, and its two residual lines show
-only the power of ten that each residual lies below, because they answer different
+**The panel's three amounts are displayed to 0.1 L, and its residual line shows
+only the power of ten that the residual lies below, because they answer different
 questions** (decided 2026-09-15). The amounts are read against each other, delivered
 against exhausted plus stored, and against a reader's sense of scale. The residual
-lines are a numerical check. They have to make a residual of order 10⁻¹² L visible
+line is a numerical check. They have to make a residual of order 10⁻¹² L visible
 against amounts of order 1 to 100 L, which no fixed decimal count can do.
 
 The panel labels the unit as litres of equivalent pure agent gas, the unit this
@@ -4791,10 +4849,13 @@ zero reads `0 L`. A residual that passes its check is the rounding left over fro
 summing the initial, delivered, exhausted and stored amounts. Its digits and its
 sign are set by the order in which the arithmetic ran, not by anything modelled.
 They change even when a correct edit to the code alters only the last binary digits of that
-arithmetic, so neither line shows them. Without a sign, the two lines read alike.
-The sign means something only in a check that fails. The run then halts, and the
-failure notice prints the signed unaccounted amount with six decimal places,
-such as `1.000000e+00 L`.
+arithmetic, so the line shows neither. The panel shows the residual once, as
+"Unaccounted". An absolute-error line would read the same string without a sign,
+so the panel has none (project owner, 2026-10-03, ratified, over keeping both
+lines and over keeping "Absolute error" instead). The sign means something only
+in a check that fails. The run then halts, and the
+failure log records the signed unaccounted amount with six decimal places, such
+as `1.000000e+00 L`, for a developer. The banner does not show it.
 
 **For developers.** At 1 MAC with the reference adult's flows, one 0.1 L step is
 worth between about four SDs, for isoflurane at 1 h, and a seventh of an SD, for
