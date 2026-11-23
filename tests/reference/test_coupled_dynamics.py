@@ -719,8 +719,10 @@ ORACLE_STEPS_PER_SHIPPED_STEP = 80
 # **It is a fixed allowance, not the summed bound in `core/rounding.py`.** `run_rounding`
 # bounds a run of n steps at n times the bound for one step, and the bound for one step
 # doubles with each squaring that the step's matrix exponential needs. The three
-# trajectories at the envelope corner take 600 or 900 one-second steps of three squarings
-# each, so their summed bound is 1.1e-11 to 1.6e-11 of the state's scale. That is larger
+# trajectories at the envelope corner each count 4 800 units: 600 one-second steps of three
+# squarings, or 600 of two and 300 of three for the unperfused load, whose steps at zero
+# cardiac output need one squaring fewer. So each one's summed bound is 1.1e-11 of the
+# state's scale (`test_independent_solution_figures.py`). That is larger
 # than the loss of exactness that this limit has to catch, every shipped state scaled by
 # (1 + 1e-11). One limit set at the summed bound would pass that loss on those
 # trajectories. This limit is therefore a chosen number, which is what `core/rounding.py`
