@@ -13,7 +13,7 @@ from anesthesia_sim.app import formatting
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import PARAMETER_SLIDER_LEAST_LENGTH
+from anesthesia_sim.app.theme import AREA_HANDLE_WIDTH, PARAMETER_SLIDER_LEAST_LENGTH
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
     COMPARTMENT_SCHEMATIC,
@@ -28,7 +28,8 @@ from anesthesia_sim.app.views import (
     WashInView,
 )
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation
-from anesthesia_sim.layout.tree import AreaId
+from anesthesia_sim.layout.model import MAIN_WINDOW
+from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation
 from anesthesia_sim.layout.workspace import WorkspaceName
 from tests.integration.simulation_view.simulation_view_support import (
     _SHOWN_VIEWS,
@@ -479,6 +480,53 @@ def test_no_shipped_workspace_scrolls_the_page(
             f"the {area.view} View is shown {seen} px wide, narrower than "
             f"its least width of {least} px"
         )
+
+
+def _stacked_least_px(view: SimulationView, node: Node) -> int:
+    """The least height of `node`'s Areas, added up from the least height each Area's frame is held to.
+
+    A column holds its children one above the next, with a border between
+    each two, and a row holds them side by side, so it is as tall as its
+    tallest child. The sum reads each frame's own least height, and not the
+    least height the Areas report to the page, so it checks that report.
+    """
+
+    if isinstance(node, Area):
+        return view.layout_container.frame(node.id).minimumHeight()
+
+    heights = [_stacked_least_px(view, child) for child in node.children]
+
+    if node.orientation is Orientation.COLUMN:
+        return sum(heights) + AREA_HANDLE_WIDTH * (len(heights) - 1)
+
+    return max(heights)
+
+
+@pytest.mark.parametrize("workspace", _shipped_workspace_names())
+def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
+    application: QApplication, workspace: str
+) -> None:
+    """`PL-5J1X`: where the Areas need more height than the window has, the page grows by the difference.
+
+    At 1366 by 768 with a branch open, the region above the Areas shows two
+    runs and the Parameters View shows two rows of dials, so the Areas'
+    least height is more than the room the window leaves them, and the page
+    scrolls. The Areas must then be exactly their least height, and the page
+    must scroll by exactly what that height lacks. A page that grew further
+    would put more of the plot below the window's edge for nothing. Where
+    the Areas fit, the page must not scroll at all.
+    """
+
+    view = _shipped_view_at(application, workspace, 1366, 768, branched=True)
+    page, middle = _middle_of(view)
+    areas = view.layout_container
+    least_px = _stacked_least_px(view, areas.model.windows[MAIN_WINDOW].tree)
+    # The tab strip and the margins that the middle holds besides the Areas.
+    around_px = middle.height() - areas.height()
+    room_px = page.viewport().height() - around_px
+
+    assert areas.height() == max(least_px, room_px)
+    assert page.verticalScrollBar().maximum() == max(0, least_px - room_px)
 
 
 @pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
