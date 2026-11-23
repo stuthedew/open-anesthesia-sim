@@ -2788,13 +2788,13 @@ def test_no_measured_tissue_solubility_reaches_desflurane_s_published_eliminatio
     barely affects F_A/F_I (measured 2026-09-08). What rules the change out
     is not this model but the tissue measurement. Solving the same way
     against each cohort's published ratio gives the tissue:blood ratio each
-    agent would require. `docs/VERIFICATION.md` § "Desflurane's residual"
+    cohort would require. `docs/VERIFICATION.md` § "Desflurane's residual"
     tabulates it, converts it to tissue:gas with the stored blood:gas
     coefficient, and gives its distance from Yasuda 1989's measured brain:gas
     mean, which
     `test_the_demanded_vessel_rich_coefficients_lie_from_yasudas_brain_values_as_printed`
     checks. Desflurane's required value is twenty standard deviations above
-    its own measurement, the only one of the three above, and as a
+    its own measurement, the only one of the four cohorts above, and as a
     tissue:blood ratio it is above what either other agent requires. It would
     make desflurane the *most* tissue-soluble of the three relative to blood,
     inverting the ordering that the source paper was written to report. So

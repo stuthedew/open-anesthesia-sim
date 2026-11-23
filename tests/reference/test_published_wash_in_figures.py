@@ -41,12 +41,14 @@ from test_published_wash_in_and_elimination import (
     AGENT_IDS,
     AGREEMENT_TOLERANCE_SD,
     FRESH_GAS_FLOW_L_MIN,
+    PUBLISHED_MEASUREMENTS,
     PUBLISHED_WASH_IN_TIME_COURSE,
     SWEPT_FRESH_GAS_FLOWS_L_MIN,
     WASH_IN_ORDER,
     PublishedTimePoint,
     _clamped_wash_in,
     _eliminate,
+    _eliminate_without_rebreathing,
     _ordering_failure,
     _wash_in_ratio,
 )
@@ -189,37 +191,54 @@ def test_the_stored_vessel_rich_coefficients_lie_within_1_sd_of_yasudas_brain_va
 
 
 def test_the_demanded_vessel_rich_coefficients_lie_from_yasudas_brain_values_as_printed() -> None:
-    """Each demanded tissue:gas coefficient, and its distance from Yasuda's mean, is as printed.
+    """Each cohort's demanded coefficient, and its distance from Yasuda's mean, is as printed.
 
-    The table in § "Desflurane's residual" gives the tissue:blood ratio that
-    each agent needs to match its published elimination. Times the stored
-    blood:gas coefficient, that ratio is the demanded tissue:gas coefficient.
-    Its distance is counted in the SDs of Yasuda's measured brain:gas mean,
-    read from the Yasuda table in `docs/PARAMETERS.md`, so both sides of the
-    comparison divide by nothing the paper did not measure.
+    The table in § "Desflurane's residual" gives, for each published cohort,
+    the vessel-rich tissue:blood ratio at which the open-circuit elimination
+    lands on that cohort's five-minute mean. The test solves it again: the
+    ratio half a printed unit below the printed one must give a five-minute
+    value below the mean, and half a unit above must give one above. So a
+    change to the model that moves the demanded ratio fails here.
+
+    Times the stored blood:gas coefficient, the printed ratio is the demanded
+    tissue:gas coefficient. Its distance is counted in the SDs of Yasuda's
+    measured brain:gas mean, read from the Yasuda table in
+    `docs/PARAMETERS.md`, so both sides of the comparison divide by nothing
+    the paper did not measure.
     """
 
     # regex: the rows of one table in free prose, which no parser reads.
     rows = re.findall(
-        r"\| (Sevoflurane|Isoflurane|Desflurane) \| (\d\.\d+) \| (\d\.\d+) \| "
-        r"(\d\.\d+) ± (\d\.\d+) \| ([+−])(\d+\.\d+) SD \|",
+        r"\| (Sevoflurane|Isoflurane|Desflurane), ([A-Za-z ]+ 1991) \| (\d\.\d+) \| "
+        r"(\d\.\d+) \| (\d\.\d+) ± (\d\.\d+) \| ([+−])(\d+\.\d+) SD \|",
         _section_text(),
     )
+    cohorts = {(m.agent_id, m.source.split(";")[0]): m for m in PUBLISHED_MEASUREMENTS}
 
-    assert [row[0].lower() for row in rows] == list(SECTION_ORDER), rows
-    for name, ratio, tissue_gas, mean, sd, sign, distance in rows:
+    assert sorted((row[0].lower(), row[1]) for row in rows) == sorted(cohorts), rows
+    for name, journal, ratio, tissue_gas, mean, sd, sign, distance in rows:
         agent_id = name.lower()
+        cohort = cohorts[agent_id, journal]
         blood_gas = load_agent_parameters(agent_id).blood_gas_partition_coefficient
+        half_unit = 0.5 * 10 ** -len(ratio.split(".")[1])
+        below, above = (
+            _eliminate_without_rebreathing(
+                agent_id,
+                vessel_rich_tissue_gas_partition_coefficient=(float(ratio) + shift) * blood_gas,
+            ).ratio
+            for shift in (-half_unit, half_unit)
+        )
         _stored, measured, measured_sd = _yasuda_table()[agent_id, "vessel_rich"]
         demanded = float(ratio) * blood_gas
         signed = (demanded - measured) / measured_sd
 
+        assert below < cohort.elimination_mean < above, (agent_id, journal, below, above)
         assert _as_printed(demanded, tissue_gas) == tissue_gas, agent_id
         assert (_as_printed(measured, mean), _as_printed(measured_sd, sd)) == (mean, sd), agent_id
         assert ("+" if signed > 0 else "−", _as_printed(abs(signed), distance)) == (
             sign,
             distance,
-        ), (agent_id, signed)
+        ), (agent_id, journal, signed)
 
 
 def test_normalising_the_fitted_amplitudes_would_move_the_curves_by_the_percentages_printed() -> (

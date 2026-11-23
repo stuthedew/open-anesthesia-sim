@@ -2213,8 +2213,8 @@ the wash-in row.** Desflurane's stored vessel-rich tissue:gas coefficient is
 0.54, and its blood:gas coefficient is 0.42. Together they imply a
 tissue:blood ratio of 1.286. The table below instead solves for the
 coefficient that reproduces each cohort's published five-minute ratio. It does
-so at the shipped operating point, with the apparatus removed (simulated
-2026-09-08). Each demanded ratio is then multiplied by the agent's stored
+so at the shipped operating point, with the apparatus removed (solved again
+on 2026-11-23). Each demanded ratio is then multiplied by the agent's stored
 blood:gas coefficient, which gives the tissue:gas coefficient that the agent
 demands. Tissue:gas is the quantity that Yasuda's study measured, so the
 demanded and measured columns share no derived denominator:
@@ -2222,13 +2222,14 @@ demanded and measured columns share no derived denominator:
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
 <!-- derived: 1.286 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
 
-| Agent | Tissue:blood demanded | Tissue:gas demanded | Measured human brain:gas | Distance |
+| Cohort | Tissue:blood demanded | Tissue:gas demanded | Measured human brain:gas | Distance |
 | --- | --- | --- | --- | --- |
-| Sevoflurane | 1.74 | 1.131 | 1.15 ± 0.07 | −0.27 SD |
-| Isoflurane | 1.45 | 1.885 | 2.09 ± 0.10 | −2.05 SD |
-| Desflurane | 2.24 | 0.941 | 0.54 ± 0.02 | +20.04 SD |
+| Sevoflurane, Anesth Analg 1991 | 1.740 | 1.13 | 1.15 ± 0.07 | −0.3 SD |
+| Isoflurane, Anesth Analg 1991 | 1.447 | 1.88 | 2.09 ± 0.10 | −2.1 SD |
+| Isoflurane, Anesthesiology 1991 | 1.418 | 1.84 | 2.09 ± 0.10 | −2.5 SD |
+| Desflurane, Anesthesiology 1991 | 2.244 | 0.94 | 0.54 ± 0.02 | +20.1 SD |
 
-<!-- not-restated: 0.54 -->
+<!-- not-restated: 0.54, 2.1 -->
 
 At a tissue:blood ratio of 2.24, desflurane's elimination lands on the
 published 0.140. Its wash-in row stays inside its published spread, at +0.55
@@ -2259,10 +2260,10 @@ group published it three years before its pair of kinetic studies:
 <!-- not-restated: 0.05, 0.54 -->
 
 A demanded value is the coefficient that an agent would need to match its published
-elimination. Sevoflurane's demanded value lies 0.27 SD below its measured brain:gas mean.
-Isoflurane's lies 2.05 SD below its own, just outside two SDs, on the side opposite
+elimination. Sevoflurane's demanded value lies 0.3 SD below its measured brain:gas mean.
+The two isoflurane cohorts' values lie 2.1 and 2.5 SD below theirs, on the side opposite
 desflurane's. Desflurane's demanded value is twenty standard deviations above its own
-measured value, and it is the only one of the three above. As a tissue:blood ratio it is also
+measured value, and it is the only one of the four above. As a tissue:blood ratio it is also
 above the ratio that either other agent demands. Adopting it would make desflurane the *most*
 tissue-soluble of the three agents relative to blood, which would invert the ordering that
 the source paper was written to report. The stored Gas Man coefficients lie within 1 SD of
@@ -2280,6 +2281,12 @@ tissue data support, desflurane's elimination still misses on the same side.
 | 1.286, shipped | 0.0934 | −2.33 SD |
 | 1.39, its own measured mean + 2 SD | 0.0997 | −2.01 SD |
 | 1.70, sevoflurane's, the highest of the three | 0.1166 | −1.17 SD |
+
+The two raised coefficients are brain:blood ratios from Yasuda's Table 2, each
+multiplied by desflurane's stored blood:gas coefficient. So they carry the
+paper's age-adjusted denominator. On the tissue:gas basis of the first table,
+desflurane's measured mean + 2 SD is 0.58, a ratio of 1.381, which gives 0.0992
+and −2.04 SD (run 2026-11-23). The conclusion is the same on either basis.
 
 **Nine other candidates were simulated or struck, and each fails in one of two ways.** Either
 it moves sevoflurane and isoflurane as much as desflurane or more, which the published rows
