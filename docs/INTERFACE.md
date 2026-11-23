@@ -1859,9 +1859,13 @@ Under the conditions set out below, it may also:
 - form the ratio of two modelled fractions where this document names it as a
   displayed quantity;
 - declare where one adjustment of a control begins, so that the run's record
-  of its inputs can be read as the user's actions that produced it; and
+  of its inputs can be read as the user's actions that produced it;
 - choose how many simulation steps to take at a time, so that a run can be
-  played faster than real time.
+  played faster than real time; and
+- measure how often its tick fires, and name the rate it delivered beside the
+  set rate when the computer falls behind (§ "What the reader chooses: traces,
+  window and playback rate"). The measurement never changes how many steps a
+  run takes.
 
 It must not:
 
