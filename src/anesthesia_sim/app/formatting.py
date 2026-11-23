@@ -437,9 +437,11 @@ _PERCENT: Final = DisplayUnit.CONCENTRATION.label
 # Candidate spacings for the chart's MAC axis, coarsest last. `mac_axis_ticks`
 # takes the first spacing that keeps the axis within `MAX_MAC_AXIS_INTERVALS`
 # intervals, so the spacing depends on the plotted range, not on the agent.
-# Since PL-CC23 that range is `CHART_AXIS_TOP_MAC` for every agent. So the
-# ladder selects 0.5 MAC for all of them by construction, not by coincidence.
-# That lets a reader carry one mental scale from one agent to the next. It is
+# Since PL-CC23 that range is the chart's top in MAC, the same for every agent
+# at a given top (`ChartCeiling`). So the ladder selects one spacing for every
+# agent at that top, by construction: 0.25 MAC at the 1.5 MAC top and 0.5 MAC
+# at the 3 and 4.5 MAC tops. That lets a reader carry one mental scale from
+# one agent to the next. It is
 # still a ladder rather than a constant, because the range is the input: a
 # chart drawn over a different span picks its own spacing.
 MAC_AXIS_STEP_LADDER_MAC: Final = (0.25, 0.5, 1.0, 2.0, 5.0)

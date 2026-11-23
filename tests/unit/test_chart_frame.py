@@ -1195,7 +1195,7 @@ def test_at_opening_settings_fat_first_hour_spans_under_4_px_at_1_mac_and_12_px_
 
     agent = load_agent_parameters(agent_id)
     mac = mac_for_patient(agent, load_reference_adult_parameters()).percent
-    pixels_per_percent = CHART_HEIGHT / chart_axis_top_percent(mac)
+    pixels_per_percent = CHART_HEIGHT / chart_axis_top_percent(mac, ChartCeiling.STANDARD)
 
     def fat_pixels_at_one_hour(dial_percent: float) -> float:
         system = AgentUptakeSystem.for_agent(agent_id)
