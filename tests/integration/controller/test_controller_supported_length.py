@@ -352,9 +352,9 @@ def test_a_branch_on_the_supported_run_length_is_not_sent_to_a_reset_that_return
         trunk.resumed_at_mark(on_the_limit)
 
     assert str(refusal.value) == (
-        "a branch at 86400 s would open on the supported run length, where no step is left "
-        "to take, so it could never be run; a setting change or a mark before it is still "
-        "branched at with resumed_at or resumed_at_mark"
+        "a branch at 24h would open on the supported run length, where no step is left to "
+        "take, so it could never be run; an earlier setting change or mark can still be "
+        'chosen under "From" and branched at with "Branch"'
     )
     _assert_reads_as_stopped_at_the_supported_run_length(trunk)
 
@@ -386,7 +386,7 @@ def test_no_dial_makes_a_keyframe_on_the_supported_run_length_to_branch_at(
 
     with pytest.raises(
         SimulationConfigurationError,
-        match="^a branch at 86400 s would open on the supported run length",
+        match="^a branch at 24h would open on the supported run length",
     ):
         trunk.resumed_at(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S))
 
@@ -403,8 +403,8 @@ def test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_st
     could never be run. While the case allows only one comparison, only the trunk's
     Reset, which discards the case, would take that branch off the chart
     (`PL-Y2SL`). Both ways of arriving there are refused alike: stepping onto
-    the limit, and halting on a mark at it. The refusal names the fork methods
-    that still work there.
+    the limit, and halting on a mark at it. The refusal names the controls
+    that still branch there, by their words on screen.
     """
 
     for trunk in (trunk_stepped_onto_the_limit, trunk_halted_on_a_mark_at_the_limit):
@@ -414,7 +414,7 @@ def test_a_run_at_the_supported_run_length_offers_no_place_to_branch_where_it_st
         with pytest.raises(SimulationConfigurationError, match="supported run length") as refusal:
             trunk.resumed_here()
 
-        assert "resumed_at_mark" in str(refusal.value)
+        assert '"From"' in str(refusal.value)
 
 
 def test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole(
@@ -426,7 +426,7 @@ def test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole(
         trunk_stepped_onto_the_limit.resumed_here()
 
     assert str(refusal.value) == (
-        "this run stands at 86400 s, the supported run length, where no step is left to "
-        "take, so a branch opened where it stands could not be run; a setting change or a "
-        "mark it passed before is still branched at with resumed_at or resumed_at_mark"
+        "this run stands at 24h, the supported run length, where no step is left to take, "
+        "so a branch opened where it stands could not be run; an earlier setting change or "
+        'mark can still be chosen under "From" and branched at with "Branch"'
     )
