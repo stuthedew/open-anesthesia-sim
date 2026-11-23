@@ -252,5 +252,8 @@ def test_the_details_of_a_compared_run_name_the_run(application: QApplication) -
     details = branch._failure_details.details()
     assert details is not None
     assert details.splitlines()[1] == "Stopped run: Run 2"
+    # Two runs' buttons read alike, so a screen reader hears the run's name.
+    assert branch._failure_details.toggle.accessibleName() == "Show details for Run 2"
+    assert branch._failure_details.copy_button.accessibleName() == "Copy details for Run 2"
     assert view.runs[0]._failure_details.details() is None
     assert view.runs[0]._halt_banner.isHidden()

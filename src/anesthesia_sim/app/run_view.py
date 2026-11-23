@@ -941,7 +941,9 @@ class RunView(QWidget):
         else:
             self._notice_text.set_notice(banner.text, emphasis_color(banner.emphasis))
 
-        self._failure_details.set_details(presentation.failure_details, APP_ISSUES_URL)
+        self._failure_details.set_details(
+            presentation.failure_details, APP_ISSUES_URL, run_name=presentation.name
+        )
         self._halt_banner.setHidden(banner is None and presentation.failure_details is None)
 
         values = presentation.values

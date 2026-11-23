@@ -77,3 +77,45 @@ notice names the compartment. So the recorded reason keeps the developer form
 for the details panel and the log, and the run records the failure's kind
 beside it when it halts, from which the banner takes its plain words. The
 kind is recorded, not read back from the reason's text.
+
+**Built, 2026-11-23.** `app/failures.py` sorts an exception into a
+`FailureKind`, most specific type first, and `SimulationController.fail`
+records the kind beside the reason. `RunStatus` refuses one without the
+other, so `tests/unit/test_supported_range_edges.py` now builds the run's
+settings, record and snapshot through `RECEIVERS`. The banner reads its
+words from `dashboard_frame.FAILURE_CAUSE_TEXTS` and adds that the fault is
+the simulator's and not the patient's. `qt_widgets.FailureDetails` sits
+under the banner, in one container with it that is hidden while both are.
+The issue page's address is written once, in `pyproject.toml`'s
+`[project.urls]`, and `app_metadata.project_url` reads it from the installed
+metadata. The link takes its colour from inline style, because a palette
+written wholesale on the label carries the platform's disabled colours with
+it, which `tools/contrast_check.py` refuses.
+
+**Regression run on the code before the fix.** A variant that needs no new
+interface was run on `origin/main` (64d3533a) in a scratch worktree: a real
+failed step through `_StepFailingController(_real_step_failure())`, then
+`assert "SimulationNumericalError" not in banner`. It failed with
+`AssertionError: Simulation stopped — SimulationNumericalError: the simulation
+step of 1 s could not be completed and was rolled back, ...`. The same
+assertion is in
+`test_a_failed_step_is_worded_for_the_learner_and_its_message_kept_in_the_details`.
+
+**Blind review, two passes.** Both found that a Reset refused after an
+earlier failure was named nowhere on screen (fixed: a "Reset was then
+refused" line in the details), that the copied details did not say which of
+two runs stopped (fixed: a "Stopped run" line while two runs are drawn), and
+that the log's path carried the login name into a public issue (fixed: the
+path is written from `~`). Pass 1 found the link could not be reached from
+the keyboard (fixed: keyboard link flags and tab focus), that configuration
+and execution failures were never halted through the run view in a test
+(fixed), that two integration tests compared the widget with itself (fixed:
+the expected details are built from the error), and two stale comments
+(fixed). Pass 2 found the configuration words could be read as the learner's
+own dial (fixed: "one part of the simulator gave another a value that it
+does not accept"). Pass 2 also found that two runs' "Show details" buttons
+read alike to a screen reader (fixed: each button's accessible name adds the
+run's name while two runs are drawn). Not fixed here: on X11 with no
+clipboard manager, copied details are lost when the application closes,
+which the refused-Reset banner asks the learner to do. The failure log keeps
+the message. `PL-PYWF` records the clipboard gap.

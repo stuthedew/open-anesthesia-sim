@@ -1498,6 +1498,7 @@ class FailureDetails(QWidget):
         )
         self.report_text.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._details: str | None = None
+        self._run_name: str | None = None
 
         buttons = QHBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
@@ -1512,9 +1513,11 @@ class FailureDetails(QWidget):
 
         self.toggle.toggled.connect(self._show_details)
         self.copy_button.clicked.connect(self.copy_details)
-        self.set_details(None, None)
+        self.set_details(None, None, run_name=None)
 
-    def set_details(self, details: str | None, issues_url: str | None) -> None:
+    def set_details(
+        self, details: str | None, issues_url: str | None, *, run_name: str | None
+    ) -> None:
         """Show the details of a failure, or hide the widget when the run has not failed.
 
         The link to the issue page is drawn in the line's own `INK`, and Qt
@@ -1524,6 +1527,9 @@ class FailureDetails(QWidget):
             details: `dashboard_frame.failure_details`'s result this tick.
             issues_url: The project's issue page, or None where the build kept
                 no metadata (`app_metadata.APP_ISSUES_URL`).
+            run_name: What the run is called while a second run is drawn, or
+                None. A screen reader then names the run in each button's
+                name, because two runs' buttons read alike.
         """
 
         report = report_fault_text(issues_url, link_colour=INK)
@@ -1534,6 +1540,8 @@ class FailureDetails(QWidget):
             self.toggle.setChecked(False)
 
         self._details = details
+        self._run_name = run_name
+        self.copy_button.setAccessibleName(self._named(COPY_FAILURE_DETAILS_LABEL))
         self.details_text.setText(details or "")
         self.report_text.setText(report)
         self.setHidden(details is None)
@@ -1550,8 +1558,13 @@ class FailureDetails(QWidget):
         if self._details is not None:
             QApplication.clipboard().setText(self._details)
 
+    def _named(self, label: str) -> str:
+        return label if self._run_name is None else f"{label} for {self._run_name}"
+
     def _show_details(self, shown: bool) -> None:
-        self.toggle.setText(HIDE_FAILURE_DETAILS_LABEL if shown else SHOW_FAILURE_DETAILS_LABEL)
+        label = HIDE_FAILURE_DETAILS_LABEL if shown else SHOW_FAILURE_DETAILS_LABEL
+        self.toggle.setText(label)
+        self.toggle.setAccessibleName(self._named(label))
         self.details_text.setHidden(not shown)
         self.copy_button.setHidden(not shown)
         self.report_text.setHidden(not shown)
