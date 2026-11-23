@@ -895,3 +895,43 @@ def test_a_passed_mark_opens_under_the_settings_the_trunk_left_its_instant_under
         expected = never_changed if mark is at_opening else trunk
 
         _states_agree_after_the_fork(branch, expected, points[mark], steps=10)
+
+
+def test_a_branch_numbers_its_adjustments_from_its_own_opening() -> None:
+    """A branch numbers the changes it opens with from 1, and the learner's first change after them.
+
+    The trunk's cardiac output is changed at 30 s. The trunk is then paused
+    at 60 s, and its fresh gas flow, delivered concentration and cardiac
+    output are changed there. Those are the trunk's second, third and fourth
+    adjustments. A branch taken at that keyframe opens with the three changes
+    at 60 s, numbered 1, 2 and 3 in the order the trunk recorded them. The
+    learner's first change on the branch is adjustment 4. A run numbers its
+    adjustments from its own opening, as a reset run does, so the branch's
+    record does not count an adjustment that the trunk made before the fork.
+    """
+
+    trunk = SimulationController(fresh_gas_flow_l_min=FreshGasFlow(4.0))
+    trunk.start()
+    _advance_for(trunk, duration_s=30)
+    trunk.set_cardiac_output(CardiacOutput(5.5))
+    _advance_for(trunk, duration_s=30)
+    trunk.pause()
+    fork_s = trunk.snapshot().elapsed_s
+    trunk.set_fresh_gas_flow(FreshGasFlow(6.0))
+    trunk.set_delivered_concentration_percent(Percent(3.0))
+    trunk.set_cardiac_output(CardiacOutput(6.0))
+
+    assert [change.adjustment for change in trunk.snapshot().control_timeline] == [1, 2, 3, 4]
+
+    branch = trunk.resumed_at(fork_s)
+    branch.set_alveolar_ventilation(AlveolarVentilation(5.0))
+
+    timeline = branch.snapshot().control_timeline
+
+    assert [(change.elapsed_s, change.control) for change in timeline] == [
+        (fork_s, ControlInput.FRESH_GAS_FLOW),
+        (fork_s, ControlInput.DELIVERED),
+        (fork_s, ControlInput.CARDIAC_OUTPUT),
+        (fork_s, ControlInput.ALVEOLAR_VENTILATION),
+    ]
+    assert [change.adjustment for change in timeline] == [1, 2, 3, 4]
