@@ -1487,12 +1487,52 @@ class Readout:
             make the unit a mode. The rate is drawn at every rate, including
             1x, so a reader never has to take a blank line to mean real time
             (`PL-SN2C`).
+        modelled: True for a compartment, whose two readings are model
+            outputs and never measurements, and False for the clock.
     """
 
     name: str
     qualifier: str
     value: str
     secondary: str
+    modelled: bool
+
+
+#: How a compartment's reading is named for assistive technology. A screen
+#: reader that reads one line of a panel on its own then still says which
+#: compartment it belongs to and that it is modelled (`PL-N5JB`).
+SPOKEN_MODELLED_READING_TEMPLATE: Final = "{name}, modelled: {reading}"
+#: How the clock's reading is named for assistive technology.
+SPOKEN_READING_TEMPLATE: Final = "{name}: {reading}"
+#: How a reading is named while runs are compared, so it says which run it is.
+SPOKEN_RUN_READING_TEMPLATE: Final = "{run}, {spoken}"
+
+
+def spoken_reading(readout: Readout, reading: str, run_name: str | None) -> str:
+    """Return the name that assistive technology is given for one line of a readout panel.
+
+    A screen reader can reach a panel's value or its second line on its own,
+    away from the panel's name above it. So each line is named with the
+    panel's name, whether it is modelled and, while runs are compared, the
+    run, all taken from the strings the panel shows (`PL-N5JB`).
+
+    Args:
+        readout: The panel's four lines as drawn this tick.
+        reading: The line being named, `readout.value` or `readout.secondary`.
+        run_name: The run's name while runs are compared, or `None` for a lone
+            run (`dashboard_frame.run_label`).
+
+    Returns:
+        The name, such as "Alveolar, modelled: 1.20%".
+    """
+
+    template = SPOKEN_MODELLED_READING_TEMPLATE if readout.modelled else SPOKEN_READING_TEMPLATE
+    spoken = template.format(name=readout.name, reading=reading)
+
+    if run_name is None:
+        return spoken
+
+    return SPOKEN_RUN_READING_TEMPLATE.format(run=run_name, spoken=spoken)
 
 
 def compartment_fraction(snapshot: SimulationSnapshot, quantity: RecordedQuantity) -> Fraction:
@@ -1551,7 +1591,7 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
             value = format_percent(fraction)
             secondary = format_mac_multiple(fraction, mac_percent)
 
-        panels.append(Readout(panel.name, qualifier, value, secondary))
+        panels.append(Readout(panel.name, qualifier, value, secondary, modelled=not panel.is_clock))
 
     return tuple(panels)
 
@@ -1666,6 +1706,7 @@ def withheld_readouts(playback_rate: PlaybackRate) -> tuple[Readout, ...]:
             panel.qualifier if panel.qualifier is not None else EMPTY_METRIC_QUALIFIER,
             WITHHELD_ELAPSED_TIME_TEXT if panel.is_clock else WITHHELD_CONCENTRATION_TEXT,
             clock_playback_line(playback_rate) if panel.is_clock else WITHHELD_MAC_MULTIPLE_TEXT,
+            modelled=not panel.is_clock,
         )
         for panel in READOUT_PANELS
     )

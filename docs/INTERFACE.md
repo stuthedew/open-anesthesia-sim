@@ -4327,6 +4327,22 @@ and `test_each_compared_run_s_dials_name_the_run_to_a_screen_reader` in
 <!-- not-restated: 4.0 L/min -->
 <!-- not-restated: 1.80 % -->
 
+**Each readout line tells assistive technology its compartment and that it is
+modelled** (`PL-N5JB`). A screen reader can reach a panel's value or its
+second line on its own, away from the panel's name above it. So each of the
+two lines carries an accessible name built from the strings the panel shows:
+the compartment, the word "modelled" and the line, such as "Alveolar,
+modelled: 1.20%" or "Alveolar, modelled: 0.67 ×MAC". The clock's lines carry
+its name without "modelled", such as "Simulated time: 1m30s". While runs are
+compared, each name starts with its run, such as "Run 2, Alveolar, modelled:
+1.20%". The names change on every frame with the values they carry
+(`test_each_reading_is_named_with_its_compartment_and_that_it_is_modelled`
+and `test_every_compartment_readout_is_marked_modelled_and_the_clock_is_not` in
+`tests/unit/test_dashboard_frame.py`, and
+`test_a_screen_reader_hears_each_reading_with_its_compartment_and_that_it_is_modelled`
+and `test_a_compared_run_s_readings_are_named_with_their_run` in
+`tests/integration/simulation_view/test_simulation_view_readouts.py`).
+
 #### Minimum contrast for text and graphics
 
 Two criteria carry most of the weight:

@@ -3,12 +3,15 @@ id: PL-N5JB
 title: A screen reader reaches each readout value as a bare number with its unit, without the compartment it belongs to or that it is a modelled value
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: presentation-safety
-touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_qt_widgets.py
+touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_qt_widgets.py, tests/integration/simulation_view/test_simulation_view_readouts.py, tests/unit/test_dashboard_frame.py, docs/INTERFACE.md
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2312
 payoff: a screen-reader user hears each readout value with its compartment and that it is modelled
+tests: tests/integration/simulation_view/test_simulation_view_readouts.py::test_a_screen_reader_hears_each_reading_with_its_compartment_and_that_it_is_modelled, tests/integration/simulation_view/test_simulation_view_readouts.py::test_a_compared_run_s_readings_are_named_with_their_run, tests/unit/test_dashboard_frame.py::test_each_reading_is_named_with_its_compartment_and_that_it_is_modelled, tests/unit/test_dashboard_frame.py::test_every_compartment_readout_is_marked_modelled_and_the_clock_is_not
 ---
 
 **Problem.** Each readout panel (Circuit, Alveolar, Mixed venous, Vessel-rich group, Muscle and Fat) reaches assistive technology as an unnamed group of separate labels: the compartment name, its gloss, the percent ("0.00%") and the multiple of MAC ("0.00 ×MAC"). A screen reader that moves by item, or that reads a value on its own, says "0.00 percent" with nothing to say which compartment it belongs to, or that it is a modelled value and not a measurement. The clock panel has the same shape ("0s", "1× real time").
@@ -26,3 +29,5 @@ payoff: a screen-reader user hears each readout value with its compartment and t
 **Generator check.** A one-off: each panel is a group of separate labels, and no accessible name joins them.
 
 **Reproduced 2026-11-23** by `PL-QR6Q`'s walk of the accessible tree, the same day.
+
+**Done 2026-11-23.** Each line of a readout panel that carries a reading, the value and the second line, now has an accessible name built by `spoken_reading` in `src/anesthesia_sim/app/dashboard_frame.py` from the strings the panel shows: the panel's name, ", modelled" for a compartment, the reading, and the run's name first while runs are compared. Examples are "Alveolar, modelled: 1.20%" and "Run 2, Alveolar, modelled: 1.20%". The clock is not modelled, so it reads "Simulated time: 0s". `Readout.modelled` records which panels are compartments. `MetricPanel` rewrites a name only when it changes, and Qt tells assistive technology of each change. The approach named a value-change event. None was added, because `QWidget::setAccessibleName` already sends a name-change event whenever the name differs (qtbase 6.10, `src/widgets/kernel/qwidget.cpp`, read 2026-11-23). `docs/INTERFACE.md` states the requirement. Run against the code before the fix, the accessible-tree test fails at its first panel with `AssertionError: assert '0s' == 'Simulated time: 0s'`, and the compared-runs test with `assert '0s' == 'Run 1, Simulated time: 0s'`. Docs checked: `docs/INTERFACE.md`, `docs/MODEL.md`, `README.md`.

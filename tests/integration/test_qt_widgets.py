@@ -117,7 +117,9 @@ def application() -> Iterator[QApplication]:
 
 
 def _clock_readout(value: str) -> Readout:
-    return Readout("Simulated time", EMPTY_METRIC_QUALIFIER, value, WIDEST_READOUT_SECONDARY)
+    return Readout(
+        "Simulated time", EMPTY_METRIC_QUALIFIER, value, WIDEST_READOUT_SECONDARY, modelled=False
+    )
 
 
 def _panel(readout: Readout) -> MetricPanel:
@@ -281,7 +283,13 @@ def test_an_empty_gloss_line_is_as_tall_as_a_filled_one(application: QApplicatio
         if panel.qualifier_label.text() and panel.secondary_label.text()
     )
     empty = _panel(
-        Readout("Simulated time", EMPTY_METRIC_QUALIFIER, "0s", EMPTY_METRIC_SECONDARY_VALUE)
+        Readout(
+            "Simulated time",
+            EMPTY_METRIC_QUALIFIER,
+            "0s",
+            EMPTY_METRIC_SECONDARY_VALUE,
+            modelled=False,
+        )
     )
 
     assert empty.qualifier_label.text() == EMPTY_METRIC_QUALIFIER

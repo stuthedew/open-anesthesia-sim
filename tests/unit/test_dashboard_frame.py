@@ -126,6 +126,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ForkPoint,
     HaltDisposition,
     Notice,
+    Readout,
     RunMarks,
     above_the_axis_top,
     accounting,
@@ -169,6 +170,7 @@ from anesthesia_sim.app.dashboard_frame import (
     setting_readouts,
     slider_position,
     slider_value,
+    spoken_reading,
     status_word,
     substance_heading,
     time_axis_caption,
@@ -3811,6 +3813,38 @@ def test_the_reservations_give_the_clock_its_elapsed_form_and_the_compartments_t
     }
     assert WIDEST_COMPARTMENT_VALUE == format_percent(Fraction(1.0))
     assert WIDEST_COMPARTMENT_SECONDARY.endswith(MAC_UNIT_SUFFIX)
+
+
+def test_each_reading_is_named_with_its_compartment_and_that_it_is_modelled() -> None:
+    """`PL-N5JB`: a line of a readout panel, heard on its own, still says what it is.
+
+    The expected names are written out here, from the strings each panel
+    shows, and not read from `spoken_reading`'s templates.
+    """
+
+    alveolar = Readout("Alveolar", "end-tidal-equivalent", "1.20%", "0.67 ×MAC", modelled=True)
+    clock = Readout(
+        "Simulated time", EMPTY_METRIC_QUALIFIER, "1m30s", "1× real time", modelled=False
+    )
+
+    assert spoken_reading(alveolar, alveolar.value, None) == "Alveolar, modelled: 1.20%"
+    assert spoken_reading(alveolar, alveolar.secondary, None) == "Alveolar, modelled: 0.67 ×MAC"
+    assert spoken_reading(alveolar, alveolar.value, "Run 2") == "Run 2, Alveolar, modelled: 1.20%"
+    assert spoken_reading(clock, clock.value, None) == "Simulated time: 1m30s"
+    assert spoken_reading(clock, clock.secondary, "Run 1") == "Run 1, Simulated time: 1× real time"
+
+
+def test_every_compartment_readout_is_marked_modelled_and_the_clock_is_not() -> None:
+    """`PL-N5JB`: live and withheld readouts both say which panels hold model outputs."""
+
+    compartments = ["Circuit", "Alveolar", "Mixed venous", "Vessel-rich group", "Muscle", "Fat"]
+
+    for panels in (
+        readouts(_snapshot(), DEFAULT_PLAYBACK_RATE),
+        withheld_readouts(DEFAULT_PLAYBACK_RATE),
+    ):
+        assert [panel.name for panel in panels if panel.modelled] == compartments
+        assert [panel.name for panel in panels if not panel.modelled] == ["Simulated time"]
 
 
 def test_the_interface_says_the_readouts_are_model_outputs_not_measurements() -> None:

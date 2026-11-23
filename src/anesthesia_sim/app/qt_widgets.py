@@ -141,6 +141,7 @@ from anesthesia_sim.app.dashboard_frame import (
     setting_value_text,
     slider_position,
     slider_value,
+    spoken_reading,
     widest_fork_point_label,
 )
 from anesthesia_sim.app.formatting import (
@@ -849,6 +850,13 @@ class MetricPanel(QFrame):
     outputs", `PL-F2YS`). Each reading then names its run on a line above its
     value.
 
+    **Each reading is named for assistive technology** (`PL-N5JB`). A screen
+    reader can reach the value or the second line on its own, away from the
+    name above it, so each carries an accessible name built by
+    `spoken_reading`: the panel's name, whether it is modelled, the run while
+    runs are compared, and the line itself. The names are rewritten whenever
+    a line or the run name changes.
+
     Attributes:
         name_label: The modeled quantity, in the model's own terms.
         qualifier_label: What a clinician would compare it against.
@@ -897,6 +905,9 @@ class MetricPanel(QFrame):
         )
         self.run_name_label = styled_label("", color=INK, size_px=METRIC_QUALIFIER_SIZE, bold=True)
         self.run_name_label.setHidden(True)
+        self._readout = readout
+        self._run_name: str | None = None
+        self._name_readings()
 
         value_advance = _advance_px(self.value_label, widest_value)
         secondary_advance = _advance_px(self.secondary_label, widest_secondary)
@@ -939,6 +950,8 @@ class MetricPanel(QFrame):
 
         self.run_name_label.setText(name or "")
         self.run_name_label.setHidden(name is None)
+        self._run_name = name
+        self._name_readings()
 
     def add_reading(self, reading: QWidget) -> None:
         """Show another run's reading of the same quantity under this one's.
@@ -963,6 +976,26 @@ class MetricPanel(QFrame):
         self.qualifier_label.setText(readout.qualifier)
         self.value_label.setText(readout.value)
         self.secondary_label.setText(readout.secondary)
+        self._readout = readout
+        self._name_readings()
+
+    def _name_readings(self) -> None:
+        """Write the value's and the second line's accessible names from the lines they show.
+
+        Qt tells assistive technology of each name that changes
+        (`QWidget::setAccessibleName`), so a screen reader reading a panel
+        hears the new value. The readouts are rewritten on every frame, so a
+        name is written only where it changed.
+        """
+
+        for label, reading in (
+            (self.value_label, self._readout.value),
+            (self.secondary_label, self._readout.secondary),
+        ):
+            spoken = spoken_reading(self._readout, reading, self._run_name)
+
+            if label.accessibleName() != spoken:
+                label.setAccessibleName(spoken)
 
 
 class ReadoutRow(QWidget):
