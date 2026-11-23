@@ -223,8 +223,8 @@ def test_the_window_reports_the_same_pixels_across_a_change_of_host(
 ) -> None:
     """The line the owner reads on a real host is right on a simulated one.
 
-    The offscreen platform reports no appearance, so the test names the two
-    it records under. Between them the host palette turns dark.
+    The test names the two appearances it records under, as the reader
+    does with the window's two buttons. Between them the host palette turns dark.
     """
 
     monkeypatch.setattr(style_trial, "SCREENSHOT_DIRECTORY", tmp_path)
@@ -232,12 +232,10 @@ def test_the_window_reports_the_same_pixels_across_a_change_of_host(
     window.show()
     application.processEvents()
 
-    monkeypatch.setattr(style_trial, "colour_scheme_name", lambda _application: "Light")
-    window.record_appearance()
+    window.record_appearance("Light")
     _set_dark_host(application)
     application.processEvents()
-    monkeypatch.setattr(style_trial, "colour_scheme_name", lambda _application: "Dark")
-    window.record_appearance()
+    window.record_appearance("Dark")
 
     verdict = window.verdict_text()
 
@@ -253,11 +251,9 @@ def _record_twice(
 ) -> str:
     """Record the window as Light, make a change, record it as Dark, and return its lines."""
 
-    monkeypatch.setattr(style_trial, "colour_scheme_name", lambda _application: "Light")
-    window.record_appearance()
+    window.record_appearance("Light")
     between()
-    monkeypatch.setattr(style_trial, "colour_scheme_name", lambda _application: "Dark")
-    window.record_appearance()
+    window.record_appearance("Dark")
 
     return window.verdict_text()
 

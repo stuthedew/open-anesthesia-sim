@@ -368,6 +368,19 @@ def declare_application_colours(application: QApplication) -> None:
     selector popups could not be reached from the widget containing them
     (`PL-0NVN`).
 
+    **The light colour scheme is requested as well** (`PL-YZ9L`). The palette
+    does not reach how macOS draws each letter. Qt draws a glyph with a black
+    fill unless the host's colour scheme is Dark, and with a white fill when
+    it is, and macOS thickens the strokes by the fill colour
+    (`QCoreTextFontEngine::imageForGlyph`, Qt 6.11). So under Dark, the
+    interface's dark lettering on its light surfaces was drawn heavier than
+    under Light. On macOS, `setColorScheme(Light)` sets the application's
+    appearance to Aqua (`QCocoaTheme::requestColorScheme`, Qt 6.10), so Qt
+    then draws the letters as it does under Light. The request is made
+    before the palette is set, because Qt rereads the system palette when the
+    scheme changes. On a platform that ignores the request, the palette still
+    applies.
+
     **What it covers, measured.** Under the dark host palette that
     `tests/integration/test_dark_appearance.py` supplies, the scroll bar of
     the page's scroll area went from 94.3% of its pixels darker than mid-grey
@@ -376,8 +389,10 @@ def declare_application_colours(application: QApplication) -> None:
     **What it does not cover, and why that follows the rule rather than
     leaving a gap.** The `Disabled` colour group is left exactly as the
     platform supplied it, for the reason `declare_interface_colours` gives.
-    So a disabled control with no colour of its own keeps drawing the host's
-    colours. Declaring a disabled colour is a decision under
+    So a disabled control with no colour of its own keeps drawing the
+    platform's colours. On a platform that honours the light request above,
+    those are its light palette's; on one that ignores it, they follow the
+    host appearance. Declaring a disabled colour is a decision under
     `.claude/rules/ui-color.md`, not a style choice. This interface declares
     exactly one, and it is measured.
 
@@ -396,6 +411,7 @@ def declare_application_colours(application: QApplication) -> None:
             platform supplied.
     """
 
+    application.styleHints().setColorScheme(Qt.ColorScheme.Light)
     application.setPalette(_with_declared_roles(application.palette()))
 
 
