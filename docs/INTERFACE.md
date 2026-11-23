@@ -2588,7 +2588,13 @@ its lines between drawn instants could be wider than a pixel.
 the failure, the panel shows the same result from the run's record. The run
 stops, and the model undoes the failed step, so the run's own accounting passes
 again. The banner names the panel as the one exception to "the values shown are
-the last completed step".
+the last completed step". It says in words that the check failed because the
+rejected step created or lost agent, and that this is a fault in the simulator
+and not a change in the patient. It does not print the totals. The panel shows
+the rejected step's amounts, and the exact totals go to the failure log, the
+file `failures.log` in the reader's data directory, beside the saved Workspaces.
+Where that directory cannot be written, the log goes to standard error only,
+and the application still opens.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2624,7 +2630,16 @@ displayed value unchanged
 (`test_a_failed_step_leaves_every_displayed_value_bit_identical`), and a stopped
 run refuses every setting
 (`test_a_stopped_run_refuses_every_setting_and_records_nothing`), both in
-`tests/integration/controller/test_controller_running.py`.
+`tests/integration/controller/test_controller_running.py`. The banner after a
+failed accounting check shows no e-notation and no code name, and the log keeps
+the totals
+(`test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals`, in
+the same file as the first test). The failure log is written to the data
+directory (`test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory`
+in `tests/integration/test_failure_log.py`), and a directory that cannot be made
+does not stop the launch
+(`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`,
+in the same file).
 
 ### Naming the run in a comparison
 
@@ -2730,6 +2745,19 @@ to the user's action"
 (`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`
 and `test_a_branch_taken_in_a_workspace_pinned_to_the_trunk_says_so_until_it_is_unpinned`
 in `tests/integration/test_workspace_tabs.py`).
+
+**A pinned Workspace says so before a branch is taken, too** (`PL-RXR8`). A
+branch cannot be undone short of the trunk's Reset, which starts the case over,
+so the learner is told before pressing rather than only after. While one run is
+open and a branch is offered, the Branch View says above its control that the
+Workspace will not draw a branch taken there ("This Workspace is pinned to Run
+1, so it will not draw a branch taken here beside it. Unpin it from the
+Workspace's tab to compare the two runs here."). Both buttons stay offered. The
+sentence reads the pin where the caption after a branch reads it, so the two
+name the same run
+(`test_a_pinned_workspace_says_before_a_branch_that_it_will_not_draw_it` and
+`test_a_workspace_pinned_to_a_run_that_is_not_open_says_so_before_a_branch` in
+`tests/integration/test_workspace_tabs.py`).
 
 A view shows its run's name whenever a reader could mistake its values for
 another run's: while another run is drawn anywhere in the application, while the
@@ -4973,8 +5001,8 @@ arithmetic, so the line shows neither. The panel shows the residual once, as
 so the panel has none (project owner, 2026-10-03, ratified, over keeping both
 lines and over keeping "Absolute error" instead). The sign means something only
 in a check that fails. The run then halts, and the
-failure notice prints the signed unaccounted amount with six decimal places,
-such as `1.000000e+00 L`.
+failure log records the signed unaccounted amount with six decimal places, such
+as `1.000000e+00 L`, for a developer. The banner does not show it.
 
 **For developers.** At 1 MAC with the reference adult's flows, one 0.1 L step is
 worth between about four SDs, for isoflurane at 1 h, and a seventh of an SD, for
