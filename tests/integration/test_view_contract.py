@@ -30,9 +30,9 @@ from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_time_base import FIT_RUN_KEY, time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.qt_chart import _LineSwatch
-from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame
+from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_contract import (
@@ -286,6 +286,12 @@ def _chart(kind: str, saved: object = None) -> ConcentrationView | WashInView:
     return view
 
 
+def _ceiling_saved(kind: str, ceiling_mac: float = 3.0) -> dict[str, object]:
+    """Return the axis top a chart of `kind` saves; only the concentration chart saves one."""
+
+    return {"ceiling_mac": ceiling_mac} if kind == CONCENTRATION_CHART else {}
+
+
 def _pick(chart: ConcentrationView | WashInView, key: str) -> None:
     index = chart.time_base_selector.findData(key)
     assert index >= 0, f"the time-base control does not offer {key!r}"
@@ -304,7 +310,7 @@ def test_a_chart_saves_its_window_and_is_built_again_at_it(
     again = _chart(kind, saved)
 
     try:
-        assert saved == {STATE_VERSION_KEY: 2, "time_base_s": 900.0}
+        assert saved == {STATE_VERSION_KEY: 2, "time_base_s": 900.0, **_ceiling_saved(kind)}
         assert again.frame_request() is not None
         assert again.frame_request().time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
         assert again.time_base_selector.currentData() == "900.0"
@@ -320,7 +326,11 @@ def test_a_chart_built_with_draw_saved_fits_the_run(application: QApplication, k
 
     try:
         assert view.frame_request().time_base is None  # type: ignore[union-attr]
-        assert view.save_state() == {STATE_VERSION_KEY: 2, "time_base_s": FIT_RUN_KEY}
+        assert view.save_state() == {
+            STATE_VERSION_KEY: 2,
+            "time_base_s": FIT_RUN_KEY,
+            **_ceiling_saved(kind),
+        }
         assert view.time_base_selector.currentData() == FIT_RUN_KEY
     finally:
         view.deleteLater()
@@ -368,6 +378,141 @@ def test_a_chart_whose_saved_window_cannot_be_read_fits_the_run_and_says_so(
         assert view.state_notice.text() == _NOTICE
     finally:
         view.deleteLater()
+
+
+def _pick_ceiling(chart: ConcentrationView, ceiling: ChartCeiling) -> None:
+    index = chart.ceiling_selector.findData(ceiling.name)
+    assert index >= 0, f"the axis-top control does not offer {ceiling!r}"
+    chart.ceiling_selector.setCurrentIndex(index)
+
+
+def test_the_concentration_chart_saves_its_axis_top_and_is_built_again_at_it(
+    application: QApplication,
+) -> None:
+    """`PL-K1VH`: the axis top is the chart's own state, saved beside its window."""
+
+    first = _chart(CONCENTRATION_CHART)
+    assert isinstance(first, ConcentrationView)
+    _pick_ceiling(first, ChartCeiling.HIGH)
+    saved = json.loads(json.dumps(dict(first.save_state())))
+    again = _chart(CONCENTRATION_CHART, saved)
+    assert isinstance(again, ConcentrationView)
+
+    try:
+        assert saved == {STATE_VERSION_KEY: 2, "time_base_s": FIT_RUN_KEY, "ceiling_mac": 4.5}
+        assert again.ceiling_selector.currentText() == "4.5 ×MAC"
+        assert again.state_notice.isHidden()
+    finally:
+        first.deleteLater()
+        again.deleteLater()
+
+
+def test_a_concentration_chart_saved_before_the_axis_top_existed_opens_at_3_mac(
+    application: QApplication,
+) -> None:
+    """A state with no top is one saved before the control existed, so it loses nothing."""
+
+    view = _chart(CONCENTRATION_CHART, {STATE_VERSION_KEY: 2, "time_base_s": 900.0})
+    assert isinstance(view, ConcentrationView)
+
+    try:
+        assert view.ceiling_selector.currentText() == "3 ×MAC"
+        assert view.save_state()["ceiling_mac"] == 3.0
+        assert view.state_notice.isHidden()
+    finally:
+        view.deleteLater()
+
+
+@pytest.mark.parametrize("ceiling_mac", [2.0, "3", True, None, 0.0])
+def test_a_concentration_chart_whose_saved_top_cannot_be_read_opens_at_3_mac_and_says_so(
+    application: QApplication, ceiling_mac: object
+) -> None:
+    view = _chart(
+        CONCENTRATION_CHART,
+        {STATE_VERSION_KEY: 2, "time_base_s": 900.0, "ceiling_mac": ceiling_mac},
+    )
+    assert isinstance(view, ConcentrationView)
+
+    try:
+        assert view.ceiling_selector.currentText() == "3 ×MAC"
+        assert view.frame_request().time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
+        assert not view.state_notice.isHidden()
+        assert view.state_notice.text() == _NOTICE
+    finally:
+        view.deleteLater()
+
+
+def test_an_axis_top_picked_in_one_chart_redraws_only_that_chart(
+    application: QApplication, dashboard: SimulationView
+) -> None:
+    """`PL-K1VH`: each chart owns its top, and a pick is drawn at once.
+
+    The other chart and the F_A/F_I plot keep drawing the frame they share.
+    The expected top is 1.5 times the running agent's MAC, read from its
+    snapshot rather than from the chart.
+    """
+
+    dashboard.layout_container.choose_view(AreaId(2), CONCENTRATION_CHART)
+    dashboard.present(False)
+    charts = [
+        view for view in dashboard.layout_container.views() if isinstance(view, ConcentrationView)
+    ]
+    wash_in = next(
+        view for view in dashboard.layout_container.views() if isinstance(view, WashInView)
+    )
+    presented = dashboard.presented_frames
+    mac_percent = dashboard.runs[0].controller.snapshot().agent_mac_percent
+
+    _pick_ceiling(charts[1], ChartCeiling.LOW)
+
+    assert dashboard.presented_frames == presented + 1, "the pick was not drawn at once"
+    low, standard = charts[1].chart.frame, charts[0].chart.frame
+    assert low is not None and standard is not None
+    assert low.axis_top_percent == pytest.approx(1.5 * mac_percent)
+    assert charts[1].chart.axis_ticks("right")[-1][1] == "1.50"
+    assert standard.axis_top_percent == pytest.approx(3.0 * mac_percent)
+    assert wash_in.chart.frame is standard
+    assert charts[1].ceiling_selector.currentText() == "1.5 ×MAC"
+    assert charts[0].ceiling_selector.currentText() == "3 ×MAC"
+    assert not any(view.owes_a_frame for view in (*charts, wash_in))
+
+
+def test_a_chart_at_another_top_keeps_its_plot_when_handed_the_frame_it_already_shows(
+    application: QApplication, dashboard: SimulationView, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A kept frame that a chart at 4.5 ×MAC already draws leaves its plot alone.
+
+    At a top other than the standard one, the plot holds a copy of the shared
+    frame. The check for whether the plot already shows a kept frame compared
+    the kept frame with that copy, so it never matched. On a tick that kept
+    the frame after the plot had widened, the chart emptied its plot and said
+    nothing could be drawn, while a chart at 3 ×MAC kept its traces (blind
+    review of `PL-K1VH`, both passes).
+    """
+
+    chart = next(
+        view for view in dashboard.layout_container.views() if isinstance(view, ConcentrationView)
+    )
+    ticks: list[ViewTick] = []
+    refresh = chart.refresh
+    monkeypatch.setattr(chart, "refresh", lambda tick: (ticks.append(tick), refresh(tick))[1])
+    _pick_ceiling(chart, ChartCeiling.HIGH)
+    drawn_tick = ticks[-1]
+    assert drawn_tick.frame is not None and drawn_tick.frame.frame is not None
+    source = drawn_tick.frame.frame
+    drawn = chart.chart.frame
+    assert drawn is not None and drawn is not source
+    # The plot is now wider than the width the kept frame was sampled for.
+    monkeypatch.setattr(chart.chart, "plot_width_px", lambda: source.plot_width_px + 50.0)
+
+    refresh(
+        replace(
+            drawn_tick, frame=ShownFrame(ValuesStanding.KEPT, source, drawn_tick.frame.selection)
+        )
+    )
+
+    assert chart.chart.frame is drawn, "the chart emptied a plot that showed the kept frame"
+    assert chart.withheld_text.isHidden()
 
 
 def test_the_shipped_induction_chart_is_built_on_the_15_minute_window(
@@ -491,7 +636,11 @@ def _drawn_by(item: object) -> tuple[object, ...] | None:
                 )
             )
     elif isinstance(item, pg.InfiniteLine):
-        reading.extend((item.value(), item.angle % 180, _pen_reading(item.pen)))
+        # pyqtgraph keeps a line's position as an int 0 until the line is moved
+        # away from where it was built, because it skips a move to an equal
+        # position. So a line placed at 0.0 reads 0 on a new chart and 0.0 on
+        # one that drew another position first, at the same place on screen.
+        reading.extend((float(item.value()), item.angle % 180, _pen_reading(item.pen)))
     elif isinstance(item, pg.LinearRegionItem):
         reading.extend(
             (

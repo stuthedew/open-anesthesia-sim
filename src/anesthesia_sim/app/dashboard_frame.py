@@ -31,7 +31,7 @@ enforces each of them.
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from math import floor
+from math import ceil, floor, isfinite
 from types import MappingProxyType
 from typing import Final
 
@@ -140,6 +140,14 @@ SIMULATION_TICK_INTERVAL_MS: Final = 100
 # and 5x a step takes longer than a frame, so some frames redraw unchanged
 # values. `test_a_frame_is_two_ticks` checks the relation with the tick.
 RENDER_INTERVAL_S: Final = 0.2
+# The shortest time, in milliseconds of real time, between the starts of two
+# frames drawn for a dial that the reader is moving. Nielsen Norman Group gives
+# 0.1 s as the limit for a user to feel that they are directly manipulating
+# what is on screen ("Response Times: The 3 Important Limits", nngroup.com).
+# The render tick stays slower, because a chart that follows a playing run
+# with no hand on a dial is not being manipulated, and drawing every 0.1 s
+# would double the drawing load for the whole run (`PL-NKFD`).
+INPUT_FRAME_INTERVAL_MS: Final = 100
 # How wide the chart is before the first frame is drawn. It is the narrowest
 # rung, which is the width "Fit run" chooses for a run that has recorded
 # nothing.
@@ -315,6 +323,26 @@ SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "model is not claimed to represent a patient past this span. The values shown "
     "are the last completed step, inside the supported span. {exit}"
 )
+#: The banner a run shows in the last stretch before the supported run length. It is
+#: drawn in the muted colour, as the stop it announces is, because nothing is wrong
+#: with the run (`PL-H2K2`, `PL-0889`).
+APPROACHING_LIMIT_NOTICE_TEMPLATE: Final = (
+    "This run stops in {remaining} of simulated time, at the supported run length of {run_length}."
+)
+#: The least real time, in seconds, for which the approaching-limit banner is on
+#: screen before the stop, at the fastest playback rate. WCAG 2.2 SC 2.2.1 (Timing
+#: Adjustable) asks that a user be warned before a time limit expires and given at
+#: least 20 seconds to act. Read from W3C's Understanding document for that criterion
+#: on 2026-11-22. The run's limit is in simulated time, so the banner opens this many
+#: real seconds before the stop at the fastest rate, and earlier in real time at every
+#: slower rate.
+APPROACHING_LIMIT_WARNING_REAL_S: Final = 20
+#: How much simulated time before the supported run length the banner opens: the
+#: real-time warning above, at the fastest playback rate offered. At 300x that is
+#: 6,000 s, 1 h 40 min of simulated time.
+APPROACHING_LIMIT_NOTICE_S: Final = APPROACHING_LIMIT_WARNING_REAL_S * max(
+    rate.multiplier for rate in SUPPORTED_PLAYBACK_RATES
+)
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
@@ -403,8 +431,8 @@ NO_TRACES_SHOWN_TEXT: Final = (
 READOUTS_PLACE_TEXT: Final = "the readouts above"
 
 # Shown when a drawn trace goes above the top of the plot, naming the traces
-# that do. A setting in common use exceeds the fixed axis
-# (`CHART_AXIS_TOP_MAC`): sevoflurane's 8% dial setting is 4.00 MAC. A trace
+# that do. A setting in common use exceeds the standard top
+# (`CHART_AXIS_TOP_MAC`): sevoflurane's 8% dial setting is 4.44 MAC at age 40. A trace
 # clipped at the ceiling draws as a horizontal line, which is what a plateau
 # looks like. Growing the axis to fit was rejected, because it would redraw the
 # curve at a smaller height partway through the induction it is being used to
@@ -984,6 +1012,9 @@ PAUSE_LABEL: Final = "Pause"
 RESET_LABEL: Final = "Reset"
 PLAYBACK_LABEL: Final = "Playback"
 TIME_BASE_LABEL: Final = "Time base"
+# The label beside the control that sets the top of the compartment chart's
+# axis. The control names the top in MAC, so the label says what it sets.
+CHART_CEILING_LABEL: Final = "Axis top"
 FIT_RUN_LABEL: Final = "Fit run"
 
 # The chart panel's heading and its time-axis captions. The caption states
@@ -2215,6 +2246,137 @@ def halt_notice(
     return None
 
 
+@dataclass(frozen=True, slots=True)
+class Notice:
+    """The banner above a run's values, and the emphasis it is drawn with.
+
+    A run failing, or a setting being refused, is drawn as a warning. A stop
+    at the supported run length, and the banner that announces it, are drawn
+    muted, as the status word for that stop is. Nothing is wrong with a run
+    that reaches its declared span, and drawing it in the warning colour
+    would spend the interface's one signal for a real fault (`PL-0889`).
+    """
+
+    text: str
+    emphasis: Emphasis
+
+
+def run_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None,
+    *,
+    elapsed_s: int,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
+) -> Notice | None:
+    """Return the banner for a frame that drew, with its emphasis.
+
+    The text is `notice`'s, and it outranks everything else. Below it, a run
+    within `APPROACHING_LIMIT_NOTICE_S` of the supported run length says how
+    much simulated time it has left before it stops (`PL-H2K2`). So a reader
+    learns of the stop before it arrives, and the stop does not read as a
+    fault when it comes. A refused setting stays on screen until the next
+    accepted setting, so a refusal made hours earlier can still hold the
+    banner when the run enters that span. The countdown then follows the
+    refusal in the same banner, so the warning is never hidden behind it.
+
+    Args:
+        status: As `notice` takes it.
+        rejected_setting_notice: As `notice` takes it.
+        elapsed_s: The run's elapsed simulated time at this frame, in whole
+            seconds.
+        refused_reset: As `notice` takes it.
+        branch_offered: As `notice` takes it.
+
+    Returns:
+        The banner, or None when there is nothing to say.
+    """
+
+    text = notice(
+        status, rejected_setting_notice, refused_reset=refused_reset, branch_offered=branch_offered
+    )
+    remaining_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S - elapsed_s
+    countdown = (
+        APPROACHING_LIMIT_NOTICE_TEMPLATE.format(
+            remaining=format_elapsed(remaining_s), run_length=format_supported_run_length()
+        )
+        if remaining_s <= APPROACHING_LIMIT_NOTICE_S
+        else None
+    )
+
+    if text is None:
+        return None if countdown is None else Notice(countdown, Emphasis.MUTED)
+
+    stopped = status.failure_reason is not None or status.supported_limit_reason is not None
+
+    if countdown is not None and not stopped:
+        text = f"{text} {countdown}"
+
+    return Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
+
+
+def halt_run_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None = None,
+    *,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
+    started_over: bool = False,
+    charts_withheld: bool = False,
+) -> Notice | None:
+    """Return `halt_notice`'s banner with its emphasis, for a halt with no frame drawn yet.
+
+    Args:
+        status: As `halt_notice` takes it.
+        rejected_setting_notice: As `halt_notice` takes it.
+        refused_reset: As `halt_notice` takes it.
+        branch_offered: As `halt_notice` takes it.
+        started_over: As `halt_notice` takes it.
+        charts_withheld: As `halt_notice` takes it.
+
+    Returns:
+        The banner, or None when the run is not halted.
+    """
+
+    text = halt_notice(
+        status,
+        rejected_setting_notice,
+        refused_reset=refused_reset,
+        branch_offered=branch_offered,
+        started_over=started_over,
+        charts_withheld=charts_withheld,
+    )
+
+    return (
+        None
+        if text is None
+        else Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
+    )
+
+
+def _stopped_emphasis(
+    status: RunStatus, rejected_setting_notice: str | None, refused_reset: str | None
+) -> Emphasis:
+    """Return the emphasis of `notice`'s and `halt_notice`'s banners, by the same precedence.
+
+    A failure outranks the supported run length, as in `status_word`. A
+    banner that states a refused setting or a refused Reset is drawn as a
+    warning, because what the reader asked for was not done. That holds on a
+    run stopped at the supported run length too, whose banner then states
+    the refusal. Only the stop itself, with nothing refused, is muted.
+    """
+
+    if (
+        status.failure_reason is None
+        and status.supported_limit_reason is not None
+        and rejected_setting_notice is None
+        and refused_reset is None
+    ):
+        return Emphasis.MUTED
+
+    return Emphasis.WARNING
+
+
 def _supported_limit_setting_way_out(branch_offered: bool) -> str:
     """Return the sentence that names the way out to a new setting from a stopped run.
 
@@ -3227,8 +3389,8 @@ class RunStatement:
         transport: Which transport controls are usable, and why the
             selector is locked.
         timeline: The control-change panel.
-        banner: The notice banner's text before it is attributed to a run,
-            or None for no banner.
+        banner: The notice banner before it is attributed to a run, or None
+            for no banner.
     """
 
     agent_id: str
@@ -3238,7 +3400,7 @@ class RunStatement:
     status: StatusWord
     transport: Transport
     timeline: TimelinePanel
-    banner: str | None
+    banner: Notice | None
 
 
 def run_statement(
@@ -3247,7 +3409,7 @@ def run_statement(
     *,
     is_branch: bool,
     comparing: bool,
-    banner: str | None,
+    banner: Notice | None,
     stopped_on_mark: bool,
 ) -> RunStatement:
     """Return what a run's screen shows from its record alone, for `RunView.show_presentation`.
@@ -3263,8 +3425,8 @@ def run_statement(
             `RunView.adjustments` groups it.
         is_branch: As `transport` takes it.
         comparing: As `transport` takes it.
-        banner: The text from `notice` when a frame drew, or from
-            `halt_notice` when none has. The caller chooses, because only the
+        banner: The banner from `run_notice` when a frame drew, or from
+            `halt_run_notice` when none has. The caller chooses, because only the
             caller knows whether a frame drew.
         stopped_on_mark: As `status_word` takes it.
 
@@ -3441,7 +3603,10 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
             if _above_the_axis(frame, run.preview.percents(quantity))
         ]
     )
-    top = format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent)
+    # The top is named in both of the axis's units, so a reader working from
+    # either axis learns where the plot stops without converting (`PL-DVDY`).
+    top_fraction = fraction_from_percent(frame.axis_top_percent)
+    top = f"{format_percent(top_fraction)} ({format_mac_multiple(top_fraction, frame.mac_percent)})"
     sentences = []
 
     if off_scale:
@@ -3462,8 +3627,10 @@ def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
 
     A display step is the smallest change that the readouts print. This is the
     one test of "off the scale", and both the chart's off-scale notice and the
-    compartment schematic's off-scale mark use it. So the two Views cannot
-    disagree about one tension (`PL-RNYV`). The margin of one display step is
+    compartment schematic's off-scale mark use it (`PL-RNYV`). Each passes its
+    own top: the chart the top its View chose, and the schematic the standard
+    top. So the two agree about one tension only while the chart is at the
+    standard top. The margin of one display step is
     needed because of binary rounding. For example, desflurane's top of 3 x 6.6
     is 19.799999999999997 in binary. A value that the readouts print as the top
     is not above it.
@@ -3674,7 +3841,7 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
     return COMPARED_RUN_LINE_TEMPLATE.format(run=run.label, line=line)
 
 
-def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | None:
+def compared_run_notice(notice_text: str, run_name: str | None) -> str:
     """Return one run's banner in the notice column that the runs share, named while two are drawn.
 
     The banner sits in a column that both runs write into. All three of the
@@ -3713,15 +3880,16 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     panel and in both legends.
 
     Args:
-        notice_text: The result of `notice` for this run this tick, or None
-            when there is nothing to say.
+        notice_text: The banner's text for this run this tick. A run with
+            nothing to say has no banner to name, and
+            `run_presentation` does not call this for it.
         run_name: What the dashboard calls this run, from `run_label`, or
             None while only one run is drawn and there is nothing to tell it
             apart from.
 
     Returns:
-        The notice unchanged while one run is drawn or there is no notice, or
-        the run's name followed by the notice while two runs are drawn.
+        The notice unchanged while one run is drawn, or the run's name
+        followed by the notice while two runs are drawn.
 
     Raises:
         ValueError: If `run_name` is empty, because an empty name names no
@@ -3734,7 +3902,7 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     if run_name is not None and not run_name:
         raise ValueError("a run's name says which run the banner is about, so it cannot be empty")
 
-    if notice_text is None or run_name is None:
+    if run_name is None:
         return notice_text
 
     return COMPARED_RUN_NOTICE_TEMPLATE.format(run=run_name, notice=notice_text)
@@ -4052,3 +4220,30 @@ def readout_columns(width_px: float, panel_widths_px: Sequence[float], spacing_p
             return columns
 
     return READOUT_ROW_LADDER[-1]
+
+
+def input_frame_wait_ms(frame_cost_ms: float) -> int:
+    """Return how long to wait after a dial input's frame before the next one may draw, in ms.
+
+    The next frame starts `INPUT_FRAME_INTERVAL_MS` after this one started,
+    or twice this frame's cost after it started, whichever is later. A cheap
+    frame therefore lets the charts follow a moving dial at Nielsen Norman
+    Group's 0.1 s limit. A frame that takes longer than half the interval,
+    such as one that draws a preview over a long run, leaves the thread free
+    for at least as long as it drew, so a moving dial never takes more than
+    half of the time in which the run's steps and the reader's inputs are
+    handled (`PL-NKFD`). The result is rounded up to a whole millisecond,
+    because that is what a timer takes.
+
+    Raises:
+        ValueError: `frame_cost_ms` is negative or not finite. A wall-clock
+            difference can be neither, so either means the caller measured
+            the wrong thing.
+    """
+
+    if not isfinite(frame_cost_ms) or frame_cost_ms < 0.0:
+        raise ValueError(
+            f"a frame's cost must be a finite number of ms >= 0, got {frame_cost_ms!r}"
+        )
+
+    return ceil(max(INPUT_FRAME_INTERVAL_MS - frame_cost_ms, frame_cost_ms))

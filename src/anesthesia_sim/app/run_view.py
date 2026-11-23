@@ -178,7 +178,7 @@ from anesthesia_sim.app.run_presentation import (
     drawn_run,
     halted_run,
 )
-from anesthesia_sim.app.run_surfaces import emphasised, panel_frame
+from anesthesia_sim.app.run_surfaces import emphasis_color, emphasised, panel_frame
 from anesthesia_sim.app.stylesheets import (
     agent_selector_stylesheet,
     agent_surface_stylesheet,
@@ -328,13 +328,14 @@ class RunView(QWidget):
             the run.
         presentation_requested: Emitted with the coalesce flag when an action
             on this run means the dashboard must draw a frame. `True`, as for
-            a held thumb's movement, leaves the frame to the next render
+            a released thumb's value, leaves the frame to the next render
             tick. `False` asks for a frame now. `SimulationView.present`
             handles the signal (`PL-R2YM`).
         input_presentation_requested: Emitted when a dial input set a
-            value that needs a frame. The dashboard draws one at once unless
-            it has already drawn one for an input since the last render tick
-            (`SimulationView.present_input`, `PL-2WVC`).
+            value, or moved a held thumb's preview, and so needs a frame. The
+            dashboard draws one at once unless it drew one for an input less
+            than `INPUT_FRAME_INTERVAL_MS` ago (`SimulationView.present_input`,
+            `PL-2WVC`, `PL-NKFD`).
         case_restarted: Emitted when this run has started over from
             induction, after a Reset or an accepted change of agent. On a
             trunk run, that starts a new case, so no branch taken from the old
@@ -914,7 +915,12 @@ class RunView(QWidget):
         one_mac = presentation.one_mac
         self._one_mac_text.setText("" if isinstance(one_mac, NotBuilt) else one_mac)
         self._delivered_text.setText(presentation.delivered_line)
-        self._notice_text.set_notice(presentation.notice)
+        banner = presentation.notice
+
+        if banner is None:
+            self._notice_text.set_notice(None)
+        else:
+            self._notice_text.set_notice(banner.text, emphasis_color(banner.emphasis))
 
         values = presentation.values
         self._readout_row.set_readouts(values.readouts)
@@ -1165,9 +1171,10 @@ class RunView(QWidget):
         screen and the simulation then disagree, and the frame for either must not
         wait for a tick (`PL-R2YM`). Otherwise the dial input decides. A value set by
         a key, the wheel or a click on the track asks the dashboard for a frame, which
-        it draws at once unless it has drawn one for an input since the last render
-        tick (`SimulationView.present_input`, `PL-2WVC`). A released thumb's value
-        leaves the frame to the end of the preview, which follows at once.
+        it draws at once unless it drew one for an input less than
+        `INPUT_FRAME_INTERVAL_MS` ago (`SimulationView.present_input`, `PL-2WVC`).
+        A released thumb's value leaves the frame to the end of the preview, which
+        follows at once.
 
         A dial input still rewrites this run's own labels at once, from a
         snapshot read after the change. The dashboard then shows every View the runs
@@ -1237,9 +1244,10 @@ class RunView(QWidget):
         when the core holds a setting the controller did not record. A value
         the run would refuse draws no preview, so the chart never predicts a
         future the run cannot have. The release then reports the refusal
-        through `_apply_setting`, as it reports any refused setting. The chart
-        is redrawn on the next render tick, as a dragged slider's frames always
-        were (`PL-R2YM`).
+        through `_apply_setting`, as it reports any refused setting. The
+        dashboard draws the chart at once for the first move, and within
+        `INPUT_FRAME_INTERVAL_MS` for each move after it
+        (`SimulationView.present_input`, `PL-NKFD`).
         """
 
         setting = SettingPreview(control, value)
@@ -1260,7 +1268,7 @@ class RunView(QWidget):
                 ),
             )
 
-        self.presentation_requested.emit(True)
+        self.input_presentation_requested.emit()
 
     @halt_gate
     def end_preview(self) -> None:

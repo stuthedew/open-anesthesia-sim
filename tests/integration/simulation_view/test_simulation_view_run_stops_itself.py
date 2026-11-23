@@ -65,7 +65,8 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES
+from anesthesia_sim.app.stylesheets import foreground_stylesheet
+from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, MUTED, WARNING
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING
 from anesthesia_sim.app.views import AccountingView
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
@@ -319,6 +320,37 @@ def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_
     assert run._notice_text.notice() is not None
 
 
+def test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A correct stop at the supported run length is drawn muted, and a failure stays a warning.
+
+    Before `PL-0889` every banner was drawn in `WARNING`, the interface's one
+    colour for a fault. So a run that had done everything right was styled as
+    a failure, directly under a status word drawn muted. The span is shortened
+    to 61 s, as in the test above, so the run reaches it quickly.
+    """
+
+    monkeypatch.setattr(
+        supported_ranges_module, "MAXIMUM_STEP_COUNT", _TIMED_STOP_S // SIMULATION_STEP_S
+    )
+    stopped = SimulationController()
+    stopped.start()
+    _advance(stopped, _TIMED_STOP_S)
+    failed = SimulationController()
+    failed.start()
+    failed.advance()
+    failed.fail("RuntimeError: the frame could not be drawn")
+
+    assert stopped.has_reached_supported_limit is True
+
+    for controller, color in ((stopped, MUTED), (failed, WARNING)):
+        banner = _case_view(application, BranchedCase(controller)).runs[0]._notice_text
+
+        assert banner.notice() is not None
+        assert banner.styleSheet() == foreground_stylesheet(color)
+
+
 def test_a_frame_that_keeps_failing_is_attempted_once_not_every_tick(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -521,10 +553,15 @@ def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
     run = view.runs[0]
     dial = _dials(run)._fresh_gas_flow_slider
     assert dial.value_label.text() == "2.0 L/min"
+    # The press draws its preview's frame at once (`PL-NKFD`), so the
+    # snapshot is made to refuse only after it, and the release's frame is
+    # the one that halts the run.
+    dial.slider.setSliderDown(True)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
     capfd.readouterr()
 
-    _set_fresh_gas_flow(run, 4.0)
+    dial.slider.setSliderPosition(slider_position(4.0, FLOW_DISPLAY_DECIMALS))
+    dial.slider.setSliderDown(False)
 
     assert "Traceback" not in capfd.readouterr().err
     assert controller.has_failed is True
@@ -710,9 +747,15 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     controller = _paused_run_with_history()
     run = _shown_view(application, controller).runs[0]
     assert run._control_timeline_text.text() != NO_CONTROL_CHANGES_TEXT
+    dial = _dials(run)._fresh_gas_flow_slider
+    # The press draws its preview's frame at once (`PL-NKFD`), so the
+    # snapshot is made to refuse only after it, and the release's frame is
+    # the one that halts the run.
+    dial.slider.setSliderDown(True)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
 
-    _set_fresh_gas_flow(run, 4.0)
+    dial.slider.setSliderPosition(slider_position(4.0, FLOW_DISPLAY_DECIMALS))
+    dial.slider.setSliderDown(False)
 
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT

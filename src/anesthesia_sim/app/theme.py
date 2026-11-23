@@ -716,6 +716,8 @@ AGENT_SELECTOR_WIDTH = 180
 # longest options differ.
 TIME_BASE_SELECTOR_WIDTH = 170
 PLAYBACK_RATE_SELECTOR_WIDTH = 150
+# The axis-top dropdown's options are short, such as "4.5 ×MAC" (`PL-K1VH`).
+CHART_CEILING_SELECTOR_WIDTH = 110
 
 # The chip's inset. It is slightly wider than the header badge's 6, because the
 # chip carries two lines rather than one, and it sits among controls rather

@@ -60,12 +60,13 @@ from anesthesia_sim.app.controller import (
 )
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
+    ChartCeiling,
     chart_axis_top_percent,
-    chart_grid_interval_percent,
     format_elapsed,
     format_mac_multiple,
     format_percent,
     format_wash_in_ratio,
+    mac_axis_ticks,
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
@@ -358,7 +359,9 @@ def test_the_references_are_placed_from_the_running_agent_s_own_values() -> None
 
         assert frame.mac_percent == snapshot.agent_mac_percent
         assert frame.one_mac_percent == snapshot.agent_mac_percent
-        assert frame.axis_top_percent == chart_axis_top_percent(snapshot.agent_mac_percent)
+        assert frame.axis_top_percent == chart_axis_top_percent(
+            snapshot.agent_mac_percent, ChartCeiling.STANDARD
+        )
         lower, upper = frame.mac_awake_band_percent
         assert lower < upper < frame.one_mac_percent
         assert frame.mac_ticks[-1] == (pytest.approx(frame.axis_top_percent), "3.0")
@@ -485,26 +488,77 @@ def test_a_frame_refuses_a_width_that_is_not_a_width() -> None:
 # ------------------------------------------------------------------ the axes
 
 
-@pytest.mark.parametrize("mac_percent", [2.0, 1.15, 6.0])
-def test_the_percent_axis_is_labelled_at_exactly_the_values_it_rules(mac_percent: float) -> None:
-    top = chart_axis_top_percent(MacPercent(mac_percent))
-    interval = chart_grid_interval_percent(MacPercent(mac_percent))
-    ticks = percent_axis_ticks(top, interval)
+@pytest.mark.parametrize(
+    ("mac_percent", "ceiling", "expected_percent", "expected_mac"),
+    [
+        (1.8, ChartCeiling.LOW, "0.0 0.5 1.0 1.5 2.0 2.5", "0.00 0.25 0.50 0.75 1.00 1.25 1.50"),
+        (1.8, ChartCeiling.STANDARD, "0 1 2 3 4 5", "0.0 0.5 1.0 1.5 2.0 2.5 3.0"),
+        (1.8, ChartCeiling.HIGH, "0 1 2 3 4 5 6 7 8", "0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5"),
+        (1.17, ChartCeiling.LOW, "0.0 0.5 1.0 1.5", "0.00 0.25 0.50 0.75 1.00 1.25 1.50"),
+        (1.17, ChartCeiling.STANDARD, "0 1 2 3", "0.0 0.5 1.0 1.5 2.0 2.5 3.0"),
+        (1.17, ChartCeiling.HIGH, "0 1 2 3 4 5", "0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5"),
+        (6.6, ChartCeiling.LOW, "0 2 4 6 8", "0.00 0.25 0.50 0.75 1.00 1.25 1.50"),
+        (6.6, ChartCeiling.STANDARD, "0 5 10 15", "0.0 0.5 1.0 1.5 2.0 2.5 3.0"),
+        (6.6, ChartCeiling.HIGH, "0 5 10 15 20 25", "0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5"),
+    ],
+)
+def test_each_axis_is_labelled_at_round_values_of_its_own_unit(
+    mac_percent: float, ceiling: ChartCeiling, expected_percent: str, expected_mac: str
+) -> None:
+    """The percent axis carries round percentages, and the MAC axis round MAC multiples.
 
-    assert ticks[0] == (0.0, "0")
-    assert ticks[-1][0] == pytest.approx(top)
+    Each expected list is worked by hand. The MACs are Mapleson 1996's at age
+    40 (PMID 8777094, abstract). The percent step is the finest of 1, 2 and 5
+    times a power of ten that gives no more intervals than the MAC axis has,
+    so isoflurane at the standard top, 3.51%, is labelled 0 to 3 in whole
+    percent rather than at its half-MAC values, 0.585 and 1.755 (`PL-BNMZ`).
+    Each label sits at the value it names.
+    """
 
-    for index, (position, label) in enumerate(ticks):
-        assert position == pytest.approx(index * interval)
-        assert float(label) == pytest.approx(position)
+    frame_top = chart_axis_top_percent(MacPercent(mac_percent), ceiling)
+    mac_ticks = mac_axis_ticks(frame_top, MacPercent(mac_percent))
+    percent_ticks = percent_axis_ticks(frame_top, len(mac_ticks) - 1)
+
+    assert " ".join(label for _, label in percent_ticks) == expected_percent
+    assert " ".join(label for _, label in mac_ticks) == expected_mac
+    assert len(percent_ticks) <= len(mac_ticks)
+
+    for position, label in percent_ticks:
+        assert position == pytest.approx(float(label))
+
+    for position, label in mac_ticks:
+        assert position == pytest.approx(float(label) * mac_percent)
 
 
-def test_the_percent_axis_refuses_a_flat_or_unruled_axis() -> None:
-    with pytest.raises(ValueError, match="top_percent"):
-        percent_axis_ticks(0.0, 1.0)
+def test_the_frame_draws_both_axes_at_the_top_it_carries() -> None:
+    """A frame redrawn at another top gives that top's axes, and nothing else changes.
 
-    with pytest.raises(ValueError, match="interval_percent"):
-        percent_axis_ticks(6.0, 0.0)
+    A View draws the shared frame at its own top with `dataclasses.replace`
+    (`PL-K1VH`), so the axes must follow the field rather than be fixed when
+    the frame is assembled. Each expected value is the top times desflurane's
+    6.6% MAC, worked by hand.
+    """
+
+    controller = _run(10, "desflurane")
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+    low = replace(frame, ceiling=ChartCeiling.LOW)
+
+    assert frame.ceiling is ChartCeiling.STANDARD
+    assert frame.axis_top_percent == pytest.approx(19.8)
+    assert low.axis_top_percent == pytest.approx(9.9)
+    assert low.mac_ticks[-1] == (pytest.approx(9.9), "1.50")
+    assert low.percent_ticks[-1] == (pytest.approx(8.0), "8")
+    assert low.runs is frame.runs
+
+
+def test_the_percent_axis_refuses_a_flat_axis_or_no_interval() -> None:
+    with pytest.raises(ValueError, match="top_percent must be strictly positive, got 0.0"):
+        percent_axis_ticks(0.0, 6)
+
+    with pytest.raises(ValueError, match="most_intervals must be at least 1, got 0"):
+        percent_axis_ticks(6.0, 0)
 
 
 def test_the_wash_in_axis_is_labelled_at_quarter_fractions_up_to_equilibrium() -> None:
@@ -667,10 +721,7 @@ def _frame(
         plot_width_px=_PLOT_WIDTH_PX,
         mac_percent=MacPercent(2.0),
         mac_age_years=40,
-        axis_top_percent=Percent(6.0),
-        grid_interval_percent=1.0,
-        percent_ticks=percent_axis_ticks(6.0, 1.0),
-        mac_ticks=(),
+        ceiling=ChartCeiling.STANDARD,
         one_mac_percent=2.0,
         mac_awake_band_percent=(0.58, 0.78),
         mac_awake=load_agent_parameters("sevoflurane").mac_awake,
@@ -1177,7 +1228,7 @@ def test_at_opening_settings_fat_first_hour_spans_under_4_px_at_1_mac_and_12_px_
 
     agent = load_agent_parameters(agent_id)
     mac = mac_for_patient(agent, load_reference_adult_parameters()).percent
-    pixels_per_percent = CHART_HEIGHT / chart_axis_top_percent(mac)
+    pixels_per_percent = CHART_HEIGHT / chart_axis_top_percent(mac, ChartCeiling.STANDARD)
 
     def fat_pixels_at_one_hour(dial_percent: float) -> float:
         system = AgentUptakeSystem.for_agent(agent_id)

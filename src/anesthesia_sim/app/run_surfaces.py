@@ -54,7 +54,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 
-__all__ = ["AccountingPanel", "ParameterControls", "emphasised", "panel_frame"]
+__all__ = ["AccountingPanel", "ParameterControls", "emphasis_color", "emphasised", "panel_frame"]
 
 #: The theme colour each status emphasis is drawn in. `dashboard_frame` names
 #: only the role, so that it declares no colour. This table is the one place
@@ -78,6 +78,12 @@ def panel_frame(object_name: str) -> QFrame:
     frame.setStyleSheet(panel_stylesheet(object_name))
 
     return frame
+
+
+def emphasis_color(emphasis: Emphasis) -> str:
+    """Return the theme colour that `emphasis` is drawn in."""
+
+    return _EMPHASIS_COLOR[emphasis]
 
 
 def emphasised(label: QLabel, word: StatusWord) -> None:
