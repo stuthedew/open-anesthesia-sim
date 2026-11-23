@@ -4273,9 +4273,22 @@ rely on a color-scheme hint. Qt 6.8 documents its color-scheme setting
 supported on all platforms". On 2026-09-20 the setting was seen to be ignored
 outright: it still reported `Unknown` after being set.
 
-Disabled controls follow the host because both palette mechanisms leave the
-`Disabled` color group to the platform, and the stylesheets declare a disabled
-color only for the transport buttons and the menu entries. The project's rule
+The interface asks for the Light color scheme as well, before it sets the
+palette (`PL-YZ9L`). On a Mac set to Dark, Qt draws each letter with a white
+fill, and macOS thickens the strokes by the fill color, so the interface's
+dark lettering was drawn heavier than under Light. On macOS the request sets
+the application's appearance to Light (Aqua), and the letters are then drawn
+as under Light. Where a platform ignores the request, the palette still
+applies. Only a Mac can show whether the lettering then matches, and the
+test (`test_declaring_the_application_asks_for_the_light_colour_scheme_before_its_palette`)
+checks only that the request is made, and made first.
+
+Disabled controls follow the platform because both palette mechanisms leave
+the `Disabled` color group to it, and the stylesheets declare a disabled color
+only for the transport buttons and the menu entries. On a platform that
+honors the Light request, such as macOS, the group comes from the platform's
+light palette. On one that ignores the request, it follows the host
+appearance. The project's rule
 for interface colors (`.claude/rules/ui-color.md`) governs any decision to
 declare a disabled color.
 The splitter handles are enabled (`PL-W9P6`), so the border between two areas
@@ -4284,8 +4297,8 @@ surface. A test
 (`test_the_border_between_two_areas_shows_the_page_rather_than_the_host`)
 checks this (`PL-05M4`).
 
-Tooltips also follow the host, because they draw from `ToolTipBase` and
-`ToolTipText`, which are outside the declared roles. This interface shows a
+Tooltips also follow the platform in the same way, because they draw from
+`ToolTipBase` and `ToolTipText`, which are outside the declared roles. This interface shows a
 tooltip in two places: the reason that a menu entry is unavailable, and the
 description of the "+" button at the end of the Workspace tabs. No contrast
 requirement measures a tooltip's colors.
@@ -5549,6 +5562,13 @@ it does at the run's opening, where all six traces start together.
 `tests/unit/test_chart_frame.py` contain both worked examples above verbatim.
 They also contain the fat and muscle cases behind the decisions to report every
 run and every compartment in reach.
+At the plot's least height, the tallest box, the agent and six value lines,
+fits whole inside the plot while the time axis's title is on one line, in the
+container's font and in the font the CI runners draw in
+(`test_the_tallest_hover_box_fits_the_plot_at_its_least_height`).
+It does not fit, and the plot's edge cuts through its last value line, in two
+cases: a plot about 400 px wide, where the title breaks onto a second line,
+and a 13-pixel desktop font (`PL-HXSD`).
 
 The rules weighed before this one, and the scans behind reporting every run in
 reach (`PL-JVHL`) and every compartment in reach (`PL-0RZ0`), are in those
