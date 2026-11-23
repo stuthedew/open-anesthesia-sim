@@ -480,7 +480,9 @@ four chapters are the ones this project would reach for first:
 
 - **Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
   anesthesia.** pp. 159–86. PMID
-  [18175091](https://pubmed.ncbi.nlm.nih.gov/18175091/). The circle system, why
+  [18175091](https://pubmed.ncbi.nlm.nih.gov/18175091/), DOI
+  [10.1007/978-3-540-74806-9_8](https://doi.org/10.1007/978-3-540-74806-9_8),
+  checked against PubMed 2026-11-23. The circle system, why
   inhaled and intravenous kinetics are modelled differently, the F_A/F_I curve,
   the general anesthetic equation, and the delivered-to-inspired discrepancy
   under low fresh gas flow. **Same two authors as the De Wolf et al. 2012 *BMC
@@ -523,8 +525,8 @@ Ishibashi et al. 2006 and Wissing's compartmental parameters (Rietbrock et al.
 demographics in no straightforward way, Wissing calls allocating fitted
 compartments to tissues "hardly feasible", and the chapter's authors find
 compartmental and physiologic models fit equally well (Hendrickx et al. 2006a).
-`docs/MODEL.md` § "Known limitations" cites these pages for that description
-and those cautions, and for no value.
+`docs/MODEL.md` and `docs/PARAMETERS.md` cite these pages for that
+description and those cautions, and for no value.
 
 ### Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber
 
