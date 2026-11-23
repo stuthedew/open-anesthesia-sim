@@ -243,7 +243,9 @@ CHART_HEIGHT = 360
 # before the View starts to scroll inside its Area. 160 px is a placeholder
 # that `PL-CBYS` chose: the percent axis still shows its 1 ×MAC and 2 ×MAC
 # ticks at this height. A smaller value lets the View scroll later and makes
-# the traces harder to tell apart.
+# the traces harder to tell apart. A desktop font large enough to make the
+# tallest hover box taller than this raises the least height to the box's
+# (`qt_chart._HoverReadout.hold_the_tallest_box`).
 CHART_LEAST_HEIGHT = 160
 
 # The least height of the box that holds the rows above a chart View's plot:
@@ -253,6 +255,13 @@ CHART_LEAST_HEIGHT = 160
 # placeholder that `PL-CBYS` chose. A smaller value leaves the plot more of a
 # short Area, and shows fewer rows without scrolling.
 CHART_KEY_LEAST_HEIGHT = 36
+
+# The least height of the box that holds one run's list of control changes.
+# Where two runs' records share the record column and one list is long, that
+# list's box is squeezed to this height and the reader scrolls it, while each
+# run's heading and count of changes stay in view (`PL-HF1B`). 30 px shows two
+# lines of the list's text. It is a placeholder that `PL-HF1B` chose.
+RECORD_ENTRIES_LEAST_HEIGHT = 30
 
 PAGE_PADDING = 16
 

@@ -128,7 +128,7 @@ def test_the_control_change_record_is_readable_at_the_minimum_window_width(
     assert ("unavailable" in run._subtitle_text.text()) is not version_is_known
     assert "->" in label.text()
     assert label.width() >= widest_part
-    assert view._record_scroll.horizontalScrollBar().maximum() == 0
+    assert run._control_timeline_entries.horizontalScrollBar().maximum() == 0
 
 
 @pytest.mark.parametrize(("version_is_known", "width_px"), [(True, 1366), (False, 1920)])
@@ -238,7 +238,7 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
             "a second call moved a run label out of its column"
         )
 
-    assert records.isAncestorOf(run._control_timeline_overflow_text)
+    assert records.isAncestorOf(run._control_timeline_summary_text)
     assert second is not placed[0], "the second View took the placed accounting panel"
     assert again is placed[1], "a second call built a new control-change panel"
 

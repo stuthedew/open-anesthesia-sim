@@ -3,13 +3,17 @@ id: PL-HXSD
 title: At its least height the concentration plot cuts through the hover box's last value line when the time axis's title wraps or the desktop font is larger than the container's (box 113 px, plot 101.1 px at 400 px wide; box 120 px, plot 112.3 px with a 13-pixel font; measured offscreen 2026-11-23); make the box fit whole
 priority: P1
 effort: S
-status: untriaged
+status: done
 classes: ux, safety
 feature: chart-readout
-touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py, docs/INTERFACE.md
+milestone: v0.6.22
+touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/theme.py, tests/integration/test_qt_chart.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - the gate items are done and the release waits on the owner's test drive; this is the next item of the chart-readout chain, so it lands in a patch release rather than holding the cut
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2276
 filed-pr: 2274
+tests: tests/integration/test_qt_chart.py::test_the_tallest_hover_box_is_drawn_whole_at_the_least_height, tests/integration/test_qt_chart.py::test_a_font_too_large_for_the_least_height_makes_the_chart_taller, tests/integration/test_qt_chart.py::test_no_hover_box_runs_past_the_side_of_a_narrow_chart, tests/integration/test_qt_chart.py::test_a_box_on_show_is_placed_again_when_the_font_changes
 ---
 
 **Problem.** At its least height the concentration plot cuts through the hover box's last value line when the time axis's title wraps or the desktop font is larger than the container's (box 113 px, plot 101.1 px at 400 px wide; box 120 px, plot 112.3 px with a 13-pixel font; measured offscreen 2026-11-23); make the box fit whole
@@ -79,3 +83,89 @@ the 1366 by 768 layouts their slack in every View, not only the narrow ones.
 **Generator check.** A one-off. It shares its cause with `PL-S6CP`: a height
 measured in the container's font only. The `PL-S0HP` test now pins two fonts,
 and this item adds the larger one.
+
+**Done 2026-11-23.** Route 3, in a lighter form than the brief feared, with
+route 1 kept as a floor. The box is now an item of the plot's scene rather
+than of its view box, so the view box no longer clips it. `_HoverReadout.show`
+in `src/anesthesia_sim/app/qt_chart.py` still keeps the box inside the plot
+wherever the plot is as tall as the box, by the old rules. Where it is not,
+the box is moved up until all of it is inside the chart widget, over the time
+axis if need be. `_HoverReadout.hold_the_tallest_box` sets the plot's least
+height to the larger of the theme height and the tallest box's height, and
+gives the box the plot's font. Both charts call it again on a font change. At
+the container's font, DejaVu Sans and 13 px the theme height is the larger,
+so no least height changed: 160 px and 120 px in both fonts, measured
+offscreen, and the page and layout tests (100) pass unchanged. No overlay
+widget was needed, and `hover_box` reports the same pixels as before.
+
+**Best practice, read 2026-11-23.** Each source was read through a fetch of
+the page itself.
+
+1. WCAG 2.1 Understanding SC 1.4.4 Resize Text
+   (https://www.w3.org/WAI/WCAG21/Understanding/resize-text.html) asks that
+   text resize to 200% "without loss of content or functionality", and lists
+   failure F69, text "clipped, truncated or obscured". Shrinking the box's
+   text (route 2) would cut content exactly when a reader enlarges the font,
+   so it was rejected. The same reasoning is why the floor exists: the
+   24-pixel case in the test is that 200%.
+2. Carbon's tooltip guidance (https://carbondesignsystem.com/components/tooltip/usage/,
+   § "Placement") asks that a tooltip "overlays other content and is not
+   cut off by other surrounding components", and says "Do not cover related
+   content that is essential to the user's tasks."
+3. The Floating UI tutorial (https://floating-ui.com/docs/tutorial, §
+   "Shift middleware") describes the standard remedy: the floating element is
+   "shifted ... until it was fully in view". This fix is that shift, against
+   the chart widget's edge.
+4. Nielsen Norman Group's tooltip guidelines
+   (https://www.nngroup.com/articles/tooltip-guidelines/, § "Additional
+   Recommendations") say "When tooltips block the content they're related
+   to, they cause users to repeat steps". The box therefore stays inside the
+   plot where it fits, and covers the time axis's ticks and title only while
+   a plot too short for it is hovered.
+
+Route 1 alone (a least height that always gives the plot the box's height)
+was set aside because the concentration View has about 9 px of height to
+spare at 1366 by 768, and the narrow case needs 12 px in the container's
+font.
+
+**Found while testing.** The rectangle that `hover_box` reports stays whole
+when something clips the box, so the `PL-S0HP` test passed while the box was
+cut. It also hid a second cut: on the wide plot in the container's font the
+box's top border sat 0.4 px above the plot and was clipped, which its 0.5 px
+tolerance accepted. The new test reads the painted pixels of the box's top
+and bottom edges.
+
+**Blind review, 2026-11-23.** Both passes found that the first version moved
+the box only up and down. On a chart 420 px wide in DejaVu Sans even a
+three-line box is 371 px wide, wider than the 335 px plot, so a box beside a
+point in the middle ran past the chart's side: 66 of 156 hovers in the middle
+fifth of the plot, measured on that version. The box now goes to the other
+side of the point where it does not fit (Floating UI's `flip`), and is moved
+across into the chart where it fits on neither side, over the point. A value
+cut off at the edge can be misread, and a covered point cannot. Pass 2 also
+found that a font change gave a box on show its new size without placing it
+again, so a box above its point grew down over it. Both charts now place the
+box again on a font change. Regression tests:
+`test_no_hover_box_runs_past_the_side_of_a_narrow_chart` (66 of 156 boxes
+left the chart on the first version) and
+`test_a_box_on_show_is_placed_again_when_the_font_changes` (with the refresh
+removed, the box's bottom was 323.9 px against its point at 321 px). The
+beside-the-point test in `tests/integration/test_qt_rendering.py` now uses a
+box three quarters as wide as the plot and checks only the points at which
+that box fits beside them.
+
+**Regression check.** With `src/anesthesia_sim/app/qt_chart.py` reverted,
+`uv run pytest tests/integration/test_qt_chart.py -k "tallest or too_large"`
+fails 6 of 7 cases: "the box's top edge is 0% drawn" (wide, container
+font), "the box's bottom edge is 9% drawn" (wide, 13 px), 16% (narrow,
+container font), 1% (narrow, DejaVu Sans), 0% (narrow, 13 px), and
+"assert 160 > 160" for the 24-pixel font. The wide DejaVu Sans case was
+never cut and passes on both.
+
+**Files checked.** `docs/INTERFACE.md` § "The chart's hover readout: what
+the tooltip may show" (requirement added, developer note rewritten),
+`src/anesthesia_sim/app/theme.py` (`CHART_LEAST_HEIGHT` comment), the
+docstrings of `sizeHint`, `plot_area` and `_preferred_size` in
+`src/anesthesia_sim/app/qt_chart.py`, and `tests/integration/test_qt_rendering.py`
+(its placement tests still hold the box inside the plot where it fits; all
+pass unchanged).

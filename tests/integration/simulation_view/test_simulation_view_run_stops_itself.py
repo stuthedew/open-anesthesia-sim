@@ -779,7 +779,7 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     assert run._status_text.text() == STATUS_FAILED_TEXT
     assert controller.record().control_timeline == ()
     assert run._control_timeline_text.text() == NO_CONTROL_CHANGES_TEXT
-    assert run._control_timeline_overflow_text.isHidden() is True
+    assert run._control_timeline_summary_text.isHidden() is True
 
 
 #: What a reader sees of each group of `_SHOWN_GROUPS`, member by member.

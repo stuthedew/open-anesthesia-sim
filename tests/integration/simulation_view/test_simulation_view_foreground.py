@@ -67,9 +67,10 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "so the Area's surface shows through, and it draws no text: every string "
         "inside it belongs to the View's own widgets."
     ),
-    "_KeyScroll": (
+    "FittedScroll": (
         "the box that scrolls a chart View's window statement, reference values "
-        "and legend above the plot (`views._KeyScroll`, `PL-CBYS`). It paints no "
+        "and legend above the plot, and each run's list of control changes "
+        "(`qt_widgets.FittedScroll`, `PL-CBYS`, `PL-HF1B`). It paints no "
         "surface, through `stylesheets.clear_scroll_area_stylesheet`, and draws no "
         "text: every row inside it is a widget of its own."
     ),
