@@ -79,8 +79,10 @@ def test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words(
     assert panel.notice.notice() == (
         "Branch not opened — a branch at 1m would not open on the values this run held "
         "there, so it would be a different case rather than another way of managing this "
-        "one; the simulator's data may have changed since this run began, so reopen the "
-        "simulator and run the case again to branch it"
+        "one. The simulator's data may have changed since this run began, or the "
+        "simulator may have a fault. Reopen the simulator and run the case again to "
+        "branch it. If this notice comes back at the same point, the cause is a fault in "
+        "the simulator"
     )
     assert "agent_mac is " in caplog.text
 

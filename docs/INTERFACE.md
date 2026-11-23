@@ -734,10 +734,11 @@ taken from the "From" selector's opening entry instead.
 changed, and then gives the reason. The reason gives each instant as the panel
 writes it, such as "2m" or "1m30s". Where another control would open the
 branch, the reason names it by its label, such as "From", "Branch" or "Branch
-here". A branch rebuilt with values its run did not hold, which happens only
-when a data file changes while the simulator is open, says the data may have
-changed and to reopen the simulator. It names no setting by its code name
-(`PL-72X2`).
+here". A branch rebuilt with values its run did not hold has two possible
+causes: a data file changed while the simulator was open, or a fault in how
+the branch is rebuilt. Its notice names both, says to reopen the simulator and
+run the case again, and says that the same notice at the same point means a
+fault. It names no setting by its code name (`PL-72X2`).
 
 **For developers.** A run marked at 60 s after its clock reached 180 s is
 returned to, and the branch agrees with its trunk at each of the 61 seconds

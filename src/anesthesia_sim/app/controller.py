@@ -1969,9 +1969,9 @@ class SimulationController:
                 supported run length. This run is itself a branch, because a
                 branch of a branch is rejected rather than silently flattened.
                 Or the rebuilt branch holds an equation setting or agent
-                reference that this run did not hold at the fork. The error
-                names each differing setting or reference with both of its
-                values.
+                reference that this run did not hold at the fork. The error's
+                message is for the learner, and its note names each differing
+                setting or reference with both of its values.
         """
 
         return self._branch_from(self._resume_point_here())
@@ -2056,8 +2056,9 @@ class SimulationController:
                 branch, because a branch of a branch is rejected rather than
                 silently flattened. Or the rebuilt branch holds an equation
                 setting or agent reference that this run did not hold at the
-                fork. The error names each differing setting or reference with
-                both of its values.
+                fork. The error's message is for the learner, and its note
+                names each differing setting or reference with both of its
+                values.
         """
 
         return self._branch_from(self._resume_point_at_mark(bookmark))
@@ -2151,8 +2152,10 @@ class SimulationController:
             refusal = SimulationConfigurationError(
                 f"a branch at {format_elapsed(fork_at_s)} would not open on the values this run "
                 "held there, so it would be a different case rather than another way of "
-                "managing this one; the simulator's data may have changed since this run "
-                "began, so reopen the simulator and run the case again to branch it"
+                "managing this one. The simulator's data may have changed since this run "
+                "began, or the simulator may have a fault. Reopen the simulator and run the "
+                "case again to branch it. If this notice comes back at the same point, the "
+                "cause is a fault in the simulator"
             )
             refusal.add_note(detail)
             _LOG.error("Branch refused: %s", detail)

@@ -572,7 +572,7 @@ and the agent's displayed references, since the agent and patient are read again
 from their data files. A refusal names each setting or displayed reference that
 differs, with both of its values (`PL-NC62`). That list is for a developer, so
 it goes in the exception's note and the failure log, and the learner reads a
-sentence that says the data may have changed and what to do (`PL-72X2`). For every way of branching, one
+notice that names both possible causes, changed data or a fault, and what to do (`PL-72X2`). For every way of branching, one
 rule decides which stretch the branch names as its provenance: the stretch that
 the step reaching the fork ran under. After the case's opening, no later change
 on the trunk can replace that stretch. The branch runs under the stretch still
