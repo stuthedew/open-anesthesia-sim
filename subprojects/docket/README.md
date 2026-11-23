@@ -1756,7 +1756,14 @@ report.
 By default it counts apparatus filings - an item whose `touches` name a path under
 `workflow_paths`, whatever its lane, with `items_dir` and `notes_file` left out
 of that test for the reason churn leaves the store out - per period and per
-day, so a short final period compares with the full ones. Members a head's
+day, so a short final period compares with the full ones. A filing is judged by
+the `workflow_paths` committed on its own day as well as today's, read from
+`docket.toml`'s history. The list names apparatus test files one by one, so
+deleting one takes its entry off, and judged by today's list alone each earlier
+filing that named it left its week's row (`PL-LJK4`). Today's list is kept
+because a new test file is listed only once it exists, after the item that
+filed the work to create it. Where git cannot give the history, as in a shallow
+clone, each filing is judged by today's list and the report says why. Members a head's
 `root-cause-of:` names that were filed while that head was open get their own
 `+head` column: a deliberate sweep files dozens at once, and folded in it reads
 as the regression it was hunting. The `+sweep` column does the same for an item

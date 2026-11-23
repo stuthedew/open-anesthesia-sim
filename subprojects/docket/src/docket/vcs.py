@@ -3972,6 +3972,52 @@ def is_shallow(root: Path, *, runner: Runner | None = None) -> bool | None:
     return None
 
 
+@dataclass(frozen=True)
+class FileRevisions:
+    """Each text one file was committed with, oldest first, with its commit day.
+
+    `declined` says why the history could not be read in full, and then
+    `revisions` is empty, so no caller reads a truncated history as a whole one.
+    """
+
+    revisions: tuple[tuple[date, str], ...] = ()
+    declined: str = ""
+
+
+def file_revisions(
+    root: Path, ref: str, path: str, *, runner: Runner | None = None
+) -> FileRevisions:
+    """Every committed text of `path` that `ref` reaches, oldest first.
+
+    `docket inflow` reads `docket.toml`'s history through this, so that a past
+    filing's lane is judged by the `workflow_paths` list of its own day rather
+    than today's (`PL-LJK4`). The day is the committer date, which is the day
+    the text reached the branch `ref` names.
+
+    **A shallow clone declines rather than answering**, as `since_filed` does:
+    the revisions it is missing are the oldest, and those are the ones an old
+    filing is judged by. So does a git that cannot say whether the history is
+    complete, and any question git did not answer.
+    """
+    run = _Silences(runner or _run_git)
+    shallow = is_shallow(root, runner=run)
+    if shallow is True:
+        return FileRevisions(
+            declined=f"this clone is shallow, so {path}'s oldest texts are missing"
+        )
+    if shallow is None:
+        return FileRevisions(declined="git cannot say whether this checkout's history is complete")
+    listing = run(["log", "--format=%H %cs", ref, "--", path], root)
+    commits = [line.split(" ", 1) for line in split_lines(listing) if line.strip()]
+    revisions = [
+        (date.fromisoformat(day), run(["show", f"{commit}:{path}"], root))
+        for commit, day in reversed(commits)
+    ]
+    if run.reason:
+        return FileRevisions(declined=run.reason)
+    return FileRevisions(revisions=tuple(revisions))
+
+
 def in_tree(root: Path, path: str) -> bool:
     """Whether a declared `touches` path is in the working tree now, as a file or a directory.
 

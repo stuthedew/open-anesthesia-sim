@@ -583,6 +583,18 @@ def load_model_evidence(root: Path) -> tuple[ModelEvidence, ...]:
         return parse_model_evidence(tomllib.load(handle), MODEL_EVIDENCE_NAME)
 
 
+def workflow_paths_in(text: str) -> tuple[str, ...]:
+    """The `workflow_paths` that one text of `docket.toml` declares, read as `load` reads it.
+
+    `docket inflow` reads each committed text through this (`PL-LJK4`). A text
+    that is not TOML raises `tomllib.TOMLDecodeError`, and a value that is not
+    a list of strings raises `ValueError`, which the first subclasses.
+    """
+    data = tomllib.loads(text)
+    section = data.get("docket", data)
+    return _tuple(section.get("workflow_paths"), Config().workflow_paths, "workflow_paths")
+
+
 def load(root: Path) -> Config:
     """Read `docket.toml` from the project root, falling back to the defaults.
 
