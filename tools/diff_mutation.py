@@ -46,7 +46,7 @@ says how to read a survivor. mutmut is in the `mutation` dependency group, so
 `make mutate` runs this tool through `uv run --group mutation`.
 
 **mutmut takes its settings from `pyproject.toml`'s `[tool.mutmut]` table,**
-which says why each one is set. This tool decides four things that the table
+which says why each one is set. This tool decides five things that the table
 cannot.
 
 - **Which tests run.** The table names an `@` file as the test selection, and
@@ -84,7 +84,13 @@ cannot.
   changes a test's parameters and so the test's id. mutmut then records exit
   status 255 and reports a timeout, though nothing timed out. This tool runs
   each such mutant's test files again, whole, and reports what they say. The
-  files first run once with no mutant applied, and must pass.
+  files first run once with no mutant applied, and must pass. Both runs leave
+  out the tests that the table deselects.
+- **The order of each mutant's tests.** mutmut stops a mutant's run at its
+  first failing test, so the order decides how long a caught mutant takes. In
+  the `forkserver` mode that the table chooses, mutmut 3.8.0 passes the tests
+  on in no fixed order. So the run script orders them fastest first, as
+  mutmut's `fork` mode does. `RUN_SCRIPT` says how (`PL-33CG`).
 
 **Every run starts with an empty `mutants/` directory.** mutmut keeps each
 verdict until the source of the mutated function changes. A test added since
@@ -848,8 +854,8 @@ def _pytest_in_mutants(
 
     The tests in `skipped` are left out, as mutmut's own run leaves out the
     tests that `deselected` reads from the table. Each of those fails on
-    mutmut's copy of the code with no mutant applied. Run here, one would fail
-    the run of the files with no mutant, and `settle` would then leave every
+    mutmut's copy of the code with no mutant applied. If one ran here, the run
+    of the files with no mutant would fail, and `settle` would then leave every
     mutant unsettled.
 
     A run that stopped because a test module raised while it was collected
