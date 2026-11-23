@@ -410,6 +410,25 @@ BAND_COMPOSITE = "MAC_AWAKE_BAND_COMPOSITE"
 #: How a report names `BAND_COMPOSITE` to a reader.
 BAND_COMPOSITE_NAME = "the MAC-awake band composite"
 
+#: The preview region's fill over the panel, derived the same way. While a
+#: control is dragged, each trace right of the run's reach is drawn over it.
+PREVIEW_COMPOSITE = "PREVIEW_REGION_COMPOSITE"
+
+#: The preview region's fill and the band's fill over the panel together,
+#: where a dragged preview crosses the band. Both fills sit at one depth, so
+#: either may be painted last, and this is the darker of the two orders.
+BAND_AND_PREVIEW_COMPOSITE = "MAC_AWAKE_BAND_AND_PREVIEW_COMPOSITE"
+
+#: The six chart traces, in the order `chart_frame.COMPARTMENT_TRACES` lists them.
+TRACES: tuple[str, ...] = (
+    "CIRCUIT_COLOR",
+    "ALVEOLAR_COLOR",
+    "MIXED_VENOUS_COLOR",
+    "VESSEL_RICH_COLOR",
+    "MUSCLE_COLOR",
+    "FAT_COLOR",
+)
+
 #: The `criterion` of a requirement that no success criterion sets, which a
 #: report prints as this project's own bar rather than as an SC number.
 PROJECT_BAR = "project"
@@ -429,6 +448,12 @@ class Requirement:
     minimum: float
     criterion: str
     why: str
+    #: Whether the pair is measured in all four `VISION_MODELS` and held at the
+    #: worst of them, rather than as displayed only. A mark that has no text
+    #: beside it to fall back on, such as a chart line, is told apart by
+    #: lightness alone under a dichromacy, which is the reason `TRACE_FLOOR`
+    #: gives for measuring traces that way.
+    every_model: bool = False
 
     @property
     def candidates(self) -> tuple[str, ...]:
@@ -572,6 +597,17 @@ _COMPARTMENT_MARK = (
 _BAND_CROSSING = (
     "a plotted compartment trace where it crosses the MAC-awake band, measured against "
     f"{BAND_COMPOSITE_NAME}, the band's fill over the panel"
+)
+
+#: The same inside the preview region a drag shows (`_PreviewMarks`), alone and
+#: where it overlaps the band (PL-GT8W).
+_PREVIEW_CROSSING = (
+    "a plotted compartment trace inside the preview region a drag shows, measured "
+    "against the region's fill over the panel"
+)
+_BAND_AND_PREVIEW_CROSSING = (
+    "a plotted compartment trace where the preview region a drag shows overlaps the "
+    "MAC-awake band, measured against both fills over the panel"
 )
 
 REQUIREMENTS: tuple[AnyRequirement, ...] = (
@@ -987,15 +1023,13 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement("MUSCLE_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
     Requirement("FAT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
     *(
-        Requirement(trace, BAND_COMPOSITE, AA_NON_TEXT, "1.4.11", _BAND_CROSSING)
-        for trace in (
-            "CIRCUIT_COLOR",
-            "ALVEOLAR_COLOR",
-            "MIXED_VENOUS_COLOR",
-            "VESSEL_RICH_COLOR",
-            "MUSCLE_COLOR",
-            "FAT_COLOR",
+        Requirement(trace, fill, AA_NON_TEXT, "1.4.11", why, every_model=True)
+        for fill, why in (
+            (BAND_COMPOSITE, _BAND_CROSSING),
+            (PREVIEW_COMPOSITE, _PREVIEW_CROSSING),
+            (BAND_AND_PREVIEW_COMPOSITE, _BAND_AND_PREVIEW_CROSSING),
         )
+        for trace in TRACES
     ),
     Requirement(
         "MAC_AWAKE_BAND_COLOR",
@@ -1038,6 +1072,18 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "each other. The minimum is set above the 1.48 that six traces cannot all "
         "exceed against each other, so the reference is more distinct from fat "
         "than any two traces can be made (PL-6W49)",
+        every_model=True,
+    ),
+    Requirement(
+        "FAT_COLOR",
+        "MAC_AWAKE_BAND_COLOR",
+        1.5,
+        PROJECT_BAR,
+        "the MAC-awake band's edges told apart from the fat trace by lightness, "
+        "for the reason the 1 MAC line is. After a long case the nearly flat fat "
+        "trace lies near the band, a third of the way to 1 MAC, and the edges are "
+        "flat lines too (PL-6W49)",
+        every_model=True,
     ),
 )
 
@@ -1107,7 +1153,7 @@ KNOWN_SHORTFALLS: dict[tuple[str, str], Shortfall] = {}
 #: 3:1 would be 87% as dark as the lightest trace (`MUSCLE_COLOR`, 3.43:1), so
 #: furniture would weigh as much as data, and the order the chart rests on -
 #: ruling at 1.31:1, under `MUTED` reference lines at 5.00:1, under traces at
-#: 3.43-8.85:1, with widths 1 / 1.5 / 2-3 px carrying the same order - would
+#: 3.43-7.57:1, with widths 1 / 1.5 / 2-3 px carrying the same order - would
 #: collapse at its bottom rung. 1.31:1 is where charting practice puts a ruling
 #: deliberately: ggplot2's `theme_bw`
 #: rules its panel at grey92, 1.19:1 on white, and Matplotlib's default
@@ -1172,16 +1218,6 @@ EXEMPT: dict[str, tuple[Exemption, ...]] = {
         ),
     )
 }
-
-#: The six chart traces, in the order `chart_frame.COMPARTMENT_TRACES` lists them.
-TRACES: tuple[str, ...] = (
-    "CIRCUIT_COLOR",
-    "ALVEOLAR_COLOR",
-    "MIXED_VENOUS_COLOR",
-    "VESSEL_RICH_COLOR",
-    "MUSCLE_COLOR",
-    "FAT_COLOR",
-)
 
 
 def relative_luminance(hex_color: str) -> float:
@@ -1496,7 +1532,10 @@ def palette_from_sources(sources: Iterable[tuple[Path, str]]) -> dict[str, str]:
         Color name to six-digit sRGB hex, as `read_palette` returns it.
     """
     palette: dict[str, str] = {}
-    band_opacity: float | None = None
+    opacities: dict[str, float | None] = {
+        "MAC_AWAKE_BAND_FILL_OPACITY": None,
+        "PREVIEW_REGION_FILL_OPACITY": None,
+    }
     for relative, source in sources:
         tree = ast.parse(source, filename=relative.as_posix())
         for statement in tree.body:
@@ -1515,19 +1554,32 @@ def palette_from_sources(sources: Iterable[tuple[Path, str]]) -> dict[str, str]:
                     palette.update(_collect_agent_schemes(value, palette))
                     continue
                 if (
-                    target.id == "MAC_AWAKE_BAND_FILL_OPACITY"
+                    target.id in opacities
                     and isinstance(value, ast.Constant)
                     and isinstance(value.value, float)
                 ):
-                    band_opacity = value.value
+                    opacities[target.id] = value.value
                     continue
                 resolved = _string_value(value, palette)
                 if resolved is not None and HEX_VALUE_RE.fullmatch(resolved):
                     palette[target.id] = resolved
-    band = palette.get("MAC_AWAKE_BAND_COLOR")
     panel = palette.get("PANEL")
-    if band_opacity is not None and band is not None and panel is not None:
+    band = palette.get("MAC_AWAKE_BAND_COLOR")
+    band_opacity = opacities["MAC_AWAKE_BAND_FILL_OPACITY"]
+    preview = palette.get("PREVIEW_REGION_COLOR")
+    preview_opacity = opacities["PREVIEW_REGION_FILL_OPACITY"]
+    if panel is not None and band is not None and band_opacity is not None:
         palette[BAND_COMPOSITE] = composite_over(band, band_opacity, panel)
+    if panel is not None and preview is not None and preview_opacity is not None:
+        palette[PREVIEW_COMPOSITE] = composite_over(preview, preview_opacity, panel)
+    if BAND_COMPOSITE in palette and PREVIEW_COMPOSITE in palette:
+        assert band is not None and band_opacity is not None
+        assert preview is not None and preview_opacity is not None
+        palette[BAND_AND_PREVIEW_COMPOSITE] = min(
+            composite_over(preview, preview_opacity, palette[BAND_COMPOSITE]),
+            composite_over(band, band_opacity, palette[PREVIEW_COMPOSITE]),
+            key=relative_luminance,
+        )
     return palette
 
 
@@ -2146,6 +2198,9 @@ class Result:
 
     requirement: AnyRequirement
     ratio: float
+    #: The vision model the ratio was measured in: "normal" unless the
+    #: requirement is measured in every model, when it is the worst of them.
+    model: str = "normal"
 
     @property
     def rounded(self) -> float:
@@ -2211,8 +2266,6 @@ class Report:
     trace_pairs: tuple[tuple[str, str, str, float], ...]
     #: `(trace, vision model, ratio)` for each trace under `TRACE_FLOOR`.
     below_trace_floor: tuple[tuple[str, str, float], ...]
-    #: The same, against `BAND_COMPOSITE` rather than `PANEL` (PL-GT8W).
-    below_band_floor: tuple[tuple[str, str, float], ...]
     #: How many modules under `APP` the palette and the symbols came from, so
     #: the report says what it read rather than leaving that to be assumed.
     modules_read: int
@@ -2251,7 +2304,6 @@ class Report:
                 self.author_styled_disabled,
                 self.undeclared_controls_errors,
                 self.below_trace_floor,
-                self.below_band_floor,
             )
         )
 
@@ -2279,16 +2331,7 @@ def analyze(root: Path, base: str | None = None) -> Report:
         if absent:
             missing.extend(absent)
             continue
-        background = palette[requirement.background]
-        # The best channel decides. For a single pair there is only one, so
-        # this is the pair's own ratio; for a disjunction it is the channel
-        # the reader actually perceives the element by.
-        results.append(
-            Result(
-                requirement,
-                max(contrast_ratio(palette[name], background) for name in requirement.candidates),
-            )
-        )
+        results.append(measure(requirement, palette))
 
     unexpected = tuple(
         result
@@ -2371,21 +2414,6 @@ def analyze(root: Path, base: str | None = None) -> Report:
         if (ratio := contrast_ratio(as_seen(palette[name], model), palette["PANEL"]))
         and round(ratio, DISPLAY_DECIMALS) < TRACE_FLOOR
     )
-    # Inside the band each trace is seen against the band's fill, so the same
-    # floor applies there. A palette without the composite has already put
-    # `BAND_COMPOSITE` in `missing` through the requirement that names it.
-    below_band_floor = tuple(
-        (name, model, ratio)
-        for model in VISION_MODELS
-        for name in drawn
-        if BAND_COMPOSITE in palette
-        and (
-            ratio := contrast_ratio(
-                as_seen(palette[name], model), as_seen(palette[BAND_COMPOSITE], model)
-            )
-        )
-        and round(ratio, DISPLAY_DECIMALS) < TRACE_FLOOR
-    )
     undeclared_controls, undeclared_controls_errors = read_undeclared_controls(root)
     return Report(
         results=tuple(results),
@@ -2407,10 +2435,42 @@ def analyze(root: Path, base: str | None = None) -> Report:
         author_styled_disabled=check_authored_disabled_colours_are_measured(root),
         trace_pairs=trace_pairs,
         below_trace_floor=below_trace_floor,
-        below_band_floor=below_band_floor,
         modules_read=len(app_modules(root)),
         undeclared_controls=undeclared_controls,
         undeclared_controls_errors=undeclared_controls_errors,
+    )
+
+
+def measure(requirement: AnyRequirement, palette: dict[str, str]) -> Result:
+    """Measure one requirement whose colours `palette` all holds.
+
+    The best channel decides. For a single pair there is only one, so this is
+    the pair's own ratio. For a disjunction it is the channel the reader
+    actually perceives the element by. A requirement measured in every vision
+    model is held at the model where that ratio is lowest, and the result
+    names it.
+    """
+    models = (
+        VISION_MODELS
+        if isinstance(requirement, Requirement) and requirement.every_model
+        else ("normal",)
+    )
+    return min(
+        (
+            Result(
+                requirement,
+                max(
+                    contrast_ratio(
+                        as_seen(palette[name], model),
+                        as_seen(palette[requirement.background], model),
+                    )
+                    for name in requirement.candidates
+                ),
+                model,
+            )
+            for model in models
+        ),
+        key=lambda result: result.ratio,
     )
 
 
@@ -2486,9 +2546,10 @@ def format_report(report: Report, *, matrix: bool) -> str:
         lines.append("Below the required ratio, and not a known shortfall:")
         for result in report.unexpected:
             requirement = result.requirement
+            seen = "" if result.model == "normal" else f" under {result.model}"
             lines.append(
                 f"  {requirement.label} on {requirement.background}: "
-                f"{result.rounded:.2f} < {requirement.minimum} "
+                f"{result.rounded:.2f}{seen} < {requirement.minimum} "
                 f"({criterion_text(requirement.criterion)}) - {requirement.why}"
             )
 
@@ -2610,16 +2671,6 @@ def format_report(report: Report, *, matrix: bool) -> str:
         lines.append(
             "  Every trace clears this as displayed and as simulated for each "
             "dichromacy - see TRACE_FLOOR for why all four."
-        )
-
-    if report.below_band_floor:
-        lines.append("")
-        lines.append(f"Chart traces below {TRACE_FLOOR}:1 against {BAND_COMPOSITE_NAME}:")
-        for name, model, ratio in report.below_band_floor:
-            lines.append(f"  {name:<20} {model:<13} {ratio:.2f}")
-        lines.append(
-            "  Inside the MAC-awake band each trace is drawn over the band's fill, so "
-            "MAC_AWAKE_BAND_FILL_OPACITY decides this background (PL-GT8W)."
         )
 
     if matrix and report.trace_pairs:
