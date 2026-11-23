@@ -142,6 +142,7 @@ from anesthesia_sim.app.dashboard_frame import (
     halt_notice,
     halt_run_notice,
     height_entry_maximum_mac,
+    held_window_notice,
     input_frame_wait_ms,
     kept_fork_selection,
     mac_awake_caption,
@@ -540,6 +541,7 @@ def _frame(
     shown: Sequence[RecordedQuantity] = COMPARTMENT_QUANTITIES,
     time_base: ChartTimeBase | None = None,
     adjustments: tuple[ControlAdjustment, ...] = (),
+    held_start_s: CaseInstant | None = None,
 ) -> ChartFrame:
     """Return the frame one tick would draw for one run, under "Fit run" unless told otherwise."""
 
@@ -548,6 +550,7 @@ def _frame(
         time_base,
         shown,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=held_start_s,
     )
 
 
@@ -570,6 +573,7 @@ def _compared_frame(*controllers: Any) -> ChartFrame:
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
 
@@ -2919,6 +2923,7 @@ def test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared() -> 
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert unmarked_changes_lines(frame) == (
@@ -2984,6 +2989,47 @@ def test_the_caption_says_when_the_span_was_chosen_by_the_run_rather_than_the_re
     chosen = _frame(controller, time_base=time_base_for_span(43_200.0))
 
     assert "whole run so far" not in time_axis_caption(chosen)
+
+
+def test_a_held_window_says_it_is_not_following_and_where_the_run_is_now() -> None:
+    """`PL-Z7LY`: a held window shows the past while the readouts show the present.
+
+    The axis title says the window is held, and the line above the plot
+    names the window's edges as the axis labels them and the run's instant
+    as the clock states it. At 50 minutes a fifteen-minute window held at
+    30 minutes shows 30 to 45 minutes.
+    """
+
+    controller = _fake_controller(history=_run_history(3_001))
+    held = _frame(controller, time_base=time_base_for_span(900.0), held_start_s=CaseInstant(1800))
+
+    assert held.held
+    assert time_axis_caption(held) == "15 minutes shown, held: not following the run"
+    assert held_window_notice(held) == "Showing 30m to 45m. The run is now at 50m."
+
+    following = _frame(controller, time_base=time_base_for_span(900.0))
+
+    assert not following.held
+    assert time_axis_caption(following) == "15 minutes shown"
+    assert held_window_notice(following) is None
+
+
+def test_a_hold_that_reaches_the_run_s_own_window_follows_the_run() -> None:
+    """At 50 minutes the following fifteen-minute window starts at 35m18s, so 36m is not held."""
+
+    controller = _fake_controller(history=_run_history(3_001))
+    frame = _frame(controller, time_base=time_base_for_span(900.0), held_start_s=CaseInstant(2160))
+
+    assert not frame.held
+    assert held_window_notice(frame) is None
+    assert frame.start_s == pytest.approx(3_000 + 900 * 0.02 - 900)
+
+
+def test_fit_run_cannot_be_held() -> None:
+    controller = _fake_controller(history=_run_history(3_001))
+
+    with pytest.raises(ValueError, match=re.escape('needs a chosen width, not "Fit run"')):
+        _frame(controller, held_start_s=CaseInstant(1800))
 
 
 def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
@@ -4700,6 +4746,7 @@ def test_the_axis_caption_says_when_the_window_is_centred_for_a_preview() -> Non
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     caption = time_axis_caption(frame)
 
@@ -4738,6 +4785,7 @@ def test_a_preview_above_the_axis_is_named_with_its_highest_predicted_value() ->
         time_base_for_span(1800.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     preview = frame.runs[0].preview
     assert preview is not None
@@ -4776,6 +4824,7 @@ def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() 
         time_base_for_span(1800.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     run = frame.runs[0]
     preview = run.preview

@@ -153,7 +153,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Final, Protocol, runtime_checkable
 
-from anesthesia_sim.app.chart_time_base import ChartTimeBase
+from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import BookmarkPanel, ForkOffer, ForkPoint
@@ -286,10 +286,14 @@ class ViewRequests:
         preview_end: Says that the held dial of the given run was released.
         mark_entry: Says that the reader changed the entry in a copy of the
             marks editor, so that every other copy shows it too.
-        mark_edit: Asks for the edit that the given button makes, with the
-            entry of the copy whose button the reader pressed. The case
-            makes the edit on every run or refuses it, and the next tick
-            shows the marks and any refusal.
+        mark_edit: Asks for the mark that the given Add button adds, with
+            the entry of the copy whose button the reader pressed. The case
+            adds it to every run or refuses it, and the next tick shows the
+            marks and any refusal.
+        mark_remove: Asks for the mark in the given row to be removed, from
+            the list that the given Remove button belongs to. The case
+            removes it from every run or refuses it, and the next tick shows
+            the marks and any refusal.
         branch_point: Says that the reader selected the given point in a
             copy of the branch control, or no point.
         branch: Asks for a branch at the selected point.
@@ -307,6 +311,7 @@ class ViewRequests:
     preview_end: Callable[[RunId], None]
     mark_entry: Callable[[MarkEntry], None]
     mark_edit: Callable[[MarkButton, MarkEntry], None]
+    mark_remove: Callable[[MarkButton, int], None]
     branch_point: Callable[[ForkPoint | None], None]
     branch: Callable[[], None]
     branch_here: Callable[[], None]
@@ -317,11 +322,11 @@ class FrameRequest:
     """Which frame a View draws: its time window, and the plot width to sample it for.
 
     Attributes:
-        time_base: The window's width, or None for "Fit run".
+        window: The window's width, and where the reader holds it, if they do.
         width_px: The plot's width in logical pixels.
     """
 
-    time_base: ChartTimeBase | None
+    window: ChartWindow
     width_px: float
 
 

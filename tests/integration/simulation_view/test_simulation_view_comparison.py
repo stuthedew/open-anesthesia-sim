@@ -36,6 +36,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _concentration,
     _fork_panel,
     _mark_editor,
+    _marks_panel,
     _paused_run_with_history,
     _select_agent,
     _set_fresh_gas_flow,
@@ -509,8 +510,7 @@ def test_editing_a_mark_while_a_run_plays_opens_no_window(application: QApplicat
     )
     editor.height_spin.setValue(0.8)
     editor.add_target_button.click()
-    editor.time_list.setCurrentRow(0)
-    editor.remove_time_button.click()
+    _marks_panel(view).times.rows[0].remove_button.click()
     _settle(application)
 
     assert controller.bookmarks.time_bookmarks == ()

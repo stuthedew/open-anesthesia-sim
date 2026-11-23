@@ -148,7 +148,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.chart_time_base import ChartTimeBase
+from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
@@ -559,7 +559,7 @@ class AreaLayout(QWidget):
 
     def refresh(
         self,
-        frames: Mapping[ChartTimeBase | None, ShownFrame],
+        frames: Mapping[ChartWindow, ShownFrame],
         runs: tuple[RunPresentation, ...],
         selection: CompartmentSelection,
         preferences: PreferencesInForce,
@@ -611,7 +611,7 @@ class AreaLayout(QWidget):
                 continue
 
             request = view.frame_request()
-            frame = None if request is None else frames[request.time_base]
+            frame = None if request is None else frames[request.window]
 
             try:
                 view.refresh(ViewTick(frame, runs, selection, preferences, case))
@@ -668,7 +668,7 @@ class AreaLayout(QWidget):
 
         return any(view.owes_a_frame for _, view in self._views.values())
 
-    def frame_requests(self) -> dict[ChartTimeBase | None, float]:
+    def frame_requests(self) -> dict[ChartWindow, float]:
         """Map each window that a View asks for to the width of the widest plot showing it.
 
         The caller assembles one frame for each window, sampled at that width.
@@ -679,15 +679,13 @@ class AreaLayout(QWidget):
         empty when no View draws a frame.
         """
 
-        widths: dict[ChartTimeBase | None, float] = {}
+        widths: dict[ChartWindow, float] = {}
 
         for _, view in self._views.values():
             request = view.frame_request()
 
             if request is not None:
-                widths[request.time_base] = max(
-                    widths.get(request.time_base, 0.0), request.width_px
-                )
+                widths[request.window] = max(widths.get(request.window, 0.0), request.width_px)
 
         return widths
 

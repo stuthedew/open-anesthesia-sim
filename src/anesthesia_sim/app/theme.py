@@ -620,14 +620,6 @@ MARK_ROW_BULLET_SPACING = 6
 # continuation line sits closer to its own first line than to the row below it.
 MARK_ROW_SPACING = 2
 
-# The greatest height that each of the editor's two lists may grow to: about
-# six rows, after which the list scrolls. It is a fixed limit rather than a
-# stretch, because a list widget allowed to grow freely takes the whole View.
-# The list then leaves its form floating above a field of white. The
-# lists only confirm what was just added, while the form is what the reader
-# came to use.
-BOOKMARK_LIST_MAX_HEIGHT = 120
-
 # Wide enough for the discard warning to fall in two or three lines rather
 # than a column of fragments. The dialog holds only text, so it has no chart to
 # take its size from.

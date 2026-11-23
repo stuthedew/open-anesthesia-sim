@@ -630,7 +630,7 @@ def _chosen_time_base(view: SimulationView) -> ChartTimeBase | None:
     request = _concentration(view).frame_request()
     assert request is not None
 
-    return request.time_base
+    return request.window.time_base
 
 
 def _select_time_base(view: SimulationView, key: str) -> None:
