@@ -6,7 +6,6 @@ effort: S
 status: done
 classes: test
 feature: presentation-safety
-milestone: v0.6.22
 touches: tests/integration/test_qt_rendering.py
 added: 2026-10-01
 closed: 2026-11-22

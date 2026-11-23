@@ -6,7 +6,6 @@ effort: M
 status: done
 classes: feature
 feature: presentation-safety
-milestone: v0.6.22
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/integration/test_qt_widgets.py, docs/INTERFACE.md, docs/MODEL.md
 added: 2026-09-27
 closed: 2026-11-23

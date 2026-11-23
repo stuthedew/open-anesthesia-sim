@@ -6,7 +6,6 @@ effort: S
 status: done
 classes: ux
 feature: chart-readout
-milestone: v0.6.22
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py, docs/INTERFACE.md
 added: 2026-10-03
 closed: 2026-11-22

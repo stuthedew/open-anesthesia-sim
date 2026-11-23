@@ -6,7 +6,6 @@ effort: S
 status: done
 classes: perf
 feature: tests-detect-wrong-values
-milestone: v0.6.22
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py
 deferred-from: v0.7.0 - present at the freeze, but no frozen entry remains for this gate to clear (bin/docket wave, 2026-11-22: 0 open entries this gate can clear), so it costs no remaining entry anything, and it has no connection to v0.7.0's Required scope, all of which has closed
 added: 2026-11-11

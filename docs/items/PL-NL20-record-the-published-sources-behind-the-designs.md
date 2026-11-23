@@ -3,7 +3,6 @@ id: PL-NL20
 title: Record the published sources behind the designs of PL-P5W1 (copy check reads the stored state instead of writing it back) and PL-S8FM (control change refused after an unrecorded setting)
 status: done
 feature: replay-findings
-milestone: v0.6.22
 touches: docs/items/PL-P5W1-a-copy-of-a-run-opened-from-a-system-whose.md, docs/items/PL-S8FM-a-circuit-or-alveolar-volume-written-directly.md
 added: 2026-11-22
 closed: 2026-11-22
