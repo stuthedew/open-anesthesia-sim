@@ -57,12 +57,17 @@ __all__ = [
     "SELECTABLE_TIME_BASES",
     "TIME_BASE_LADDER",
     "ChartTimeBase",
+    "ChartWindow",
     "drawn_seconds",
+    "earlier_start_s",
     "extreme_seconds",
     "extreme_seconds_with_gaps",
     "fit_to_run",
     "fitted_window",
     "following_window",
+    "gridline_at_or_before",
+    "held_window",
+    "later_start_s",
     "preview_window",
     "grid_spacing_s",
     "saved_time_base",
@@ -306,11 +311,9 @@ def following_window(
     axis rescale continuously, which is the encoding `PL-012` rejected.
 
     Once the run outgrows the width, the window slides and keeps the newest
-    instant `time_base.live_headroom_s` in from the right edge. Nothing here
-    decides *whether* to follow. This function handles the live-following
-    case, which is the only one the interface currently offers. Panning away
-    from the right edge, and showing unmistakably that it has happened, is a
-    separate item.
+    instant `time_base.live_headroom_s` in from the right edge. A reader who
+    moves the window back holds it instead (`held_window`), and the window
+    follows the run again once it is moved back up to this one.
 
     Args:
         time_base: The rung the reader selected.
@@ -325,6 +328,158 @@ def following_window(
     start_s = max(0.0, newest_instant_s + time_base.live_headroom_s - time_base.span_s)
 
     return start_s, start_s + time_base.span_s
+
+
+@dataclass(frozen=True, slots=True)
+class ChartWindow:
+    """Which part of the case a chart asks to see: its width, and whether the reader holds it.
+
+    A chart follows the run unless the reader has moved its window back
+    (`PL-Z7LY`). A held window keeps its left edge where the reader put it,
+    so new samples do not move it, and a learner looking back at induction
+    is not carried away from it by the run. Two charts that ask for the same
+    window are drawn from one frame, so this record is the key the
+    dashboard assembles frames by.
+
+    Attributes:
+        time_base: The width the reader chose, or None for "Fit run".
+        held_start_s: The held window's left edge, in seconds on the case's
+            axis, or None while the window follows the run. "Fit run" shows
+            the whole run, so it has nothing to hold.
+
+    Raises:
+        ValueError: `held_start_s` is given with "Fit run".
+        TypeError: `held_start_s` was not built as a `CaseInstant`.
+    """
+
+    time_base: ChartTimeBase | None
+    held_start_s: CaseInstant | None
+
+    def __post_init__(self) -> None:
+        if self.held_start_s is None:
+            return
+
+        if self.time_base is None:
+            raise ValueError(
+                f'a window held at {self.held_start_s} s needs a chosen width, not "Fit run"'
+            )
+
+        require_case_instant("held_start_s", self.held_start_s)
+
+
+def held_window(
+    time_base: ChartTimeBase, held_start_s: CaseInstant, newest_instant_s: CaseInstant
+) -> tuple[float, float] | None:
+    """Return the axis bounds of a held window, or None where it has reached the run's own window.
+
+    A held window keeps the chosen width and the left edge the reader moved
+    it to, so the run's new samples fall to the right of it unseen. It holds
+    only while it starts before the window that follows the run. A window
+    moved up to that one, or past it, follows the run again: moving later
+    is how a reader returns to the present, as scrolling to the bottom of a
+    live log does. A Reset or an agent change takes the run back to zero, so
+    the following window starts at zero and a held window gives way to it.
+
+    Args:
+        time_base: The width the reader chose.
+        held_start_s: The left edge the reader moved the window to.
+        newest_instant_s: The instant at which the furthest-advanced run
+            stands.
+
+    Returns:
+        `(min_x, max_x)` in simulated seconds, exactly `span_s` apart, or
+        None where the window follows the run.
+    """
+
+    following_start_s, _ = following_window(time_base, newest_instant_s)
+
+    if held_start_s >= following_start_s:
+        return None
+
+    return float(held_start_s), held_start_s + time_base.span_s
+
+
+def earlier_start_s(time_base: ChartTimeBase, start_s: float) -> CaseInstant:
+    """Return the left edge one step earlier: a gridline at least one interval back, or zero.
+
+    The step goes to the last gridline at or before `start_s` less one
+    gridline interval. So every step moves the window by at least one
+    interval, a quarter to a sixth of its width, and by less than two. Most
+    of what was on screen before the step stays on screen after it. A step
+    to a gridline also puts both edges of a held window on labelled times.
+    A step that a whole interval would take below zero stops at zero.
+
+    Args:
+        time_base: The width the window is drawn at.
+        start_s: The window's left edge now, in simulated seconds.
+
+    Returns:
+        The new left edge, as a whole second on the case's axis.
+
+    Raises:
+        ValueError: `start_s` is not more than zero, so there is nothing
+            earlier to show.
+    """
+
+    if not start_s > 0.0:
+        raise ValueError(f"a window that starts at {start_s!r} s has nothing earlier to show")
+
+    interval_s = int(time_base.tick_interval_s)
+
+    return CaseInstant(max(0, (math.floor(start_s / interval_s) - 1) * interval_s))
+
+
+def gridline_at_or_before(time_base: ChartTimeBase, start_s: CaseInstant) -> CaseInstant:
+    """Return the last gridline of `time_base` at or before `start_s`.
+
+    A held window keeps its place when the reader chooses another width, and
+    this moves its left edge onto the new width's gridlines, so both edges
+    still fall on labelled times.
+
+    Args:
+        time_base: The width the window is to be drawn at.
+        start_s: The held left edge, on the case's axis.
+
+    Returns:
+        The gridline, as a whole second on the case's axis.
+    """
+
+    interval_s = int(time_base.tick_interval_s)
+
+    return CaseInstant(start_s // interval_s * interval_s)
+
+
+def later_start_s(
+    time_base: ChartTimeBase, start_s: float, newest_instant_s: CaseInstant
+) -> CaseInstant | None:
+    """Return the left edge one step later, or None where that step reaches the run's own window.
+
+    The step goes to the first gridline at or after `start_s` plus one
+    gridline interval, so it mirrors `earlier_start_s`. Where the window
+    there would start at or after the window that follows the run, the step
+    returns the window to following the run, as `held_window` says, and None
+    says so.
+
+    Args:
+        time_base: The width the window is drawn at.
+        start_s: The window's left edge now, in simulated seconds, at least
+            zero.
+        newest_instant_s: The instant at which the furthest-advanced run
+            stands.
+
+    Returns:
+        The new left edge, as a whole second on the case's axis, or None
+        for the window that follows the run.
+    """
+
+    interval_s = int(time_base.tick_interval_s)
+    later_s = (math.ceil(start_s / interval_s) + 1) * interval_s
+    following_start_s, _ = following_window(time_base, newest_instant_s)
+
+    if later_s >= following_start_s:
+        return None
+
+    return CaseInstant(later_s)
 
 
 def preview_window(time_base: ChartTimeBase, reach_s: CaseInstant) -> tuple[float, float]:

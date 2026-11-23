@@ -153,7 +153,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Final, Protocol, runtime_checkable
 
-from anesthesia_sim.app.chart_time_base import ChartTimeBase
+from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import BookmarkPanel, ForkOffer, ForkPoint
@@ -322,11 +322,11 @@ class FrameRequest:
     """Which frame a View draws: its time window, and the plot width to sample it for.
 
     Attributes:
-        time_base: The window's width, or None for "Fit run".
+        window: The window's width, and where the reader holds it, if they do.
         width_px: The plot's width in logical pixels.
     """
 
-    time_base: ChartTimeBase | None
+    window: ChartWindow
     width_px: float
 
 

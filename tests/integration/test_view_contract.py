@@ -28,7 +28,7 @@ from PySide6.QtWidgets import QApplication, QGraphicsView, QLabel, QScrollBar, Q
 from anesthesia_sim.app import area_layout
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.bookmarks import TimeBookmark
-from anesthesia_sim.app.chart_time_base import FIT_RUN_KEY, time_base_for_span
+from anesthesia_sim.app.chart_time_base import FIT_RUN_KEY, ChartWindow, time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.qt_chart import _LineSwatch
@@ -270,7 +270,7 @@ def test_two_areas_of_the_chart_draw_one_frame_sampled_for_the_wider(
     assert charts[0].chart.frame is not None
     assert charts[0].chart.frame is charts[1].chart.frame
     assert dashboard.layout_container.frame_requests() == {
-        None: max(view.chart.plot_width_px() for view in charts)
+        ChartWindow(None, None): max(view.chart.plot_width_px() for view in charts)
     }
 
 
@@ -313,7 +313,7 @@ def test_a_chart_saves_its_window_and_is_built_again_at_it(
     try:
         assert saved == {STATE_VERSION_KEY: 2, "time_base_s": 900.0, **_ceiling_saved(kind)}
         assert again.frame_request() is not None
-        assert again.frame_request().time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
+        assert again.frame_request().window.time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
         assert again.time_base_selector.currentData() == "900.0"
         assert again.state_notice.isHidden()
     finally:
@@ -326,7 +326,7 @@ def test_a_chart_built_with_draw_saved_fits_the_run(application: QApplication, k
     view = _chart(kind)
 
     try:
-        assert view.frame_request().time_base is None  # type: ignore[union-attr]
+        assert view.frame_request().window.time_base is None  # type: ignore[union-attr]
         assert view.save_state() == {
             STATE_VERSION_KEY: 2,
             "time_base_s": FIT_RUN_KEY,
@@ -346,7 +346,7 @@ def test_a_version_1_chart_state_reads_as_fit_run_without_a_notice(
     view = _chart(kind, {STATE_VERSION_KEY: 1})
 
     try:
-        assert view.frame_request().time_base is None  # type: ignore[union-attr]
+        assert view.frame_request().window.time_base is None  # type: ignore[union-attr]
         assert view.state_notice.isHidden()
     finally:
         view.deleteLater()
@@ -374,7 +374,7 @@ def test_a_chart_whose_saved_window_cannot_be_read_fits_the_run_and_says_so(
     view = _chart(kind, saved)
 
     try:
-        assert view.frame_request().time_base is None  # type: ignore[union-attr]
+        assert view.frame_request().window.time_base is None  # type: ignore[union-attr]
         assert not view.state_notice.isHidden()
         assert view.state_notice.text() == _NOTICE
     finally:
@@ -436,7 +436,7 @@ def test_a_concentration_chart_whose_saved_top_cannot_be_read_opens_at_3_mac_and
 
     try:
         assert view.ceiling_selector.currentText() == "3 ×MAC"
-        assert view.frame_request().time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
+        assert view.frame_request().window.time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
         assert not view.state_notice.isHidden()
         assert view.state_notice.text() == _NOTICE
     finally:
@@ -528,7 +528,7 @@ def test_the_shipped_induction_chart_is_built_on_the_15_minute_window(
     view = _chart(CONCENTRATION_CHART, induction.view_state[chart_area][CONCENTRATION_CHART])
 
     try:
-        assert view.frame_request().time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
+        assert view.frame_request().window.time_base == time_base_for_span(900.0)  # type: ignore[union-attr]
         assert view.time_base_selector.currentData() == "900.0"
         assert view.state_notice.isHidden()
     finally:
