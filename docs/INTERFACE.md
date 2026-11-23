@@ -1091,6 +1091,7 @@ on 2026-11-22. A reader who knows the stop is coming can mark the run, branch it
 before it stops, and does not take the stop for a fault. A branch taken within the last
 1 h 40 min shows the banner from its first frame.
 <!-- provenance: app/dashboard_frame.py APPROACHING_LIMIT_WARNING_REAL_S = 20 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ##### Why the limit is set where it is
 

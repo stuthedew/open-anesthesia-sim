@@ -1703,6 +1703,7 @@ for each agent. Each lasts 600 s and moves the controls every 1 to 20 s, sometim
 to the very end of a slider's range, so zero ventilation, zero perfusion and zero
 fresh gas flow are all reached. These runs must meet the same $`4\times10^{-13}`$
 limit as the five above, and they stay below the worst of them.
+<!-- not-restated: 20 s -->
 
 #### Checks at every step of the random runs
 
