@@ -2209,7 +2209,10 @@ def run_notice(
     within `APPROACHING_LIMIT_NOTICE_S` of the supported run length says how
     much simulated time it has left before it stops (`PL-H2K2`). So a reader
     learns of the stop before it arrives, and the stop does not read as a
-    fault when it comes.
+    fault when it comes. A refused setting stays on screen until the next
+    accepted setting, so a refusal made hours earlier can still hold the
+    banner when the run enters that span. The countdown then follows the
+    refusal in the same banner, so the warning is never hidden behind it.
 
     Args:
         status: As `notice` takes it.
@@ -2226,21 +2229,24 @@ def run_notice(
     text = notice(
         status, rejected_setting_notice, refused_reset=refused_reset, branch_offered=branch_offered
     )
-
-    if text is not None:
-        return Notice(text, _stopped_emphasis(status))
-
     remaining_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S - elapsed_s
-
-    if remaining_s <= APPROACHING_LIMIT_NOTICE_S:
-        return Notice(
-            APPROACHING_LIMIT_NOTICE_TEMPLATE.format(
-                remaining=format_elapsed(remaining_s), run_length=format_supported_run_length()
-            ),
-            Emphasis.MUTED,
+    countdown = (
+        APPROACHING_LIMIT_NOTICE_TEMPLATE.format(
+            remaining=format_elapsed(remaining_s), run_length=format_supported_run_length()
         )
+        if remaining_s <= APPROACHING_LIMIT_NOTICE_S
+        else None
+    )
 
-    return None
+    if text is None:
+        return None if countdown is None else Notice(countdown, Emphasis.MUTED)
+
+    stopped = status.failure_reason is not None or status.supported_limit_reason is not None
+
+    if countdown is not None and not stopped:
+        text = f"{text} {countdown}"
+
+    return Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
 
 
 def halt_run_notice(
@@ -2275,18 +2281,31 @@ def halt_run_notice(
         charts_withheld=charts_withheld,
     )
 
-    return None if text is None else Notice(text, _stopped_emphasis(status))
+    return (
+        None
+        if text is None
+        else Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
+    )
 
 
-def _stopped_emphasis(status: RunStatus) -> Emphasis:
+def _stopped_emphasis(
+    status: RunStatus, rejected_setting_notice: str | None, refused_reset: str | None
+) -> Emphasis:
     """Return the emphasis of `notice`'s and `halt_notice`'s banners, by the same precedence.
 
     A failure outranks the supported run length, as in `status_word`. A
-    refused setting on a run that has not stopped is drawn as a warning,
-    because the setting the reader asked for was not applied.
+    banner that states a refused setting or a refused Reset is drawn as a
+    warning, because what the reader asked for was not done. That holds on a
+    run stopped at the supported run length too, whose banner then states
+    the refusal. Only the stop itself, with nothing refused, is muted.
     """
 
-    if status.failure_reason is None and status.supported_limit_reason is not None:
+    if (
+        status.failure_reason is None
+        and status.supported_limit_reason is not None
+        and rejected_setting_notice is None
+        and refused_reset is None
+    ):
         return Emphasis.MUTED
 
     return Emphasis.WARNING

@@ -1077,12 +1077,16 @@ a reader to discount that signal. The interface must not present the stop as a p
 Start is refused, because a resumed run's first step would be refused again.
 
 **The banner that reports the stop is drawn in the muted color, as the status word above it
-is** (`PL-0889`). The alert color stays with a run that failed and a setting that was refused.
+is** (`PL-0889`). The alert color stays with a run that failed and with a refused setting,
+including a dial moved on the stopped run, whose refusal the stop's banner then states.
 
 **A run says that the stop is coming before it arrives** (`PL-H2K2`). From 1 h 40 min of
 simulated time before the limit, the banner reads, for example, "This run stops in 1h40m of
 simulated time, at the supported run length of 24 hours", in the muted color, and counts down
-with the clock. A stopped run, a failure or a refused setting takes the banner in its place.
+with the clock. A stopped run or a failure takes the banner in its place. A refused setting
+stays on screen until a setting is accepted, so a refusal made hours earlier can still hold
+the banner. The countdown then follows the refusal in the same banner, in the alert color,
+so the stop is never left unannounced.
 The span is set so that the banner is on screen for at least 20 s of real time at the fastest
 playback rate, 300 times real time, and for longer at every slower rate. Twenty seconds is the
 least time that WCAG 2.2 SC 2.2.1 (Timing Adjustable) asks a page to give a user between
@@ -1222,9 +1226,13 @@ validation that covers it, and revise this section with the result.
 
 The banner that announces the stop is built by `run_notice` in `app/dashboard_frame.py`. It
 reads the limit from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, so it cannot announce a limit the
-model does not enforce, and it opens `APPROACHING_LIMIT_NOTICE_S` before it. Three tests in
+model does not enforce, and it opens `APPROACHING_LIMIT_NOTICE_S` before it. Tests in
 `tests/unit/test_dashboard_frame.py` check its wording, when it opens and what outranks it,
 from `test_the_interface_says_the_run_is_approaching_its_supported_length` on.
+`test_a_refusal_made_before_the_warning_does_not_hide_the_countdown` checks that a refusal
+still on screen keeps the countdown, and
+`test_a_refusal_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning` checks that a refusal
+on the stopped run takes the alert color.
 `test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour` in
 `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py` checks the
 colours of the stop's banner and a failure's.

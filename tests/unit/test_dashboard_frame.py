@@ -1188,7 +1188,7 @@ def test_the_interface_says_the_run_is_approaching_its_supported_length() -> Non
 
 
 def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
-    """A stopped run or a refused setting describes the run now, so it takes the banner.
+    """A stopped run or a refused setting describes the run now, so it leads the banner.
 
     The refused setting is drawn as a warning, because the reader's setting was
     not applied. The stop at the limit is drawn muted, as its status word is.
@@ -1213,6 +1213,27 @@ def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
     )
 
 
+def test_a_refusal_made_before_the_warning_does_not_hide_the_countdown() -> None:
+    """A refused setting stays on screen until a setting is accepted, so it can hold the banner.
+
+    A refusal made at hour 10 is still shown at hour 23. The countdown then
+    follows it in the same banner, or the stop would arrive unannounced. The
+    expected remaining time is worked out by hand: 86 400 s less 80 400 s is
+    6 000 s, which the clock writes as 1h40m.
+    """
+
+    approaching = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(80_400))
+
+    banner = run_notice(approaching, "Setting refused — too high", elapsed_s=approaching.elapsed_s)
+
+    assert banner == Notice(
+        "Setting refused — too high. The simulation is unchanged and still running its "
+        "previous setting. This run stops in 1h40m of simulated time, at the supported "
+        "run length of 24 hours.",
+        Emphasis.WARNING,
+    )
+
+
 def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
     """With no frame drawn, a failure is a warning and the run-length stop is not (`PL-0889`)."""
 
@@ -1222,6 +1243,26 @@ def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
     assert halt_run_notice(at_limit) == Notice(halt_notice(at_limit), Emphasis.MUTED)
     assert halt_run_notice(failed) == Notice(halt_notice(failed), Emphasis.WARNING)
     assert halt_run_notice(_snapshot()) is None
+
+
+def test_a_refusal_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning() -> None:
+    """The stop is muted, but a banner that says a setting was refused is a warning.
+
+    A dial moved on a run stopped at the supported run length is refused, and
+    the stop's banner then states the refusal. What the reader asked for was
+    not done, so the banner takes the alert colour, drawn frame or not.
+    """
+
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    refused = "Setting refused — the run has stopped"
+
+    drawn = run_notice(at_limit, refused, elapsed_s=at_limit.elapsed_s)
+    halted = halt_run_notice(at_limit, refused)
+
+    assert drawn == Notice(notice(at_limit, refused), Emphasis.WARNING)
+    assert halted == Notice(halt_notice(at_limit, refused), Emphasis.WARNING)
 
 
 def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
