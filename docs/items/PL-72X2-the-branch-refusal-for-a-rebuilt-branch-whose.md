@@ -1,10 +1,17 @@
 ---
 id: PL-72X2
 title: The branch refusal for a rebuilt branch whose values disagree with its trunk shows code field names, raw float reprs and a docs path after 'Branch not opened —', and names no next step for a learner; word it for the learner and keep the field-by-field detail where a developer can read it
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: ux
 feature: replay-findings
+touches: src/anesthesia_sim/app/controller.py, tests/integration/controller/test_controller_branching.py, tests/integration/simulation_view/test_simulation_view_branch_refusals.py
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2289
 filed-pr: 2284
+tests: tests/integration/simulation_view/test_simulation_view_branch_refusals.py::test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words
 ---
 
 **Problem.** `SimulationController._branch_from` (`app/controller.py`) refuses a branch whose rebuilt values disagree with its trunk's. The branch panel shows the refusal after "Branch not opened —". It lists code field names with each value's `repr`, such as `agent_mac is 1.17 in this run and 1.1700000000000002 on the branch`, then a path into `docs/ARCHITECTURE.md`, and names nothing a learner can do. The `repr` is deliberate: two values that differ in the last bit must not print alike (`_disagreements_with`, `PL-NC62`). So the detail is right for a developer and wrong as the only text a learner sees.
@@ -14,4 +21,6 @@ filed-pr: 2284
 **Done when.** The panel shows a learner sentence that says the run's agent or patient data no longer match and what to do, such as start a new case, and the field-by-field detail stays readable for a developer. `PL-XWCH` put a failure's technical detail behind "Show details"; read how it did that before choosing where this detail goes. A test drives the refusal through the branch panel.
 
 **Done 2026-11-23.** The branch panel now reads "Branch not opened — a branch at 1m would not open on the values this run held there, so it would be a different case rather than another way of managing this one; the simulator's data may have changed since this run began, so reopen the simulator and run the case again to branch it". The advice is to reopen the simulator rather than to press Reset, because reopening is what reads every data file again for both runs. The list of values that differ, each by its `repr`, is kept whole for a developer in two places. It is the exception's note (Python's `add_note`, PEP 678), which a traceback prints and the controller tests read. It is also logged at error level to the package logger, so it reaches the failure log that `PL-XWCH` set up. The panel does not get a "Show details" control of its own: the refusal is a notice line, and a developer meets this case only after editing a data file while the simulator is open. The preview refusal in `preview_settings` has the same wording problem but is never shown, because a refused preview draws nothing, so it is left as it is. Files checked in the documentation sweep: `docs/INTERFACE.md` (the branch refusal paragraph and its note for developers), `docs/ARCHITECTURE.md` (what a branch inherits), `docs/MODEL.md`, `README.md`. Tests: `test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words` in `tests/integration/simulation_view/test_simulation_view_branch_refusals.py`. Run against `origin/main` at `9f01700c` with only that test file copied in, it fails: the notice reads "would be rebuilt from values this run did not hold there ... agent_mac is PatientMac(percent=1.8, age_years=40) in this run and PatientMac(percent=1.9000000000000001, ...)". The four detail tests in `tests/integration/controller/test_controller_branching.py` now read the note.
+
+**Generator check.** This item belongs to the generator that `PL-CCVP`'s brief records: a message written for a developer in `core/` or the controller reaches a panel verbatim. This item gives the branch refusals one shape for it, which the refused-setting banner can copy: the exception's text is for the learner, and the detail for a developer goes in its note (`add_note`) and the failure log. `PL-8QFW`, the refused-setting banner that shows a setting by its Python name, is the remaining member, and it is not fixed here because its messages are written in `core/validation.py`.
 
