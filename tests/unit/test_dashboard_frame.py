@@ -1245,6 +1245,21 @@ def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
     assert halt_run_notice(_snapshot()) is None
 
 
+def test_a_refused_reset_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning() -> None:
+    """A Reset that was refused is a request not carried out, so its banner is a warning too."""
+
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    refused_reset = "Reset was refused: no run can be built."
+
+    drawn = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s, refused_reset=refused_reset)
+    halted = halt_run_notice(at_limit, refused_reset=refused_reset)
+
+    assert drawn == Notice(notice(at_limit, None, refused_reset=refused_reset), Emphasis.WARNING)
+    assert halted == Notice(halt_notice(at_limit, refused_reset=refused_reset), Emphasis.WARNING)
+
+
 def test_a_refusal_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning() -> None:
     """The stop is muted, but a banner that says a setting was refused is a warning.
 
@@ -3188,13 +3203,6 @@ def test_the_banner_s_name_is_separated_by_a_colon_not_a_second_em_dash() -> Non
     assert named is not None
     assert named.startswith("Run 2: ")
     assert named.count("—") == 1
-
-
-def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
-    """A hidden banner stays hidden: an attribution is not a reason to show one."""
-
-    assert compared_run_notice(None, "Run 2") is None
-    assert compared_run_notice(None, None) is None
 
 
 def test_a_banner_for_a_run_whose_name_is_empty_is_refused() -> None:

@@ -3746,7 +3746,7 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
     return COMPARED_RUN_LINE_TEMPLATE.format(run=run.label, line=line)
 
 
-def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | None:
+def compared_run_notice(notice_text: str, run_name: str | None) -> str:
     """Return one run's banner in the notice column that the runs share, named while two are drawn.
 
     The banner sits in a column that both runs write into. All three of the
@@ -3785,15 +3785,16 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     panel and in both legends.
 
     Args:
-        notice_text: The result of `notice` for this run this tick, or None
-            when there is nothing to say.
+        notice_text: The banner's text for this run this tick. A run with
+            nothing to say has no banner to name, and
+            `run_presentation` does not call this for it.
         run_name: What the dashboard calls this run, from `run_label`, or
             None while only one run is drawn and there is nothing to tell it
             apart from.
 
     Returns:
-        The notice unchanged while one run is drawn or there is no notice, or
-        the run's name followed by the notice while two runs are drawn.
+        The notice unchanged while one run is drawn, or the run's name
+        followed by the notice while two runs are drawn.
 
     Raises:
         ValueError: If `run_name` is empty, because an empty name names no
@@ -3806,7 +3807,7 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     if run_name is not None and not run_name:
         raise ValueError("a run's name says which run the banner is about, so it cannot be empty")
 
-    if notice_text is None or run_name is None:
+    if run_name is None:
         return notice_text
 
     return COMPARED_RUN_NOTICE_TEMPLATE.format(run=run_name, notice=notice_text)

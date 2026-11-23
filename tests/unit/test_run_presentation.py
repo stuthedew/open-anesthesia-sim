@@ -305,6 +305,15 @@ def _banner_text(presentation: RunPresentation) -> str:
     return presentation.notice.text
 
 
+def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
+    """A hidden banner stays hidden: an attribution is not a reason to show one (`PL-TSZM`)."""
+
+    controller = _run_at(30)
+
+    assert _drawn(controller, _state()).notice is None
+    assert _drawn(controller, _state(name="Run 2")).notice is None
+
+
 def test_a_compared_run_s_banner_names_the_run() -> None:
     """While a second run is drawn, a run's banner says which run it speaks for (`PL-TSZM`)."""
 

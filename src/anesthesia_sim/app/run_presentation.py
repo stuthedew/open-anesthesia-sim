@@ -423,15 +423,14 @@ def halted_run(
 def _compared_banner(banner: Notice | None, run_name: str | None) -> Notice | None:
     """Return the banner with its text naming the run while a second run is drawn.
 
-    The emphasis is the banner's own, so naming the run never changes its colour.
+    The emphasis is the banner's own, so naming the run never changes its
+    colour. A run with nothing to say keeps no banner, named or not.
     """
 
     if banner is None:
         return None
 
-    text = compared_run_notice(banner.text, run_name)
-
-    return None if text is None else replace(banner, text=text)
+    return replace(banner, text=compared_run_notice(banner.text, run_name))
 
 
 def _at_playback_rate(
