@@ -1866,3 +1866,340 @@ def test_edges_gives_the_nearest_border_when_a_side_is_bordered_at_two_depths() 
         (Side.RIGHT, Handle(0, (0, 0), 0)),
         (Side.BELOW, Handle(0, (0,), 0)),
     )
+
+
+# --- The alignment tolerance at its exact value --------------------------------
+
+
+def test_an_area_exactly_as_wide_as_the_alignment_tolerance_is_refused() -> None:
+    """An Area must be wider than `BORDER_ALIGNMENT_TOLERANCE`, so one exactly that wide is refused.
+
+    The model's docstring says that an Area must be wider and taller than the
+    tolerance, and each refusal says "no wider or no taller than" it. At the
+    window's left edge, a size of 1e-9 gives an Area exactly 1e-9 wide, with
+    no rounding in between. A layout that holds such an Area is refused, and
+    so are a cut and a drag that would leave one. The drag is refused as a
+    drag that names the Area it would squeeze, not as a malformed layout.
+    """
+
+    tolerance = BORDER_ALIGNMENT_TOLERANCE
+    exact = re.escape(f"Area 1 is {tolerance!r} of the window wide")
+
+    with pytest.raises(InvalidLayout, match=f"in window 0, {exact}"):
+        layout(row((tolerance, 1 - tolerance), area(1), area(2)))
+
+    with pytest.raises(LayoutRefused, match=re.escape(f"Area 1 would be {tolerance!r} of the")):
+        layout(area(1)).split(AreaId(1), ROW, tolerance)
+
+    with pytest.raises(LayoutRefused, match="no room for Area 1$"):
+        layout(row((0.5, 0.5), area(1), area(2))).resize(Handle(0, (), 0), tolerance)
+
+
+def test_two_borders_exactly_the_alignment_tolerance_apart_are_one_line() -> None:
+    """`BORDER_ALIGNMENT_TOLERANCE` is the largest distance at which two borders are one line.
+
+    Two columns sit side by side. The left one is cut across at 2.5e-9 of
+    the window's height and the right one at 1.5e-9. In floating point the
+    difference between the two is exactly 1e-9, the tolerance. So the two
+    borders are one line, and `borders()` returns both handles. Area 1, above
+    the left cut, and Area 4, below the right cut, then meet only at a point
+    on that line, so neither is a neighbour of the other. The other tests of
+    the tolerance use distances clearly inside it or clearly outside it.
+    """
+
+    upper, lower = 2.5e-9, 1.5e-9
+    model = layout(
+        row(
+            (0.5, 0.5),
+            column((upper, 1 - upper), area(1), area(2)),
+            column((lower, 1 - lower), area(3), area(4)),
+        )
+    )
+    places = rectangles(model)
+
+    assert places[1][3] - places[3][3] == BORDER_ALIGNMENT_TOLERANCE
+
+    assert model.borders(Handle(0, (0,), 0)) == (Handle(0, (0,), 0), Handle(0, (1,), 0))
+    assert model.neighbours(AreaId(1)) == (
+        Neighbour(AreaId(3), Side.RIGHT, whole_edge=True),
+        Neighbour(AreaId(2), Side.BELOW, whole_edge=True),
+    )
+    assert model.neighbours(AreaId(4)) == (
+        Neighbour(AreaId(2), Side.LEFT, whole_edge=True),
+        Neighbour(AreaId(3), Side.ABOVE, whole_edge=True),
+    )
+
+
+def test_a_join_cuts_through_an_area_that_reaches_past_the_cut_by_less_than_the_tolerance() -> None:
+    """A cut enters an Area only where the Area reaches past it by more than the tolerance.
+
+    The lower row's border lies at 0.2 + 1e-9, and the upper row's border a
+    further 1e-9 to the right, each sum worked out in floating point.
+    Exactly, the two lie 0.9999999995e-9 apart, which is less than the
+    tolerance. Joining the two right-hand Areas leaves one straight cut, down
+    the lower row's border. Area 1 reaches past that cut by less than the
+    tolerance, so the cut does not enter it, and the join is made. In
+    floating point, the lower border plus the tolerance is the upper border
+    itself. So a check that counted an Area reaching that sum as entering the
+    cut would refuse this join.
+    """
+
+    lower = 0.2 + BORDER_ALIGNMENT_TOLERANCE
+    upper = lower + BORDER_ALIGNMENT_TOLERANCE
+    model = layout(
+        column(
+            (0.5, 0.5),
+            row((upper, 1 - upper), area(1), area(2)),
+            row((lower, 1 - lower), area(3), area(4)),
+        )
+    )
+    places = rectangles(model)
+
+    assert places[1][2] - places[3][2] < BORDER_ALIGNMENT_TOLERANCE
+
+    assert model.join(AreaId(2), AreaId(4)).windows[0].tree == row(
+        (lower, 1 - lower), column((0.5, 0.5), area(1), area(3)), area(2)
+    )
+
+
+def test_a_drag_is_refused_where_the_border_as_placed_or_as_stored_leaves_no_room() -> None:
+    """A drag is checked twice: where it places the border, and where the stored sizes place it.
+
+    The tree stores each split's sizes as fractions of its extent, and a
+    border placed again from those fractions can land a unit in the last
+    place from where the drag put it. Near the tolerance, that unit can
+    decide whether an Area keeps room. Each layout here has a row of three in
+    its lower right part, whose extent is not the whole window.
+
+    In the first layout, the row's borders lie at 0.7 and 0.85 of the window.
+    The drag moves the first border to one unit in the last place below
+    0.85 - 1e-9. As placed, Area 3 keeps 1.0000000827e-9 of the window, just
+    over the tolerance. Placed again from the stored sizes, it would keep
+    less than the tolerance, so the drag is refused. Since `PL-391Y`, the
+    cases in `test_a_drag_refuses_a_gap_the_stored_sizes_would_round_away`
+    are refused where the drag places the border, so they no longer reach
+    this second check.
+
+    In the second layout, the drag moves the row's second border to 1 - 1e-9.
+    As placed, Area 4 keeps 0.99999997e-9 of the window, which is not more
+    than the tolerance, so the drag is refused. Placed again from the stored
+    sizes, Area 4 would keep a little more than the tolerance, so the first
+    check is the one that refuses it.
+    """
+
+    inner = layout(
+        row(
+            (0.4, 0.6),
+            area(1),
+            column((0.5, 0.5), row((0.5, 0.25, 0.25), area(2), area(3), area(4)), area(5)),
+        )
+    )
+    short = math.nextafter(0.85 - BORDER_ALIGNMENT_TOLERANCE, 0.0)
+
+    assert rectangles(inner)[3][2] == 0.85
+    assert 0.85 - short > BORDER_ALIGNMENT_TOLERANCE
+
+    with pytest.raises(LayoutRefused, match="no room for Area 3$"):
+        inner.resize(Handle(0, (1, 0), 0), short)
+
+    edge = layout(
+        row(
+            (0.1, 0.9),
+            area(1),
+            column((0.5, 0.5), row((0.1, 0.1, 0.8), area(2), area(3), area(4)), area(5)),
+        )
+    )
+    near_edge = 1 - BORDER_ALIGNMENT_TOLERANCE
+
+    assert 1.0 - near_edge <= BORDER_ALIGNMENT_TOLERANCE
+
+    with pytest.raises(LayoutRefused, match="no room for Area 4$"):
+        edge.resize(Handle(0, (1, 0), 1), near_edge)
+
+
+# --- Borders that run across the window --------------------------------------------
+
+
+def test_borders_follows_a_horizontal_line_through_its_crossings() -> None:
+    """Three columns cut at one height make one border across, and a drag moves all three handles.
+
+    This is `test_borders_follows_a_line_through_its_crossings` turned on its
+    side. A column's handles run across the window. So whether one handle
+    meets the next end to end depends on where each one begins and ends from
+    left to right, not from top to bottom.
+    """
+
+    model = layout(
+        row(
+            (0.25, 0.25, 0.5),
+            column((0.5, 0.5), area(1), area(2)),
+            column((0.5, 0.5), area(3), area(4)),
+            column((0.5, 0.5), area(5), area(6)),
+        )
+    )
+    line = (Handle(0, (0,), 0), Handle(0, (1,), 0), Handle(0, (2,), 0))
+
+    for handle in line:
+        assert model.borders(handle) == line
+
+    moved = model.resize(Handle(0, (1,), 0), 0.3)
+
+    for upper in (1, 3, 5):
+        assert rectangles(moved)[upper][3] == pytest.approx(0.3)
+
+
+def test_a_nested_border_across_the_window_lies_at_a_fraction_of_the_windows_height() -> None:
+    """A column in the lower right quarter, cut a quarter of the way down, has its border at 0.625.
+
+    This is `test_position_is_where_a_border_lies_in_its_window` turned on
+    its side. The lower row fills the bottom half of the window. Its right
+    child is a column, cut a quarter of the way down its own height. So the
+    column's border lies at 0.5 + 0.25 * 0.5 = 0.625 of the window's height,
+    and the column spans the window from 0.5 to 1.0 down. The span is checked
+    against the Areas' rectangles as `rectangles` works them out.
+    """
+
+    model = layout(
+        column(
+            (0.5, 0.5), area(1), row((0.5, 0.5), area(2), column((0.25, 0.75), area(3), area(4)))
+        )
+    )
+    placed = rectangles(model)
+
+    assert model.position(Handle(0, (1, 1), 0)) == pytest.approx(0.625)
+    assert model.span(Handle(0, (1, 1), 0)) == (placed[3][1], placed[4][3]) == (0.5, 1.0)
+
+
+# --- The order of neighbours --------------------------------------------------------
+
+
+def test_neighbours_on_one_side_are_ordered_along_that_side() -> None:
+    """Neighbours on a left or right side run from the top, and on the top or bottom from the left.
+
+    The order follows where each neighbour meets the side, not where its far
+    edge lies. In the first layout, Area 4's neighbours on its left are
+    Area 2 above and Area 3 below, and Area 3 reaches further left than
+    Area 2. In the second, Area 4's neighbours above it are Area 2 on the left
+    and Area 3 on the right, and Area 3 reaches higher than Area 2. In the
+    2x2 grid, Area 1 meets Area 4 only at a corner and comes first in reading
+    order. It is passed over, and the Areas after it are still listed.
+    """
+
+    beside = layout(
+        row((0.5, 0.5), column((0.5, 0.5), row((0.5, 0.5), area(1), area(2)), area(3)), area(4))
+    )
+    under = layout(
+        column((0.5, 0.5), row((0.5, 0.5), column((0.5, 0.5), area(1), area(2)), area(3)), area(4))
+    )
+    grid = layout(
+        row((0.5, 0.5), column((0.5, 0.5), area(1), area(2)), column((0.5, 0.5), area(3), area(4)))
+    )
+
+    assert rectangles(beside)[3][0] < rectangles(beside)[2][0]
+    assert rectangles(under)[3][1] < rectangles(under)[2][1]
+
+    assert beside.neighbours(AreaId(4)) == (
+        Neighbour(AreaId(2), Side.LEFT, whole_edge=False),
+        Neighbour(AreaId(3), Side.LEFT, whole_edge=False),
+    )
+    assert under.neighbours(AreaId(4)) == (
+        Neighbour(AreaId(2), Side.ABOVE, whole_edge=False),
+        Neighbour(AreaId(3), Side.ABOVE, whole_edge=False),
+    )
+    assert grid.neighbours(AreaId(4)) == (
+        Neighbour(AreaId(2), Side.LEFT, whole_edge=True),
+        Neighbour(AreaId(3), Side.ABOVE, whole_edge=True),
+    )
+
+
+# --- Which region a join re-slices ---------------------------------------------------
+
+
+def test_a_join_changes_no_split_above_the_lowest_split_that_holds_both_areas() -> None:
+    """A join re-slices only the region of the lowest split that holds both Areas.
+
+    Areas 3 and 4 share a column two levels down. A join that re-sliced a
+    larger region would work the row above out again from where its borders
+    lie. A row of a tenth, two tenths and seven tenths comes back from that
+    with 0.20000000000000004 for its middle size. So the row keeps its sizes
+    as stored, to the last bit, only when the join re-slices the column alone.
+    """
+
+    model = layout(
+        column(
+            (0.5, 0.5),
+            row((0.1, 0.2, 0.7), area(1), area(2), column((0.5, 0.5), area(3), area(4))),
+            area(5),
+        )
+    )
+
+    assert model.join(AreaId(3), AreaId(4)).windows[0].tree == column(
+        (0.5, 0.5), row((0.1, 0.2, 0.7), area(1), area(2), area(3)), area(5)
+    )
+
+
+def test_a_join_too_deep_for_a_child_of_the_root_is_taken_by_re_slicing_the_whole_window() -> None:
+    """The join tries each split above the lowest one in turn, up to and including the root.
+
+    This is the layout of
+    `test_a_join_too_deep_for_its_split_is_taken_by_cutting_a_split_above_first`,
+    with its tree at the top of the window rather than buried. Where that
+    test has Area 8, a tree of `TREE_DEPTH_MAXIMUM - 4` splits from `nested`
+    sits, so the layout's deepest split lies one level above the depth
+    maximum. The lowest split that holds Areas 109 and 112 is a child of the
+    root. Re-slicing its region puts two more levels above that tree, one
+    too many. Re-slicing the whole window, cut across at a quarter of its
+    height first, puts one more level above it. So the join is made, and its
+    result reaches the depth maximum exactly.
+    """
+
+    def splits_deep(node: Node) -> int:
+        if isinstance(node, Area):
+            return 0
+
+        return 1 + max(splits_deep(child) for child in node.children)
+
+    upper = row((1 / 3, 0.5, 1 / 6), area(107), nested(TREE_DEPTH_MAXIMUM - 4), area(109))
+    lower = row((0.5, 1 / 3, 1 / 6), area(110), area(111), area(112))
+    model = layout(
+        row(
+            (0.75, 0.25),
+            column((0.25, 0.75), area(101), area(102)),
+            column((0.25, 0.375, 0.375), area(105), upper, lower),
+        )
+    )
+
+    joined = model.join(AreaId(109), AreaId(112))
+
+    assert splits_deep(model.windows[0].tree) == TREE_DEPTH_MAXIMUM - 1
+    assert splits_deep(joined.windows[0].tree) == TREE_DEPTH_MAXIMUM
+    assert_places(joined, joined_places(rectangles(model), 109, 112))
+
+
+def test_a_join_that_merges_into_the_split_above_is_made_in_its_own_region() -> None:
+    """At the depth maximum, a join whose result merges into the split above is made where it is.
+
+    This is the grid of
+    `test_a_join_that_merges_into_the_split_above_may_reach_the_depth_maximum`,
+    in a row beside Area 99, which takes three tenths of the row. The join's
+    result is a row, which merges into that row. The region allows one level
+    fewer than the result needs, and the merge gives that level back. Made
+    there, the join keeps Area 99's size exactly as stored, 0.3, and gives
+    Area 1 and the column beside it half of the grid's 0.7 each. A join that
+    gave up on the region and re-sliced the row instead would work Area 99's
+    size out again from where its borders lie, as 0.30000000000000004. The
+    grid is checked at the depth maximum and one level above it, so that the
+    check does not hold only where the number of levels left is odd.
+    """
+
+    grid = column(
+        (0.5, 0.5),
+        row((0.5, 0.5), area(1), area(3)),
+        row((0.5, 0.25, 0.25), area(2), area(4), area(5)),
+    )
+
+    for levels in (TREE_DEPTH_MAXIMUM - 3, TREE_DEPTH_MAXIMUM - 4):
+        model = buried(row((0.7, 0.3), grid, area(99)), levels)
+        joined = model.join(AreaId(1), AreaId(2))
+
+        assert split_at(joined, (0,) * levels).sizes == (0.7 * 0.5, 0.7 * 0.5, 0.3)
