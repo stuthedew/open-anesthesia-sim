@@ -56,6 +56,7 @@ from anesthesia_sim.app.controller import (
     BranchedCase,
     SettingPreview,
     SimulationController,
+    _with_later_crossings,
 )
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
@@ -91,6 +92,7 @@ from anesthesia_sim.core.governing_equations import (
     build_system_matrix,
 )
 from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.prediction import predicted_states
 from anesthesia_sim.core.rounding import propagator_rounding, run_rounding
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow, StepCount
@@ -2123,6 +2125,57 @@ def test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reac
         * 0.02
     )
     assert abs(drawn[peak_s][state_index] - truth_by_second[peak_s][state_index]) <= limit
+
+
+def test_a_later_crossing_is_found_between_columns_two_seconds_apart_and_never_on_one() -> None:
+    """`_with_later_crossings` searches every pair at least two seconds apart, and adds no column.
+
+    The run and the preview are those of the test above, whose ratio last lies
+    outside the wash-in domain at one second about two and a half hours on.
+    Each state is taken from one-second predictions, so each pair below is cut
+    from the curve itself. A pair two seconds apart whose middle second is the
+    crossing must yield it. A pair whose left second is the crossing must
+    return its columns unchanged, because that second is already drawn.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance(controller, 1800)
+    settings = controller.preview_settings(SettingPreview(ControlInput.DELIVERED, 0.5))
+    opening = controller._state.stored_states.state_at(CaseInstant(1800))
+    states = predicted_states(settings, opening, CaseInstant(1800), CaseInstant(1800 + 4 * 3600))
+    inside = [
+        (ratio := wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION])) is not None
+        and is_wash_in(ratio)
+        for state in states
+    ]
+    crossing_s = next(
+        1800 + index
+        for index, (before, after) in enumerate(zip(inside, inside[1:], strict=False))
+        if index > PREVIEW_EXACT_S and not before and after
+    )
+
+    def state(second: int) -> tuple[float, ...]:
+        return states[second - 1800]
+
+    def later(*seconds: int) -> tuple[tuple[CaseInstant, ...], tuple[tuple[float, ...], ...]]:
+        return tuple(CaseInstant(second) for second in seconds), tuple(map(state, seconds))
+
+    middle_s, middle_states = later(crossing_s + 1, crossing_s + 60)
+    found_s, found_states = _with_later_crossings(
+        settings, CaseInstant(crossing_s - 1), state(crossing_s - 1), middle_s, middle_states
+    )
+
+    assert found_s == (crossing_s, crossing_s + 1, crossing_s + 60)
+    assert found_states[0] == pytest.approx(state(crossing_s))
+
+    left_s, left_states = later(crossing_s + 2, crossing_s + 60)
+
+    assert _with_later_crossings(
+        settings, CaseInstant(crossing_s), state(crossing_s), left_s, left_states
+    ) == (left_s, left_states)
 
 
 def test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only() -> None:

@@ -3158,11 +3158,14 @@ class SimulationController:
             for second in drawn_seconds(exact_s, horizon_s, grid_s, events_s=())
             if second > exact_s
         )
+        # One name for the state at the end of the exact hour, so that the
+        # later columns and the search for a crossing start from the same one.
+        exact_state = predicted[-1]
         later_states = predicted_states_at(
-            settings, predicted[-1], CaseInstant(exact_s), later_times_s
+            settings, exact_state, CaseInstant(exact_s), later_times_s
         )
         later_times_s, later_states = _with_later_crossings(
-            settings, CaseInstant(exact_s), predicted[-1], later_times_s, later_states
+            settings, CaseInstant(exact_s), exact_state, later_times_s, later_states
         )
 
         window = DrawnWindow(
@@ -3958,7 +3961,9 @@ def _with_later_crossings(
     columns = ((exact_s, exact_state), *by_second.items())
 
     for (left_s, left_state), (right_s, right_state) in pairwise(columns):
-        if right_s - left_s < 2 or outside(left_state) == outside(right_state):
+        # The seconds between two columns are predicted only where the ratio
+        # is inside the domain at one column and outside it at the other.
+        if outside(left_state) == outside(right_state):
             continue
 
         between_s = tuple(CaseInstant(second) for second in range(left_s + 1, right_s))
@@ -3967,11 +3972,7 @@ def _with_later_crossings(
         crossings_s = wash_in_crossing_seconds(
             left_s, [ratio(state) for state in states], (left_s, right_s)
         )
-        by_second.update(
-            (CaseInstant(second), states[second - left_s])
-            for second in crossings_s
-            if left_s < second < right_s
-        )
+        by_second.update((CaseInstant(second), states[second - left_s]) for second in crossings_s)
 
     ordered_s = tuple(sorted(by_second))
 
