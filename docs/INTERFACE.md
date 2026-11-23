@@ -4612,9 +4612,12 @@ fill, and macOS thickens the strokes by the fill color, so the interface's
 dark lettering was drawn heavier than under Light. On macOS the request sets
 the application's appearance to Light (Aqua), and the letters are then drawn
 as under Light. Where a platform ignores the request, the palette still
-applies. Only a Mac can show whether the lettering then matches, and the
-test (`test_declaring_the_application_asks_for_the_light_colour_scheme_before_its_palette`)
-checks only that the request is made, and made first.
+applies. On 2026-11-23 the button comparison window
+(`tests/benchmarks/style_trial.py`), run on a Mac under Light and under Dark,
+showed the same pixels for both kinds of button. The automated test
+(`test_declaring_the_application_asks_for_the_light_colour_scheme_before_its_palette`)
+checks only that the request is made, and made first, because only a Mac
+draws the lettering this way.
 
 Disabled controls follow the platform because both palette mechanisms leave
 the `Disabled` color group to it, and the stylesheets declare a disabled color
