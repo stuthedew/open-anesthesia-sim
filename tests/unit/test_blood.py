@@ -3,6 +3,7 @@ import pickle
 import re
 from dataclasses import astuple, replace
 from math import exp, inf, nan, nextafter
+from typing import Final
 
 import pytest
 
@@ -10,7 +11,9 @@ from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
+from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S, CardiacOutput
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 CARDIAC_OUTPUT_L_MIN = CardiacOutput(5.0)
 """The cardiac output, in L/min, at which these tests mix the pool, unless a test says otherwise.
@@ -496,3 +499,58 @@ def test_rejects_invalid_venous_volume(invalid_value: float) -> None:
             volume_l=invalid_value,  # type: ignore[arg-type]
             blood_gas_partition_coefficient=PartitionCoefficient(0.65),
         )
+
+
+# The shortfalls of the mixed-venous value below the blood leaving the
+# tissues that `docs/MODEL.md` § "Venous blood" states, by cardiac output in
+# L/min and then by second, with the rounding each stated figure carries.
+_STATED_POOL_SHORTFALL_PERCENT: Final = {
+    5.0: {30: (60.0, 10.0), 60: (40.0, 10.0), 120: (20.0, 10.0), 300: (5.0, 2.5)},
+    2.0: {300: (15.0, 5.0), 600: (5.0, 2.5)},
+}
+
+
+@pytest.mark.parametrize("cardiac_output_l_min", sorted(_STATED_POOL_SHORTFALL_PERCENT))
+@pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
+def test_the_venous_pool_lag_in_the_first_minutes_is_small_beside_tissue_uptake(
+    agent_id: str, cardiac_output_l_min: float
+) -> None:
+    """Hold the figures that `docs/MODEL.md` § "Venous blood" gives for the pool's lag.
+
+    The run is the reference adult at its opening settings and a 1 MAC dial,
+    in one-second steps, at the cardiac output given. The pool's own time
+    constant, 60 V/Q, is worked out here from the stored volume, so it does
+    not come from the code under test.
+
+    The section states two things for each agent at each output. The
+    mixed-venous value is a stated percentage below the blood leaving the
+    tissues at stated times. Over the first 5 minutes, that lag makes up at
+    most about 7% of the gap between the alveolar and the mixed-venous values
+    (measured at most 7.45%, for desflurane at 2.0 L/min). Each limit below is
+    the rounding of the figure the section states, not a numerical or
+    published limit: the shortfalls to the nearest 20, 10 or 5 points as
+    written, and "about 7%" to less than 7.5% (`PL-024`, measured
+    2026-11-22).
+    """
+
+    patient = load_reference_adult_parameters()
+    stated_time_constant_s = {5.0: 14.7, 2.0: 36.7}[cardiac_output_l_min]
+    assert 60.0 * patient.venous_pool_volume_l / cardiac_output_l_min == (
+        pytest.approx(stated_time_constant_s, abs=0.05)
+    )
+
+    system = AgentUptakeSystem.for_agent(agent_id)
+    system.set_cardiac_output(CardiacOutput(cardiac_output_l_min))
+    stated = _STATED_POOL_SHORTFALL_PERCENT[cardiac_output_l_min]
+    for second in range(1, max(stated) + 1):
+        system.advance()
+        mixed_venous = system.patient.mixed_venous_partial_pressure_fraction
+        tissue_return = system.patient.tissue_return_partial_pressure_fraction
+        if second <= 300:
+            alveolar = system.alveoli.partial_pressure_fraction
+            share_of_gap = (tissue_return - mixed_venous) / (alveolar - mixed_venous)
+            assert 0.0 < share_of_gap < 0.075
+        if second in stated:
+            shortfall = 100.0 * (1.0 - mixed_venous / tissue_return)
+            figure, rounding = stated[second]
+            assert shortfall == pytest.approx(figure, abs=rounding)
