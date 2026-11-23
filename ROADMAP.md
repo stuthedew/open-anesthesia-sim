@@ -2135,6 +2135,29 @@ patients as scaled humans.
 Improve accessibility (keyboard navigation, contrast, screen-reader
 support, color-vision-safe encodings).
 
+The toolkit can deliver all four, so the work left is this project's. Qt
+passes each widget's name, role, value and description to Microsoft Active
+Accessibility, macOS Accessibility and AT-SPI on Linux through `QAccessible`.
+An application can replace a widget's default description with its own, and
+since Qt 6.8 it can ask a screen reader to announce a message (Qt, QAccessible
+Class, https://doc.qt.io/qt-6/qaccessible.html, read 2026-11-23). A check on
+2026-11-23 read what the dashboard hands to `QAccessible` under PySide6 6.12.
+The buttons, check boxes and Area borders arrive named and reachable from the
+keyboard, and a label set as a control's buddy gives the control its name.
+Five gaps remain, each recorded as an item:
+
+1. The four setting sliders have no name, and each gives its value in the
+   slider's internal steps, such as 180 for 1.80% sevoflurane (`PL-9QY5`).
+2. Each readout value arrives as a bare number with its unit, without its
+   compartment or any sign that it is modelled (`PL-N5JB`).
+3. Several other controls have no name, or are named only by the value they
+   show (`PL-RK9Z`).
+4. The concentration chart arrives with no text alternative (`PL-T9RB`).
+5. No notice in the banner is announced when it appears (`PL-J7Z5`).
+
+The check read what Qt hands to the platform, not what a screen reader says,
+so the work ends with a run under VoiceOver (`PL-H1D9`).
+
 #### 21. Performance
 
 Improve performance, working from the open entries in
