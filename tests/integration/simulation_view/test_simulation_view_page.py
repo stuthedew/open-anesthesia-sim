@@ -27,8 +27,8 @@ from anesthesia_sim.app.views import (
     ParameterControlsView,
     WashInView,
 )
-from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 from anesthesia_sim.app.workspace_tabs import WorkspaceTabs
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 from anesthesia_sim.layout.model import MAIN_WINDOW
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation
 from anesthesia_sim.layout.workspace import WorkspaceName
