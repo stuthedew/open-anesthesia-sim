@@ -2214,18 +2214,21 @@ the wash-in row.** Desflurane's stored vessel-rich tissue:gas coefficient is
 tissue:blood ratio of 1.286. The table below instead solves for the
 coefficient that reproduces each cohort's published five-minute ratio. It does
 so at the shipped operating point, with the apparatus removed (simulated
-2026-09-08):
+2026-09-08). Each demanded ratio is then multiplied by the agent's stored
+blood:gas coefficient, which gives the tissue:gas coefficient that the agent
+demands. Tissue:gas is the quantity that Yasuda's study measured, so the
+demanded and measured columns share no derived denominator:
 
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
 <!-- derived: 1.286 from data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54, blood_gas_partition_coefficient = 0.42 -->
 
-| Agent | Tissue:blood demanded | Measured human brain:blood | Distance |
-| --- | --- | --- | --- |
-| Sevoflurane | 1.74 | 1.70 ± 0.09 | +0.4 SD |
-| Isoflurane | 1.45 | 1.57 ± 0.10 | −1.2 SD |
-| Desflurane | 2.24 | 1.29 ± 0.05 | +19 SD |
+| Agent | Tissue:blood demanded | Tissue:gas demanded | Measured human brain:gas | Distance |
+| --- | --- | --- | --- | --- |
+| Sevoflurane | 1.74 | 1.131 | 1.15 ± 0.07 | −0.27 SD |
+| Isoflurane | 1.45 | 1.885 | 2.09 ± 0.10 | −2.05 SD |
+| Desflurane | 2.24 | 0.941 | 0.54 ± 0.02 | +20.04 SD |
 
-<!-- not-restated: 0.05 -->
+<!-- not-restated: 0.54 -->
 
 At a tissue:blood ratio of 2.24, desflurane's elimination lands on the
 published 0.140. Its wash-in row stays inside its published spread, at +0.55
@@ -2243,25 +2246,34 @@ group published it three years before its pair of kinetic studies:
 
 - Yasuda N, Targ AG, Eger EI 2nd. *Solubility of I-653, sevoflurane,
   isoflurane, and halothane in human tissues.* Anesth Analg 1989;69(3):370-3.
-  PMID 2774233. Brain:blood, mean ± SD: I-653 (desflurane) 1.29 ± 0.05,
+  PMID 2774233. Brain:gas, mean ± SD, measured (Table 1, p. 371): I-653
+  (desflurane) 0.54 ± 0.02, isoflurane 2.09 ± 0.10, sevoflurane 1.15 ± 0.07.
+  Brain:blood, mean ± SD, calculated (Table 2, p. 371): I-653 1.29 ± 0.05,
   isoflurane 1.57 ± 0.10, sevoflurane 1.70 ± 0.09, halothane 1.94 ± 0.17.
-  Checked on 2026-11-23 against Table 2 (p. 371) of the full text, which is
-  held in the private reference corpus. The paper calculates these ratios by
-  dividing its measured brain:gas coefficients (Table 1) by published
-  blood:gas coefficients adjusted for age (p. 372).
+  Checked on 2026-11-23 against the full text, which is held in the private
+  reference corpus. The paper calculates the brain:blood ratios by dividing
+  its measured brain:gas coefficients by published blood:gas coefficients
+  adjusted for age (p. 372). Those blood:gas coefficients are not the stored
+  ones, which is why the table above compares tissue:gas.
 
-<!-- not-restated: 0.05 -->
+<!-- not-restated: 0.05, 0.54 -->
 
-Two of the three demanded values agree with that measurement. A demanded value is the
-coefficient that an agent would need to match its published elimination. Desflurane's
-demanded value is nineteen standard deviations above its own measured value, and above the
-value that either other agent demands. Adopting it would make desflurane the *most*
-tissue-soluble of the three agents, which would invert the ordering that the source paper was
-written to report. The stored Gas Man coefficients match that paper's brain:blood values to
-within 3%: 1.692 against 1.70, 1.615 against 1.57, and 1.286 against 1.29
-(`test_the_stored_vessel_rich_coefficients_lie_within_3_percent_of_yasudas_brain_values`). So there is no
-better value to move to. A test checks that at any vessel-rich coefficient the published human
+A demanded value is the coefficient that an agent would need to match its published
+elimination. Sevoflurane's demanded value lies 0.27 SD below its measured brain:gas mean.
+Isoflurane's lies 2.05 SD below its own, just outside two SDs, on the side opposite
+desflurane's. Desflurane's demanded value is twenty standard deviations above its own
+measured value, and it is the only one of the three above. As a tissue:blood ratio it is also
+above the ratio that either other agent demands. Adopting it would make desflurane the *most*
+tissue-soluble of the three agents relative to blood, which would invert the ordering that
+the source paper was written to report. The stored Gas Man coefficients lie within 1 SD of
+that paper's brain:gas means: 1.10 against 1.15, 2.1 against 2.09, and 0.54 against 0.54
+(`test_the_stored_vessel_rich_coefficients_lie_within_1_sd_of_yasudas_brain_values`). So there
+is no better value to move to. A test checks that at any vessel-rich coefficient the published human
 tissue data support, desflurane's elimination still misses on the same side.
+
+<!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
+<!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
+<!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
 
 | Coefficient given | $`F_A/F_{A0}`$ at 5 min | Against 0.14 ± 0.02 |
 | --- | --- | --- |

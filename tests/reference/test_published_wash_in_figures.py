@@ -3,11 +3,11 @@
 `docs/VERIFICATION.md` § "Published wash-in and elimination validation test"
 explains its comparisons with figures that no comparison asserts: how much
 agent the rebreathing circuit returns during an elimination, how fast the
-vessel-rich group equilibrates, how close the stored coefficients lie to
-Yasuda's brain:blood measurements, several properties of the published
-five-exponential washout fits, and where the model's 24-hour washout departs
-from them. Each test here computes one group of them, from the model or from
-the stored published coefficients.
+vessel-rich group equilibrates, how far the demanded and the stored
+vessel-rich coefficients lie from Yasuda's brain:gas measurements, several
+properties of the published five-exponential washout fits, and where the
+model's 24-hour washout departs from them. Each test here computes one
+group of them, from the model or from the stored published coefficients.
 
 Each test reads its figures from the section as printed, with a narrow
 pattern for the sentence that states them, as
@@ -23,6 +23,7 @@ apparent muscle and fat terms are the ones
 checks.
 """
 
+import re
 from collections.abc import Callable, Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cache
@@ -35,7 +36,7 @@ from test_late_washout_against_published_fits import (
     WashoutCurve,
     washout_curve,  # noqa: F401  # a fixture, which the tests below take by name
 )
-from test_parameter_source_figures import YASUDA_BRAIN_BLOOD
+from test_parameter_source_figures import _yasuda_table
 from test_published_wash_in_and_elimination import (
     AGENT_IDS,
     AGREEMENT_TOLERANCE_SD,
@@ -165,24 +166,60 @@ def test_the_vessel_rich_group_s_time_constant_is_2_0_to_2_7_minutes() -> None:
     _assert_span(minutes, low, high)
 
 
-def test_the_stored_vessel_rich_coefficients_lie_within_3_percent_of_yasudas_brain_values() -> None:
-    """Each stored tissue:blood ratio and Yasuda's brain value are as printed, and close enough.
+def test_the_stored_vessel_rich_coefficients_lie_within_1_sd_of_yasudas_brain_values() -> None:
+    """Each stored vessel-rich tissue:gas coefficient lies within the printed SDs of Yasuda's mean.
 
-    "Close enough" is within the percentage that the sentence prints.
+    Yasuda's brain:gas means and SDs are read from the Yasuda table in
+    `docs/PARAMETERS.md` § "Where the tissue:gas coefficients come from", so
+    this sentence cannot drift from the values that table records.
     """
 
-    percent, *pairs = _printed(
-        r"within (\d+)%: (\d\.\d+) against (\d\.\d+), (\d\.\d+) against (\d\.\d+), and "
-        r"(\d\.\d+) against (\d\.\d+)"
+    sds, *pairs = _printed(
+        r"within (\d) SD of\s+that paper's brain:gas means: (\d\.\d+) against (\d\.\d+), "
+        r"(\d\.\d+) against (\d\.\d+), and (\d\.\d+) against (\d\.\d+)"
     )
-    ratios, published = pairs[0::2], pairs[1::2]
+    stored_printed, means_printed = pairs[0::2], pairs[1::2]
 
-    for agent_id, figure, brain in zip(SECTION_ORDER, ratios, published, strict=True):
-        ratio = _vessel_rich_tissue_blood(agent_id)
+    for agent_id, stored, mean in zip(SECTION_ORDER, stored_printed, means_printed, strict=True):
+        coefficient, measured, sd = _yasuda_table()[agent_id, "vessel_rich"]
 
-        assert _as_printed(ratio, figure) == figure, agent_id
-        assert _as_printed(YASUDA_BRAIN_BLOOD[agent_id], brain) == brain, agent_id
-        assert abs(ratio / YASUDA_BRAIN_BLOOD[agent_id] - 1) < int(percent) / 100, agent_id
+        assert _as_printed(coefficient, stored) == stored, agent_id
+        assert _as_printed(measured, mean) == mean, agent_id
+        assert abs(coefficient - measured) < int(sds) * sd, agent_id
+
+
+def test_the_demanded_vessel_rich_coefficients_lie_from_yasudas_brain_values_as_printed() -> None:
+    """Each demanded tissue:gas coefficient, and its distance from Yasuda's mean, is as printed.
+
+    The table in § "Desflurane's residual" gives the tissue:blood ratio that
+    each agent needs to match its published elimination. Times the stored
+    blood:gas coefficient, that ratio is the demanded tissue:gas coefficient.
+    Its distance is counted in the SDs of Yasuda's measured brain:gas mean,
+    read from the Yasuda table in `docs/PARAMETERS.md`, so both sides of the
+    comparison divide by nothing the paper did not measure.
+    """
+
+    # regex: the rows of one table in free prose, which no parser reads.
+    rows = re.findall(
+        r"\| (Sevoflurane|Isoflurane|Desflurane) \| (\d\.\d+) \| (\d\.\d+) \| "
+        r"(\d\.\d+) ± (\d\.\d+) \| ([+−])(\d+\.\d+) SD \|",
+        _section_text(),
+    )
+
+    assert [row[0].lower() for row in rows] == list(SECTION_ORDER), rows
+    for name, ratio, tissue_gas, mean, sd, sign, distance in rows:
+        agent_id = name.lower()
+        blood_gas = load_agent_parameters(agent_id).blood_gas_partition_coefficient
+        _stored, measured, measured_sd = _yasuda_table()[agent_id, "vessel_rich"]
+        demanded = float(ratio) * blood_gas
+        signed = (demanded - measured) / measured_sd
+
+        assert _as_printed(demanded, tissue_gas) == tissue_gas, agent_id
+        assert (_as_printed(measured, mean), _as_printed(measured_sd, sd)) == (mean, sd), agent_id
+        assert ("+" if signed > 0 else "−", _as_printed(abs(signed), distance)) == (
+            sign,
+            distance,
+        ), (agent_id, signed)
 
 
 def test_normalising_the_fitted_amplitudes_would_move_the_curves_by_the_percentages_printed() -> (

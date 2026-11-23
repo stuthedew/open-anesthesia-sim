@@ -487,13 +487,13 @@ class TissueSolubilityCeiling:
             the run must still land, in that cohort's published standard
             deviations.
         what_it_is: a description of the measurement, for the failure
-            message. The values are read from the abstract of Yasuda N,
-            Targ AG, Eger EI II. *Solubility of I-653, sevoflurane,
-            isoflurane, and halothane in human tissues.* Anesth Analg
-            1989;69(3):370-3, PMID 2774233, which reports brain:blood as
-            1.29 +/- 0.05 for I-653 (desflurane), 1.57 +/- 0.10 for
-            isoflurane and 1.70 +/- 0.09 for sevoflurane, mean +/- SD. They
-            were checked against PubMed on 2026-09-08.
+            message. The values come from Yasuda N, Targ AG, Eger EI II.
+            *Solubility of I-653, sevoflurane, isoflurane, and halothane in
+            human tissues.* Anesth Analg 1989;69(3):370-3, PMID 2774233,
+            which reports brain:blood as 1.29 +/- 0.05 for I-653
+            (desflurane), 1.57 +/- 0.10 for isoflurane and 1.70 +/- 0.09 for
+            sevoflurane, mean +/- SD. They were checked against Table 2
+            (p. 371) of the full text on 2026-11-23.
     """
 
     tissue_blood_partition_coefficient: float
@@ -2787,21 +2787,19 @@ def test_no_measured_tissue_solubility_reaches_desflurane_s_published_eliminatio
     vessel-rich group is fully equilibrated after 30 minutes and its capacity
     barely affects F_A/F_I (measured 2026-09-08). What rules the change out
     is not this model but the tissue measurement. Solving the same way
-    against each cohort's published ratio gives the coefficient each agent
-    would require:
-
-    | Agent | Demanded | Yasuda 1989 measured brain:blood | Distance |
-    | --- | --- | --- | --- |
-    | Sevoflurane | 1.74 | 1.70 +/- 0.09 | +0.42 SD |
-    | Isoflurane | 1.45 | 1.57 +/- 0.10 | -1.24 SD |
-    | Desflurane | 2.24 | 1.29 +/- 0.05 | +19 SD |
-
-    Two of the three land on the measurement. Desflurane's required value is
-    nineteen standard deviations above its own measurement, and above what
-    either other agent requires. It would make desflurane the *most*
-    tissue-soluble of the three, inverting the ordering that the source paper
-    was written to report. So the residual cannot be this coefficient. The
-    assertion below is the contrapositive. Give desflurane a vessel-rich
+    against each cohort's published ratio gives the tissue:blood ratio each
+    agent would require. `docs/VERIFICATION.md` § "Desflurane's residual"
+    tabulates it, converts it to tissue:gas with the stored blood:gas
+    coefficient, and gives its distance from Yasuda 1989's measured brain:gas
+    mean, which
+    `test_the_demanded_vessel_rich_coefficients_lie_from_yasudas_brain_values_as_printed`
+    checks. Desflurane's required value is twenty standard deviations above
+    its own measurement, the only one of the three above, and as a
+    tissue:blood ratio it is above what either other agent requires. It would
+    make desflurane the *most* tissue-soluble of the three relative to blood,
+    inverting the ordering that the source paper was written to report. So
+    the residual cannot be this coefficient. The assertion below is the
+    contrapositive. Give desflurane a vessel-rich
     coefficient that the published human tissue data support, and its
     elimination still misses on the same side. Measured 2026-11-21:
 
