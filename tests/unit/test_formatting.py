@@ -2393,23 +2393,26 @@ def test_a_named_delivered_rate_never_rounds_up_to_the_set_rate(multiplier: int)
 
 
 @pytest.mark.parametrize(
-    ("multiplier", "delivered_fraction", "error"),
+    ("multiplier", "delivered_fraction", "error", "named"),
     [
-        (300, 1.0, ValueError),
-        (300, 0.0, ValueError),
-        (300, -0.5, ValueError),
-        (300, float("nan"), ValueError),
-        (0, 0.5, ValueError),
-        (300.0, 0.5, TypeError),
-        (True, 0.5, TypeError),
-        (300, True, TypeError),
-        (300, "0.5", TypeError),
+        (300, 1.0, ValueError, "1.0"),
+        (300, 0.0, ValueError, "0.0"),
+        (300, -0.5, ValueError, "-0.5"),
+        (300, float("nan"), ValueError, "nan"),
+        (0, 0.5, ValueError, "0"),
+        (300.0, 0.5, TypeError, "300.0"),
+        (True, 0.5, TypeError, "True"),
+        (300, True, TypeError, "True"),
+        (300, "0.5", TypeError, "'0.5'"),
     ],
 )
 def test_the_delivered_rate_line_refuses_a_rate_or_fraction_it_cannot_state(
-    multiplier: object, delivered_fraction: object, error: type[Exception]
+    multiplier: object, delivered_fraction: object, error: type[Exception], named: str
 ) -> None:
-    """A fraction of 1 or more is no shortfall, and a non-number is a defect upstream."""
+    """A fraction of 1 or more is no shortfall, and a non-number is a defect upstream.
 
-    with pytest.raises(error):
+    Each refusal names the value that failed, so the input behind it can be found.
+    """
+
+    with pytest.raises(error, match=f"not {re.escape(named)}$"):
         format_delivered_playback_rate(multiplier, delivered_fraction)  # type: ignore[arg-type]

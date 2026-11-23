@@ -312,6 +312,8 @@ class TickPace:
 
     __slots__ = ("_disclosed", "_interval_s", "_tick_times_s")
 
+    _disclosed: bool
+
     def __init__(self, tick_interval_ms: int) -> None:
         if (
             isinstance(tick_interval_ms, bool)
@@ -324,7 +326,7 @@ class TickPace:
 
         self._interval_s = tick_interval_ms / MILLISECONDS_PER_SECOND
         self._tick_times_s: deque[float] = deque(maxlen=PACE_WINDOW_TICKS + 1)
-        self._disclosed = False
+        self.restart()
 
     def record(self, now_s: float) -> None:
         """Record a tick that played the run, at `now_s` on a monotonic clock in seconds."""

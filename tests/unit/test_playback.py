@@ -442,6 +442,23 @@ def test_the_line_names_the_delivered_rate_only_below_95_percent(
     assert (pace.disclosed_fraction is not None) is disclosed
 
 
+def test_a_fraction_of_exactly_95_percent_is_not_named() -> None:
+    """The line names a rate below 95%, so exactly 95% leaves the plain label.
+
+    The window owes 50 x 0.1 s = 5 s. Taking 5 / 0.95 s for it gives a
+    fraction of exactly 0.95 in floating point, checked when the test was
+    written, so the comparison at the threshold is what the test exercises.
+    """
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    pace.record(0.0)
+    _ticks(pace, PACE_WINDOW_TICKS - 1, period_s=0.1, start_s=0.1)
+    pace.record(5.0 / 0.95)
+
+    assert pace.delivered_fraction == 0.95
+    assert pace.disclosed_fraction is None
+
+
 def test_a_disclosed_rate_clears_only_at_97_percent() -> None:
     """Between 95% and 97% a disclosed rate stays named, and at 97% it clears.
 
@@ -477,12 +494,28 @@ def test_a_restart_forgets_the_window_and_the_disclosure() -> None:
     pace.record(100.0)
     assert pace.delivered_fraction is None
 
+    # About 96.2% would stay named after a disclosure, but a restart starts
+    # from the plain label, where only a rate below 95% is named.
+    _ticks(pace, PACE_WINDOW_TICKS, period_s=0.104, start_s=100.104)
+
+    assert pace.delivered_fraction == pytest.approx(0.1 / 0.104)
+    assert pace.disclosed_fraction is None
+
 
 def test_ticks_that_come_early_never_deliver_more_than_the_set_rate() -> None:
     """A window that took less time than it owed reports 1, not more."""
 
     pace = TickPace(TICK_INTERVAL_MS)
     _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.09)
+
+    assert pace.delivered_fraction == 1.0
+
+
+def test_a_tick_pace_accepts_an_interval_of_1_ms() -> None:
+    """One millisecond is the shortest whole interval, and it is accepted."""
+
+    pace = TickPace(1)
+    _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.001)
 
     assert pace.delivered_fraction == 1.0
 
