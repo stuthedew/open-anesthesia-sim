@@ -71,7 +71,16 @@ the run stops.
 **The marks are added and removed in the Bookmarks View.** Each listed mark
 has its own Remove button, which removes that mark and no other. After a
 removal, the mark below moves up into the pressed row, so a second press in
-that list within the platform's double-click interval removes nothing. The forms
+that list within the platform's double-click interval removes nothing. After a
+removal, a line under the list names the removed mark, beside an Undo button
+that puts the mark back in its row. A run that reached the mark is shown as
+having reached it again, unless the run was started over, or its agent
+changed, in between.
+The offer has no time limit, so WCAG 2.2 Success Criterion 2.2.1 (Timing
+Adjustable) does not apply to it, as it would to a message that disappears
+after a few seconds. It stays until the marks change in another
+way, a branch opens or closes, or the case changes. Undo goes back through
+several removals in turn, the latest first. The forms
 that add a mark sit below the lists and each run's standing on them. No window
 opens to edit a mark (§ "What this list requires once the layout is the
 reader's").
@@ -3242,7 +3251,10 @@ does not declare it. The interpretation statement is
 The forms that add a mark are `MarkEditor`, and each listed mark with its
 Remove button is a `MarkRow` of a `MarkList`, all in `app/qt_widgets.py`. Each
 copy of the Bookmarks View holds one `MarkEditor` and one `MarkList` for each
-kind of mark. A test adds and removes marks with a run playing and
+kind of mark. The dashboard keeps the removals that Undo can reverse
+(`SimulationView._latest_removal`), and each run puts its own record of a mark
+back (`SimulationController.restore_mark`), so a reached target is still shown
+as reached. A test adds and removes marks with a run playing and
 checks that no window opens
 (`test_editing_a_mark_while_a_run_plays_opens_no_window`, in
 `tests/integration/simulation_view/test_simulation_view_comparison.py`).

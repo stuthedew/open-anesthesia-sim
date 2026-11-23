@@ -935,3 +935,99 @@ def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> 
         case.fork_at_mark(ahead)
 
     assert case.branches == ()
+
+
+# --- A removed mark put back by Undo (PL-5GX4) --------------------------------
+#
+# Removing a mark drops the run's record of what it did with the mark
+# (`_forget_unmarked`). An Undo puts the record back, but only into the run
+# that made it.
+
+
+def test_a_reached_target_put_back_after_its_removal_reads_reached_where_it_was() -> None:
+    """An undone removal restores the target's row and its standing, after the run moved on.
+
+    The run halts on the target and then runs on past it, so the only record
+    that it reached the target is the one that a removal drops. While the run
+    still stands on the halt, the halt alone shows the target as reached. The
+    expected values are the ones the run showed before the removal. A target
+    added back as new instead goes to the end of the list and reads as still
+    to come.
+    """
+
+    controller = SimulationController()
+    below = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.10))
+    crossed = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.15), "the one stopped on")
+    above = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(1.5))
+
+    for target in (below, crossed, above):
+        controller.add_mac_target(target)
+
+    controller.start()
+    _advance_until_halted(controller, limit_s=60)
+    controller.start()
+    _advance_until_halted(controller, limit_s=60)
+    controller.start()
+    _advance_for(controller, duration_s=10)
+    before = controller.snapshot()
+    assert before.bookmark_standings.of_mac_target(crossed) is MarkStanding.REACHED
+    assert before.bookmark_halt is None
+
+    removed = controller.remove_mac_target(crossed)
+    controller.restore_mark(removed)
+    after = controller.snapshot()
+
+    assert after.bookmarks == before.bookmarks
+    assert after.bookmark_standings == before.bookmark_standings
+
+
+def test_a_time_mark_put_back_after_its_removal_returns_to_its_row() -> None:
+    """The middle of three time marks returns between the other two, as the run held it."""
+
+    controller = SimulationController()
+    marks = [
+        TimeBookmark(CaseInstant(instant_s), f"mark {instant_s}") for instant_s in (90, 30, 60)
+    ]
+
+    for mark in marks:
+        controller.add_time_bookmark(mark)
+
+    controller.start()
+    _advance_until_halted(controller, limit_s=60)
+    before = controller.snapshot()
+
+    removed = controller.remove_time_bookmark(TimeBookmark(CaseInstant(30)))
+    controller.restore_mark(removed)
+    after = controller.snapshot()
+
+    assert removed.position == 1
+    assert after.bookmarks.time_bookmarks == tuple(marks)
+    assert after.bookmark_halt == before.bookmark_halt
+
+
+def test_a_target_put_back_after_a_reset_reads_as_the_new_run_has_it() -> None:
+    """A reset begins a new run, so the old run's crossing is not put back into it.
+
+    The expected standing is a fresh run's, built directly with the same
+    target and never stepped.
+    """
+
+    controller = SimulationController()
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.15))
+    controller.add_mac_target(target)
+    controller.start()
+    _advance_until_halted(controller, limit_s=60)
+    assert controller.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+    removed = controller.remove_mac_target(target)
+    controller.reset()
+    controller.restore_mark(removed)
+    fresh = SimulationController()
+    fresh.add_mac_target(target)
+
+    assert removed.reached
+    assert (
+        controller.snapshot().bookmark_standings.of_mac_target(target)
+        is fresh.snapshot().bookmark_standings.of_mac_target(target)
+        is MarkStanding.STILL_RUNNING
+    )

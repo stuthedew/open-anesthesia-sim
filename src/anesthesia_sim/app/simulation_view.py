@@ -119,6 +119,7 @@ from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import group_adjustments
 from anesthesia_sim.app.controller import (
     BranchedCase,
+    RemovedMark,
     RunSettings,
     SimulationController,
     SimulationSnapshot,
@@ -147,6 +148,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_branch_notice,
     refused_setting_notice,
     run_label,
+    stated_mark,
     trunk_reset_question,
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit
@@ -167,6 +169,7 @@ from anesthesia_sim.app.qt_widgets import (
     MarkButton,
     MarkEntry,
     MarkRefusal,
+    MarkUndo,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -381,6 +384,25 @@ class _RecordColumn(QWidget):
 
 
 @dataclass(frozen=True, slots=True)
+class _MarkRemoval:
+    """One removal of a mark from every displayed run, kept so that an Undo can reverse it.
+
+    Attributes:
+        button: The kind of Remove button pressed, which names the list.
+        removed: Each run's record of the mark it removed, in drawing order.
+        controllers: The runs the mark was removed from, in the same order.
+        marks_after: The case's marks just after the removal. An Undo is
+            offered only while the marks are still these, so that it never
+            reverses one edit on top of another that came after it.
+    """
+
+    button: MarkButton
+    removed: tuple[RemovedMark, ...]
+    controllers: tuple[SimulationController, ...]
+    marks_after: BookmarkSet
+
+
+@dataclass(frozen=True, slots=True)
 class _RunSlots:
     """Where one displayed run's widgets sit among the layouts that every run shares.
 
@@ -578,6 +600,10 @@ class SimulationView(QWidget):
         self._mark_entry: MarkEntry | None = None
         self._mark_refusal: MarkRefusal | None = None
         self._reachable_height_mac: float | None = None
+        # The removals that Undo can reverse, the latest last (`PL-5GX4`).
+        # Each was made on top of the one before it, so undoing the latest
+        # leaves the marks as the one before it left them.
+        self._removals: list[_MarkRemoval] = []
 
         # The offer that every branch View shows, and the selected point. The
         # dashboard keeps them for the same reason that it keeps the marks.
@@ -713,6 +739,7 @@ class SimulationView(QWidget):
             mark_entry=self._handle_mark_entry_request,
             mark_edit=self._handle_mark_edit_request,
             mark_remove=self._handle_mark_remove_request,
+            mark_undo=self._handle_mark_undo_request,
             branch_point=self._handle_branch_point_request,
             branch=self._handle_fork,
             branch_here=self._handle_here_fork,
@@ -1679,7 +1706,11 @@ class SimulationView(QWidget):
 
         return CasePresentation(
             MarksPresentation(
-                self._marks_shown, self._reachable_height_mac, self._mark_entry, self._mark_refusal
+                self._marks_shown,
+                self._reachable_height_mac,
+                self._mark_entry,
+                self._mark_refusal,
+                self._undo_offer(),
             ),
             None
             if self._case is None
@@ -2289,18 +2320,75 @@ class SimulationView(QWidget):
         bookmarks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks
 
         if button is MarkButton.REMOVE_TIME:
-            applied = self._remove_mark(
+            self._remove_mark(
                 bookmarks.time_bookmarks,
                 row,
                 lambda run, mark: run.remove_time_bookmark(mark),
                 button,
             )
         else:
-            applied = self._remove_mark(
+            self._remove_mark(
                 bookmarks.mac_targets, row, lambda run, mark: run.remove_mac_target(mark), button
             )
 
-        self._show_edit(applied)
+        self.present(False)
+
+    @halt_gate
+    def _handle_mark_undo_request(self) -> None:
+        """Put back the mark that the latest removal took, in every run, as each run had it.
+
+        Each run puts back its own record of the mark (`restore_mark`), so the
+        mark returns to its row with the standing it had. A press that finds
+        no removal to undo changes nothing: a copy of the View can still show
+        an offer that another copy's press has just used.
+        """
+
+        if self._latest_removal() is None:
+            return
+
+        removal = self._removals.pop()
+        self._mark_refusal = None
+
+        for controller, removed in zip(removal.controllers, removal.removed, strict=True):
+            controller.restore_mark(removed)
+
+        self.present(False)
+
+    def _undo_offer(self) -> MarkUndo | None:
+        """Return the removal that an Undo would reverse, or None where there is none."""
+
+        latest = self._latest_removal()
+
+        if latest is None:
+            return None
+
+        return MarkUndo(latest.button, stated_mark(latest.removed[TRUNK_RUN_INDEX].mark))
+
+    def _latest_removal(self) -> _MarkRemoval | None:
+        """Return the latest removal while an Undo can still reverse it, and forget it otherwise.
+
+        The latest removal can be undone only while the same runs are on
+        screen and the case's marks are the ones it left. Any other edit, a
+        branch opened or closed, or a new case ends that. The removal and
+        every one before it are then forgotten, because each was made on top
+        of the next, and none can be undone without it.
+        """
+
+        if not self._removals:
+            return None
+
+        latest = self._removals[-1]
+        controllers = tuple(run.controller for run in self._runs)
+        same_runs = len(controllers) == len(latest.controllers) and all(
+            held is shown for held, shown in zip(latest.controllers, controllers, strict=True)
+        )
+
+        if not same_runs or controllers[TRUNK_RUN_INDEX].bookmarks != latest.marks_after:
+            self._removals.clear()
+
+            return None
+
+        return latest
 
     def _show_edit(self, applied: bool) -> None:
         """Draw what an edit of the marks changed.
@@ -2349,17 +2437,18 @@ class SimulationView(QWidget):
         self,
         marks: Sequence[M],
         row: int,
-        remove: Callable[[SimulationController, M], None],
+        remove: Callable[[SimulationController, M], RemovedMark],
         button: MarkButton,
-    ) -> bool:
-        """Remove the mark at `row` of `marks` from every run.
+    ) -> None:
+        """Remove the mark at `row` of `marks` from every run, and keep the removal for Undo.
 
         Each row's Remove button is drawn from the same marks, and the list
         is drawn again before the next press can arrive, so `row` is always
-        within them.
-
-        Returns:
-            Whether the Remove was offered to the runs.
+        within them. The loop stops at the first run that refuses, for the
+        reasons `_apply_to_every_run` gives, and a refused removal is not
+        kept. A removal made on top of marks that the latest kept removal
+        did not leave starts the record afresh, so each kept removal was made
+        on top of the one before it.
 
         Raises:
             IndexError: `row` is outside `marks`, so the list on screen no
@@ -2375,8 +2464,21 @@ class SimulationView(QWidget):
             )
 
         selected = marks[row]
+        controllers = tuple(run.controller for run in self._runs)
 
-        return self._apply_to_every_run(lambda run: remove(run, selected), button)
+        # Forgets the kept removals unless this one is made on top of the latest.
+        self._latest_removal()
+
+        try:
+            removed = tuple(remove(controller, selected) for controller in controllers)
+        except SimulationConfigurationError as error:
+            self._mark_refusal = MarkRefusal(button, refused_setting_notice(error))
+
+            return
+
+        self._removals.append(
+            _MarkRemoval(button, removed, controllers, controllers[TRUNK_RUN_INDEX].bookmarks)
+        )
 
     def _apply_to_every_run(
         self, edit: Callable[[SimulationController], None], button: MarkButton

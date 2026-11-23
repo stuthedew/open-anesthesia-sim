@@ -135,6 +135,33 @@ _BRANCH_AT_AN_EARLIER_POINT: Final = (
 
 
 @dataclass(frozen=True, slots=True)
+class RemovedMark:
+    """A mark that one run removed, with what that run needs to put it back as it was.
+
+    `SimulationController.remove_time_bookmark` and `remove_mac_target`
+    return one, and `SimulationController.restore_mark` takes it back
+    (`PL-5GX4`). Removing a mark also drops what the run did with it
+    (`_forget_unmarked`). A mark added back without that record would show a
+    target the run reached as not yet reached. So the record keeps whether
+    the run had reached the mark, and which of the controller's runs had.
+
+    Attributes:
+        mark: The mark as the run held it.
+        position: Its row in its list, counted from 0.
+        reached: Whether the run had halted on the instant, or had crossed
+            the height.
+        run_number: Which run on the controller removed it
+            (`SimulationController._runs_begun`). A reset or an agent change
+            begins a new run, whose standings owe nothing to the old one.
+    """
+
+    mark: TimeBookmark | MacTarget
+    position: int
+    reached: bool
+    run_number: int
+
+
+@dataclass(frozen=True, slots=True)
 class RunStatus:
     """Whether the run is advancing and, if not, why: the three facts that describe a halt.
 
@@ -932,6 +959,10 @@ class SimulationController:
         self._stands_where_it_stopped = False
         self._reached_instants_s: frozenset[CaseInstant] = frozenset()
         self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
+        # How many times the fields above have been cleared for a new run. A
+        # removed mark records it, so that an undone removal puts back what a
+        # run did with the mark only into that same run (`RemovedMark`).
+        self._runs_begun = 0
         # `_bookmarks` is set here and not in `_build_state`, deliberately.
         # `set_agent` also calls `_build_state`. A mark is the learner's question rather
         # than the run's product, so it outlives the run, as a setting does. A
@@ -966,6 +997,7 @@ class SimulationController:
         self._leave_where_it_stopped()
         self._reached_instants_s = frozenset()
         self._reached_crossings = frozenset()
+        self._runs_begun += 1
 
     def _leave_where_it_stopped(self) -> None:
         """Clear the halt record's facts, because the run no longer stands where it stopped."""
@@ -1539,15 +1571,27 @@ class SimulationController:
 
         self._bookmarks = self._bookmarks.with_time_bookmark(bookmark)
 
-    def remove_time_bookmark(self, bookmark: TimeBookmark) -> None:
+    def remove_time_bookmark(self, bookmark: TimeBookmark) -> RemovedMark:
         """Remove the mark at the instant of `bookmark`.
+
+        Returns:
+            The mark as this run held it, for `restore_mark`.
 
         Raises:
             SimulationConfigurationError: If no bookmark is at that instant.
         """
 
+        held = self._bookmarks.held_time_bookmark(bookmark)
+        removed = RemovedMark(
+            held,
+            self._bookmarks.time_bookmarks.index(held),
+            held.instant_s in self._reached_instants_s,
+            self._runs_begun,
+        )
         self._bookmarks = self._bookmarks.without_time_bookmark(bookmark)
         self._forget_unmarked()
+
+        return removed
 
     def add_mac_target(self, target: MacTarget) -> None:
         """Mark a height on one compartment.
@@ -1559,15 +1603,64 @@ class SimulationController:
 
         self._bookmarks = self._bookmarks.with_mac_target(target)
 
-    def remove_mac_target(self, target: MacTarget) -> None:
+    def remove_mac_target(self, target: MacTarget) -> RemovedMark:
         """Remove the mark on the crossing that `target` names.
+
+        Returns:
+            The target as this run held it, for `restore_mark`.
 
         Raises:
             SimulationConfigurationError: If no target names it.
         """
 
+        held_targets = self._bookmarks.mac_targets
         self._bookmarks = self._bookmarks.without_mac_target(target)
+        # The removal above refused a target that no held target matches, so
+        # exactly one held target names this crossing.
+        position = next(
+            position
+            for position, held in enumerate(held_targets)
+            if held.crossing_key == target.crossing_key
+        )
+        held = held_targets[position]
+        removed = RemovedMark(
+            held, position, held.crossing_key in self._reached_crossings, self._runs_begun
+        )
         self._forget_unmarked()
+
+        return removed
+
+    def restore_mark(self, removed: RemovedMark) -> None:
+        """Put back a mark that this controller removed, where it was and as the run had it.
+
+        The mark returns to its row (`BookmarkSet.with_time_bookmark_at`). If
+        the run had halted on the instant or crossed the height, and no new
+        run has begun since the removal, the run's record of that is put back
+        too, so the mark's standing is what it was. A run that crossed a
+        height while the mark was removed did not record the crossing, so the
+        restored target then shows as not yet reached, as any newly added
+        target would.
+
+        Raises:
+            ValueError: If the removed position is negative
+                (`BookmarkSet.with_time_bookmark_at`).
+            SimulationConfigurationError: If the mark is already held again,
+                as `add_time_bookmark` and `add_mac_target` raise it.
+        """
+
+        same_run = removed.reached and removed.run_number == self._runs_begun
+        mark = removed.mark
+
+        if isinstance(mark, TimeBookmark):
+            self._bookmarks = self._bookmarks.with_time_bookmark_at(removed.position, mark)
+
+            if same_run:
+                self._reached_instants_s |= {mark.instant_s}
+        else:
+            self._bookmarks = self._bookmarks.with_mac_target_at(removed.position, mark)
+
+            if same_run:
+                self._reached_crossings |= {mark.crossing_key}
 
     def _forget_unmarked(self) -> None:
         """Drop what the run did with marks that the learner has since removed.

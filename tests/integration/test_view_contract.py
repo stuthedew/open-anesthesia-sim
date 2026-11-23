@@ -85,6 +85,7 @@ _REQUESTS = ViewRequests(
     mark_entry=lambda _entry: None,
     mark_edit=lambda _button, _entry: None,
     mark_remove=lambda _button, _row: None,
+    mark_undo=lambda: None,
     branch_point=lambda _point: None,
     branch=lambda: None,
     branch_here=lambda: None,
