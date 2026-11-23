@@ -79,13 +79,14 @@ from anesthesia_sim.app.theme import (
     MINIMUM_TRACE_STROKE_WIDTH,
     ONE_MAC_LINE_DASH_PATTERN,
 )
-from anesthesia_sim.app.wash_in import read_wash_in
+from anesthesia_sim.app.wash_in import is_wash_in, read_wash_in, wash_in_ratio
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     FIRST_TISSUE_FRACTION,
     FRACTION_STATE_NAMES,
+    INSPIRED_FRACTION,
     VENOUS_FRACTION,
     build_system_matrix,
 )
@@ -2031,6 +2032,48 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
     # The run itself kept the setting in force: the preview applied nothing.
     assert previewed.settings().fresh_gas_flow_l_min != 6.0
     assert previewed.record().control_timeline == ()
+
+
+def test_a_preview_past_its_first_hour_draws_the_second_its_ratio_crosses_equilibrium() -> None:
+    """A predicted wash-in stretch that starts after the first hour starts on the line (`PL-CJJ1`).
+
+    With the fresh gas at 1 L/min and the dial at 8% for 30 minutes, a
+    preview of the dial at 0.5% predicts F_A/F_I falling back below 1 about
+    two and a half hours later. Past its first hour a preview predicts only
+    the grid seconds, which are 102 s apart on this axis, so the last second
+    outside the wash-in domain lay between two columns and was not drawn. The
+    expected second is found in a twin run that applies the setting and steps
+    on (rule 2 of `.claude/rules/test-oracles.md`).
+    """
+
+    def started(controller: SimulationController) -> SimulationController:
+        controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+        controller.set_delivered_concentration_percent(Percent(8.0))
+        controller.start()
+        _advance(controller, 1800)
+
+        return controller
+
+    previewed, applied = started(SimulationController()), started(SimulationController())
+    preview = SettingPreview(ControlInput.DELIVERED, 0.5)
+    window = previewed.preview_window(preview, 0.0, 1800.0 + 8 * 3600.0, 300)
+
+    applied.set_delivered_concentration_percent(Percent(0.5))
+    first_s, last_s = 1800 + PREVIEW_EXACT_S, 1800 + 4 * 3600
+    _advance(applied, last_s - 1800)
+    truth = applied.drawn_window(float(first_s), float(last_s), last_s - first_s)
+    assert truth.times_s == tuple(range(first_s, last_s + 1))
+    ratios = [
+        wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION]) for state in truth.states
+    ]
+    inside = [ratio is not None and is_wash_in(ratio) for ratio in ratios]
+    entering_s = next(
+        second
+        for second, before, after in zip(truth.times_s, inside, inside[1:], strict=False)
+        if not before and after
+    )
+
+    assert entering_s in window.times_s
 
 
 @pytest.mark.parametrize(

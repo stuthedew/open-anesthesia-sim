@@ -572,9 +572,11 @@ def wash_in_crossing_seconds(
     crossing. After the dial is closed, the ratio there can be far above 1,
     past what the plot draws, and the trace then stops in clear space below
     the line with no mark that it ended (`PL-CJJ1`). So the chart also draws
-    the second at which the ratio crossed. That second is a stored state, and
-    one step carries the ratio no more than 3% past equilibrium, as
-    `chart_frame.wash_in_stretches` says.
+    the second at which the ratio crossed. That second is a stored state. When
+    the ratio leaves the domain, one step carries it no more than 3% past
+    equilibrium, as `chart_frame.wash_in_stretches` says. When it enters, a
+    large rise of the dial can carry it in one step from above the plot's top
+    to well below the line, and the second returned then lies above the top.
 
     For each pair of neighbouring drawn seconds, the rule looks for one
     crossing:
