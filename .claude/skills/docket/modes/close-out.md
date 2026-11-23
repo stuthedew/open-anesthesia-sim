@@ -183,8 +183,10 @@ page and decides which file a session reads.
    `tools/diff_mutation.py --verdict` once for the branch. That takes seconds
    where the branch changes no function mutmut mutates, five to eight minutes
    on a typical branch that does, and 36 minutes for the largest batch measured
-   on 2026-10-24, 340 mutants. Iterate with `make mutate`, which prints the
-   same survivors, rather than by re-running the audit.
+   on 2026-10-24, 340 mutants. On 2026-11-23, `make mutate` on the change that
+   added `core/rounding.py`, 232 mutants in eight functions, took 16 minutes
+   (`PL-33CG`). Iterate with `make mutate`, which prints the same survivors,
+   rather than by re-running the audit.
 
    The same check refuses a branch that weakens a changed simulator unit test,
    where a mutant of the display modules that the test's base version catches
