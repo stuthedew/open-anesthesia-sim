@@ -6,7 +6,7 @@ added: 2026-11-22
 closed: 2026-11-23
 pr: 2264
 filed-pr: 2257
-tests: tests/integration/simulation_view/test_simulation_view_controls.py::test_a_burst_of_wheel_events_draws_one_frame_at_once_and_the_rest_within_a_tenth_of_a_second, tests/integration/simulation_view/test_simulation_view_controls.py::test_a_render_tick_that_draws_a_burst_s_owed_frame_ends_the_burst, tests/integration/simulation_view/test_simulation_view_loops.py::test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_within_a_tenth_of_a_second
+tests: tests/integration/simulation_view/test_simulation_view_controls.py::test_a_burst_of_wheel_events_draws_one_frame_at_once_and_the_rest_when_the_wait_ends, tests/integration/simulation_view/test_simulation_view_controls.py::test_a_render_tick_that_draws_a_burst_s_owed_frame_ends_the_burst, tests/integration/simulation_view/test_simulation_view_loops.py::test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_when_the_wait_ends, tests/unit/test_dashboard_frame.py::test_two_input_frames_start_the_interval_or_twice_the_cost_apart
 ---
 
 **Problem.** The charts redraw on a 0.2 s render tick while a dial is held, twice the 0.1 s that Nielsen Norman Group gives as the limit for a user to feel they are directly manipulating the display; measure the frame cost and whether a 0.1 s tick fits it
@@ -61,13 +61,13 @@ use for animation.
 
 **What changed in the tests.**
 
-- `test_a_burst_of_wheel_events_draws_one_frame_at_once_and_the_rest_within_a_tenth_of_a_second`
+- `test_a_burst_of_wheel_events_draws_one_frame_at_once_and_the_rest_when_the_wait_ends`
   replaces the burst test of `PL-2WVC`. It also pins the timer's interval at
   100 ms, Nielsen Norman Group's limit, and checks that an interval that ends
   with nothing owed ends the burst.
 - `test_a_render_tick_that_draws_a_burst_s_owed_frame_ends_the_burst` checks
   that the tick and the end of the 0.1 s never both draw one owed frame.
-- `test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_within_a_tenth_of_a_second`
+- `test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_when_the_wait_ends`
   replaces `test_a_dragged_slider_leaves_its_frame_to_the_render_tick`.
 - The two halt tests that drag a dial into a halt in
   `test_simulation_view_run_stops_itself.py` now make the snapshot refuse
@@ -84,7 +84,7 @@ the drag test failed with `assert 1 == (1 + 1)` at the press, because the
 preview waited for the tick, and the burst test failed with `AttributeError:
 'SimulationView' object has no attribute '_input_frame_timer'`. Command:
 `QT_QPA_PLATFORM=offscreen PYTHONPATH=src python -m pytest -q
-tests/integration/simulation_view/test_simulation_view_loops.py::test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_within_a_tenth_of_a_second`.
+tests/integration/simulation_view/test_simulation_view_loops.py::test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_when_the_wait_ends`.
 
 **Not measured:** the frame cost on the owner's Mac or in CI. The container
 draws in software, so its figures are an upper bound for a machine with a
@@ -95,3 +95,36 @@ keeps its old cost, and the input frames are bounded by the timer.
 `docs/ARCHITECTURE.md` (the halt paragraph that said a dragged dial leaves
 the charts to the render tick), `docs/VERIFICATION.md` and `docs/MODEL.md`
 (no statement about frame timing).
+
+**Review fix, 2026-11-23.** Both blind review passes found that the wait was
+counted from the end of a frame, so an input reached the charts about 100 ms
+plus a frame later, and one pass found that the render tick drew a second
+frame a few milliseconds after an input frame during a drag. A frame with a
+held thumb's preview on screen, measured the same way, costs more than the
+table above:
+
+| Run length | Median | 95th percentile | Worst |
+| --- | --- | --- | --- |
+| 60 s | 40.0 ms | 56.6 ms | 64.0 ms |
+| 600 s | 61.5 ms | 74.6 ms | 106.6 ms |
+| 1800 s | 103.0 ms | 142.2 ms | 149.8 ms |
+| 3600 s | 104.0 ms | 150.5 ms | 178.2 ms |
+
+So a fixed 100 ms from start to start would keep the interface's thread
+drawing all the time during a drag over a long run, and the run's own steps
+and the reader's inputs would wait behind it. The wait after an input frame is
+now worked out from that frame's measured cost (`input_frame_wait_ms` in
+`app/dashboard_frame.py`): the next frame starts 100 ms after this one
+started, or twice its cost after, whichever is later. A frame cheaper than
+50 ms meets Nielsen Norman Group's limit, and a slower one is followed by an
+idle pause as long as itself, which caps drawing at half the thread. A render
+tick during a burst is drawn as an input frame, so the wait starts again from
+it. The half-thread cap is this project's choice, not a published figure: it
+is the load that the 0.2 s tick already put on the thread during a drag over
+a long run before this change (about 104 ms of drawing in each 200 ms).
+
+Tests added for the fix: `test_an_input_frame_waits_out_the_interval_or_its_own_cost`,
+`test_two_input_frames_start_the_interval_or_twice_the_cost_apart` and
+`test_an_input_frame_s_wait_refuses_a_cost_no_clock_can_measure` in
+`tests/unit/test_dashboard_frame.py`. Their expected waits are worked out by
+hand from the rule.

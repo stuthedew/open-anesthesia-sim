@@ -111,20 +111,20 @@ def test_neither_loop_does_anything_while_paused(application: QApplication) -> N
     assert view.presented_frames == presented
 
 
-def test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_within_a_tenth_of_a_second(
+def test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_when_the_wait_ends(
     application: QApplication,
 ) -> None:
-    """A held thumb's first preview draws at once, its moves at most 0.1 s later, and the release.
+    """A held thumb's first preview draws at once, its moves when the wait ends, then the release.
 
     The press shows a preview, which draws its frame at once. The moves that
-    follow less than 0.1 s after it leave their frame to the end of the
-    0.1 s, which draws the latest preview, so the charts follow the thumb
-    within Nielsen Norman Group's 0.1 s limit for direct manipulation
-    (`PL-NKFD`). Before that change, the moves waited for the render tick,
-    up to 0.2 s (`PL-R2YM`). The release is one discrete action, and it
-    draws one frame at once, so the preview is gone the moment the thumb is
-    let go (`PL-5B1N`). The view beside the dial agrees with the snapshot the
-    moment the setting is applied (`PL-018`).
+    follow during the wait after it leave their frame to the wait's end,
+    which draws the latest preview. The wait keeps a cheap frame to Nielsen
+    Norman Group's 0.1 s limit for direct manipulation
+    (`input_frame_wait_ms`, `PL-NKFD`). Before that change, the moves waited
+    for the render tick, up to 0.2 s (`PL-R2YM`). The release is one
+    discrete action, and it draws one frame at once, so the preview is gone
+    the moment the thumb is let go (`PL-5B1N`). The view beside the dial
+    agrees with the snapshot the moment the setting is applied (`PL-018`).
     """
 
     controller = SimulationController()
