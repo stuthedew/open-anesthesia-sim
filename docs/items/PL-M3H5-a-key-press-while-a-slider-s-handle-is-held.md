@@ -11,7 +11,7 @@ added: 2026-11-22
 closed: 2026-11-23
 pr: 2309
 payoff: the chart never labels as not applied a setting the run has already applied
-tests: tests/integration/test_qt_widgets.py::test_a_key_or_wheel_while_the_thumb_is_held_applies_nothing
+tests: tests/integration/test_qt_widgets.py::test_a_key_or_wheel_while_the_thumb_is_held_applies_nothing, tests/integration/test_qt_widgets.py::test_a_key_or_swipe_begun_while_the_thumb_was_held_stays_ignored_after_the_release, tests/integration/test_qt_widgets.py::test_a_second_mouse_button_while_the_thumb_is_held_does_nothing
 ---
 
 **Problem.** A key press while a slider's handle is held applies the value at once, while the chart still says 'Preview: ... not applied' until release; ignore keys while the handle is held, or end the preview when a key applies (found by the PL-57LD review, flow slider at 4.0 L/min, Right while holding)
@@ -39,6 +39,18 @@ Run against the code before the fix, with
 `QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest -q tests/integration/test_qt_widgets.py::test_a_key_or_wheel_while_the_thumb_is_held_applies_nothing`,
 it fails with `assert [('preview', ... track', 4.2)] == [('preview', ...review', 4.5)]`
 and "Left contains 3 more items, first extra item: ('preview', 4.1)".
+
+The blind review found two more ways into the same fault, and both are
+fixed. A key held through the release kept repeating into the run, and a swipe
+begun during the hold kept scrolling after it. Neither announces an adjustment,
+so their steps were counted as part of the drag. The slider now ignores a key
+whose press it ignored until that key is let go, and a swipe until it ends.
+A second mouse button pressed during the drag restarted the preview at the
+value in force under Fusion, where the middle button moves the handle to the
+pointer; it is now ignored. Two new tests cover these, and against the first
+fix alone they fail with "Left contains 4 more items, first extra item:
+('applied on a key, the wheel or a click on the track', 4.6)" and "Left
+contains one more item: ('input', None)".
 
 Docs checked: `docs/INTERFACE.md` § on setting sliders and the preview now
 states the rule; § "A preview of an unapplied setting" needed no change.
