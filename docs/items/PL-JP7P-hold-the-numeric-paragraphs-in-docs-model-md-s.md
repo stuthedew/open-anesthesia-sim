@@ -120,3 +120,10 @@ changes, because no file under `src/` changes. Every figure this change
 rewrites in `docs/INTERFACE.md` is restated from what its own tests measure,
 and no sentence changes what a value means or what a limitation promises. So
 the owner's read is not needed, and the pull request merges on green.
+
+**Main merged, 2026-11-23.** The reader-chosen chart top (#2270) merged
+while this was open. Its new paragraphs on the three tops, the gridlines, the
+percent labels and the high top's margin over the vaporizer maxima now name
+the tests that compute their figures. A schematic paragraph names main's
+renamed marks test. No sentence changed what a value means, so the owner's
+read is still not needed.
