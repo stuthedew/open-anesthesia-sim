@@ -3,13 +3,16 @@ id: PL-VS4V
 title: No record says why the perfusion-fraction allowance is 1e-12 or the cardiac-output allowance is one part in 10**9: core/rounding.py states both values, what each is measured against and how far above rounding each sits, but git log -S traces them only to v0.1.0 (875ba085) and to the matrix-exponential change (d8deea50), neither of which gives a reason
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety
 feature: floating-point-domain
-touches: src/anesthesia_sim/core/rounding.py, tests/unit/test_rounding.py
+touches: src/anesthesia_sim/core/rounding.py, tests/unit/test_rounding.py, tests/unit/test_governing_equations.py
 deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: test_rounding.py holds FLOW_FRACTION_TOLERANCE between four machine epsilons and the 0.002 error of De Wolf's printed fractions, which the loader refuses, and the cardiac-output allowance of one part in 10**9 is far below any transcription error, so no learner can see a wrong value now
 added: 2026-11-11
+closed: 2026-11-23
+pr: 2314
 payoff: The checks that accept a patient's tissue flows rest on allowances whose size has a stated, tested reason.
+tests: tests/unit/test_rounding.py::test_the_perfusion_allowance_is_below_the_cardiac_output_allowance_by_more_than_rounding, tests/unit/test_rounding.py::test_the_cardiac_output_allowance_creates_less_agent_than_the_propagator_bound_assumes, tests/unit/test_governing_equations.py::test_flows_from_fractions_at_the_edge_of_the_perfusion_allowance_are_accepted
 ---
 
 **Problem.** No record says why the perfusion-fraction allowance is 1e-12 or the cardiac-output allowance is one part in 10**9: core/rounding.py states both values, what each is measured against and how far above rounding each sits, but git log -S traces them only to v0.1.0 (875ba085) and to the matrix-exponential change (d8deea50), neither of which gives a reason
