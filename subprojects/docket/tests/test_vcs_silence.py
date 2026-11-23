@@ -61,6 +61,7 @@ from docket.vcs import (
     default_base,
     default_branch,
     failing_pull_requests,
+    file_revisions,
     filed_here,
     filed_with_work,
     files_in_flight,
@@ -540,6 +541,13 @@ READS: tuple[Read, ...] = (
         "since_filed",
         lambda r, g: since_filed(r, ("src/one.py", "docs/items"), date(2000, 1, 1), runner=g),
         _findings("paths"),
+    ),
+    # A file with more than one committed text, so the truthful read returns
+    # several, and a silence that dropped one would lose a day's list (`PL-LJK4`).
+    Read(
+        "file_revisions",
+        lambda r, g: file_revisions(r, "HEAD", "src/one.py", runner=g),
+        _findings("revisions"),
     ),
     # The branch this checkout is on captured `PL-L0ST` and then deleted its
     # file, so the history holds a path the tree lacks: the finding a silence
