@@ -1716,6 +1716,7 @@ fresh gas flow are all reached
 runs must meet the same $`4\times10^{-13}`$ limit as the five above
 (`test_exact_step_matches_the_independent_solution_on_randomised_trajectories`),
 and they stay below the worst of them.
+<!-- not-restated: 20 s -->
 
 #### Checks at every step of the random runs
 
