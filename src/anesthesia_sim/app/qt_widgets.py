@@ -1219,6 +1219,14 @@ class _SettingSlider(QSlider):
     by one held key. A trackpad swipe is announced only where it begins, for
     the same reason.
 
+    **A key press or a wheel turn while the handle is held does nothing**
+    (`PL-M3H5`). Qt's slider applies a key step at once even while the handle
+    is down, and the chart would still label the held value "not applied"
+    until the release. So while a pointer holds the handle, the drag is the
+    one input, as a drag-and-drop library keeps standard keys from acting
+    during a mouse drag (react-beautiful-dnd, docs/sensors/mouse.md, read
+    2026-11-23).
+
     Attributes:
         jumping: True only while a press on the track moves the handle to
             the pointer.
@@ -1234,6 +1242,10 @@ class _SettingSlider(QSlider):
         self._grab_offset: int | None = None
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
+        if self.isSliderDown():
+            event.accept()
+            return
+
         if not event.isAutoRepeat():
             self.input_started.emit()
 
@@ -1244,6 +1256,10 @@ class _SettingSlider(QSlider):
         # trackpad swipe sends one event that begins the gesture and then many
         # small ones, its momentum included, so it is announced only where it
         # begins and is one adjustment however far it moves the value.
+        if self.isSliderDown():
+            event.accept()
+            return
+
         if event.phase() in (Qt.ScrollPhase.NoScrollPhase, Qt.ScrollPhase.ScrollBegin):
             self.input_started.emit()
 

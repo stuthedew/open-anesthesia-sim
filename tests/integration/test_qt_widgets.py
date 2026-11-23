@@ -804,6 +804,42 @@ def test_a_key_step_applies_at_once_and_previews_nothing(application: QApplicati
     assert previewed == []
 
 
+def test_a_key_or_wheel_while_the_thumb_is_held_applies_nothing(application: QApplication) -> None:
+    """A held thumb is the only input, so the chart never calls an applied value "not applied".
+
+    Before `PL-M3H5`, a Right key press while the handle was held applied the
+    next step at once, while the preview still labelled the held value "not
+    applied" until release.
+    """
+
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    events: list[tuple[str, float | None]] = []
+    control.preview_moved.connect(lambda value: events.append(("preview", value)))
+    control.preview_ended.connect(lambda: events.append(("ended", None)))
+    control.value_changed.connect(
+        lambda value, dial_input: events.append((f"applied on {dial_input.value}", value))
+    )
+    start = slider_position(setting.value, setting.decimals)
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(start + 5)
+    held = list(events)
+
+    QTest.keyClick(control.slider, Qt.Key.Key_Right)
+    control.slider.wheelEvent(_wheel_event(control.slider, Qt.ScrollPhase.NoScrollPhase))
+
+    assert events == held
+    assert control.slider.sliderPosition() == start + 5
+
+    control.slider.setSliderDown(False)
+
+    assert events == [
+        *held,
+        ("applied on a released thumb", slider_value(start + 5, setting.decimals)),
+        ("ended", None),
+    ]
+
+
 def test_a_frame_written_during_a_drag_leaves_the_thumb_under_the_pointer(
     application: QApplication,
 ) -> None:
