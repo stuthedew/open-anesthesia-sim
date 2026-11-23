@@ -11,16 +11,21 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
-from typing import Any
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Any, NoReturn
 
 import pytest
 
+import anesthesia_sim.app_metadata
 from anesthesia_sim.app_metadata import (
     APP_BUILD,
     APP_BUILD_VERSION,
     APP_VERSION,
     APP_VERSION_IS_KNOWN,
     UNKNOWN_VERSION,
+    _git,
     build_identifier,
 )
 
@@ -144,3 +149,62 @@ def test_absent_package_metadata_makes_the_build_declare_itself_untraceable(
     finally:
         monkeypatch.undo()
         importlib.reload(app_metadata)
+
+
+def test_git_is_asked_about_the_checkout_that_holds_the_running_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Git answers for the running code's checkout, whatever directory the app was started from.
+
+    Git run in the process's working directory would describe whatever
+    repository the reader launched the app from. The build identifier would
+    then name code other than the code that is running, which is worse than
+    no identifier. The test starts from a fresh repository of its own, so a
+    git run there would answer with that repository. The expected answer
+    comes from git itself, asked with `-C` about the module's own directory.
+    """
+
+    if shutil.which("git") is None:
+        pytest.skip("git is not installed")
+
+    for name in ("GIT_DIR", "GIT_WORK_TREE"):
+        monkeypatch.delenv(name, raising=False)
+
+    module_directory = Path(anesthesia_sim.app_metadata.__file__).resolve().parent
+    expected = subprocess.run(
+        ["git", "-C", str(module_directory), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if expected.returncode != 0:
+        pytest.skip("the running code is not in a git checkout")
+
+    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    monkeypatch.chdir(tmp_path)
+
+    assert _git("rev-parse", "--show-toplevel") == expected.stdout.strip()
+
+
+def test_a_git_that_never_answers_is_given_up_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A git that hangs costs the launch no more than the time limit, and the build goes unnamed.
+
+    The module runs git while it is imported, which is at launch, and the
+    build identifier is only a convenience. So each git call must carry a
+    time limit. The stand-in for `subprocess.run` behaves as a git that never
+    answers. Given a limit, it reports the limit as passed. Given none, it
+    fails the test, because the real call would wait for ever.
+    """
+
+    def never_answers(arguments: list[str], **options: Any) -> NoReturn:
+        limit = options.get("timeout")
+
+        if limit is None:
+            pytest.fail("git was run with no time limit, so a hung git would hang the launch")
+
+        raise subprocess.TimeoutExpired(arguments, limit)
+
+    monkeypatch.setattr(subprocess, "run", never_answers)
+
+    assert _git("describe", "--tags") is None

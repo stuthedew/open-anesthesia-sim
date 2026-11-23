@@ -10,6 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
+from test_user_files import run_where_the_platform_encoding_is_ascii
 
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import (
@@ -470,3 +471,215 @@ def test_a_save_holding_text_that_is_not_valid_unicode_is_refused_and_writes_not
         store.save(preferences)
 
     assert list(tmp_path.iterdir()) == []
+
+
+# ------------------------------------------------- what each save leaves behind
+
+
+def test_each_change_in_a_session_is_saved_without_loading_again(tmp_path: Path) -> None:
+    """A store loaded once accepts a second save, and the file then holds the second change.
+
+    The dashboard loads the store once, at launch, and saves at every change
+    of preference. If a save left the store unready for the next one, every
+    change after the first would last only until the application closed.
+    """
+
+    store = PreferencesStore(tmp_path)
+    store.load()
+    store.save(Preferences().with_price(ISOFLURANE_PRICE))
+    store.save(
+        Preferences()
+        .with_price(ISOFLURANE_PRICE)
+        .with_agent_cost_unit(AgentAmountUnit.LITRES_OF_VAPOUR)
+    )
+
+    reloaded = PreferencesStore(tmp_path).load()
+
+    assert reloaded.notice is None
+    assert reloaded.preferences.price_for("isoflurane") == ISOFLURANE_PRICE
+    assert reloaded.preferences.agent_cost_unit is AgentAmountUnit.LITRES_OF_VAPOUR
+
+
+def test_choosing_a_unit_replaces_a_refused_unit_in_the_file(tmp_path: Path) -> None:
+    """A unit the reader chooses is what the file holds next, not the refused unit it replaces.
+
+    A refused unit is written back unchanged until the reader sets a unit in
+    its place. Once they have, the refused one has no further use. If it
+    were kept, the next launch would refuse it again, and the agent cost View
+    would show millilitres of liquid rather than the unit the reader chose.
+    """
+
+    _write(tmp_path, _document([], unit="mL"))
+    store = PreferencesStore(tmp_path)
+    loaded = store.load()
+
+    store.save(loaded.preferences.with_agent_cost_unit(AgentAmountUnit.LITRES_OF_VAPOUR))
+    reloaded = PreferencesStore(tmp_path).load()
+
+    assert reloaded.notice is None
+    assert reloaded.preferences.agent_cost_unit is AgentAmountUnit.LITRES_OF_VAPOUR
+
+
+def test_removing_a_price_also_discards_that_agents_refused_entry(tmp_path: Path) -> None:
+    """Removing an agent's price drops its refused entry too, and keeps every other refused entry.
+
+    The reader removes a price to have none for that agent, refused or valid.
+    A refused entry left behind would be written back at every save and named
+    in the notice at every launch. The file holds three refused entries, so
+    that the test can tell a removal of the one entry from a removal of the
+    first or of all of them.
+    """
+
+    isoflurane = {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "currency": "usd"}
+    sevoflurane = {**SEVOFLURANE_PRICE_ENTRY, "currency": "usd"}
+    nameless = {key: value for key, value in SEVOFLURANE_PRICE_ENTRY.items() if key != "agent"}
+    _write(tmp_path, _document([isoflurane, sevoflurane, nameless]))
+    store = PreferencesStore(tmp_path)
+    loaded = store.load()
+
+    store.save(loaded.preferences.without_price("isoflurane"))
+    written = json.loads((tmp_path / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
+
+    assert written["agent_prices"] == [sevoflurane, nameless]
+
+
+def test_the_saved_file_is_written_for_a_person_to_read(tmp_path: Path) -> None:
+    """The file holds one value to a line, indented by two spaces, with each character as itself.
+
+    A file that this build cannot check is left as it is for the reader to
+    repair by hand, so the store writes the file in the form a person reads.
+    The refused unit "µL" stands for text the reader typed, which the file
+    keeps as written rather than as an escape. The expected text is written
+    out by hand.
+    """
+
+    _write(tmp_path, _document([], unit="µL"))
+    store = PreferencesStore(tmp_path)
+    loaded = store.load()
+
+    path = store.save(loaded.preferences.with_price(ISOFLURANE_PRICE))
+
+    assert path.read_text(encoding="utf-8") == (
+        "{\n"
+        '  "schema_version": 1,\n'
+        '  "agent_cost_unit": "µL",\n'
+        '  "agent_prices": [\n'
+        "    {\n"
+        '      "agent": "isoflurane",\n'
+        '      "bottle_price": 20.47,\n'
+        '      "bottle_volume_ml": 100.0,\n'
+        '      "currency": "USD",\n'
+        '      "applies_on": "2008-03-05"\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+    )
+
+
+# ------------------------------------------------- what a load refuses, and where
+
+
+def _nested_lists(count: int) -> object:
+    nested: object = []
+
+    for _ in range(count - 1):
+        nested = [nested]
+
+    return nested
+
+
+@pytest.mark.parametrize(
+    ("document", "reason"),
+    [
+        (_document([{**SEVOFLURANE_PRICE_ENTRY, "agent": "\ud800"}]), "not valid Unicode"),
+        (_document([SEVOFLURANE_PRICE_ENTRY], unit="\ud800"), "not valid Unicode"),
+        (_document([_nested_lists(7), SEVOFLURANE_PRICE_ENTRY]), "more than 8 deep"),
+    ],
+    ids=[
+        "a lone surrogate in a price's agent field",
+        "a lone surrogate as the unit, beside a valid price",
+        "seven nested lists, one past the deepest kept, before a valid price",
+    ],
+)
+def test_what_could_not_be_written_back_turns_saving_off_wherever_it_sits(
+    tmp_path: Path, document: object, reason: str
+) -> None:
+    """A lone surrogate or a list nested too deep anywhere in the file turns saving off.
+
+    A save writes each refused entry back unchanged. Such an entry could not
+    be written to a UTF-8 file, or would grow without bound, so the whole
+    file is refused when it is read, wherever in the file the entry sits. In
+    each case here a valid price sits beside it, and the check must not stop
+    at the price's plain text and numbers. `writable` is a bool, and here it
+    is False.
+    """
+
+    path = _write(tmp_path, document)
+    text = path.read_text(encoding="utf-8")
+
+    loaded = PreferencesStore(tmp_path).load()
+
+    assert loaded.writable is False
+    assert dict(loaded.preferences.agent_prices) == {}
+    assert loaded.notice is not None
+    assert reason in loaded.notice
+    assert path.read_text(encoding="utf-8") == text
+
+
+def test_a_price_whose_agent_is_not_text_is_refused_alone_and_names_no_agent(
+    tmp_path: Path,
+) -> None:
+    """An entry that gives its agent as a number or a list is refused, and the load goes on.
+
+    Such an entry names no agent, so it does not count as a second price for
+    one, and the refused entry records no agent. A load never raises because
+    of what the file holds. The file holds two entries with the same number
+    and one with a list, beside a valid sevoflurane price.
+    """
+
+    numbered = {**SEVOFLURANE_PRICE_ENTRY, "agent": 3}
+    listed = {**SEVOFLURANE_PRICE_ENTRY, "agent": ["isoflurane"]}
+    _write(tmp_path, _document([numbered, numbered, listed, SEVOFLURANE_PRICE_ENTRY]))
+
+    loaded = PreferencesStore(tmp_path).load()
+
+    assert loaded.writable
+    assert loaded.preferences.price_for("sevoflurane") == AgentPrice(
+        agent_id="sevoflurane",
+        bottle_price=240.34,
+        bottle_volume_ml=250.0,
+        currency="USD",
+        applies_on=date(2008, 3, 5),
+    )
+    assert [entry.agent_id for entry in loaded.preferences.refused_prices] == [None, None, None]
+    assert loaded.notice is not None
+    assert all(f"agent_prices[{position}]" in loaded.notice for position in range(3))
+
+
+def test_a_file_holding_text_beyond_ascii_is_read_whatever_the_platform_encoding_is(
+    tmp_path: Path,
+) -> None:
+    """A file holding "€" is read as UTF-8 where the platform's own encoding is ASCII.
+
+    The store writes its file as UTF-8 and writes each character as itself,
+    so a refused entry with a currency typed as "€" sits in the file as
+    UTF-8. Read in the platform's own encoding, such a file would be refused
+    at the next launch and saving would be turned off. The load runs in a
+    child interpreter set up as a platform whose locale is not UTF-8.
+    """
+
+    refused = {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "currency": "€"}
+    document = json.dumps(_document([refused]), ensure_ascii=False)
+    (tmp_path / PREFERENCES_FILE_NAME).write_text(document, encoding="utf-8")
+
+    printed = run_where_the_platform_encoding_is_ascii(
+        "import sys\n"
+        "from pathlib import Path\n"
+        "from anesthesia_sim.app.preferences import PreferencesStore\n"
+        "loaded = PreferencesStore(Path(sys.argv[1])).load()\n"
+        "print(loaded.writable)\n"
+        "print(ascii([entry.raw['currency'] for entry in loaded.preferences.refused_prices]))\n",
+        str(tmp_path),
+    )
+
+    assert printed == ["True", ascii(["€"])]
