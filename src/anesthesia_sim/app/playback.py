@@ -76,7 +76,7 @@ cannot drift from the loop.
 `SIMULATION_TICK_INTERVAL_MS`. It fires `step_tick` on its interval
 however long painting takes. The measurement ran with the real dashboard
 shown on the offscreen platform and both timers running as `main.py` runs
-them. Every rung from 1x to 300x delivered 99.0 to 99.9% of its nominal rate over
+them. Every rung from 1x to 300x delivered 98.9 to 99.9% of its nominal rate over
 8 to 30 s of wall clock. The tick period stayed at 100 ms to within 4 ms at
 its worst. The shortfall that remains comes from the measurement itself,
 because the first tick fires one interval after the start. The 73 to 91%

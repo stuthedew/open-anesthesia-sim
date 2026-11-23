@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 import anesthesia_sim
 import anesthesia_sim.app.main as app_main
 from anesthesia_sim.app.controller import BranchedCase
+from anesthesia_sim.app.main import FAILURE_LOG_NAME
 from anesthesia_sim.app.qt_widgets import WINDOW_SCREEN_FRACTION, initial_window_geometry
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import INK, PANEL
@@ -87,7 +88,7 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     the data directory under those two names. The test sets the override to
     an empty temporary directory. So the shipped set opens, "Save as default"
     offers to save a file in that directory, and nothing has been written to
-    it.
+    it but the empty failure log (`PL-TWZY`).
     """
 
     application = QApplication.instance() or QApplication([])
@@ -167,7 +168,9 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
         entry = view.tab_strip.save_entry()
         assert entry.question is not None
         assert str(tmp_path / WORKSPACES_FILE_NAME) in entry.question.text
-        assert list(tmp_path.iterdir()) == []
+        # The failure log is opened, and nothing has been written to it.
+        assert list(tmp_path.iterdir()) == [tmp_path / FAILURE_LOG_NAME]
+        assert (tmp_path / FAILURE_LOG_NAME).read_text("utf-8") == ""
         (palette,) = declared
         surface = palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.Window)
         ink = palette.color(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText)

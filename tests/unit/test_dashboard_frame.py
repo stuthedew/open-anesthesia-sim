@@ -458,7 +458,6 @@ def _snapshot(
         ),
         stored_agent_l=stored_agent_l,
         unaccounted_agent_l=1.5e-13,
-        agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         control_timeline=control_timeline,
         bookmarks=BookmarkSet() if bookmarks is None else bookmarks,
@@ -2365,7 +2364,7 @@ def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
-    """Amounts show one decimal of a litre (`PL-TG60`), and each residual shows a power of ten."""
+    """Amounts show one decimal of a litre (`PL-TG60`), and the residual shows a power of ten."""
 
     panel = accounting(_snapshot(passes_validation=True))
 
@@ -2373,12 +2372,30 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
     assert panel.status.emphasis is Emphasis.ACCENT
     assert "still accounts for all delivered agent" in panel.detail
     assert panel.amounts == (
-        "Delivered: <0.1 L\n"
-        "Exhausted: <0.1 L\n"
-        "Stored: <0.1 L\n"
-        "Unaccounted: <10⁻¹² L\n"
-        "Absolute error: <10⁻¹² L"
+        "Delivered: <0.1 L\nExhausted: <0.1 L\nStored: <0.1 L\nUnaccounted: <10⁻¹² L"
     )
+
+
+def test_the_accounting_panel_prints_the_residual_once() -> None:
+    """The residual is one line, "Unaccounted", for a negative residual too (`PL-XFWG`).
+
+    The panel prints a residual only as the power of ten it lies below, without its
+    sign. An absolute-error line would then repeat the unaccounted line word for
+    word, so the panel prints the residual once (project owner, 2026-10-03,
+    ratified). -5.601e-14 L lies below 10⁻¹³, worked out by hand, and is negative
+    so that a line printing its magnitude would read the same as one printing it.
+    """
+
+    panel = accounting(replace(_snapshot(), unaccounted_agent_l=-5.601e-14))
+    lines = panel.amounts.splitlines()
+
+    assert [line.split(": ")[0] for line in lines] == [
+        "Delivered",
+        "Exhausted",
+        "Stored",
+        "Unaccounted",
+    ]
+    assert [line for line in lines if line.endswith("<10⁻¹³ L")] == ["Unaccounted: <10⁻¹³ L"]
 
 
 def test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre() -> None:
@@ -2449,8 +2466,8 @@ def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> 
     banner = notice(halted, None)
 
     assert banner is not None
-    assert "The rejected step's totals: " in banner
-    assert "delivered=4.240000e+00 L" in banner
+    assert "the agent accounting check failed" in banner
+    assert "e+00" not in banner, "the totals are for the log, and the panel shows them"
     assert "except the agent accounting panel, which shows the rejected step" in banner
 
 
@@ -2475,10 +2492,7 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
     rejected = raised.value.check
     assert rejected is not None
 
-    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
-        "Unaccounted: <10¹ L",
-        "Absolute error: <10¹ L",
-    ]
+    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == ["Unaccounted: <10¹ L"]
 
 
 def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
@@ -2491,7 +2505,7 @@ def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
     check = validator.check_agent_accounting(currently_stored_agent_l=14.0)
     monkeypatch.setattr(
         "anesthesia_sim.app.dashboard_frame.ACCOUNTING_AMOUNT_NAMES",
-        ("Delivered", "Exhausted", "Stored", "Unaccounted"),
+        ("Delivered", "Exhausted", "Stored"),
     )
 
     with pytest.raises(ValueError, match=r"^zip\(\) argument 2 is longer than argument 1$"):
@@ -2516,7 +2530,6 @@ def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None
         "Exhausted: —",
         "Stored: —",
         "Unaccounted: —",
-        "Absolute error: —",
     ]
 
 
@@ -3945,6 +3958,41 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
 
     assert offer.locked is True
     assert offer.lock_reason == comparing_fork_lock_text(COMPARED)
+
+
+def test_fork_offer_names_the_pin_only_beside_a_branch_that_can_be_taken() -> None:
+    """A pinned Workspace says before the press that a branch will not be drawn there (`PL-RXR8`).
+
+    The notice is written out here rather than read from the template. It is
+    given while a branch is offered and the Workspace is pinned. It is not
+    given while the Workspace is unpinned, while two runs are open, because
+    the lock caption then names the pin, or while nothing is offered, because
+    there is no press for it to come before.
+    """
+
+    points = (CaseInstant(0), CaseInstant(60))
+    expected = (
+        "This Workspace is pinned to Run 1, so it will not draw a branch taken here "
+        "beside it. Unpin it from the Workspace's tab to compare the two runs here."
+    )
+
+    pinned = fork_offer(points, marks=(), comparing=None, here=None, pinned_to="Run 1")
+    unpinned = fork_offer(points, marks=(), comparing=None, here=None, pinned_to=None)
+    comparing = fork_offer(points, marks=(), comparing=COMPARED, here=None, pinned_to="Run 1")
+    nothing_offered = fork_offer((), marks=(), comparing=None, here=None, pinned_to="Run 1")
+    only_here = fork_offer(
+        (),
+        marks=(),
+        comparing=None,
+        here=HereForkPoint(CaseInstant(45), stopped_on_mark=False),
+        pinned_to="Run 1",
+    )
+
+    assert pinned.pinned_notice == expected
+    assert unpinned.pinned_notice == ""
+    assert comparing.pinned_notice == ""
+    assert nothing_offered.pinned_notice == ""
+    assert only_here.pinned_notice == expected
 
 
 def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:

@@ -24,8 +24,8 @@ requirements rather than wording choices: the "Alveolar" readout with the
 gloss "end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout with the gloss
 "inspired" (`PL-8M05`), and the "Fresh gas flow" control with the gloss
 "common gas outlet" (`PL-71CF`). `docs/INTERFACE.md` § "Minimum displayed
-outputs" states the first and the third, and an exact-string test enforces
-each of the three.
+outputs" states all three and the reason for each, and an exact-string test
+enforces each of them.
 """
 
 from collections.abc import Callable, Mapping, Sequence
@@ -244,6 +244,23 @@ FAILURE_NOTICE_TEMPLATE: Final = (
 REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step, "
     "except the agent accounting panel, which shows the rejected step. {exit}"
+)
+# The reason that every failure banner gives for a step whose agent accounting
+# failed its check. Any other failure shows the exception's own message
+# (`halt_disposition`), but this one has two readers. The core's message names
+# the exception class and prints every total in e-notation under its code name,
+# such as `absolute_error=1.000000e+00 L`, which is for a developer reading the
+# log (`RunView.halt` logs it, and `main.open_failure_log` keeps the log in a
+# file). The learner gets plain words: what happened, that it is a fault in the
+# simulator and not a change in the patient, and, through the banner's own
+# exit, what to do next. The check fails when the amounts are out of balance by
+# more than rounding allows, which can be less than the 0.1 L the panel's
+# amounts are shown to. So the banner says what a failed check means, that agent
+# was created or lost, and does not claim that the amounts on the panel fail to
+# add up (`PL-TWZY`). The wording is a placeholder.
+ACCOUNTING_FAILURE_REASON_TEXT: Final = (
+    "the agent accounting check failed: the rejected step created or lost anesthetic agent. "
+    "This is a fault in the simulator, not a change in the patient"
 )
 # The failure banner that `run_presentation.halted_run` gives before any frame of the
 # stopped run has been drawn. At that point the chart and the readouts still show
@@ -626,6 +643,20 @@ COMPARISON_PINNED_AWAY_TEMPLATE: Final = (
     "This Workspace is pinned to {pinned}, so it does not draw this comparison. "
     "Unpin it from the Workspace's tab to compare {trunk} and {branch}."
 )
+# The same pin, said before a branch is taken (`PL-RXR8`). The template above
+# reports the pin after the press, once the one comparison slot is filled. A
+# branch cannot be undone short of the trunk's Reset, which starts the case
+# over, so the Branch View also says it before the press, while only one run is
+# open. Telling a reader what an action will do before they act is what
+# Vermeulen et al. (CHI 2013, doi:10.1145/2470654.2466255) call feedforward,
+# and the Nielsen Norman Group's "Preventing User Errors: Avoiding Conscious
+# Mistakes" asks for a preview of the result "wherever possible". It is a
+# state caption in `MUTED`, like the lock, and not a warning: nothing is wrong
+# yet, and the press stays offered. The wording is a placeholder.
+PINNED_FORK_NOTICE_TEMPLATE: Final = (
+    "This Workspace is pinned to {pinned}, so it will not draw a branch taken here "
+    "beside it. Unpin it from the Workspace's tab to compare the two runs here."
+)
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 
 # The fork where the paused trunk stands. It is a second control rather than
@@ -905,10 +936,9 @@ COMPARING_AGENT_LOCK_TEXT: Final = "Locked while comparing"
 
 # The agent-accounting panel. The amounts are litres of equivalent pure agent
 # gas, which is not the unit in which anyone consumes agent, so the caption
-# says so (`PL-TG60`). The two residual lines print only the power of ten that
-# each value is less than. An order of magnitude is the whole purpose of those
-# lines, and it is the only meaningful digit a rounding residual has
-# (`PL-3PJZ`).
+# says so (`PL-TG60`). The residual line prints only the power of ten that the
+# value is less than. An order of magnitude is the whole purpose of that line,
+# and it is the only meaningful digit a rounding residual has (`PL-3PJZ`).
 ACCOUNTING_HEADING: Final = "Agent accounting validation"
 ACCOUNTING_VALID_TEXT: Final = "Valid"
 ACCOUNTING_FAILED_TEXT: Final = "Validation failed"
@@ -942,14 +972,11 @@ ACCOUNTING_UNIT_CAPTION: Final = (
     f"at {REFERENCE_CONDITION_LABEL}.\n"
     f"{BODY_STORES_CONDITION_LINES}"
 )
-#: The names of the panel's five amount lines, in the order the panel shows them.
-ACCOUNTING_AMOUNT_NAMES: Final = (
-    "Delivered",
-    "Exhausted",
-    "Stored",
-    "Unaccounted",
-    "Absolute error",
-)
+#: The names of the panel's four amount lines, in the order the panel shows them. The
+#: residual is shown once, as "Unaccounted": the panel prints a residual only as the
+#: power of ten it lies below, without its sign, so an absolute-error line would read
+#: the same string (project owner, 2026-10-03, ratified, `PL-XFWG`).
+ACCOUNTING_AMOUNT_NAMES: Final = ("Delivered", "Exhausted", "Stored", "Unaccounted")
 
 # The transport row's labels, and the two selector captions beside it.
 START_LABEL: Final = "Start"
@@ -1956,6 +1983,30 @@ def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = F
     )
 
 
+def shown_failure_reason(status: RunStatus) -> str | None:
+    """Return the reason that a failure banner shows the learner, or None if the run has not failed.
+
+    A step whose agent accounting failed its check is reported in plain words,
+    `ACCOUNTING_FAILURE_REASON_TEXT`, and not in the core's message, which is
+    written for a developer. Every other failure shows the reason the run
+    recorded. A controller records the accounting check only with the first
+    failure (`SimulationController.fail`), so a run that failed for something
+    else first keeps that reason.
+
+    Args:
+        status: The run's status, either a `RunStatus` or the snapshot
+            carrying one.
+    """
+
+    if status.failure_reason is None:
+        return None
+
+    if status.rejected_accounting is not None:
+        return ACCOUNTING_FAILURE_REASON_TEXT
+
+    return status.failure_reason
+
+
 def refused_setting_notice(error: SimulationConfigurationError) -> str:
     """Return what the banner says about a setting that the core refused.
 
@@ -2062,7 +2113,7 @@ def notice(
             else REJECTED_ACCOUNTING_NOTICE_TEMPLATE
         )
         return template.format(
-            failure_reason=status.failure_reason,
+            failure_reason=shown_failure_reason(status),
             exit=_stopped_run_exit(
                 rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),
@@ -2145,7 +2196,7 @@ def halt_notice(
             template = UNDRAWN_FAILURE_NOTICE_TEMPLATE
 
         return template.format(
-            failure_reason=status.failure_reason,
+            failure_reason=shown_failure_reason(status),
             exit=_stopped_run_exit(
                 rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),
@@ -2258,12 +2309,11 @@ class Accounting:
     Attributes:
         status: "Valid" in accent or "Validation failed" in warning.
         detail: One sentence under it saying what the status means.
-        amounts: Five lines. The first three give delivered, exhausted and
+        amounts: Four lines. The first three give delivered, exhausted and
             stored agent at the resolution that `format_agent_volume`
-            derives. The last two give the unaccounted amount and the
-            absolute error, each as the power of ten that it is less than,
-            because an order of magnitude is what those two lines are for
-            (`PL-TG60`, `PL-3PJZ`).
+            derives. The last gives the unaccounted amount as the power of
+            ten that it is less than, because an order of magnitude is what
+            that line is for (`PL-TG60`, `PL-3PJZ`, `PL-XFWG`).
     """
 
     status: StatusWord
@@ -2304,7 +2354,6 @@ def accounting(snapshot: SimulationSnapshot) -> Accounting:
         exhausted_l=snapshot.exhausted_agent_l,
         stored_l=snapshot.stored_agent_l,
         unaccounted_l=snapshot.unaccounted_agent_l,
-        absolute_error_l=snapshot.agent_accounting_absolute_error_l,
     )
 
     return Accounting(status, detail, amounts)
@@ -2335,27 +2384,20 @@ def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accou
             exhausted_l=rejected.exhausted_agent_l,
             stored_l=rejected.currently_stored_agent_l,
             unaccounted_l=rejected.unaccounted_agent_l,
-            absolute_error_l=rejected.absolute_error_l,
         ),
     )
 
 
 def _accounting_amounts(
-    *,
-    delivered_l: float,
-    exhausted_l: float,
-    stored_l: float,
-    unaccounted_l: float,
-    absolute_error_l: float,
+    *, delivered_l: float, exhausted_l: float, stored_l: float, unaccounted_l: float
 ) -> str:
-    """The accounting panel's five amount lines, from one step's totals, in litres."""
+    """The accounting panel's four amount lines, from one step's totals, in litres."""
 
     amounts = (
         format_agent_volume(delivered_l),
         format_agent_volume(exhausted_l),
         format_agent_volume(stored_l),
         format_agent_residual(unaccounted_l),
-        format_agent_residual(absolute_error_l),
     )
 
     return "\n".join(
@@ -2858,6 +2900,12 @@ class ForkOffer:
             the notice banner, or None. It is never set while `locked`. The
             control that produced the refusal is gone, so the message would
             be about something the reader can no longer see.
+        pinned_notice: What the panel says above its controls while the
+            current Workspace is pinned to one run and a branch is still
+            offered, or the empty string. A branch taken there would not be
+            drawn in the Workspace (`PINNED_FORK_NOTICE_TEMPLATE`). It is
+            empty while `locked`, because the lock caption then names the pin
+            itself (`comparing_fork_lock_text`), and while nothing is offered.
     """
 
     points: tuple[ForkPoint, ...]
@@ -2866,6 +2914,7 @@ class ForkOffer:
     here_offered: bool
     here_label: str
     refusal: str | None
+    pinned_notice: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -2939,6 +2988,7 @@ def fork_offer(
     comparing: ComparedRuns | None,
     here: HereForkPoint | None,
     refusal: str | None = None,
+    pinned_to: str | None = None,
 ) -> ForkOffer:
     """Return what the branch control shows for one tick of the trunk.
 
@@ -3004,6 +3054,12 @@ def fork_offer(
         refusal: Why the most recently requested branch was not taken, or
             None. It is dropped while the control is locked, because it
             describes a press of a control that the reader can no longer see.
+        pinned_to: The name of the run that the current Workspace is pinned
+            to, or None while it is not pinned. The dashboard reads it as it
+            reads `ComparedRuns.pinned_away`, so the sentence before a branch
+            and the sentence after it name the same run (`PL-RXR8`). It is
+            ignored while `comparing` is set, because the lock caption then
+            says it, and while nothing is offered.
 
     Returns:
         The points to offer, each labelled and carrying the method through
@@ -3026,14 +3082,24 @@ def fork_offer(
     # The comparison cap refuses every way of branching. So it is applied
     # once, here, rather than checked separately for each field.
     offered_here = None if comparing is not None else here
+    points = tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s))
+    # The pin is said only beside a branch that can be taken. While two runs
+    # are open the lock caption names it, and with nothing offered there is no
+    # press for it to come before.
+    branch_offered = comparing is None and (bool(points) or offered_here is not None)
 
     return ForkOffer(
-        points=tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s)),
+        points=points,
         locked=comparing is not None,
         lock_reason="" if comparing is None else comparing_fork_lock_text(comparing),
         here_offered=offered_here is not None,
         here_label="" if offered_here is None else _here_fork_label(offered_here),
         refusal=None if comparing is not None else refusal,
+        pinned_notice=(
+            PINNED_FORK_NOTICE_TEMPLATE.format(pinned=pinned_to)
+            if branch_offered and pinned_to is not None
+            else ""
+        ),
     )
 
 

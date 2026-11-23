@@ -35,7 +35,7 @@ _ACCOUNTING_ENTRY = "Agent accounting"
 
 # The first word of each of the accounting panel's five lines: the four
 # quantities `docs/VERIFICATION.md` names and the residual's absolute error.
-_AMOUNT_LINES = ("Delivered: ", "Exhausted: ", "Stored: ", "Unaccounted: ", "Absolute error: ")
+_AMOUNT_LINES = ("Delivered: ", "Exhausted: ", "Stored: ", "Unaccounted: ")
 
 _WINDOW_PX = (1366, 900)
 

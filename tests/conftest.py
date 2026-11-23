@@ -174,11 +174,12 @@ import importlib
 import importlib.abc
 import importlib.machinery
 import importlib.util
+import logging
 import math
 import os
 import pickle
 import sys
-from collections.abc import Callable, Collection, Hashable, Mapping, Sequence
+from collections.abc import Callable, Collection, Hashable, Iterator, Mapping, Sequence
 from itertools import islice
 from pathlib import Path
 from types import CodeType, ModuleType
@@ -806,3 +807,23 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
         window.deleteLater()
 
     QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+
+@pytest.fixture(autouse=True)
+def _restore_package_log_handlers() -> Iterator[None]:
+    """Remove each handler that a test added to the package's logger, and close it.
+
+    `main()` opens the failure log (`main.open_failure_log`), which adds a file
+    handler and a standard-error handler to the `anesthesia_sim` logger. Left
+    in place, they would write a later test's records into an earlier test's
+    temporary directory.
+    """
+
+    package = logging.getLogger("anesthesia_sim")
+    before = list(package.handlers)
+    yield
+
+    for handler in package.handlers:
+        if handler not in before:
+            package.removeHandler(handler)
+            handler.close()
