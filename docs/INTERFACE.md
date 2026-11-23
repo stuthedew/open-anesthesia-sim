@@ -368,6 +368,17 @@ chart or a list that ended without a count would tell the reader that nothing
 else happened. Each chart shows the count of adjustments it leaves unmarked,
 because each chart has its own time window (§ "The chart's time base").
 
+**The list states its count where the reader can always see it.** A line under
+each run's heading gives the number of adjustments the run has, and how many
+earlier ones the list leaves out. Only the entries scroll, inside each run's own
+panel, so the heading and the count stay in view however long the list grows,
+and when two runs' records share the column. A list that scrolls is otherwise
+read as complete: in a usability study reported by Flaherty, six of eight users
+did not realize they could scroll a page whose visible part looked finished
+(Flaherty K. The illusion of completeness: what it is and how to avoid it.
+Nielsen Norman Group, 2016,
+https://www.nngroup.com/articles/illusion-of-completeness/) (`PL-HF1B`).
+
 **The timeline itself has no limit.** The limits above apply only to what is
 shown. Capping the timeline would lose the settings needed to reproduce the run.
 Dropping the oldest entries would remove the start of the case, which is the
@@ -1482,8 +1493,9 @@ Reset kept and that differs from the one the branch opened under.
 **The simulator refuses Reset when the tissue flows no longer sum to the cardiac
 output.** This mismatch can happen only when a perfusion fraction is changed in
 a way that bypasses its range check (`PL-HQF5`, `PL-Z0HN`). A refused Reset
-leaves the run exactly as it was. The refusal message gives the two flows as
-they were set, in L/min, the unit every readout shows.
+leaves the run exactly as it was. The refusal message, shown in the failure's
+details under the banner, gives the two flows as they were set, in L/min, the
+unit every readout shows.
 
 After a refused Reset, the interface halts the run, as it does when a step
 fails (`PL-M4M0`). The status word, the run controls and the banner show the
@@ -2702,10 +2714,49 @@ again. The banner names the panel as the one exception to "the values shown are
 the last completed step". It says in words that the check failed because the
 rejected step created or lost agent, and that this is a fault in the simulator
 and not a change in the patient. It does not print the totals. The panel shows
-the rejected step's amounts, and the exact totals go to the failure log, the
-file `failures.log` in the reader's data directory, beside the saved Workspaces.
-Where that directory cannot be written, the log goes to standard error only,
-and the application still opens.
+the rejected step's amounts, and the exact totals go to the details under the
+banner and to the failure log, the file `failures.log` in the reader's data
+directory, beside the saved Workspaces. Where that directory cannot be written,
+the log goes to standard error only, and the application still opens.
+
+**Every failure banner names the kind of failure in plain words**, and never
+the error's own message, which is written for a developer. The kind is found
+from the type of error that stopped the run, and each kind has its own words:
+
+1. A failed accounting check: the words above.
+2. A value the model cannot hold, such as a negative amount of agent.
+3. A value that one part of the simulator gave another and that it does not
+   accept. A setting the learner chose is refused before it is applied, so the
+   learner's own dial never causes this kind.
+4. A run that could not continue safely for another reason the model names.
+5. Any other error. The banner says that an unexpected error occurred and that
+   its cause is not known, rather than guess at one.
+
+Each banner adds that this is a fault in the simulator and not a change in the
+patient. Microsoft's guidance on error messages asks for a different message
+for each cause that can be detected, and for an unknown cause to be stated as
+unknown (Microsoft, "Error messages", Windows app development design
+guidelines, learn.microsoft.com/en-us/windows/win32/uxguide/mess-error).
+
+**A "Show details" button sits under every failure banner.** It shows these
+lines:
+
+1. The application's name and version.
+2. The run's name, while two runs are drawn.
+3. The type and message of the error that stopped the run.
+4. The message of a Reset refused after that, if any. A run keeps its first
+   failure, so this line is the only place on screen that names the refusal.
+5. The path of the failure log, written from the home folder as `~`, because
+   the full path usually holds the learner's login name.
+
+A run stopped at the supported run length did not fail and has no details.
+"Copy details" puts the lines on the clipboard, and a line under them links the
+project's issue page and asks the reader to paste the details into a new issue.
+The link is in the tab order and opens with Enter. The details fold away again
+whenever a new failure replaces them, so one failure's details
+are not read as the next one's. The same guidance hides detailed information
+in an error message behind a "Show/Hide details" button, so that the message is
+simpler for typical use.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2751,6 +2802,17 @@ in `tests/integration/test_failure_log.py`), and a directory that cannot be made
 does not stop the launch
 (`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`,
 in the same file).
+
+Each kind of failure has its own words and no developer message
+(`test_each_kind_of_failure_has_its_own_plain_words_and_no_developer_message`
+in `tests/unit/test_failure_words.py`), and the details name the build, the
+error and the log (`test_the_details_name_the_build_the_message_and_the_log`,
+in the same file). A real failed step is worded for the learner and keeps its
+message in the details
+(`test_a_failed_step_is_worded_for_the_learner_and_its_message_kept_in_the_details`
+in `tests/integration/simulation_view/test_simulation_view_failure_details.py`).
+The same file tests the toggle, the copy button, the folding of new details,
+each kind's words on a real halt, the refused Reset's line and the run's name.
 
 ### Naming the run in a comparison
 
@@ -5736,6 +5798,17 @@ run arrive and leave. The box holds at most four value lines on a two-run chart,
 which draws at most two compartments. On a single-run chart it can hold six, as
 it does at the run's opening, where all six traces start together.
 
+**No line of the box is ever drawn in part** (`PL-HXSD`). The box stays inside
+the plot wherever the plot is at least as tall as the box. A shorter plot, as a
+narrow View or a larger desktop font can leave at the chart's least height,
+gets the box moved up over the time axis until all of it is inside the chart.
+A box wider than the room beside its point goes to the other side of the
+point, and where it fits on neither side it is moved across into the chart,
+over the point. Where the font makes the tallest box taller than the chart's
+least height, the chart's least height grows to hold it. A cut through a row of digits can turn
+one digit into another, as the top tick label's "6" once read as "0"
+(`PL-571L`).
+
 **For developers.** Two functions produce the forms above that list several runs or compartments
 (`chart_frame.format_compared_trace_hover` and
 `chart_frame.format_compared_wash_in_hover`), and their numbers come from
@@ -5743,13 +5816,21 @@ it does at the run's opening, where all six traces start together.
 `tests/unit/test_chart_frame.py` contain both worked examples above verbatim.
 They also contain the fat and muscle cases behind the decisions to report every
 run and every compartment in reach.
-At the plot's least height, the tallest box, the agent and six value lines,
-fits whole inside the plot while the time axis's title is on one line, in the
-container's font and in the font the CI runners draw in
-(`test_the_tallest_hover_box_fits_the_plot_at_its_least_height`).
-It does not fit, and the plot's edge cuts through its last value line, in two
-cases: a plot about 400 px wide, where the title breaks onto a second line,
-and a 13-pixel desktop font (`PL-HXSD`).
+The box is an item of the plot's scene, not of its view box, because a view
+box clips what it holds to the plot inside the axes. `_HoverReadout.show` in
+`app/qt_chart.py` places it, and `_HoverReadout.hold_the_tallest_box` sets
+the least height. At the chart's least height the tallest box, the agent and
+six value lines, is drawn whole on a wide plot and on a narrow one whose time
+axis's title takes two lines, in the container's font, in the font the CI
+runners draw in, and in a 13-pixel font. The test reads the painted pixels of
+the box's top and bottom edges, because the box's rectangle stays whole when
+something clips it
+(`test_the_tallest_hover_box_is_drawn_whole_at_the_least_height`). On a
+narrow chart, boxes beside points in the middle of the plot stay inside the
+chart (`test_no_hover_box_runs_past_the_side_of_a_narrow_chart`). A 24-pixel
+font set while the app runs makes the chart taller than its least height, and
+the box is drawn whole in it
+(`test_a_font_too_large_for_the_least_height_makes_the_chart_taller`).
 
 The rules weighed before this one, and the scans behind reporting every run in
 reach (`PL-JVHL`) and every compartment in reach (`PL-0RZ0`), are in those

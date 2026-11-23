@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: interface-design-review
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/formatting.py, docs/INTERFACE.md, tests/integration/simulation_view/test_simulation_view_run_stops_itself.py, tests/integration/test_failure_log.py, tests/unit/test_dashboard_frame.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
 closed: 2026-11-22

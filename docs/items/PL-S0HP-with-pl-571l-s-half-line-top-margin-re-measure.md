@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: chart-readout
+milestone: v0.6.22
 touches: tests/integration/test_qt_chart.py, docs/INTERFACE.md
 added: 2026-11-22
 closed: 2026-11-23

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: ux
 feature: presentation-safety
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/simulation_view, tests/integration/controller
 added: 2026-09-07
 closed: 2026-11-23

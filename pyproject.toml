@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.6.21"
+version = "0.6.22"
 # "volatile" here where `README.md` says "inhaled", deliberately rather than by
 # drift: a package Summary describes the artifact, and this release models
 # sevoflurane, isoflurane and desflurane only. README "What it does not
@@ -118,6 +118,13 @@ dependencies = [
     # `app/currency_code.py` imports Babel (`tools/import_boundary_check.py`).
     "babel>=2.18.0,<3.0",
 ]
+
+# The application reads the issue page from the installed metadata
+# (`app_metadata.APP_ISSUES_URL`) to link it from a failure's details, so the
+# address is written only here (`PL-XWCH`).
+[project.urls]
+Repository = "https://github.com/stuthedew/open-anesthesia-sim"
+Issues = "https://github.com/stuthedew/open-anesthesia-sim/issues"
 
 [project.scripts]
 anesthesia-sim = "anesthesia_sim.app.main:main"

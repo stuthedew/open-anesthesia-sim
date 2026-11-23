@@ -1474,13 +1474,22 @@ def format_subtitle(agent_display_name: str) -> str:
         The header subtitle.
     """
 
-    if not APP_VERSION_IS_KNOWN:
-        return (
-            "Version unavailable (this build is not traceable) — "
-            f"{agent_display_name} patient model"
-        )
+    return f"{format_build_version()} — {agent_display_name} patient model"
 
-    return f"Version {APP_BUILD_VERSION} — {agent_display_name} patient model"
+
+def format_build_version() -> str:
+    """Name the running build, or say that it cannot be named.
+
+    The header subtitle (`format_subtitle`) and a failure's details
+    (`dashboard_frame.failure_details`) both name the build in these words.
+    `format_subtitle`'s docstring says why the build is named rather than the
+    version, and why an unknown version is not shown as one (`PL-KCWD`).
+    """
+
+    if not APP_VERSION_IS_KNOWN:
+        return "Version unavailable (this build is not traceable)"
+
+    return f"Version {APP_BUILD_VERSION}"
 
 
 def format_delivered_label(agent_display_name: str) -> str:

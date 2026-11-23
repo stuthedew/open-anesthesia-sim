@@ -79,6 +79,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QSlider,
     QSpinBox,
     QStyle,
@@ -93,14 +95,17 @@ from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.dashboard_frame import (
     ADD_MARK_LABEL,
     COMPARTMENT_FIELD_LABEL,
+    COPY_FAILURE_DETAILS_LABEL,
     DEFAULT_MAXIMUM_TARGET_MAC,
     FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
+    HIDE_FAILURE_DETAILS_LABEL,
     INSTANT_ENTRY_SUFFIX,
     INSTANT_FIELD_LABEL,
     MARK_NAME_FIELD_LABEL,
     MARK_NAME_PLACEHOLDER,
     REMOVE_MARK_LABEL,
+    SHOW_FAILURE_DETAILS_LABEL,
     TAKE_FORK_LABEL,
     TARGET_FORM_HEADING,
     TIME_FORM_HEADING,
@@ -114,6 +119,7 @@ from anesthesia_sim.app.dashboard_frame import (
     height_entry_maximum_mac,
     readout_columns,
     readout_row_width,
+    report_fault_text,
     slider_position,
     slider_value,
     widest_fork_point_label,
@@ -126,6 +132,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.stylesheets import (
+    clear_scroll_area_stylesheet,
     filled_button_stylesheet,
     foreground_stylesheet,
     outlined_button_stylesheet,
@@ -158,6 +165,7 @@ from anesthesia_sim.app.theme import (
     PARAMETER_QUALIFIER_SIZE,
     PARAMETER_SLIDER_LEAST_LENGTH,
     PRIMARY,
+    VIEW_ROW_SPACING,
     WARNING,
 )
 from anesthesia_sim.core.concentration import MacMultiple
@@ -611,6 +619,58 @@ class OneLineWhereRoomLabel(QLabel):
         width = widest + 1 + self._extra_px()
 
         return QSize(width, self.heightForWidth(self.sizeHint().width()))
+
+
+class LinesHeldLabel(QLabel):
+    """Words that wrap between words, and keep the height their lines need at their width.
+
+    A word-wrapped `QLabel` reports its height for a width, and a layout that
+    reads it gives the label that height where the room allows. Where the
+    room runs short, the layout counts the label at one line, and squeezes
+    its later lines out of sight. This label takes the height its lines need
+    at the width it was last given as its least height instead. A column of
+    such labels above a list that scrolls then asks for enough height to
+    show every line of them, and the list gives up its height first
+    (`PL-HF1B`).
+
+    The label reports no height for a width of its own. Reporting one would
+    make the layout above it count its minimum as its full height, which
+    for a column holding a scrolling list is the whole list's height.
+
+    Args:
+        text: The words, which wrap between words.
+    """
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text)
+        self.setWordWrap(True)
+
+    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
+        return False
+
+    def _lines_height(self) -> int:
+        """Return the height that the label's lines need at the width it has now."""
+
+        return super().heightForWidth(self.width())
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return QSize(super().sizeHint().width(), self._lines_height())
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return QSize(super().minimumSizeHint().width(), self._lines_height())
+
+    def setText(self, text: str) -> None:  # Qt spells this in camelCase.
+        super().setText(text)
+        # The new words may need another number of lines at this width.
+        self.updateGeometry()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
+        old_width = event.oldSize().width()
+        super().resizeEvent(event)
+
+        # The lines the words need change with the width, and only then.
+        if event.size().width() != old_width:
+            self.updateGeometry()
 
 
 class FlowLayout(QLayout):
@@ -1505,6 +1565,120 @@ class NoticeLabel(QLabel):
         """The banner's text, or None while it is hidden."""
 
         return self._notice
+
+
+class FailureDetails(QWidget):
+    """The details under a failed run's banner, for a report of the fault, and nothing otherwise.
+
+    The banner gives the learner plain words. The details, the build, the
+    exception's own message and the failure log's path, are written for a
+    developer, so they stay behind "Show details" until asked for. "Copy
+    details" puts them on the clipboard, and the line under them links the
+    project's issue page (`dashboard_frame.failure_details`,
+    `dashboard_frame.report_fault_text`, `PL-XWCH`). The widget is hidden while
+    the run has not failed, and folds the details away again when a new
+    failure's details replace them.
+
+    Attributes:
+        toggle: The button that shows or hides the details.
+        details_text: The details, selectable so that part of them can be copied.
+        copy_button: The button that copies the details to the clipboard.
+        report_text: The line that says how to report the fault.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.toggle = QPushButton(SHOW_FAILURE_DETAILS_LABEL)
+        self.toggle.setStyleSheet(outlined_button_stylesheet())
+        self.toggle.setCheckable(True)
+        self.details_text = styled_label("", color=INK, wrap=True)
+        self.details_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+        self.copy_button = QPushButton(COPY_FAILURE_DETAILS_LABEL)
+        self.copy_button.setStyleSheet(outlined_button_stylesheet())
+        self.report_text = styled_label("", color=INK, wrap=True)
+        self.report_text.setTextFormat(Qt.TextFormat.RichText)
+        self.report_text.setOpenExternalLinks(True)
+        # A label lets only the mouse follow a link by default, so the link is
+        # also put in the tab order and followed with Enter (WCAG 2.2 SC 2.1.1).
+        self.report_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByKeyboard
+        )
+        self.report_text.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self._details: str | None = None
+        self._run_name: str | None = None
+
+        buttons = QHBoxLayout()
+        buttons.setContentsMargins(0, 0, 0, 0)
+        buttons.addWidget(self.toggle)
+        buttons.addWidget(self.copy_button)
+        buttons.addStretch(1)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.addLayout(buttons)
+        column.addWidget(self.details_text)
+        column.addWidget(self.report_text)
+
+        self.toggle.toggled.connect(self._show_details)
+        self.copy_button.clicked.connect(self.copy_details)
+        self.set_details(None, None, run_name=None)
+
+    def set_details(
+        self, details: str | None, issues_url: str | None, *, run_name: str | None
+    ) -> None:
+        """Show the details of a failure, or hide the widget when the run has not failed.
+
+        The link to the issue page is drawn in the line's own `INK`, and Qt
+        underlines it, so the host appearance does not choose its colour.
+
+        Args:
+            details: `dashboard_frame.failure_details`'s result this tick.
+            issues_url: The project's issue page, or None where the build kept
+                no metadata (`app_metadata.APP_ISSUES_URL`).
+            run_name: What the run is called while a second run is drawn, or
+                None. A screen reader then names the run in each button's
+                name, because two runs' buttons read alike.
+        """
+
+        report = report_fault_text(issues_url, link_colour=INK)
+
+        if details != self._details:
+            # New details are folded away, so a reader who opened one failure's
+            # details does not read them as the next failure's.
+            self.toggle.setChecked(False)
+
+        self._details = details
+        self._run_name = run_name
+        self.copy_button.setAccessibleName(self._named(COPY_FAILURE_DETAILS_LABEL))
+        self.details_text.setText(details or "")
+        self.report_text.setText(report)
+        self.setHidden(details is None)
+        self._show_details(self.toggle.isChecked())
+
+    def details(self) -> str | None:
+        """The details this widget holds, or None while the run has not failed."""
+
+        return self._details
+
+    def copy_details(self) -> None:
+        """Put the details on the clipboard, as plain text."""
+
+        if self._details is not None:
+            QApplication.clipboard().setText(self._details)
+
+    def _named(self, label: str) -> str:
+        return label if self._run_name is None else f"{label} for {self._run_name}"
+
+    def _show_details(self, shown: bool) -> None:
+        label = HIDE_FAILURE_DETAILS_LABEL if shown else SHOW_FAILURE_DETAILS_LABEL
+        self.toggle.setText(label)
+        self.toggle.setAccessibleName(self._named(label))
+        self.details_text.setHidden(not shown)
+        self.copy_button.setHidden(not shown)
+        self.report_text.setHidden(not shown)
 
 
 def lay_out_question(
@@ -2853,3 +3027,70 @@ class FocusedDateEdit(QDateEdit):
     def __init__(self) -> None:
         super().__init__()
         wheel_only_with_focus(self)
+
+
+class FittedScroll(QScrollArea):
+    """Holds rows that a reader reads in order, and scrolls them where its space is too short.
+
+    The box asks for the height that the rows need at the width the box has,
+    and takes no more. Where its space is shorter than the rows, it is
+    squeezed to `least_height_px`, and the reader scrolls the rows inside
+    the box. A chart View's key, which holds the lines that qualify its plot
+    and its legend, is one such box (`PL-CBYS`). Each run's list of control
+    changes is another (`PL-HF1B`).
+
+    Args:
+        rows: The rows, in the order they are read.
+        least_height_px: The height the box keeps however short its space is.
+    """
+
+    def __init__(self, rows: Sequence[QWidget], least_height_px: int) -> None:
+        super().__init__()
+        self._body = QWidget()
+        column = QVBoxLayout(self._body)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(VIEW_ROW_SPACING)
+
+        for row in rows:
+            column.addWidget(row)
+
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setMinimumHeight(least_height_px)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        # The box paints nothing of its own, so the panel it sits on shows
+        # behind the rows. `setWidget` would otherwise fill the rows'
+        # background from the palette.
+        self.setStyleSheet(clear_scroll_area_stylesheet())
+        self.viewport().setAutoFillBackground(False)
+        self.setWidget(self._body)
+        self._body.setAutoFillBackground(False)
+        FocusRing(self)
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The widest row's least width with the scroll bar beside it, and the box's least height.
+
+        The box never scrolls sideways, so a box narrower than its widest row
+        would cut that row off at the right. A `QScrollArea`'s own least width
+        counts only its scroll bar, so the layout around the box would
+        otherwise leave out every row in it (`PL-CBYS`).
+        """
+
+        least = super().minimumSizeHint()
+        width = self._body.minimumSizeHint().width() + self.verticalScrollBar().sizeHint().width()
+
+        return QSize(max(least.width(), width), least.height())
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The rows' width, and the height the rows need at the width the box has."""
+
+        hint = self._body.sizeHint()
+        height = self._body.heightForWidth(self.viewport().width())
+
+        return QSize(hint.width(), hint.height() if height < 0 else height)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        # The height that the rows need depends on the box's width.
+        self.updateGeometry()

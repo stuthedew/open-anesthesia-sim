@@ -16,6 +16,7 @@ from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationSnapshot,
 )
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import MAC_UNIT_SUFFIX, format_mac_multiple
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
@@ -619,7 +620,7 @@ def test_a_failed_run_offers_no_place_to_branch_where_it_stands() -> None:
     """
 
     trunk = _trunk_with_two_changes()
-    trunk.fail("a step raised")
+    trunk.fail("a step raised", kind=FailureKind.UNEXPECTED)
 
     assert trunk.here_fork_point is None
 

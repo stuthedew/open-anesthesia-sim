@@ -154,6 +154,7 @@ from anesthesia_sim.app.dashboard_frame import (
     timeline_panel,
     transport,
 )
+from anesthesia_sim.app.failures import failure_kind
 from anesthesia_sim.app.formatting import format_playback_rate, format_subtitle
 from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.playback import (
@@ -166,7 +167,10 @@ from anesthesia_sim.app.playback import (
 )
 from anesthesia_sim.app.qt_widgets import (
     DialInput,
+    FailureDetails,
+    FittedScroll,
     FocusRing,
+    LinesHeldLabel,
     NewCaseDialog,
     NoticeLabel,
     OneLineWhereRoomLabel,
@@ -207,9 +211,11 @@ from anesthesia_sim.app.theme import (
     PLAYBACK_RATE_SELECTOR_WIDTH,
     READOUT_HEADING_SPACING,
     READOUT_SECTION_SPACING,
+    RECORD_ENTRIES_LEAST_HEIGHT,
     RUNNING_AGENT_DISPLAY_PADDING,
 )
 from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
+from anesthesia_sim.app_metadata import APP_ISSUES_URL
 from anesthesia_sim.core.agent_simulation_validation import rejected_check
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import (
@@ -237,11 +243,12 @@ _LOG: Final = logging.getLogger(__name__)
 def log_failure(stopped: str, error: BaseException) -> None:
     """Log a failure that stopped `stopped`, with its message and traceback, for a developer.
 
-    The banner may word a failure for the learner and leave out the
-    exception's own message (`dashboard_frame.shown_failure_reason`), so the
-    full message is logged here (`PL-TWZY`). A run that reached its supported
-    run length did not fail, so nothing is logged for it. `main.open_failure_log`
-    keeps the log in a file.
+    The banner words a failure for the learner and leaves out the exception's
+    own message (`dashboard_frame.shown_failure_reason`). The details under the
+    banner show the message, and the traceback is logged here (`PL-TWZY`,
+    `PL-XWCH`). A run that reached its supported run length did not fail, so
+    nothing is logged for it. `failures.open_failure_log` keeps the log in a
+    file.
 
     Args:
         stopped: What the failure stopped, such as a run's name, as the log
@@ -413,6 +420,10 @@ class RunView(QWidget):
         # the simulation, so there is no core state for it to belong to
         # (`PL-M4M0`).
         self._refused_reset_notice: str | None = None
+        # The refused Reset's own message, for the failure's details
+        # (`dashboard_frame.failure_details`). It is set and cleared with the
+        # notice above.
+        self._refused_reset_reason: str | None = None
         # The setting a reader is dragging on this run and has not applied,
         # or None while no thumb is held (`PL-5B1N`). It is held here rather
         # than in the controller for the same reason: nothing about the
@@ -482,6 +493,17 @@ class RunView(QWidget):
             self._status_text, status_word(snapshot, stopped_on_mark=snapshot.stopped_on_mark)
         )
         self._notice_text = NoticeLabel(self)
+        self._failure_details = FailureDetails(self)
+        # The banner and the details under it are placed as one, so the
+        # details always sit beneath the banner they belong to (`PL-XWCH`).
+        self._halt_banner = QWidget(self)
+        halt_banner = QVBoxLayout(self._halt_banner)
+        halt_banner.setContentsMargins(0, 0, 0, 0)
+        halt_banner.addWidget(self._notice_text)
+        halt_banner.addWidget(self._failure_details)
+        # A banner with nothing to say takes no room (`PL-T91K`), so the pair
+        # is hidden while both of its parts are.
+        self._halt_banner.setHidden(True)
 
         # The badge's text wraps between words rather than holding the
         # transport row at its full length. A development build's version
@@ -645,10 +667,18 @@ class RunView(QWidget):
         self._control_timeline_text.setMinimumWidth(
             _widest_rendering_px(self._control_timeline_text, longest_unbroken_parts())
         )
-        self._control_timeline_overflow_text = styled_label(
-            "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
+        # The count of changes sits under the heading, outside the list that
+        # scrolls. So a reader whose list shows only its newest entries still
+        # sees how many there are, and how many earlier ones are not listed
+        # (`PL-HF1B`).
+        self._control_timeline_summary_text = LinesHeldLabel("")
+        style_label(
+            self._control_timeline_summary_text,
+            color=MUTED,
+            size_px=METRIC_QUALIFIER_SIZE,
+            wrap=True,
         )
-        self._control_timeline_overflow_text.setHidden(True)
+        self._control_timeline_summary_text.setHidden(True)
 
         # These sections are laid out once, here, so that the build methods
         # return the containers these widgets are already in (`PL-N67T`,
@@ -817,6 +847,7 @@ class RunView(QWidget):
             and self.controller.fork_refusal is None,
             rejected_setting_notice=self._rejected_setting_notice,
             refused_reset_notice=self._refused_reset_notice,
+            refused_reset_reason=self._refused_reset_reason,
             pending_agent_name=(
                 None
                 if self._new_case_dialog is None or self._pending_agent_id is None
@@ -936,8 +967,8 @@ class RunView(QWidget):
         self._subtitle_text.setText(statement.subtitle)
         self._compartment_substance_text.setText(statement.substance_heading)
         self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
-        self._control_timeline_overflow_text.setText(statement.timeline.overflow)
-        self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
+        self._control_timeline_summary_text.setText(statement.timeline.summary)
+        self._control_timeline_summary_text.setHidden(not statement.timeline.summary)
         # The 1 MAC line states the divisor of the delivered line beside it and of the
         # cards' ×MAC numbers. Both lines are written before the cards. So a refusal
         # raised for the cards cannot leave another agent's 1 MAC on screen, or
@@ -951,6 +982,11 @@ class RunView(QWidget):
             self._notice_text.set_notice(None)
         else:
             self._notice_text.set_notice(banner.text, emphasis_color(banner.emphasis))
+
+        self._failure_details.set_details(
+            presentation.failure_details, APP_ISSUES_URL, run_name=presentation.name
+        )
+        self._halt_banner.setHidden(banner is None and presentation.failure_details is None)
 
         values = presentation.values
         self._readout_row.set_readouts(values.readouts)
@@ -1235,6 +1271,7 @@ class RunView(QWidget):
         else:
             self._rejected_setting_notice = None
             self._refused_reset_notice = None
+            self._refused_reset_reason = None
 
         settled = settled_notice is None and self._rejected_setting_notice is None
 
@@ -1511,15 +1548,18 @@ class RunView(QWidget):
                 self._refused_reset_notice = refused_reset_exit(
                     error, recorded_failure_reason=self.controller.status().failure_reason
                 )
+                _, self._refused_reset_reason = halt_disposition(error)
             else:
                 self._rejected_setting_notice = None
                 self._refused_reset_notice = None
+                self._refused_reset_reason = None
                 self._announce_the_start_over()
 
             raise
 
         self._rejected_setting_notice = None
         self._refused_reset_notice = None
+        self._refused_reset_reason = None
         self._announce_the_start_over()
         self.presentation_requested.emit(False)
 
@@ -1774,12 +1814,12 @@ class RunView(QWidget):
             try:
                 rejected = rejected_check(error)
             except TypeError:
-                self.controller.fail(reason)
+                self.controller.fail(reason, kind=failure_kind(error))
                 raise
 
-            self.controller.fail(reason, rejected_accounting=rejected)
+            self.controller.fail(reason, kind=failure_kind(error), rejected_accounting=rejected)
         else:
-            self.controller.fail(reason)
+            self.controller.fail(reason, kind=failure_kind(error))
 
     def _halt_run(self, error: BaseException) -> None:
         """Halt the run, show the halt from its controller's record, then ask for the frame.
@@ -1917,9 +1957,12 @@ class RunView(QWidget):
         return row
 
     def build_notice(self) -> QWidget:
-        """The banner for a halted run or a refused setting, placed above every value."""
+        """The banner for a halted run or a refused setting, placed above every value.
 
-        return self._notice_text
+        A failed run's details sit under the banner (`FailureDetails`).
+        """
+
+        return self._halt_banner
 
     def build_readout_section(self) -> QWidget:
         """Return the substance heading with the interpretation line beside it, then the readouts.
@@ -2039,17 +2082,17 @@ class RunView(QWidget):
         )
         timeline_column.setSpacing(CONTROL_TIMELINE_ROW_SPACING)
         timeline_column.addWidget(self._control_timeline_heading_text)
-        timeline_column.addWidget(
-            styled_label(
-                CONTROL_TIMELINE_CAPTION,
-                color=MUTED,
-                size_px=METRIC_QUALIFIER_SIZE,
-                italic=True,
-                wrap=True,
-            )
+        timeline_column.addWidget(self._control_timeline_summary_text)
+        caption = LinesHeldLabel(CONTROL_TIMELINE_CAPTION)
+        style_label(caption, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True)
+        timeline_column.addWidget(caption)
+        # Only the entries scroll, inside this run's own panel. Each run's
+        # heading and count then stay in view when two runs' records share
+        # the column and one of them is long (`PL-HF1B`).
+        self._control_timeline_entries = FittedScroll(
+            (self._control_timeline_text,), RECORD_ENTRIES_LEAST_HEIGHT
         )
-        timeline_column.addWidget(self._control_timeline_text)
-        timeline_column.addWidget(self._control_timeline_overflow_text)
+        timeline_column.addWidget(self._control_timeline_entries)
 
         return timeline_panel_frame
 

@@ -24,6 +24,7 @@ from anesthesia_sim.app.dashboard_frame import (
     run_label,
     slider_position,
 )
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
@@ -71,6 +72,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _dials,
     _drag,
     _failing_assembly,
+    _failure_details,
     _fork_panel,
     _halted_trunk_case,
     _marks_panel,
@@ -422,7 +424,7 @@ def test_a_view_that_raises_on_a_halt_hides_neither_a_run_s_halt_nor_the_first_e
         assert run._status_text.text() == STATUS_FAILED_TEXT
         notice = run._notice_text.notice()
         assert notice is not None
-        assert "RuntimeError: this frame could not be assembled" in notice
+        assert "RuntimeError: this frame could not be assembled" in _failure_details(run)
 
     assert [row.controls is None for row in after_the_chart.rows] == [True, True]
     assert [row.not_shown_text.isHidden() for row in after_the_chart.rows] == [False, False]
@@ -517,7 +519,7 @@ def test_a_request_that_names_a_run_the_dashboard_does_not_hold_halts_every_run(
     assert controller.has_failed is True
     notice = view.runs[0]._notice_text.notice()
     assert notice is not None
-    assert f"ValueError: {refusal}" in notice
+    assert f"ValueError: {refusal}" in _failure_details(view.runs[0])
 
 
 def _refusing(*args: object, **kwargs: object) -> NoReturn:
@@ -586,7 +588,7 @@ def test_a_request_that_one_run_cannot_carry_out_halts_that_run_alone_and_shows_
     assert halted._status_text.text() == STATUS_FAILED_TEXT
     notice = halted._notice_text.notice()
     assert notice is not None
-    assert error in notice
+    assert error in _failure_details(halted)
     assert first.has_failed is False, "the run that was not asked was halted too"
     assert untouched._status_text.text() != STATUS_FAILED_TEXT
     assert second.settings().fresh_gas_flow_l_min == 4.0
@@ -729,7 +731,7 @@ def test_a_stopped_run_draws_no_preview_while_its_thumb_is_held(application: QAp
     controller = SimulationController()
     controller.start()
     _advance(controller, 60)
-    controller.fail("a failure the test injects")
+    controller.fail("a failure the test injects", kind=FailureKind.UNEXPECTED)
     view = _shown_view(application, controller)
     control = _dials(view.runs[0])._fresh_gas_flow_slider
 
