@@ -114,7 +114,7 @@ def test_neither_loop_does_anything_while_paused(application: QApplication) -> N
 def test_a_dragged_slider_draws_its_first_preview_at_once_and_its_moves_within_a_tenth_of_a_second(
     application: QApplication,
 ) -> None:
-    """A held thumb's first preview draws at once, its moves wait at most 0.1 s, and the release draws.
+    """A held thumb's first preview draws at once, its moves at most 0.1 s later, and the release.
 
     The press shows a preview, which draws its frame at once. The moves that
     follow less than 0.1 s after it leave their frame to the end of the

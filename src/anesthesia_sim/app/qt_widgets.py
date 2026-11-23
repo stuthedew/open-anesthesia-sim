@@ -1035,7 +1035,7 @@ class DialInput(Enum):
 
     A value set by a key, the wheel or a click on the track needs a frame.
     The dashboard draws it at once unless it drew a frame for an input less
-    than `INPUT_FRAME_INTERVAL_S` ago, and draws it at the end of that
+    than `INPUT_FRAME_INTERVAL_MS` ago, and draws it at the end of that
     interval otherwise (`SimulationView.present_input`, `PL-2WVC`). The value at which
     a previewed thumb is released needs none, because the end of the preview
     draws a frame at once right after it (`PL-5B1N`).

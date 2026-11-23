@@ -47,7 +47,7 @@ at 0.2 s, and a dial input is drawn at once, or 0.1 s after the last input's
 frame when it follows one more closely than that, instead of waiting for the
 tick: the throttle that `PL-2WVC` built, with its wait set to the
 manipulation limit and measured by a 0.1 s single-shot timer rather than by
-counting render ticks (`INPUT_FRAME_INTERVAL_S`, `SimulationView.present_input`,
+counting render ticks (`INPUT_FRAME_INTERVAL_MS`, `SimulationView.present_input`,
 `input_frame_due`). A held thumb's preview moves now go through the same
 throttle, so the first move draws at once and the rest within 0.1 s, where
 they had waited for the render tick since `PL-R2YM`. The cost during a burst

@@ -123,7 +123,7 @@ from anesthesia_sim.app.controller import (
 )
 from anesthesia_sim.app.dashboard_frame import (
     FORK_NOTHING_SELECTED_TEXT,
-    INPUT_FRAME_INTERVAL_S,
+    INPUT_FRAME_INTERVAL_MS,
     MAX_DISPLAYED_RUNS,
     REMOVE_NOTHING_SELECTED_TEXT,
     RENDER_INTERVAL_S,
@@ -582,14 +582,12 @@ class SimulationView(QWidget):
         self._render_timer.setInterval(round(RENDER_INTERVAL_S * MILLISECONDS_PER_SECOND))
         self._render_timer.timeout.connect(self.render_tick)
         # Runs while a dial input's frame was drawn less than
-        # `INPUT_FRAME_INTERVAL_S` ago. An input in that time leaves its frame
+        # `INPUT_FRAME_INTERVAL_MS` ago. An input in that time leaves its frame
         # to the timer's end (`present_input`, `PL-NKFD`).
         self._input_frame_timer = QTimer(self)
         self._input_frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._input_frame_timer.setSingleShot(True)
-        self._input_frame_timer.setInterval(
-            round(INPUT_FRAME_INTERVAL_S * MILLISECONDS_PER_SECOND)
-        )
+        self._input_frame_timer.setInterval(INPUT_FRAME_INTERVAL_MS)
         self._input_frame_timer.timeout.connect(self.input_frame_due)
 
     @property
@@ -1720,7 +1718,7 @@ class SimulationView(QWidget):
         readouts, and do not wait for the tick (`PL-RF2S`). Until the tick,
         those panels show a later step than the charts. So a dial input asks
         through `present_input`, which coalesces only an input that follows
-        another within `INPUT_FRAME_INTERVAL_S` (`PL-2WVC`, `PL-NKFD`).
+        another within `INPUT_FRAME_INTERVAL_MS` (`PL-2WVC`, `PL-NKFD`).
 
         Args:
             coalesce: True to mark a frame as owed and let the render tick
@@ -1739,12 +1737,12 @@ class SimulationView(QWidget):
 
     @halt_gate
     def present_input(self) -> None:
-        """Draw a frame for a dial input at once, or within `INPUT_FRAME_INTERVAL_S` after another.
+        """Draw a frame for a dial input at once, or within `INPUT_FRAME_INTERVAL_MS` after another.
 
         A key press, a wheel event, a click on the track or a move of a held
         thumb draws its frame at once, so the readouts, the schematic and the
         charts show the same step after it (`PL-2WVC`). An input that
-        follows another input's frame by less than `INPUT_FRAME_INTERVAL_S`
+        follows another input's frame by less than `INPUT_FRAME_INTERVAL_MS`
         leaves its frame to the end of that interval, which draws the latest
         state (`input_frame_due`). So a burst of inputs, such as a held key,
         a spinning wheel, a trackpad swipe or a dragged thumb, draws a frame
@@ -1765,7 +1763,7 @@ class SimulationView(QWidget):
     def input_frame_due(self) -> None:
         """Draw the frame that an input left owed, and start the next interval if one was.
 
-        The input timer calls this method `INPUT_FRAME_INTERVAL_S` after an
+        The input timer calls this method `INPUT_FRAME_INTERVAL_MS` after an
         input's frame. Nothing is drawn when the render tick has drawn the
         owed frame since, and the burst then ends, so the next input draws
         at once.

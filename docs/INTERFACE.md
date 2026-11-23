@@ -5573,18 +5573,18 @@ under its new setting. A key press, one notch of the scroll wheel or a click on
 the slider away from its handle is a single input, so it applies at once and
 draws no preview. Such an input also draws the whole screen at once, so the
 readouts, the compartment schematic and both charts show the same instant
-after it (`PL-2WVC`). An input that comes less than 0.1 s after another
-input's frame is drawn 0.1 s after that frame instead, with the latest state.
+after it (`PL-2WVC`). An input that comes less than 100 ms after another
+input's frame is drawn 100 ms after that frame instead, with the latest state.
 So a held key, a held button, a spinning wheel, a trackpad swipe or a dragged
-handle draws at most one frame of its own in each 0.1 s, besides the render
-tick's, on every platform, and the charts follow it within 0.1 s. That is
-Nielsen Norman Group's limit for a user to feel that they are directly
-moving what is on screen (`PL-NKFD`). Until that frame, the readouts can show
+handle draws at most one frame of its own in each 100 ms, besides the render
+tick's, on every platform, and the charts follow it within 100 ms. That is
+Nielsen Norman Group's 0.1-second limit for a user to feel that they are
+directly moving what is on screen (`PL-NKFD`). Until that frame, the readouts can show
 a later step than the charts. A click that moves the handle to the pointer
 draws one frame, and its release draws no second one. A handle released at
 the setting already in force applies nothing, and the run records no setting
 change.
-<!-- provenance: app/dashboard_frame.py INPUT_FRAME_INTERVAL_S = 0.1 -->
+<!-- provenance: app/dashboard_frame.py INPUT_FRAME_INTERVAL_MS = 100 -->
 
 **A click on the slider away from its handle follows the platform's own
 convention** (`PL-57LD`). The simulator sets no style of its own, so Qt's style

@@ -307,7 +307,7 @@ class RunView(QWidget):
         input_presentation_requested: Emitted when a dial input set a
             value, or moved a held thumb's preview, and so needs a frame. The
             dashboard draws one at once unless it drew one for an input less
-            than `INPUT_FRAME_INTERVAL_S` ago (`SimulationView.present_input`,
+            than `INPUT_FRAME_INTERVAL_MS` ago (`SimulationView.present_input`,
             `PL-2WVC`, `PL-NKFD`).
         case_restarted: Emitted when this run has started over from
             induction, after a Reset or an accepted change of agent. On a
@@ -1140,8 +1140,9 @@ class RunView(QWidget):
         wait for a tick (`PL-R2YM`). Otherwise the dial input decides. A value set by
         a key, the wheel or a click on the track asks the dashboard for a frame, which
         it draws at once unless it drew one for an input less than
-        `INPUT_FRAME_INTERVAL_S` ago (`SimulationView.present_input`, `PL-2WVC`). A released thumb's value
-        leaves the frame to the end of the preview, which follows at once.
+        `INPUT_FRAME_INTERVAL_MS` ago (`SimulationView.present_input`, `PL-2WVC`).
+        A released thumb's value leaves the frame to the end of the preview, which
+        follows at once.
 
         A dial input still rewrites this run's own labels at once, from a
         snapshot read after the change. The dashboard then shows every View the runs
@@ -1213,7 +1214,7 @@ class RunView(QWidget):
         future the run cannot have. The release then reports the refusal
         through `_apply_setting`, as it reports any refused setting. The
         dashboard draws the chart at once for the first move, and within
-        `INPUT_FRAME_INTERVAL_S` for each move after it
+        `INPUT_FRAME_INTERVAL_MS` for each move after it
         (`SimulationView.present_input`, `PL-NKFD`).
         """
 
