@@ -4803,6 +4803,22 @@ BOUND_FAMILIES = (
         promise=NUMERIC_PARAGRAPH_PROMISE,
     ),
     BoundFamily(
+        document=VERIFICATION,
+        heading="Independent-solution test",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Published wash-in and elimination validation test",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
         document=ARCHITECTURE,
         heading="Architecture overview",
         level=1,

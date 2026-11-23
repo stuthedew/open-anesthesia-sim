@@ -1366,19 +1366,20 @@ def wash_in_stretches(
     of wash-in. With no uptake, the inspired fraction falls in one second by
     at most the factor exp((10/60)/6), which is 1.0282, for 10 L/min of fresh
     gas into the 6 L circuit. At the earlier step of 0.1 s the figure was
-    1.00235. That measurement was taken step by step. A drawn column falls
-    wherever the column spacing puts it, so a column can land on a later
-    state of the run, which the measurement did not cover. The ratio is also
-    not continuous in general. `BreathingCircuit.set_circuit_volume`
-    conserves the agent in the circuit while it changes the volume that the
-    agent is divided by, so a circuit volume doubled between two steps would
-    halve F_I and double the ratio. A run refuses its next step after such a
-    change while the circuit holds agent (`SimulationState.advance`), but the
-    plot does not rely on a refusal elsewhere to bound what it draws.
-    So a crossing column above the ceiling is not drawn, and the stretch
-    ends where it would have ended without the extension. The column is not
-    clamped to the ceiling or interpolated onto it. It is simply a point
-    outside what this plot can show.
+    1.00235. That measurement was taken step by step. The chart draws the
+    second at which the ratio crossed equilibrium, however far apart its
+    columns are (`chart_time_base.wash_in_crossing_seconds`, `PL-CJJ1`). So
+    the crossing column is the first stored state past equilibrium, which the
+    measurement covers. The ratio is also not continuous in general.
+    `BreathingCircuit.set_circuit_volume` conserves the agent in the circuit
+    while it changes the volume that the agent is divided by, so a circuit
+    volume doubled between two steps would halve F_I and double the ratio. A
+    run refuses its next step after such a change while the circuit holds
+    agent (`SimulationState.advance`), but the plot does not rely on a refusal
+    elsewhere to bound what it draws. So a crossing column above the ceiling
+    is not drawn, and the stretch ends where it would have ended without the
+    extension. The column is not clamped to the ceiling or interpolated onto
+    it. It is simply a point outside what this plot can show.
 
     **A single polyline through every in-domain column would draw a straight
     line across the stretch it skipped.** That segment would join two real

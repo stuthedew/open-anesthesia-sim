@@ -1111,6 +1111,27 @@ surely as the reverse. It spends the interface's one signal for a real fault, an
 a reader to discount that signal. The interface must not present the stop as a pause either.
 Start is refused, because a resumed run's first step would be refused again.
 
+**The banner that reports the stop is drawn in the muted color, as the status word above it
+is** (`PL-0889`). The alert color stays with a run that failed and with a refused setting,
+including a dial moved on the stopped run, whose refusal the stop's banner then states.
+
+**A run says that the stop is coming before it arrives** (`PL-H2K2`). From 1 h 40 min of
+simulated time before the limit, the banner reads, for example, "This run stops in 1h40m of
+simulated time, at the supported run length of 24 hours", in the muted color, and counts down
+with the clock. A stopped run or a failure takes the banner in its place. A refused setting
+stays on screen until a setting is accepted, so a refusal made hours earlier can still hold
+the banner. The countdown then follows the refusal in the same banner, in the alert color,
+so the stop is never left unannounced.
+The span is set so that the banner is on screen for at least 20 s of real time at the fastest
+playback rate, 300 times real time, and for longer at every slower rate. Twenty seconds is the
+least time that WCAG 2.2 SC 2.2.1 (Timing Adjustable) asks a page to give a user between
+warning of a time limit and its end. W3C's Understanding document for that criterion was read
+on 2026-11-22. A reader who knows the stop is coming can mark the run, branch it or pause it
+before it stops, and does not take the stop for a fault. A branch taken within the last
+1 h 40 min shows the banner from its first frame.
+<!-- provenance: app/dashboard_frame.py APPROACHING_LIMIT_WARNING_REAL_S = 20 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
+
 ##### Why the limit is set where it is
 
 **What bounds the run length is what this model omits.** The first omission is metabolism,
@@ -1237,6 +1258,19 @@ inside the span only as far as the comparison with the published mean curves goe
 `core/supported_ranges.py`. Widening it is a safety-critical change on the same terms as
 widening a flow range. Argue the longer span against what the model omits, extend the
 validation that covers it, and revise this section with the result.
+
+The banner that announces the stop is built by `run_notice` in `app/dashboard_frame.py`. It
+reads the limit from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, so it cannot announce a limit the
+model does not enforce, and it opens `APPROACHING_LIMIT_NOTICE_S` before it. Tests in
+`tests/unit/test_dashboard_frame.py` check its wording, when it opens and what outranks it,
+from `test_the_interface_says_the_run_is_approaching_its_supported_length` on.
+`test_a_refusal_made_before_the_warning_does_not_hide_the_countdown` checks that a refusal
+still on screen keeps the countdown, and
+`test_a_refusal_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning` checks that a refusal
+on the stopped run takes the alert color.
+`test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour` in
+`tests/integration/simulation_view/test_simulation_view_run_stops_itself.py` checks the
+colours of the stop's banner and a failure's.
 
 Reaching the limit and handing in a value past it raise different errors. The step that would
 carry a run past the limit is refused in `SimulationState.advance()` with a
@@ -2038,6 +2072,31 @@ same dial raised later in the run left smaller gaps: up to 0.022 at 1 000 px
 when raised to 8% between 600 s and 672 s. Measured on 2026-11-22.
 
 <!-- not-restated: 8 % -->
+
+**The F_A/F_I plot also draws the second at which the ratio crosses
+equilibrium between two columns** (`PL-CJJ1`). A wash-in stretch ends on the
+first drawn point past equilibrium, so that the curve meets the equilibrium line
+and ends there with a dot. After the dial is closed, one step carries the ratio
+at most 3% past equilibrium, but the next column can be minutes later, and the
+ratio there is far above the plot's top. Before this rule the curve
+then stopped below the line with no dot, which looks like a cut-off trace rather
+than a finished wash-in. With the run of 60 minutes at the default dial
+followed by 20 minutes with the dial closed, this happened at 17 of 66 pairs
+of time base and plot width tried, from 300 px to 1 600 px, and it happens at
+none of them now. The crossing second is a stored state, as every drawn point
+is. Where the first second outside the domain has no ratio, because the
+inspired fraction is too small to divide by, the stretch ends without a
+crossing, as before. A stretch that starts after the dial is raised starts on
+the line only when the ratio's last second outside the domain is drawn. A large
+step of the dial can carry the ratio in one second from above the plot's top to
+well below the line, and the stretch then starts below the line, because the
+ratio never took a value in between.
+
+**For developers.** `chart_time_base.wash_in_crossing_seconds` chooses the
+crossing seconds. `controller._with_extremes` adds them to every drawn window
+and to a preview's first hour, and `controller._with_later_crossings` to the
+rest of a preview. `test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium`
+in `tests/unit/test_chart_frame.py` reproduces the run above.
 
 ### What the reader chooses: traces, window and playback rate
 
@@ -4053,7 +4112,8 @@ running simulation from a halted one is safety-critical. The status words
 "Running" and "Valid" differ from the words for the other states, so a reader
 who cannot tell the colors apart still reads the state. "Paused" and the
 words for a run that halted on a mark or at the supported run length appear in
-the muted color. "Stopped — simulation
+the muted color, as do the banner that reports a stop at the supported run length
+and the banner that announces it. "Stopped — simulation
 error" and "Validation failed" appear in the alert color.
 
 The agent selector, the header and the running-agent label back the written
@@ -5833,7 +5893,10 @@ reach, `predicted_states` takes one-second steps from the state stored for the
 second the run has reached, and the window is drawn on the run's time grid with
 the second of each peak and trough between two columns. After that,
 `predicted_states_at` predicts each grid second and the right edge from the one
-before. The controller keeps the last predicted window and draws it again while
+before. Where F_A/F_I is inside the wash-in domain at one of two such columns
+and outside it at the other, the seconds between them are predicted too, and the
+crossing second is drawn (`controller._with_later_crossings`,
+`test_a_preview_past_its_first_hour_draws_the_second_its_ratio_crosses_equilibrium`). The controller keeps the last predicted window and draws it again while
 none of its inputs change. `test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only`
 in `tests/unit/test_chart_frame.py` checks the split. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial

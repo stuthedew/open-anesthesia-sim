@@ -58,6 +58,7 @@ from anesthesia_sim.app.controller import (
     BranchedCase,
     SettingPreview,
     SimulationController,
+    _with_later_crossings,
 )
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
@@ -83,18 +84,20 @@ from anesthesia_sim.app.theme import (
     MINIMUM_TRACE_STROKE_WIDTH,
     ONE_MAC_LINE_DASH_PATTERN,
 )
-from anesthesia_sim.app.wash_in import read_wash_in
+from anesthesia_sim.app.wash_in import is_wash_in, read_wash_in, wash_in_ratio
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     FIRST_TISSUE_FRACTION,
     FRACTION_STATE_NAMES,
+    INSPIRED_FRACTION,
     VENOUS_FRACTION,
     build_system_matrix,
 )
 from anesthesia_sim.core.mac import mac_for_patient
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.prediction import predicted_states
 from anesthesia_sim.core.rounding import propagator_rounding, run_rounding
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow, StepCount
@@ -652,6 +655,36 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
     assert all(ratio <= 1.0 for ratio in stretch.ratios[:-1])
     assert run.undrawn_wash_in_stretches == 0
+
+
+@pytest.mark.parametrize(("time_base_s", "plot_width_px"), [(14400, 1200), (43200, 900)])
+def test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium(
+    time_base_s: int, plot_width_px: float
+) -> None:
+    """A stretch that crossed equilibrium ends on the line at a wide time base (`PL-CJJ1`).
+
+    The run is an hour at the default dial and then 20 minutes with the dial
+    closed. On the 4-hour and 12-hour time bases the columns are many seconds
+    apart, and the first column after the dial closed has a ratio far above
+    the plot. Before the crossing second was drawn, the stretch stopped at
+    0.99 with no terminus.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 3600)
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    _advance(controller, 1200)
+    frame = assemble_chart_frame(
+        [_input(controller)],
+        time_base_for_span(time_base_s),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=plot_width_px,
+    )
+    (stretch,) = frame.runs[0].wash_in
+
+    assert stretch.ends_above_equilibrium
+    assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
 
 
 def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> None:
@@ -2184,6 +2217,48 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
     assert previewed.record().control_timeline == ()
 
 
+def test_a_preview_past_its_first_hour_draws_the_second_its_ratio_crosses_equilibrium() -> None:
+    """A predicted wash-in stretch that starts after the first hour starts on the line (`PL-CJJ1`).
+
+    With the fresh gas at 1 L/min and the dial at 8% for 30 minutes, a
+    preview of the dial at 0.5% predicts F_A/F_I falling back below 1 about
+    two and a half hours later. Past its first hour a preview predicts only
+    the grid seconds, which are 102 s apart on this axis, so the last second
+    outside the wash-in domain lay between two columns and was not drawn. The
+    expected second is found in a twin run that applies the setting and steps
+    on (rule 2 of `.claude/rules/test-oracles.md`).
+    """
+
+    def started(controller: SimulationController) -> SimulationController:
+        controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+        controller.set_delivered_concentration_percent(Percent(8.0))
+        controller.start()
+        _advance(controller, 1800)
+
+        return controller
+
+    previewed, applied = started(SimulationController()), started(SimulationController())
+    preview = SettingPreview(ControlInput.DELIVERED, 0.5)
+    window = previewed.preview_window(preview, 0.0, 1800.0 + 8 * 3600.0, 300)
+
+    applied.set_delivered_concentration_percent(Percent(0.5))
+    first_s, last_s = 1800 + PREVIEW_EXACT_S, 1800 + 4 * 3600
+    _advance(applied, last_s - 1800)
+    truth = applied.drawn_window(float(first_s), float(last_s), last_s - first_s)
+    assert truth.times_s == tuple(range(first_s, last_s + 1))
+    ratios = [
+        wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION]) for state in truth.states
+    ]
+    inside = [ratio is not None and is_wash_in(ratio) for ratio in ratios]
+    entering_s = next(
+        second
+        for second, before, after in zip(truth.times_s, inside, inside[1:], strict=False)
+        if not before and after
+    )
+
+    assert entering_s in window.times_s
+
+
 @pytest.mark.parametrize(
     ("state_index", "peak_s"),
     [(ALVEOLAR_FRACTION, 302), (VENOUS_FRACTION, 379), (FIRST_TISSUE_FRACTION, 363)],
@@ -2231,6 +2306,97 @@ def test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reac
         * 0.02
     )
     assert abs(drawn[peak_s][state_index] - truth_by_second[peak_s][state_index]) <= limit
+
+
+def test_a_preview_draws_a_crossing_between_its_exact_hour_and_its_first_later_column() -> None:
+    """The pair that joins a preview's exact first hour to its later columns is searched too.
+
+    With the fresh gas at 1 L/min and the dial at 8% for 1509 s, a preview of
+    the dial at 0.5% predicts F_A/F_I last outside the wash-in domain 13 s
+    after the exact hour ends, and the first later column is 42 s after it.
+    The expected second comes from one-second predictions of the same
+    settings and state.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance(controller, 1509)
+    preview = SettingPreview(ControlInput.DELIVERED, 0.5)
+    exact_s = 1509 + PREVIEW_EXACT_S
+    states = predicted_states(
+        controller.preview_settings(preview),
+        controller._state.stored_states.state_at(CaseInstant(1509)),
+        CaseInstant(1509),
+        CaseInstant(exact_s + 600),
+    )
+    inside = [
+        (ratio := wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION])) is not None
+        and is_wash_in(ratio)
+        for state in states
+    ]
+    crossing_s = next(
+        1509 + index
+        for index, (before, after) in enumerate(zip(inside, inside[1:], strict=False))
+        if 1509 + index > exact_s and not before and after
+    )
+
+    window = controller.preview_window(preview, 0.0, 1509.0 + 8 * 3600.0, 300)
+    later_s = [second for second in window.times_s if second > exact_s]
+
+    assert later_s[0] == crossing_s
+
+
+def test_a_later_crossing_is_found_between_columns_two_seconds_apart_and_never_on_one() -> None:
+    """`_with_later_crossings` searches every pair at least two seconds apart, and adds no column.
+
+    The run and the preview are those of the test above, whose ratio last lies
+    outside the wash-in domain at one second about two and a half hours on.
+    Each state is taken from one-second predictions, so each pair below is cut
+    from the curve itself. A pair two seconds apart whose middle second is the
+    crossing must yield it. A pair whose left second is the crossing must
+    return its columns unchanged, because that second is already drawn.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance(controller, 1800)
+    settings = controller.preview_settings(SettingPreview(ControlInput.DELIVERED, 0.5))
+    opening = controller._state.stored_states.state_at(CaseInstant(1800))
+    states = predicted_states(settings, opening, CaseInstant(1800), CaseInstant(1800 + 4 * 3600))
+    inside = [
+        (ratio := wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION])) is not None
+        and is_wash_in(ratio)
+        for state in states
+    ]
+    crossing_s = next(
+        1800 + index
+        for index, (before, after) in enumerate(zip(inside, inside[1:], strict=False))
+        if index > PREVIEW_EXACT_S and not before and after
+    )
+
+    def state(second: int) -> tuple[float, ...]:
+        return states[second - 1800]
+
+    def later(*seconds: int) -> tuple[tuple[CaseInstant, ...], tuple[tuple[float, ...], ...]]:
+        return tuple(CaseInstant(second) for second in seconds), tuple(map(state, seconds))
+
+    middle_s, middle_states = later(crossing_s + 1, crossing_s + 60)
+    found_s, found_states = _with_later_crossings(
+        settings, CaseInstant(crossing_s - 1), state(crossing_s - 1), middle_s, middle_states
+    )
+
+    assert found_s == (crossing_s, crossing_s + 1, crossing_s + 60)
+    assert found_states[0] == pytest.approx(state(crossing_s))
+
+    left_s, left_states = later(crossing_s + 2, crossing_s + 60)
+
+    assert _with_later_crossings(
+        settings, CaseInstant(crossing_s), state(crossing_s), left_s, left_states
+    ) == (left_s, left_states)
 
 
 def test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only() -> None:
