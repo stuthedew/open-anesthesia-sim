@@ -16,26 +16,46 @@ Baker and Farmery's coefficients, are read from the text, because each is
 restated there beside its citation. These tests check that the text's
 arithmetic is right. They cannot check that a published input was
 transcribed correctly, which is the citation's job.
+
+One figure is not arithmetic: how much the omitted lung store would change
+$F_A/F_I$. Its test adds the store to the model's alveolar gas and runs the
+model with and without it, because the text states the model's own response.
+The expected values are the printed figures, never a run of the shipped model.
 """
 
+import math
 import re
+from dataclasses import replace
 from functools import cache
 from pathlib import Path
 
+from anesthesia_sim.core.governing_equations import (
+    ALVEOLAR_FRACTION,
+    INSPIRED_FRACTION,
+    STATE_SIZE,
+    UNIT_STATE,
+)
 from anesthesia_sim.core.liquid_agent import (
     CELSIUS_ZERO_K,
     MOLAR_GAS_CONSTANT_J_MOL_K,
     REFERENCE_MOLAR_VOLUME_L_MOL,
     STANDARD_ATMOSPHERE_PA,
 )
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import (
     AgentParameters,
     load_agent_parameters,
     load_reference_adult_parameters,
 )
+from anesthesia_sim.core.prediction import predicted_states_at
+from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
 from anesthesia_sim.core.units import LITRES_PER_CUBIC_METRE
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 MODEL_PATH = Path(__file__).resolve().parents[2] / "docs" / "MODEL.md"
+#: The developer's document, whose account of desflurane's wash-in residual
+#: restates the lung store's shares.
+VERIFICATION_PATH = MODEL_PATH.with_name("VERIFICATION.md")
 #: The document that holds the evidence behind the limitations, and the table
 #: of Yasuda, Targ and Eger's Table 1.
 PARAMETERS_PATH = MODEL_PATH.with_name("PARAMETERS.md")
@@ -384,3 +404,293 @@ def test_the_stored_set_differs_from_yasudas_means_by_the_percents_printed() -> 
     assert cells_differing == ("seven" if differing == 7 else str(differing)), (
         f"{differing} of the nine stored values differ from Yasuda's means"
     )
+
+
+#: The pattern of the round figures that size the omitted lung store, as
+#: `docs/MODEL.md` § "Lung tissue and pulmonary blood" prints them.
+LUNG_STORE_INPUTS = (
+    r"(\d+) kg of lung tissue with a tissue:blood ratio of (\d\.\d), and (\d\.\d) L of "
+    r"pulmonary and arterial blood"
+)
+#: The pattern of the store's share of each agent's fast pool. Both
+#: `docs/MODEL.md` and `docs/VERIFICATION.md` print it.
+LUNG_STORE_SHARES = (
+    r"(\d+\.\d)% of desflurane's fast pool, (\d+\.\d)% of sevoflurane's and "
+    r"(\d+\.\d)% of isoflurane's"
+)
+LUNG_STORE_AGENTS = ("desflurane", "sevoflurane", "isoflurane")
+#: The two times of wash-in at which the section states the store's effect, as
+#: the whole seconds a case instant takes.
+ONE_MINUTE_S = 60
+THIRTY_MINUTES_S = 1800
+
+
+def _lung_store_gas_equivalent_l(agent_id: str) -> float:
+    """The omitted lung store's capacity for an agent, in gas-equivalent litres.
+
+    Lung tissue is taken at 1 kg per litre, so its capacity is its mass times
+    its tissue:blood ratio times the agent's blood:gas coefficient. The blood's
+    capacity is its volume times the blood:gas coefficient.
+    """
+
+    tissue_kg, tissue_blood, blood_l = (float(x) for x in _one(LUNG_STORE_INPUTS))
+    blood_gas = float(_agent(agent_id).blood_gas_partition_coefficient)
+
+    return (tissue_kg * tissue_blood + blood_l) * blood_gas
+
+
+def test_the_omitted_lung_store_is_the_share_of_the_fast_pool_printed() -> None:
+    """The store over the alveolar gas, venous blood and vessel-rich group is 20.1, 19.7 and 23.4%.
+
+    The fast pool is the capacity of the alveolar gas, the venous blood and the
+    vessel-rich group, each in gas-equivalent litres, from the stored
+    parameters. `docs/VERIFICATION.md` states the same shares, and the test
+    holds both copies to one calculation.
+    """
+
+    printed = _one(LUNG_STORE_SHARES)
+    # regex: the same sentence's figures, in the developer's document.
+    in_verification = re.findall(
+        LUNG_STORE_SHARES, " ".join(VERIFICATION_PATH.read_text(encoding="utf-8").split())
+    )
+    assert in_verification == [printed], (
+        f"docs/VERIFICATION.md gives the lung store's shares as {in_verification}, "
+        f"docs/MODEL.md as {printed}"
+    )
+    patient = load_reference_adult_parameters()
+    for agent_id, share in zip(LUNG_STORE_AGENTS, printed, strict=True):
+        agent = _agent(agent_id)
+        fast_pool_l = (
+            float(patient.alveolar_gas_volume_l)
+            + float(patient.venous_pool_volume_l) * float(agent.blood_gas_partition_coefficient)
+            + float(patient.vessel_rich_volume_l)
+            * float(agent.vessel_rich_tissue_gas_partition_coefficient)
+        )
+        computed = _lung_store_gas_equivalent_l(agent_id) / fast_pool_l * 100.0
+        assert _as_printed(computed, share) == share, (
+            f"{agent_id}: the lung store is {computed!r}% of the fast pool, printed as {share}%"
+        )
+
+
+def _alveolar_over_inspired(
+    agent_id: str, *, with_lung_store: bool, fresh_gas_flow_l_min: float | None = None
+) -> tuple[float, float]:
+    """$F_A/F_I$ at one minute and at 30 minutes of wash-in from zero agent.
+
+    With the store, its capacity is added to the alveolar gas volume, so it
+    stays at the alveolar partial pressure. A fresh gas flow left as `None` is
+    the agent's default, and every other setting is the agent's default.
+    """
+
+    system = AgentUptakeSystem.for_agent(agent_id)
+    if fresh_gas_flow_l_min is not None:
+        system.set_fresh_gas_flow(FreshGasFlow(fresh_gas_flow_l_min))
+    settings = system.equation_settings()
+    if with_lung_store:
+        settings = replace(
+            settings,
+            alveolar_volume_l=CompartmentVolume(
+                float(settings.alveolar_volume_l) + _lung_store_gas_equivalent_l(agent_id)
+            ),
+        )
+    no_agent = tuple(1.0 if index == UNIT_STATE else 0.0 for index in range(STATE_SIZE))
+    one_minute, thirty_minutes = predicted_states_at(
+        settings,
+        no_agent,
+        CaseInstant(0),
+        (CaseInstant(ONE_MINUTE_S), CaseInstant(THIRTY_MINUTES_S)),
+    )
+
+    return (
+        one_minute[ALVEOLAR_FRACTION] / one_minute[INSPIRED_FRACTION],
+        thirty_minutes[ALVEOLAR_FRACTION] / thirty_minutes[INSPIRED_FRACTION],
+    )
+
+
+def _lung_store_drops(
+    agent_id: str, fresh_gas_flow_l_min: float | None = None
+) -> tuple[float, float]:
+    """How much the store lowers $F_A/F_I$ at one minute and at 30 minutes."""
+
+    without = _alveolar_over_inspired(
+        agent_id, with_lung_store=False, fresh_gas_flow_l_min=fresh_gas_flow_l_min
+    )
+    with_store = _alveolar_over_inspired(
+        agent_id, with_lung_store=True, fresh_gas_flow_l_min=fresh_gas_flow_l_min
+    )
+
+    return without[0] - with_store[0], without[1] - with_store[1]
+
+
+def _printed_range(values: list[float], low: str, high: str) -> tuple[str, str]:
+    """The lowest and highest of `values`, each to the decimals printed for it."""
+
+    return _as_printed(min(values), low), _as_printed(max(values), high)
+
+
+def test_the_omitted_lung_store_lowers_the_wash_in_by_the_amounts_printed() -> None:
+    """The store lowers $F_A/F_I$ by the amounts printed, at the defaults and at low flow.
+
+    At each agent's default settings the text gives 0.08 to 0.10 at one minute
+    and 0.001 to 0.005 at 30 minutes. With 0.5 L/min of fresh gas and the
+    other settings at their defaults, it gives 0.005 to 0.010 at 30 minutes.
+    The test compares each agent's model with and without the store, from the
+    same settings, and checks the lowest and highest drop across the three
+    agents at the printed decimals. A store that kept filling past the first
+    minutes would leave a larger drop at 30 minutes than the text allows. The
+    test also checks that each agent's 30-minute drop is larger at the low
+    flow, which is the direction the text states.
+    """
+
+    first_low, first_high, late_low, late_high = _one(
+        r"lowers \$`F_A/F_I`\$ by (\d\.\d+) to (\d\.\d+) at one minute of wash-in, but by "
+        r"only (\d\.\d+) to (\d\.\d+) at 30 minutes"
+    )
+    low_flow, low_flow_low, low_flow_high = _one(
+        r"with (\d\.\d) L/min of fresh gas and the other settings at their defaults, the "
+        r"drop at 30 minutes is (\d\.\d+) to (\d\.\d+)"
+    )
+    drops = {agent_id: _lung_store_drops(agent_id) for agent_id in LUNG_STORE_AGENTS}
+    at_one_minute = [first for first, _late in drops.values()]
+    at_thirty_minutes = [late for _first, late in drops.values()]
+    late_at_low_flow = {
+        agent_id: _lung_store_drops(agent_id, float(low_flow))[1] for agent_id in LUNG_STORE_AGENTS
+    }
+
+    assert all(drop > 0.0 for drop in at_one_minute + at_thirty_minutes), drops
+    assert _printed_range(at_one_minute, first_low, first_high) == (first_low, first_high), (
+        f"the drops at one minute are {drops}"
+    )
+    assert _printed_range(at_thirty_minutes, late_low, late_high) == (late_low, late_high), (
+        f"the drops at 30 minutes are {drops}"
+    )
+    assert _printed_range(list(late_at_low_flow.values()), low_flow_low, low_flow_high) == (
+        low_flow_low,
+        low_flow_high,
+    ), f"the drops at 30 minutes with {low_flow} L/min of fresh gas are {late_at_low_flow}"
+    assert all(late_at_low_flow[agent_id] > drops[agent_id][1] for agent_id in LUNG_STORE_AGENTS), (
+        late_at_low_flow,
+        drops,
+    )
+
+
+#: The case lengths, in minutes, over which `docs/MODEL.md` § "Intertissue
+#: diffusion: the missing fourth compartment" states its fat figures: "any case
+#: from half an hour to four hours".
+FAT_CASE_MINUTES = range(30, 241)
+#: The time at which it states the fat fractions: "After an hour".
+ONE_HOUR_MIN = 60
+#: The words the section uses for the two ends of the partial-pressure ratio.
+RATIO_IN_WORDS = {"four": 4.0, "six and a half": 6.5}
+
+
+def _filled(minutes: float, time_constant_min: float) -> float:
+    """The fraction of a steady driving partial pressure that a compartment reaches."""
+
+    return 1.0 - math.exp(-minutes / time_constant_min)
+
+
+def _fourth_compartment_table() -> list[tuple[str, float, float, float, float, str]]:
+    """Each cohort row of the section's table, with the model's printed fat time constant.
+
+    A row gives the agent and the published means of the fourth compartment's
+    time constant and volume and of the fitted fat group's, from Tables 4 and
+    5 of the two Yasuda 1991 papers.
+    """
+
+    # regex: each cohort row of the section's markdown table, mean ± SD cells.
+    rows = re.findall(
+        r"\| (\w+), \*Anesth\w*(?: Analg)?\* 1991 \| ([\d,]+) ± [\d,]+ \| ([\d.]+) ± [\d.]+ \| "
+        r"([\d,]+) ± [\d,]+ \| ([\d.]+) ± [\d.]+ \| ([\d,]+) \|",
+        _section_text(),
+    )
+    assert len(rows) == 4, (
+        f"expected four cohort rows in the fourth-compartment table, found {rows}"
+    )
+
+    return [
+        (
+            agent.lower(),
+            float(tau_fourth.replace(",", "")),
+            float(volume_fourth),
+            float(tau_fat.replace(",", "")),
+            float(volume_fat),
+            model_tau,
+        )
+        for agent, tau_fourth, volume_fourth, tau_fat, volume_fat, model_tau in rows
+    ]
+
+
+def _model_fat_time_constant_min(agent_id: str) -> float:
+    """The model's fat group time constant V λ / Q at the default cardiac output."""
+
+    patient = load_reference_adult_parameters()
+    fat_flow_l_min = float(patient.fat_perfusion_fraction) * float(
+        patient.default_cardiac_output_l_min
+    )
+
+    return float(patient.fat_volume_l) * _tissue_blood(agent_id, "fat") / fat_flow_l_min
+
+
+def test_the_fourth_compartment_and_the_fat_group_fill_as_printed() -> None:
+    """The fat figures follow from the published time constants and volumes.
+
+    Each compartment fills as $1 - e^{-t/\\tau}$ from a steady arterial partial
+    pressure, which is the assumption the section states. The fourth
+    compartment is taken as fat at the model's stored fat solubility, so its
+    uptake is its volume times its filled fraction, on the same scale as the
+    model's fat group and the fitted one. The test checks the model's time
+    constants in the table, the fractions after an hour, the ratio of partial
+    pressures and the ratios of uptake over cases of 30 to 240 minutes.
+    """
+
+    hour_low, hour_high, trace_low, trace_high = _one(
+        r"After an hour it is at (\d+) to (\d+)% of arterial, against the trace's "
+        r"(\d\.\d) to (\d\.\d)%"
+    )
+    ratio_low, ratio_high = _one(r"runs at (four) to (six and a half) times the trace's")
+    model_low, model_high, fitted_low, fitted_high = _one(
+        r"it takes up (\d\.\d) to (\d\.\d) times as much agent as the model's whole fat "
+        r"group, or (\d\.\d) to (\d\.\d) times as much as the studies' fitted fat group"
+    )
+    _one(r"over any case from half an hour to four hours")
+    model_fat_volume_l = float(load_reference_adult_parameters().fat_volume_l)
+
+    fourth_at_hour, trace_at_hour, ratios, over_model, over_fitted = [], [], [], [], []
+    for (
+        agent_id,
+        tau_fourth,
+        volume_fourth,
+        tau_fat,
+        volume_fat,
+        model_tau,
+    ) in _fourth_compartment_table():
+        tau_model = _model_fat_time_constant_min(agent_id)
+        assert f"{tau_model:,.0f}" == model_tau, (
+            f"{agent_id}: the model's fat time constant is {tau_model!r} min, "
+            f"printed as {model_tau}"
+        )
+        fourth_at_hour.append(_filled(ONE_HOUR_MIN, tau_fourth) * 100.0)
+        trace_at_hour.append(_filled(ONE_HOUR_MIN, tau_model) * 100.0)
+        for minutes in FAT_CASE_MINUTES:
+            fourth = _filled(minutes, tau_fourth)
+            ratios.append(fourth / _filled(minutes, tau_model))
+            over_model.append(
+                volume_fourth * fourth / (model_fat_volume_l * _filled(minutes, tau_model))
+            )
+            over_fitted.append(volume_fourth * fourth / (volume_fat * _filled(minutes, tau_fat)))
+
+    for computed, low, high in (
+        (fourth_at_hour, hour_low, hour_high),
+        (trace_at_hour, trace_low, trace_high),
+        (over_model, model_low, model_high),
+        (over_fitted, fitted_low, fitted_high),
+    ):
+        assert (_as_printed(min(computed), low), _as_printed(max(computed), high)) == (low, high), (
+            f"the computed range is {min(computed)!r} to {max(computed)!r}, printed {low} to {high}"
+        )
+    # The ratio is printed in words, to the nearest half.
+    assert (round(min(ratios) * 2.0) / 2.0, round(max(ratios) * 2.0) / 2.0) == (
+        RATIO_IN_WORDS[ratio_low],
+        RATIO_IN_WORDS[ratio_high],
+    ), f"the ratio of partial pressures runs from {min(ratios)!r} to {max(ratios)!r}"

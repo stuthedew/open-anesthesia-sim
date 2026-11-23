@@ -368,6 +368,19 @@ def declare_application_colours(application: QApplication) -> None:
     selector popups could not be reached from the widget containing them
     (`PL-0NVN`).
 
+    **The light colour scheme is requested as well** (`PL-YZ9L`). The palette
+    does not reach how macOS draws each letter. Qt draws a glyph with a black
+    fill unless the host's colour scheme is Dark, and with a white fill when
+    it is, and macOS thickens the strokes by the fill colour
+    (`QCoreTextFontEngine::imageForGlyph`, Qt 6.11). So under Dark, the
+    interface's dark lettering on its light surfaces was drawn heavier than
+    under Light. On macOS, `setColorScheme(Light)` sets the application's
+    appearance to Aqua (`QCocoaTheme::requestColorScheme`, Qt 6.10), so Qt
+    then draws the letters as it does under Light. The request is made
+    before the palette is set, because Qt rereads the system palette when the
+    scheme changes. On a platform that ignores the request, the palette still
+    applies.
+
     **What it covers, measured.** Under the dark host palette that
     `tests/integration/test_dark_appearance.py` supplies, the scroll bar of
     the page's scroll area went from 94.3% of its pixels darker than mid-grey
@@ -376,8 +389,10 @@ def declare_application_colours(application: QApplication) -> None:
     **What it does not cover, and why that follows the rule rather than
     leaving a gap.** The `Disabled` colour group is left exactly as the
     platform supplied it, for the reason `declare_interface_colours` gives.
-    So a disabled control with no colour of its own keeps drawing the host's
-    colours. Declaring a disabled colour is a decision under
+    So a disabled control with no colour of its own keeps drawing the
+    platform's colours. On a platform that honours the light request above,
+    those are its light palette's; on one that ignores it, they follow the
+    host appearance. Declaring a disabled colour is a decision under
     `.claude/rules/ui-color.md`, not a style choice. This interface declares
     exactly one, and it is measured.
 
@@ -396,6 +411,7 @@ def declare_application_colours(application: QApplication) -> None:
             platform supplied.
     """
 
+    application.styleHints().setColorScheme(Qt.ColorScheme.Light)
     application.setPalette(_with_declared_roles(application.palette()))
 
 
@@ -1030,6 +1046,26 @@ class ReadoutRow(QWidget):
         self._columns = columns
 
 
+class DialInput(Enum):
+    """Whether a dial's value is followed at once by a frame of its own, or needs one.
+
+    A value set by a key, the wheel or a click on the track needs a frame.
+    The dashboard draws it at once unless it drew a frame for an input less
+    than `INPUT_FRAME_INTERVAL_MS` ago, and draws it at the end of that
+    interval otherwise (`SimulationView.present_input`, `PL-2WVC`). The value at which
+    a previewed thumb is released needs none, because the end of the preview
+    draws a frame at once right after it (`PL-5B1N`).
+
+    Members:
+        STEP: A value set by a key press, a wheel event or a click on the
+            track, alone or as one of a burst.
+        RELEASE: The value at which a previewed thumb was released.
+    """
+
+    STEP = "a key, the wheel or a click on the track"
+    RELEASE = "a released thumb"
+
+
 class _SettingSlider(QSlider):
     """A horizontal slider on which a press on the track is one input, and one on the handle a grab.
 
@@ -1203,7 +1239,11 @@ class ParameterSlider(QWidget):
     setting would give. Releasing the thumb applies the value once, through
     `value_changed`, and then ends the preview through `preview_ended`. In
     that order, the frame drawn at the release shows the run under its new
-    setting and no preview. Qt itself would apply the value only after
+    setting and no preview. So the value applied at the release is marked
+    `DialInput.RELEASE`, and its frame is the one that ends the preview. A
+    release ends a preview only where one started. A left click on the track
+    under macOS moves the handle to the pointer and marks it held, but starts
+    no preview, so its release draws no second frame. Qt itself would apply the value only after
     `sliderReleased`, so `_on_thumb_released` applies it first. A key press,
     a wheel step or a click on the groove is one discrete input, so it
     applies at once and previews nothing. Qt's slider tracking is switched
@@ -1233,18 +1273,18 @@ class ParameterSlider(QWidget):
             arrive: a press, a key press that is not a held key's repeat, or
             a wheel notch.
         value_changed: Emitted with the decoded value when the reader
-            applies one: on releasing a dragged thumb, or at once for a key,
-            a wheel step or a click on the groove. `set_setting` never emits
-            it.
+            applies one, and whether a frame follows it (`DialInput`): on
+            releasing a dragged thumb, or at once for a key, a wheel step or
+            a click on the groove. `set_setting` never emits it.
         preview_moved: Emitted with the decoded value at the held thumb's
             position, when the thumb is pressed and each time it moves. A
             press on the groove emits it only once the held thumb moves.
-        preview_ended: Emitted when the held thumb is released, after
-            `value_changed` has applied the value.
+        preview_ended: Emitted when a held thumb that started a preview is
+            released, after `value_changed` has applied the value.
     """
 
     adjustment_started = Signal()
-    value_changed = Signal(float)
+    value_changed = Signal(float, object)
     preview_moved = Signal(float)
     preview_ended = Signal()
 
@@ -1261,6 +1301,11 @@ class ParameterSlider(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(panel_stylesheet(self.objectName()))
         self._decimals = setting.decimals
+        # Whether a preview is shown for this slider's held thumb, which
+        # `preview_ended` ends.
+        self._previewing = False
+        # True only while `_on_thumb_released` applies the released value.
+        self._releasing = False
         self.name_label = styled_label(setting.name, color=INK, bold=True, wrap=True)
         self.qualifier_label = styled_label(
             setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True, wrap=True
@@ -1334,7 +1379,8 @@ class ParameterSlider(QWidget):
         return slider_value(self.slider.value(), self._decimals)
 
     def _on_slider_moved(self, position: int) -> None:
-        self.value_changed.emit(slider_value(position, self._decimals))
+        dial_input = DialInput.RELEASE if self._releasing else DialInput.STEP
+        self.value_changed.emit(slider_value(position, self._decimals), dial_input)
 
     def _on_thumb_pressed(self) -> None:
         """Start a preview where the handle stands, unless the press was on the groove.
@@ -1346,9 +1392,11 @@ class ParameterSlider(QWidget):
         if self.slider.jumping:
             return
 
+        self._previewing = True
         self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self._decimals))
 
     def _on_thumb_moved(self, position: int) -> None:
+        self._previewing = True
         self.preview_moved.emit(slider_value(position, self._decimals))
 
     def _on_thumb_released(self) -> None:
@@ -1360,38 +1408,55 @@ class ParameterSlider(QWidget):
         """
 
         position = self.slider.sliderPosition()
+        previewing, self._previewing = self._previewing, False
 
         if position != self.slider.value():
-            self.slider.setValue(position)
+            self._releasing = previewing
 
-        self.preview_ended.emit()
+            try:
+                self.slider.setValue(position)
+            finally:
+                self._releasing = False
+
+        if previewing:
+            self.preview_ended.emit()
 
 
 class NoticeLabel(QLabel):
     """The banner above a run's values: a stopped run or a refused setting, or nothing.
 
-    The banner is word-wrapped, bold and drawn in `theme.WARNING`, which is
-    the one warning colour this interface has. It is hidden rather than blank
+    The banner is word-wrapped and bold. It is drawn in `theme.WARNING`, the
+    one warning colour this interface has, unless the caller names another
+    colour for a banner that reports no fault. It is hidden rather than blank
     when there is nothing to say, so an empty line never takes up the space a
     warning would.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setStyleSheet(foreground_stylesheet(WARNING))
         self.setWordWrap(True)
         font = QFont(self.font())
         font.setBold(True)
         self.setFont(font)
         self._notice: str | None = None
+        self._color: str | None = None
         self.set_notice(None)
 
-    def set_notice(self, text: str | None) -> None:
-        """Show `text`, or hide the banner when there is none.
+    def set_notice(self, text: str | None, color: str = WARNING) -> None:
+        """Show `text` in `color`, or hide the banner when there is none.
 
         Args:
-            text: `dashboard_frame.notice`'s result this tick.
+            text: The banner this tick, such as `dashboard_frame.notice`'s
+                result.
+            color: A theme colour. `theme.WARNING` unless the banner reports
+                no fault, such as a stop at the supported run length.
         """
+
+        # A stylesheet write restyles the label, so it is made only when the
+        # colour changes rather than on every frame.
+        if color != self._color:
+            self.setStyleSheet(foreground_stylesheet(color))
+            self._color = color
 
         self._notice = text
         self.setText(text if text is not None else "")
@@ -1767,6 +1832,9 @@ class ForkPanel(QWidget):
             `clicked` is connected by the view.
         lock_text: Why the control is not offered, shown where the control
             was.
+        pin_text: Shown above the controls while the Workspace is pinned to
+            one run, saying that a branch taken here will not be drawn in it
+            (`PL-RXR8`).
         notice: Why the last requested branch was refused.
     """
 
@@ -1795,6 +1863,8 @@ class ForkPanel(QWidget):
         self.here_button.setHidden(True)
         self.lock_text = styled_label("", color=MUTED, wrap=True)
         self.lock_text.setHidden(True)
+        self.pin_text = styled_label("", color=MUTED, wrap=True)
+        self.pin_text.setHidden(True)
         self.notice = NoticeLabel(self)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
         # The points behind the selector's entries, one per entry, in the
@@ -1806,7 +1876,9 @@ class ForkPanel(QWidget):
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_ROW_SPACING)
         # The panel has no heading of its own: the Area header above it says
-        # "Branch", and so does the button (`PL-8LMY`).
+        # "Branch", and so does the button (`PL-8LMY`). The pin's notice comes
+        # first, so it is read before either button is pressed (`PL-RXR8`).
+        column.addWidget(self.pin_text)
         controls = QHBoxLayout()
         controls.setSpacing(CONTROL_ROW_SPACING)
         controls.addWidget(self._point_label)
@@ -1903,6 +1975,8 @@ class ForkPanel(QWidget):
         self.here_button.setHidden(not offer.here_offered)
         self.lock_text.setText(offer.lock_reason)
         self.lock_text.setHidden(not offer.locked)
+        self.pin_text.setText(offer.pinned_notice)
+        self.pin_text.setHidden(not offer.pinned_notice)
         self.notice.set_notice(offer.refusal)
 
 

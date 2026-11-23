@@ -3,6 +3,7 @@ id: PL-S8FM
 title: A circuit or alveolar volume written directly on the core and followed by a control change through SimulationController is adopted into the run's settings record without a refusal, so a run can go on under a volume that the docs call fixed for a run (found at blind review of PL-DQWL)
 status: done
 feature: replay-findings
+milestone: v0.6.21
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, tests/integration/controller/test_controller_run_definition.py, tests/integration/simulation_view/test_simulation_view_views.py, docs/INTERFACE.md
 added: 2026-11-22
 closed: 2026-11-22
@@ -53,17 +54,32 @@ holds it. Against the first commit of this branch, 0bcd1cdb, it fails with
 `assert (60.0, 90.0) is None` on the concentration chart's preview region.
 
 **Why this design.** The choice was between refusing at the control change
-and keeping the adoption. Meyer, Arkadova and Kogtenkov, "The concept of
-class invariant in object-oriented programming", arXiv:2109.06557v12, read in
-full through `pdftotext` on 2026-11-22, name the "reference leak": an
-operation on another object breaks an object's invariant without any of its
-own routines running. Their weaker rule in § 8 accepts that inconsistency and
-detects it at the object's next use. The controller's invariant is that its
-recorded settings are the core's. A write on the core is the reference leak,
-and the control change is the controller's next use, so it refuses there,
-before the record can absorb the change. Adopting the change would make the
-run's record show a volume that `docs/INTERFACE.md` § "What is not bounded
-this way" says cannot be changed during a run.
+and keeping the adoption. Two sources decide it. The second was added after
+the merge, at the owner's question of 2026-11-22.
+
+1. Meyer, Arkadova and Kogtenkov, "The concept of class invariant in
+   object-oriented programming", arXiv:2109.06557v12, read in full through
+   `pdftotext` on 2026-11-22. They name the "reference leak": an operation on
+   one object breaks the invariant of another object that depends on it,
+   without any of the second object's routines running. § 8.3 ("Weak rule,
+   supply-side") lets a routine assume only the local part of its
+   invariant on entry, so the routine itself must handle the case where the
+   remote part does not hold. The paper calls this the best available rule.
+   The controller's invariant is that its recorded settings are the core's,
+   and the core is the other object. A write on the core is the reference
+   leak, and a control change is a routine that must check the remote part
+   before it relies on it.
+2. `CLAUDE.md` § "Safety-critical clinical-output standard": do not silently
+   substitute or coerce, and prefer an obvious failure to a plausible value.
+   This decides how the controller deals with the broken invariant. Writing
+   the recorded settings back over the core would undo a write without
+   saying so, and adopting the core's settings would show a volume that
+   `docs/INTERFACE.md` § "What is not bounded this way" says cannot be
+   changed during a run. Refusing with an error that names the cause, and
+   leaving a reset as the way out, does neither.
+
+The preview follows the run view's own requirement, in
+`RunView.request_preview`, that a value the run would refuse draws no preview.
 
 **Regression test.** `tests/integration/controller/test_controller_run_definition.py::test_a_control_change_after_a_setting_written_past_the_controller_is_refused`,
 over the four dials and both volumes, before the run starts and after 10 s.

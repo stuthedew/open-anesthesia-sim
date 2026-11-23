@@ -41,6 +41,7 @@ from anesthesia_sim.app.qt_widgets import ParameterSlider
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import ACCENT_TEXT, INK, MUTED, PANEL
+from anesthesia_sim.app.views import CompartmentSchematicView
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -405,6 +406,183 @@ def _step_up(slider: QSlider, step: _Input) -> None:
 
 
 @pytest.mark.parametrize("step", list(_Input), ids=[step.value for step in _Input])
+def test_one_input_on_a_dial_of_a_running_run_draws_every_part_of_the_screen_at_one_step(
+    application: QApplication, step: _Input
+) -> None:
+    """A key press, a wheel notch or a click on the track draws its frame at once (`PL-2WVC`).
+
+    The last frame is drawn at the start, and the run then takes 30 steps
+    with no frame drawn, as it does between two render ticks. One input on
+    the flow dial then follows. Before the fix, the input rewrote the run's
+    readouts and the compartment schematic at once and left both charts to
+    the render tick. So for up to 0.2 s the readouts and the schematic stood
+    at 30 s while both charts still ended at 0 s.
+
+    The expected instant is written out by hand: 30 steps of one second each.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+    slider.setFocus()
+    _advance(controller, 30)
+
+    _step_up(slider, step)
+
+    schematic = next(
+        v for v in view.layout_container.views() if isinstance(v, CompartmentSchematicView)
+    )
+    concentration_frame = _concentration(view).chart.frame
+    wash_in_frame = _wash_in(view).chart.frame
+    assert concentration_frame is not None
+    assert wash_in_frame is not None
+    assert controller.snapshot().fresh_gas_flow_l_min == pytest.approx(4.1)
+    assert {
+        "readout clock": run._readout_row.panels[0].value_label.text(),
+        "schematic": schematic.schematics[0].name_text.text(),
+        "concentration chart": concentration_frame.runs[0].elapsed_s,
+        "wash-in chart": wash_in_frame.runs[0].elapsed_s,
+    } == {
+        "readout clock": "30s",
+        "schematic": "At 30s of simulated time",
+        "concentration chart": 30.0,
+        "wash-in chart": 30.0,
+    }
+
+
+def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_the_rest_when_the_wait_ends(
+    application: QApplication,
+) -> None:
+    """Five wheel events in a burst draw one frame at once and one when the wait ends, not five.
+
+    On Windows and on Linux under X11, Qt reports every event of a spinning
+    wheel or a trackpad swipe with no scroll phase, so the phase cannot tell
+    a burst from one notch (`PL-2WVC`). The first event draws its frame at
+    once. The other four come during the wait after that frame, so they
+    leave their frame to the wait's end, which draws the latest state, so
+    the last value is never left undrawn. The wait keeps a cheap frame to
+    Nielsen Norman Group's 0.1 s limit for direct manipulation
+    (`input_frame_wait_ms`, `PL-NKFD`). Once a wait ends with nothing owed,
+    a lone notch draws its frame at once again. Before `PL-2WVC`, each of
+    the five events drew a frame of its own. Before `PL-NKFD`, the four
+    waited for the render tick, up to 0.2 s.
+
+    The test stands for the end of the wait by calling the method that the
+    timer calls, as other tests stand for the render tick by calling
+    `render_tick`.
+
+    Each notch steps the flow by one count, 0.1 L/min, from 4.0 L/min. The
+    run takes one step of one second before each notch, so the notches are
+    at 1 s to 5 s, and each is an adjustment of its own with its own mark on
+    the charts. The marks show which notches a drawn frame includes.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+    presented = view.presented_frames
+    plots = (_concentration(view).chart, _wash_in(view).chart)
+
+    for _ in range(5):
+        _advance(controller, 1)
+        _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+
+    assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.5)
+    assert view.presented_frames == presented + 1
+    assert view._render_pending is True
+    assert view._input_frame_timer.isActive()
+    assert [plot.control_mark_times(0) for plot in plots] == [(1.0,), (1.0,)]
+
+    view.input_frame_due()
+
+    assert view.presented_frames == presented + 2
+    assert view._render_pending is False
+    assert view._input_frame_timer.isActive()
+    assert [plot.control_mark_times(0) for plot in plots] == [(1.0, 2.0, 3.0, 4.0, 5.0)] * 2
+
+    view.input_frame_due()
+
+    assert view.presented_frames == presented + 2
+    assert not view._input_frame_timer.isActive()
+
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+
+    assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.6)
+    assert view.presented_frames == presented + 3
+    assert view._render_pending is False
+
+
+def test_a_render_tick_that_draws_a_burst_s_owed_frame_ends_the_burst(
+    application: QApplication,
+) -> None:
+    """When the render tick draws the frame that a burst owed, the end of the wait draws nothing.
+
+    The render tick and the end of the wait after an input's frame both draw
+    a frame that an input left owed (`PL-NKFD`). Whichever comes first draws
+    it. A tick during the wait is drawn as an input frame and starts the
+    wait again, so the end of the wait then has nothing to draw, and the
+    next input draws its frame at once.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+    presented = view.presented_frames
+
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+    view.render_tick()
+
+    assert view.presented_frames == presented + 2
+    assert view._render_pending is False
+
+    view.input_frame_due()
+
+    assert view.presented_frames == presented + 2
+    assert not view._input_frame_timer.isActive()
+
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+
+    assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.3)
+    assert view.presented_frames == presented + 3
+
+
+def test_a_click_that_moves_the_handle_to_the_pointer_draws_one_frame(
+    application: QApplication,
+) -> None:
+    """A left click on the track under macOS draws one frame, not a second at its release.
+
+    On macOS a left click on the track moves the handle to the pointer and
+    marks the handle held, but starts no preview (`PL-57LD`). The press
+    applies 10.0 L/min, the slider's maximum, and draws its frame at once
+    (`PL-2WVC`). Before the fix, the release then ended a preview that had
+    never started, and that drew a second frame.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    controller.start()
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.MACOS)
+    track_end = QPoint(slider.width() - 1, slider.height() // 2)
+    presented = view.presented_frames
+
+    QTest.mouseClick(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, track_end)
+
+    assert controller.settings().fresh_gas_flow_l_min == 10.0
+    assert view.presented_frames == presented + 1
+
+
+@pytest.mark.parametrize("step", list(_Input), ids=[step.value for step in _Input])
 def test_each_step_of_a_dial_at_a_new_instant_is_marked_and_listed(
     application: QApplication, step: _Input
 ) -> None:
@@ -598,7 +776,7 @@ def _flow_slider_at_four(
     _style_slider(control.slider, platform)
     assert controller.settings().fresh_gas_flow_l_min == 4.0
     signals: list[object] = []
-    control.value_changed.connect(lambda value: signals.append(("applied", value)))
+    control.value_changed.connect(lambda value, _input: signals.append(("applied", value)))
     control.preview_moved.connect(lambda value: signals.append(("preview", value)))
     control.preview_ended.connect(lambda: signals.append("preview ended"))
 

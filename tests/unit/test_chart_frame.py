@@ -56,15 +56,17 @@ from anesthesia_sim.app.controller import (
     BranchedCase,
     SettingPreview,
     SimulationController,
+    _with_later_crossings,
 )
 from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
+    ChartCeiling,
     chart_axis_top_percent,
-    chart_grid_interval_percent,
     format_elapsed,
     format_mac_multiple,
     format_percent,
     format_wash_in_ratio,
+    mac_axis_ticks,
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
@@ -75,24 +77,29 @@ from anesthesia_sim.app.run_series import (
     RecordedSeries,
 )
 from anesthesia_sim.app.theme import (
+    CHART_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
     MINIMUM_TRACE_STROKE_WIDTH,
     ONE_MAC_LINE_DASH_PATTERN,
 )
-from anesthesia_sim.app.wash_in import read_wash_in
+from anesthesia_sim.app.wash_in import is_wash_in, read_wash_in, wash_in_ratio
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
     FIRST_TISSUE_FRACTION,
     FRACTION_STATE_NAMES,
+    INSPIRED_FRACTION,
     VENOUS_FRACTION,
     build_system_matrix,
 )
-from anesthesia_sim.core.parameters import load_agent_parameters
+from anesthesia_sim.core.mac import mac_for_patient
+from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.prediction import predicted_states
 from anesthesia_sim.core.rounding import propagator_rounding, run_rounding
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow, StepCount
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
 # The identities a dashboard gives the first runs it places, in order, which
@@ -352,7 +359,9 @@ def test_the_references_are_placed_from_the_running_agent_s_own_values() -> None
 
         assert frame.mac_percent == snapshot.agent_mac_percent
         assert frame.one_mac_percent == snapshot.agent_mac_percent
-        assert frame.axis_top_percent == chart_axis_top_percent(snapshot.agent_mac_percent)
+        assert frame.axis_top_percent == chart_axis_top_percent(
+            snapshot.agent_mac_percent, ChartCeiling.STANDARD
+        )
         lower, upper = frame.mac_awake_band_percent
         assert lower < upper < frame.one_mac_percent
         assert frame.mac_ticks[-1] == (pytest.approx(frame.axis_top_percent), "3.0")
@@ -479,26 +488,77 @@ def test_a_frame_refuses_a_width_that_is_not_a_width() -> None:
 # ------------------------------------------------------------------ the axes
 
 
-@pytest.mark.parametrize("mac_percent", [2.0, 1.15, 6.0])
-def test_the_percent_axis_is_labelled_at_exactly_the_values_it_rules(mac_percent: float) -> None:
-    top = chart_axis_top_percent(MacPercent(mac_percent))
-    interval = chart_grid_interval_percent(MacPercent(mac_percent))
-    ticks = percent_axis_ticks(top, interval)
+@pytest.mark.parametrize(
+    ("mac_percent", "ceiling", "expected_percent", "expected_mac"),
+    [
+        (1.8, ChartCeiling.LOW, "0.0 0.5 1.0 1.5 2.0 2.5", "0.00 0.25 0.50 0.75 1.00 1.25 1.50"),
+        (1.8, ChartCeiling.STANDARD, "0 1 2 3 4 5", "0.0 0.5 1.0 1.5 2.0 2.5 3.0"),
+        (1.8, ChartCeiling.HIGH, "0 1 2 3 4 5 6 7 8", "0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5"),
+        (1.17, ChartCeiling.LOW, "0.0 0.5 1.0 1.5", "0.00 0.25 0.50 0.75 1.00 1.25 1.50"),
+        (1.17, ChartCeiling.STANDARD, "0 1 2 3", "0.0 0.5 1.0 1.5 2.0 2.5 3.0"),
+        (1.17, ChartCeiling.HIGH, "0 1 2 3 4 5", "0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5"),
+        (6.6, ChartCeiling.LOW, "0 2 4 6 8", "0.00 0.25 0.50 0.75 1.00 1.25 1.50"),
+        (6.6, ChartCeiling.STANDARD, "0 5 10 15", "0.0 0.5 1.0 1.5 2.0 2.5 3.0"),
+        (6.6, ChartCeiling.HIGH, "0 5 10 15 20 25", "0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5"),
+    ],
+)
+def test_each_axis_is_labelled_at_round_values_of_its_own_unit(
+    mac_percent: float, ceiling: ChartCeiling, expected_percent: str, expected_mac: str
+) -> None:
+    """The percent axis carries round percentages, and the MAC axis round MAC multiples.
 
-    assert ticks[0] == (0.0, "0")
-    assert ticks[-1][0] == pytest.approx(top)
+    Each expected list is worked by hand. The MACs are Mapleson 1996's at age
+    40 (PMID 8777094, abstract). The percent step is the finest of 1, 2 and 5
+    times a power of ten that gives no more intervals than the MAC axis has,
+    so isoflurane at the standard top, 3.51%, is labelled 0 to 3 in whole
+    percent rather than at its half-MAC values, 0.585 and 1.755 (`PL-BNMZ`).
+    Each label sits at the value it names.
+    """
 
-    for index, (position, label) in enumerate(ticks):
-        assert position == pytest.approx(index * interval)
-        assert float(label) == pytest.approx(position)
+    frame_top = chart_axis_top_percent(MacPercent(mac_percent), ceiling)
+    mac_ticks = mac_axis_ticks(frame_top, MacPercent(mac_percent))
+    percent_ticks = percent_axis_ticks(frame_top, len(mac_ticks) - 1)
+
+    assert " ".join(label for _, label in percent_ticks) == expected_percent
+    assert " ".join(label for _, label in mac_ticks) == expected_mac
+    assert len(percent_ticks) <= len(mac_ticks)
+
+    for position, label in percent_ticks:
+        assert position == pytest.approx(float(label))
+
+    for position, label in mac_ticks:
+        assert position == pytest.approx(float(label) * mac_percent)
 
 
-def test_the_percent_axis_refuses_a_flat_or_unruled_axis() -> None:
-    with pytest.raises(ValueError, match="top_percent"):
-        percent_axis_ticks(0.0, 1.0)
+def test_the_frame_draws_both_axes_at_the_top_it_carries() -> None:
+    """A frame redrawn at another top gives that top's axes, and nothing else changes.
 
-    with pytest.raises(ValueError, match="interval_percent"):
-        percent_axis_ticks(6.0, 0.0)
+    A View draws the shared frame at its own top with `dataclasses.replace`
+    (`PL-K1VH`), so the axes must follow the field rather than be fixed when
+    the frame is assembled. Each expected value is the top times desflurane's
+    6.6% MAC, worked by hand.
+    """
+
+    controller = _run(10, "desflurane")
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
+    low = replace(frame, ceiling=ChartCeiling.LOW)
+
+    assert frame.ceiling is ChartCeiling.STANDARD
+    assert frame.axis_top_percent == pytest.approx(19.8)
+    assert low.axis_top_percent == pytest.approx(9.9)
+    assert low.mac_ticks[-1] == (pytest.approx(9.9), "1.50")
+    assert low.percent_ticks[-1] == (pytest.approx(8.0), "8")
+    assert low.runs is frame.runs
+
+
+def test_the_percent_axis_refuses_a_flat_axis_or_no_interval() -> None:
+    with pytest.raises(ValueError, match="top_percent must be strictly positive, got 0.0"):
+        percent_axis_ticks(0.0, 6)
+
+    with pytest.raises(ValueError, match="most_intervals must be at least 1, got 0"):
+        percent_axis_ticks(6.0, 0)
 
 
 def test_the_wash_in_axis_is_labelled_at_quarter_fractions_up_to_equilibrium() -> None:
@@ -546,6 +606,36 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
     assert all(ratio <= 1.0 for ratio in stretch.ratios[:-1])
     assert run.undrawn_wash_in_stretches == 0
+
+
+@pytest.mark.parametrize(("time_base_s", "plot_width_px"), [(14400, 1200), (43200, 900)])
+def test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium(
+    time_base_s: int, plot_width_px: float
+) -> None:
+    """A stretch that crossed equilibrium ends on the line at a wide time base (`PL-CJJ1`).
+
+    The run is an hour at the default dial and then 20 minutes with the dial
+    closed. On the 4-hour and 12-hour time bases the columns are many seconds
+    apart, and the first column after the dial closed has a ratio far above
+    the plot. Before the crossing second was drawn, the stretch stopped at
+    0.99 with no terminus.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 3600)
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    _advance(controller, 1200)
+    frame = assemble_chart_frame(
+        [_input(controller)],
+        time_base_for_span(time_base_s),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=plot_width_px,
+    )
+    (stretch,) = frame.runs[0].wash_in
+
+    assert stretch.ends_above_equilibrium
+    assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
 
 
 def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> None:
@@ -631,10 +721,7 @@ def _frame(
         plot_width_px=_PLOT_WIDTH_PX,
         mac_percent=MacPercent(2.0),
         mac_age_years=40,
-        axis_top_percent=Percent(6.0),
-        grid_interval_percent=1.0,
-        percent_ticks=percent_axis_ticks(6.0, 1.0),
-        mac_ticks=(),
+        ceiling=ChartCeiling.STANDARD,
         one_mac_percent=2.0,
         mac_awake_band_percent=(0.58, 0.78),
         mac_awake=load_agent_parameters("sevoflurane").mac_awake,
@@ -1108,6 +1195,55 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
         emerging.percents(RecordedQuantity.MUSCLE)[0]
         > still_carrying.percents(RecordedQuantity.FAT)[0] * 5.0
     ), "the contending values must differ severalfold for this to matter"
+
+
+@pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
+def test_at_opening_settings_fat_first_hour_spans_under_4_px_at_1_mac_and_12_px_at_vaporizer_max(
+    agent_id: str,
+) -> None:
+    """Hold the fat-trace figure in the hazard row on traces drawn on top of each other.
+
+    `docs/VERIFICATION.md` names this test beside the row "reading one
+    compartment's concentration as another's where two traces are drawn on
+    top of each other". The row says the fat trace moves less than 4 px over
+    its first hour at a 1 MAC dial and less than 12 px at the agent's
+    vaporizer maximum, with the chart at its preferred height. Fat starts
+    empty and only rises at a fixed dial, so its value at 60 min is the whole
+    first hour's span.
+
+    Each run is built directly: the reference adult at its opening
+    ventilation, cardiac output and fresh gas flow, the dial held from t = 0,
+    and one-second steps. The row states those settings, because raising any
+    of them spreads the trace further: a blind review on 2026-11-22 measured
+    up to 21.9 px at the vaporizer maximum with all three at their highest.
+
+    The height used is `theme.CHART_HEIGHT`, the whole chart. The percent
+    axis is a part of that height, so the pixel figure here is an upper bound
+    on the one a reader sees. The 12 px is the
+    hover radius (`HOVER_RADIUS_PIXELS` in `app/qt_chart.py`). Below it, every
+    compartment in reach answers under its own name, which is what the row
+    relies on. Measured on 2026-11-22: 1.5-3.7 px at a 1 MAC dial and
+    6.3-10.0 px at the vaporizer maximum (`PL-8YBS`).
+    """
+
+    agent = load_agent_parameters(agent_id)
+    mac = mac_for_patient(agent, load_reference_adult_parameters()).percent
+    pixels_per_percent = CHART_HEIGHT / chart_axis_top_percent(mac, ChartCeiling.STANDARD)
+
+    def fat_pixels_at_one_hour(dial_percent: float) -> float:
+        system = AgentUptakeSystem.for_agent(agent_id)
+        system.set_delivered_concentration_percent(Percent(dial_percent))
+        for _ in range(3600):
+            system.advance()
+        (fat,) = (tissue for tissue in system.patient.tissues if tissue.name == "fat")
+
+        return 100.0 * fat.partial_pressure_fraction * pixels_per_percent
+
+    at_one_mac = fat_pixels_at_one_hour(mac)
+    at_the_maximum = fat_pixels_at_one_hour(agent.max_delivered_concentration_percent)
+
+    assert 0.0 < at_one_mac < 4.0
+    assert at_one_mac < at_the_maximum < 12.0
 
 
 def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:
@@ -2003,6 +2139,48 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
     assert previewed.record().control_timeline == ()
 
 
+def test_a_preview_past_its_first_hour_draws_the_second_its_ratio_crosses_equilibrium() -> None:
+    """A predicted wash-in stretch that starts after the first hour starts on the line (`PL-CJJ1`).
+
+    With the fresh gas at 1 L/min and the dial at 8% for 30 minutes, a
+    preview of the dial at 0.5% predicts F_A/F_I falling back below 1 about
+    two and a half hours later. Past its first hour a preview predicts only
+    the grid seconds, which are 102 s apart on this axis, so the last second
+    outside the wash-in domain lay between two columns and was not drawn. The
+    expected second is found in a twin run that applies the setting and steps
+    on (rule 2 of `.claude/rules/test-oracles.md`).
+    """
+
+    def started(controller: SimulationController) -> SimulationController:
+        controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+        controller.set_delivered_concentration_percent(Percent(8.0))
+        controller.start()
+        _advance(controller, 1800)
+
+        return controller
+
+    previewed, applied = started(SimulationController()), started(SimulationController())
+    preview = SettingPreview(ControlInput.DELIVERED, 0.5)
+    window = previewed.preview_window(preview, 0.0, 1800.0 + 8 * 3600.0, 300)
+
+    applied.set_delivered_concentration_percent(Percent(0.5))
+    first_s, last_s = 1800 + PREVIEW_EXACT_S, 1800 + 4 * 3600
+    _advance(applied, last_s - 1800)
+    truth = applied.drawn_window(float(first_s), float(last_s), last_s - first_s)
+    assert truth.times_s == tuple(range(first_s, last_s + 1))
+    ratios = [
+        wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION]) for state in truth.states
+    ]
+    inside = [ratio is not None and is_wash_in(ratio) for ratio in ratios]
+    entering_s = next(
+        second
+        for second, before, after in zip(truth.times_s, inside, inside[1:], strict=False)
+        if not before and after
+    )
+
+    assert entering_s in window.times_s
+
+
 @pytest.mark.parametrize(
     ("state_index", "peak_s"),
     [(ALVEOLAR_FRACTION, 302), (VENOUS_FRACTION, 379), (FIRST_TISSUE_FRACTION, 363)],
@@ -2050,6 +2228,97 @@ def test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reac
         * 0.02
     )
     assert abs(drawn[peak_s][state_index] - truth_by_second[peak_s][state_index]) <= limit
+
+
+def test_a_preview_draws_a_crossing_between_its_exact_hour_and_its_first_later_column() -> None:
+    """The pair that joins a preview's exact first hour to its later columns is searched too.
+
+    With the fresh gas at 1 L/min and the dial at 8% for 1509 s, a preview of
+    the dial at 0.5% predicts F_A/F_I last outside the wash-in domain 13 s
+    after the exact hour ends, and the first later column is 42 s after it.
+    The expected second comes from one-second predictions of the same
+    settings and state.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance(controller, 1509)
+    preview = SettingPreview(ControlInput.DELIVERED, 0.5)
+    exact_s = 1509 + PREVIEW_EXACT_S
+    states = predicted_states(
+        controller.preview_settings(preview),
+        controller._state.stored_states.state_at(CaseInstant(1509)),
+        CaseInstant(1509),
+        CaseInstant(exact_s + 600),
+    )
+    inside = [
+        (ratio := wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION])) is not None
+        and is_wash_in(ratio)
+        for state in states
+    ]
+    crossing_s = next(
+        1509 + index
+        for index, (before, after) in enumerate(zip(inside, inside[1:], strict=False))
+        if 1509 + index > exact_s and not before and after
+    )
+
+    window = controller.preview_window(preview, 0.0, 1509.0 + 8 * 3600.0, 300)
+    later_s = [second for second in window.times_s if second > exact_s]
+
+    assert later_s[0] == crossing_s
+
+
+def test_a_later_crossing_is_found_between_columns_two_seconds_apart_and_never_on_one() -> None:
+    """`_with_later_crossings` searches every pair at least two seconds apart, and adds no column.
+
+    The run and the preview are those of the test above, whose ratio last lies
+    outside the wash-in domain at one second about two and a half hours on.
+    Each state is taken from one-second predictions, so each pair below is cut
+    from the curve itself. A pair two seconds apart whose middle second is the
+    crossing must yield it. A pair whose left second is the crossing must
+    return its columns unchanged, because that second is already drawn.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance(controller, 1800)
+    settings = controller.preview_settings(SettingPreview(ControlInput.DELIVERED, 0.5))
+    opening = controller._state.stored_states.state_at(CaseInstant(1800))
+    states = predicted_states(settings, opening, CaseInstant(1800), CaseInstant(1800 + 4 * 3600))
+    inside = [
+        (ratio := wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION])) is not None
+        and is_wash_in(ratio)
+        for state in states
+    ]
+    crossing_s = next(
+        1800 + index
+        for index, (before, after) in enumerate(zip(inside, inside[1:], strict=False))
+        if index > PREVIEW_EXACT_S and not before and after
+    )
+
+    def state(second: int) -> tuple[float, ...]:
+        return states[second - 1800]
+
+    def later(*seconds: int) -> tuple[tuple[CaseInstant, ...], tuple[tuple[float, ...], ...]]:
+        return tuple(CaseInstant(second) for second in seconds), tuple(map(state, seconds))
+
+    middle_s, middle_states = later(crossing_s + 1, crossing_s + 60)
+    found_s, found_states = _with_later_crossings(
+        settings, CaseInstant(crossing_s - 1), state(crossing_s - 1), middle_s, middle_states
+    )
+
+    assert found_s == (crossing_s, crossing_s + 1, crossing_s + 60)
+    assert found_states[0] == pytest.approx(state(crossing_s))
+
+    left_s, left_states = later(crossing_s + 2, crossing_s + 60)
+
+    assert _with_later_crossings(
+        settings, CaseInstant(crossing_s), state(crossing_s), left_s, left_states
+    ) == (left_s, left_states)
 
 
 def test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only() -> None:

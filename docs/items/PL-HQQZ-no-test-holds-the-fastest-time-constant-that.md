@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: model-spec-accuracy
+milestone: v0.6.21
 touches: docs/MODEL.md, tests/unit/test_governing_equations.py
 blocked-by: PL-SZ6G
 deferred-from: v0.7.0 - captured after the freeze by the check of docs/MODEL.md against the code; it changes no displayed value, and it is not safety or science

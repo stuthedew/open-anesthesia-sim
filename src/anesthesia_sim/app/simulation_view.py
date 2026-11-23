@@ -88,6 +88,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from functools import partial
+from time import perf_counter
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -140,6 +141,7 @@ from anesthesia_sim.app.dashboard_frame import (
     comparing_fork_lock_text,
     displayed_run_count,
     fork_offer,
+    input_frame_wait_ms,
     kept_fork_selection,
     pinned_run_label,
     refused_setting_notice,
@@ -159,6 +161,7 @@ from anesthesia_sim.app.preferences import (
 )
 from anesthesia_sim.app.qt_widgets import (
     ClauseWrappingLabel,
+    DialInput,
     FocusRing,
     MarkButton,
     MarkEntry,
@@ -174,7 +177,7 @@ from anesthesia_sim.app.run_presentation import (
     shown_without_a_frame,
 )
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.run_view import RunView
+from anesthesia_sim.app.run_view import RunView, log_failure
 from anesthesia_sim.app.stylesheets import page_stylesheet, scroll_area_stylesheet
 from anesthesia_sim.app.theme import PAGE_PADDING, PAGE_SPACING, WARNING
 from anesthesia_sim.app.unconditional_set import INHALED_AGENT, unconditional_set, window_region
@@ -579,6 +582,13 @@ class SimulationView(QWidget):
         self._render_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._render_timer.setInterval(round(RENDER_INTERVAL_S * MILLISECONDS_PER_SECOND))
         self._render_timer.timeout.connect(self.render_tick)
+        # Runs from the end of a dial input's frame until the next may draw
+        # (`input_frame_wait_ms`). An input in that time leaves its frame to
+        # the timer's end (`present_input`, `PL-NKFD`).
+        self._input_frame_timer = QTimer(self)
+        self._input_frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._input_frame_timer.setSingleShot(True)
+        self._input_frame_timer.timeout.connect(self.input_frame_due)
 
     @property
     def runs(self) -> tuple[RunView, ...]:
@@ -990,6 +1000,7 @@ class SimulationView(QWidget):
             run.ask_before_reset(self._trunk_reset_question)
 
         run.presentation_requested.connect(self.present)
+        run.input_presentation_requested.connect(self.present_input)
         run.hold_while(self._a_question_is_open)
         readout_section = _holder(self._readout_column, (run.build_readout_section(),))
         notice = run.build_notice()
@@ -1245,6 +1256,7 @@ class SimulationView(QWidget):
 
         run.stop_timers()
         run.presentation_requested.disconnect(self.present)
+        run.input_presentation_requested.disconnect(self.present_input)
 
         for widget in slots.placed:
             widget.setParent(None)
@@ -1607,6 +1619,7 @@ class SimulationView(QWidget):
             comparing=self._compared_runs(),
             here=case.here_fork_point,
             refusal=self._fork_refusal,
+            pinned_to=self._pinned_to(),
         )
 
     def _show_fork_offer(self, offer: ForkOffer) -> None:
@@ -1671,16 +1684,29 @@ class SimulationView(QWidget):
             return None
 
         trunk, branch = self._runs
+
+        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id), self._pinned_to())
+
+    def _pinned_to(self) -> str | None:
+        """The name of the run that the current Workspace is pinned to, or None while it is not.
+
+        A pinned Workspace draws that run alone, so it never draws a
+        comparison. Both the lock caption after a branch (`_compared_runs`)
+        and the notice before one (`_fork_offer_now`) read the pin here, so
+        the two cannot name different runs (`PL-RXR8`). A pin to a run of an
+        earlier session is named by `pinned_run_label`.
+        """
+
         workspace = self._workspaces.current
         shown = workspace.shown_runs(self._open_runs())
-        pinned_away: str | None = None
 
         if isinstance(shown, PinnedRunAbsent):
-            pinned_away = pinned_run_label(shown.pinned, self._run_identities.session)
-        elif workspace.pinned_run is not None:
-            pinned_away = run_label(workspace.pinned_run)
+            return pinned_run_label(shown.pinned, self._run_identities.session)
 
-        return ComparedRuns(run_label(trunk.run_id), run_label(branch.run_id), pinned_away)
+        if workspace.pinned_run is not None:
+            return run_label(workspace.pinned_run)
+
+        return None
 
     # ---------------------------------------------------------- presenting
 
@@ -1703,12 +1729,16 @@ class SimulationView(QWidget):
         a coalesced frame has already rewritten its own readouts
         (`RunView._apply_setting`). So the dials, the accounting panel, the
         schematic and the agent cost panel in the Areas move with those
-        readouts, and do not wait for the tick (`PL-RF2S`).
+        readouts, and do not wait for the tick (`PL-RF2S`). Until the tick,
+        those panels show a later step than the charts. So a dial input asks
+        through `present_input`, which coalesces only an input that follows
+        another within `INPUT_FRAME_INTERVAL_MS` (`PL-2WVC`, `PL-NKFD`).
 
         Args:
             coalesce: True to mark a frame as owed and let the render tick
-                draw it, as a dragged slider does. False to draw at once, as
-                every discrete action does (`PL-R2YM`).
+                draw it, as a released thumb's value does until the end of
+                its preview. False to draw at once, as every discrete action
+                does (`PL-R2YM`).
         """
 
         if coalesce:
@@ -1718,6 +1748,56 @@ class SimulationView(QWidget):
 
         self._render_pending = False
         self._refresh_view()
+
+    @halt_gate
+    def present_input(self) -> None:
+        """Draw a frame for a dial input at once, or when the wait after the last one ends.
+
+        A key press, a wheel event, a click on the track or a move of a held
+        thumb draws its frame at once, so the readouts, the schematic and the
+        charts show the same step after it (`PL-2WVC`). An input during the
+        wait after that frame leaves its frame to the wait's end, which draws
+        the latest state (`input_frame_due`). So during a burst of inputs,
+        such as a held key, a spinning wheel, a trackpad swipe or a dragged
+        thumb, frames start 100 ms apart while a frame takes less than half
+        of that, and leave the thread free for as long as they drew when a
+        frame takes longer (`input_frame_wait_ms`, `PL-R2YM`, `PL-NKFD`).
+        The rule does not depend on what the platform reports about a wheel
+        event's phase.
+        """
+
+        if self._input_frame_timer.isActive():
+            self.present(True)
+            return
+
+        self._draw_input_frame()
+
+    def _draw_input_frame(self) -> None:
+        """Draw a frame now, then start the wait before the next input's frame from its cost."""
+
+        started_s = perf_counter()
+        self.present(False)
+        cost_ms = (perf_counter() - started_s) * MILLISECONDS_PER_SECOND
+        self._input_frame_timer.start(input_frame_wait_ms(cost_ms))
+
+    @halt_gate
+    def input_frame_due(self) -> None:
+        """Draw the frame that an input left owed, and start the next interval if one was.
+
+        The input timer calls this method when the wait after an input's
+        frame ends. Nothing is drawn when the render tick has drawn the owed
+        frame since, and the burst then ends, so the next input draws at
+        once.
+        """
+
+        # The timer has stopped by the time it calls this method. A test that
+        # calls it directly stands for that moment.
+        self._input_frame_timer.stop()
+
+        if not self._render_pending:
+            return
+
+        self._draw_input_frame()
 
     @halt_gate
     def render_tick(self) -> None:
@@ -1760,6 +1840,15 @@ class SimulationView(QWidget):
             return
 
         self._render_pending = False
+
+        # A tick during a burst of dial inputs is drawn as an input's frame,
+        # so the wait before the next input frame starts again from it. A
+        # drag on a playing run then does not draw two frames a few
+        # milliseconds apart (`PL-NKFD`).
+        if self._input_frame_timer.isActive():
+            self._draw_input_frame()
+            return
+
         self._refresh_view()
 
     def _views_owe_a_frame(self) -> bool:
@@ -2474,15 +2563,20 @@ class SimulationView(QWidget):
         self._run_with(run_id).start_adjustment()
 
     @halt_gate
-    def _handle_setting_request(self, run_id: RunId, control: ControlInput, value: float) -> None:
+    def _handle_setting_request(
+        self, run_id: RunId, control: ControlInput, value: float, dial_input: DialInput
+    ) -> None:
         """Ask the run that a View named to take `value` as its setting on `control`.
+
+        `dial_input` says which kind of input applied the value, and so when
+        its frame is drawn (`RunView.request_setting`).
 
         Raises:
             ValueError: If the dashboard holds no such run (`_run_with`). The
                 halt gate then halts every run.
         """
 
-        self._run_with(run_id).request_setting(control, value)
+        self._run_with(run_id).request_setting(control, value, dial_input)
 
     @halt_gate
     def _handle_preview_request(self, run_id: RunId, control: ControlInput, value: float) -> None:
@@ -2556,6 +2650,7 @@ class SimulationView(QWidget):
         """
 
         self._halting_every_run = True
+        log_failure("Every run on the dashboard", error)
         # A kept frame that shows a held dial's preview is dropped before any
         # run shows its halt, so that each banner says the charts are withheld
         # (`run_presentation.kept_on_a_halt`).
@@ -2608,12 +2703,13 @@ class SimulationView(QWidget):
         self._render_timer.start()
 
     def stop_timers(self) -> None:
-        """Stop every run's step timer and the render timer, as a test's teardown does."""
+        """Stop every run's step timer and the dashboard's own timers, as a test's teardown does."""
 
         for run in self._runs:
             run.stop_timers()
 
         self._render_timer.stop()
+        self._input_frame_timer.stop()
 
     # ------------------------------------------------------------- reading
 

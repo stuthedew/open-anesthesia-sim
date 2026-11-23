@@ -40,10 +40,13 @@ from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractSlider,
+    QAbstractSpinBox,
     QApplication,
     QComboBox,
     QLabel,
     QLayout,
+    QLineEdit,
+    QListWidget,
     QScrollArea,
     QWidget,
 )
@@ -1075,6 +1078,9 @@ def _widget_attributes(run: RunView) -> dict[str, QWidget]:
 def _widget_state(widget: QWidget) -> tuple[object, ...]:
     """What a reader can see of one widget, its children apart.
 
+    It reads whether the widget is hidden and enabled, its style sheet, the
+    text of a label, button, entry or spin box, whether a check box is ticked,
+    the rows of a list, a combo box's choice and a slider's range and value.
     A widget that paints text without a label, such as the compartment
     schematic's canvas or any View, says what it paints through
     `painted_strings` (`SchematicCanvas.painted_strings`,
@@ -1090,8 +1096,14 @@ def _widget_state(widget: QWidget) -> tuple[object, ...]:
         widget.styleSheet(),
     ]
 
-    if isinstance(widget, QLabel | QAbstractButton):
+    if isinstance(widget, QLabel | QAbstractButton | QLineEdit | QAbstractSpinBox):
         state.append(widget.text())
+
+    if isinstance(widget, QAbstractButton) and widget.isCheckable():
+        state.append(widget.isChecked())
+
+    if isinstance(widget, QListWidget):
+        state.append(tuple(widget.item(row).text() for row in range(widget.count())))
 
     if isinstance(widget, QComboBox):
         state.extend((widget.currentIndex(), widget.currentText()))

@@ -140,7 +140,7 @@ from anesthesia_sim.app.dashboard_frame import (
     trace_legend_label,
 )
 from anesthesia_sim.app.display_units import DisplayUnit
-from anesthesia_sim.app.formatting import format_chart_time_label, format_time_base
+from anesthesia_sim.app.formatting import ChartCeiling, format_chart_time_label, format_time_base
 from anesthesia_sim.app.qt_widgets import (
     ClauseWrappingLabel,
     FlowLayout,
@@ -154,6 +154,7 @@ from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,
     BRANCH_POINT_STROKE_WIDTH,
+    CHART_CEILING_SELECTOR_WIDTH,
     CHART_HEIGHT,
     CHART_LEAST_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
@@ -546,10 +547,11 @@ def _hover_items() -> tuple[Any, Any]:
 class _GridLines:
     """The plot's gridlines, drawn under everything at the ticks its axes carry.
 
-    Each axis gets one line per tick, from the same tick lists that the axes
-    are labelled from. So the gridlines and the labels cannot describe two
-    different scales (`PL-Q4VH`). The pools of lines grow to fit the widest
-    window drawn, and they never shrink. An unused line is hidden.
+    The lines stand at ticks that an axis is labelled from: the time axis's,
+    and on the compartment chart the MAC axis's. So the gridlines and the
+    labels cannot describe two different scales (`PL-Q4VH`). The pools of
+    lines grow to fit the widest window drawn, and they never shrink. An
+    unused line is hidden.
     """
 
     def __init__(self, item: Any) -> None:
@@ -572,6 +574,11 @@ class _GridLines:
             pool.append(line)
 
         _place_marks(pool, positions)
+
+    def horizontal_positions(self) -> tuple[float, ...]:
+        """Where the shown horizontal gridlines stand, in the value axis's units."""
+
+        return tuple(float(line.value()) for line in self._horizontal if line.isVisible())
 
 
 class _PointerMoves(QObject):
@@ -1074,7 +1081,7 @@ class ConcentrationChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", DisplayUnit.CONCENTRATION.axis_title, color=MUTED)
-        self._time_title = _TimeAxisTitle(item)
+        self._time_title = _TimeAxisTitle(item, self._plot)
         item.showAxis("right")
         item.getAxis("right").setLabel(DisplayUnit.MAC_MULTIPLE.axis_title, color=MUTED)
 
@@ -1131,14 +1138,15 @@ class ConcentrationChart(QWidget):
         _set_time_axis(item, frame)
         # The ceiling and the gridlines move with the agent, because both are
         # multiples of its 1 MAC. That is exactly what keeps the *scale*
-        # still: 0 to 3 MAC, with a gridline every half MAC, whichever agent
-        # is running. The left axis is labelled at exactly the values where
-        # it has gridlines. The right axis is labelled at round MAC values
-        # over the same range.
+        # still: at the top the reader chose, a MAC multiple is drawn at the
+        # same height whichever agent is running. Each gridline stands at a
+        # label of the right, MAC, axis. The left axis is labelled at round
+        # percentages, each at its own tick mark, and draws no gridline
+        # (`PL-BNMZ`).
         item.setYRange(0.0, frame.axis_top_percent, padding=0)
         item.getAxis("left").setTicks([list(frame.percent_ticks)])
         item.getAxis("right").setTicks([list(frame.mac_ticks)])
-        self._grid.place(frame.tick_times_s, [position for position, _ in frame.percent_ticks])
+        self._grid.place(frame.tick_times_s, [position for position, _ in frame.mac_ticks])
         self._one_mac_line.setPos(frame.one_mac_percent)
         self._band.setRegion(frame.mac_awake_band_percent)
         self._one_mac_line.show()
@@ -1359,6 +1367,11 @@ class ConcentrationChart(QWidget):
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
 
+    def horizontal_gridlines(self) -> tuple[float, ...]:
+        """Where the plot's horizontal gridlines stand, in percent."""
+
+        return self._grid.horizontal_positions()
+
     def tick_label_rects(self, name: str) -> tuple[tuple[str, QRectF], ...]:
         """Each tick label one axis paints, with its box in the pixels of `painted`."""
 
@@ -1570,7 +1583,7 @@ class WashInChart(QWidget):
         layout.addWidget(self._plot)
         item = self._plot.getPlotItem()
         item.setLabel("left", WASH_IN_RATIO_NAME, color=MUTED)
-        self._time_title = _TimeAxisTitle(item)
+        self._time_title = _TimeAxisTitle(item, self._plot)
         # The axis is fixed rather than fitted to the data. It is labelled at
         # its own gridlines, at its own resolution, as `docs/INTERFACE.md`
         # § "F_A/F_I as a displayed ratio" specifies.
@@ -1942,17 +1955,26 @@ class _TimeAxisTitle:
     MAC-awake legend entry does, so a span never loses its unit. The title is
     broken again whenever the axis changes width.
 
+    The title stops listening to the axis when the plot widget that holds the
+    axis is destroyed (`PL-9RZJ`). Qt can report a geometry change on the axis
+    while the axis itself is being deleted, after its Python side is gone. A
+    title still listening then raised "Internal C++ object (AxisItem) already
+    deleted", once for each such report. The plot widget's `destroyed` signal
+    comes before its scene, and so the axis, is deleted.
+
     Args:
         item: The plot whose bottom axis is the time axis.
+        plot: The widget that draws `item`, whose deletion deletes the axis.
     """
 
-    def __init__(self, item: Any) -> None:
+    def __init__(self, item: Any, plot: QWidget) -> None:
         self._item = item
         self._axis = item.getAxis("bottom")
         self._words = TIME_AXIS_TITLE
         self._lines: tuple[str, ...] = ()
         self._width = -1.0
         self._axis.geometryChanged.connect(self._refit)
+        plot.destroyed.connect(self._stop_refitting)
         self._write()
 
     @property
@@ -1991,6 +2013,9 @@ class _TimeAxisTitle:
         if words != self._words:
             self._words = words
             self._write()
+
+    def _stop_refitting(self) -> None:
+        self._axis.geometryChanged.disconnect(self._refit)
 
     def _refit(self) -> None:
         # Writing the title changes the axis's height and never its width, so
@@ -2378,6 +2403,51 @@ class TimeBaseSelector(SelectorComboBox):
 
         picked = None if key == FIT_RUN_KEY else time_base_for_span(float(key))
         self.time_base_requested.emit(picked)
+
+
+class ChartCeilingSelector(SelectorComboBox):
+    """The control that sets the top of the compartment chart's axis, from `ChartCeiling`.
+
+    It works as `TimeBaseSelector` does. The top belongs to the chart View
+    that holds this control, which hands the control the top it drew through
+    `show_ceiling`. A reader's pick is asked for through `ceiling_requested`.
+    So when a frame fails, the control still names the top that is on the plot.
+
+    Attributes:
+        ceiling_requested: Emitted with the `ChartCeiling` a reader picked.
+            Never emitted by `show_ceiling`.
+    """
+
+    ceiling_requested = Signal(object)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setFixedWidth(CHART_CEILING_SELECTOR_WIDTH)
+        self.setStyleSheet(selector_stylesheet())
+
+        for ceiling in ChartCeiling:
+            self.addItem(ceiling.label, userData=ceiling.name)
+
+        self._showing = False
+        self.currentIndexChanged.connect(self._handle_pick)
+
+    def show_ceiling(self, ceiling: ChartCeiling) -> None:
+        """Show this top without treating it as a request."""
+
+        self._showing = True
+
+        try:
+            self.setCurrentIndex(self.findData(ceiling.name))
+        finally:
+            self._showing = False
+
+    def _handle_pick(self, index: int) -> None:
+        key = self.itemData(index)
+
+        if self._showing or key is None:
+            return
+
+        self.ceiling_requested.emit(ChartCeiling[key])
 
 
 class TraceLegend(QWidget):

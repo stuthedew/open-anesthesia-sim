@@ -178,6 +178,14 @@ MODEL = "\n".join(
         "",
         f"The demo value is shown to 0.1 L, as `{FAMILY_TEST}` computes.",
         "",
+        # The list shape again, for the required invariants, which a family
+        # also reads entry by entry and errors on when it cannot find them.
+        "## Required invariants",
+        "",
+        "The model must keep:",
+        "",
+        f"- the demo store at or above zero (`{LIST_FAMILY_TEST}`).",
+        "",
         # The third shape, for the same reason again: each requirement under
         # "## Required tests" is a subsection, and the family errors on a
         # heading it cannot find.
@@ -273,17 +281,29 @@ def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> 
     `docs/VERIFICATION.md`. The tests here are about how a family is read, not
     about which document holds it, so they keep that one fixture document.
     """
-    families = tuple(
-        dataclasses.replace(family, document=doc_check.MODEL)
+    mapped = (
+        # Every section held by its numeric paragraphs in those two documents
+        # is read the same way, so the fixture holds one, "Displayed precision".
+        dataclasses.replace(
+            family, document=doc_check.MODEL, heading="Displayed precision", level=3
+        )
+        if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
+        and family.members is doc_check._numeric_paragraph_members
+        else dataclasses.replace(family, document=doc_check.MODEL)
         if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
         # `PL-48MX` moved the numeric paragraphs that the family reads from
         # `docs/MODEL.md` § "Known limitations" to a section of
-        # `docs/PARAMETERS.md`. The fixture keeps them under the old heading.
-        else dataclasses.replace(family, document=doc_check.MODEL, heading="Known limitations")
+        # `docs/PARAMETERS.md`. The fixture keeps them under the old heading,
+        # at its own depth, whatever the depth of the section in that document.
+        else dataclasses.replace(
+            family, document=doc_check.MODEL, heading="Known limitations", level=2
+        )
         if family.document == doc_check.PARAMETERS
         else family
         for family in doc_check.BOUND_FAMILIES
     )
+    # Two families mapped onto one section would report each finding twice.
+    families = tuple({(family.document, family.heading): family for family in mapped}.values())
     monkeypatch.setattr(doc_check, "BOUND_FAMILIES", families)
     # The provenance table moved to `docs/PARAMETERS.md` with `PL-FWR6`, and
     # the fixture's one document holds it too.

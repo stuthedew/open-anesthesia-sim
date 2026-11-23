@@ -797,6 +797,10 @@ ventilation and cardiac output that its patient profile states. Without the refu
 would sit on a neighbouring step beside a rounded readout, and both would show a flow that the
 run does not have. The patient supplied with the simulator, the reference adult, opens at 4.0
 and 5.0 L/min, both on a step, so the refusal changes nothing that the simulator displays.
+One test checks the refusal and the steps it names
+(`test_an_opening_ventilation_or_cardiac_output_off_the_slider_grid_is_refused`), and another
+checks the reference adult's two opening flows (`test_loads_reference_adult_parameters`).
+<!-- provenance: data/patients/reference_adult.json default_alveolar_ventilation_l_min = 4 -->
 <!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
 
 **The maxima for fresh gas flow, ventilation and cardiac output come from no source.** Each was
@@ -817,8 +821,10 @@ the third decides it:
   lungs per unit time. This is one of the central results in uptake and distribution, and this
   model reproduces it. With sevoflurane at 1 MAC and the reference adult's other defaults,
   $`F_A/F_I`$ at five minutes is 0.60 at 10 L/min, 0.68 at 5 L/min, 0.75 at 2.5 L/min, 0.85 at
-  1 L/min, and 0.96 at zero. Refusing zero would cut the demonstration off one step before its
-  clearest case. The same argument applies to alveolar ventilation at zero, which is apnoea.
+  1 L/min, and 0.96 at zero
+  (`test_alveolar_wash_in_at_five_minutes_quickens_as_cardiac_output_falls`). Refusing zero
+  would cut the demonstration off one step before its clearest case. The same argument applies
+  to alveolar ventilation at zero, which is apnoea.
 
 <!-- not-restated: 10 L/min, 5 L/min -->
 
@@ -960,8 +966,9 @@ survey does not say what it requires.
 moves in steps of 0.1 L/min, the flow's displayed resolution. Where an end of the offered range
 falls between two steps, the slider offers the step just inside it. For a machine with a minimum
 flow of 0.25 L/min, the slider's lowest setting is 0.3 L/min, never the 0.2 L/min that the machine
-would refuse. An offered range that contains no step is an error, because otherwise the slider
-could offer only a flow that the run refuses.
+would refuse (`test_a_declared_range_off_the_display_grid_offers_only_settings_inside_it`). An
+offered range that contains no step is an error, because otherwise the slider could offer only a
+flow that the run refuses.
 
 **A machine whose starting flow is not one of the slider's steps is refused when the dashboard
 sets up its controls.** A user reads the slider's position like a displayed value. If a run
@@ -992,12 +999,11 @@ without any change to `core/supported_ranges.py`. A run in the extended range wo
 number, computed outside everything that was checked and shown just like one inside it. Take a
 machine with no true off position at its common gas outlet and a minimum flow of 0.5 L/min. The
 merged pair would either fail to represent it or move the model's lower limit for every other
-machine.
+machine. A test checks both refusals with one machine that has both features, a range from 0.5
+to 15 L/min (`test_machine_deliverable_flow_range_is_separate_from_model_envelope` in
+`tests/unit/test_supported_ranges.py`).
 
-A test checks both refusals
-(`test_machine_deliverable_flow_range_is_separate_from_model_envelope` in
-`tests/unit/test_supported_ranges.py`). A machine range that does not overlap the envelope is
-refused when it is reassigned on a built circuit, as well as when the circuit is built
+A machine range that does not overlap the envelope is refused when it is reassigned on a built circuit, as well as when the circuit is built
 (`test_a_direct_write_is_held_to_the_constructors_checks` and
 `test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built` in
 `tests/unit/test_circuit.py`).
@@ -1053,7 +1059,10 @@ bookmark accepts only a time that has already been checked against the limit.
 **The 24 hours belong to the case, not to each run.** The limit is argued from what the
 model leaves out, which depends on how long the *patient* has been anesthetized. So a branch
 shares the 24 hours its parent was using, and its elapsed time carries on from the point where
-the branch was taken. A branch taken at 23 h has one hour left.
+the branch was taken. A branch taken at 23 h has one hour left. A test checks that a branch
+carries on the case's count of steps
+(`test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s` in
+`tests/integration/controller/test_controller_branching.py`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ##### What happens when a run reaches the limit
@@ -1066,6 +1075,27 @@ there. Reset starts a new run. Describing a correct model as a broken one mislea
 surely as the reverse. It spends the interface's one signal for a real fault, and it teaches
 a reader to discount that signal. The interface must not present the stop as a pause either.
 Start is refused, because a resumed run's first step would be refused again.
+
+**The banner that reports the stop is drawn in the muted color, as the status word above it
+is** (`PL-0889`). The alert color stays with a run that failed and with a refused setting,
+including a dial moved on the stopped run, whose refusal the stop's banner then states.
+
+**A run says that the stop is coming before it arrives** (`PL-H2K2`). From 1 h 40 min of
+simulated time before the limit, the banner reads, for example, "This run stops in 1h40m of
+simulated time, at the supported run length of 24 hours", in the muted color, and counts down
+with the clock. A stopped run or a failure takes the banner in its place. A refused setting
+stays on screen until a setting is accepted, so a refusal made hours earlier can still hold
+the banner. The countdown then follows the refusal in the same banner, in the alert color,
+so the stop is never left unannounced.
+The span is set so that the banner is on screen for at least 20 s of real time at the fastest
+playback rate, 300 times real time, and for longer at every slower rate. Twenty seconds is the
+least time that WCAG 2.2 SC 2.2.1 (Timing Adjustable) asks a page to give a user between
+warning of a time limit and its end. W3C's Understanding document for that criterion was read
+on 2026-11-22. A reader who knows the stop is coming can mark the run, branch it or pause it
+before it stops, and does not take the stop for a fault. A branch taken within the last
+1 h 40 min shows the banner from its first frame.
+<!-- provenance: app/dashboard_frame.py APPROACHING_LIMIT_WARNING_REAL_S = 20 -->
+<!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 ##### Why the limit is set where it is
 
@@ -1084,8 +1114,8 @@ Sevoflurane is the agent for which the missing metabolism matters most, so it is
 that constrains this limit. For sevoflurane, 2% to 5% of the absorbed dose is metabolized,
 against far less for isoflurane and desflurane. Its metabolism begins immediately, and
 fluoride and HFIP appear in plasma within minutes of the start of administration. Kharasch's
-review, cited below, reports these figures. It also finds that metabolism "does not
-contribute to the termination of clinical drug effect". That finding is what makes omitting
+review, cited below (PMID 7486145), reports these figures. It also finds that metabolism
+"does not contribute to the termination of clinical drug effect". That finding is what makes omitting
 metabolism safe over a case. It holds while ventilation and perfusion dominate the trace,
 and becomes progressively false once the only thing still moving is the slow tail, to which
 this model gives no sink.
@@ -1095,8 +1125,8 @@ this model gives no sink.
   1995;81(6 Suppl):S27-38. PMID 7486145,
   doi:10.1097/00000539-199512001-00005.
 
-**No stored value comes from Kharasch's review.** As a review, it is tier 2 under
-`docs/PARAMETERS.md` § "Source hierarchy", and a tier-2 source is the authority for a stored value only on a
+**No stored value comes from Kharasch's review** (PMID 7486145). As a review, it is tier 2
+under `docs/PARAMETERS.md` § "Source hierarchy", and a tier-2 source is the authority for a stored value only on a
 recorded decision. No such decision has been taken for this review, and there would be
 nothing for one to authorize. The 24 hours is not computed from 2% to 5%, and no parameter in
 this model descends from that paper. What the review supplies is the magnitude and the
@@ -1107,9 +1137,9 @@ be a different and better limit than this one.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **The 24 hours are not inside the exposure range over which sevoflurane's metabolism was
-measured.** Kharasch's review measured how sevoflurane's metabolism scales with dose only from
-0.35 to 9.5 MAC-hours. The limit bounds elapsed time, not exposure. A MAC-hour is usually
-counted at the end-tidal concentration, which in this model is the alveolar fraction. A run
+measured.** The studies of plasma fluoride that Kharasch's review summarizes gave
+sevoflurane doses from 0.35 to 9.5 MAC-hours (PMID 7486145). The limit bounds elapsed time, not exposure. A MAC-hour is
+usually counted at the end-tidal concentration, which in this model is the alveolar fraction. A run
 whose alveolar fraction is held near 1 MAC gains about one MAC-hour per hour. So it leaves the
 measured range at about 9.5 hours, and reaches about 24 MAC-hours at the limit. Every agent's
 dial opens at that agent's 1 MAC. The alveolar fraction stays below the dial during uptake,
@@ -1119,7 +1149,9 @@ MAC-hours. A long run at or above 1 MAC end-tidal therefore leaves the measured 
 before 24 hours, and past that range even the size of the omission is unmeasured. The 24
 hours rest not on the measured range but on the argument above, that the omission grows
 steadily once only the slow tail is still moving, with no sudden break. Because isoflurane
-and desflurane are metabolized far less, the same span omits less for them.
+and desflurane are metabolized far less, the same span omits less for them. A test recomputes
+the hours and MAC-hours in this paragraph
+(`test_a_long_sevoflurane_run_leaves_the_measured_exposure_range_as_printed`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 <!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
@@ -1138,7 +1170,9 @@ slowest term is somewhat longer than the isolated time constant, so 24 hours is 
 fraction of it. `docs/MODEL.md` § "Time constants" gives that term and says why it is
 longer. A run of a few hours would stop that trace near its start. The minimum says
 nothing about how far above it a run may go. The span is also far longer than any
-anesthetic this simulator is built to teach.
+anesthetic this simulator is built to teach. A test recomputes the time constant and the
+fractions in this paragraph
+(`test_the_run_length_is_the_fraction_of_the_fat_time_constant_printed`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **Volatile sedation in intensive care is out of scope, deliberately.** It runs for days
@@ -1159,15 +1193,15 @@ intertissue-diffusion note under `docs/MODEL.md` § "Known limitations" has the 
 arithmetic. All else equal, a tail without that store falls faster than the measured one
 from about the third hour of elimination. Measured against the published mean curves over
 the whole supported run, the shipped tail does so (`docs/VERIFICATION.md` § "The first 24 hours of elimination
-against the published mean curves"). It runs about a third below the curves from about the
-seventh hour until about the twenty-first. For desflurane it runs below them by half, from
-3.4 to 15.3 hours. In the hours before that, it runs a fifth to a half above them, while
+against the published mean curves"). Two tests compute these hours and ratios from the
+model and hold them to the values recorded there
+(`test_the_fourth_compartment_is_the_largest_term_over_the_recorded_hours` and
+`test_the_first_24_hours_of_elimination_against_the_published_mean_curves`). It runs about a
+third below the curves from about the seventh hour until about the twenty-first. For desflurane it runs below them by half, from
+3.4 to 15.3 hours. In the hours before that, it runs above them by 12 to 52% at the widest, while
 the rebreathing circuit and the muscle group's slow return hold it up. At 23.5 hours of
 elimination it runs above them again, by 12 to 24%, or by a factor of 2.1 for desflurane.
-That is because this model's fat group returns more agent than the fitted fat term. In
-that subsection's open-circuit run, which has no rebreathing, the tissue return alone falls
-after the first hour as low as a third to a half of the mean curve, near hour 8 for
-desflurane and near hour 13 for the others.
+That is because this model's fat group returns more agent than the fitted fat term.
 <!-- not-restated: 2.1 -->
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
@@ -1189,6 +1223,19 @@ inside the span only as far as the comparison with the published mean curves goe
 `core/supported_ranges.py`. Widening it is a safety-critical change on the same terms as
 widening a flow range. Argue the longer span against what the model omits, extend the
 validation that covers it, and revise this section with the result.
+
+The banner that announces the stop is built by `run_notice` in `app/dashboard_frame.py`. It
+reads the limit from `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, so it cannot announce a limit the
+model does not enforce, and it opens `APPROACHING_LIMIT_NOTICE_S` before it. Tests in
+`tests/unit/test_dashboard_frame.py` check its wording, when it opens and what outranks it,
+from `test_the_interface_says_the_run_is_approaching_its_supported_length` on.
+`test_a_refusal_made_before_the_warning_does_not_hide_the_countdown` checks that a refusal
+still on screen keeps the countdown, and
+`test_a_refusal_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning` checks that a refusal
+on the stopped run takes the alert color.
+`test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour` in
+`tests/integration/simulation_view/test_simulation_view_run_stops_itself.py` checks the
+colours of the stop's banner and a failure's.
 
 Reaching the limit and handing in a value past it raise different errors. The step that would
 carry a run past the limit is refused in `SimulationState.advance()` with a
@@ -1977,6 +2024,31 @@ when raised to 8% between 600 s and 672 s. Measured on 2026-11-22.
 
 <!-- not-restated: 8 % -->
 
+**The F_A/F_I plot also draws the second at which the ratio crosses
+equilibrium between two columns** (`PL-CJJ1`). A wash-in stretch ends on the
+first drawn point past equilibrium, so that the curve meets the equilibrium line
+and ends there with a dot. After the dial is closed, one step carries the ratio
+at most 3% past equilibrium, but the next column can be minutes later, and the
+ratio there is far above the plot's top. Before this rule the curve
+then stopped below the line with no dot, which looks like a cut-off trace rather
+than a finished wash-in. With the run of 60 minutes at the default dial
+followed by 20 minutes with the dial closed, this happened at 17 of 66 pairs
+of time base and plot width tried, from 300 px to 1 600 px, and it happens at
+none of them now. The crossing second is a stored state, as every drawn point
+is. Where the first second outside the domain has no ratio, because the
+inspired fraction is too small to divide by, the stretch ends without a
+crossing, as before. A stretch that starts after the dial is raised starts on
+the line only when the ratio's last second outside the domain is drawn. A large
+step of the dial can carry the ratio in one second from above the plot's top to
+well below the line, and the stretch then starts below the line, because the
+ratio never took a value in between.
+
+**For developers.** `chart_time_base.wash_in_crossing_seconds` chooses the
+crossing seconds. `controller._with_extremes` adds them to every drawn window
+and to a preview's first hour, and `controller._with_later_crossings` to the
+rest of a preview. `test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium`
+in `tests/unit/test_chart_frame.py` reproduces the run above.
+
 ### What the reader chooses: traces, window and playback rate
 
 **The user chooses which compartment traces are drawn and how wide a window
@@ -2113,7 +2185,7 @@ count of the steps taken. Whether the run keeps pace with real time depends on
 the computer. When the computer cannot run a tick in time, the tick is lost,
 and no extra steps make it up. The **delivered rate** is the set rate times the
 fraction of ticks that ran. In a measurement on 2026-09-27, every rate from 1×
-to 300× delivered 99.0 to 99.9% of its setting over 8 to 30 s. On a computer
+to 300× delivered 98.9 to 99.9% of its setting over 8 to 30 s. On a computer
 that loses ticks, the run plays slower than the label says, and nothing on
 screen shows the delivered rate.
 
@@ -2402,12 +2474,20 @@ compartment, which is the value a monitor's end-tidal reading estimates in a
 real patient. The model has no dead space, airway sampling delay or shunt, so
 this readout is not a simulated end-tidal measurement.
 
+The circuit readout is labelled "Circuit", with "inspired" on the line below.
+The model's circuit is one well-mixed volume with no separate inspiratory limb,
+so the gas the patient breathes in is the circuit gas (`docs/MODEL.md`
+§ "What the model represents"). The gloss names the circuit concentration as
+the one a monitor's inspired reading estimates. Without it, "Circuit" can be
+read as the vaporizer dial or the fresh gas. At a steady dial, while the patient
+takes up agent, rebreathing holds the inspired concentration below both.
+
 The fresh gas flow control is labelled "Fresh gas flow", with "common gas
 outlet" on the line below. The flow it sets is the whole stream leaving the
 common gas outlet, carrier gas plus vapour, which is up to 22% above the
 flowmeter setting (`docs/MODEL.md` § "Breathing circuit"). "Fresh gas flow"
-alone is the name on a real machine's flowmeter bank. Neither this label nor
-the alveolar readout's is shortened to its first line to fit a layout.
+alone is the name on a real machine's flowmeter bank. None of these three
+labels is shortened to its first line to fit a layout.
 <!-- derived: 22 percent from data/agents/desflurane.json max_delivered_concentration_percent = 18 -->
 
 Arterial concentration is **not** in the list above. In this model the arterial
@@ -2444,6 +2524,15 @@ five exceptions.
 `tests/unit/test_chart_frame.py`, and
 `test_the_wash_in_axis_is_ruled_at_quarters_and_the_window_is_the_chart_s` is in
 `tests/integration/test_qt_chart.py`.
+
+Most of those tests read the formatted value from the toolkit-free frame, not
+from a drawn widget. `test_every_minimum_displayed_output_reads_its_value_from_its_widget`,
+in `tests/integration/simulation_view/test_simulation_view_readouts.py`, closes
+that gap for the unconditional part of the list. It walks the set that
+`app/unconditional_set.py` declares, finds each value's widget through
+`RunView.unconditional_widgets`, and checks that the widget is shown and reads
+the run's value. For a compartment it reads the multiple of 1 MAC beside the
+percent.
 
 ### Every value and what qualifies it come from one step
 
@@ -2493,7 +2582,13 @@ its lines between drawn instants could be wider than a pixel.
 the failure, the panel shows the same result from the run's record. The run
 stops, and the model undoes the failed step, so the run's own accounting passes
 again. The banner names the panel as the one exception to "the values shown are
-the last completed step".
+the last completed step". It says in words that the check failed because the
+rejected step created or lost agent, and that this is a fault in the simulator
+and not a change in the patient. It does not print the totals. The panel shows
+the rejected step's amounts, and the exact totals go to the failure log, the
+file `failures.log` in the reader's data directory, beside the saved Workspaces.
+Where that directory cannot be written, the log goes to standard error only,
+and the application still opens.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2526,7 +2621,16 @@ displayed value unchanged
 (`test_a_failed_step_leaves_every_displayed_value_bit_identical`), and a stopped
 run refuses every setting
 (`test_a_stopped_run_refuses_every_setting_and_records_nothing`), both in
-`tests/integration/controller/test_controller_running.py`.
+`tests/integration/controller/test_controller_running.py`. The banner after a
+failed accounting check shows no e-notation and no code name, and the log keeps
+the totals
+(`test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals`, in
+the same file as the first test). The failure log is written to the data
+directory (`test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory`
+in `tests/integration/test_failure_log.py`), and a directory that cannot be made
+does not stop the launch
+(`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`,
+in the same file).
 
 ### Naming the run in a comparison
 
@@ -2575,7 +2679,7 @@ Without the run names, a learner could misread a comparison in three ways:
 
 **The run is named in text, not by colour or position.** Colour already
 identifies the compartment in both modes, so it cannot also identify the run.
-The worst contrast between two compartment traces is 1.01:1, against the 3:1
+The worst contrast between two compartment traces is 1.05:1, against the 3:1
 required (§ "The six compartment traces"). The chart therefore shows the run by
 line width instead (`PL-HLD5`), but text has no equivalent of line width.
 Position alone fails a reader who looks away and back, and naming the run exists
@@ -2632,6 +2736,19 @@ to the user's action"
 (`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`
 and `test_a_branch_taken_in_a_workspace_pinned_to_the_trunk_says_so_until_it_is_unpinned`
 in `tests/integration/test_workspace_tabs.py`).
+
+**A pinned Workspace says so before a branch is taken, too** (`PL-RXR8`). A
+branch cannot be undone short of the trunk's Reset, which starts the case over,
+so the learner is told before pressing rather than only after. While one run is
+open and a branch is offered, the Branch View says above its control that the
+Workspace will not draw a branch taken there ("This Workspace is pinned to Run
+1, so it will not draw a branch taken here beside it. Unpin it from the
+Workspace's tab to compare the two runs here."). Both buttons stay offered. The
+sentence reads the pin where the caption after a branch reads it, so the two
+name the same run
+(`test_a_pinned_workspace_says_before_a_branch_that_it_will_not_draw_it` and
+`test_a_workspace_pinned_to_a_run_that_is_not_open_says_so_before_a_branch` in
+`tests/integration/test_workspace_tabs.py`).
 
 A view shows its run's name whenever a reader could mistake its values for
 another run's: while another run is drawn anywhere in the application, while the
@@ -2758,7 +2875,7 @@ held to".
 
 **The agent accounting must stay reachable, though not always visible.** It
 consists of cumulative agent delivered, cumulative agent exhausted, total agent
-stored, and the mass-balance residual with its absolute error. These five
+stored, and the mass-balance residual. These four
 amounts show whether the model is conserving mass, and a reader does not
 titrate against them. A Workspace may leave the amounts out, because their
 absence makes no clinical reading wrong, but nothing may remove them from the
@@ -2955,7 +3072,7 @@ The view chooser is built in `app/area_layout.py`. The view registry marks the
 accounting view as required to be reachable (`required_reachable`, in
 `app/view_registry.py`), and a build that does not register that view fails
 when the module is imported. Each area that shows the accounting view builds a
-copy of its own, so two such areas both show the five amounts (`PL-TH35`). A
+copy of its own, so two such areas both show the four amounts (`PL-TH35`). A
 test checks the chooser's route to the accounting view from every area of each
 Workspace supplied with the simulator
 (`tests/integration/test_view_chooser.py`).
@@ -3135,22 +3252,47 @@ and the references follow the agent
 
 #### The chart's fixed MAC axis
 
-**The chart's vertical range is set in MAC, and fixed.** For every agent, the
-axis runs from 0 to a ceiling of **3 ×MAC** of the agent in use, with a gridline
-every half MAC. A given MAC multiple is therefore drawn at the same height under
-any agent. The axis never grows to fit a trace. It stays the same for the whole
-session, not only within a run, so two consecutive runs are comparable too.
+**The chart's vertical range is set in MAC, and fixed until the reader changes
+it.** For every agent, the axis runs from 0 to a top that the reader chooses
+from three: **1.5, 3 or 4.5 ×MAC** of the agent in use. The chart opens at
+3 ×MAC. A given MAC multiple is therefore drawn at the same height under any
+agent. The "Axis top" control sits beside the time base, under the chart's
+heading, and names the top in force in words. The axis never grows or shrinks to fit a trace. The top stays where the
+reader put it across runs and across both runs of a comparison, so runs drawn
+one after another are comparable too. Each chart View keeps its own top and
+saves it with its layout.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-**The chart names each compartment whose trace is above 3 ×MAC.** Such a trace
-is cut off at the top of the frame, where it runs flat as a plateau would.
-Without the name, a reader would conclude that the concentration stopped rising
-at 3 ×MAC, when in the model it did not. The chart also says that the readouts
-are not cut off and keep showing their values. Inhalational induction commonly
-uses sevoflurane's 8% dial setting, which is 4.44 ×MAC, above the ceiling.
+**Every gridline stands at a MAC multiple that the right axis labels.** The
+right axis is labelled every half MAC at a top of 3 or 4.5 ×MAC, and every
+quarter MAC at 1.5 ×MAC, so it never has more than ten intervals.
+
+**The left axis is labelled at round percentages, each at its own tick mark.**
+A MAC multiple is rarely a round percentage. At isoflurane's MAC of 1.17%, half
+a MAC is 0.585%, so labels at the gridlines would read 0.585, 1.755 and 2.925,
+with three decimals where the readouts show two, and no mark at 1% or 2%. So
+the left axis takes its own steps, of 1, 2 or 5 times a power of ten, and never
+more labels than the right axis has. At 3 ×MAC isoflurane is labelled 0, 1, 2
+and 3%, sevoflurane 0 to 5%, and desflurane 0, 5, 10 and 15%. The gridlines
+stay on the MAC multiples, so a percent label and a gridline near it can be
+different values: desflurane's 1.5 ×MAC gridline is 9.9%, beside the 10%
+label.
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- not-restated: 5 % -->
+
+**The chart names each compartment whose trace is above the top of the axis.**
+Such a trace is cut off at the top of the frame, where it runs flat as a
+plateau would. Without the name, a reader would conclude that the
+concentration stopped rising at the top, when in the model it did not. The
+chart names the top in percent and in MAC, the two units its axes are
+labelled in, and says that the readouts are not cut off and keep showing their
+values. Inhalational induction commonly uses sevoflurane's 8% dial setting,
+which is 4.44 ×MAC, above the standard top. At the 4.5 ×MAC top, no agent's
+vaporizer can take a trace off the plot at the MAC for age 40. At a lower MAC,
+such as an older patient's, the off-scale notice can still appear at that top.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
-<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **The chart's percent axis is linear, which crowds the slow compartments
 together** (project owner, 2026-09-23, ratified, over a reader-selected logarithmic scale,
@@ -3172,7 +3314,35 @@ heights, amounts and share bar assert").
 redraw a rising curve smaller partway through a lesson, and a reader would take
 that change of shape for something the model did.
 
-The 3 ×MAC ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) puts the
+A top that the chart chose for itself is refused, not merely left off. Height
+on a chart is read as size, and an axis fitted to the data changes how large
+the same difference looks. In crowd-sourced experiments the effect of a
+truncated axis on judged effect size persisted even when the design marked the
+truncation explicitly (Correll, Bertini and Franconeri, CHI 2020,
+doi:10.1145/3313831.3376222, abstract read on arXiv 1907.02035). The same paper
+advises choosing an axis for the size of difference the chart is meant to show.
+A reader-chosen top does that for the lesson in hand, a low top for a lesson
+held near 1 MAC and a high one for an overpressure induction, and it changes
+only when the reader changes it (`PL-V67Q`'s design round, project owner,
+2026-10-03, ratified, `PL-K1VH`).
+
+The three tops are `ChartCeiling` in `app/formatting.py`. The low top puts
+1 MAC at two thirds of the plot's height. The high top is above every agent's
+vaporizer maximum, the highest being sevoflurane's 8%, at 4.44 ×MAC.
+<!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
+
+A second axis that shows the same quantity in another unit, as Celsius beside
+Fahrenheit does, is the accepted use of a dual-axis chart, and such charts
+give each axis its own tick interval by default (Datawrapper, "Dual-axis
+charts: a guide" and "Dual-axis charts", both read 2026-11-22). Round labels
+make a value easier to read off an axis: Talbot, Lin and Hanrahan
+(IEEE InfoVis 2010, section 2) cite evidence that round numbers are much easier
+to work with in mental estimation. So each axis is labelled at round values of
+its own unit (`PL-BNMZ`). The percent steps are `PERCENT_AXIS_STEP_LADDER` in
+`app/chart_frame.py`, the 1-2-5 steps of Heckbert's labelling algorithm that
+the same paper describes.
+
+The standard 3 ×MAC top (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) puts the
 1 MAC line at a third of the plot height, inside the plot rather than on its
 frame. Unlike a ceiling of 2, it also keeps on the plot the 2-3 ×MAC range that
 overpressure induction works in. Desflurane's vaporizer is the most limited. Its
@@ -3185,8 +3355,8 @@ from 2.73 ×MAC for desflurane to 4.44 ×MAC for sevoflurane (`PL-CC23`).
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 
-A gridline every half MAC (`CHART_GRID_INTERVAL_MAC`) falls on the values that
-the MAC axis labels, so the axis names every gridline on the plot.
+The gridlines stand at the positions of the MAC axis's labels, which
+`mac_axis_ticks` places, so the axis names every gridline on the plot.
 
 The chart compares a trace's excess over the ceiling with the displayed
 resolution rather than with zero, so it does not name a compartment whose trace
@@ -3195,10 +3365,16 @@ sits exactly at the ceiling. This matters for desflurane, whose ceiling,
 <!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-The ceiling is scaled by the agent's MAC and leaves room above 1 MAC
-(`test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled` and
+Each top is scaled by the agent's MAC, the standard top leaves room above
+1 MAC, and the high top is above every vaporizer maximum
+(`test_the_chart_ceiling_is_the_chosen_top_times_the_agent_s_mac`,
 `test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpressure`
-in `tests/unit/test_formatting.py`). A trace above the axis is reported on the
+and `test_the_high_ceiling_is_above_every_agent_s_vaporizer_maximum` in
+`tests/unit/test_formatting.py`). Both axes' labels at every top and agent are
+in `test_each_axis_is_labelled_at_round_values_of_its_own_unit`
+(`tests/unit/test_chart_frame.py`), and the drawn gridlines in
+`test_the_mac_axis_labels_every_gridline_and_the_percent_axis_is_round`
+(`tests/integration/test_qt_chart.py`). A trace above the axis is reported on the
 run that drew it
 (`test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it` in
 `tests/integration/simulation_view/test_simulation_view_readouts.py`), and a
@@ -3238,7 +3414,7 @@ on the plot is therefore a fixed multiple of its rate of change. A window that
 widened continuously with the run would rescale every slope while the rates
 stayed the same. That would misrepresent rate of rise, the one quantity by which
 uptake and distribution are taught. The vertical axis has a fixed range for the
-same reason (§ "The chart's vertical range is set in MAC, and fixed").
+same reason (§ "The chart's fixed MAC axis").
 
 **The gridlines follow from the width.** Each width on the ladder sets the
 interval at which gridlines and labels fall, so that the axis holds four to six
@@ -3353,7 +3529,18 @@ and label colours, so neither is mistaken for a compartment.
 MAC-awake.** It covers roughly the middle two thirds of a population, not its
 full range. A rule marks each edge, on its published value, with a light fill
 between the two. Nothing pads the band outward, even where it is thin, so the
-space between the rules is exactly the published spread.
+space between the rules is exactly the published spread. The fill is light
+enough that every trace keeps 3:1 against it in all four vision models, because
+the band is where a reader compares the crossings (`PL-GT8W`).
+
+**The fat trace is told apart from both references by lightness.** Grey marks
+the chart's furniture: the 1 MAC line, the control marks and the gridlines.
+After a long case the fat trace is nearly flat and lies near the band, so it
+could be taken for the 1 MAC line or for a band edge. The fat trace is a dark
+olive, darker than the grey line and lighter than the ink edges. The contrast
+check holds it at least 1.5:1 from each, in all four vision models. Six traces
+cannot all be held more than 1.48:1 apart from each other, so each reference is
+further from fat than the traces can be from each other (`PL-6W49`).
 
 **The 1 MAC line marks the nominal value, not the dialled one.** A fixed line
 sits at the same height in every run, so runs stay comparable. A line that
@@ -3743,14 +3930,27 @@ Two criteria carry most of the weight:
   both, the page background is the stricter test, and it is the one that
   counts.
 - **SC 1.4.11, Non-text Contrast**, requires 3:1 for graphical objects. Here
-  that means each chart trace against the panel it is drawn on, each agent
-  swatch treated as a shape, and the active track of each parameter slider,
-  which shows where the slider's value sits in its range. It also means the
-  two chart references, which are the MAC-awake band and the 1 MAC line, and
-  the lines that the layout draws on an Area border, under the current
-  Workspace tab and during a corner drag.
+  that means each chart trace against what it is drawn on: the panel, the
+  MAC-awake band's fill where the trace crosses the band, and the fill of the
+  region in which a drag's preview is drawn, alone and where it overlaps the
+  band. It also means each agent swatch treated as a shape, and the active
+  track of each parameter slider, which shows where the slider's value sits in
+  its range. It also means the two chart references, which are the MAC-awake
+  band and the 1 MAC line, and the lines that the layout draws on an Area
+  border, under the current Workspace tab and during a corner drag.
 
 <!-- not-restated: 4.5 -->
+
+**No control that carries the agent's identity is ever drawn disabled.** SC
+1.4.3 sets no contrast requirement for text in an inactive control, and W3C's
+Understanding document for that criterion gives a disabled button with grey
+text as its example. Qt draws a disabled control's text in the platform's grey,
+over whatever color the interface set. A disabled agent selector would
+therefore conform to AA and still lose the agent's name against its
+identification color. The interface does not use this exemption for those
+controls. While a run holds the agent fixed, the selector is hidden rather than
+disabled, and the running-agent label takes its place. The label has no
+disabled state.
 
 #### Where the chart goes beyond AA
 
@@ -3845,11 +4045,12 @@ running simulation from a halted one is safety-critical. The status words
 "Running" and "Valid" differ from the words for the other states, so a reader
 who cannot tell the colors apart still reads the state. "Paused" and the
 words for a run that halted on a mark or at the supported run length appear in
-the muted color. "Stopped — simulation
+the muted color, as do the banner that reports a stop at the supported run length
+and the banner that announces it. "Stopped — simulation
 error" and "Validation failed" appear in the alert color.
 
-The agent selector and the header back the written name with the
-agent-identification color of ISO 5360:2016 Table 2 ("Dimensions and colours
+The agent selector, the header and the running-agent label back the written
+name with the agent-identification color of ISO 5360:2016 Table 2 ("Dimensions and colours
 of agent-specific bottle collars and connectors"): yellow for sevoflurane,
 purple for isoflurane, and blue for desflurane. Footnote b of that table is why
 the color appears at all: "if a colour is used on a vaporizer, bottle, or
@@ -3859,6 +4060,10 @@ displaying a color an obligation to display the correct one, which is a
 stronger reason than SC 1.4.1 for never using color as the only cue. A second
 cue keeps a mis-seen color from becoming a mis-identified agent, so the agent
 name always accompanies the color.
+
+The running-agent label stands in the selector's place while a run holds the
+agent fixed, which is most of the time a reader is looking at the screen. It
+names the agent on the same fill and in the same text color as the selector.
 
 The displayed fills are two approximations away from the standard's own color.
 Table 2 footnote c states that "Munsell colour is the original" and that the
@@ -3946,6 +4151,13 @@ rest of the argument.
 every one of them. A second check (`check_colors_live_in_the_theme`) keeps them
 there.
 
+A third check (`tools/agent_identity_check.py`) keeps every control that
+carries the agent's color from being drawn disabled. It allows a control to be
+disabled only where the same condition also hides it. The running-agent label
+is `_running_agent_display` in `app/run_view.py`, and
+`_apply_agent_color_scheme` there is the one method that writes the agent's
+colors.
+
 Each entry in the contrast check's requirement table names the colors, the
 criterion and the reason for the minimum. The table records which colors
 matter, and the check only evaluates it. Most entries are one foreground against
@@ -4009,9 +4221,22 @@ rely on a color-scheme hint. Qt 6.8 documents its color-scheme setting
 supported on all platforms". On 2026-09-20 the setting was seen to be ignored
 outright: it still reported `Unknown` after being set.
 
-Disabled controls follow the host because both palette mechanisms leave the
-`Disabled` color group to the platform, and the stylesheets declare a disabled
-color only for the transport buttons and the menu entries. The project's rule
+The interface asks for the Light color scheme as well, before it sets the
+palette (`PL-YZ9L`). On a Mac set to Dark, Qt draws each letter with a white
+fill, and macOS thickens the strokes by the fill color, so the interface's
+dark lettering was drawn heavier than under Light. On macOS the request sets
+the application's appearance to Light (Aqua), and the letters are then drawn
+as under Light. Where a platform ignores the request, the palette still
+applies. Only a Mac can show whether the lettering then matches, and the
+test (`test_declaring_the_application_asks_for_the_light_colour_scheme_before_its_palette`)
+checks only that the request is made, and made first.
+
+Disabled controls follow the platform because both palette mechanisms leave
+the `Disabled` color group to it, and the stylesheets declare a disabled color
+only for the transport buttons and the menu entries. On a platform that
+honors the Light request, such as macOS, the group comes from the platform's
+light palette. On one that ignores the request, it follows the host
+appearance. The project's rule
 for interface colors (`.claude/rules/ui-color.md`) governs any decision to
 declare a disabled color.
 The splitter handles are enabled (`PL-W9P6`), so the border between two areas
@@ -4020,8 +4245,8 @@ surface. A test
 (`test_the_border_between_two_areas_shows_the_page_rather_than_the_host`)
 checks this (`PL-05M4`).
 
-Tooltips also follow the host, because they draw from `ToolTipBase` and
-`ToolTipText`, which are outside the declared roles. This interface shows a
+Tooltips also follow the platform in the same way, because they draw from
+`ToolTipBase` and `ToolTipText`, which are outside the declared roles. This interface shows a
 tooltip in two places: the reason that a menu entry is unavailable, and the
 description of the "+" button at the end of the Workspace tabs. No contrast
 requirement measures a tooltip's colors.
@@ -4093,21 +4318,21 @@ The legend entry beside each checkbox names its trace's style in words, so a
 reader can learn every style from the legend alone.
 
 **Color cannot be the first cue, because some pairs of trace colors are almost
-equally bright.** The closest pairs are vessel-rich and fat, and mixed venous and
-fat. No other choice of colors fixes this. Each color has at least the 3:1
+equally bright.** The closest pairs are alveolar and muscle, circuit and
+mixed venous, and, under protanopia, vessel-rich and fat. No other choice of colors fixes this. Each color has at least the 3:1
 contrast against the panel that WCAG success criterion 1.4.11 requires, both as
 displayed and as simulated for protanopia, deuteranopia and tritanopia. The
 colors are chosen to label their compartment and to clear that minimum.
 
 **The colors decide which line style goes on which compartment.** The two traces
-whose colors are hardest to separate get the two styles that are easiest to
-separate by shape. The next pair gets the next easiest, and so on. Fat's
-dash-dot therefore differs in dash length, gap length and rhythm from both the
-vessel-rich even dash and the mixed venous short dash. The one pair of styles
-that a reader could confuse is dotted, with 2 px dots, and short dash, with 4 px
-dashes. That pair goes to muscle and mixed venous, whose colors are the second
-most widely separated pair among these six (1.45 in the table below, after
-circuit and alveolar at 1.62).
+whose colors are hardest to separate get styles that are easy to separate by
+shape: alveolar's long dash against muscle's dots, and circuit's solid line
+against mixed venous's short dash. Fat's dash-dot differs in dash length, gap
+length and rhythm from both the vessel-rich even dash and the mixed venous short
+dash, which is what tells fat from vessel-rich for a reader with protanopia. The one pair of styles that a reader could confuse is dotted, with 2 px
+dots, and short dash, with 4 px dashes. That pair goes to muscle and mixed
+venous, whose colors are 1.45 apart at worst, more than eleven of the fifteen
+pairs in the table below.
 
 **With two runs on the plot, at most two compartments are drawn** (`PL-HLD5`,
 `PL-8PSW`). The cap applies to the plot only. All six readouts stay on screen for
@@ -4147,28 +4372,30 @@ simulated for each dichromacy:
 | Mixed venous | `#7C3AED` | 5.70 | 5.96 | 4.68 | 5.55 |
 | Vessel-rich | `#DC2626` | 4.83 | 7.18 | 4.14 | 4.84 |
 | Muscle | `#D17206` | 3.43 | 3.96 | 3.22 | 3.46 |
-| Fat | `#64748B` | 4.76 | 4.74 | 4.76 | 4.77 |
+| Fat | `#5D5510` | 7.57 | 7.51 | 7.63 | 7.62 |
 
 The contrast between each pair of traces is far lower, and the design in this
 section rests on it:
 
 | Pair | Normal | Protanopia | Deuteranopia | Tritanopia | Worst |
 | --- | --- | --- | --- | --- | --- |
-| Vessel-rich / Fat | 1.01 | 1.51 | 1.15 | 1.02 | **1.01** |
-| Mixed venous / Fat | 1.20 | 1.26 | 1.02 | 1.16 | **1.02** |
+| Vessel-rich / Fat | 1.57 | 1.05 | 1.84 | 1.57 | **1.05** |
 | Alveolar / Muscle | 1.05 | 1.23 | 1.19 | 1.05 | **1.05** |
 | Circuit / Mixed venous | 1.06 | 1.05 | 1.33 | 1.08 | **1.05** |
 | Alveolar / Vessel-rich | 1.34 | 2.22 | 1.08 | 1.33 | **1.08** |
 | Mixed venous / Vessel-rich | 1.18 | 1.20 | 1.13 | 1.15 | **1.13** |
-| Circuit / Fat | 1.26 | 1.19 | 1.31 | 1.26 | **1.19** |
-| Muscle / Fat | 1.39 | 1.20 | 1.48 | 1.38 | **1.20** |
 | Alveolar / Mixed venous | 1.58 | 1.84 | 1.22 | 1.53 | **1.22** |
-| Alveolar / Fat | 1.32 | 1.47 | 1.24 | 1.31 | **1.24** |
+| Circuit / Fat | 1.26 | 1.33 | 1.23 | 1.27 | **1.23** |
 | Circuit / Vessel-rich | 1.25 | 1.27 | 1.50 | 1.24 | **1.24** |
+| Mixed venous / Fat | 1.33 | 1.26 | 1.63 | 1.37 | **1.26** |
 | Vessel-rich / Muscle | 1.41 | 1.81 | 1.28 | 1.40 | **1.28** |
 | Circuit / Muscle | 1.75 | 1.43 | 1.93 | 1.74 | **1.43** |
 | Mixed venous / Muscle | 1.66 | 1.50 | 1.45 | 1.61 | **1.45** |
 | Circuit / Alveolar | 1.67 | 1.75 | 1.62 | 1.66 | **1.62** |
+| Muscle / Fat | 2.21 | 1.90 | 2.36 | 2.20 | **1.90** |
+| Alveolar / Fat | 2.10 | 2.32 | 1.99 | 2.10 | **1.99** |
+
+<!-- not-restated: 2.10 -->
 
 Other colors would not help, because the closest pair among any six colors has a
 contrast ceiling of $`21^{1/5}\approx1.84`$. Contrast ratios multiply along a
@@ -4701,16 +4928,17 @@ rounds away, a reader could not tell which value is the setting in force.
 
 **The chart is read for shape, so its resolution is coarser than the
 readouts'.** It plots the same percentages on a shared linear axis that runs
-from 0 to 3 ×MAC of the agent in use, and a second axis on the right shows the
+from 0 to the top the reader chose, 3 ×MAC of the agent in use unless the
+reader changes it, and a second axis on the right shows the
 same position in MAC multiples. Its resolution is set by pixels rather than by
 decimals. Every number that the chart offers is shown at the resolutions that § "Why the readouts show two decimals" and
 § "The MAC multiple's resolution" set,
 in the readout row and in the hover readout
-(§ "The chart's hover readout: what the tooltip may show", below). The fixed
-3 ×MAC range gives the MAC axis round labels in half-MAC steps for every agent,
-so a gridline that a reader learns under one agent means the same thing under
-the next. § "The chart's vertical range is set in MAC, and fixed" above
-explains the range. The reader selects the time span that the chart's width
+(§ "The chart's hover readout: what the tooltip may show", below). Because
+the range is set in MAC, the MAC axis has the same round labels for every agent
+at a given top, so a gridline that a reader learns under one agent means the
+same thing under the next. § "The chart's fixed MAC axis" above explains the
+range. The reader selects the time span that the chart's width
 covers, and so chooses the seconds per pixel (§ "The chart's time base").
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
@@ -4731,11 +4959,11 @@ concentration moves it down tenfold.
 
 #### The agent-accounting panel
 
-**The panel's three amounts are displayed to 0.1 L, and its two residual lines show
-only the power of ten that each residual lies below, because they answer different
+**The panel's three amounts are displayed to 0.1 L, and its residual line shows
+only the power of ten that the residual lies below, because they answer different
 questions** (decided 2026-09-15). The amounts are read against each other, delivered
 against exhausted plus stored, and against a reader's sense of scale. The residual
-lines are a numerical check. They have to make a residual of order 10⁻¹² L visible
+line is a numerical check. They have to make a residual of order 10⁻¹² L visible
 against amounts of order 1 to 100 L, which no fixed decimal count can do.
 
 The panel labels the unit as litres of equivalent pure agent gas, the unit this
@@ -4769,10 +4997,13 @@ zero reads `0 L`. A residual that passes its check is the rounding left over fro
 summing the initial, delivered, exhausted and stored amounts. Its digits and its
 sign are set by the order in which the arithmetic ran, not by anything modelled.
 They change even when a correct edit to the code alters only the last binary digits of that
-arithmetic, so neither line shows them. Without a sign, the two lines read alike.
-The sign means something only in a check that fails. The run then halts, and the
-failure notice prints the signed unaccounted amount with six decimal places,
-such as `1.000000e+00 L`.
+arithmetic, so the line shows neither. The panel shows the residual once, as
+"Unaccounted". An absolute-error line would read the same string without a sign,
+so the panel has none (project owner, 2026-10-03, ratified, over keeping both
+lines and over keeping "Absolute error" instead). The sign means something only
+in a check that fails. The run then halts, and the
+failure log records the signed unaccounted amount with six decimal places, such
+as `1.000000e+00 L`, for a developer. The banner does not show it.
 
 **For developers.** At 1 MAC with the reference adult's flows, one 0.1 L step is
 worth between about four SDs, for isoflurane at 1 h, and a seventh of an SD, for
@@ -5549,8 +5780,25 @@ and the value printed above the slider is that setting. The value is applied
 before the preview ends, so the frame drawn at release already shows the run
 under its new setting. A key press, one notch of the scroll wheel or a click on
 the slider away from its handle is a single input, so it applies at once and
-draws no preview. A handle released at the setting already in force applies
-nothing, and the run records no setting change.
+draws no preview. Such an input also draws the whole screen at once, so the
+readouts, the compartment schematic and both charts show the same instant
+after it (`PL-2WVC`). An input that comes soon after another input's frame
+waits, and the wait's end draws the latest state. The next frame starts
+100 ms after the last one started, or twice that frame's drawing time after
+it, whichever is later. So while a key or button is held, a wheel spins, a
+trackpad swipes or a handle is dragged, the charts follow the dial at
+Nielsen Norman Group's 0.1-second limit for a user to feel that they are
+directly moving what is on screen, on every platform, as long as a frame
+takes less than 50 ms to draw (`PL-NKFD`). A slower frame, such as one that
+draws a preview over an hour-long run, is followed by a pause as long as
+itself, so drawing never takes more than half of the time in which the run
+steps and the reader's inputs are handled. A render tick during a burst
+counts as one of its frames. Until that frame, the readouts can show
+a later step than the charts. A click that moves the handle to the pointer
+draws one frame, and its release draws no second one. A handle released at
+the setting already in force applies nothing, and the run records no setting
+change.
+<!-- provenance: app/dashboard_frame.py INPUT_FRAME_INTERVAL_MS = 100 -->
 
 **A click on the slider away from its handle follows the platform's own
 convention** (`PL-57LD`). The simulator sets no style of its own, so Qt's style
@@ -5588,7 +5836,10 @@ reach, `predicted_states` takes one-second steps from the state stored for the
 second the run has reached, and the window is drawn on the run's time grid with
 the second of each peak and trough between two columns. After that,
 `predicted_states_at` predicts each grid second and the right edge from the one
-before. The controller keeps the last predicted window and draws it again while
+before. Where F_A/F_I is inside the wash-in domain at one of two such columns
+and outside it at the other, the seconds between them are predicted too, and the
+crossing second is drawn (`controller._with_later_crossings`,
+`test_a_preview_past_its_first_hour_draws_the_second_its_ratio_crosses_equilibrium`). The controller keeps the last predicted window and draws it again while
 none of its inputs change. `test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only`
 in `tests/unit/test_chart_frame.py` checks the split. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial
@@ -5623,12 +5874,16 @@ Neither dash pattern nor reduced opacity can mark a curve as predicted. The
 muscle curve is already dotted, and drawing the run solid with a dotted preview
 would flatten the five dashed curves into one style. At 0.85 opacity, the
 alveolar and muscle curves fall to contrasts of 2.93 and 2.83 against the panel,
-less than the 3:1 that WCAG success criterion 1.4.11 sets. At 0.75, the fat
-curve falls below 3:1 as well, so three of the six do.
+less than the 3:1 that WCAG success criterion 1.4.11 sets. At 0.75 they fall
+further, to 2.57 and 2.49.
 
-The region's tint is decoration, as the MAC-awake band's is, because the
-region's edge and the label carry the information. Its opacity is
-`theme.PREVIEW_REGION_FILL_OPACITY`.
+The region has no fill, because its edge and its label carry the information.
+A fill light enough to keep every trace at 3:1 where the region overlaps the
+MAC-awake band could not be seen: the muscle trace already measures 3.03:1
+against the band's fill under deuteranopia (`PL-GT8W`). The contrast check
+measures every trace against the region's fill, alone and over the band's, in
+all four vision models, so a fill added at `theme.PREVIEW_REGION_FILL_OPACITY`
+fails the check unless every trace still clears 3:1.
 
 ### A cost at the reader's price
 
@@ -5867,13 +6122,14 @@ the readouts.
 
 **A container's fill height is the compartment's modelled tension, not an
 amount.** All containers of one run fill against one scale: the concentration
-chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
-the top. So a container filled to some share of its height shows the same
-tension as a trace standing at that share of the chart's axis. A container is
-much shorter than the chart's plot, so its fill level does not line up with the
-chart's gridlines on screen. Each container therefore carries short marks at the
-chart's gridlines, every 0.5 MAC, and the caption names that spacing
-(`PL-8W1B`). A container that holds more agent can stand lower than one that
+chart's standard scale, from zero at the bottom to 3 MAC of the running agent
+at the top. The schematic keeps that scale when a reader gives the chart
+another top. So a container filled to some share of its height shows the same
+tension as a trace standing at that share of the chart's axis at its standard
+top. A container is much shorter than the chart's plot, so its fill level does
+not line up with the chart's gridlines on screen. Each container therefore
+carries short marks every 0.5 MAC, and the caption names the top in percent
+and in MAC, and the spacing in MAC (`PL-8W1B`). A container that holds more agent can stand lower than one that
 holds less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
 its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC
@@ -5882,7 +6138,6 @@ at one hour and a third at three hours, which the chart's fat trace cannot show.
 Every container is drawn at one width, so its filled area is not an amount
 either.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-<!-- provenance: app/formatting.py CHART_GRID_INTERVAL_MAC = 0.5 -->
 
 A tension above the top of the scale fills its container to the top. The
 schematic marks the container as off the scale when the tension is above the
@@ -5963,9 +6218,11 @@ frame of that run has been drawn. If the run's first frame fails, the readouts
 show the state in which the run was opened, and the schematic shows no values.
 
 **For developers.** The schematic takes the top of its scale from the function
-that sets the concentration chart's top (`chart_axis_top_percent`) and sets no
-top of its own. The top's MAC multiple is a constant (`CHART_AXIS_TOP_MAC`), and
-§ "MAC multiples as a display unit" gives the reason for 3 MAC.
+that sets the concentration chart's top (`chart_axis_top_percent`), at the
+standard top (`ChartCeiling.STANDARD`), and sets no top of its own. Its marks
+are the chart's MAC labels at that top (`mac_axis_ticks`). The top's MAC
+multiple is a constant (`CHART_AXIS_TOP_MAC`), and § "MAC multiples as a
+display unit" gives the reason for 3 MAC.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 The containers' common width is there because, for sevoflurane, fat's container

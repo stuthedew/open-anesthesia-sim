@@ -5,13 +5,14 @@ These tests cover a run that stops itself (`PL-T995`).
 `simulation_view_support.py` describes the whole suite.
 """
 
+import logging
 import time
 from collections.abc import Callable, Mapping
 from typing import Final, NoReturn
 
 import pytest
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QComboBox, QWidget
+from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import run_presentation as run_presentation_module
 from anesthesia_sim.app import run_view as run_view_module
@@ -42,8 +43,6 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_ELAPSED_TIME_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
     delivered_line,
-    halt_notice,
-    notice,
     readouts,
     setting_readouts,
     slider_position,
@@ -66,7 +65,8 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES
+from anesthesia_sim.app.stylesheets import foreground_stylesheet
+from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, MUTED, WARNING
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING
 from anesthesia_sim.app.views import AccountingView
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
@@ -88,7 +88,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN,
     _CLOCK_INDEX,
     _REFUSED_ON_A_STOPPED_RUN_TEMPLATE,
-    _SETTING_CONTROLS,
     _WINDOW_HEIGHT_PX,
     _accounting_of,
     _accounting_panel,
@@ -117,8 +116,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _steps,
     _take_fork,
     _widest_chord_px,
-    _widget_attributes,
-    _widget_state,
     _with_stale_tissue_flows,
     _with_the_tissue_fractions_put_back,
     _withheld_accounting,
@@ -323,6 +320,37 @@ def test_a_run_that_arrives_at_the_supported_run_length_under_its_own_timers_is_
     assert run._notice_text.notice() is not None
 
 
+def test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A correct stop at the supported run length is drawn muted, and a failure stays a warning.
+
+    Before `PL-0889` every banner was drawn in `WARNING`, the interface's one
+    colour for a fault. So a run that had done everything right was styled as
+    a failure, directly under a status word drawn muted. The span is shortened
+    to 61 s, as in the test above, so the run reaches it quickly.
+    """
+
+    monkeypatch.setattr(
+        supported_ranges_module, "MAXIMUM_STEP_COUNT", _TIMED_STOP_S // SIMULATION_STEP_S
+    )
+    stopped = SimulationController()
+    stopped.start()
+    _advance(stopped, _TIMED_STOP_S)
+    failed = SimulationController()
+    failed.start()
+    failed.advance()
+    failed.fail("RuntimeError: the frame could not be drawn")
+
+    assert stopped.has_reached_supported_limit is True
+
+    for controller, color in ((stopped, MUTED), (failed, WARNING)):
+        banner = _case_view(application, BranchedCase(controller)).runs[0]._notice_text
+
+        assert banner.notice() is not None
+        assert banner.styleSheet() == foreground_stylesheet(color)
+
+
 def test_a_frame_that_keeps_failing_is_attempted_once_not_every_tick(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -525,10 +553,15 @@ def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
     run = view.runs[0]
     dial = _dials(run)._fresh_gas_flow_slider
     assert dial.value_label.text() == "2.0 L/min"
+    # The press draws its preview's frame at once (`PL-NKFD`), so the
+    # snapshot is made to refuse only after it, and the release's frame is
+    # the one that halts the run.
+    dial.slider.setSliderDown(True)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
     capfd.readouterr()
 
-    _set_fresh_gas_flow(run, 4.0)
+    dial.slider.setSliderPosition(slider_position(4.0, FLOW_DISPLAY_DECIMALS))
+    dial.slider.setSliderDown(False)
 
     assert "Traceback" not in capfd.readouterr().err
     assert controller.has_failed is True
@@ -714,9 +747,15 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     controller = _paused_run_with_history()
     run = _shown_view(application, controller).runs[0]
     assert run._control_timeline_text.text() != NO_CONTROL_CHANGES_TEXT
+    dial = _dials(run)._fresh_gas_flow_slider
+    # The press draws its preview's frame at once (`PL-NKFD`), so the
+    # snapshot is made to refuse only after it, and the release's frame is
+    # the one that halts the run.
+    dial.slider.setSliderDown(True)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
 
-    _set_fresh_gas_flow(run, 4.0)
+    dial.slider.setSliderPosition(slider_position(4.0, FLOW_DISPLAY_DECIMALS))
+    dial.slider.setSliderDown(False)
 
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
@@ -725,219 +764,7 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     assert run._control_timeline_overflow_text.isHidden() is True
 
 
-#: The widget attributes of a `RunView` that may show different content on a
-#: run drawn by a frame and on the same run halted with every frame failing.
-#: Each is mapped to the reason it may differ. The test below requires every
-#: other widget attribute, including one added later, to show the same content
-#: on both runs. That requirement keeps `RunView.show_presentation` the one
-#: writer of a run's state, with no list of widgets for somebody to maintain.
-#: A widget left out of `show_presentation` still shows the last frame's run on
-#: a halt, and the test fails there (`PL-X7D5`).
-#:
-#: The list is checked in both directions, as `FOREGROUND_NOT_DECLARED` is. An
-#: entry that names no widget attribute fails. So does an entry whose widget
-#: shows the same content on the two runs, because nothing then needs the
-#: exemption. The accounting panel's status and detail lines are frame
-#: widgets, but they are not listed. Both runs below show "Valid" there, so
-#: the comparison checks them like any other widget.
-FRAME_WIDGETS: dict[str, str] = {
-    "_readout_row": (
-        "the readouts and the clock they were read with, from the compartment "
-        "values of the snapshot a frame drew from. The clock stays with its "
-        "readouts, so no row pairs one instant's clock with another's values. "
-        "The playback line under the clock is run state, and the test below "
-        "compares it on its own (`PL-P58M`)."
-    ),
-    "<accounting panel>._agent_amounts_text": (
-        "the accounting panel's amounts, which are the snapshot's mass balance "
-        "and so compartment values."
-    ),
-    "<accounting panel>._agent_accounting_status_text": (
-        "the verdict on those amounts, which only a frame states. A halt that no frame "
-        "has drawn since the run started over withholds it with the amounts, because it "
-        "judged the discarded run (blind and adversarial reviews of `PL-J5GC`)."
-    ),
-    "<accounting panel>._agent_accounting_detail_text": (
-        "the sentence under the verdict, which a halt withholds with it."
-    ),
-    "_notice_text": (
-        "the banner. `show_presentation` writes it on both paths, worded for "
-        "whether a frame drew: `halt_notice` says no frame has been drawn, and "
-        "`notice` says the values shown are the last completed step. "
-        "The test below holds each to its own wording."
-    ),
-}
-
-
-def _stated(widget: QWidget, attributes: set[int]) -> tuple[tuple[object, ...], ...]:
-    """One widget attribute as a reader sees it, with each widget under it that no attribute names.
-
-    A combo box's popup is left out. It belongs to the toolkit, and it shows
-    what the combo's own entries say.
-    """
-
-    states = [_widget_state(widget)]
-
-    if isinstance(widget, QComboBox):
-        return tuple(states)
-
-    for child in widget.children():
-        if isinstance(child, QWidget) and id(child) not in attributes:
-            states.extend(_stated(child, attributes))
-
-    return tuple(states)
-
-
-def test_every_run_state_widget_reads_alike_on_a_drawn_run_and_a_halted_one(
-    application: QApplication, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A halt shows the run on every widget a frame would, by default rather than by a list.
-
-    The run is drawn. Then, with every frame failing, it is changed in every
-    way that a run-state widget shows, so the halt is the only writer of what
-    the screen says. There are three changes. A new agent starts a new case
-    with no control changes. The delivered dial is renamed. The frame fails
-    the run. That screen is compared, widget attribute by widget attribute,
-    with the same run once a frame draws it. It is one state, written once
-    from the halt's presentation and once from the frame's. Before both went
-    through one writer, the halt wrote four widgets and a dial row. The agent
-    identity and the control-change panel went on showing the run that the
-    last frame drew (`PL-1YDD`, `PL-DTJQ`, `PL-X7D5`).
-
-    Every widget attribute is compared unless `FRAME_WIDGETS` names it. So a
-    widget added to `RunView` later is checked here without being listed.
-    """
-
-    controller = SimulationController()
-    controller.start()
-    controller.set_delivered_concentration_percent(Percent(8.0))
-    _advance(controller, 600)
-    controller.pause()
-    view = _shown_view(application, controller)
-    run = view.runs[0]
-    assert _concentration(view).off_scale.lines[0].isHidden() is False, (
-        "no trace is above the axis to go stale"
-    )
-    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
-
-    _select_agent(run, "desflurane")
-    dialog = run._new_case_dialog
-    assert dialog is not None
-    dialog.discard_button.click()
-
-    assert controller.agent_id == "desflurane"
-    assert controller.has_failed is True
-    # The playback line is in `_readout_row`, which `FRAME_WIDGETS` exempts,
-    # so it is compared on its own below (`PL-P58M`).
-    run._playback_rate_dropdown.setCurrentIndex(run._playback_rate_dropdown.findData(5))
-    halted_playback_line = run._playback_rate_text.text()
-    attributes = _widget_attributes(run)
-    named = {id(widget) for widget in attributes.values()}
-    halted = {name: _stated(widget, named) for name, widget in attributes.items()}
-    halted_banner = run._notice_text.notice()
-
-    monkeypatch.undo()
-    view.present(False)
-
-    drawn = {name: _stated(widget, named) for name, widget in attributes.items()}
-    differing = {name for name in attributes if halted[name] != drawn[name]}
-
-    assert sorted(set(FRAME_WIDGETS) - set(attributes)) == [], (
-        "FRAME_WIDGETS names a widget RunView no longer holds - remove the entry"
-    )
-    assert sorted(differing - set(FRAME_WIDGETS)) == [], (
-        "these widgets read differently on a halted run and on the same run drawn: write "
-        "them in RunView.show_presentation, or name them in FRAME_WIDGETS with the reason "
-        "only a frame can state them"
-    )
-    assert sorted(set(FRAME_WIDGETS) - differing) == [], (
-        "these widgets read alike on a halted run and a drawn one now, so their exemption "
-        "is stale - remove the entry"
-    )
-    # The agent change started the run over, so the halt's banner says the readouts are
-    # withheld rather than showing the last frame (adversarial review of `PL-J5GC`).
-    assert halted_banner == halt_notice(controller.record(), started_over=True)
-    assert run._notice_text.notice() == notice(controller.snapshot(), None)
-    assert halted_playback_line == run._playback_rate_text.text() == format_playback_rate(5)
-
-
-#: The groups of run-screen widgets that state one value together with the
-#: labels, divisors and verdicts that qualify it. Each group lists its members
-#: by the names `_widget_attributes` gives them. The test below requires every
-#: member of a group to describe one step of the run: the step that each
-#: scenario names for that group (`PL-J5GC`).
-#:
-#: In the readouts group, `_readout_row` stands for its six compartment cards,
-#: each with its percent and its ×MAC line, and for the clock's value line. The
-#: heading names the substance of those cards, the 1 MAC line states the divisor
-#: of their ×MAC lines, and the clock states their instant. Until the adversarial
-#: review of `PL-J5GC` the clock was left out, and a halt after a Reset kept the
-#: discarded run's instant. The playback line under the clock is a setting of the
-#: view, so it is not a member.
-VALUE_GROUPS: dict[str, tuple[str, ...]] = {
-    "readouts": ("_readout_row", "_compartment_substance_text", "_one_mac_text"),
-    "settings": (
-        "<setting controls>._fresh_gas_flow_slider",
-        "<setting controls>._delivered_concentration_slider",
-        "<setting controls>._alveolar_ventilation_slider",
-        "<setting controls>._cardiac_output_slider",
-        "<setting row>.not_shown_text",
-        "_delivered_text",
-    ),
-    "accounting": (
-        "<accounting panel>._agent_accounting_status_text",
-        "<accounting panel>._agent_accounting_detail_text",
-        "<accounting panel>._agent_amounts_text",
-    ),
-}
-
-_NAMES_THE_AGENT = (
-    "names the run's agent. `show_presentation` writes it from the same record as "
-    "`_compartment_substance_text`, and the test above holds it to that record"
-)
-_HOLDS_OTHER_WIDGETS = "holds other widgets, and each of them is listed under its own name"
-_STATES_THE_RECORD = (
-    "states the run's record or status, which the test above holds to the record on both paths"
-)
-
-#: Every other widget attribute of a `RunView`, each with the reason it is in no
-#: group. The two tables together are checked against `_widget_attributes` in
-#: both directions, as `FRAME_WIDGETS` is. So a widget added to `RunView` later
-#: fails the test below until it is put in a group or listed here.
-UNGROUPED_WIDGETS: dict[str, str] = {
-    "_run_name_text": (
-        "names the run while a second run is drawn, from the name its presentation carries"
-    ),
-    "_status_text": _STATES_THE_RECORD,
-    "_notice_text": (
-        "the banner, which says which step the values on screen describe. `notice` and "
-        "`halt_notice` word it, and their own tests check the wording"
-    ),
-    "_subtitle_text": _NAMES_THE_AGENT,
-    "_agent_header_badge": _NAMES_THE_AGENT,
-    "_agent_dropdown": _NAMES_THE_AGENT,
-    "_running_agent_text": _NAMES_THE_AGENT,
-    "_running_agent_display": _HOLDS_OTHER_WIDGETS,
-    "_running_agent_lock_text": "says why the agent cannot be changed, and states no value",
-    "_start_button": _STATES_THE_RECORD,
-    "_pause_button": _STATES_THE_RECORD,
-    "_reset_button": _STATES_THE_RECORD,
-    "_playback_rate_dropdown": "the playback rate, a setting of the view, not of the run",
-    "_interpretation_text": "a standing disclaimer, the same on every run",
-    "<setting controls>": _HOLDS_OTHER_WIDGETS,
-    "<accounting panel>": _HOLDS_OTHER_WIDGETS,
-    "<accounting panel>._accounting_heading_text": (
-        "the panel's heading, which names the run while a second run is drawn"
-    ),
-    "_control_timeline_heading_text": "a standing heading",
-    "_control_timeline_text": _STATES_THE_RECORD,
-    "_control_timeline_overflow_text": _STATES_THE_RECORD,
-    "_transport_row": _HOLDS_OTHER_WIDGETS,
-    "_readout_section": _HOLDS_OTHER_WIDGETS,
-    "_control_record_panel": _HOLDS_OTHER_WIDGETS,
-}
-
-#: What a reader sees of each group in `VALUE_GROUPS`, member by member.
+#: What a reader sees of each group of `_SHOWN_GROUPS`, member by member.
 _GroupReadings = dict[str, dict[str, object]]
 
 
@@ -1079,12 +906,10 @@ def _no_settings() -> dict[str, object]:
 
 #: The amounts that the panel should show for the failing check from `_a_failing_check`.
 #: They are written by hand. 40.0 L delivered, less 20.0 L exhausted and 14.0 L stored,
-#: leaves 6.0 L unaccounted. The panel does not show the unaccounted amount or the
-#: absolute error exactly. It shows the next power of ten above each one, so both lines
-#: show "<10¹ L".
+#: leaves 6.0 L unaccounted. The panel does not show the unaccounted amount exactly.
+#: It shows the next power of ten above it, "<10¹ L".
 _REJECTED_CHECK_AMOUNTS: Final = (
-    "Delivered: 40.0 L\nExhausted: 20.0 L\nStored: 14.0 L\n"
-    "Unaccounted: <10¹ L\nAbsolute error: <10¹ L"
+    "Delivered: 40.0 L\nExhausted: 20.0 L\nStored: 14.0 L\nUnaccounted: <10¹ L"
 )
 
 
@@ -1642,42 +1467,25 @@ def test_every_value_and_its_qualifiers_on_screen_come_from_one_state(
 ) -> None:
     """Each value on the run screen and what qualifies it describe one step of the run.
 
-    Every widget has had one writer since `PL-X7D5` and `PL-WM5P`, and the test
-    above compares each widget on a halted screen with itself on a drawn one. Two
-    widgets that disagree on one screen pass that test. A ×MAC number divided by
-    another agent's 1 MAC (`PL-6RJ0`), a dial showing a setting no step ran under
-    (`PL-3B34`) and a "Valid" verdict beside a banner that reports a failed check
-    (`PL-HF4B`) each passed it.
+    `test_every_registered_view_draws_a_state_alike_whatever_it_drew_before`
+    (`tests/integration/test_view_contract.py`) finds a value left from an
+    earlier state. It cannot find two widgets that disagree on one screen,
+    because the dashboard it compares with is drawn by the same code. A ×MAC
+    number divided by another agent's 1 MAC (`PL-6RJ0`), a dial showing a
+    setting no step ran under (`PL-3B34`) and a "Valid" verdict beside a
+    banner that reports a failed check (`PL-HF4B`) were such disagreements.
 
-    So each scenario names, for each group in `VALUE_GROUPS`, the step that all of
-    the group's members must describe. It takes that step from a run built without
-    the control or failure under test, and builds each member's text from it with
-    the function the view calls. Those functions are not under test here. What is
-    under test is the step that each group is written from (`PL-J5GC`).
+    So each scenario names, for each group of `_SHOWN_GROUPS`, the step that
+    all of the group's values must describe. It takes that step from a run
+    built without the control or failure under test, and builds each value's
+    text from it with the function the view calls. Those functions are not
+    under test here. What is under test is the step that each group is
+    written from (`PL-J5GC`).
     """
 
     run, expected = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
-    attributes = _widget_attributes(run)
-    grouped = [member for members in VALUE_GROUPS.values() for member in members]
 
-    assert sorted(set(grouped) & set(UNGROUPED_WIDGETS)) == [], (
-        "these widgets are in a group and also listed as in none - keep one"
-    )
-    assert sorted(set(attributes) - set(grouped) - set(UNGROUPED_WIDGETS)) == [], (
-        "these widgets are in no group and not listed in UNGROUPED_WIDGETS: put each in "
-        "the group whose value it states or qualifies, or list it with the reason it is "
-        "in none"
-    )
-    listed = set(grouped) | set(UNGROUPED_WIDGETS)
-
-    if _setting_row(run).controls is None:
-        # The View shows no dial for this run, so no dial is there to list.
-        listed = {name for name in listed if not name.startswith(_SETTING_CONTROLS)}
-
-    assert sorted(listed - set(attributes)) == [], (
-        "these entries name a widget RunView no longer holds - remove them"
-    )
-    assert sorted(expected) == sorted(VALUE_GROUPS)
+    assert sorted(expected) == sorted(_SHOWN_GROUPS)
 
     shown = {group: _SHOWN_GROUPS[group](run) for group in expected}
 
@@ -1943,6 +1751,55 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
         "No frame has been drawn since the run started over: the readouts and the charts "
         "are withheld, and the run itself stands at its last completed step."
     ) in banner
+
+
+@pytest.mark.parametrize("scenario", ["accounting halt", "accounting halt, no frame drawn"])
+def test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    scenario: str,
+) -> None:
+    """The banner after a failed accounting check says what happened in plain words.
+
+    Until `PL-TWZY`, the banner showed the core's message for a developer: the
+    exception's class name, and every total in e-notation under a code name, such
+    as `absolute_error=1.000000e+00 L`. The expected opening is written out here
+    rather than read from the interface's constant. The core's message, with its
+    totals, still reaches the log for a developer, once for the run. In the case
+    with no frame drawn, the frame then fails too. That is a second fault, so the
+    dashboard logs it once as well, after the run's own record. The injected check has 40.0 L
+    delivered, 20.0 L exhausted and 14.0 L stored, which leaves 6.0 L unaccounted
+    (`_a_failing_check`).
+    """
+
+    caplog.set_level(logging.ERROR, logger="anesthesia_sim.app")
+
+    run, _ = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
+
+    banner = run._notice_text.notice()
+    assert banner is not None
+    assert banner.startswith(
+        "Simulation stopped — the agent accounting check failed: the rejected step created "
+        "or lost anesthetic agent. This is a fault in the simulator, not a change in the "
+        "patient. "
+    ), banner
+    assert banner.endswith("Reset to start a new run."), banner
+    assert not any(f"{digit}e" in banner for digit in "0123456789"), f"e-notation in {banner!r}"
+    assert "Error" not in banner
+    assert "=" not in banner
+    assert "_" not in banner
+
+    logged = [record.getMessage() for record in caplog.records]
+    assert logged[0].startswith("Run 1 stopped on a failure: AgentSimulationValidationError: ")
+    assert "unaccounted=6.000000e+00 L" in logged[0]
+    assert all(record.exc_info is not None for record in caplog.records)
+
+    if scenario == "accounting halt":
+        assert len(logged) == 1, logged
+    else:
+        assert len(logged) == 2, logged
+        assert logged[1].startswith("Every run on the dashboard stopped on a failure: "), logged
 
 
 def test_an_accounting_error_with_a_check_of_the_wrong_type_still_halts_the_run(

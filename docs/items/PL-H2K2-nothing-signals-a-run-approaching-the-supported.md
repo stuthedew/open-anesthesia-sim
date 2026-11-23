@@ -3,12 +3,14 @@ id: PL-H2K2
 title: Nothing signals a run approaching the supported run length; it advances normally until the step at 24 hours is refused, so the halt arrives with no warning
 priority: P2
 effort: M
-status: ready
+status: done
 classes: ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/simulation_view, tests/integration/controller
 added: 2026-09-07
-verify: grep -q 'def test_the_interface_says_the_run_is_approaching_its_supported_length' tests/unit/test_dashboard_frame.py
+closed: 2026-11-23
+pr: 2267
+tests: tests/unit/test_dashboard_frame.py::test_the_interface_says_the_run_is_approaching_its_supported_length
 ---
 
 **Problem.** Nothing signals a run approaching the supported run length; it
@@ -65,3 +67,7 @@ label the run view places. `touches` and `verify:` name those modules and
 their tests; the old command ran a Flet test file the port deleted.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. The interface says nothing about the supported run length until the run reaches it. `STATUS_SUPPORTED_LIMIT_TEXT` and the halt notice in `app/dashboard_frame.py` appear only once the run has stopped. The "Where" paragraph's line numbers in `app/simulation_view.py` are from before the Qt port. The clock and the halt notice are now built in `app/dashboard_frame.py`.
+
+**Closed 2026-11-23.** Documentation checked for statements this change made false: `docs/INTERFACE.md` (§§ "What happens when a run reaches the limit", "Color as a cue: agent colors and the alert color", "Minimum contrast for text and graphics", "Interface boundary"), `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md`, `.claude/rules/ui-color.md`, the colour notes in `src/anesthesia_sim/app/theme.py`, and the docstrings of `app/dashboard_frame.py`, `app/run_presentation.py`, `app/run_view.py`, `app/run_surfaces.py` and `app/qt_widgets.py`. Both blind review passes found that a refusal still on screen hid the countdown; the countdown now follows the refusal. Pass 1 also found a refusal on the stopped run drawn muted; any banner that states a refusal is now a warning.
+
+**Regression record.** On `main` before this change (771e1499), `test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour` fails with `assert 'color: #8A4B08;' == 'color: #59728A;'`: the stop's banner was drawn in WARNING. The countdown test needs `run_notice`, which this change adds; the variant without it is `dashboard_frame.notice(replace(SimulationController().snapshot(), elapsed_s=80400), None)`, which returns `None` on `main`, so no banner shows 1 h 40 min before the stop.

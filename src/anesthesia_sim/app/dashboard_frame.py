@@ -24,14 +24,14 @@ requirements rather than wording choices: the "Alveolar" readout with the
 gloss "end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout with the gloss
 "inspired" (`PL-8M05`), and the "Fresh gas flow" control with the gloss
 "common gas outlet" (`PL-71CF`). `docs/INTERFACE.md` § "Minimum displayed
-outputs" states the first and the third, and an exact-string test enforces
-each of the three.
+outputs" states all three and the reason for each, and an exact-string test
+enforces each of them.
 """
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from math import floor
+from math import ceil, floor, isfinite
 from types import MappingProxyType
 from typing import Final
 
@@ -140,6 +140,14 @@ SIMULATION_TICK_INTERVAL_MS: Final = 100
 # and 5x a step takes longer than a frame, so some frames redraw unchanged
 # values. `test_a_frame_is_two_ticks` checks the relation with the tick.
 RENDER_INTERVAL_S: Final = 0.2
+# The shortest time, in milliseconds of real time, between the starts of two
+# frames drawn for a dial that the reader is moving. Nielsen Norman Group gives
+# 0.1 s as the limit for a user to feel that they are directly manipulating
+# what is on screen ("Response Times: The 3 Important Limits", nngroup.com).
+# The render tick stays slower, because a chart that follows a playing run
+# with no hand on a dial is not being manipulated, and drawing every 0.1 s
+# would double the drawing load for the whole run (`PL-NKFD`).
+INPUT_FRAME_INTERVAL_MS: Final = 100
 # How wide the chart is before the first frame is drawn. It is the narrowest
 # rung, which is the width "Fit run" chooses for a run that has recorded
 # nothing.
@@ -245,6 +253,23 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step, "
     "except the agent accounting panel, which shows the rejected step. {exit}"
 )
+# The reason that every failure banner gives for a step whose agent accounting
+# failed its check. Any other failure shows the exception's own message
+# (`halt_disposition`), but this one has two readers. The core's message names
+# the exception class and prints every total in e-notation under its code name,
+# such as `absolute_error=1.000000e+00 L`, which is for a developer reading the
+# log (`RunView.halt` logs it, and `main.open_failure_log` keeps the log in a
+# file). The learner gets plain words: what happened, that it is a fault in the
+# simulator and not a change in the patient, and, through the banner's own
+# exit, what to do next. The check fails when the amounts are out of balance by
+# more than rounding allows, which can be less than the 0.1 L the panel's
+# amounts are shown to. So the banner says what a failed check means, that agent
+# was created or lost, and does not claim that the amounts on the panel fail to
+# add up (`PL-TWZY`). The wording is a placeholder.
+ACCOUNTING_FAILURE_REASON_TEXT: Final = (
+    "the agent accounting check failed: the rejected step created or lost anesthetic agent. "
+    "This is a fault in the simulator, not a change in the patient"
+)
 # The failure banner that `run_presentation.halted_run` gives before any frame of the
 # stopped run has been drawn. At that point the chart and the readouts still show
 # the frame drawn before the stop, which is not the step the run stopped at. So
@@ -297,6 +322,26 @@ SUPPORTED_LIMIT_NOTICE_TEMPLATE: Final = (
     "slow part of the trace can stray from a patient grows as a run goes on, so the "
     "model is not claimed to represent a patient past this span. The values shown "
     "are the last completed step, inside the supported span. {exit}"
+)
+#: The banner a run shows in the last stretch before the supported run length. It is
+#: drawn in the muted colour, as the stop it announces is, because nothing is wrong
+#: with the run (`PL-H2K2`, `PL-0889`).
+APPROACHING_LIMIT_NOTICE_TEMPLATE: Final = (
+    "This run stops in {remaining} of simulated time, at the supported run length of {run_length}."
+)
+#: The least real time, in seconds, for which the approaching-limit banner is on
+#: screen before the stop, at the fastest playback rate. WCAG 2.2 SC 2.2.1 (Timing
+#: Adjustable) asks that a user be warned before a time limit expires and given at
+#: least 20 seconds to act. Read from W3C's Understanding document for that criterion
+#: on 2026-11-22. The run's limit is in simulated time, so the banner opens this many
+#: real seconds before the stop at the fastest rate, and earlier in real time at every
+#: slower rate.
+APPROACHING_LIMIT_WARNING_REAL_S: Final = 20
+#: How much simulated time before the supported run length the banner opens: the
+#: real-time warning above, at the fastest playback rate offered. At 300x that is
+#: 6,000 s, 1 h 40 min of simulated time.
+APPROACHING_LIMIT_NOTICE_S: Final = APPROACHING_LIMIT_WARNING_REAL_S * max(
+    rate.multiplier for rate in SUPPORTED_PLAYBACK_RATES
 )
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
@@ -386,8 +431,8 @@ NO_TRACES_SHOWN_TEXT: Final = (
 READOUTS_PLACE_TEXT: Final = "the readouts above"
 
 # Shown when a drawn trace goes above the top of the plot, naming the traces
-# that do. A setting in common use exceeds the fixed axis
-# (`CHART_AXIS_TOP_MAC`): sevoflurane's 8% dial setting is 4.00 MAC. A trace
+# that do. A setting in common use exceeds the standard top
+# (`CHART_AXIS_TOP_MAC`): sevoflurane's 8% dial setting is 4.44 MAC at age 40. A trace
 # clipped at the ceiling draws as a horizontal line, which is what a plateau
 # looks like. Growing the axis to fit was rejected, because it would redraw the
 # curve at a smaller height partway through the induction it is being used to
@@ -625,6 +670,20 @@ COMPARING_FORK_LOCK_TEMPLATE: Final = (
 COMPARISON_PINNED_AWAY_TEMPLATE: Final = (
     "This Workspace is pinned to {pinned}, so it does not draw this comparison. "
     "Unpin it from the Workspace's tab to compare {trunk} and {branch}."
+)
+# The same pin, said before a branch is taken (`PL-RXR8`). The template above
+# reports the pin after the press, once the one comparison slot is filled. A
+# branch cannot be undone short of the trunk's Reset, which starts the case
+# over, so the Branch View also says it before the press, while only one run is
+# open. Telling a reader what an action will do before they act is what
+# Vermeulen et al. (CHI 2013, doi:10.1145/2470654.2466255) call feedforward,
+# and the Nielsen Norman Group's "Preventing User Errors: Avoiding Conscious
+# Mistakes" asks for a preview of the result "wherever possible". It is a
+# state caption in `MUTED`, like the lock, and not a warning: nothing is wrong
+# yet, and the press stays offered. The wording is a placeholder.
+PINNED_FORK_NOTICE_TEMPLATE: Final = (
+    "This Workspace is pinned to {pinned}, so it will not draw a branch taken here "
+    "beside it. Unpin it from the Workspace's tab to compare the two runs here."
 )
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 
@@ -905,10 +964,9 @@ COMPARING_AGENT_LOCK_TEXT: Final = "Locked while comparing"
 
 # The agent-accounting panel. The amounts are litres of equivalent pure agent
 # gas, which is not the unit in which anyone consumes agent, so the caption
-# says so (`PL-TG60`). The two residual lines print only the power of ten that
-# each value is less than. An order of magnitude is the whole purpose of those
-# lines, and it is the only meaningful digit a rounding residual has
-# (`PL-3PJZ`).
+# says so (`PL-TG60`). The residual line prints only the power of ten that the
+# value is less than. An order of magnitude is the whole purpose of that line,
+# and it is the only meaningful digit a rounding residual has (`PL-3PJZ`).
 ACCOUNTING_HEADING: Final = "Agent accounting validation"
 ACCOUNTING_VALID_TEXT: Final = "Valid"
 ACCOUNTING_FAILED_TEXT: Final = "Validation failed"
@@ -942,14 +1000,11 @@ ACCOUNTING_UNIT_CAPTION: Final = (
     f"at {REFERENCE_CONDITION_LABEL}.\n"
     f"{BODY_STORES_CONDITION_LINES}"
 )
-#: The names of the panel's five amount lines, in the order the panel shows them.
-ACCOUNTING_AMOUNT_NAMES: Final = (
-    "Delivered",
-    "Exhausted",
-    "Stored",
-    "Unaccounted",
-    "Absolute error",
-)
+#: The names of the panel's four amount lines, in the order the panel shows them. The
+#: residual is shown once, as "Unaccounted": the panel prints a residual only as the
+#: power of ten it lies below, without its sign, so an absolute-error line would read
+#: the same string (project owner, 2026-10-03, ratified, `PL-XFWG`).
+ACCOUNTING_AMOUNT_NAMES: Final = ("Delivered", "Exhausted", "Stored", "Unaccounted")
 
 # The transport row's labels, and the two selector captions beside it.
 START_LABEL: Final = "Start"
@@ -957,6 +1012,9 @@ PAUSE_LABEL: Final = "Pause"
 RESET_LABEL: Final = "Reset"
 PLAYBACK_LABEL: Final = "Playback"
 TIME_BASE_LABEL: Final = "Time base"
+# The label beside the control that sets the top of the compartment chart's
+# axis. The control names the top in MAC, so the label says what it sets.
+CHART_CEILING_LABEL: Final = "Axis top"
 FIT_RUN_LABEL: Final = "Fit run"
 
 # The chart panel's heading and its time-axis captions. The caption states
@@ -1956,6 +2014,30 @@ def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = F
     )
 
 
+def shown_failure_reason(status: RunStatus) -> str | None:
+    """Return the reason that a failure banner shows the learner, or None if the run has not failed.
+
+    A step whose agent accounting failed its check is reported in plain words,
+    `ACCOUNTING_FAILURE_REASON_TEXT`, and not in the core's message, which is
+    written for a developer. Every other failure shows the reason the run
+    recorded. A controller records the accounting check only with the first
+    failure (`SimulationController.fail`), so a run that failed for something
+    else first keeps that reason.
+
+    Args:
+        status: The run's status, either a `RunStatus` or the snapshot
+            carrying one.
+    """
+
+    if status.failure_reason is None:
+        return None
+
+    if status.rejected_accounting is not None:
+        return ACCOUNTING_FAILURE_REASON_TEXT
+
+    return status.failure_reason
+
+
 def refused_setting_notice(error: SimulationConfigurationError) -> str:
     """Return what the banner says about a setting that the core refused.
 
@@ -2062,7 +2144,7 @@ def notice(
             else REJECTED_ACCOUNTING_NOTICE_TEMPLATE
         )
         return template.format(
-            failure_reason=status.failure_reason,
+            failure_reason=shown_failure_reason(status),
             exit=_stopped_run_exit(
                 rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),
@@ -2145,7 +2227,7 @@ def halt_notice(
             template = UNDRAWN_FAILURE_NOTICE_TEMPLATE
 
         return template.format(
-            failure_reason=status.failure_reason,
+            failure_reason=shown_failure_reason(status),
             exit=_stopped_run_exit(
                 rejected_setting_notice, refused_reset, setting_way_out=RESET_SETTING_WAY_OUT_TEXT
             ),
@@ -2162,6 +2244,137 @@ def halt_notice(
         )
 
     return None
+
+
+@dataclass(frozen=True, slots=True)
+class Notice:
+    """The banner above a run's values, and the emphasis it is drawn with.
+
+    A run failing, or a setting being refused, is drawn as a warning. A stop
+    at the supported run length, and the banner that announces it, are drawn
+    muted, as the status word for that stop is. Nothing is wrong with a run
+    that reaches its declared span, and drawing it in the warning colour
+    would spend the interface's one signal for a real fault (`PL-0889`).
+    """
+
+    text: str
+    emphasis: Emphasis
+
+
+def run_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None,
+    *,
+    elapsed_s: int,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
+) -> Notice | None:
+    """Return the banner for a frame that drew, with its emphasis.
+
+    The text is `notice`'s, and it outranks everything else. Below it, a run
+    within `APPROACHING_LIMIT_NOTICE_S` of the supported run length says how
+    much simulated time it has left before it stops (`PL-H2K2`). So a reader
+    learns of the stop before it arrives, and the stop does not read as a
+    fault when it comes. A refused setting stays on screen until the next
+    accepted setting, so a refusal made hours earlier can still hold the
+    banner when the run enters that span. The countdown then follows the
+    refusal in the same banner, so the warning is never hidden behind it.
+
+    Args:
+        status: As `notice` takes it.
+        rejected_setting_notice: As `notice` takes it.
+        elapsed_s: The run's elapsed simulated time at this frame, in whole
+            seconds.
+        refused_reset: As `notice` takes it.
+        branch_offered: As `notice` takes it.
+
+    Returns:
+        The banner, or None when there is nothing to say.
+    """
+
+    text = notice(
+        status, rejected_setting_notice, refused_reset=refused_reset, branch_offered=branch_offered
+    )
+    remaining_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S - elapsed_s
+    countdown = (
+        APPROACHING_LIMIT_NOTICE_TEMPLATE.format(
+            remaining=format_elapsed(remaining_s), run_length=format_supported_run_length()
+        )
+        if remaining_s <= APPROACHING_LIMIT_NOTICE_S
+        else None
+    )
+
+    if text is None:
+        return None if countdown is None else Notice(countdown, Emphasis.MUTED)
+
+    stopped = status.failure_reason is not None or status.supported_limit_reason is not None
+
+    if countdown is not None and not stopped:
+        text = f"{text} {countdown}"
+
+    return Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
+
+
+def halt_run_notice(
+    status: RunStatus,
+    rejected_setting_notice: str | None = None,
+    *,
+    refused_reset: str | None = None,
+    branch_offered: bool = False,
+    started_over: bool = False,
+    charts_withheld: bool = False,
+) -> Notice | None:
+    """Return `halt_notice`'s banner with its emphasis, for a halt with no frame drawn yet.
+
+    Args:
+        status: As `halt_notice` takes it.
+        rejected_setting_notice: As `halt_notice` takes it.
+        refused_reset: As `halt_notice` takes it.
+        branch_offered: As `halt_notice` takes it.
+        started_over: As `halt_notice` takes it.
+        charts_withheld: As `halt_notice` takes it.
+
+    Returns:
+        The banner, or None when the run is not halted.
+    """
+
+    text = halt_notice(
+        status,
+        rejected_setting_notice,
+        refused_reset=refused_reset,
+        branch_offered=branch_offered,
+        started_over=started_over,
+        charts_withheld=charts_withheld,
+    )
+
+    return (
+        None
+        if text is None
+        else Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
+    )
+
+
+def _stopped_emphasis(
+    status: RunStatus, rejected_setting_notice: str | None, refused_reset: str | None
+) -> Emphasis:
+    """Return the emphasis of `notice`'s and `halt_notice`'s banners, by the same precedence.
+
+    A failure outranks the supported run length, as in `status_word`. A
+    banner that states a refused setting or a refused Reset is drawn as a
+    warning, because what the reader asked for was not done. That holds on a
+    run stopped at the supported run length too, whose banner then states
+    the refusal. Only the stop itself, with nothing refused, is muted.
+    """
+
+    if (
+        status.failure_reason is None
+        and status.supported_limit_reason is not None
+        and rejected_setting_notice is None
+        and refused_reset is None
+    ):
+        return Emphasis.MUTED
+
+    return Emphasis.WARNING
 
 
 def _supported_limit_setting_way_out(branch_offered: bool) -> str:
@@ -2258,12 +2471,11 @@ class Accounting:
     Attributes:
         status: "Valid" in accent or "Validation failed" in warning.
         detail: One sentence under it saying what the status means.
-        amounts: Five lines. The first three give delivered, exhausted and
+        amounts: Four lines. The first three give delivered, exhausted and
             stored agent at the resolution that `format_agent_volume`
-            derives. The last two give the unaccounted amount and the
-            absolute error, each as the power of ten that it is less than,
-            because an order of magnitude is what those two lines are for
-            (`PL-TG60`, `PL-3PJZ`).
+            derives. The last gives the unaccounted amount as the power of
+            ten that it is less than, because an order of magnitude is what
+            that line is for (`PL-TG60`, `PL-3PJZ`, `PL-XFWG`).
     """
 
     status: StatusWord
@@ -2304,7 +2516,6 @@ def accounting(snapshot: SimulationSnapshot) -> Accounting:
         exhausted_l=snapshot.exhausted_agent_l,
         stored_l=snapshot.stored_agent_l,
         unaccounted_l=snapshot.unaccounted_agent_l,
-        absolute_error_l=snapshot.agent_accounting_absolute_error_l,
     )
 
     return Accounting(status, detail, amounts)
@@ -2335,27 +2546,20 @@ def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accou
             exhausted_l=rejected.exhausted_agent_l,
             stored_l=rejected.currently_stored_agent_l,
             unaccounted_l=rejected.unaccounted_agent_l,
-            absolute_error_l=rejected.absolute_error_l,
         ),
     )
 
 
 def _accounting_amounts(
-    *,
-    delivered_l: float,
-    exhausted_l: float,
-    stored_l: float,
-    unaccounted_l: float,
-    absolute_error_l: float,
+    *, delivered_l: float, exhausted_l: float, stored_l: float, unaccounted_l: float
 ) -> str:
-    """The accounting panel's five amount lines, from one step's totals, in litres."""
+    """The accounting panel's four amount lines, from one step's totals, in litres."""
 
     amounts = (
         format_agent_volume(delivered_l),
         format_agent_volume(exhausted_l),
         format_agent_volume(stored_l),
         format_agent_residual(unaccounted_l),
-        format_agent_residual(absolute_error_l),
     )
 
     return "\n".join(
@@ -2858,6 +3062,12 @@ class ForkOffer:
             the notice banner, or None. It is never set while `locked`. The
             control that produced the refusal is gone, so the message would
             be about something the reader can no longer see.
+        pinned_notice: What the panel says above its controls while the
+            current Workspace is pinned to one run and a branch is still
+            offered, or the empty string. A branch taken there would not be
+            drawn in the Workspace (`PINNED_FORK_NOTICE_TEMPLATE`). It is
+            empty while `locked`, because the lock caption then names the pin
+            itself (`comparing_fork_lock_text`), and while nothing is offered.
     """
 
     points: tuple[ForkPoint, ...]
@@ -2866,6 +3076,7 @@ class ForkOffer:
     here_offered: bool
     here_label: str
     refusal: str | None
+    pinned_notice: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -2939,6 +3150,7 @@ def fork_offer(
     comparing: ComparedRuns | None,
     here: HereForkPoint | None,
     refusal: str | None = None,
+    pinned_to: str | None = None,
 ) -> ForkOffer:
     """Return what the branch control shows for one tick of the trunk.
 
@@ -3004,6 +3216,12 @@ def fork_offer(
         refusal: Why the most recently requested branch was not taken, or
             None. It is dropped while the control is locked, because it
             describes a press of a control that the reader can no longer see.
+        pinned_to: The name of the run that the current Workspace is pinned
+            to, or None while it is not pinned. The dashboard reads it as it
+            reads `ComparedRuns.pinned_away`, so the sentence before a branch
+            and the sentence after it name the same run (`PL-RXR8`). It is
+            ignored while `comparing` is set, because the lock caption then
+            says it, and while nothing is offered.
 
     Returns:
         The points to offer, each labelled and carrying the method through
@@ -3026,14 +3244,24 @@ def fork_offer(
     # The comparison cap refuses every way of branching. So it is applied
     # once, here, rather than checked separately for each field.
     offered_here = None if comparing is not None else here
+    points = tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s))
+    # The pin is said only beside a branch that can be taken. While two runs
+    # are open the lock caption names it, and with nothing offered there is no
+    # press for it to come before.
+    branch_offered = comparing is None and (bool(points) or offered_here is not None)
 
     return ForkOffer(
-        points=tuple(sorted((*control_events, *passed_marks), key=lambda point: point.instant_s)),
+        points=points,
         locked=comparing is not None,
         lock_reason="" if comparing is None else comparing_fork_lock_text(comparing),
         here_offered=offered_here is not None,
         here_label="" if offered_here is None else _here_fork_label(offered_here),
         refusal=None if comparing is not None else refusal,
+        pinned_notice=(
+            PINNED_FORK_NOTICE_TEMPLATE.format(pinned=pinned_to)
+            if branch_offered and pinned_to is not None
+            else ""
+        ),
     )
 
 
@@ -3161,8 +3389,8 @@ class RunStatement:
         transport: Which transport controls are usable, and why the
             selector is locked.
         timeline: The control-change panel.
-        banner: The notice banner's text before it is attributed to a run,
-            or None for no banner.
+        banner: The notice banner before it is attributed to a run, or None
+            for no banner.
     """
 
     agent_id: str
@@ -3172,7 +3400,7 @@ class RunStatement:
     status: StatusWord
     transport: Transport
     timeline: TimelinePanel
-    banner: str | None
+    banner: Notice | None
 
 
 def run_statement(
@@ -3181,7 +3409,7 @@ def run_statement(
     *,
     is_branch: bool,
     comparing: bool,
-    banner: str | None,
+    banner: Notice | None,
     stopped_on_mark: bool,
 ) -> RunStatement:
     """Return what a run's screen shows from its record alone, for `RunView.show_presentation`.
@@ -3197,8 +3425,8 @@ def run_statement(
             `RunView.adjustments` groups it.
         is_branch: As `transport` takes it.
         comparing: As `transport` takes it.
-        banner: The text from `notice` when a frame drew, or from
-            `halt_notice` when none has. The caller chooses, because only the
+        banner: The banner from `run_notice` when a frame drew, or from
+            `halt_run_notice` when none has. The caller chooses, because only the
             caller knows whether a frame drew.
         stopped_on_mark: As `status_word` takes it.
 
@@ -3375,7 +3603,10 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
             if _above_the_axis(frame, run.preview.percents(quantity))
         ]
     )
-    top = format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent)
+    # The top is named in both of the axis's units, so a reader working from
+    # either axis learns where the plot stops without converting (`PL-DVDY`).
+    top_fraction = fraction_from_percent(frame.axis_top_percent)
+    top = f"{format_percent(top_fraction)} ({format_mac_multiple(top_fraction, frame.mac_percent)})"
     sentences = []
 
     if off_scale:
@@ -3396,8 +3627,10 @@ def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
 
     A display step is the smallest change that the readouts print. This is the
     one test of "off the scale", and both the chart's off-scale notice and the
-    compartment schematic's off-scale mark use it. So the two Views cannot
-    disagree about one tension (`PL-RNYV`). The margin of one display step is
+    compartment schematic's off-scale mark use it (`PL-RNYV`). Each passes its
+    own top: the chart the top its View chose, and the schematic the standard
+    top. So the two agree about one tension only while the chart is at the
+    standard top. The margin of one display step is
     needed because of binary rounding. For example, desflurane's top of 3 x 6.6
     is 19.799999999999997 in binary. A value that the readouts print as the top
     is not above it.
@@ -3608,7 +3841,7 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
     return COMPARED_RUN_LINE_TEMPLATE.format(run=run.label, line=line)
 
 
-def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | None:
+def compared_run_notice(notice_text: str, run_name: str | None) -> str:
     """Return one run's banner in the notice column that the runs share, named while two are drawn.
 
     The banner sits in a column that both runs write into. All three of the
@@ -3647,15 +3880,16 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     panel and in both legends.
 
     Args:
-        notice_text: The result of `notice` for this run this tick, or None
-            when there is nothing to say.
+        notice_text: The banner's text for this run this tick. A run with
+            nothing to say has no banner to name, and
+            `run_presentation` does not call this for it.
         run_name: What the dashboard calls this run, from `run_label`, or
             None while only one run is drawn and there is nothing to tell it
             apart from.
 
     Returns:
-        The notice unchanged while one run is drawn or there is no notice, or
-        the run's name followed by the notice while two runs are drawn.
+        The notice unchanged while one run is drawn, or the run's name
+        followed by the notice while two runs are drawn.
 
     Raises:
         ValueError: If `run_name` is empty, because an empty name names no
@@ -3668,7 +3902,7 @@ def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | 
     if run_name is not None and not run_name:
         raise ValueError("a run's name says which run the banner is about, so it cannot be empty")
 
-    if notice_text is None or run_name is None:
+    if run_name is None:
         return notice_text
 
     return COMPARED_RUN_NOTICE_TEMPLATE.format(run=run_name, notice=notice_text)
@@ -3986,3 +4220,30 @@ def readout_columns(width_px: float, panel_widths_px: Sequence[float], spacing_p
             return columns
 
     return READOUT_ROW_LADDER[-1]
+
+
+def input_frame_wait_ms(frame_cost_ms: float) -> int:
+    """Return how long to wait after a dial input's frame before the next one may draw, in ms.
+
+    The next frame starts `INPUT_FRAME_INTERVAL_MS` after this one started,
+    or twice this frame's cost after it started, whichever is later. A cheap
+    frame therefore lets the charts follow a moving dial at Nielsen Norman
+    Group's 0.1 s limit. A frame that takes longer than half the interval,
+    such as one that draws a preview over a long run, leaves the thread free
+    for at least as long as it drew, so a moving dial never takes more than
+    half of the time in which the run's steps and the reader's inputs are
+    handled (`PL-NKFD`). The result is rounded up to a whole millisecond,
+    because that is what a timer takes.
+
+    Raises:
+        ValueError: `frame_cost_ms` is negative or not finite. A wall-clock
+            difference can be neither, so either means the caller measured
+            the wrong thing.
+    """
+
+    if not isfinite(frame_cost_ms) or frame_cost_ms < 0.0:
+        raise ValueError(
+            f"a frame's cost must be a finite number of ms >= 0, got {frame_cost_ms!r}"
+        )
+
+    return ceil(max(INPUT_FRAME_INTERVAL_MS - frame_cost_ms, frame_cost_ms))

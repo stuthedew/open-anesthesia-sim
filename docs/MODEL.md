@@ -402,6 +402,33 @@ $$
 When $`Q>0`$, the flow-weighted concentration entering the pool is
 $`F_{\mathrm{tissue\ return}} = \sum_i Q_iF_i / Q`$.
 
+**The pool stands in for the time blood takes to return from the tissues to
+the lungs.** Its time constant is the pool's volume divided by the cardiac
+output: 14.7 s at 5.0 L/min (§ "The reference adult"), and 36.7 s at
+2.0 L/min. Early in a wash-in, the mixed-venous value is low mainly because
+the tissues are taking up agent, and the pool adds a lag on top of that. In a
+run of the reference adult at a 1 MAC dial and 5.0 L/min, the mixed-venous
+value is about 60% below the blood leaving the tissues at 30 s, 40% below at
+1 minute, 20% below at 2 minutes and 5% below at 5 minutes, with each of the
+three agents. At 2.0 L/min the lag lasts about two and a half times as long:
+the mixed-venous value is still about 15% below at 5 minutes, and 5% below at
+10 minutes. Against the alveolar value the lag is small at either output. Over
+the first 5 minutes it makes up at most about 7% of the gap between the
+alveolar and the mixed-venous values. So a low mixed-venous reading early in a
+case shows tissue uptake, delayed slightly by the return time.
+<!-- provenance: data/patients/reference_adult.json default_cardiac_output_l_min = 5 -->
+<!-- not-restated: 5 % -->
+
+The direction of the lag is physiological. While concentrations rise, the
+venous blood arriving at the lungs is lower than the blood leaving the
+tissues, because it left them earlier. Mapleson (1963, Appendix 2, p. 204)
+puts the error from leaving that transit out at the first minute or two after
+a change of inspired concentration. The pool's shape differs from a real
+transit. Its value starts to rise in the first second, where in a real
+circulation agent reaches the venous return only after a delay. So the first
+minutes after a change of inspired concentration are the least exact part of
+the mixed-venous trace, and more of them at a low cardiac output.
+
 ### Conservation of agent
 
 $$
@@ -953,7 +980,8 @@ days:
 <!-- not-restated: 5 % -->
 
 The 24 hours are not inside the exposure range over which sevoflurane's
-metabolism was measured. Kharasch's review covers 0.35 to 9.5 MAC-hours. A run
+metabolism was measured. The studies of plasma fluoride that Kharasch's review
+summarizes gave doses from 0.35 to 9.5 MAC-hours. A run
 whose alveolar fraction is held near 1 MAC gains about one MAC-hour per hour,
 so it leaves the measured range at about 9.5 hours and reaches about 24
 MAC-hours at the limit. Counted at the dial, a run held at sevoflurane's 8%
@@ -1241,7 +1269,8 @@ The figures are mean ± SD, read from the two abstracts.
 
 The model lands inside the published standard deviation for every row, and
 reproduces the ordering by solubility (desflurane above sevoflurane above
-isoflurane). It does so at every fresh gas flow from 1 to 10 L/min.
+isoflurane). It does so at each of the six fresh gas flows it is run at, from 1 to
+10 L/min.
 <!-- not-restated: 10 L/min -->
 
 - **The settings were not fitted.** Alveolar ventilation and cardiac output
@@ -1283,8 +1312,8 @@ follows their isoflurane curve. No single stored coefficient, varied within
 its measured range, closes the gap. Blood:gas brings the early points within
 one SD at about 0.55 or higher, where Eger's 0.424 ± 0.024 does not reach and
 Esper et al.'s 0.57 ± 0.04 does. But the 30-minute ratio stays within one SD
-at every flow only while blood:gas is about 0.46 or lower. At 0.57 it falls
-outside at every flow, from −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. The
+at each flow tested only while blood:gas is about 0.46 or lower. At 0.57 it falls
+outside at each of them, from −1.35 SD at 10 L/min to −2.61 SD at 1 L/min. The
 vessel-rich and muscle coefficients cannot close the gap at any value within
 Yasuda, Targ and Eger's measurements (brain 0.54 ± 0.02, muscle 0.94 ± 0.35).
 <!-- not-restated: 10 L/min, 0.54 -->
@@ -1373,8 +1402,9 @@ on screen as a prediction of how fast a patient recovers.**
    101 ± 7% for sevoflurane and 101 ± 6% for isoflurane in the first study,
    and 105 ± 25% for desflurane and 102 ± 13% for isoflurane in the second.
    Halothane gave 64 ± 9%, so the method does detect a metabolized agent. At
-   five minutes the fourth compartment's term is about one part in twenty of
-   what remains.
+   five minutes the fourth compartment's term is 4 to 5% of what remains.
+
+<!-- not-restated: 5 % -->
 
 ### What these comparisons can and cannot detect
 
@@ -1431,11 +1461,11 @@ Two limits apply to those figures:
    of the volunteers' own curves. The direction is settled, and the size is
    known to about a factor of two.
 
-**What a learner sees of this.** At a 1% dial, the alveolar trace falls below
-the readouts' 0.01 percentage points at 2.8, 4.2 and 1.9 hours for
-sevoflurane, isoflurane and desflurane, before the stretch over which it runs
-below the measured mean. A higher dial keeps the trace readable for longer. A
-6% desflurane dial keeps it there until about the fifth hour, which is inside
+**What a learner sees of this.** At a 1% dial, the alveolar readout changes
+from a number to `<0.01%` at 4.9, 6.6 and 3.1 hours for sevoflurane,
+isoflurane and desflurane, before the stretch over which the trace runs below
+the measured mean. A higher dial keeps a number on the readout for longer. A
+6% desflurane dial keeps one there until about 7.8 hours, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the
 shortfall.
 
@@ -1488,6 +1518,8 @@ Each limitation in this section can change what a displayed value means.
 ### What the model does not represent
 
 - a separate arterial blood-mixing compartment;
+- the time blood takes to travel from the tissues to the lungs, which a
+  well-mixed venous pool stands in for (§ "Venous blood");
 - lung tissue and pulmonary blood (§ "Lung tissue and pulmonary blood");
 - a vessel-poor tissue group (§ "What the model represents");
 - halothane, enflurane, ether or xenon;
@@ -1596,12 +1628,19 @@ circuit adds for sevoflurane and isoflurane.
 
 ### Lung tissue and pulmonary blood
 
-Together these are an omitted store worth about a fifth of the fast pool. On
-round figures (1 kg of lung tissue with a tissue:blood ratio of 1.2, and 1.8 L
-of pulmonary and arterial blood), it is 20.1% of desflurane's fast pool, 19.7%
-of sevoflurane's and 23.4% of isoflurane's. It takes up agent in the first
-minutes of wash-in and equilibrates within about thirty minutes, so it barely
-changes $`F_A/F_I`$ at 30 minutes. It acts mainly early in an elimination.
+Together these are an omitted store about a fifth the size of the fast pool,
+which is the alveolar gas, the venous blood and the vessel-rich group. The
+sizes used here are round figures, not measurements from a source: 1 kg of
+lung tissue with a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and
+arterial blood. On them the store is 20.1% of desflurane's fast pool, 19.7% of
+sevoflurane's and 23.4% of isoflurane's. The store stays at the alveolar
+partial pressure, so it takes up agent only while $`F_A`$ is rising. At the
+default settings, adding it to the alveolar gas as extra capacity lowers
+$`F_A/F_I`$ by 0.08 to 0.10 at one minute of wash-in, but by only 0.001 to 0.005
+at 30 minutes. Other settings change these sizes. A low fresh gas flow keeps
+$`F_A`$ rising for longer, so the late effect is larger: with 0.5 L/min of fresh
+gas and the other settings at their defaults, the drop at 30 minutes is 0.005 to
+0.010. It acts mainly early in an elimination.
 
 ### Dead space
 
@@ -1695,13 +1734,15 @@ compartment's. The muscle group equilibrates in 85 to 135 minutes, so nothing
 in the model has a time constant on the fourth compartment's scale. Leaving it
 out biases four things:
 
-- **Fat holds too little agent.** If the fourth compartment is fat at the
-  model's stored fat solubility, then over any case from half an hour to four
-  hours it takes up 0.9 to 2.2 times as much agent as the model's whole fat
+- **Fat holds too little agent.** Suppose the fourth compartment is fat at the
+  model's stored fat solubility, and that it and the fat group fill from a
+  steady arterial partial pressure. Then over any case from half an hour to
+  four hours it takes up 0.9 to 2.2 times as much agent as the model's whole fat
   group, or 2.6 to 5.6 times as much as the studies' fitted fat group. The
-  missing store is as large as the modeled fat group's uptake, or larger.
-- **The fat trace shows only the slowly filling fat.** Fat lying against
-  well-perfused tissue runs at four to six and a half times the trace's
+  missing store is about as large as the modeled fat group's uptake, or
+  larger.
+- **The fat trace shows only the slowly filling fat.** On the same
+  assumptions, fat lying against well-perfused tissue runs at four to six and a half times the trace's
   partial pressure throughout such a case. After an hour it is at 13 to 20% of
   arterial, against the trace's 2.3 to 3.9%.
 - **The late washout loses its largest measured term.** After a 30-minute
@@ -1796,8 +1837,9 @@ has an answer in it, whether it concerns an HME or a heated humidifier.
 
 Ambient pressure is fixed at 760 mmHg. At sea level, both classes of vaporizer
 deliver the same partial pressure at a given dial position, so no displayed
-number is wrong there. A user in Denver (about 630 mmHg) or Mexico City (about
-585 mmHg) who sets 6% desflurane in the simulator and 6% on the real device is
+number is wrong there. A user in Denver (about 635 mmHg; Banchero et al. 1976)
+or Mexico City (about 585 mmHg; Hernández-Zenteno et al.
+2002) who sets 6% desflurane in the simulator and 6% on the real device is
 not delivering the same anesthetic, and nothing else in the simulator says so.
 
 **Sevoflurane and isoflurane come from variable-bypass vaporizers** (Dräger
@@ -1852,6 +1894,9 @@ and Lowe's tissue coefficients (in Yasuda, Targ and Eger 1989, p. 373).
 
 - Andrews JJ, Johnston RV. The new Tec6 desflurane vaporizer. *Anesth Analg*
   1993;76:1338-1341.
+- Banchero N, Gimenez M, Rostami A, Eby SH. Effects of simulated altitude on
+  O2 transport in dogs. *Respir Physiol* 1976;27(3):305-21. PMID 973049,
+  doi:10.1016/0034-5687(76)90060-8.
 - Boumphrey S, Marshall N. Understanding vaporizers. *Contin Educ Anaesth Crit
   Care Pain* 2011;11:199-203.
 - Candries E, De Wolf AM, Hendrickx JFA. Prospective validation of Gas Man
@@ -1918,6 +1963,9 @@ and Lowe's tissue coefficients (in Yasuda, Targ and Eger 1989, p. 373).
 - Hendrickx JFA, Lemmens HJM, Shafer SL. Do distribution volumes and
   clearances relate to tissue volumes and blood flows? A computer simulation.
   *BMC Anesthesiol* 2006;6:7. PMID 16772041, doi:10.1186/1471-2253-6-7.
+- Hernández-Zenteno RJ, Pérez-Padilla R, Vázquez JC. Normal breathing during
+  sleep at an altitude of 2240 meters. *Arch Med Res* 2002;33(5):489-94.
+  PMID 12459322, doi:10.1016/s0188-4409(02)00398-3.
 - Hudgel DW, Devadatta P. Decrease in functional residual capacity during
   sleep in normal humans. *J Appl Physiol* 1984;57(5):1319-1322.
   doi:10.1152/jappl.1984.57.5.1319.

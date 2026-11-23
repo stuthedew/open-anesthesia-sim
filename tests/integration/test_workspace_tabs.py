@@ -26,8 +26,7 @@ from anesthesia_sim.app.area_layout import AreaFrame
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import slider_position
-from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS
+from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_contract import View, ViewScope
 from anesthesia_sim.app.view_registry import BOOKMARKS, BRANCH, CONCENTRATION_CHART, WASH_IN
@@ -654,14 +653,16 @@ def test_a_dial_moved_in_a_workspace_pinned_to_the_second_run_sets_that_run_alon
 
     The Workspace is pinned to Run 2, so the setting controls View shows one
     row of dials. Both runs hold a fresh gas flow of 4.0 L/min. The learner
-    moves the dial to 7.0 L/min with the keyboard, which holds no thumb.
-    Run 2 takes the setting and Run 1 keeps its own. A View that found a
-    run's dials by their place in the list would hand Run 2 the dials built
-    for Run 1, and the move would set Run 1 (`PL-RF2S`).
+    moves the dial to 4.2 L/min with two presses of an arrow key, which hold
+    no thumb. The second press comes before any render tick, so it leaves
+    its frame to the tick (`PL-2WVC`). Run 2 takes the setting and Run 1
+    keeps its own. A View that found a run's dials by their place in the
+    list would hand Run 2 the dials built for Run 1, and the move would set
+    Run 1 (`PL-RF2S`).
 
     The dashboard hands the Views the runs at once after the move, with no
     frame. That tick follows the pin too, so the View still shows one row,
-    and the row shows 7.0 L/min.
+    and the row shows 4.2 L/min.
     """
 
     first, second = SimulationController(), SimulationController()
@@ -676,16 +677,19 @@ def test_a_dial_moved_in_a_workspace_pinned_to_the_second_run_sets_that_run_alon
     dial = dials._fresh_gas_flow_slider
     frames = view.presented_frames
 
-    dial.slider.setValue(slider_position(7.0, FLOW_DISPLAY_DECIMALS))
+    QTest.keyClick(dial.slider, Qt.Key.Key_Right)
+    QTest.keyClick(dial.slider, Qt.Key.Key_Right)
 
-    assert float(second.settings().fresh_gas_flow_l_min) == 7.0
+    assert float(second.settings().fresh_gas_flow_l_min) == pytest.approx(4.2)
     assert float(first.settings().fresh_gas_flow_l_min) == 4.0
     assert second.has_failed is False
     assert first.has_failed is False
-    assert view.presented_frames == frames, "a frame drew, so the tick with no frame was not seen"
+    assert view.presented_frames == frames + 1, (
+        "the second press drew a frame, so the tick with no frame was not seen"
+    )
     assert len(controls.rows) == 1, "the tick with no frame showed a run the pin leaves out"
     assert controls.rows[0].controls is dials
-    assert dial.value_label.text() == "7.0 L/min"
+    assert dial.value_label.text() == "4.2 L/min"
 
 
 def test_a_pinned_run_dropped_while_every_frame_fails_is_stated_as_not_open(
@@ -814,6 +818,15 @@ def test_a_pinned_run_that_is_not_open_is_stated_in_every_area_of_the_runs(
         assert frame.content.isVisible()
 
 
+def _pinned_fork_notice(pinned: str) -> str:
+    """What the Branch View says above its control while the Workspace is pinned (`PL-RXR8`)."""
+
+    return (
+        f"This Workspace is pinned to {pinned}, so it will not draw a branch taken here beside "
+        "it. Unpin it from the Workspace's tab to compare the two runs here."
+    )
+
+
 def _case_words(view: SimulationView) -> dict[str, list[str]]:
     """The words a learner reads in each View of the case, keyed by the View's class.
 
@@ -901,7 +914,14 @@ def test_a_workspace_pinned_to_a_run_that_is_not_open_still_shows_the_case_s_mar
 
     assert sorted(expected) == ["BookmarksView", "BranchView"]
     assert any("first look" in word for word in expected["BookmarksView"])
-    assert _case_words(pinned) == expected
+    # The one difference is the pin's notice above the branch control (`PL-RXR8`).
+    assert _case_words(pinned) == {
+        **expected,
+        "BranchView": [
+            _pinned_fork_notice("a run from an earlier session"),
+            *expected["BranchView"],
+        ],
+    }
 
     for area in pinned.layout_container.model.areas():
         frame = pinned.layout_container.frame(area.id)
@@ -931,7 +951,10 @@ def test_a_case_view_s_header_never_names_the_open_run_a_workspace_is_pinned_to(
     expected = _case_words(view)
     view.tab_strip.choose(_named(view.tab_strip.operations(0), "Pin Run 1"))
 
-    assert _case_words(view) == expected
+    assert _case_words(view) == {
+        **expected,
+        "BranchView": [_pinned_fork_notice("Run 1"), *expected["BranchView"]],
+    }
 
     for area in view.layout_container.model.areas():
         frame = view.layout_container.frame(area.id)
@@ -1030,6 +1053,63 @@ def test_a_branch_taken_in_a_workspace_pinned_to_the_trunk_says_so_until_it_is_u
     assert pinned_away not in _lock_caption(branch_view)
     assert "One comparison at a time." in _lock_caption(branch_view)
     assert view._kept_in_view() is _concentration(view).chart
+
+
+def test_a_pinned_workspace_says_before_a_branch_that_it_will_not_draw_it(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """The Branch View names the pin before the press, and stops once it is lifted (`PL-RXR8`).
+
+    `PL-YQ5J` said where a branch went only after it was taken, once the case's
+    one comparison slot was full. Here the Workspace is pinned to the trunk
+    and no branch has been taken. The Branch View still offers its buttons,
+    and above them says that a branch taken here will not be drawn beside
+    the trunk. Unpinning the Workspace takes the sentence away. A Workspace
+    pinned to a run of an earlier session says so in the same place.
+    """
+
+    view = _case_dashboard(application, shown, _case_views_layout())
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Pin Run 1"))
+    application.processEvents()
+    panel = _branch_panel(view)
+
+    assert panel.here_button.isVisible()
+    assert panel.pin_text.isVisible()
+    assert panel.pin_text.text() == _pinned_fork_notice("Run 1")
+
+    view.tab_strip.choose(_named(view.tab_strip.operations(0), "Unpin Run 1"))
+    application.processEvents()
+    panel = _branch_panel(view)
+
+    assert panel.here_button.isVisible()
+    assert not panel.pin_text.isVisible()
+
+
+def test_a_workspace_pinned_to_a_run_that_is_not_open_says_so_before_a_branch(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """A pin to a run of an earlier session is named before the press as it is after it."""
+
+    layout = _case_views_layout()
+    earlier = RunId(SessionToken("f" * 32), 1)
+    view = _case_dashboard(application, shown, layout.replace(0, layout.current.pinned_to(earlier)))
+    application.processEvents()
+    panel = _branch_panel(view)
+
+    assert panel.pin_text.isVisible()
+    assert panel.pin_text.text() == _pinned_fork_notice("a run from an earlier session")
+
+
+def _branch_panel(view: SimulationView) -> ForkPanel:
+    """Return the panel of the dashboard's Branch View."""
+
+    branch_view = next(
+        drawn for drawn in view.layout_container.views() if isinstance(drawn, BranchView)
+    )
+    panel = branch_view.panel
+    assert panel is not None
+
+    return panel
 
 
 def _case_views_layout() -> WorkspaceSet:

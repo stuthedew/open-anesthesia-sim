@@ -125,6 +125,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ForkOffer,
     ForkPoint,
     HaltDisposition,
+    Notice,
     RunMarks,
     above_the_axis_top,
     accounting,
@@ -139,7 +140,9 @@ from anesthesia_sim.app.dashboard_frame import (
     fork_offer,
     halt_disposition,
     halt_notice,
+    halt_run_notice,
     height_entry_maximum_mac,
+    input_frame_wait_ms,
     kept_fork_selection,
     mac_awake_caption,
     mac_reference_caption,
@@ -158,6 +161,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_setting_notice,
     rejected_step_accounting,
     run_label,
+    run_notice,
     run_statement,
     setting_readouts,
     slider_position,
@@ -179,6 +183,7 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     FLOW_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
+    ChartCeiling,
     format_case_discard_warning,
     format_chart_time_label,
     format_elapsed,
@@ -210,13 +215,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
     AgentSimulationValidator,
 )
-from anesthesia_sim.core.concentration import (
-    Fraction,
-    MacMultiple,
-    MacPercent,
-    Percent,
-    fraction_from_percent,
-)
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, MacPercent, Percent
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
@@ -458,7 +457,6 @@ def _snapshot(
         ),
         stored_agent_l=stored_agent_l,
         unaccounted_agent_l=1.5e-13,
-        agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         control_timeline=control_timeline,
         bookmarks=BookmarkSet() if bookmarks is None else bookmarks,
@@ -670,6 +668,52 @@ def test_a_frame_is_two_ticks() -> None:
     """
 
     assert RENDER_INTERVAL_S * 1_000 == 2 * SIMULATION_TICK_INTERVAL_MS
+
+
+@pytest.mark.parametrize(
+    ("frame_cost_ms", "wait_ms"),
+    [(0.0, 100), (40.0, 60), (40.2, 60), (50.0, 50), (104.0, 104), (103.5, 104)],
+    ids=["free", "cheap", "cheap, rounded up", "half the interval", "slow", "slow, rounded up"],
+)
+def test_an_input_frame_waits_out_the_interval_or_its_own_cost(
+    frame_cost_ms: float, wait_ms: int
+) -> None:
+    """The wait after a dial input's frame keeps frames 100 ms apart, or idle as long as they drew.
+
+    Nielsen Norman Group gives 0.1 s as the limit for a user to feel that
+    they are directly manipulating what is on screen, so a frame that costs
+    less than half of it is followed by the rest of the 100 ms. A frame that
+    costs more is followed by a pause as long as itself, so drawing never
+    takes more than half of the thread (`PL-NKFD`). Each expected wait is
+    worked out by hand from that rule and rounded up to a whole millisecond.
+    """
+
+    assert input_frame_wait_ms(frame_cost_ms) == wait_ms
+
+
+def test_two_input_frames_start_the_interval_or_twice_the_cost_apart() -> None:
+    """From one frame's start to the next is 100 ms, or twice the frame's cost, whichever is longer.
+
+    The costs run across the 50 ms at which the two bounds meet. The
+    comparison allows the rounding up to a whole millisecond and nothing
+    more.
+    """
+
+    for tenths in range(0, 3001):
+        cost_ms = tenths / 10
+        start_to_start_ms = cost_ms + input_frame_wait_ms(cost_ms)
+        expected_ms = max(100.0, 2 * cost_ms)
+        # The wait is rounded up to a whole millisecond, so the start-to-start
+        # time can exceed the rule's by less than 1 ms and never fall short.
+        assert expected_ms <= start_to_start_ms < expected_ms + 1, cost_ms
+
+
+@pytest.mark.parametrize("frame_cost_ms", [-1.0, math.nan, math.inf])
+def test_an_input_frame_s_wait_refuses_a_cost_no_clock_can_measure(frame_cost_ms: float) -> None:
+    """A negative, missing or infinite cost is refused rather than turned into a wait."""
+
+    with pytest.raises(ValueError, match="frame's cost"):
+        input_frame_wait_ms(frame_cost_ms)
 
 
 def test_the_dashboard_displays_at_most_two_runs() -> None:
@@ -1153,6 +1197,129 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
 
     assert banner is not None
     assert f"supported run length of {format_supported_run_length()}" in banner
+
+
+#: 24 hours less 1 h 40 min, in seconds, worked out by hand: 86,400 - 6,000. The banner
+#: opens 20 s of real time before the stop at 300x, which is 6,000 s of simulated time
+#: (WCAG 2.2 SC 2.2.1's 20 s at the fastest playback rate).
+_FIRST_SECOND_OF_THE_APPROACH_S = 80_400
+
+
+def test_the_interface_says_the_run_is_approaching_its_supported_length() -> None:
+    """A run 1 h 40 min from the 24-hour stop says so, before it gets there (`PL-H2K2`).
+
+    Before this change the run advanced with no word until the step at 24
+    hours was refused. The halt then arrived with no warning and could read
+    as a fault. The banner is drawn muted, because nothing is wrong with the
+    run. Each expected string was worked out by hand from the times above.
+    """
+
+    def banner_at(elapsed_s: int) -> Notice | None:
+        snapshot = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(elapsed_s))
+        return run_notice(snapshot, None, elapsed_s=snapshot.elapsed_s)
+
+    assert banner_at(_FIRST_SECOND_OF_THE_APPROACH_S - 1) is None
+    assert banner_at(_FIRST_SECOND_OF_THE_APPROACH_S) == Notice(
+        "This run stops in 1h40m of simulated time, at the supported run length of 24 hours.",
+        Emphasis.MUTED,
+    )
+    assert banner_at(86_399) == Notice(
+        "This run stops in 1s of simulated time, at the supported run length of 24 hours.",
+        Emphasis.MUTED,
+    )
+
+
+def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
+    """A stopped run or a refused setting describes the run now, so it leads the banner.
+
+    The refused setting is drawn as a warning, because the reader's setting was
+    not applied. The stop at the limit is drawn muted, as its status word is.
+    """
+
+    approaching = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(86_000))
+    refused = run_notice(approaching, "Setting refused — too high", elapsed_s=approaching.elapsed_s)
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    stopped = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s)
+    failed = replace(approaching, failure_reason="RuntimeError: boom", is_running=False)
+
+    assert refused is not None
+    assert refused.text.startswith("Setting refused — too high.")
+    assert refused.emphasis is Emphasis.WARNING
+    assert stopped is not None
+    assert stopped.text.startswith("Simulation stopped — this run reached the supported run")
+    assert stopped.emphasis is Emphasis.MUTED
+    assert run_notice(failed, None, elapsed_s=failed.elapsed_s) == Notice(
+        notice(failed, None), Emphasis.WARNING
+    )
+
+
+def test_a_refusal_made_before_the_warning_does_not_hide_the_countdown() -> None:
+    """A refused setting stays on screen until a setting is accepted, so it can hold the banner.
+
+    A refusal made at hour 10 is still shown at hour 23. The countdown then
+    follows it in the same banner, or the stop would arrive unannounced. The
+    expected remaining time is worked out by hand: 86 400 s less 80 400 s is
+    6 000 s, which the clock writes as 1h40m.
+    """
+
+    approaching = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(80_400))
+
+    banner = run_notice(approaching, "Setting refused — too high", elapsed_s=approaching.elapsed_s)
+
+    assert banner == Notice(
+        "Setting refused — too high. The simulation is unchanged and still running its "
+        "previous setting. This run stops in 1h40m of simulated time, at the supported "
+        "run length of 24 hours.",
+        Emphasis.WARNING,
+    )
+
+
+def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
+    """With no frame drawn, a failure is a warning and the run-length stop is not (`PL-0889`)."""
+
+    at_limit = _snapshot(supported_limit_reason="reached 86400 s")
+    failed = _snapshot(failure_reason="RuntimeError: boom")
+
+    assert halt_run_notice(at_limit) == Notice(halt_notice(at_limit), Emphasis.MUTED)
+    assert halt_run_notice(failed) == Notice(halt_notice(failed), Emphasis.WARNING)
+    assert halt_run_notice(_snapshot()) is None
+
+
+def test_a_refused_reset_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning() -> None:
+    """A Reset that was refused is a request not carried out, so its banner is a warning too."""
+
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    refused_reset = "Reset was refused: no run can be built."
+
+    drawn = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s, refused_reset=refused_reset)
+    halted = halt_run_notice(at_limit, refused_reset=refused_reset)
+
+    assert drawn == Notice(notice(at_limit, None, refused_reset=refused_reset), Emphasis.WARNING)
+    assert halted == Notice(halt_notice(at_limit, refused_reset=refused_reset), Emphasis.WARNING)
+
+
+def test_a_refusal_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning() -> None:
+    """The stop is muted, but a banner that says a setting was refused is a warning.
+
+    A dial moved on a run stopped at the supported run length is refused, and
+    the stop's banner then states the refusal. What the reader asked for was
+    not done, so the banner takes the alert colour, drawn frame or not.
+    """
+
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    refused = "Setting refused — the run has stopped"
+
+    drawn = run_notice(at_limit, refused, elapsed_s=at_limit.elapsed_s)
+    halted = halt_run_notice(at_limit, refused)
+
+    assert drawn == Notice(notice(at_limit, refused), Emphasis.WARNING)
+    assert halted == Notice(halt_notice(at_limit, refused), Emphasis.WARNING)
 
 
 def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
@@ -2365,7 +2532,7 @@ def test_the_delivered_dial_is_held_in_percent_and_read_as_a_fraction() -> None:
 
 
 def test_refresh_view_reports_valid_agent_accounting() -> None:
-    """Amounts show one decimal of a litre (`PL-TG60`), and each residual shows a power of ten."""
+    """Amounts show one decimal of a litre (`PL-TG60`), and the residual shows a power of ten."""
 
     panel = accounting(_snapshot(passes_validation=True))
 
@@ -2373,12 +2540,30 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
     assert panel.status.emphasis is Emphasis.ACCENT
     assert "still accounts for all delivered agent" in panel.detail
     assert panel.amounts == (
-        "Delivered: <0.1 L\n"
-        "Exhausted: <0.1 L\n"
-        "Stored: <0.1 L\n"
-        "Unaccounted: <10⁻¹² L\n"
-        "Absolute error: <10⁻¹² L"
+        "Delivered: <0.1 L\nExhausted: <0.1 L\nStored: <0.1 L\nUnaccounted: <10⁻¹² L"
     )
+
+
+def test_the_accounting_panel_prints_the_residual_once() -> None:
+    """The residual is one line, "Unaccounted", for a negative residual too (`PL-XFWG`).
+
+    The panel prints a residual only as the power of ten it lies below, without its
+    sign. An absolute-error line would then repeat the unaccounted line word for
+    word, so the panel prints the residual once (project owner, 2026-10-03,
+    ratified). -5.601e-14 L lies below 10⁻¹³, worked out by hand, and is negative
+    so that a line printing its magnitude would read the same as one printing it.
+    """
+
+    panel = accounting(replace(_snapshot(), unaccounted_agent_l=-5.601e-14))
+    lines = panel.amounts.splitlines()
+
+    assert [line.split(": ")[0] for line in lines] == [
+        "Delivered",
+        "Exhausted",
+        "Stored",
+        "Unaccounted",
+    ]
+    assert [line for line in lines if line.endswith("<10⁻¹³ L")] == ["Unaccounted: <10⁻¹³ L"]
 
 
 def test_the_accounting_panel_prints_amounts_at_one_decimal_of_a_litre() -> None:
@@ -2449,8 +2634,8 @@ def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> 
     banner = notice(halted, None)
 
     assert banner is not None
-    assert "The rejected step's totals: " in banner
-    assert "delivered=4.240000e+00 L" in banner
+    assert "the agent accounting check failed" in banner
+    assert "e+00" not in banner, "the totals are for the log, and the panel shows them"
     assert "except the agent accounting panel, which shows the rejected step" in banner
 
 
@@ -2475,10 +2660,7 @@ def test_the_panel_after_an_accounting_halt_shows_the_rejected_step_s_residuals_
     rejected = raised.value.check
     assert rejected is not None
 
-    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == [
-        "Unaccounted: <10¹ L",
-        "Absolute error: <10¹ L",
-    ]
+    assert rejected_step_accounting(rejected).amounts.splitlines()[3:] == ["Unaccounted: <10¹ L"]
 
 
 def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
@@ -2491,7 +2673,7 @@ def test_the_accounting_panel_refuses_names_and_amounts_that_differ_in_number(
     check = validator.check_agent_accounting(currently_stored_agent_l=14.0)
     monkeypatch.setattr(
         "anesthesia_sim.app.dashboard_frame.ACCOUNTING_AMOUNT_NAMES",
-        ("Delivered", "Exhausted", "Stored", "Unaccounted"),
+        ("Delivered", "Exhausted", "Stored"),
     )
 
     with pytest.raises(ValueError, match=r"^zip\(\) argument 2 is longer than argument 1$"):
@@ -2516,7 +2698,6 @@ def test_the_withheld_accounting_panel_states_no_verdict_and_no_amount() -> None
         "Exhausted: —",
         "Stored: —",
         "Unaccounted: —",
-        "Absolute error: —",
     ]
 
 
@@ -2782,7 +2963,7 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     trace is clipped, rather than relying on the reader to notice.
     """
 
-    # 8% circuit is 4 MAC of sevoflurane, against a 6% (3 MAC) ceiling.
+    # 8% circuit is 4.44 MAC of sevoflurane, against a 5.4% (3 MAC) ceiling.
     # Alveolar at 5% stays below the ceiling. That makes this a test of
     # *which* compartments are named, not only of whether any is named.
     history = (
@@ -2797,12 +2978,38 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     # The notice must say where the unclipped number is. Otherwise it reports
     # a problem and leaves the reader without the value.
     assert "readouts above" in text
-    assert "3.00 ×MAC" in text
+    # The top is named in percent and in MAC, the two units the axes are
+    # labelled in (`PL-DVDY`): 3 x 1.8% is 5.40%, worked by hand.
+    assert "5.40% (3.00 ×MAC)" in text
     assert text == (
-        "Above the top of the plot: Circuit. The axis stops at 3.00 ×MAC and these "
+        "Above the top of the plot: Circuit. The axis stops at 5.40% (3.00 ×MAC) and these "
         "traces are cut off there — their values are in the readouts above, which are "
         "not clipped."
     )
+
+
+def test_a_trace_above_the_standard_top_is_inside_the_high_top_and_above_the_low_one() -> None:
+    """The notice reads the top the chart draws at, not the standard one (`PL-K1VH`).
+
+    8% circuit is 4.44 MAC of sevoflurane (1.8% at age 40): above the 3 MAC
+    top, inside the 4.5 MAC top. Alveolar at 3% is 1.67 MAC, inside the
+    standard top and above the 1.5 MAC top, 2.7%. Each figure is worked by
+    hand.
+    """
+
+    history = (
+        _sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1, 0.08, 0.03, 0.01, 0.01, 0.0, 0.0),
+    )
+    frame = _frame(_fake_controller(history=history))
+    low = off_scale_notice(replace(frame, ceiling=ChartCeiling.LOW), 0)
+
+    assert off_scale_notice(replace(frame, ceiling=ChartCeiling.HIGH), 0) is None
+    assert low is not None
+    assert low.startswith(
+        "Above the top of the plot: Circuit, Alveolar. The axis stops at 2.70% (1.50 ×MAC)"
+    )
+    assert "Alveolar" not in (off_scale_notice(frame, 0) or "")
 
 
 def test_the_off_scale_notice_stays_silent_for_a_run_inside_the_axis() -> None:
@@ -3064,13 +3271,6 @@ def test_the_banner_s_name_is_separated_by_a_colon_not_a_second_em_dash() -> Non
     assert named is not None
     assert named.startswith("Run 2: ")
     assert named.count("—") == 1
-
-
-def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
-    """A hidden banner stays hidden: an attribution is not a reason to show one."""
-
-    assert compared_run_notice(None, "Run 2") is None
-    assert compared_run_notice(None, None) is None
 
 
 def test_a_banner_for_a_run_whose_name_is_empty_is_refused() -> None:
@@ -3947,6 +4147,41 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
     assert offer.lock_reason == comparing_fork_lock_text(COMPARED)
 
 
+def test_fork_offer_names_the_pin_only_beside_a_branch_that_can_be_taken() -> None:
+    """A pinned Workspace says before the press that a branch will not be drawn there (`PL-RXR8`).
+
+    The notice is written out here rather than read from the template. It is
+    given while a branch is offered and the Workspace is pinned. It is not
+    given while the Workspace is unpinned, while two runs are open, because
+    the lock caption then names the pin, or while nothing is offered, because
+    there is no press for it to come before.
+    """
+
+    points = (CaseInstant(0), CaseInstant(60))
+    expected = (
+        "This Workspace is pinned to Run 1, so it will not draw a branch taken here "
+        "beside it. Unpin it from the Workspace's tab to compare the two runs here."
+    )
+
+    pinned = fork_offer(points, marks=(), comparing=None, here=None, pinned_to="Run 1")
+    unpinned = fork_offer(points, marks=(), comparing=None, here=None, pinned_to=None)
+    comparing = fork_offer(points, marks=(), comparing=COMPARED, here=None, pinned_to="Run 1")
+    nothing_offered = fork_offer((), marks=(), comparing=None, here=None, pinned_to="Run 1")
+    only_here = fork_offer(
+        (),
+        marks=(),
+        comparing=None,
+        here=HereForkPoint(CaseInstant(45), stopped_on_mark=False),
+        pinned_to="Run 1",
+    )
+
+    assert pinned.pinned_notice == expected
+    assert unpinned.pinned_notice == ""
+    assert comparing.pinned_notice == ""
+    assert nothing_offered.pinned_notice == ""
+    assert only_here.pinned_notice == expected
+
+
 def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
     """`PL-WG73`: "Reset the case to end this one" named no control on screen.
 
@@ -4450,7 +4685,8 @@ def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() 
     ]
     assert len(clipped) >= 2
     assert len(peaks) >= 2
-    top = format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent)
+    # Sevoflurane's standard top is 3 x 1.8% = 5.40%, worked by hand (`PL-DVDY`).
+    top = "5.40% (3.00 ×MAC)"
 
     assert off_scale_notice(frame, 0) == (
         OFF_SCALE_NOTICE_TEMPLATE.format(compartments=", ".join(clipped), top=top)

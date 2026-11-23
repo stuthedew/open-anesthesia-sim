@@ -4035,7 +4035,7 @@ def check_named_tests(root: Path, documents: Mapping[Path, str], report: Report)
     leaves the sentence reading exactly as it did when it was true, which is the
     silent-wrong-answer shape `CLAUDE.md` asks to be caught in code. The hazard
     table's right-hand column is the reason this was built (`PL-FDBK`), and it
-    is the cheap half of `PL-8LDF`, which keeps the annotation pass over the
+    is the cheap half of `PL-8LDF`, whose annotation pass bound the
     required invariants.
 
     **Every documentation file, and not the queue, and the exclusion is the
@@ -4660,13 +4660,15 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 # never in anticipation of one**, so the check never holds `make check` red for
 # work nobody has done yet. The check was introduced over the hazard table,
 # which conformed already, so it landed green; `PL-036` added the minimum
-# displayed outputs, `PL-2M9N` added the required tests, and `PL-8LDF` (required
-# invariants) is the pass still due.
+# displayed outputs, `PL-2M9N` added the required tests, and `PL-8LDF` added the
+# required invariants.
 #
 # `PL-B6YV` added the first section held by its numeric paragraphs, "Displayed
 # precision", whose numbers a learner reads directly. The other sections join
-# with the passes the `model-claims-held-by-tests` feature files, first
-# `PL-19W8`, which decides whether the rest run.
+# with the passes the `model-claims-held-by-tests` feature files. `PL-19W8`
+# added the evidence behind the known limitations, and `PL-H94Q` the
+# mass-balance identity, the selected method, the concentrations and the agent
+# amount.
 #
 # `PL-BLN0` added the two families whose paragraphs describe the code: the
 # whole of `docs/ARCHITECTURE.md`, bound at its title so that a chapter added
@@ -4687,6 +4689,14 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 # chain: it proves the value still travels, never that a widget still draws it,
 # and a value travelling to a display that no longer shows it is the failure
 # that section's own subsection calls silent.
+#: What a section held by its numeric paragraphs promises, which is the same for
+#: every such section.
+NUMERIC_PARAGRAPH_PROMISE = (
+    "every paragraph stating a number with a unit names the test that computes it, "
+    "itself or in the For-developers note below it, cites its published source, "
+    "or is dated, unless a provenance: or derived: marker ties each of its numbers "
+    "with a unit"
+)
 BOUND_FAMILIES = (
     BoundFamily(
         document=VERIFICATION,
@@ -4706,6 +4716,14 @@ BOUND_FAMILIES = (
     ),
     BoundFamily(
         document=VERIFICATION,
+        heading="Required invariants",
+        level=2,
+        kind=TEST_ENTITY,
+        members=_list_members,
+        promise="every entry names the test that holds it",
+    ),
+    BoundFamily(
+        document=VERIFICATION,
         heading="Required tests",
         level=2,
         kind=TEST_ENTITY,
@@ -4718,12 +4736,7 @@ BOUND_FAMILIES = (
         level=3,
         kind=FIGURE_ENTITY,
         members=_numeric_paragraph_members,
-        promise=(
-            "every paragraph stating a number with a unit names the test that computes it, "
-            "itself or in the For-developers note below it, cites its published source, "
-            "or is dated, unless a provenance: or derived: marker ties each of its numbers "
-            "with a unit"
-        ),
+        promise=NUMERIC_PARAGRAPH_PROMISE,
     ),
     BoundFamily(
         document=PARAMETERS,
@@ -4731,12 +4744,87 @@ BOUND_FAMILIES = (
         level=2,
         kind=FIGURE_ENTITY,
         members=_numeric_paragraph_members,
-        promise=(
-            "every paragraph stating a number with a unit names the test that computes it, "
-            "itself or in the For-developers note below it, cites its published source, "
-            "or is dated, unless a provenance: or derived: marker ties each of its numbers "
-            "with a unit"
-        ),
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Mass-balance identity",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Selected method (as implemented)",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Concentrations",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=PARAMETERS,
+        heading="Agent amount",
+        level=2,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=INTERFACE,
+        heading="Supported input ranges",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=PARAMETERS,
+        heading="Source hierarchy: what may be cited as the authority for a value",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=PARAMETERS,
+        heading="v0.2.0: isoflurane and desflurane",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=PARAMETERS,
+        heading="Delivery-limit and MAC parameters",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Independent-solution test",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
+    ),
+    BoundFamily(
+        document=VERIFICATION,
+        heading="Published wash-in and elimination validation test",
+        level=3,
+        kind=FIGURE_ENTITY,
+        members=_numeric_paragraph_members,
+        promise=NUMERIC_PARAGRAPH_PROMISE,
     ),
     BoundFamily(
         document=ARCHITECTURE,

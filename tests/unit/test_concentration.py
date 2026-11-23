@@ -77,6 +77,37 @@ def test_the_factor_is_a_hundred_and_is_written_once() -> None:
     assert fraction_from_percent(Percent(PERCENT_PER_UNIT_FRACTION)) == 1.0
 
 
+#: The positions of a 0 to 8% dial in 0.01% steps, as whole hundredths of a
+#: percent. The dashboard forms a slider's value the same way, by dividing the
+#: position by a hundred.
+DIAL_POSITIONS_IN_HUNDREDTHS = range(801)
+
+
+def test_a_round_trip_through_a_fraction_misses_the_dialled_percent_at_126_of_801_positions() -> (
+    None
+):
+    """Converting a dial percent to a fraction and back misses it at 126 of 801 positions.
+
+    `docs/VERIFICATION.md` § "Concentrations" gives these figures as the reason
+    the vaporizer setting is stored as the percent dialled. A fraction times a
+    hundred is not always the percent the fraction came from. The expected
+    count, the first position that misses and the value 0.9% comes back as
+    are the floating-point results of dividing by a hundred and multiplying
+    back, which the document states.
+    """
+
+    dialled = [Percent(position / 100) for position in DIAL_POSITIONS_IN_HUNDREDTHS]
+    missed = [
+        percent
+        for percent in dialled
+        if percent_from_fraction(fraction_from_percent(percent)) != percent
+    ]
+
+    assert len(missed) == 126
+    assert missed[0] == 0.23
+    assert percent_from_fraction(fraction_from_percent(Percent(0.9))) == 0.9000000000000001
+
+
 @pytest.mark.parametrize("value", [0.0, 5e-324, 0.02, nextafter(1.0, 0.0), 1.0])
 def test_a_fraction_from_0_through_1_is_the_number_it_was_built_from(value: float) -> None:
     """Both ends are fractions, as is the nearest float inside each end, and none is rounded."""

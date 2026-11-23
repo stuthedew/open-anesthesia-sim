@@ -45,7 +45,7 @@ from collections.abc import Iterator
 
 import pytest
 from PySide6.QtCore import QPoint, QRect, Qt
-from PySide6.QtGui import QColor, QImage, QPalette
+from PySide6.QtGui import QColor, QImage, QPalette, QStyleHints
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QAbstractSpinBox,
@@ -360,6 +360,46 @@ def test_the_chrome_draws_the_theme_rather_than_the_host_palette(dark_host: QApp
     assert _dark_share(bar, dark_host) == 0.0
 
 
+def test_declaring_the_application_asks_for_the_light_colour_scheme_before_its_palette(
+    dark_host: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The application asks Qt for the Light colour scheme, then sets its palette.
+
+    On a Mac set to Dark, Qt draws each letter with a white fill, and macOS
+    thickens the strokes by the fill colour, so the interface's dark lettering
+    on its light surfaces was drawn heavier than under Light (`PL-YZ9L`).
+    Asking for the Light scheme sets the application's macOS appearance to
+    Aqua, and Qt then draws the letters as it does under Light. The request
+    comes first because Qt rereads the system palette when the scheme
+    changes, and the declared palette must be the last word.
+
+    The offscreen platform that runs the tests ignores the request, so the
+    test records the call rather than reading the scheme back. Whether the
+    lettering then matches can only be seen on a Mac.
+    """
+
+    calls: list[str] = []
+    request = QStyleHints.setColorScheme
+    set_palette = QApplication.setPalette
+
+    def record_request(hints: QStyleHints, scheme: Qt.ColorScheme) -> None:
+        calls.append(f"scheme {scheme.name}")
+        request(hints, scheme)
+
+    def record_palette(_application: QApplication, palette: QPalette) -> None:
+        # `QApplication.setPalette` is static, so the original takes no
+        # application.
+        calls.append("palette")
+        set_palette(palette)
+
+    monkeypatch.setattr(QStyleHints, "setColorScheme", record_request)
+    monkeypatch.setattr(QApplication, "setPalette", record_palette)
+
+    declare_application_colours(dark_host)
+
+    assert calls == ["scheme Light", "palette"]
+
+
 def test_declaring_the_application_leaves_its_disabled_colours_to_the_platform(
     dark_host: QApplication,
 ) -> None:
@@ -589,9 +629,10 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
 
     # The shipped Default Workspace draws one chart, one branch control and one
     # bookmarks View. So it contains one time-base selector (`PL-L59K`), one
-    # branch point selector and the marks editor's compartment selector
-    # (`PL-CHX0`), beside the agent and playback rate selectors.
-    assert len(popups) == 5
+    # axis-top selector (`PL-K1VH`), one branch point selector and the marks
+    # editor's compartment selector (`PL-CHX0`), beside the agent and playback
+    # rate selectors.
+    assert len(popups) == 6
 
     for popup in popups:
         palette = popup.palette()

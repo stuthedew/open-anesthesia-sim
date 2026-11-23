@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, ux
 feature: window-is-the-frame
+milestone: v0.6.21
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/views.py
 deferred-from: v0.7.0 - found after the gate's list was frozen, and it shows only in a Workspace pinned to a run that has closed
 added: 2026-11-11

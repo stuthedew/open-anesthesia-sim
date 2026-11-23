@@ -54,7 +54,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 
-__all__ = ["AccountingPanel", "ParameterControls", "emphasised", "panel_frame"]
+__all__ = ["AccountingPanel", "ParameterControls", "emphasis_color", "emphasised", "panel_frame"]
 
 #: The theme colour each status emphasis is drawn in. `dashboard_frame` names
 #: only the role, so that it declares no colour. This table is the one place
@@ -80,6 +80,12 @@ def panel_frame(object_name: str) -> QFrame:
     return frame
 
 
+def emphasis_color(emphasis: Emphasis) -> str:
+    """Return the theme colour that `emphasis` is drawn in."""
+
+    return _EMPHASIS_COLOR[emphasis]
+
+
 def emphasised(label: QLabel, word: StatusWord) -> None:
     """Write a status word and the colour of its emphasis."""
 
@@ -96,16 +102,17 @@ class ParameterControls(QWidget):
     Attributes:
         adjustment_started: Emitted at the start of each input on any slider
             (`ParameterSlider.adjustment_started`).
-        setting_requested: Emitted with the control and the value a slider
-            was moved to. The run applies it or refuses it, and the next
-            `show_settings` writes the value in force.
+        setting_requested: Emitted with the control, the value a slider
+            was moved to and the kind of input that moved it (`DialInput`).
+            The run applies it or refuses it, and the next `show_settings`
+            writes the value in force.
         preview_requested: Emitted with the control and the value where a
             held thumb stands, so the charts can preview it (`PL-5B1N`).
         preview_ended: Emitted when a held thumb is released.
     """
 
     adjustment_started = Signal()
-    setting_requested = Signal(object, float)
+    setting_requested = Signal(object, float, object)
     preview_requested = Signal(object, float)
     preview_ended = Signal()
 
@@ -144,7 +151,9 @@ class ParameterControls(QWidget):
             layout.addWidget(slider, 1)
             slider.adjustment_started.connect(self.adjustment_started)
             slider.value_changed.connect(
-                lambda value, control=setting.control: self.setting_requested.emit(control, value)
+                lambda value, dial_input, control=setting.control: self.setting_requested.emit(
+                    control, value, dial_input
+                )
             )
             slider.preview_moved.connect(
                 lambda value, control=setting.control: self.preview_requested.emit(control, value)

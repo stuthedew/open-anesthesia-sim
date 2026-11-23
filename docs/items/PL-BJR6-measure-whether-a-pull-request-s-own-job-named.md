@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: irreversible-actions-refused-at-github
+milestone: v0.6.21
 touches: .github/workflows/merge-hold.yml, tools/github_refusals_check.py
 deferred-from: v0.7.0 - workflow tooling outside the schematic release, and it changes no displayed value
 added: 2026-11-11

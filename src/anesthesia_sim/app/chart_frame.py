@@ -67,7 +67,7 @@ from __future__ import annotations
 from bisect import bisect_left
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, replace
-from math import ceil, floor, isfinite, sqrt
+from math import ceil, floor, isfinite, log10, sqrt
 from types import MappingProxyType
 from typing import Final
 
@@ -82,8 +82,9 @@ from anesthesia_sim.app.chart_time_base import (
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import SettingPreview, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
+    DECIMAL_BASE,
+    ChartCeiling,
     chart_axis_top_percent,
-    chart_grid_interval_percent,
     format_elapsed,
     format_mac_multiple,
     format_percent,
@@ -130,6 +131,7 @@ __all__ = [
     "ALVEOLAR_FRACTION_NAME",
     "INSPIRED_FRACTION_NAME",
     "WASH_IN_AXIS_MAXIMUM",
+    "PERCENT_AXIS_STEP_LADDER",
     "WASH_IN_GRID_INTERVAL",
     "WASH_IN_HOVER_LABEL",
     "WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT",
@@ -224,13 +226,21 @@ MAX_CHART_CONTROL_MARKS: Final = 24
 # readouts keep those four values on screen.
 COMPARED_COMPARTMENT_CAP: Final = 2
 
+# The steps the compartment chart's percent axis may be labelled at, before a
+# power of ten. They are the round steps of Heckbert's labelling algorithm, as
+# Talbot, Lin and Hanrahan describe it (IEEE InfoVis 2010, section 2). The same
+# section says that round numbers are much easier to work with in mental
+# estimation, citing Reys et al. 1982. That is why the axis does not label the
+# MAC gridlines' percent values, such as 0.585% (`PL-BNMZ`).
+PERCENT_AXIS_STEP_LADDER: Final = (1, 2, 5)
+
 # Gridlines fall at quarter fractions. Every published wash-in figure uses this
 # ruling, and it is the spacing a reader compares against. The axis is labelled
 # at exactly these values rather than at whatever interval the plot would choose
 # for itself. A rule at 0.25 beside a label at 0.2 puts two different scales on
 # one axis, and a reader who takes a value off the nearest gridline would take
-# it off the wrong one. The same rule keeps the compartment chart's percent axis
-# labelled at its own gridlines (`percent_axis_ticks`), as `PL-Q4VH` asked.
+# it off the wrong one. The compartment chart keeps the same rule on its MAC
+# axis, which labels every gridline (`mac_axis_ticks`), as `PL-Q4VH` asked.
 WASH_IN_GRID_INTERVAL: Final = 0.25
 
 # The wash-in axis extends above equilibrium rather than stopping at it. This
@@ -901,16 +911,12 @@ class ChartFrame:
             placed.
         mac_age_years: The age, in years, that `mac_percent` is
             the MAC for. The `1 MAC` reference line prints it.
-        axis_top_percent: The top of the compartment chart's percent axis.
-            It is built as a `Percent` when the frame is assembled. So the
-            off-scale notice, which converts it back, cannot reject it after
-            the chart has drawn (`PL-7DJK`).
-        grid_interval_percent: The spacing of the compartment chart's
-            horizontal rules.
-        percent_ticks: The labels on that chart's left axis, each at a
-            gridline.
-        mac_ticks: The labels on its right axis, as (percent position, MAC
-            text).
+        ceiling: The top of the compartment chart's axis, as the reader
+            chose it. A frame is assembled at the standard top, and a chart
+            draws it at its own top with `dataclasses.replace`. So two charts
+            that share a window share one frame whatever their tops
+            (`PL-K1VH`). The axis's top in percent and both axes' labels are
+            properties that read this field, so they cannot disagree with it.
         one_mac_percent: Where the 1 MAC line is drawn.
         mac_awake_band_percent: The MAC-awake band's lower and upper edges.
         mac_awake: The agent's published MAC-awake fraction and its standard
@@ -939,10 +945,7 @@ class ChartFrame:
     plot_width_px: float
     mac_percent: MacPercent
     mac_age_years: int
-    axis_top_percent: Percent
-    grid_interval_percent: float
-    percent_ticks: tuple[tuple[float, str], ...]
-    mac_ticks: tuple[tuple[float, str], ...]
+    ceiling: ChartCeiling
     one_mac_percent: float
     mac_awake_band_percent: tuple[float, float]
     mac_awake: MacAwakeReference
@@ -959,6 +962,51 @@ class ChartFrame:
         """
 
         return RunCount(len(self.runs))
+
+    def __post_init__(self) -> None:
+        """Build the axis top once, so that a top past one atmosphere is refused here.
+
+        The top is refused when the frame is built, and again whenever a View
+        builds it at another top, before any chart draws it (`PL-7DJK`).
+
+        Raises:
+            SimulationConfigurationError: The top is outside 0 to 100%, as
+                `Percent` refuses it.
+        """
+
+        _ = self.axis_top_percent
+
+    @property
+    def axis_top_percent(self) -> Percent:
+        """The top of the compartment chart's percent axis, at this frame's ceiling.
+
+        It is built as a `Percent`, so the off-scale notice, which converts it
+        back, cannot reject it after the chart has drawn (`PL-7DJK`).
+        """
+
+        return Percent(
+            chart_axis_top_percent(self.mac_percent, self.ceiling), name="axis_top_percent"
+        )
+
+    @property
+    def mac_ticks(self) -> tuple[tuple[float, str], ...]:
+        """The labels on the chart's right axis, as (percent position, MAC text).
+
+        The chart rules a gridline at each of these positions, so every
+        gridline is labelled, in MAC.
+        """
+
+        return mac_axis_ticks(self.axis_top_percent, self.mac_percent)
+
+    @property
+    def percent_ticks(self) -> tuple[tuple[float, str], ...]:
+        """The labels on the chart's left axis, at round percentages.
+
+        There are never more of them than there are MAC labels, so the
+        percent axis is never the more crowded of the two.
+        """
+
+        return percent_axis_ticks(self.axis_top_percent, len(self.mac_ticks) - 1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1144,8 +1192,6 @@ def assemble_chart_frame(
     # (`.claude/rules/ui-areas.md`).
     drawn, capped = compared_compartments(shown, len(runs))
     mac_percent = reference.agent_mac_percent
-    top_percent = Percent(chart_axis_top_percent(mac_percent), name="axis_top_percent")
-    grid_percent = chart_grid_interval_percent(mac_percent)
     mac_awake = reference.agent_mac_awake
 
     return ChartFrame(
@@ -1158,10 +1204,7 @@ def assemble_chart_frame(
         plot_width_px=plot_width_px,
         mac_percent=mac_percent,
         mac_age_years=reference.agent_mac_age_years,
-        axis_top_percent=top_percent,
-        grid_interval_percent=grid_percent,
-        percent_ticks=percent_axis_ticks(top_percent, grid_percent),
-        mac_ticks=mac_axis_ticks(top_percent, mac_percent),
+        ceiling=ChartCeiling.STANDARD,
         one_mac_percent=mac_percent,
         mac_awake_band_percent=mac_awake_band_percent(
             fraction_of_mac=mac_awake.fraction_of_mac,
@@ -1366,19 +1409,20 @@ def wash_in_stretches(
     of wash-in. With no uptake, the inspired fraction falls in one second by
     at most the factor exp((10/60)/6), which is 1.0282, for 10 L/min of fresh
     gas into the 6 L circuit. At the earlier step of 0.1 s the figure was
-    1.00235. That measurement was taken step by step. A drawn column falls
-    wherever the column spacing puts it, so a column can land on a later
-    state of the run, which the measurement did not cover. The ratio is also
-    not continuous in general. `BreathingCircuit.set_circuit_volume`
-    conserves the agent in the circuit while it changes the volume that the
-    agent is divided by, so a circuit volume doubled between two steps would
-    halve F_I and double the ratio. A run refuses its next step after such a
-    change while the circuit holds agent (`SimulationState.advance`), but the
-    plot does not rely on a refusal elsewhere to bound what it draws.
-    So a crossing column above the ceiling is not drawn, and the stretch
-    ends where it would have ended without the extension. The column is not
-    clamped to the ceiling or interpolated onto it. It is simply a point
-    outside what this plot can show.
+    1.00235. That measurement was taken step by step. The chart draws the
+    second at which the ratio crossed equilibrium, however far apart its
+    columns are (`chart_time_base.wash_in_crossing_seconds`, `PL-CJJ1`). So
+    the crossing column is the first stored state past equilibrium, which the
+    measurement covers. The ratio is also not continuous in general.
+    `BreathingCircuit.set_circuit_volume` conserves the agent in the circuit
+    while it changes the volume that the agent is divided by, so a circuit
+    volume doubled between two steps would halve F_I and double the ratio. A
+    run refuses its next step after such a change while the circuit holds
+    agent (`SimulationState.advance`), but the plot does not rely on a refusal
+    elsewhere to bound what it draws. So a crossing column above the ceiling
+    is not drawn, and the stretch ends where it would have ended without the
+    extension. The column is not clamped to the ceiling or interpolated onto
+    it. It is simply a point outside what this plot can show.
 
     **A single polyline through every in-domain column would draw a straight
     line across the stretch it skipped.** That segment would join two real
@@ -1453,47 +1497,58 @@ def _extends_a_stretch(
     return quotient is not None and quotient <= extension_ceiling
 
 
-def percent_axis_ticks(
-    top_percent: float, interval_percent: float
-) -> tuple[tuple[float, str], ...]:
-    """Label the compartment chart's percent axis at exactly its gridlines.
+def percent_axis_ticks(top_percent: float, most_intervals: int) -> tuple[tuple[float, str], ...]:
+    """Label the compartment chart's percent axis at round percentages.
 
-    The ruling and the labels describe one scale by construction, because
-    both are multiples of `interval_percent`. So a reader who takes a value
-    off the nearest rule takes it off a labelled one. The Flet chart left the
-    axis to label itself, at a different interval from the rules it drew
-    (`PL-Q4VH`). This function is the fix, carried over in the port.
+    The gridlines stand at MAC multiples, and the MAC axis labels each of
+    them. A MAC multiple is rarely a round percentage: half a MAC of
+    isoflurane is 0.585%. So this axis takes its own labels, at the finest
+    step in `PERCENT_AXIS_STEP_LADDER` that keeps it within `most_intervals`
+    intervals, the way a second axis showing one quantity in another unit is
+    usually ruled (`PL-BNMZ`). Each label sits at its own tick mark, which
+    shows the reader where the value is.
 
     Args:
         top_percent: Top of the axis.
-        interval_percent: Spacing of its horizontal rules.
+        most_intervals: The most intervals the labels may divide the axis
+            into. The chart passes the MAC axis's count.
 
     Returns:
-        Ticks from zero upward, each as (percent position, label). The label
-        is the position in its shortest exact decimal form. So an agent whose
-        half-MAC is 0.575% is labelled `0.575`, rather than with a rounded
-        value that sits off the gridline it labels.
+        Ticks from zero upward, each as (percent position, label). A label
+        shows only the decimals its step can change, so a 0.5% step prints
+        0.5, 1 and 1.5.
 
     Raises:
-        ValueError: If either argument is not strictly positive. An axis of
-            no height or a rule spacing of zero would place every label
-            somewhere meaningless rather than failing.
+        ValueError: `top_percent` is not strictly positive, or
+            `most_intervals` is less than one. An axis of no height, or one
+            allowed no interval, would place every label somewhere
+            meaningless rather than failing.
     """
 
     if not top_percent > 0.0:
         raise ValueError(f"top_percent must be strictly positive, got {top_percent!r}")
 
-    if not interval_percent > 0.0:
-        raise ValueError(f"interval_percent must be strictly positive, got {interval_percent!r}")
+    if most_intervals < 1:
+        raise ValueError(f"most_intervals must be at least 1, got {most_intervals!r}")
 
-    # Rounding can leave the quotient just below the whole number it equals. Adding
-    # the allowance keeps the last tick of a top that is an exact multiple of the
-    # interval. A tick kept this way is never more than a billionth of an interval
-    # above the top of the axis.
-    count = floor(top_percent / interval_percent + WHOLE_COUNT_TOLERANCE)
+    # The finest round step is found from the step that would divide the
+    # axis into exactly `most_intervals`: its power of ten, then the smallest
+    # mantissa at that power that is not finer. A mantissa of ten is the next
+    # power's 1, which the ladder's last entry rolls over to.
+    least_step = top_percent / most_intervals
+    exponent = floor(log10(least_step))
+    step = next(
+        mantissa * DECIMAL_BASE**exponent
+        for mantissa in (*PERCENT_AXIS_STEP_LADDER, DECIMAL_BASE)
+        if mantissa * DECIMAL_BASE**exponent >= least_step * (1 - WHOLE_COUNT_TOLERANCE)
+    )
+    # A label shows only the decimals that its step can change.
+    decimals = max(0, -floor(log10(step) + WHOLE_COUNT_TOLERANCE))
+    count = floor(top_percent / step + WHOLE_COUNT_TOLERANCE)
 
     return tuple(
-        (index * interval_percent, f"{index * interval_percent:g}") for index in range(count + 1)
+        (index * step, f"{round(index * step, decimals):.{decimals}f}")
+        for index in range(count + 1)
     )
 
 
