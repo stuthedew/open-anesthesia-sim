@@ -1063,7 +1063,7 @@ def test_tab_reaches_the_transport_then_the_tabs_then_each_area_in_reading_order
         run._start_button,
         run._reset_button,
         run._playback_rate_dropdown,
-        view._record_scroll,
+        run._control_timeline_entries,
     ]
     first_chooser = stops.index(choosers[0])
 

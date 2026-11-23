@@ -511,16 +511,17 @@ NO_CONTROL_CHANGES_TEXT: Final = "No settings changed yet in this run."
 # kept it. That change's commit message, its item and its documents say what
 # the limit does, but not why it is 12 (traced for `PL-N8G4`). The panel lists
 # the newest changes and counts the rest. So raising the limit lists more
-# changes and makes the panel taller. The panel sits in the record column of
-# the part of the page that is always on screen, outside the Areas. That column
-# is held as tall as the run rows beside it, and scrolls when its content is
-# taller (`SimulationView`, in `app/simulation_view.py`). Lowering the limit
-# moves more changes into the count.
+# changes for the reader to scroll through. The panel sits in the record
+# column of the part of the page that is always on screen, outside the Areas.
+# That column is held as tall as the run rows beside it, and each run's list
+# scrolls inside its own panel (`PL-HF1B`). Lowering the limit moves more
+# changes into the count.
 MAX_LISTED_ADJUSTMENTS: Final = 12
 CONTROL_TIMELINE_HEADING: Final = "Control changes"
 CONTROL_TIMELINE_CAPTION: Final = (
     "What was changed during this run, most recent first. Settings only — not a measurement."
 )
+CHANGE_COUNT_TEMPLATE: Final = "{count} change(s)"
 UNLISTED_CHANGES_TEMPLATE: Final = "{count} earlier change(s) not listed"
 TIMELINE_OVERFLOW_JOINER: Final = "; "
 
@@ -2766,21 +2767,25 @@ class TimelinePanel:
     Attributes:
         entries: The listed adjustments, newest first, one per line, or
             `NO_CONTROL_CHANGES_TEXT` for a run nobody has touched.
-        overflow: The count of earlier changes that the panel did not list,
-            or the empty string when nothing was left out. The count of
-            changes that a chart left unmarked appears on that chart instead.
-            The changes are counted rather than silently dropped, because a
-            list that quietly stops asserts that nothing earlier happened.
+        summary: How many changes the run has, and how many earlier ones the
+            panel did not list, or the empty string for a run with no
+            changes. It sits under the panel's heading, where it stays in
+            view while the list scrolls (`PL-HF1B`). The count of changes
+            that a chart left unmarked appears on that chart instead. The
+            changes are counted rather than silently dropped, because a list
+            that quietly stops, or that scrolls without saying so, asserts
+            that nothing earlier happened.
     """
 
     entries: str
-    overflow: str
+    summary: str
 
 
 def timeline_panel(adjustments: Sequence[ControlAdjustment]) -> TimelinePanel:
     """The control-change panel for one run's adjustments.
 
-    The panel lists changes and says how many it left out. The count of
+    The panel lists changes, and says how many there are and how many it
+    left out. The count of
     changes that a chart left unmarked appears on that chart instead, from
     `unmarked_changes_lines`, because each chart has its own window
     (`PL-L59K`).
@@ -2800,7 +2805,7 @@ def timeline_panel(adjustments: Sequence[ControlAdjustment]) -> TimelinePanel:
     entries = "\n".join(format_adjustment(adjustment) for adjustment in reversed(listed))
 
     unlisted = len(adjustments) - len(listed)
-    notes: list[str] = []
+    notes = [CHANGE_COUNT_TEMPLATE.format(count=len(adjustments))]
 
     if unlisted:
         notes.append(UNLISTED_CHANGES_TEMPLATE.format(count=unlisted))

@@ -778,6 +778,7 @@
   "◀"
  ],
  "setting changed": [
+  "# change(s)",
   "#m##s",
   "#m##s–#m##s · Delivered agent #.##% -> #.##% (# settings)\n#m · Fresh gas flow #.# L/min -> #.# L/min"
  ],
@@ -799,6 +800,7 @@
   "•"
  ],
  "marks on compared runs": [
+  "# change(s)",
   "##s – check · Run # passed · Run # before this branch opened",
   "##s, on your mark",
   "#m##s",
