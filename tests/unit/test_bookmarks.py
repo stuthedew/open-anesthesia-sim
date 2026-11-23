@@ -424,7 +424,7 @@ def test_a_held_bookmark_is_found_by_its_instant_and_returned_as_the_set_holds_i
 
 
 def test_a_bookmark_the_set_does_not_hold_is_refused_by_its_instant() -> None:
-    with pytest.raises(SimulationConfigurationError, match="no time bookmark stands at 600 s"):
+    with pytest.raises(SimulationConfigurationError, match="no time bookmark stands at 10m,"):
         BookmarkSet().held_time_bookmark(TimeBookmark(CaseInstant(600)))
 
 

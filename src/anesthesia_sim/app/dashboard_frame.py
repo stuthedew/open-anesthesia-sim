@@ -44,6 +44,7 @@ from anesthesia_sim.app.bookmarks import (
     MarkStanding,
     TimeBookmark,
 )
+from anesthesia_sim.app.branch_controls import HERE_FORK_NAME
 from anesthesia_sim.app.chart_frame import (
     ALVEOLAR_FRACTION_NAME,
     COMPARED_COMPARTMENT_CAP,
@@ -390,6 +391,9 @@ APPROACHING_LIMIT_NOTICE_S: Final = APPROACHING_LIMIT_WARNING_REAL_S * max(
     rate.multiplier for rate in SUPPORTED_PLAYBACK_RATES
 )
 REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
+# A refused branch changed no setting, so its notice does not say "Setting
+# refused" (`PL-3JTH`).
+REFUSED_BRANCH_TEMPLATE: Final = "Branch not opened — {error}"
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
 )
@@ -663,14 +667,6 @@ FORK_HEADING: Final = "Branch"
 #: holds no case. A control there could only refuse, so none is drawn, and the
 #: View says why its rectangle is empty (`PL-9YPR`). The wording is a placeholder.
 NO_CASE_TO_BRANCH_TEXT: Final = "These runs belong to no case, so no branch can be opened."
-FORK_POINT_LABEL: Final = "From"
-# The label is "Branch", not "Branch here" (`PL-Y2SL`). On the button below,
-# "here" names where the paused trunk stands, while this button branches at
-# the point that "From" names. Two adjacent buttons whose labels start with
-# the same words but do different things invite the wrong press. A branch
-# taken at the wrong instant can then be ended only with the trunk's Reset,
-# because only one comparison is allowed at a time.
-TAKE_FORK_LABEL: Final = "Branch"
 # This is conditional text, so it earns a sentence where standing interface
 # text would not (`.claude/rules/ui-reader.md`). It states the rule and the
 # way out of it, because a refused control that does not say how to lift the
@@ -758,7 +754,7 @@ FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 # The instant shown is the clock's, which is where the branch opens. The clock
 # advances in whole steps, so the label and the fork are the same number
 # (`HereForkPoint`).
-HERE_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}"
+HERE_FORK_LABEL_TEMPLATE: Final = f"{HERE_FORK_NAME}: {{instant}}"
 # The same control's words when a mark stopped the trunk where it stands.
 #
 # **The instant is the halt's, not the mark's, and the wording keeps the two
@@ -783,7 +779,7 @@ HERE_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}"
 # ratified rather than specified, so ordinary evidence can reopen it, such as
 # a learner who misreads it or a measurement. But a rewrite must not
 # reintroduce the wording it was chosen over.
-HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
+HALT_FORK_LABEL_TEMPLATE: Final = f"{HERE_FORK_NAME}: {{instant}}, stopped on your mark"
 # A time bookmark that the trunk has passed, as an entry in the selector beside
 # the control events (`PL-W4XQ`). **The instant is `MarkForkPoint.fork_s`, the
 # instant at which the branch opens, never the value typed for the mark.** A
@@ -2209,6 +2205,23 @@ def refused_setting_notice(error: SimulationConfigurationError) -> str:
     """
 
     return REFUSED_SETTING_TEMPLATE.format(error=error)
+
+
+def refused_branch_notice(error: SimulationConfigurationError) -> str:
+    """Return what the branch control says when the case refused to open a branch.
+
+    The case opens no branch and changes nothing, so the notice says only that
+    the branch was not opened and why. The reason names the controls by their
+    words on screen (`controller.SimulationController.resumed_at`).
+
+    Args:
+        error: The refusal, whose message names the instant and why.
+
+    Returns:
+        The notice shown in place of the branch control's caption.
+    """
+
+    return REFUSED_BRANCH_TEMPLATE.format(error=error)
 
 
 def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | None) -> str:

@@ -298,7 +298,7 @@ def test_a_fork_here_the_case_refuses_is_reported_and_adds_no_run(
     assert notice is not None
     # It names what is wrong rather than reporting a generic failure, so a
     # reader who pressed a button that was there a moment ago learns why.
-    assert "is going" in notice
+    assert "is still going" in notice
 
 
 def test_a_failing_frame_on_a_paused_trunk_withdraws_branch_here(

@@ -255,7 +255,7 @@ def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(
     assert case.branches == ()
     notice = panel.notice.notice()
     assert notice is not None
-    assert "no time bookmark stands at 30 s" in notice
+    assert "no time bookmark stands at 30s," in notice
 
 
 def test_a_branch_control_with_nothing_selected_says_so(application: QApplication) -> None:

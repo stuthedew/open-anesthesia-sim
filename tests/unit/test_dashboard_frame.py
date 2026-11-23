@@ -157,6 +157,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_columns,
     readout_row_width,
     readouts,
+    refused_branch_notice,
     refused_reset_exit,
     refused_setting_notice,
     rejected_step_accounting,
@@ -1496,6 +1497,14 @@ def test_a_failure_outranks_the_supported_run_length_in_the_notice() -> None:
     assert banner is not None
     assert "the model produced a value it cannot hold" in banner
     assert "supported run length" not in banner
+
+
+def test_a_refused_branch_is_not_worded_as_a_refused_setting() -> None:
+    """A branch the case refused changed no setting, so its notice does not say so (`PL-3JTH`)."""
+
+    refused = refused_branch_notice(SimulationConfigurationError("the reason the case gave"))
+
+    assert refused == "Branch not opened — the reason the case gave"
 
 
 def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
