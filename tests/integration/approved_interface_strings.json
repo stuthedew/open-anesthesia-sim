@@ -858,14 +858,14 @@
  "accounting halt": [
   "A step failed this check and was rolled back. The amounts below are that step's.",
   "Delivered: ##.# L\nExhausted: ##.# L\nStored: ##.# L\nUnaccounted: <##^ L",
-  "Simulation stopped — AgentSimulationValidationError: Agent accounting validation failed, so the step was rejected and rolled back. The rejected step's totals: unaccounted=#.######e+## L, absolute_error=#.######e+## L, relative_error=#.######e-##, initial=#.######e+## L, delivered=#.######e+## L, exhausted=#.######e+## L, currently_stored=#.######e+## L. The values shown are the last completed step, except the agent accounting panel, which shows the rejected step. Reset to start a new run.",
+  "Simulation stopped — the agent accounting check failed: the rejected step created or lost anesthetic agent. This is a fault in the simulator, not a change in the patient. The values shown are the last completed step, except the agent accounting panel, which shows the rejected step. Reset to start a new run.",
   "Stopped — simulation error",
   "Validation failed"
  ],
  "accounting halt, no frame drawn": [
   "A step failed this check and was rolled back. The amounts below are that step's.",
   "Delivered: ##.# L\nExhausted: ##.# L\nStored: ##.# L\nUnaccounted: <##^ L",
-  "Simulation stopped — AgentSimulationValidationError: Agent accounting validation failed, so the step was rejected and rolled back. The rejected step's totals: unaccounted=#.######e+## L, absolute_error=#.######e+## L, relative_error=#.######e-##, initial=#.######e+## L, delivered=#.######e+## L, exhausted=#.######e+## L, currently_stored=#.######e+## L. No frame of the stopped run could be drawn: the readouts and every chart that still has a plot show the last frame drawn before it stopped. The run itself stands at its last completed step. Reset to start a new run.",
+  "Simulation stopped — the agent accounting check failed: the rejected step created or lost anesthetic agent. This is a fault in the simulator, not a change in the patient. No frame of the stopped run could be drawn: the readouts and every chart that still has a plot show the last frame drawn before it stopped. The run itself stands at its last completed step. Reset to start a new run.",
   "Stopped — simulation error",
   "Validation failed"
  ],
