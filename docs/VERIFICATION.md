@@ -3007,8 +3007,8 @@ $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an atmosphere for sevoflurane,
 isoflurane and desflurane. So the shipped alveolar trace falls below the
 readouts' 0.01 percentage points (`docs/INTERFACE.md` § "Displayed precision") at 2.8, 4.2 and 1.9
 hours. That is before the stretch over which the trace runs below the measured
-mean. On the chart's linear axis, which is fixed at 3 MAC, the trace is a few
-pixels high well before that. A higher dial scales $`F_{A0}`$ with it, and
+mean. On the chart's linear axis at its standard 3 MAC top, the trace is a few
+pixels high well before that, and twice as high at the reader's 1.5 MAC top. A higher dial scales $`F_{A0}`$ with it, and
 keeps the trace above the 0.01 percentage-point limit for longer. A 6%
 desflurane dial keeps it there until about the fifth hour, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the

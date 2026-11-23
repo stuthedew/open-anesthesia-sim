@@ -1104,6 +1104,10 @@ LIVE_ON_A_HALT: Final[dict[str, str]] = {
         "a chart's time base is the chart's own drawing setting. It touches no "
         "simulation state, and it is never disabled (`PL-012`)."
     ),
+    "ChartCeilingSelector": (
+        "a chart's axis top is the chart's own drawing setting, like its time base. "
+        "It touches no simulation state (`PL-K1VH`)."
+    ),
     "TraceLegend": (
         "the legend's boxes ask the dashboard which compartments to draw. The "
         "selection is the dashboard's display state and acts on no run (`PL-VN6M`)."

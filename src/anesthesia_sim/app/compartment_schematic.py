@@ -8,11 +8,14 @@ is and what its label prints. The schematic's View draws the readings
 computed and tested apart from the drawing.
 
 A container's fill is the compartment's tension, on the concentration chart's
-own scale, from zero to `chart_axis_top_percent`. The fill is not an amount. A
+standard scale, from zero to `chart_axis_top_percent` at
+`ChartCeiling.STANDARD`. The schematic keeps that scale whatever top a reader
+chooses for the chart, because the top is the chart View's own setting
+(`PL-K1VH`). The fill is not an amount. A
 tension above the top of that scale fills the container, and the container is
 marked as off the scale. Its label still prints the tension. Each container
-carries a mark at each of the chart's gridlines, so a fill level is read
-against the container's own marks. Each label gives
+carries a mark at each MAC value that the chart's MAC axis labels at that
+top, so a fill level is read against the container's own marks. Each label gives
 the compartment's name, its tension as its readout prints it, and its amount.
 The amount comes from the snapshot's record of the agent in each compartment
 (`PL-KFTM`). So a label cannot disagree with its readout, and the schematic
@@ -25,7 +28,6 @@ from dataclasses import dataclass
 from math import isfinite
 from typing import Final
 
-from anesthesia_sim.app.chart_frame import percent_axis_ticks
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     COMPARTMENT_PANELS,
@@ -41,15 +43,14 @@ from anesthesia_sim.app.display_units import (
     DisplayUnit,
 )
 from anesthesia_sim.app.formatting import (
-    CHART_AXIS_TOP_MAC,
-    CHART_GRID_INTERVAL_MAC,
     MAC_UNIT_SUFFIX,
+    ChartCeiling,
     chart_axis_top_percent,
-    chart_grid_interval_percent,
     format_compartment_amount,
     format_compartment_share,
     format_elapsed,
     format_percent,
+    mac_axis_ticks,
 )
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import percent_from_fraction
@@ -97,21 +98,23 @@ COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
 
 #: The caption that says what a container's height means. A height is a
-#: tension, as a share of the concentration chart's range. So the caption names
+#: tension, as a share of the concentration chart's standard range. So the caption names
 #: that range, says what the marks stand for, and says that a height is not an
 #: amount (`docs/INTERFACE.md` § "The compartment schematic: what its
 #: heights, amounts and share bar assert"). The containers are 96 px tall and the
 #: chart's plot is several hundred, and a Workspace can show the two side by
 #: side. A fill level read across to the chart's gridlines would give the wrong
-#: tension. So each container carries a mark at each of the chart's gridlines
-#: (`scale_marks`), and is read against its own marks (`PL-8W1B`). The caption
+#: tension. So each container carries a mark at each labelled MAC value of the
+#: chart's standard scale (`scale_marks`), and is read against its own marks
+#: (`PL-8W1B`). The caption names the scale in its own terms rather than as the
+#: chart's, because a reader can give the chart another top (`PL-K1VH`). The caption
 #: is separate lines rather than one wrapped line. Qt leaves a wrapped label's
 #: extra lines out of the minimum size that a View declares, so the containers'
 #: labels would lose the room in which their amounts are printed. The wording
 #: is a placeholder, but what the caption must say is not.
 SCALE_CAPTION_TEMPLATE: Final = (
-    "Fill height is tension, on the concentration chart's scale: 0 to {top}{unit} ({top_mac}).\n"
-    "Marks stand at the chart's gridlines, every {step}{unit} ({step_mac}).\n"
+    "Fill height is tension, on a scale of 0 to {top}{unit} ({top_mac}).\n"
+    "Marks stand every {step_mac}.\n"
     "A container's height is its tension, not its amount of agent."
 )
 
@@ -158,9 +161,10 @@ class ContainerReading:
         quantity: The compartment that the container stands for.
         name: The compartment's name, as its readout panel names it.
         fill: The share of the container's height that is filled, from 0 to
-            1. It is the tension divided by the top of the chart's axis, and
-            it is 1 for a tension above the top.
-        off_scale: Whether the tension is above the top of the chart's axis
+            1. It is the tension divided by the top of the chart's standard
+            scale (`ChartCeiling.STANDARD`), whatever top a chart View has
+            chosen, and it is 1 for a tension above that top.
+        off_scale: Whether the tension is above the top of the standard scale
             by more than the smallest step that the readouts show. The test is
             `above_the_axis_top`, the same one that the chart's off-scale
             notice uses. When it is true, the View marks the container as off
@@ -201,7 +205,7 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
             finite. `format_compartment_amount` raises it.
     """
 
-    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent)
+    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ChartCeiling.STANDARD)
     readings: list[ContainerReading] = []
 
     for panel in COMPARTMENT_PANELS:
@@ -222,12 +226,12 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
     return tuple(readings)
 
 
-def _chart_ticks(snapshot: SimulationSnapshot) -> tuple[tuple[float, str], ...]:
-    """Return the concentration chart's percent ticks for this snapshot's agent.
+def _scale_ticks(snapshot: SimulationSnapshot) -> tuple[tuple[float, str], ...]:
+    """Return the chart's MAC ticks at its standard top, for this snapshot's agent.
 
-    The ticks come from `percent_axis_ticks`, as the chart's own axis takes them.
-    So the schematic's marks, its caption and the chart's gridlines are one
-    scale.
+    The ticks come from `mac_axis_ticks`, as the chart's own MAC axis takes
+    them. So the schematic's marks and its caption describe one scale, and it
+    is the scale the chart draws at its standard top.
 
     Raises:
         TypeError: If the snapshot's `agent_mac_percent` was not built as a
@@ -236,32 +240,30 @@ def _chart_ticks(snapshot: SimulationSnapshot) -> tuple[tuple[float, str], ...]:
 
     mac_percent = snapshot.agent_mac_percent
 
-    return percent_axis_ticks(
-        chart_axis_top_percent(mac_percent), chart_grid_interval_percent(mac_percent)
-    )
+    return mac_axis_ticks(chart_axis_top_percent(mac_percent, ChartCeiling.STANDARD), mac_percent)
 
 
 def scale_marks(snapshot: SimulationSnapshot) -> tuple[float, ...]:
     """Return the height of each mark on a container, as a share of the container's height.
 
-    A mark stands at each of the concentration chart's gridlines between the
-    bottom and the top of its axis. The bottom and the top are the container's
-    own edges, so they carry no mark. A container filled to a mark shows the
-    tension at which the chart draws that gridline (`PL-8W1B`).
+    A mark stands at each MAC value that the chart labels at its standard top,
+    between the bottom and the top of the scale. The bottom and the top are
+    the container's own edges, so they carry no mark. A container filled to a
+    mark shows the tension at that MAC value (`PL-8W1B`).
 
     Returns:
         The heights from the lowest mark upward, each greater than 0 and less
         than 1.
 
     Raises:
-        TypeError: As `_chart_ticks` raises it.
+        TypeError: As `_scale_ticks` raises it.
     """
 
-    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent)
+    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ChartCeiling.STANDARD)
 
     return tuple(
         position / top_percent
-        for position, _ in _chart_ticks(snapshot)
+        for position, _ in _scale_ticks(snapshot)
         if 0.0 < position < top_percent
     )
 
@@ -269,23 +271,22 @@ def scale_marks(snapshot: SimulationSnapshot) -> tuple[float, ...]:
 def scale_caption(snapshot: SimulationSnapshot) -> str:
     """Return the caption naming the scale that every container of this run fills against.
 
-    The caption writes the top of the scale and the spacing of the marks in the
-    same way as the concentration chart labels its gridlines, through
-    `percent_axis_ticks`. So the caption and the chart's axis cannot print the
-    same scale in two ways.
+    The caption names the top of the scale in percent and in MAC, and the
+    spacing of the marks in MAC, as the chart's MAC axis labels them
+    (`_scale_ticks`).
 
     Raises:
-        TypeError: As `_chart_ticks` raises it.
+        TypeError: As `_scale_ticks` raises it.
     """
 
-    ticks = _chart_ticks(snapshot)
+    ticks = _scale_ticks(snapshot)
+    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ChartCeiling.STANDARD)
 
     scale = SCALE_CAPTION_TEMPLATE.format(
-        top=ticks[-1][1],
+        top=f"{top_percent:g}",
         unit=DisplayUnit.CONCENTRATION.axis_title,
-        top_mac=f"{CHART_AXIS_TOP_MAC:g}{MAC_UNIT_SUFFIX}",
-        step=ticks[1][1],
-        step_mac=f"{CHART_GRID_INTERVAL_MAC:g}{MAC_UNIT_SUFFIX}",
+        top_mac=ChartCeiling.STANDARD.label,
+        step_mac=f"{ticks[1][1]}{MAC_UNIT_SUFFIX}",
     )
 
     return f"{scale}\n{AMOUNT_CONDITION_LINES}"

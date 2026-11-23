@@ -589,9 +589,10 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
 
     # The shipped Default Workspace draws one chart, one branch control and one
     # bookmarks View. So it contains one time-base selector (`PL-L59K`), one
-    # branch point selector and the marks editor's compartment selector
-    # (`PL-CHX0`), beside the agent and playback rate selectors.
-    assert len(popups) == 5
+    # axis-top selector (`PL-K1VH`), one branch point selector and the marks
+    # editor's compartment selector (`PL-CHX0`), beside the agent and playback
+    # rate selectors.
+    assert len(popups) == 6
 
     for popup in popups:
         palette = popup.palette()

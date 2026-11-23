@@ -80,7 +80,7 @@ __all__ = [
     "PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES",
     "COMPARTMENT_SHARE_DECIMALS",
     "CHART_AXIS_TOP_MAC",
-    "CHART_GRID_INTERVAL_MAC",
+    "ChartCeiling",
     "CONCENTRATION_DISPLAY_DECIMALS",
     "CONCENTRATION_DISPLAY_RESOLUTION_PERCENT",
     "DECIMAL_BASE",
@@ -97,7 +97,6 @@ __all__ = [
     "WASH_IN_DISPLAY_DECIMALS",
     "agent_amount_display_precision",
     "chart_axis_top_percent",
-    "chart_grid_interval_percent",
     "cost_is_exact_to_its_minor_unit",
     "format_agent_cost",
     "format_agent_residual",
@@ -447,7 +446,9 @@ MAC_AXIS_STEP_LADDER_MAC: Final = (0.25, 0.5, 1.0, 2.0, 5.0)
 #: The most intervals the MAC axis may have before the next coarser spacing is used.
 MAX_MAC_AXIS_INTERVALS: Final = 10
 
-# Top of the compartment chart, as a multiple of the running agent's 1 MAC.
+# The compartment chart's standard top, as a multiple of the running agent's
+# 1 MAC. A reader can choose another top from `ChartCeiling`, and this one is
+# where a chart starts.
 #
 # The axis is denominated in MAC, so it is the *same ruler for every agent*,
 # and that is its whole purpose. Until PL-CC23 the top was the agent's
@@ -468,15 +469,14 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # ceiling, it also keeps on the plot the 2-3x MAC range in which overpressure
 # induction works.
 #
-# **Fixed, and fixed for the whole session rather than only within a run.**
-# An axis that grew to fit an excursion would redraw a rising curve at a
-# smaller height partway through a lesson. A reader would then attribute that
-# change of shape to the model rather than to the axis. The paragraph "The
-# axis is fixed rather than fitted" in `docs/INTERFACE.md` § "F_A/F_I as a
-# displayed ratio" settled the same question for the wash-in plot, and its
-# reasoning applies here too. Because
-# the axis is also fixed across the session, two consecutive runs can be
-# compared as well.
+# **Fixed until the reader chooses another top.** An axis that grew to fit an
+# excursion would redraw a rising curve at a smaller height partway through a
+# lesson. A reader would then attribute that change of shape to the model
+# rather than to the axis. The paragraph "The axis is fixed rather than
+# fitted" in `docs/INTERFACE.md` § "F_A/F_I as a displayed ratio" settled the
+# same question for the wash-in plot, and its reasoning applies here too.
+# Because the axis stays where the reader put it across runs, two consecutive
+# runs can be compared as well.
 #
 # Sevoflurane and isoflurane can be dialled above this ceiling. For example,
 # 8 % sevoflurane is 4.44 MAC at age 40 and is a common inhalational-induction
@@ -486,14 +486,34 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # `dashboard_frame.OFF_SCALE_NOTICE_TEMPLATE`).
 CHART_AXIS_TOP_MAC: Final = 3.0
 
-# Spacing of the compartment chart's horizontal rules, in MAC. It is
-# denominated in MAC for the same reason as the ceiling. Until PL-CC23 the
-# interval was a fixed 2 *percent*. That drew a rule every 0.5 MAC for
-# sevoflurane, every 1.67 MAC for isoflurane and every 0.33 MAC for desflurane.
-# One plot had nine lines and another had three, and none of them sat at a
-# value a reader looks for. At half a MAC the rules land on the same values
-# that `mac_axis_ticks` labels, so the axis names every gridline on the plot.
-CHART_GRID_INTERVAL_MAC: Final = 0.5
+
+class ChartCeiling(Enum):
+    """A top that a reader can choose for the compartment chart, as a multiple of 1 MAC.
+
+    `docs/INTERFACE.md` § "The chart's fixed MAC axis" says why these three
+    tops were chosen and why the chart never chooses one for itself (`PL-K1VH`).
+    The low top puts 1 MAC at two thirds of the plot's height, for a lesson
+    held near 1 MAC. The standard top is `CHART_AXIS_TOP_MAC`. The high top is
+    above every agent's vaporizer maximum at its age-40 MAC, so at that MAC no
+    dial setting takes the circuit trace off the plot. A lower MAC, such as an
+    older patient's, can.
+
+    The chart rules a gridline at each label of its MAC axis
+    (`mac_axis_ticks`), so the spacing of the rules follows from the top.
+    """
+
+    # The rungs are steps of half the standard top, so the low top is half of
+    # it and the high top half as much again.
+    LOW = CHART_AXIS_TOP_MAC / 2
+    STANDARD = CHART_AXIS_TOP_MAC
+    HIGH = CHART_AXIS_TOP_MAC + CHART_AXIS_TOP_MAC / 2
+
+    @property
+    def label(self) -> str:
+        """The top as a MAC multiple, as the control that chooses it prints it."""
+
+        return f"{self.value:g}{MAC_UNIT_SUFFIX}"
+
 
 # Decimals shown on an F_A/F_I ratio, both on the chart's axis and in the
 # reading beside it. This value is not derived from the concentration
@@ -852,17 +872,19 @@ def format_mac_awake_reference(
     )
 
 
-def chart_axis_top_percent(mac_percent: MacPercent) -> float:
+def chart_axis_top_percent(mac_percent: MacPercent, ceiling: ChartCeiling) -> float:
     """Give the compartment chart's axis top, in percent, for one agent.
 
     The chart plots percent, so the axis top has to be passed to it in
-    percent. But the top is *chosen* in MAC, at `CHART_AXIS_TOP_MAC`, which
-    makes it the same ruler for every agent. The comment on that constant
-    explains why it is three, why it is fixed, and what it replaced.
+    percent. But the top is *chosen* in MAC, from `ChartCeiling`, which makes
+    it the same ruler for every agent. The comment on `CHART_AXIS_TOP_MAC`
+    explains why the standard top is three, why it is fixed, and what it
+    replaced.
 
     Args:
         mac_percent: The running agent's 1 MAC as a percent of one
             atmosphere.
+        ceiling: The top the reader chose.
 
     Returns:
         Top of the chart's percent axis.
@@ -872,37 +894,17 @@ def chart_axis_top_percent(mac_percent: MacPercent) -> float:
             refuses a zero MAC when it is built (`core/concentration.py`,
             `PL-F9TC`). A zero MAC would give an axis of zero height, and a
             chart drawn against one would place every trace somewhere
-            meaningless rather than failing.
+            meaningless rather than failing. Also raised when `ceiling` is
+            not a `ChartCeiling`, because a top off the ladder is one that no
+            reader chose.
     """
 
     require_mac_percent("mac_percent", mac_percent)
 
-    return CHART_AXIS_TOP_MAC * mac_percent
+    if not isinstance(ceiling, ChartCeiling):
+        raise TypeError(f"ceiling must be a ChartCeiling, got {ceiling!r}")
 
-
-def chart_grid_interval_percent(mac_percent: MacPercent) -> float:
-    """Give the compartment chart's horizontal rule spacing, in percent.
-
-    This makes the same conversion as `chart_axis_top_percent`, for the
-    same reason, from `CHART_GRID_INTERVAL_MAC`. The chart's grid interval
-    is a percent, but the spacing it stands for is a MAC multiple. So every
-    agent's chart has its rules at the same fractions of MAC.
-
-    Args:
-        mac_percent: The running agent's 1 MAC as a percent of one
-            atmosphere.
-
-    Returns:
-        Spacing between the chart's horizontal rules, in percent.
-
-    Raises:
-        TypeError: `mac_percent` was not built as a `MacPercent`, as
-            `chart_axis_top_percent` says.
-    """
-
-    require_mac_percent("mac_percent", mac_percent)
-
-    return CHART_GRID_INTERVAL_MAC * mac_percent
+    return ceiling.value * mac_percent
 
 
 def mac_axis_ticks(max_percent: float, mac_percent: MacPercent) -> tuple[tuple[float, str], ...]:
