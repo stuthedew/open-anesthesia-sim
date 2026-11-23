@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: presentation-safety
+milestone: v0.6.22
 touches: docs/MODEL.md, src/anesthesia_sim/app/playback.py, docs/INTERFACE.md
 added: 2026-09-27
 closed: 2026-11-22

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: chart-readout
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/compartment_schematic.py, docs/INTERFACE.md, docs/VERIFICATION.md, docs/PARAMETERS.md, tests/unit/test_chart_frame.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_compartment_schematic.py, tests/integration/test_qt_chart.py, tests/integration/test_view_contract.py, tests/integration/test_dark_appearance.py, tests/integration/test_compartment_schematic_view.py, tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json, tests/integration/simulation_view/test_simulation_view_halt.py
 added: 2026-10-03
 closed: 2026-11-22

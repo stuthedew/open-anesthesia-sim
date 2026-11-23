@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: replay-findings
+milestone: v0.6.22
 touches: tests/integration/simulation_view
 added: 2026-10-25
 closed: 2026-11-22

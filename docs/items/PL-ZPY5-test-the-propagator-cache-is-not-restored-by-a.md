@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: replay-findings
+milestone: v0.6.22
 touches: tests/unit/test_state_capture.py
 added: 2026-10-25
 closed: 2026-11-22

@@ -2,6 +2,7 @@
 id: PL-9RZJ
 title: Deleting a View that is its own window makes the time axis title raise 'AxisItem already deleted' tracebacks after the window closes; they fail no test, but a later Qt or pyqtgraph change could turn them into a crash or hide a real error in the log
 status: done
+milestone: v0.6.22
 added: 2026-11-22
 closed: 2026-11-22
 pr: 2257

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: replay-findings
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/simulation_view
 added: 2026-11-14
 closed: 2026-11-23
