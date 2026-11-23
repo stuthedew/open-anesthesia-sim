@@ -185,9 +185,8 @@ def test_the_domain_and_the_plotted_value_always_agree(
     """One call returns both, so a caption cannot contradict a trace.
 
     The interface takes the sentence beside the plot from the domain, and
-    it takes the trace from the value. A reader who saw "no agent has
-    reached the circuit yet" beside a drawn curve could not tell which of
-    the two was wrong.
+    it takes the trace from the value. A reader who saw "Not defined"
+    beside a drawn curve could not tell which of the two was wrong.
     """
 
     reading = read_wash_in(alveolar, inspired)

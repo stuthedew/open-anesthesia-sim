@@ -4089,7 +4089,11 @@ true:
    display. $`F_I`$ is exactly zero until agent reaches the circuit: at the
    start of every run, and throughout a run whose vaporizer is never opened.
    There the ratio is $`0/0`$. With this limit, the ratio is never formed
-   from an inspired concentration that the display shows as `0.00%`.
+   from an inspired concentration that the display shows as `0.00%`. $`F_I`$
+   also falls below the limit during a washout, once the vaporizer is closed,
+   while the patient still holds agent. So the caption beside the plot names
+   the condition, an inspired concentration too low to divide by, and not a
+   cause.
 2. $`F_A/F_I \leq 1`$, which is the uptake regime. Alveolar gas gives up agent
    to blood, so the alveolar fraction stays below the inspired one and reaches
    it only at equilibrium. Above 1, the tissues are returning agent faster
@@ -4130,9 +4134,9 @@ at the point marker, where a reader is most likely to look.
 
 **The caption beside the plot states the ratio, or says why the trace is
 blank.** While the trace is drawn, the caption gives the value at its
-right-hand end. "No agent has reached the circuit yet" and "the patient is
-returning agent" are opposite situations, and an absent trace alone cannot show
-which applies. The caption and the trace are computed separately, from the same
+right-hand end. An inspired concentration too low to divide by and a patient
+returning agent are different situations, and an absent trace alone cannot
+show which applies. The caption and the trace are computed separately, from the same
 stored state. The caption reads the state that the run stored for the second it
 has reached, and the trace's right-hand end is drawn from that same state by the
 same division, so the two show the same ratio.

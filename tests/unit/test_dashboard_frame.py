@@ -3084,9 +3084,40 @@ def test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit() -> N
 
     state = wash_in_state(_reading(_snapshot(history=_run_history(1))), 0)
 
-    assert "Not defined" in state
-    assert "no agent has reached the circuit" in state
-    assert state == "Not defined: no agent has reached the circuit yet."
+    assert state == "Not defined: the inspired concentration is too low to divide by."
+
+
+def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit() -> None:
+    """After the vaporizer is closed, the caption says only that F_I is too low to divide by.
+
+    The run takes 8% sevoflurane at 10 L/min for 30 s. Then the vaporizer is
+    closed and ventilation stopped, so the fresh gas washes the circuit out
+    while the patient keeps agent in the alveoli. By 300 s the inspired
+    concentration is below 0.01%, the smallest that the ratio is divided by,
+    and the alveolar concentration is above it. The caption used to say here
+    that no agent had reached the circuit, which this run shows to be false
+    (`PL-P3ZL`). The limit and the sentence are written out from
+    `docs/INTERFACE.md` § "A point is drawn only inside two boundaries".
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(10.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance_to(controller, 30)
+    controller.pause()
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    controller.start()
+    _advance_to(controller, 300)
+    snapshot = controller.snapshot()
+
+    # The premises: the circuit is below the limit, and the patient still holds agent.
+    assert snapshot.inspired_partial_pressure_fraction < 0.0001
+    assert snapshot.alveolar_partial_pressure_fraction > 0.0001
+    assert wash_in_state_lines(_frame(controller)) == (
+        "Not defined: the inspired concentration is too low to divide by.",
+    )
 
 
 def test_the_wash_in_trace_stops_when_alveolar_exceeds_inspired() -> None:
@@ -3128,14 +3159,15 @@ def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> Non
 def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_count() -> None:
     """The count of undrawn stretches is added after the state, never in place of it.
 
-    A ratio in the wash-in domain and elimination are checked, each against a
-    literal. The state with no ratio is left out: its sentence says that no
-    agent has reached the circuit, which a count of earlier stretches
-    contradicts, and `PL-P3ZL` changes that sentence.
+    Each of the three states is checked against a literal. A state with no
+    ratio can follow earlier stretches, as it does after a washout, so its
+    sentence names no cause that a count of earlier stretches would
+    contradict (`PL-P3ZL`).
     """
 
     in_domain = read_wash_in(0.0071, 0.01)
     eliminating = read_wash_in(0.02, 0.01)
+    no_ratio = read_wash_in(0.002, 0.00005)
 
     assert wash_in_state(in_domain, 2) == (
         "Now: F<sub>A</sub>/F<sub>I</sub> = 0.71 (2 earlier stretch(es) not drawn)"
@@ -3143,6 +3175,10 @@ def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_cou
     assert wash_in_state(eliminating, 2) == (
         "Past equilibrium: alveolar exceeds inspired — the patient is returning agent, "
         "which is elimination and not wash-in. (2 earlier stretch(es) not drawn)"
+    )
+    assert wash_in_state(no_ratio, 2) == (
+        "Not defined: the inspired concentration is too low to divide by. "
+        "(2 earlier stretch(es) not drawn)"
     )
 
 

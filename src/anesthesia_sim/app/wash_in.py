@@ -28,7 +28,9 @@ plausible-looking number is worse here than no number at all.
 1. *The denominator must be at least one displayed unit.* $`F_I`$ is zero
    before any agent reaches the circuit. It is exactly zero at the start of
    every run, and for the whole of a run in which the vaporizer is never
-   opened, so the quotient there is $`0/0`$. Rather than treat $`0/0`$ as a
+   opened, so the quotient there is $`0/0`$. It also falls below one
+   displayed unit during a washout, once the vaporizer is closed, while the
+   patient still holds agent. Rather than treat $`0/0`$ as a
    special case, the rule sets the minimum denominator at the smallest inspired
    concentration that the interface itself reports as non-zero. So the ratio
    is never formed from a denominator that the display shows as `0.00%`.
@@ -97,10 +99,9 @@ class WashInDomain(StrEnum):
     """Whether $`F_A/F_I`$ is a wash-in fraction, and if not, why not.
 
     There are three outcomes rather than a `None`, because the interface has
-    to say *which* outcome a blank stretch of curve stands for. "No agent has
-    reached the circuit yet" and "the patient is now returning agent" are
-    opposite situations. A reader told only that the trace stopped would have
-    no way to tell them apart.
+    to say *which* outcome a blank stretch of curve stands for: an inspired
+    concentration too low to divide by, or a patient returning agent. A reader
+    told only that the trace stopped would have no way to tell them apart.
     """
 
     WASH_IN = "wash_in"
