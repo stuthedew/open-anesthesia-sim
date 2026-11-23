@@ -1,7 +1,8 @@
 """App identity/version constants, read from installed package metadata."""
 
 import subprocess
-from importlib.metadata import PackageNotFoundError, version
+from collections.abc import Iterable
+from importlib.metadata import PackageNotFoundError, metadata, version
 from pathlib import Path
 
 DISTRIBUTION_NAME = "anesthesia-sim"
@@ -23,6 +24,52 @@ except PackageNotFoundError:
     # A frozen or bundled build (see ROADMAP.md item 24) may not keep the
     # installed-package metadata. Fail visibly rather than crash on launch.
     APP_VERSION = UNKNOWN_VERSION
+
+#: The label of the issue page among the package's project URLs
+#: (`pyproject.toml`'s `[project.urls]`).
+ISSUES_URL_LABEL = "Issues"
+
+
+def project_url(label: str) -> str | None:
+    """Return the project URL that the installed metadata gives under `label`, or None.
+
+    `pyproject.toml`'s `[project.urls]` writes each one, and the installed
+    metadata carries it as a `Project-URL` line. A build that kept no metadata
+    has none, as for `APP_VERSION`.
+
+    Args:
+        label: The URL's label, such as "Issues".
+    """
+
+    try:
+        # A metadata field's name is matched without regard to case, so the
+        # spelling of the name here cannot change the result.
+        lines = metadata(DISTRIBUTION_NAME).get_all("Project-URL") or []  # pragma: no mutate
+    except PackageNotFoundError:
+        return None
+
+    return labelled_url(lines, label)
+
+
+def labelled_url(lines: Iterable[object], label: str) -> str | None:
+    """Return the URL of the first `Project-URL` line labelled `label`, or None.
+
+    Each line has the form "label, URL". The label ends at the first comma,
+    because a URL may hold a comma of its own.
+    """
+
+    for line in lines:
+        name, _, url = str(line).partition(",")
+
+        if name.strip() == label and url.strip():
+            return url.strip()
+
+    return None
+
+
+#: The page where a reader reports a fault, or None where the build kept no
+#: metadata. A failure's details link to it (`PL-XWCH`).
+APP_ISSUES_URL = project_url(ISSUES_URL_LABEL)
 
 #: Whether the running build could be identified at all. This module keeps the
 #: fact, next to the metadata it is read from. The words a reader sees on screen

@@ -11,6 +11,7 @@ import pytest
 
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.concentration import MacPercent, Percent
@@ -614,7 +615,7 @@ def test_a_failed_frame_refuses_every_fork_until_the_trunk_starts_over() -> None
     keyframes = case.fork_points_s
     assert len(keyframes) == 3
 
-    trunk.fail("SimulationNumericalError: a step failed")
+    trunk.fail("SimulationNumericalError: a step failed", kind=FailureKind.NUMERICAL)
 
     assert case.fork_points_s == keyframes
     assert trunk.fork_refusal is None

@@ -48,6 +48,7 @@ from anesthesia_sim.app.dashboard_frame import (
     slider_position,
     substance_heading,
 )
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     format_elapsed,
@@ -100,6 +101,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _dials,
     _drag,
     _failing_assembly,
+    _failure_details,
     _fork_panel,
     _fresh_run,
     _identity_controls,
@@ -134,6 +136,18 @@ _REAL_TIMER_BUDGET_S = 10.0
 #: One second of 1x play past the 60 s at which `_branched_case` pauses, so
 #: the step timer reaches it in ten ticks.
 _TIMED_STOP_S = 61
+
+#: How the banner opens for a run that the model refused a value on, and for
+#: one whose model produced a value it cannot hold. The exception's own message
+#: is shown only in the details under the banner (`PL-XWCH`).
+_CONFIGURATION_BANNER: Final = (
+    "Simulation stopped — one part of the simulator gave another a value that it does not accept. "
+    "This is a fault in the simulator, not a change in the patient."
+)
+_NUMERICAL_BANNER: Final = (
+    "Simulation stopped — the model produced a value it cannot hold, such as a negative "
+    "amount of agent. This is a fault in the simulator, not a change in the patient."
+)
 
 
 def _render_ticks(view: SimulationView) -> list[None]:
@@ -340,7 +354,7 @@ def test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour(
     failed = SimulationController()
     failed.start()
     failed.advance()
-    failed.fail("RuntimeError: the frame could not be drawn")
+    failed.fail("RuntimeError: the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     assert stopped.has_reached_supported_limit is True
 
@@ -436,7 +450,8 @@ def test_a_halt_is_shown_when_the_snapshot_itself_is_refused(
     assert run._status_text.text() == "Stopped — simulation error"
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.startswith(f"Simulation stopped — {reason}")
+    assert notice.startswith(_CONFIGURATION_BANNER)
+    assert f"What stopped the run: {reason}" in _failure_details(run)
     assert "No frame of the stopped run could be drawn" in notice
     assert "rolled back" not in notice
     assert run._pause_button.isEnabled() is False
@@ -486,7 +501,8 @@ def test_an_agent_change_on_a_halted_run_restates_the_halt(
     assert run._status_text.text() == "Stopped — simulation error"
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.startswith(f"Simulation stopped — {reason}")
+    assert notice.startswith(_CONFIGURATION_BANNER)
+    assert f"What stopped the run: {reason}" in _failure_details(run)
     assert run._start_button.isEnabled() is False
     assert run._reset_button.isEnabled() is True
 
@@ -528,7 +544,8 @@ def test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it(
     assert run._status_text.text() == "Stopped — simulation error"
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.startswith(f"Simulation stopped — {reason}")
+    assert notice.startswith(_CONFIGURATION_BANNER)
+    assert f"What stopped the run: {reason}" in _failure_details(run)
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
 
@@ -598,7 +615,7 @@ def test_a_halt_is_stated_before_its_dials_are_written(
         "accepted_fresh_gas_flow_range_l_min",
         property(lambda circuit: (0.21, 0.29)),
     )
-    controller.fail("RuntimeError: step exploded")
+    controller.fail("RuntimeError: step exploded", kind=FailureKind.UNEXPECTED)
 
     with pytest.raises(ValueError, match="can offer no setting"):
         run.show_presentation(run.presentation())
@@ -609,7 +626,7 @@ def test_a_halt_is_stated_before_its_dials_are_written(
     notice = run._notice_text.notice()
     assert notice is not None
     assert "Simulation stopped" in notice
-    assert "step exploded" in notice
+    assert "step exploded" in _failure_details(run)
     assert run.owes_a_frame is False
 
 
@@ -718,6 +735,7 @@ def test_a_halt_on_the_first_frame_still_states_the_1_mac_line(
     run = _shown_view(application, controller).runs[0]
     run._one_mac_text.setText("")
     monkeypatch.setattr(controller, "_failure_reason", "the first frame failed")
+    monkeypatch.setattr(controller, "_failure_kind", FailureKind.UNEXPECTED)
 
     run.show_presentation(run.presentation())
 
@@ -1896,7 +1914,8 @@ def test_a_confirmation_answered_after_the_snapshot_refuses_restates_the_halt(
     assert run._status_text.text() == "Stopped — simulation error"
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.startswith(f"Simulation stopped — {reason}")
+    assert notice.startswith(_CONFIGURATION_BANNER)
+    assert f"What stopped the run: {reason}" in _failure_details(run)
 
 
 def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplication) -> None:
@@ -1955,9 +1974,10 @@ def test_a_reset_the_core_refuses_halts_the_run_visibly(application: QApplicatio
     notice = run._notice_text.notice()
     assert notice is not None
     assert notice == (
-        f"Simulation stopped — {reason}. The values shown are the last completed step. "
+        f"{_CONFIGURATION_BANNER} The values shown are the last completed step. "
         f"Reset was refused for this reason. {REFUSED_RESET_WAY_OUT_TEXT}"
     )
+    assert f"What stopped the run: {reason}" in _failure_details(run)
     assert RESET_EXIT_TEXT not in notice
 
 
@@ -1985,7 +2005,7 @@ def test_a_second_refused_reset_states_the_refusal_once(application: QApplicatio
 
     notice = run._notice_text.notice()
     assert notice == first
-    assert notice.count("perfused at") == 1
+    assert _failure_details(run).count("perfused at") == 1
     assert notice.endswith(f"Reset was refused for this reason. {REFUSED_RESET_WAY_OUT_TEXT}")
 
 
@@ -2017,12 +2037,13 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
     assert run._start_button.isEnabled() is False
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.startswith(f"Simulation stopped — {failure}.")
+    assert notice.startswith(_NUMERICAL_BANNER)
     assert notice.endswith(
-        "Reset was refused — SimulationConfigurationError: the tissue groups are perfused at "
-        "5.0 L/min in total but cardiac output is 6.0 L/min; the venous balance returns what "
-        f"the tissues receive, so the two must agree. {REFUSED_RESET_WAY_OUT_TEXT}"
+        "Reset was refused — one part of the simulator gave another "
+        "a value that it does not accept. "
+        f"{REFUSED_RESET_WAY_OUT_TEXT}"
     )
+    assert f"What stopped the run: {failure}" in _failure_details(run)
 
 
 def test_a_refused_reset_takes_once_the_record_is_repaired_and_no_dial_lifts_its_exit(
@@ -2065,7 +2086,10 @@ def test_a_refused_reset_takes_once_the_record_is_repaired_and_no_dial_lifts_its
 
     notice = run._notice_text.notice()
     assert notice is not None
-    assert notice.startswith("Simulation stopped — SimulationConfigurationError: the tissue groups")
+    assert notice.startswith(_CONFIGURATION_BANNER)
+    assert "What stopped the run: SimulationConfigurationError: the tissue groups" in (
+        _failure_details(run)
+    )
     assert notice.endswith(
         f"{REFUSED_RESET_WAY_OUT_TEXT} {_CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN}."
     )
@@ -2185,7 +2209,7 @@ def test_a_run_halted_on_tissue_flows_set_past_its_patient_shows_the_output_its_
     assert _dials(run)._cardiac_output_slider.value_label.text() == "5.0 L/min"
     assert _dials(run)._cardiac_output_slider.value() == 5.0
     assert notice is not None
-    assert "perfused at 6.0 L/min in total but cardiac output is 5.0 L/min" in notice
+    assert "perfused at 6.0 L/min in total but cardiac output is 5.0 L/min" in _failure_details(run)
     assert "The values shown are the last completed step." in notice
 
     run._reset_button.click()
@@ -2225,7 +2249,7 @@ def test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_re
     assert after.alveolar_partial_pressure_fraction == before.alveolar_partial_pressure_fraction
     assert controller.run_segments[-1].settings.cardiac_output_l_min == 5.0
     assert notice is not None
-    assert "without SimulationController recording it" in notice
+    assert "without SimulationController recording it" in _failure_details(run)
 
 
 def test_a_refused_branch_reset_halts_the_branch_and_names_the_same_way_out(
@@ -2370,7 +2394,7 @@ def test_a_frame_that_refuses_a_drawn_value_moves_no_trace(application: QApplica
     assert run._status_text.text() == "Stopped — simulation error"
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "muscle partial_pressure_fraction of 1.0000000000001568" in notice
+    assert "muscle partial_pressure_fraction of 1.0000000000001568" in _failure_details(run)
     assert "No frame of the stopped run could be drawn" in notice
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
@@ -2418,7 +2442,7 @@ def test_a_non_finite_drawn_value_halts_the_run_naming_its_compartment(
     assert run._status_text.text() == "Stopped — simulation error"
     notice = run._notice_text.notice()
     assert notice is not None
-    assert f"fat partial_pressure_fraction of {value}" in notice
+    assert f"fat partial_pressure_fraction of {value}" in _failure_details(run)
     assert {
         quantity: chart.drawn_points(0, quantity) for quantity in COMPARTMENT_QUANTITIES
     } == before
@@ -2453,7 +2477,7 @@ def test_two_runs_that_come_to_be_on_different_agents_halt_visibly(
         assert run._status_text.text() == "Stopped — simulation error"
         notice = run._notice_text.notice()
         assert notice is not None
-        assert "ValueError" in notice
+        assert "ValueError" in _failure_details(run)
 
 
 def test_a_resize_while_paused_redraws_the_frame_for_the_new_width(

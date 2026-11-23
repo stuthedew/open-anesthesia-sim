@@ -28,6 +28,7 @@ from anesthesia_sim.core.supported_ranges import CaseInstant
 from tests.integration.simulation_view.simulation_view_support import (
     _branched_case,
     _case_view,
+    _failure_details,
     _fork_panel,
     _halted_trunk_case,
     _mark_editor,
@@ -146,7 +147,7 @@ def test_a_drag_whose_readouts_refuse_halts_the_run(
     assert run._start_button.isEnabled() is False
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "can offer no setting" in notice
+    assert "can offer no setting" in _failure_details(run)
 
 
 def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(

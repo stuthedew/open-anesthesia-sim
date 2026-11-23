@@ -12,6 +12,7 @@ import pytest
 
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -378,7 +379,9 @@ def test_a_failed_session_is_not_the_same_state_as_a_pause() -> None:
     paused.advance()
     paused.pause()
 
-    controller.fail("SimulationNumericalError: the step could not be completed")
+    controller.fail(
+        "SimulationNumericalError: the step could not be completed", kind=FailureKind.NUMERICAL
+    )
 
     assert controller.snapshot().is_running is False
     assert controller.has_failed is True
@@ -396,7 +399,7 @@ def test_a_failed_session_cannot_be_resumed() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.fail("SimulationNumericalError: boom")
+    controller.fail("SimulationNumericalError: boom", kind=FailureKind.NUMERICAL)
 
     with pytest.raises(SimulationExecutionError, match="cannot resume a failed simulation"):
         controller.start()
@@ -408,7 +411,7 @@ def test_a_failed_session_does_not_advance() -> None:
     controller = SimulationController()
     controller.start()
     controller.advance()
-    controller.fail("SimulationNumericalError: boom")
+    controller.fail("SimulationNumericalError: boom", kind=FailureKind.NUMERICAL)
     elapsed_at_failure = controller.snapshot().elapsed_s
 
     controller.advance()
@@ -417,7 +420,9 @@ def test_a_failed_session_does_not_advance() -> None:
 
 
 _STOPS: dict[str, Callable[[SimulationController], None]] = {
-    "on a failure": lambda controller: controller.fail("SimulationNumericalError: boom"),
+    "on a failure": lambda controller: controller.fail(
+        "SimulationNumericalError: boom", kind=FailureKind.NUMERICAL
+    ),
     "at the supported run length": lambda controller: controller.halt_at_supported_limit(
         "reached 86400 s of simulated time"
     ),
@@ -490,8 +495,12 @@ def test_the_first_failure_reason_is_the_one_kept() -> None:
 
     controller = SimulationController()
     controller.start()
-    controller.fail("SimulationNumericalError: the step could not be completed")
-    controller.fail("AttributeError: NoneType has no attribute 'value'")
+    controller.fail(
+        "SimulationNumericalError: the step could not be completed", kind=FailureKind.NUMERICAL
+    )
+    controller.fail(
+        "AttributeError: NoneType has no attribute 'value'", kind=FailureKind.UNEXPECTED
+    )
 
     assert controller.snapshot().failure_reason == (
         "SimulationNumericalError: the step could not be completed"
@@ -502,7 +511,7 @@ def test_reset_clears_a_failure_and_restores_a_startable_session() -> None:
     controller = SimulationController()
     controller.start()
     controller.advance()
-    controller.fail("SimulationNumericalError: boom")
+    controller.fail("SimulationNumericalError: boom", kind=FailureKind.NUMERICAL)
 
     controller.reset()
 
@@ -523,7 +532,7 @@ def test_switching_agent_clears_a_failure() -> None:
     controller = SimulationController()
     controller.start()
     controller.advance()
-    controller.fail("SimulationNumericalError: boom")
+    controller.fail("SimulationNumericalError: boom", kind=FailureKind.NUMERICAL)
 
     controller.set_agent("desflurane")
 

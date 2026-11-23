@@ -11,6 +11,7 @@ import pytest
 
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.controller import BranchedCase, RunSettings, RunStatus, SimulationController
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
@@ -549,15 +550,23 @@ def test_a_snapshot_whose_quotient_is_refused_names_the_compartment_and_the_stat
         controller.snapshot()
 
     assert controller.status() == RunStatus(
-        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+        is_running=True,
+        supported_limit_reason=None,
+        failure_reason=None,
+        failure_kind=None,
+        rejected_accounting=None,
     )
 
-    controller.fail("SimulationConfigurationError: alveolar partial_pressure_fraction refused")
+    controller.fail(
+        "SimulationConfigurationError: alveolar partial_pressure_fraction refused",
+        kind=FailureKind.CONFIGURATION,
+    )
 
     assert controller.status() == RunStatus(
         is_running=False,
         supported_limit_reason=None,
         failure_reason="SimulationConfigurationError: alveolar partial_pressure_fraction refused",
+        failure_kind=FailureKind.CONFIGURATION,
         rejected_accounting=None,
     )
 
@@ -604,6 +613,7 @@ def test_settings_are_read_of_a_run_whose_snapshot_refuses(monkeypatch: pytest.M
         is_running=True,
         supported_limit_reason=None,
         failure_reason=None,
+        failure_kind=None,
         rejected_accounting=None,
         agent_id=snapshot.agent_id,
         agent_display_name=snapshot.agent_display_name,
@@ -643,7 +653,11 @@ def test_set_agent_on_a_run_whose_snapshot_refuses_raises_before_it_changes_anyt
 
     assert controller.agent_id == "sevoflurane"
     assert controller.status() == RunStatus(
-        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+        is_running=True,
+        supported_limit_reason=None,
+        failure_reason=None,
+        failure_kind=None,
+        rejected_accounting=None,
     )
 
 
