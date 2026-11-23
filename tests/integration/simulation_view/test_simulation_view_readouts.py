@@ -136,9 +136,7 @@ def test_every_minimum_displayed_output_reads_its_value_from_its_widget(
         # The record joins the two into one adjustment from the agent's opening
         # 1 MAC of 1.17% to 1.50%, spanning 0 s to 1 min.
         UnconditionalValue.CONTROL_INPUT_RECORD: (
-            lambda text: (
-                "0s–1m\xa0· Vaporizer\xa01.17%\xa0-> 1.50%\xa0(2\xa0settings)" in text
-            )
+            lambda text: "0s–1m\xa0· Vaporizer\xa01.17%\xa0-> 1.50%\xa0(2\xa0settings)" in text
         ),
     }
     mac = MacPercent(mac_percent)
