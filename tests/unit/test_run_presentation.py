@@ -81,7 +81,7 @@ _AGENT_NAMES = ("sevoflurane", "desflurane", "isoflurane")
 _CLOCK_INDEX = next(index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None)
 #: The delivered line of a run whose dials cannot be built, written out by hand.
 #: Both values are withheld and each keeps its unit (`PL-SV2Q`).
-_WITHHELD_DELIVERED_LINE = "Delivered \u2014% (\u2014 \u00d7MAC)"
+_WITHHELD_DELIVERED_LINE = "Vaporizer \u2014% (\u2014 \u00d7MAC)"
 
 
 def _state(**changes: object) -> RunPanelState:
@@ -190,7 +190,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     assert shown.values.accounting.status.text == "Valid"
     assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
     assert shown.statement.agent_id == "sevoflurane"
-    assert shown.delivered_line == "Delivered 1.80% (1.00 ×MAC)"
+    assert shown.delivered_line == "Vaporizer 1.80% (1.00 ×MAC)"
     assert not isinstance(shown.dials, NotBuilt)
     assert shown.new_case is None
 

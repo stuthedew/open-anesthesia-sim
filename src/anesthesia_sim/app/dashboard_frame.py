@@ -934,10 +934,11 @@ def height_entry_maximum_mac(reachable_mac: float) -> float:
 # values with a monitor.
 COMPARTMENT_SUBSTANCE_TEMPLATE: Final = "Modelled concentrations: {agent}"
 
-# The dial's setting on the readout heading line, in the two units that the
-# dial prints it in. This labels a setting, not a modelled value, so the word
-# is the dial's own: what the vaporizer is set to deliver (`PL-NWTM`).
-DELIVERED_LINE_TEMPLATE: Final = "Delivered {value} ({secondary})"
+# The delivered dial's setting on the transport row, in the two units that the
+# dial prints it in. It says that the value is the vaporizer's setting, so a
+# learner cannot read it as a modelled concentration, or as the inspired one
+# at low fresh gas flow (`PL-NWTM`, `PL-M4WT`).
+DELIVERED_LINE_TEMPLATE: Final = "Vaporizer {value} ({secondary})"
 
 # What the confirmation says before a new case replaces a recorded one, in
 # the order a reader meets it: why this is a new case at all, what is about

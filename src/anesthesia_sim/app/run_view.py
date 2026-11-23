@@ -297,11 +297,11 @@ _LOCK_CAPTIONS: Final = (RUNNING_AGENT_LOCK_TEXT, BRANCH_AGENT_LOCK_TEXT, COMPAR
 #: an interim measure under decision D9.
 _CHIP_CAPTION_GAP: Final = 8
 
-#: The inset above and below the chip's text and the badge's text while two
+#: The inset above and below the badge's text, and the chip's text while two
 #: runs are compared. With this inset, neither the chip nor the badge is
-#: taller than the selector beside the chip, and each compared run's line is
-#: one control high. This bare spacing literal is an interim measure under
-#: decision D9.
+#: taller than the selector beside the chip, so each compared run's line is
+#: one control high and the heading line one text line high. This bare
+#: spacing literal is an interim measure under decision D9.
 _FOLDED_VERTICAL_PADDING: Final = 2
 
 #: The object names through which the agent-coloured surfaces are styled.
@@ -506,7 +506,7 @@ class RunView(QWidget):
         self._halt_banner.setHidden(True)
 
         # The badge's text wraps between words rather than holding the
-        # transport row at its full length. A development build's version
+        # heading line at its full length. A development build's version
         # string, or the longer text of a build without package metadata,
         # would otherwise set how narrow the run rows can get. The record
         # column would then lose that width at a narrow window (`PL-92XM`).
@@ -517,12 +517,13 @@ class RunView(QWidget):
         self._agent_header_badge = QFrame()
         self._agent_header_badge.setObjectName(_HEADER_BADGE_NAME)
         badge = QHBoxLayout(self._agent_header_badge)
-        self._badge_layout = badge
+        # The badge sits on the readout heading line, so it keeps the slim
+        # inset above and below that keeps that line one text line high.
         badge.setContentsMargins(
             _HEADER_BADGE_PADDING,
+            _FOLDED_VERTICAL_PADDING,
             _HEADER_BADGE_PADDING,
-            _HEADER_BADGE_PADDING,
-            _HEADER_BADGE_PADDING,
+            _FOLDED_VERTICAL_PADDING,
         )
         badge.addWidget(self._subtitle_text)
 
@@ -609,9 +610,10 @@ class RunView(QWidget):
         self._interpretation_text = styled_label(
             INTERPRETATION_DISCLAIMER_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
         )
-        # These two labels sit on the heading line above the row. One shows the
-        # delivered dial's setting in both units. The other shows the 1 MAC value
-        # that divides every ×MAC number in the row. Both values are in the
+        # One label shows the delivered dial's setting in both units, on the
+        # transport row with the run's controls. The other shows, on the heading
+        # line above the row, the 1 MAC value that divides every ×MAC number in
+        # the row. Both values are in the
         # per-substance tier of `docs/INTERFACE.md` § "The unconditional
         # values". The dial and the chart's caption
         # cannot carry them, because each is now a View that a reader can close
@@ -969,7 +971,7 @@ class RunView(QWidget):
         self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
         self._control_timeline_summary_text.setText(statement.timeline.summary)
         self._control_timeline_summary_text.setHidden(not statement.timeline.summary)
-        # The 1 MAC line states the divisor of the delivered line beside it and of the
+        # The 1 MAC line states the divisor of the delivered line and of the
         # cards' ×MAC numbers. Both lines are written before the cards. So a refusal
         # raised for the cards cannot leave another agent's 1 MAC on screen, or
         # another run's delivered setting (`PL-6RJ0`, `PL-SV2Q`).
@@ -1102,14 +1104,14 @@ class RunView(QWidget):
         Without folding, each compared run's transport row sits above its
         readout heading line. The two runs' four lines then take the height
         that the concentration chart needs on a 1366 by 700 laptop screen
-        (`PL-JG82`). When folded, a run's transport row also carries its
-        delivered concentration, which is the one heading value that differs
-        between the runs. The agent chip puts its caption beside the agent's
-        name rather than under it, at one width for every run. The chip and
-        the badge lose most of their inset above and below. The values that
-        the runs share stay on the first run's heading line, above the paired
-        readouts. They are the substance, the interpretation line, the
-        agent's 1 MAC and the version-and-model badge. `add_run` refuses a run
+        (`PL-JG82`). When folded, the agent chip puts its caption beside the
+        agent's name rather than under it, at one width for every run, and
+        loses most of its inset above and below. Each run's vaporizer setting
+        is on its transport row whether folded or not, and the version-and-model
+        badge on the heading line (`PL-M4WT`). The values that the runs share
+        stay on the first run's heading line, above the paired readouts. They
+        are the substance, the interpretation line, the agent's 1 MAC and the
+        version-and-model badge. `add_run` refuses a run
         on another agent, and a branch's MAC is checked against its trunk's
         MAC when the branch is opened. So one statement of each shared value
         is true of both runs (`PL-QLZ5`).
@@ -1119,35 +1121,21 @@ class RunView(QWidget):
         """
 
         if folded:
-            self._heading_layout.removeWidget(self._delivered_text)
-            self._transport_layout.removeWidget(self._agent_header_badge)
-            self._transport_layout.addWidget(self._delivered_text)
-            self._heading_layout.addWidget(self._agent_header_badge)
             self._chip_layout.setDirection(QBoxLayout.Direction.LeftToRight)
             self._chip_layout.setSpacing(_CHIP_CAPTION_GAP)
             self._running_agent_display.setFixedWidth(self._one_line_chip_width())
-            chip_vertical = badge_vertical = _FOLDED_VERTICAL_PADDING
+            chip_vertical = _FOLDED_VERTICAL_PADDING
         else:
-            self._transport_layout.removeWidget(self._delivered_text)
-            self._heading_layout.removeWidget(self._agent_header_badge)
-            self._heading_layout.insertWidget(
-                self._heading_layout.indexOf(self._one_mac_text), self._delivered_text
-            )
-            self._transport_layout.addWidget(self._agent_header_badge)
             self._chip_layout.setDirection(QBoxLayout.Direction.TopToBottom)
             self._chip_layout.setSpacing(0)
             self._running_agent_display.setFixedWidth(AGENT_SELECTOR_WIDTH)
             chip_vertical = RUNNING_AGENT_DISPLAY_PADDING
-            badge_vertical = _HEADER_BADGE_PADDING
 
         self._chip_layout.setContentsMargins(
             RUNNING_AGENT_DISPLAY_PADDING,
             chip_vertical,
             RUNNING_AGENT_DISPLAY_PADDING,
             chip_vertical,
-        )
-        self._badge_layout.setContentsMargins(
-            _HEADER_BADGE_PADDING, badge_vertical, _HEADER_BADGE_PADDING, badge_vertical
         )
 
     def _one_line_chip_width(self) -> int:
@@ -1918,7 +1906,7 @@ class RunView(QWidget):
     # -------------------------------------------------------------- layout
 
     def build_transport_row(self) -> QWidget:
-        """This run's agent selector or chip, Start/Pause/Reset, playback rate, status and badge.
+        """This run's agent selector or chip, Start/Pause/Reset, playback rate, status and setting.
 
         There is one row per run rather than one for the dashboard. Each
         control acts on a particular controller, and a shared transport would
@@ -1949,10 +1937,11 @@ class RunView(QWidget):
         layout.addWidget(self._playback_rate_dropdown)
         layout.addWidget(self._status_text)
         layout.addStretch(1)
-        # The version-and-model badge sits at the row's right end, beside the
-        # run state that it qualifies. The in-page title row that it used to
-        # sit in is gone (`PL-J8K2` Q2).
-        layout.addWidget(self._agent_header_badge)
+        # The vaporizer setting sits with the run's controls, never on the
+        # heading line beside "Model outputs", where it read as a modelled
+        # concentration (`PL-M4WT`). It is in the same place whether one run
+        # is shown or two.
+        layout.addWidget(self._delivered_text)
 
         return row
 
@@ -1969,8 +1958,10 @@ class RunView(QWidget):
 
         The heading says whose concentrations the seven panels under it show
         (`PL-TCD1`). The interpretation line sits on the same row, once,
-        beside the values it qualifies (`PL-2K1R`). The delivered
-        concentration and the agent's 1 MAC close the same row (`PL-NWTM`).
+        beside the values it qualifies (`PL-2K1R`). The agent's 1 MAC and the
+        version-and-model badge close the same row (`PL-NWTM`). The vaporizer
+        setting is on the transport row, away from the line that says the
+        values are model outputs (`PL-M4WT`).
         """
 
         return self._readout_section
@@ -2018,8 +2009,8 @@ class RunView(QWidget):
         heading.addWidget(self._compartment_substance_text)
         heading.addWidget(self._interpretation_text)
         heading.addStretch(1)
-        heading.addWidget(self._delivered_text)
         heading.addWidget(self._one_mac_text)
+        heading.addWidget(self._agent_header_badge)
         column.addWidget(heading_row)
         column.addWidget(self._readout_row)
 

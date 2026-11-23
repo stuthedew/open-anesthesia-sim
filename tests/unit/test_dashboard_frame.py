@@ -116,6 +116,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     WITHHELD_ACCOUNTING,
+    WITHHELD_DELIVERED_LINE_TEXT,
     WITHHELD_MAC_MULTIPLE_TEXT,
     BookmarkPanel,
     BranchAtStake,
@@ -2548,7 +2549,21 @@ def test_the_delivered_line_prints_the_dial_in_both_units() -> None:
 
     delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
 
-    assert delivered_line(delivered) == "Delivered 2.50% (1.39 ×MAC)"
+    assert delivered_line(delivered) == "Vaporizer 2.50% (1.39 ×MAC)"
+
+
+def test_the_delivered_line_is_labelled_as_the_vaporizer_setting() -> None:
+    """The line says it is the vaporizer's setting, never a bare "Delivered" (`PL-M4WT`).
+
+    Labelled "Delivered 2.50%", a learner could take it for a modelled
+    concentration or, at low fresh gas flow, for the inspired one. The
+    withheld line keeps the same label.
+    """
+
+    delivered = _settings_by_control(_snapshot())[ControlInput.DELIVERED]
+
+    assert delivered_line(delivered).startswith("Vaporizer ")
+    assert WITHHELD_DELIVERED_LINE_TEXT.startswith("Vaporizer ")
 
 
 def test_the_delivered_line_refuses_a_flow_readout() -> None:

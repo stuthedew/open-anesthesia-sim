@@ -3216,12 +3216,29 @@ alveoli, and the alveoli lead the tissues. Each readout panel reserves the width
 of the widest value it can show, so a value is never wrapped away from its unit
 at any width at which the row is laid out (`PL-3355`).
 
-Each run's delivered concentration sits on that run's own line, beside its name
-and its controls, such as Start. The values the two runs share appear once, on
-the heading line above the block: the substance, the agent's 1 MAC, and the
-version and model. They are the same for both runs because a second run must use
+Each run's vaporizer setting sits on that run's own line, beside its name and
+its controls, such as Start. The values the two runs share appear once, on the
+heading line above the block: the substance, the agent's 1 MAC, and the version
+and model. With one run, the same values sit in the same places. They are the same for both runs because a second run must use
 the first run's agent, and a branch's MAC is checked against its trunk's when
 the branch is opened (`PL-QLZ5`).
+
+**The vaporizer setting sits with the run's controls, and its label names the
+vaporizer** (`PL-M4WT`). It reads "Vaporizer", then the dial's value in percent
+and in multiples of 1 MAC, on the run's own line, whether one run is shown or
+two. It used to sit on the heading line beside "Model outputs — not
+measurements.", where it read as an eighth modelled concentration. At low fresh
+gas flow it could then be taken for the inspired concentration, which the gap
+between the two is there to teach. The version-and-model label takes its place
+on the heading line, beside the values it identifies. Two rules of interface
+design decide the place. A setting is grouped with the controls it belongs to,
+because items placed close together are read as one group (Harley A.,
+"Proximity", Nielsen Norman Group, 2020,
+https://www.nngroup.com/articles/gestalt-proximity/). The same value keeps the
+same place when a second run is added, because a reader should not have to
+wonder whether two places mean the same thing (Nielsen J., "10 Usability
+Heuristics for User Interface Design", heuristic 4, Nielsen Norman Group, 1994,
+reviewed 2024, https://www.nngroup.com/articles/ten-usability-heuristics/).
 
 **For developers.** The tests are
 `test_two_compared_runs_take_one_line_each_above_one_shared_heading` and
@@ -5170,8 +5187,8 @@ any line it can show.** A line breaks only after the time or after the arrow,
 so its middle part, such as "Alveolar ventilation 12.0 L/min ->", cannot be
 narrower than its text. The record keeps that width however narrow the window
 is, and the readout row gives way instead by stepping down to four across. The
-version-and-model label beside the run controls wraps between words where the
-row is short of room, so a long version label does not take width from the
+version-and-model label on the readout heading line wraps between words where
+the line is short of room, so a long version label does not take width from the
 record (`PL-6XPZ`, `PL-92XM`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
@@ -5233,7 +5250,7 @@ digit, because digits differ in width in some fonts. With the tests' font that
 least width is 228 px for the column, which is more than its share in a window
 narrower than about 1300 px, and the row then opens four across below a 1260 px
 window (measured 2026-11-22). The version-and-model label wraps, so the
-transport row's least width no longer grows with the version string. A test
+heading line's least width does not grow with the version string. A test
 checks the record at the narrowest window the dashboard allows, with the
 longest version text the label can carry
 (`test_the_control_change_record_is_readable_at_the_minimum_window_width` in

@@ -918,7 +918,7 @@ def _no_settings() -> dict[str, object]:
 
     return {
         "no dials": ([], False, "This run's setting controls cannot be shown."),
-        "delivered line": "Delivered \u2014% (\u2014 \u00d7MAC)",
+        "delivered line": "Vaporizer \u2014% (\u2014 \u00d7MAC)",
     }
 
 
@@ -1578,8 +1578,8 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting(
     assert row.controls is None
     assert row.not_shown_text.text() == "This run's setting controls cannot be shown."
     assert row.not_shown_text.text() in dashboard.visible_strings()
-    assert run._delivered_text.text() != "Delivered 8.00% (4.00 \u00d7MAC)"
-    assert run._delivered_text.text() == "Delivered \u2014% (\u2014 \u00d7MAC)"
+    assert run._delivered_text.text() != "Vaporizer 8.00% (4.00 \u00d7MAC)"
+    assert run._delivered_text.text() == "Vaporizer \u2014% (\u2014 \u00d7MAC)"
 
     monkeypatch.undo()
     dashboard.present(False)
