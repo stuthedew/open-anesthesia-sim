@@ -1382,3 +1382,44 @@ def test_removing_a_mark_that_is_not_there_is_refused_in_the_panels_words() -> N
         BookmarkSet().without_time_bookmark(TimeBookmark(CaseInstant(60)))
 
     assert str(refusal.value) == "no time bookmark stands at 1m, so there is none to remove"
+
+
+@pytest.mark.parametrize(
+    ("position", "expected"), [(0, [5, 1, 2, 3]), (2, [1, 2, 5, 3]), (9, [1, 2, 3, 5])]
+)
+def test_a_mark_put_back_lands_at_its_position_or_at_the_end(
+    position: int, expected: list[int]
+) -> None:
+    """`PL-5GX4`: an undone removal puts the mark back in its row, among three others."""
+
+    held = BookmarkSet(
+        tuple(TimeBookmark(CaseInstant(60 * n)) for n in (1, 2, 3)),
+        tuple(_target(multiple=0.1 * n) for n in (1, 2, 3)),
+    )
+    times = held.with_time_bookmark_at(position, TimeBookmark(CaseInstant(300)))
+    targets = held.with_mac_target_at(position, _target(multiple=0.5))
+
+    assert [int(mark.instant_s) // 60 for mark in times.time_bookmarks] == expected
+    assert [round(float(mark.mac_multiple) * 10) for mark in targets.mac_targets] == expected
+    assert times.mac_targets == held.mac_targets
+    assert targets.time_bookmarks == held.time_bookmarks
+
+
+def test_a_mark_is_not_put_back_at_a_negative_position() -> None:
+    """A negative index would count from the end and land the mark in the wrong row."""
+
+    with pytest.raises(ValueError, match="not -1"):
+        BookmarkSet().with_time_bookmark_at(-1, TimeBookmark(CaseInstant(60)))
+
+    with pytest.raises(ValueError, match="not -1"):
+        BookmarkSet().with_mac_target_at(-1, _target())
+
+
+def test_a_mark_put_back_where_it_is_already_held_is_refused() -> None:
+    held = BookmarkSet((TimeBookmark(CaseInstant(60)),), (_target(),))
+
+    with pytest.raises(SimulationConfigurationError):
+        held.with_time_bookmark_at(0, TimeBookmark(CaseInstant(60), "again"))
+
+    with pytest.raises(SimulationConfigurationError):
+        held.with_mac_target_at(0, _target(label="again"))

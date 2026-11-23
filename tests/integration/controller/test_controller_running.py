@@ -446,7 +446,7 @@ _SETTERS: dict[ControlInput, Callable[[SimulationController], None]] = {
 # The name each refusal gives its setting, written out so a change to a label fails here.
 _NAMED: dict[ControlInput, str] = {
     ControlInput.FRESH_GAS_FLOW: "fresh gas flow",
-    ControlInput.DELIVERED: "delivered agent",
+    ControlInput.DELIVERED: "vaporizer",
     ControlInput.ALVEOLAR_VENTILATION: "alveolar ventilation",
     ControlInput.CARDIAC_OUTPUT: "cardiac output",
 }

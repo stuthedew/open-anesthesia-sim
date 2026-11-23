@@ -71,7 +71,16 @@ the run stops.
 **The marks are added and removed in the Bookmarks View.** Each listed mark
 has its own Remove button, which removes that mark and no other. After a
 removal, the mark below moves up into the pressed row, so a second press in
-that list within the platform's double-click interval removes nothing. The forms
+that list within the platform's double-click interval removes nothing. After a
+removal, a line under the list names the removed mark, beside an Undo button
+that puts the mark back in its row. A run that had reached the mark is shown
+as having reached it again.
+The offer has no time limit, so WCAG 2.2 Success Criterion 2.2.1 (Timing
+Adjustable) does not apply to it, as it would to a message that disappears
+after a few seconds. It stays until the marks change in another
+way, a branch opens or closes, or a run starts over with a Reset or an agent
+change. Undo goes back through
+several removals in turn, the latest first. The forms
 that add a mark sit below the lists and each run's standing on them. No window
 opens to edit a mark (§ "What this list requires once the layout is the
 reader's").
@@ -725,7 +734,11 @@ taken from the "From" selector's opening entry instead.
 changed, and then gives the reason. The reason gives each instant as the panel
 writes it, such as "2m" or "1m30s". Where another control would open the
 branch, the reason names it by its label, such as "From", "Branch" or "Branch
-here".
+here". A branch rebuilt with values its run did not hold has two possible
+causes: a data file changed while the simulator was open, or a fault in how
+the branch is rebuilt. Its notice names both, says to reopen the simulator and
+run the case again, and says that the same notice at the same point means a
+fault. It names no setting by its code name (`PL-72X2`).
 
 **For developers.** A run marked at 60 s after its clock reached 180 s is
 returned to, and the branch agrees with its trunk at each of the 61 seconds
@@ -736,6 +749,9 @@ controller, and
 `test_a_refused_branch_names_the_on_screen_control_and_a_formatted_instant` in
 `tests/integration/controller/test_controller_branch_refusals.py` checks a
 refusal's wording.
+`test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words` in
+`tests/integration/simulation_view/test_simulation_view_branch_refusals.py`
+checks the refusal for changed data, in the panel and in the failure log.
 
 #### How a branch is drawn
 
@@ -3216,12 +3232,35 @@ alveoli, and the alveoli lead the tissues. Each readout panel reserves the width
 of the widest value it can show, so a value is never wrapped away from its unit
 at any width at which the row is laid out (`PL-3355`).
 
-Each run's delivered concentration sits on that run's own line, beside its name
-and its controls, such as Start. The values the two runs share appear once, on
-the heading line above the block: the substance, the agent's 1 MAC, and the
-version and model. They are the same for both runs because a second run must use
-the first run's agent, and a branch's MAC is checked against its trunk's when
-the branch is opened (`PL-QLZ5`).
+Each run's vaporizer setting sits on that run's own line, beside its name and
+its controls, such as Start. The values the two runs share appear once, on the
+heading line above the block: the substance, the agent's 1 MAC, and the version
+and model. With one run, each of these values keeps the same place. The shared
+values are the same for both runs because a second run must use the first
+run's agent, and a branch's MAC is checked against its trunk's when the branch
+is opened (`PL-QLZ5`).
+
+**The vaporizer setting sits with the run's controls, and its label names the
+vaporizer** (`PL-M4WT`). It reads "Vaporizer", then the dial's value in percent
+and in multiples of 1 MAC, on the run's own line, whether one run is shown or
+two. The slider that sets it reads "Sevoflurane vaporizer", with the agent's
+name, and the record of control changes logs a move under "Vaporizer". So the
+control has one name wherever it appears (`PL-XZKW`). It used to sit on the heading line beside "Model outputs — not
+measurements.", where it read as an eighth modelled concentration. At low fresh
+gas flow it could then be taken for the inspired concentration, which the gap
+between the two is there to teach. The version-and-model label takes its place
+on the heading line, beside the values it identifies. It reads, for example,
+"Version 0.7.0 — Sevoflurane model", in regular weight, so that it keeps one
+line beside the substance, the disclaimer and the 1 MAC line in a 1366 px
+window. Two rules of interface
+design decide the place. A setting is grouped with the controls it belongs to,
+because items placed close together are read as one group (Harley A.,
+"Proximity", Nielsen Norman Group, 2020,
+https://www.nngroup.com/articles/gestalt-proximity/). The same value keeps the
+same place when a second run is added, because a reader should not have to
+wonder whether two places mean the same thing (Nielsen J., "10 Usability
+Heuristics for User Interface Design", heuristic 4, Nielsen Norman Group, 1994,
+reviewed 2024, https://www.nngroup.com/articles/ten-usability-heuristics/).
 
 **For developers.** The tests are
 `test_two_compared_runs_take_one_line_each_above_one_shared_heading` and
@@ -3242,7 +3281,10 @@ does not declare it. The interpretation statement is
 The forms that add a mark are `MarkEditor`, and each listed mark with its
 Remove button is a `MarkRow` of a `MarkList`, all in `app/qt_widgets.py`. Each
 copy of the Bookmarks View holds one `MarkEditor` and one `MarkList` for each
-kind of mark. A test adds and removes marks with a run playing and
+kind of mark. The dashboard keeps the removals that Undo can reverse
+(`SimulationView._latest_removal`), and each run puts its own record of a mark
+back (`SimulationController.restore_mark`), so a reached target is still shown
+as reached. A test adds and removes marks with a run playing and
 checks that no window opens
 (`test_editing_a_mark_while_a_run_plays_opens_no_window`, in
 `tests/integration/simulation_view/test_simulation_view_comparison.py`).
@@ -5170,8 +5212,8 @@ any line it can show.** A line breaks only after the time or after the arrow,
 so its middle part, such as "Alveolar ventilation 12.0 L/min ->", cannot be
 narrower than its text. The record keeps that width however narrow the window
 is, and the readout row gives way instead by stepping down to four across. The
-version-and-model label beside the run controls wraps between words where the
-row is short of room, so a long version label does not take width from the
+version-and-model label on the readout heading line wraps between words where
+the line is short of room, so a long version label does not take width from the
 record (`PL-6XPZ`, `PL-92XM`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
@@ -5233,7 +5275,7 @@ digit, because digits differ in width in some fonts. With the tests' font that
 least width is 228 px for the column, which is more than its share in a window
 narrower than about 1300 px, and the row then opens four across below a 1260 px
 window (measured 2026-11-22). The version-and-model label wraps, so the
-transport row's least width no longer grows with the version string. A test
+heading line's least width does not grow with the version string. A test
 checks the record at the narrowest window the dashboard allows, with the
 longest version text the label can carry
 (`test_the_control_change_record_is_readable_at_the_minimum_window_width` in

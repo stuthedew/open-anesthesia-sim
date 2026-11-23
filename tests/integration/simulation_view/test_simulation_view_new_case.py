@@ -143,7 +143,7 @@ def test_a_confirmed_agent_change_starts_the_new_case(application: QApplication)
     assert after.elapsed_s == 0.0
     assert after.control_timeline == ()
     assert run._agent_dropdown.currentData() == "desflurane"
-    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Desflurane vaporizer"
     assert dialog.isVisible() is False
     assert run._new_case_dialog is None
 

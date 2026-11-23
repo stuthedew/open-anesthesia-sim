@@ -84,6 +84,7 @@ from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     MAC_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
+    VAPORIZER_LABEL,
     format_agent_residual,
     format_agent_volume,
     format_branch_discard_warning,
@@ -878,6 +879,12 @@ ADD_MARK_LABEL: Final = "Add"
 # The label of the button on each listed mark. The button's accessible name
 # adds the mark's own text, so a screen reader says which mark it removes.
 REMOVE_MARK_LABEL: Final = "Remove"
+# The line under a list after a mark is removed from it, and the button that
+# puts the mark back (`PL-5GX4`). The button's accessible name names the mark,
+# as the Remove button's does.
+REMOVED_MARK_TEMPLATE: Final = "Removed: {mark}"
+UNDO_REMOVAL_LABEL: Final = "Undo"
+UNDO_REMOVAL_NAME_TEMPLATE: Final = "Undo removing {mark}"
 INSTANT_FIELD_LABEL: Final = "Instant"
 COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
@@ -934,10 +941,11 @@ def height_entry_maximum_mac(reachable_mac: float) -> float:
 # values with a monitor.
 COMPARTMENT_SUBSTANCE_TEMPLATE: Final = "Modelled concentrations: {agent}"
 
-# The dial's setting on the readout heading line, in the two units that the
-# dial prints it in. This labels a setting, not a modelled value, so the word
-# is the dial's own: what the vaporizer is set to deliver (`PL-NWTM`).
-DELIVERED_LINE_TEMPLATE: Final = "Delivered {value} ({secondary})"
+# The delivered dial's setting on the transport row, in the two units that the
+# dial prints it in. It says that the value is the vaporizer's setting, so a
+# learner cannot read it as a modelled concentration, or as the inspired one
+# at low fresh gas flow (`PL-NWTM`, `PL-M4WT`).
+DELIVERED_LINE_TEMPLATE: Final = f"{VAPORIZER_LABEL} {{value}} ({{secondary}})"
 
 # What the confirmation says before a new case replaces a recorded one, in
 # the order a reader meets it: why this is a new case at all, what is about
@@ -955,7 +963,7 @@ NEW_CASE_IS_NOT_A_VIEW_TEXT: Final = (
 )
 NEW_CASE_CARRYOVER_TEMPLATE: Final = (
     "Fresh gas flow, alveolar ventilation and cardiac output carry over. "
-    "Delivered {agent} starts at that agent's own 1 MAC."
+    f"The {{agent}} {VAPORIZER_LABEL.lower()} starts at that agent's own 1 MAC."
 )
 # Both buttons name their outcome rather than answering yes or no. The button
 # that declines is the *default*: it is filled, and it comes last. So the
@@ -2963,6 +2971,20 @@ def _standing_clauses(answers: Sequence[tuple[str, MarkStanding]]) -> tuple[str,
     )
 
 
+def stated_mark(mark: TimeBookmark | MacTarget) -> str:
+    """Return a mark's own words, as its row in the Bookmarks View begins.
+
+    The row adds each run's standing after these words (`bookmark_panel`).
+    The line that offers to undo a removal names the mark in the same words,
+    without a standing, because the removed mark has none on screen.
+    """
+
+    if isinstance(mark, TimeBookmark):
+        return _stated_time_bookmark(mark)
+
+    return _stated_mac_target(mark)
+
+
 def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
     """Return a marked instant's own words: the time, and the name if it was given one.
 
@@ -3506,7 +3528,7 @@ def _here_fork_label(here: HereForkPoint) -> str:
 
 
 def delivered_line(delivered: SettingReadout) -> str:
-    """Return the delivered concentration in both units, for the readout heading line.
+    """Return the vaporizer setting in both units, for the run's transport row.
 
     The line is written from the same readout as the dial itself, so the line
     and the dial print one setting in one form (`PL-NWTM`).

@@ -8,7 +8,7 @@ These tests cover bookmarks.
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QEvent, QPoint
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QListWidget, QPushButton, QWidget
 
@@ -561,16 +561,23 @@ def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QAp
     width = wrapped.text_label.fontMetrics().horizontalAdvance(wrapped.text_label.text()) // 2
     listing.resize(width, listing.heightForWidth(width))
     listing.show()
-    application.processEvents()
 
-    continuation_x = wrapped.text_label.mapTo(listing, QPoint(0, 0)).x()
-    next_row_x = below.bullet_label.mapTo(listing, QPoint(0, 0)).x()
+    # The list is a window of its own. Left shown, it outlived this test and
+    # failed a later test that counts the shown windows.
+    try:
+        application.processEvents()
+        continuation_x = wrapped.text_label.mapTo(listing, QPoint(0, 0)).x()
+        next_row_x = below.bullet_label.mapTo(listing, QPoint(0, 0)).x()
 
-    # The case is exercised only if the first row really does wrap here.
-    assert wrapped.text_label.height() >= 2 * wrapped.text_label.fontMetrics().lineSpacing()
-    assert below.bullet_label.text() == MARK_ROW_BULLET
-    assert continuation_x > next_row_x
-    assert wrapped.geometry().bottom() < below.geometry().top()
+        # The case is exercised only if the first row really does wrap here.
+        assert wrapped.text_label.height() >= 2 * wrapped.text_label.fontMetrics().lineSpacing()
+        assert below.bullet_label.text() == MARK_ROW_BULLET
+        assert continuation_x > next_row_x
+        assert wrapped.geometry().bottom() < below.geometry().top()
+    finally:
+        listing.close()
+        listing.deleteLater()
+        application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
@@ -1026,3 +1033,218 @@ def test_a_frame_that_lists_the_same_marks_keeps_where_the_reader_scrolled_the_v
     _settle(application)
 
     assert bar.value() == scrolled
+
+
+# --- Undo after a removal (PL-5GX4) ---------------------------------------------
+
+
+def _wait_past_a_double_click() -> None:
+    """Wait until a list takes a press again (`MarkList`'s double-click guard)."""
+
+    QTest.qWait(QApplication.doubleClickInterval() + 50)
+
+
+def test_undo_puts_a_removed_mark_back_in_its_row_in_every_run(application: QApplication) -> None:
+    """The middle of three marks, removed and undone, is back between the other two in both runs.
+
+    The expected marks are the ones the runs held before the removal. The
+    offer is shown under the list the mark was removed from and not under the
+    other, and it is gone once used.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    view = _shown_view(application, first, second)
+    editor = _mark_editor(view)
+    panel = _marks_panel(view)
+
+    for instant_s in (300, 600, 900):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    before = first.bookmarks
+    panel.times.rows[1].remove_button.click()
+    _settle(application)
+
+    assert panel.times.undo_button.isVisibleTo(panel)
+    assert not panel.targets.undo_button.isVisibleTo(panel)
+    assert panel.times.undo_label.text() == "Removed: 10m"
+
+    _wait_past_a_double_click()
+    panel.times.undo_button.click()
+    _settle(application)
+
+    assert first.bookmarks == second.bookmarks == before
+    assert len(panel.times.rows) == 3
+    assert not panel.times.undo_button.isVisibleTo(panel)
+
+
+def test_undo_goes_back_through_several_removals_the_latest_first(
+    application: QApplication,
+) -> None:
+    """Three removals from both lists are undone one at a time, each under its own list."""
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    panel = _marks_panel(view)
+
+    for instant_s in (300, 600, 900):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    editor.height_spin.setValue(1.0)
+    editor.add_target_button.click()
+    start = controller.bookmarks
+
+    panel.times.rows[0].remove_button.click()
+    panel.targets.rows[0].remove_button.click()
+    _wait_past_a_double_click()
+    panel.times.rows[1].remove_button.click()
+    _settle(application)
+    after_two = [mark.instant_s for mark in controller.bookmarks.time_bookmarks]
+
+    assert after_two == [600.0]
+    assert panel.times.undo_label.text() == "Removed: 15m"
+
+    _wait_past_a_double_click()
+    panel.times.undo_button.click()
+    _settle(application)
+
+    assert panel.targets.undo_button.isVisibleTo(panel)
+    assert not panel.times.undo_button.isVisibleTo(panel)
+
+    panel.targets.undo_button.click()
+    _wait_past_a_double_click()
+    panel.times.undo_button.click()
+    _settle(application)
+
+    assert controller.bookmarks == start
+    assert not panel.times.undo_button.isVisibleTo(panel)
+    assert not panel.targets.undo_button.isVisibleTo(panel)
+
+
+def test_a_mark_added_after_a_removal_ends_the_offer_to_undo_it(application: QApplication) -> None:
+    """Undo never reverses one edit on top of a later one, so an add withdraws the offer."""
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    panel = _marks_panel(view)
+
+    for instant_s in (300, 600):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    panel.times.rows[0].remove_button.click()
+    editor.instant_spin.setValue(900)
+    editor.add_time_button.click()
+    _settle(application)
+
+    assert not panel.times.undo_button.isVisibleTo(panel)
+    assert panel.times.undo_button.isEnabled() is False
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0, 900.0]
+
+
+def test_a_reset_ends_the_offer_to_undo_a_removal_from_the_case_before_it(
+    application: QApplication,
+) -> None:
+    """A Reset keeps the controller and the marks, but the removal belonged to the run before.
+
+    Blind review of `PL-5GX4` found the offer still shown after a Reset with
+    one run on screen, where neither the runs nor the marks had changed.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    times = _marks_panel(view).times
+
+    for instant_s in (300, 600):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    times.rows[0].remove_button.click()
+    _settle(application)
+
+    assert times.undo_button.isVisibleTo(times)
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert not times.undo_button.isVisibleTo(times)
+    assert times.undo_button.isEnabled() is False
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0]
+
+
+def test_a_double_click_on_undo_puts_back_one_mark(application: QApplication) -> None:
+    """The next removal back is offered where the last Undo was, so a double-click undoes one."""
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    times = _marks_panel(view).times
+
+    for instant_s in (300, 600, 900):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    times.rows[0].remove_button.click()
+    _wait_past_a_double_click()
+    times.rows[0].remove_button.click()
+    _wait_past_a_double_click()
+    times.undo_button.click()
+    _settle(application)
+    times.undo_button.click()
+
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0, 900.0]
+
+
+def test_the_undo_button_names_the_removed_mark_to_a_screen_reader(
+    application: QApplication,
+) -> None:
+    """The name is built from the mark the test adds, not read from the row."""
+
+    view = _shown_view(application, SimulationController())
+    editor = _mark_editor(view)
+    editor.instant_spin.setValue(300)
+    editor.time_label_edit.setText("induction")
+    editor.add_time_button.click()
+    times = _marks_panel(view).times
+
+    times.rows[0].remove_button.click()
+
+    assert times.undo_button.text() == "Undo"
+    assert times.undo_button.accessibleName() == "Undo removing 5m – induction"
+
+
+def test_an_undone_removal_of_a_target_a_branch_reached_still_says_it_was_reached(
+    application: QApplication,
+) -> None:
+    """Each run gets its own standing back: the branch reached the target, the trunk has not yet.
+
+    The branch halts on the target and then runs on past it, so the halt no
+    longer shows the target as reached on its own. The expected listing is
+    the one drawn before the removal. A target added back as new would read
+    as still to come on the branch.
+    """
+
+    view = _halted_branch_view(application)
+    branch = view.runs[1].controller
+    branch.start()
+
+    for _ in range(10):
+        branch.advance()
+
+    view.present(False)
+    _settle(application)
+    targets = _marks_panel(view).targets
+    before = targets.text()
+
+    targets.rows[0].remove_button.click()
+    _wait_past_a_double_click()
+    targets.undo_button.click()
+    _settle(application)
+
+    assert targets.text() == before
+    assert f"{run_label(SECOND_RUN)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in before

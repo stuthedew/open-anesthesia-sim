@@ -13,6 +13,7 @@ frame reads (`PL-RD3B`). Neither module imports this one, so code that reads eit
 does not also depend on the controller.
 """
 
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, fields, replace
 from itertools import pairwise
@@ -125,6 +126,8 @@ changes, with columns from 43 s to 579 s apart, the widest a chart draws
 """
 
 
+_LOG: Final = logging.getLogger(__name__)
+
 # The way out that a refused branch names when an earlier point is still
 # open to it. It names the controls by their words on screen, because a
 # learner reads the refusal in the Branch View beside them (`PL-3JTH`).
@@ -132,6 +135,34 @@ _BRANCH_AT_AN_EARLIER_POINT: Final = (
     f'an earlier setting change or mark can still be chosen under "{FORK_POINT_LABEL}" and '
     f'branched at with "{TAKE_FORK_LABEL}"'
 )
+
+
+@dataclass(frozen=True, slots=True)
+class RemovedMark:
+    """A mark that one run removed, with what that run needs to put it back as it was.
+
+    `SimulationController.remove_time_bookmark` and `remove_mac_target`
+    return one, and `SimulationController.restore_mark` takes it back
+    (`PL-5GX4`). Removing a mark also drops what the run did with it
+    (`_forget_unmarked`). A mark added back without that record would show a
+    target the run reached as not yet reached. So the record keeps whether
+    the run had reached the mark, and which of the controller's runs had.
+
+    Attributes:
+        mark: The mark as the run held it.
+        position: Its row in its list, counted from 0.
+        reached: Whether the run had halted on the instant, or had crossed
+            the height.
+        run_number: Which run on the controller removed it
+            (`SimulationController.runs_discarded`). A reset or an agent
+            change begins a new run, whose standings owe nothing to the old
+            one.
+    """
+
+    mark: TimeBookmark | MacTarget
+    position: int
+    reached: bool
+    run_number: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -1539,15 +1570,27 @@ class SimulationController:
 
         self._bookmarks = self._bookmarks.with_time_bookmark(bookmark)
 
-    def remove_time_bookmark(self, bookmark: TimeBookmark) -> None:
+    def remove_time_bookmark(self, bookmark: TimeBookmark) -> RemovedMark:
         """Remove the mark at the instant of `bookmark`.
+
+        Returns:
+            The mark as this run held it, for `restore_mark`.
 
         Raises:
             SimulationConfigurationError: If no bookmark is at that instant.
         """
 
+        held = self._bookmarks.held_time_bookmark(bookmark)
+        removed = RemovedMark(
+            held,
+            self._bookmarks.time_bookmarks.index(held),
+            held.instant_s in self._reached_now()[0],
+            self._runs_discarded,
+        )
         self._bookmarks = self._bookmarks.without_time_bookmark(bookmark)
         self._forget_unmarked()
+
+        return removed
 
     def add_mac_target(self, target: MacTarget) -> None:
         """Mark a height on one compartment.
@@ -1559,15 +1602,67 @@ class SimulationController:
 
         self._bookmarks = self._bookmarks.with_mac_target(target)
 
-    def remove_mac_target(self, target: MacTarget) -> None:
+    def remove_mac_target(self, target: MacTarget) -> RemovedMark:
         """Remove the mark on the crossing that `target` names.
+
+        Returns:
+            The target as this run held it, for `restore_mark`.
 
         Raises:
             SimulationConfigurationError: If no target names it.
         """
 
+        held_targets = self._bookmarks.mac_targets
+        # Read before the removal, because a step the run stands on is tested
+        # against the marks it holds at the time (`_crossings_stood_on`).
+        reached_heights = self._reached_now()[1]
         self._bookmarks = self._bookmarks.without_mac_target(target)
+        # The removal above refused a target that no held target matches, so
+        # exactly one held target names this crossing.
+        position = next(
+            position
+            for position, held in enumerate(held_targets)
+            if held.crossing_key == target.crossing_key
+        )
+        held = held_targets[position]
+        removed = RemovedMark(
+            held, position, held.crossing_key in reached_heights, self._runs_discarded
+        )
         self._forget_unmarked()
+
+        return removed
+
+    def restore_mark(self, removed: RemovedMark) -> None:
+        """Put back a mark that this controller removed, where it was and as the run had it.
+
+        The mark returns to its row (`BookmarkSet.with_time_bookmark_at`). If
+        the run had halted on the instant or crossed the height, and no new
+        run has begun since the removal, the run's record of that is put back
+        too, so the mark's standing is what it was. A run that crossed a
+        height while the mark was removed did not record the crossing, so the
+        restored target then shows as not yet reached, as any newly added
+        target would.
+
+        Raises:
+            ValueError: If the removed position is negative
+                (`BookmarkSet.with_time_bookmark_at`).
+            SimulationConfigurationError: If the mark is already held again,
+                as `add_time_bookmark` and `add_mac_target` raise it.
+        """
+
+        same_run = removed.reached and removed.run_number == self._runs_discarded
+        mark = removed.mark
+
+        if isinstance(mark, TimeBookmark):
+            self._bookmarks = self._bookmarks.with_time_bookmark_at(removed.position, mark)
+
+            if same_run:
+                self._reached_instants_s |= {mark.instant_s}
+        else:
+            self._bookmarks = self._bookmarks.with_mac_target_at(removed.position, mark)
+
+            if same_run:
+                self._reached_crossings |= {mark.crossing_key}
 
     def _forget_unmarked(self) -> None:
         """Drop what the run did with marks that the learner has since removed.
@@ -1874,9 +1969,9 @@ class SimulationController:
                 supported run length. This run is itself a branch, because a
                 branch of a branch is rejected rather than silently flattened.
                 Or the rebuilt branch holds an equation setting or agent
-                reference that this run did not hold at the fork. The error
-                names each differing setting or reference with both of its
-                values.
+                reference that this run did not hold at the fork. The error's
+                message is for the learner, and its note names each differing
+                setting or reference with both of its values.
         """
 
         return self._branch_from(self._resume_point_here())
@@ -1961,8 +2056,9 @@ class SimulationController:
                 branch, because a branch of a branch is rejected rather than
                 silently flattened. Or the rebuilt branch holds an equation
                 setting or agent reference that this run did not hold at the
-                fork. The error names each differing setting or reference with
-                both of its values.
+                fork. The error's message is for the learner, and its note
+                names each differing setting or reference with both of its
+                values.
         """
 
         return self._branch_from(self._resume_point_at_mark(bookmark))
@@ -2020,6 +2116,12 @@ class SimulationController:
         Args:
             resume_point: The branch's provenance, including the stretch the
                 step reaching the fork ran under.
+
+        Raises:
+            SimulationConfigurationError: The branch was rebuilt with a value
+                that this run did not hold at the fork (`_disagreements_with`).
+                The message is written for a learner. Each value that differs
+                is in the exception's note and in the failure log (`PL-72X2`).
         """
 
         fork_at_s = resume_point.fork.instant_s
@@ -2039,12 +2141,26 @@ class SimulationController:
         disagreements = self._disagreements_with(branch, settings)
 
         if disagreements:
-            raise SimulationConfigurationError(
-                f"a branch at {format_elapsed(fork_at_s)} would be rebuilt from values this run "
-                "did not hold there, which would make it a second case rather than a second "
-                f"management of this one: {'; '.join(disagreements)} "
+            # The learner reads the first text in the branch panel. A developer
+            # needs each value that differs, written exactly, and reads it in
+            # the failure log and in the exception's note (`PL-72X2`).
+            detail = (
+                f"a branch at {fork_at_s!r} s was rebuilt with values this run did not hold "
+                f"there: {'; '.join(disagreements)} "
                 '(docs/ARCHITECTURE.md, "What a branch is, and what it shares with its parent")'
             )
+            refusal = SimulationConfigurationError(
+                f"a branch at {format_elapsed(fork_at_s)} would not open on the values this run "
+                "held there, so it would be a different case rather than another way of "
+                "managing this one. The simulator's data may have changed since this run "
+                "began, or the simulator may have a fault. Reopen the simulator and run the "
+                "case again to branch it. If this notice comes back at the same point, the "
+                "cause is a fault in the simulator"
+            )
+            refusal.add_note(detail)
+            _LOG.error("Branch refused: %s", detail)
+
+            raise refusal
 
         # The branch inherits the marks but not the timeline. The two are
         # treated in opposite ways for the same reason. The timeline is this
@@ -3592,19 +3708,35 @@ class SimulationController:
         the mark or the branch.
         """
 
-        stood_on = self._crossings_stood_on()
+        reached_instants_s, reached_crossings = self._reached_now()
 
         return self._bookmarks.standings(
-            reached_instants_s=self._reached_instants_s.union(
-                *(_reached_instants(crossing) for crossing in stood_on)
-            ),
-            reached_crossings=self._reached_crossings.union(
-                *(_reached_heights(crossing) for crossing in stood_on)
-            ),
+            reached_instants_s=reached_instants_s,
+            reached_crossings=reached_crossings,
             opened_at_s=self.began_at_s,
             elapsed_s=self._state.elapsed_s,
             stopped_at_cap=self.has_reached_supported_limit,
             run_failed=self._failure_reason is not None,
+        )
+
+    def _reached_now(
+        self,
+    ) -> tuple[frozenset[CaseInstant], frozenset[tuple[RecordedQuantity, float]]]:
+        """Return the instants and heights this run has reached, as its marks' standings read them.
+
+        They are what the run recorded as it went, and what the steps in
+        `_crossings_stood_on` cross. `bookmark_standings` shows these, and a
+        removed mark's record keeps whether its mark was among them
+        (`RemovedMark.reached`). So a target shown as reached when it was
+        removed is reached again when an Undo puts it back, even after the run
+        has left the step that crossed it (blind review of `PL-5GX4`).
+        """
+
+        stood_on = self._crossings_stood_on()
+
+        return (
+            self._reached_instants_s.union(*(_reached_instants(crossing) for crossing in stood_on)),
+            self._reached_crossings.union(*(_reached_heights(crossing) for crossing in stood_on)),
         )
 
     def _crossings_stood_on(self) -> tuple[BookmarkCrossing, ...]:
