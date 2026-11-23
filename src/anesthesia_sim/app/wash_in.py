@@ -28,7 +28,9 @@ plausible-looking number is worse here than no number at all.
 1. *The denominator must be at least one displayed unit.* $`F_I`$ is zero
    before any agent reaches the circuit. It is exactly zero at the start of
    every run, and for the whole of a run in which the vaporizer is never
-   opened, so the quotient there is $`0/0`$. Rather than treat $`0/0`$ as a
+   opened, so the quotient there is $`0/0`$. It also falls below one
+   displayed unit during a washout, once the vaporizer is closed, while the
+   patient still holds agent. Rather than treat $`0/0`$ as a
    special case, the rule sets the minimum denominator at the smallest inspired
    concentration that the interface itself reports as non-zero. So the ratio
    is never formed from a denominator that the display shows as `0.00%`.
@@ -54,8 +56,9 @@ range. Where the ratio is outside its domain, this module returns no number to
 draw and says which rule excluded it (`read_wash_in`). The interface can then
 state the cause instead of drawing a number it cannot stand behind. For the
 same reason, one call returns both the number and whether it is inside its
-domain. A caption saying "no agent in the circuit yet" beside a trace that is
-still drawing would be two displays disagreeing about the same instant.
+domain. A caption saying that the inspired concentration is too low to divide
+by, beside a trace that is still drawing, would be two displays disagreeing
+about the same instant.
 """
 
 from dataclasses import dataclass
@@ -97,10 +100,10 @@ class WashInDomain(StrEnum):
     """Whether $`F_A/F_I`$ is a wash-in fraction, and if not, why not.
 
     There are three outcomes rather than a `None`, because the interface has
-    to say *which* outcome a blank stretch of curve stands for. "No agent has
-    reached the circuit yet" and "the patient is now returning agent" are
-    opposite situations. A reader told only that the trace stopped would have
-    no way to tell them apart.
+    to say *which* outcome a blank stretch of curve stands for: an inspired
+    concentration too low to divide by, or an alveolar concentration above the
+    inspired. A reader told only that the trace stopped would have no way to
+    tell them apart.
     """
 
     WASH_IN = "wash_in"
