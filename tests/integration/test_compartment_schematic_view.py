@@ -618,7 +618,7 @@ def test_a_container_cannot_be_read_against_the_chart(
 
     assert chart.chart.plot_area().height() > 2 * _CONTAINER_HEIGHT_PX
     assert canvas.marks == pytest.approx(sixths)
-    assert "Marks stand at the chart's gridlines" in caption
+    assert "Marks stand every 0.5 ×MAC." in caption
     assert not schematic.scale_text.isHidden()
 
     for index in range(len(canvas.readings)):
