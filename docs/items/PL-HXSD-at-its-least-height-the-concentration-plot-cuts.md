@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux, safety
 feature: chart-readout
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/theme.py, tests/integration/test_qt_chart.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - the gate items are done and the release waits on the owner's test drive; this is the next item of the chart-readout chain, so it lands in a patch release rather than holding the cut
 added: 2026-11-23

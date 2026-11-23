@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: presentation-safety
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_dashboard_frame.py
 deferred-from: v0.6.0 - captured after the freeze (e6cdfd93, 2026-09-21), and not safety or science; classed by the 2026-10-03 triage pass
 added: 2026-10-03
