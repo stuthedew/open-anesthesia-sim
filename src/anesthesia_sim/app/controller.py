@@ -2138,7 +2138,7 @@ class SimulationController:
             cardiac_output_l_min=settings.cardiac_output_l_min,
         )
 
-        disagreements = self._disagreements_with(branch, settings)
+        disagreements = self._disagreements_with(branch, settings, "on the branch")
 
         if disagreements:
             # The learner reads the first text in the branch panel. A developer
@@ -2210,14 +2210,15 @@ class SimulationController:
         )
 
     def _disagreements_with(
-        self, branch: SimulationController, settings_at_fork: UptakeEquationSettings
+        self, rebuilt: SimulationController, settings_at_start: UptakeEquationSettings, where: str
     ) -> tuple[str, ...]:
-        """Return each value that `branch` was rebuilt with but this run did not have at the fork.
+        """Return each value that `rebuilt` was built with but this run did not hold at its start.
 
-        A branch is rebuilt rather than copied. Its live controls are read from the
-        settings of the stretch it opens under, and its agent, patient and circuit are read
-        again from the data files. So this method names every value that came out different,
-        with both of its values, and does not name a cause. A data file edited between the
+        A branch and a preview are each rebuilt from this run rather than copied. Their live
+        controls are read from `settings_at_start`, the settings of the stretch they start
+        under, and their agent, patient and circuit are read again from the data files. So
+        this method names every value that came out different, with both of its values, and
+        does not name a cause. A data file edited between the
         two builds fails the check even though the settings were read correctly. A message
         that blamed the settings would send its reader into the one part that worked
         (`PL-NC62`).
@@ -2236,13 +2237,15 @@ class SimulationController:
         Each value is written by its `repr`. For a float, that is the shortest text that
         parses back to the same float. For a string, it is the string in quotes. So two
         values that differ never print alike, even when they differ only in the last bit.
-        Any rounding would print two such values identically.
+        Any rounding would print two such values identically. `where` names the rebuilt run
+        in each entry, "on the branch" or "in the preview", so that a refusal names the run
+        that was refused (`PL-VYN4`).
         """
 
-        replayed = branch._state.uptake_system.equation_settings()
+        replayed = rebuilt._state.uptake_system.equation_settings()
         compared: list[tuple[str, object, object]] = [
             *(
-                (field.name, getattr(settings_at_fork, field.name), getattr(replayed, field.name))
+                (field.name, getattr(settings_at_start, field.name), getattr(replayed, field.name))
                 for field in fields(UptakeEquationSettings)
                 if field.name != "tissues"
             ),
@@ -2250,34 +2253,34 @@ class SimulationController:
                 (
                     f"{group_in_run.name} {field.name}",
                     getattr(group_in_run, field.name),
-                    getattr(group_on_branch, field.name),
+                    getattr(group_rebuilt, field.name),
                 )
-                for group_in_run, group_on_branch in zip(
-                    settings_at_fork.tissues, replayed.tissues, strict=True
+                for group_in_run, group_rebuilt in zip(
+                    settings_at_start.tissues, replayed.tissues, strict=True
                 )
                 for field in fields(TissueGroupEquationSettings)
             ),
-            ("agent_display_name", self._agent_display_name, branch._agent_display_name),
-            ("agent_mac", self._agent_mac, branch._agent_mac),
+            ("agent_display_name", self._agent_display_name, rebuilt._agent_display_name),
+            ("agent_mac", self._agent_mac, rebuilt._agent_mac),
             (
                 "agent_vapour_per_liquid",
                 self._agent_vapour_per_liquid,
-                branch._agent_vapour_per_liquid,
+                rebuilt._agent_vapour_per_liquid,
             ),
             *(
                 (
                     f"agent_mac_awake {field.name}",
                     getattr(self._agent_mac_awake, field.name),
-                    getattr(branch._agent_mac_awake, field.name),
+                    getattr(rebuilt._agent_mac_awake, field.name),
                 )
                 for field in fields(MacAwakeReference)
             ),
         ]
 
         return tuple(
-            f"{name} is {in_run!r} in this run and {on_branch!r} on the branch"
-            for name, in_run, on_branch in compared
-            if in_run != on_branch
+            f"{name} is {in_run!r} in this run and {other!r} {where}"
+            for name, in_run, other in compared
+            if in_run != other
         )
 
     def _open_at(
@@ -3213,7 +3216,7 @@ class SimulationController:
             alveolar_ventilation_l_min=in_force.alveolar_ventilation_l_min,
             cardiac_output_l_min=in_force.cardiac_output_l_min,
         )
-        disagreements = self._disagreements_with(trial, in_force)
+        disagreements = self._disagreements_with(trial, in_force, "in the preview")
 
         if disagreements:
             raise SimulationConfigurationError(
