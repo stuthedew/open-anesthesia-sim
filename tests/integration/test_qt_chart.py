@@ -17,6 +17,7 @@ import gc
 import weakref
 from collections import Counter
 from collections.abc import Iterator
+from math import ceil, floor
 
 import numpy as np
 import pytest
@@ -51,6 +52,7 @@ from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjus
 from anesthesia_sim.app.controller import BranchedCase, SettingPreview, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
+    PREVIEW_TIME_AXIS_CAPTION_TEMPLATE,
     compared_trace_legend_label,
     run_label,
     trace_legend_label,
@@ -872,38 +874,137 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
 _BOX_EDGE_TOLERANCE_PX = 0.5
 
 
-@pytest.mark.parametrize("family", [None, "DejaVu Sans"], ids=["platform font", "CI font"])
-def test_the_tallest_hover_box_fits_the_plot_at_its_least_height(
-    application: QApplication, family: str | None
+#: The width of a narrow chart, in pixels. The concentration View is never
+#: narrower than 420 px, and a chart of this width leaves a plot about 360 px
+#: wide, on which the longest time-axis title takes two lines.
+_NARROW_CHART_WIDTH_PX = 420
+
+#: A desktop font larger than the container's 12 px. Apple's Human Interface
+#: Guidelines give 13 pt as the default size of macOS text, in the macOS text
+#: styles table of
+#: https://developer.apple.com/design/human-interface-guidelines/typography
+#: (read 2026-11-23). How Qt maps those points to its pixels on a Mac has no
+#: source that this session could read, so 13 px stands in for that font.
+_LARGER_FONT_PX = 13
+
+
+def _set_font(application: QApplication, family: str | None, pixel_size: int | None) -> None:
+    """Set the application's font family, or its size in pixels, or both."""
+
+    font = QFont(application.font())
+
+    if family is not None:
+        font.setFamily(family)
+
+    if pixel_size is not None:
+        font.setPixelSize(pixel_size)
+
+    application.setFont(font)
+
+    # Qt substitutes another family without an error when the one asked for
+    # is missing, and the case would then measure a font it does not name.
+    if family is not None:
+        assert QFontInfo(application.font()).family() == family
+
+
+def _widened(rect: QRectF) -> QRectF:
+    """Return a rectangle grown on every side by `_BOX_EDGE_TOLERANCE_PX`."""
+
+    tolerance = _BOX_EDGE_TOLERANCE_PX
+
+    return rect.adjusted(-tolerance, -tolerance, tolerance, tolerance)
+
+
+def _hover_on_the_corner(chart: ConcentrationChart) -> QRectF:
+    """Hover one pixel in from the plot's lower-left corner and return the box it shows.
+
+    There the pointer is over the plot rather than on its axes, and at the
+    start of a run every trace is within reach, so the box is the tallest
+    one the plot shows.
+    """
+
+    x_px, y_px = chart.plot_pixel(0.0, 0.0)
+    _move_pointer(chart, QPoint(x_px + 1, y_px - 1))
+    deadline = QDeadlineTimer(_HOVER_WAIT_MS)
+    while chart.hover_text() is None and not deadline.hasExpired():
+        QTest.qWait(10)
+    readout = chart.hover_text()
+    assert readout is not None, "no hover answered at the plot's corner"
+    assert len(readout.splitlines()) == 1 + len(COMPARTMENT_TRACES), readout
+    assert 1 + len(COMPARTMENT_TRACES) > 1 + MAX_DISPLAYED_RUNS * COMPARED_COMPARTMENT_CAP
+    box = chart.hover_box()
+    assert box is not None
+
+    return box
+
+
+#: The least share of an edge of the hover box that must be painted in its
+#: border for the edge to count as drawn. Measured on 2026-11-23, an edge that
+#: the plot's edge cut off was 0% to 16% drawn, and an edge drawn whole was
+#: 100% drawn in every case of the test below. The share leaves room for a
+#: trace or a tick drawn across the edge.
+_DRAWN_EDGE_SHARE = 0.9
+
+
+def _edge_drawn_share(image: QImage, box: QRectF, edge_y: float) -> float:
+    """Return the share of one horizontal edge of the box that is painted darker than the panel.
+
+    The border is drawn in `MUTED` with antialiasing, so where an edge falls
+    between two rows of pixels it shows in both, lighter than `MUTED`. So
+    each column counts as drawn where either of the two rows nearest the
+    edge is darker than the panel the box is filled with.
+    """
+
+    panel = QColor(PANEL).lightness()
+    rows = {floor(edge_y - 0.5), floor(edge_y)}
+    columns = range(ceil(box.left()) + 2, floor(box.right()) - 2)
+    drawn = sum(
+        1
+        for x in columns
+        if any(image.pixelColor(x, y).lightness() < panel - _BORDER_LIGHTNESS_MARGIN for y in rows)
+    )
+
+    return drawn / len(columns)
+
+
+#: How much darker than the panel a pixel must be to count as border, in
+#: levels of lightness out of 255. Measured on 2026-11-23, the darker of the
+#: two rows nearest a drawn edge was 70 to 129 levels darker than the panel,
+#: and a cut-off edge showed the panel itself, 0 levels darker.
+_BORDER_LIGHTNESS_MARGIN = 20
+
+
+@pytest.mark.parametrize(
+    ("family", "pixel_size"),
+    [(None, None), ("DejaVu Sans", None), (None, _LARGER_FONT_PX)],
+    ids=["platform font", "CI font", "13 px font"],
+)
+@pytest.mark.parametrize(
+    "width_px", [int(_PLOT_WIDTH_PX), _NARROW_CHART_WIDTH_PX], ids=["wide", "narrow"]
+)
+def test_the_tallest_hover_box_is_drawn_whole_at_the_least_height(
+    application: QApplication, family: str | None, pixel_size: int | None, width_px: int
 ) -> None:
-    """The box with every trace stays whole inside a wide plot at its least height (`PL-S0HP`).
+    """No value line of the tallest hover box is cut off at the chart's least height (`PL-HXSD`).
 
     The tallest box the concentration plot shows names the agent and then all
     six compartments. It appears where every trace is inside the hover radius,
     as at the start of a run, when all six are at zero. Two compared runs show
     fewer lines, because a compared chart draws at most two compartments.
-    `PL-571L` took half a line from the plot's height for the top tick label,
-    so the box's last line, a value the learner is reading, could have been
-    cut off by the plot's edge. Measured on 2026-11-22, the box was 113.0 px
-    and the plot 113.1 px in the container's font, and 106.0 px and 114.9 px
-    in DejaVu Sans, the font the CI runners draw in. The test runs in both, so
-    a change to either height that cuts the box off fails here.
 
-    The plot is 900 px wide, so the time axis's title stays on one line. On a
-    plot about 400 px wide the title breaks onto a second line, which takes a
-    line from the plot, and the box no longer fits. A 13-pixel font does not
-    fit either. `PL-HXSD` holds both cases.
+    The box was drawn inside the plot, which cut it off at the plot's edge.
+    The plot is shorter than the box in three cases: a narrow chart, where
+    the time axis's longest title takes two lines, and a 13-pixel font, wide
+    or narrow. Measured on 2026-11-23 before the fix, the box was 113 px and
+    the plot 101 px on a plot 400 px wide, and 120 px and 112 px at 13 px.
+    The box now keeps inside the plot wherever it fits there, and otherwise
+    moves up over the time axis until all of it is inside the chart. The test
+    runs in the container's font and in DejaVu Sans, the font the CI runners
+    draw in.
     """
 
     old_font = application.font()
-
-    if family is not None:
-        font = QFont(old_font)
-        font.setFamily(family)
-        application.setFont(font)
-        # Qt substitutes another family without an error when the one asked
-        # for is missing, and the case would then measure a font it does not name.
-        assert QFontInfo(application.font()).family() == family
+    _set_font(application, family, pixel_size)
 
     try:
         controller = SimulationController(agent_id="desflurane")
@@ -911,7 +1012,8 @@ def test_the_tallest_hover_box_fits_the_plot_at_its_least_height(
         controller.pause()
         frame = _frame(controller, span_s=900.0)
         chart = ConcentrationChart()
-        chart.resize(int(_PLOT_WIDTH_PX), chart.minimumSizeHint().height())
+        chart.show_time_window(PREVIEW_TIME_AXIS_CAPTION_TEMPLATE.format(span="15 minutes"))
+        chart.resize(width_px, chart.minimumSizeHint().height())
         chart.show()
         application.processEvents()
         chart.draw(frame)
@@ -919,27 +1021,75 @@ def test_the_tallest_hover_box_fits_the_plot_at_its_least_height(
         application.processEvents()
         assert chart.height() == CHART_LEAST_HEIGHT
 
-        # One pixel in from the plot's corner, where the pointer is over the
-        # plot rather than on its axes, and every trace is still within reach.
-        x_px, y_px = chart.plot_pixel(0.0, 0.0)
-        pixel = QPoint(x_px + 1, y_px - 1)
-        _move_pointer(chart, pixel)
-        deadline = QDeadlineTimer(_HOVER_WAIT_MS)
-        while chart.hover_text() is None and not deadline.hasExpired():
-            QTest.qWait(10)
-        readout = chart.hover_text()
-        assert readout is not None, "no hover answered at the plot's corner"
-        assert len(readout.splitlines()) == 1 + len(COMPARTMENT_TRACES), readout
-        assert 1 + len(COMPARTMENT_TRACES) > 1 + MAX_DISPLAYED_RUNS * COMPARED_COMPARTMENT_CAP
-        box = chart.hover_box()
-        assert box is not None
-        area = chart.plot_area().adjusted(
-            -_BOX_EDGE_TOLERANCE_PX,
-            -_BOX_EDGE_TOLERANCE_PX,
-            _BOX_EDGE_TOLERANCE_PX,
-            _BOX_EDGE_TOLERANCE_PX,
-        )
-        assert area.contains(box), f"the box {box} leaves the plot {chart.plot_area()}"
+        if width_px == _NARROW_CHART_WIDTH_PX:
+            assert len(chart.time_axis_lines) > 1, chart.time_axis_lines
+
+        box = _hover_on_the_corner(chart)
+        whole = QRectF(0.0, 0.0, chart.width(), chart.height())
+        assert _widened(whole).contains(box), f"the box {box} leaves the chart {whole}"
+
+        # Where the box is placed is not where it is drawn, if something clips
+        # it. Its rectangle stayed whole while the plot cut off its last line.
+        # So the test reads the painted pixels of its top and bottom edges.
+        image = chart.painted()
+        for name, edge_y in (("top", box.top()), ("bottom", box.bottom())):
+            share = _edge_drawn_share(image, box, edge_y)
+            assert share >= _DRAWN_EDGE_SHARE, f"the box's {name} edge is {share:.0%} drawn"
+
+        area = chart.plot_area()
+
+        if area.height() >= box.height():
+            assert _widened(area).contains(box), (
+                f"the box {box} leaves the plot {area}, which has room for it"
+            )
+
+        if width_px == _NARROW_CHART_WIDTH_PX or pixel_size is not None:
+            # The case the fix is for: the plot is shorter than the box.
+            assert area.height() < box.height(), (area, box)
+    finally:
+        application.setFont(old_font)
+
+
+def test_a_font_too_large_for_the_least_height_makes_the_chart_taller(
+    application: QApplication,
+) -> None:
+    """A font that makes the tallest box taller than the least height grows the chart (`PL-HXSD`).
+
+    A reader who enlarges the desktop's text makes the box taller. The box
+    could then be cut off at the chart's edge, however it is moved. So the
+    chart's least height follows the box's height wherever that is the
+    taller of the two. The font changes after the chart is built, as it
+    does when the reader changes it while the app runs.
+    """
+
+    old_font = application.font()
+
+    try:
+        controller = SimulationController(agent_id="desflurane")
+        _advance(controller, 120)
+        controller.pause()
+        frame = _frame(controller, span_s=900.0)
+        chart = ConcentrationChart()
+        chart.show()
+        application.processEvents()
+        assert chart.minimumSizeHint().height() == CHART_LEAST_HEIGHT
+
+        # Twice the container's 12 px, the enlargement to which WCAG 2.2
+        # Success Criterion 1.4.4 asks text to resize without loss of content.
+        _set_font(application, None, 24)
+        application.processEvents()
+        least_px = chart.minimumSizeHint().height()
+        assert least_px > CHART_LEAST_HEIGHT
+
+        chart.resize(int(_PLOT_WIDTH_PX), least_px)
+        application.processEvents()
+        chart.draw(frame)
+        chart.grab()
+        application.processEvents()
+        box = _hover_on_the_corner(chart)
+        assert box.height() > CHART_LEAST_HEIGHT
+        whole = QRectF(0.0, 0.0, chart.width(), chart.height())
+        assert _widened(whole).contains(box), f"the box {box} leaves the chart {whole}"
     finally:
         application.setFont(old_font)
 

@@ -284,6 +284,19 @@ _HOVER_DOT_DIAMETER: Final = 8.0
 # (`_PointerMoves`).
 _HOVER_ANSWERS_PER_SECOND: Final = 60
 
+# The most lines a hover box on each plot can hold, which sets the least
+# height that holds it whole (`_HoverReadout.hold_the_tallest_box`). A
+# concentration box names the agent and then gives one line per reading in
+# reach. A single run gives a reading for each of the six compartments where
+# all six start together. Compared runs give one for each run and each
+# compartment drawn, at most `COMPARED_COMPARTMENT_CAP` of them.
+# A wash-in box gives two lines and then one per run in reach
+# (`chart_frame.format_compared_wash_in_hover`).
+_TRACE_HOVER_MOST_LINES: Final = 1 + max(
+    len(COMPARTMENT_TRACES), MAX_DISPLAYED_RUNS * COMPARED_COMPARTMENT_CAP
+)
+_WASH_IN_HOVER_MOST_LINES: Final = 2 + MAX_DISPLAYED_RUNS
+
 # Drawing order. Control marks are drawn first, behind the references and
 # behind every trace. A vertical line across the whole plot is the one
 # annotation that can hide all six compartments at the moment a reader is
@@ -537,7 +550,7 @@ def _hover_items() -> tuple[Any, Any]:
     dot = pg.ScatterPlotItem(size=_HOVER_DOT_DIAMETER, pen=None, brush=pg.mkBrush(INK))
     dot.setZValue(_Z_HOVER)
     dot.hide()
-    text = pg.TextItem(color=INK, fill=pg.mkBrush(PANEL), border=pg.mkPen(MUTED), anchor=(0, 1))
+    text = pg.TextItem(color=INK, fill=pg.mkBrush(PANEL), border=pg.mkPen(MUTED), anchor=(0, 0))
     text.setZValue(_Z_HOVER)
     text.hide()
 
@@ -658,14 +671,46 @@ class _HoverReadout:
     that shows no readout (`PL-LTKL`).
     """
 
-    def __init__(self, plot: Any) -> None:
+    def __init__(self, plot: Any, least_height_px: int, most_lines: int) -> None:
         self._plot = plot
+        self._least_height_px = least_height_px
+        self._most_lines = most_lines
         self._dot, self._text = _hover_items()
         plot.getPlotItem().addItem(self._dot, ignoreBounds=True)
-        plot.getPlotItem().addItem(self._text, ignoreBounds=True)
+        # The box belongs to the scene, not to the view box. A view box clips
+        # what it holds to the plot inside the axes, so a box taller than
+        # that plot lost its last value line, which is the line the reader
+        # came for (`PL-HXSD`). In the scene the box may lie over the axes,
+        # and `show` keeps it whole inside the widget.
+        plot.scene().addItem(self._text)
         self._scene_position: QPointF | None = None
         # A child of the plot, so Qt keeps it for as long as the plot lives.
         self._moves = _PointerMoves(plot)
+        self.hold_the_tallest_box()
+
+    def hold_the_tallest_box(self) -> None:
+        """Draw the box in the plot's font, and keep the plot at least as tall as the tallest box.
+
+        The plot's least height is its theme height, or the tallest box's if
+        that is taller. The tallest box has the plot's most lines, and its
+        height follows the font. So a chart calls this again when its font
+        changes. A text item keeps the font it was built with, so without
+        that call the box would keep the old font. At the container's font
+        and at a 13-pixel font the theme height is the taller (`PL-HXSD`),
+        and the floor changes nothing. A larger font, such as a reader
+        enlarging the desktop's text, makes the box taller than the theme
+        height. The plot then grows, rather than cutting off the box's last
+        value line.
+        """
+
+        self._text.setFont(self._plot.font())
+        _, probe = _hover_items()
+        probe.setFont(self._plot.font())
+        self._plot.scene().addItem(probe)
+        probe.setText("\n".join("0" * self._most_lines))
+        tallest_px = ceil(probe.boundingRect().height())
+        self._plot.scene().removeItem(probe)
+        self._plot.setMinimumHeight(max(self._least_height_px, tallest_px))
 
     @property
     def moved(self) -> SignalInstance:
@@ -724,39 +769,52 @@ class _HoverReadout:
         # fraction of the axis put the box partly above a short plot
         # (`PL-9BVQ`). A plot shorter than the box's height on both sides of
         # the anchor, as a View at its least height can leave it, gets the box
-        # with its top at the plot's top, so the box stays inside the plot
-        # where the plot is at least as tall as the box (`PL-CBYS`). There the
-        # box is almost as tall as the plot. Beside the anchor it hid the curve
-        # on that side, which is what the value is read against, so it goes to
-        # the far edge of the plot instead, on the side away from the anchor
+        # with its top at the plot's top (`PL-CBYS`). There the box is almost
+        # as tall as the plot. Beside the anchor it hid the curve on that
+        # side, which is what the value is read against, so it goes to the far
+        # edge of the plot instead, on the side away from the anchor
         # (`PL-YJ7N`). A box wider than the room between that edge and the
-        # anchor would lie over the hovered point there, so it stays beside the
-        # anchor, where it never covers the point.
-        anchor = target.anchor
-        past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
-        box_height_px = self._box_height_px()
-        room_above_px = self._room_above_px(anchor.time_s, anchor.value)
-        room_below_px = self._plot_height_px() - room_above_px
-        horizontal = 1 if past_middle else 0
+        # anchor would lie over the hovered point there, so it stays beside
+        # the anchor, where it never covers the point.
+        anchor = self._pixel(target.anchor.time_s, target.anchor.value)
+        past_middle = target.anchor.time_s > (x_range[0] + x_range[1]) / 2.0
+        plot = _plot_area(self._plot)
+        height_px = self._box_height_px()
+        # Which of the box's sides is at `x_px`: its left side (0) or its
+        # right side (1). The box is placed by that side rather than by a
+        # width, so the width it is drawn at is the width it is placed by.
+        side = 1 if past_middle else 0
+        x_px = anchor.x()
 
-        if room_above_px >= box_height_px:
-            self._text.setAnchor((horizontal, 1))
-            self._text.setPos(anchor.time_s, anchor.value)
-        elif room_below_px >= box_height_px:
-            self._text.setAnchor((horizontal, 0))
-            self._text.setPos(anchor.time_s, anchor.value)
+        if anchor.y() - plot.top() >= height_px:
+            top_px = anchor.y() - height_px
+        elif plot.bottom() - anchor.y() >= height_px:
+            top_px = anchor.y()
         else:
+            top_px = plot.top()
             # Past the middle the anchor is in the right half, so the box takes
             # the left edge, and the other way round.
             far_side = 0 if past_middle else 1
-            far_edge = x_range[far_side]
+            far_edge = self._pixel(x_range[far_side], 0.0).x()
 
-            if self._box_width_px() <= self._width_between_px(far_edge, anchor.time_s):
-                self._text.setAnchor((far_side, 0))
-                self._text.setPos(far_edge, self._top_value())
-            else:
-                self._text.setAnchor((horizontal, 0))
-                self._text.setPos(anchor.time_s, self._top_value())
+            if self._box_width_px() <= abs(anchor.x() - far_edge):
+                side = far_side
+                x_px = far_edge
+
+        # A box taller than the plot, as a narrow plot whose time-axis title
+        # wraps or a larger desktop font can make it, is moved up until all of
+        # it is inside the widget, over the time axis if need be. This is the
+        # shift that tooltip libraries make at a window's edge (Floating UI's
+        # `shift`). The widget is never shorter than the tallest box
+        # (`hold_the_tallest_box`), so no line of the box is cut off. The box
+        # needs no such shift across. Beside the anchor it lies in the half of
+        # the plot away from the near edge, with that half and the axis
+        # beyond it to fill, which is wider than the box at any width a View
+        # allows.
+        bottom_px = float(self._plot.viewport().height())
+        top_px = max(0.0, min(top_px, bottom_px - height_px))
+        self._text.setAnchor((side, 0))
+        self._text.setPos(self._plot.viewportTransform().inverted()[0].map(QPointF(x_px, top_px)))
 
         self._dot.show()
         # This uses `setVisible` rather than `show`. `show` goes straight to
@@ -766,37 +824,13 @@ class _HoverReadout:
         # can come out thousands of pixels tall (`PL-J0F7`).
         self._text.setVisible(True)
 
-    def _room_above_px(self, time_s: float, value: float) -> float:
-        """Return how many pixels lie between a plot position and the top of the plot."""
+    def _pixel(self, time_s: float, value: float) -> QPointF:
+        """Return where a plot position lies in the plot widget's pixels."""
 
         view_box = self._plot.getPlotItem().getViewBox()
-        anchor = self._plot.mapFromScene(view_box.mapViewToScene(QPointF(time_s, value)))
-        top = self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).top()
+        scene_point: QPointF = view_box.mapViewToScene(QPointF(time_s, value))
 
-        return float(anchor.y() - top)
-
-    def _width_between_px(self, first_time_s: float, second_time_s: float) -> float:
-        """Return how many pixels lie between two times on the plot's horizontal axis."""
-
-        view_box = self._plot.getPlotItem().getViewBox()
-        first, second = (
-            self._plot.mapFromScene(view_box.mapViewToScene(QPointF(time_s, 0.0))).x()
-            for time_s in (first_time_s, second_time_s)
-        )
-
-        return float(abs(second - first))
-
-    def _plot_height_px(self) -> float:
-        """Return the plot's height in pixels, between its top and bottom axes."""
-
-        view_box = self._plot.getPlotItem().getViewBox()
-
-        return float(self._plot.viewportTransform().mapRect(view_box.sceneBoundingRect()).height())
-
-    def _top_value(self) -> float:
-        """Return the value at the top edge of the plot, in the units the box is placed in."""
-
-        return float(self._plot.getPlotItem().getViewBox().viewRange()[1][1])
+        return QPointF(self._plot.viewportTransform().map(scene_point))
 
     def _box_height_px(self) -> float:
         """Return the box's height in pixels, for the text it now holds.
@@ -1074,7 +1108,6 @@ class ConcentrationChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1118,7 +1151,7 @@ class ConcentrationChart(QWidget):
 
         self._runs: list[_RunItems] = []
         self._frame: ChartFrame | None = None
-        self._hover = _HoverReadout(self._plot)
+        self._hover = _HoverReadout(self._plot, CHART_LEAST_HEIGHT, _TRACE_HOVER_MOST_LINES)
         self._hover.moved.connect(self._on_pointer)
         # Whether the box goes above or below its point depends on the plot's
         # height in pixels. So a resize places the box again, even while the
@@ -1266,11 +1299,21 @@ class ConcentrationChart(QWidget):
 
         return self._runs[run].preview.shown_label()
 
+    def changeEvent(self, event: QEvent) -> None:  # Qt spells this in camelCase.
+        """Hold the tallest hover box again when the font, and so its height, changes."""
+
+        super().changeEvent(event)
+
+        if event.type() == QEvent.Type.FontChange:
+            self._hover.hold_the_tallest_box()
+
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """As wide as the plot asks and `theme.CHART_HEIGHT` tall.
 
-        The chart grows into spare height, and shrinks to
-        `theme.CHART_LEAST_HEIGHT` in a View too short for this height.
+        The chart grows into spare height. In a View too short for this
+        height it shrinks to `theme.CHART_LEAST_HEIGHT`, or to the tallest
+        hover box's height where a large font makes that the taller
+        (`_HoverReadout.hold_the_tallest_box`).
         """
 
         return _preferred_size(self._plot, CHART_HEIGHT)
@@ -1421,7 +1464,7 @@ class ConcentrationChart(QWidget):
         return _plot_pixel(self._plot, time_s, percent)
 
     def plot_area(self) -> QRectF:
-        """The plot inside its axes, in the pixels of `painted`, where the hover box has to stay."""
+        """The plot inside its axes, in the pixels of `painted`, which holds any box that fits."""
 
         return _plot_area(self._plot)
 
@@ -1576,7 +1619,6 @@ class WashInChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._plot = _plot(PANEL)
-        self._plot.setMinimumHeight(WASH_IN_CHART_LEAST_HEIGHT)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1609,7 +1651,9 @@ class WashInChart(QWidget):
 
         self._runs: list[_WashInRunItems] = []
         self._frame: ChartFrame | None = None
-        self._hover = _HoverReadout(self._plot)
+        self._hover = _HoverReadout(
+            self._plot, WASH_IN_CHART_LEAST_HEIGHT, _WASH_IN_HOVER_MOST_LINES
+        )
         self._hover.moved.connect(self._on_pointer)
         # Whether the box goes above or below its point depends on the plot's
         # height in pixels. So a resize places the box again, even while the
@@ -1702,11 +1746,21 @@ class WashInChart(QWidget):
 
         return self._frame
 
+    def changeEvent(self, event: QEvent) -> None:  # Qt spells this in camelCase.
+        """Hold the tallest hover box again when the font, and so its height, changes."""
+
+        super().changeEvent(event)
+
+        if event.type() == QEvent.Type.FontChange:
+            self._hover.hold_the_tallest_box()
+
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall.
 
-        The chart shrinks to `theme.WASH_IN_CHART_LEAST_HEIGHT` in a View too
-        short for this height.
+        In a View too short for this height the chart shrinks to
+        `theme.WASH_IN_CHART_LEAST_HEIGHT`, or to the tallest hover box's
+        height where a large font makes that the taller
+        (`_HoverReadout.hold_the_tallest_box`).
         """
 
         return _preferred_size(self._plot, WASH_IN_CHART_HEIGHT)
@@ -1868,7 +1922,7 @@ class WashInChart(QWidget):
         return _plot_pixel(self._plot, time_s, ratio)
 
     def plot_area(self) -> QRectF:
-        """The plot inside its axes, in the pixels of `painted`, where the hover box has to stay."""
+        """The plot inside its axes, in the pixels of `painted`, which holds any box that fits."""
 
         return _plot_area(self._plot)
 
@@ -2109,7 +2163,8 @@ def _preferred_size(plot: Any, height_px: int) -> QSize:
     the page a quarter of a screen taller than the page it replaced. The plot still
     grows past this height, because it expands in both directions, so a
     taller window lengthens the traces. The plot's minimum height is a smaller
-    theme height, such as `CHART_LEAST_HEIGHT`, set on the plot.
+    theme height, such as `CHART_LEAST_HEIGHT`, unless the tallest hover box
+    is taller (`_HoverReadout.hold_the_tallest_box`).
     """
 
     return QSize(plot.sizeHint().width(), height_px)
