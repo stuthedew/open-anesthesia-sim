@@ -447,6 +447,59 @@ def test_settle_reruns_each_mutant_whose_pytest_run_raised(
     assert sorted(mutant for _, mutant in runs[1:]) == raised
 
 
+def test_settle_reruns_each_survivor_whole_when_asked(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A test of what a decorator did runs only when its module is imported under the mutant.
+
+    mutmut runs a mutant's tests by node id, and only the tests that call the
+    mutated function while they run. On 2026-11-23 six mutants of a decorator
+    in `app/halt_gate.py` survived that way, and each failed its test file run
+    whole, because two of its tests check what the decorator did to the
+    module's class at import (`PL-1QX0`).
+    """
+    gate = [f"m.x_gate__mutmut_{n}" for n in range(1, 4)]
+    found = dict.fromkeys(gate, "survived")
+    found |= {"m.x_f__mutmut_1": "timeout", "m.x_g__mutmut_1": "killed"}
+    codes = dict.fromkeys(gate, 0)
+    codes |= {"m.x_f__mutmut_1": 255, "m.x_g__mutmut_1": 1}
+    files = {
+        gate[0]: ["tests/unit/test_gate.py"],
+        gate[1]: ["tests/unit/test_gate.py"],
+        gate[2]: [],
+        "m.x_f__mutmut_1": ["tests/unit/test_f.py"],
+    }
+    exits = {"": 0, gate[0]: 1, gate[1]: 0, "m.x_f__mutmut_1": 1}
+    runs = _stub_reruns(monkeypatch, files, exits)
+
+    assert settle(tmp_path, found, codes, frozenset(), survivors=True) == {
+        gate[0]: "killed",
+        gate[1]: "survived",
+        # mutmut's own run stands where it names no test file to run whole.
+        gate[2]: "survived",
+        "m.x_f__mutmut_1": "killed",
+        "m.x_g__mutmut_1": "killed",
+    }
+    assert runs[0] == (("tests/unit/test_f.py", "tests/unit/test_gate.py"), "")
+    assert sorted(mutant for _, mutant in runs[1:]) == ["m.x_f__mutmut_1", gate[0], gate[1]]
+
+
+def test_settle_keeps_a_survivor_whose_files_fail_with_no_mutant(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A whole-file run that fails with no mutant applied counts as no kill of any mutant."""
+    found = {"m.x_gate__mutmut_1": "survived", "m.x_f__mutmut_1": "timeout"}
+    codes = {"m.x_gate__mutmut_1": 0, "m.x_f__mutmut_1": 255}
+    files = dict.fromkeys(found, ["tests/unit/test_f.py"])
+    runs = _stub_reruns(monkeypatch, files, {"": 1})
+
+    assert settle(tmp_path, found, codes, frozenset(), survivors=True) == {
+        "m.x_gate__mutmut_1": "survived",
+        "m.x_f__mutmut_1": "unsettled, its test files fail with no mutant applied",
+    }
+    assert runs == [(("tests/unit/test_f.py",), "")]
+
+
 def test_settle_reruns_the_mutants_at_once_on_every_worker(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -1015,6 +1068,35 @@ def test_a_run_without_the_verdict_names_every_mutant_of_each_changed_function(
     # so that no other file's functions are wrapped.
     assert ran == [(names, ["src/pkg/core/model.py"])]
     assert "pkg.core.model.outer: 2 mutants - 2 killed" in capsys.readouterr().out
+
+
+def test_only_the_run_on_the_changed_functions_reruns_its_survivors_whole(
+    tabled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A survivor of a changed function refuses the branch, so it is worth a whole-file run.
+
+    A whole-tree run is left as it is, because rerunning its hundreds of
+    survivors would add about half its time (`settle`).
+    """
+    asked: list[bool] = []
+
+    def recording_settle(
+        root: Path,
+        found: dict[str, str],
+        codes: object,
+        skipped: object,
+        *,
+        survivors: bool = False,
+    ) -> dict[str, str]:
+        asked.append(survivors)
+        return dict(found)
+
+    monkeypatch.setattr(diff_mutation, "settle", recording_settle)
+    _record_runs(monkeypatch, tabled, {"pkg.core.model.x_outer__mutmut_1": "killed"})
+
+    assert main(["--root", str(tabled), "--base", "main"]) == 0
+    assert main(["--root", str(tabled), "--all"]) == 0
+    assert asked == [True, False]
 
 
 def test_a_run_whose_listing_failed_passes_one_glob_for_each_changed_function(

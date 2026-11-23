@@ -46,7 +46,7 @@ says how to read a survivor. mutmut is in the `mutation` dependency group, so
 `make mutate` runs this tool through `uv run --group mutation`.
 
 **mutmut takes its settings from `pyproject.toml`'s `[tool.mutmut]` table,**
-which says why each one is set. This tool decides five things that the table
+which says why each one is set. This tool decides six things that the table
 cannot.
 
 - **Which tests run.** The table names an `@` file as the test selection, and
@@ -86,6 +86,13 @@ cannot.
   each such mutant's test files again, whole, and reports what they say. The
   files first run once with no mutant applied, and must pass. Both runs leave
   out the tests that the table deselects.
+- **Which survivors a test module's import kills.** mutmut records which
+  tests call a function only while a test runs. A call made while pytest
+  imports a test module, such as a decorator applied to a class there,
+  belongs to no test, so the test that checks what the decorator did never
+  runs against its mutants (`PL-1QX0`). A run on the changed functions
+  therefore runs each survivor's test files again, whole, in the same way.
+  `--all` does not, and `settle` says why.
 - **The order of each mutant's tests.** mutmut stops a mutant's run at its
   first failing test, so the order decides how long a caught mutant takes. In
   the `forkserver` mode that the table chooses, mutmut 3.8.0 passes the tests
@@ -885,7 +892,12 @@ def _pytest_in_mutants(
 
 
 def settle(
-    root: Path, found: Mapping[str, str], codes: Mapping[str, int], skipped: Iterable[str]
+    root: Path,
+    found: Mapping[str, str],
+    codes: Mapping[str, int],
+    skipped: Iterable[str],
+    *,
+    survivors: bool = False,
 ) -> dict[str, str]:
     """`found`, with each mutant whose pytest run raised given the status of a whole-file run.
 
@@ -895,23 +907,39 @@ def settle(
     that a failure of this way of running them is never counted as a kill.
     Then the mutants run `RERUN_WORKERS` at a time, as mutmut's own run did.
     Every run leaves out the tests in `skipped`, which are `deselected(table)`.
+
+    With `survivors`, each survivor's test files run whole in the same way
+    (`PL-1QX0`). A whole-file run imports each test module with the mutant
+    applied, so a test that checks what a decorator did to a class in its
+    module runs against the decorator's mutants, which mutmut's own run never
+    does. A survivor keeps its status where the files fail with no mutant
+    applied or mutmut names no test for it, since mutmut's run stands as an
+    answer there. The run on the changed functions asks for this, because a
+    survivor there refuses the branch and there are few of them. `--all` does
+    not: on 2026-11-23 its 788 survivors would have added about 33 minutes to
+    a 63-minute run, by the test durations mutmut recorded, and a sort of
+    1,037 survivors and untested mutants that day found 6 of this kind.
     """
     settled = dict(found)
     raised = sorted(name for name in found if codes.get(name) == RAISED)
-    if not raised:
+    survived = sorted(
+        name
+        for name, status in found.items()
+        if survivors and status == "survived" and name not in raised
+    )
+    rerun = sorted([*raised, *survived])
+    if not rerun:
         return settled
     with ThreadPoolExecutor(max_workers=RERUN_WORKERS) as pool:
         # Each worker waits on a subprocess, so threads run them in parallel.
-        files = dict(
-            zip(raised, pool.map(lambda name: _test_files(root, name), raised), strict=True)
-        )
+        files = dict(zip(rerun, pool.map(lambda name: _test_files(root, name), rerun), strict=True))
         every = sorted({file for named in files.values() for file in named})
         if every and _pytest_in_mutants(root, every, "", skipped) != 0:
             for name in raised:
                 settled[name] = "unsettled, its test files fail with no mutant applied"
             return settled
         # pytest given no file runs the whole of `testpaths`, so those are not run.
-        named = [name for name in raised if files[name]]
+        named = [name for name in rerun if files[name]]
         for name in raised:
             if not files[name]:
                 settled[name] = "unsettled, mutmut names no test for it"
@@ -1761,7 +1789,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + LISTING_UNREAD
             )
         codes = recorded_exit_codes(root, {unit.path for unit in change.units})
-        print(answer(change, settle(root, found, codes, deselected(table)), listed))
+        settled = settle(root, found, codes, deselected(table), survivors=True)
+        print(answer(change, settled, listed))
         return 0
     except (Refusal, GitUnanswered, OSError, SyntaxError, ValueError, KeyError) as error:
         reason = str(error) if isinstance(error, Refusal) else repr(error)
