@@ -21,7 +21,7 @@ from collections.abc import Iterator
 import numpy as np
 import pytest
 from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QImage, QMouseEvent, QPainter, QPalette, QPen
+from PySide6.QtGui import QColor, QFont, QFontInfo, QImage, QMouseEvent, QPainter, QPalette, QPen
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
@@ -876,7 +876,7 @@ _BOX_EDGE_TOLERANCE_PX = 0.5
 def test_the_tallest_hover_box_fits_the_plot_at_its_least_height(
     application: QApplication, family: str | None
 ) -> None:
-    """The box with every trace in it stays whole inside the plot at its least height (`PL-S0HP`).
+    """The box with every trace stays whole inside a wide plot at its least height (`PL-S0HP`).
 
     The tallest box the concentration plot shows names the agent and then all
     six compartments. It appears where every trace is inside the hover radius,
@@ -888,6 +888,11 @@ def test_the_tallest_hover_box_fits_the_plot_at_its_least_height(
     and the plot 113.1 px in the container's font, and 106.0 px and 114.9 px
     in DejaVu Sans, the font the CI runners draw in. The test runs in both, so
     a change to either height that cuts the box off fails here.
+
+    The plot is 900 px wide, so the time axis's title stays on one line. On a
+    plot about 400 px wide the title breaks onto a second line, which takes a
+    line from the plot, and the box no longer fits. A 13-pixel font does not
+    fit either. `PL-HXSD` holds both cases.
     """
 
     old_font = application.font()
@@ -896,6 +901,9 @@ def test_the_tallest_hover_box_fits_the_plot_at_its_least_height(
         font = QFont(old_font)
         font.setFamily(family)
         application.setFont(font)
+        # Qt substitutes another family without an error when the one asked
+        # for is missing, and the case would then measure a font it does not name.
+        assert QFontInfo(application.font()).family() == family
 
     try:
         controller = SimulationController(agent_id="desflurane")

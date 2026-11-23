@@ -5483,11 +5483,12 @@ it does at the run's opening, where all six traces start together.
 They also contain the fat and muscle cases behind the decisions to report every
 run and every compartment in reach.
 At the plot's least height, the tallest box, the agent and six value lines,
-still fits whole inside the plot, in the container's font and in the font the
-CI runners draw in
+fits whole inside the plot while the time axis's title is on one line, in the
+container's font and in the font the CI runners draw in
 (`test_the_tallest_hover_box_fits_the_plot_at_its_least_height`).
-With a 13-pixel desktop font the box is taller than the plot, and the plot's
-edge cuts off its last value line (`PL-HXSD`).
+It does not fit, and the plot's edge cuts through its last value line, in two
+cases: a plot about 400 px wide, where the title breaks onto a second line,
+and a 13-pixel desktop font (`PL-HXSD`).
 
 The rules weighed before this one, and the scans behind reporting every run in
 reach (`PL-JVHL`) and every compartment in reach (`PL-0RZ0`), are in those
