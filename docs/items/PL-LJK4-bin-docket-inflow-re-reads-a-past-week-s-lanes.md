@@ -1,0 +1,24 @@
+---
+id: PL-LJK4
+title: bin/docket inflow re-reads a past week's lanes against today's workflow path list, so deleting an apparatus test file moves old filings out of the workflow lane: the week of 2026-11-02 read 12 P1 apparatus filings at the v0.6.17 cut and 9 after #2149 deleted tests/unit/test_rejected_prose.py
+priority: P3
+effort: S
+status: ready
+classes: defect
+feature: convergence-visibility
+touches: subprojects/docket/src/docket/inflow.py
+deferred-from: v0.7.0 - filed after the gate froze; a history row of an apparatus report, with no effect on what a learner sees
+added: 2026-11-23
+filed-pr: 2301
+payoff: a past week's row in docket inflow reads the same tomorrow as it did at the cut
+---
+
+**Problem.** bin/docket inflow re-reads a past week's lanes against today's workflow path list, so deleting an apparatus test file moves old filings out of the workflow lane: the week of 2026-11-02 read 12 P1 apparatus filings at the v0.6.17 cut and 9 after #2149 deleted tests/unit/test_rejected_prose.py
+
+**Found 2026-11-23** while reading the week of 2026-11-02 for `PL-40ZB`. `docket inflow` decides each filing's lane from `docket.toml`'s `workflow_paths` as they are today. The list names each apparatus test file one by one, so #2149's deletion of `tests/unit/test_rejected_prose.py` took it off the list, and `PL-22T5`, `PL-556C` and `PL-F0Q2`, which name it, now read as crossing the lanes. A past week's row changes without saying so. A release verdict is not affected, because a cut reads the last complete week. A filing's lane at the time it was filed is a fact nobody records.
+
+**Why it matters.** The owner reads `bin/docket inflow`'s history rows to see whether apparatus inflow is falling. A row that changes after the week was read can show a fall that did not happen.
+
+**Done when.** A filing's lane is read as it stood when the item was filed, and a test pins that deleting an apparatus test file leaves an earlier week's row unchanged.
+
+**Generator check.** One instance. It is a reader inferring a past fact from today's tree, the shape `.claude/rules/apparatus-standard.md` § "Read the fact from its record" describes.

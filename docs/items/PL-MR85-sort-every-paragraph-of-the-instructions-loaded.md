@@ -13,6 +13,7 @@ added: 2026-11-20
 closed: 2026-11-21
 pr: 2178
 verify: grep -q "^id: PL-G3KZ" docs/items/PL-G3KZ-*.md && grep -q "Answered 2026-11-21" docs/items/PL-MR85-*.md
+sweep: sorts every paragraph of the instructions loaded at launch into four groups, and files each move the sort calls for
 ---
 
 **Problem.** Sort every paragraph of the instructions loaded at launch into four groups (enforced by a named check, procedure for a skill, history, judgment no check can carry) and bring the table to the owner before any text moves

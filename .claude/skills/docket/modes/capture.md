@@ -97,6 +97,17 @@ tracks problems rather than ids - "when do we fix the slow session start",
 not "when do PL-XD3C, PL-0J9K and PL-MMVF land" - and five items filed across
 five commits on 2026-09-16 carried no feature at all (`PL-N638`).
 
+**A review, audit or survey that files what it finds runs under an item of
+its own, marked as a sweep, before its first finding is filed.** Capture it
+with `bin/docket new`, write what it looks for with `bin/docket set <id>
+--sweep "..."`, and lead each commit that files its findings with its id.
+`bin/docket inflow` tells a sweep's filings from ordinary inflow only by the
+sweep's id in the filing commit's subject, and only while the sweep is open.
+The guard hook review of 2026-11-03 had no item, and its twenty findings went
+in one commit led by their own ids. So they counted as ordinary inflow, and
+gave two of the twelve `P1` filings and thirteen of the new paths that the
+v0.6.17 cut reported as missed predictions (`PL-40ZB`).
+
 **Pitch the name at what completes.** A feature here is a group with a "done
 when" the owner would notice closing: `session-start-cost` at 5 items,
 `doc-consistency-checks` at 4, `core-boundaries` closed at 6. Not a standing
