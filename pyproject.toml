@@ -162,6 +162,18 @@ dev = [
     # test that passes only after another one fails there with a seed that
     # reproduces it (`PL-75D9`).
     "pytest-randomly>=5.0.0",
+    # A time limit on each test. Without one, a fault that makes a loop run
+    # forever hangs the whole run until the CI job's own `timeout-minutes`, and
+    # the log never names the test that stopped (`PL-FKVR`). `timeout` in
+    # `[tool.pytest.ini_options]` below sets the limit, and its comment says
+    # where the number comes from and what the limit does not interrupt.
+    #
+    # 2.4.0 is the newest release that installs, though PyPI lists 2.5.0: that
+    # release is yanked, with the reason "accidental breaking change
+    # (probably)" (read from <https://pypi.org/pypi/pytest-timeout/json> on
+    # 2026-11-23). So this floor resolves to 2.4.0, and `uv lock --upgrade`
+    # leaves it there until a later release appears.
+    "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
     # `docket.frontmatter` reads a rule's or skill's YAML front matter by hand,
     # because docket and the tools run on the standard library alone; a
@@ -201,6 +213,50 @@ addopts = "-ra -p no:randomly"
 # `tools/` holds repo tooling that is not part of the shipped package, and
 # `subprojects/docket/` is a standalone package this repository also uses.
 pythonpath = ["tools", ".claude/hooks", "subprojects/docket/src"]
+# How long one test may run before pytest-timeout fails it. The limit sits here
+# rather than on a command line, so a session's own `uv run pytest` carries it
+# as well as `make check` and CI. CI's quality jobs keep their own
+# `timeout-minutes`, which limits a whole job rather than one test.
+#
+# 300 seconds is about 2.4 times the slowest test measured on 2026-11-23, on
+# this project's cloud container, on `main`, with `-n 4` and another full check
+# running at the same time. The whole suite took 1,101 seconds, and the four
+# slowest tests took 124.6, 86.1, 66.9 and 66.0 seconds. The slowest was
+# `tests/unit/test_doc_check.py::test_this_repository_reports_its_own_resident_total`.
+# NumPy passes `--timeout=600` to pytest in its Linux CI jobs and lists this
+# plugin in its `test-core` dependency group
+# (https://raw.githubusercontent.com/numpy/numpy/main/.github/workflows/linux.yml
+# and NumPy's own `pyproject.toml`, both read 2026-11-23), so 300 is half what
+# a much larger suite allows and still well clear of this one.
+#
+# `timeout_method` is left at the plugin's default, which on this platform is
+# `signal`. The plugin schedules SIGALRM. When the alarm fires, its handler
+# dumps the other threads' stacks and fails that one test, so the run finishes
+# and every other result survives. The other method, `thread`, ends the whole
+# process instead, which loses the results that process had already collected.
+# The suite holds 13,057 tests, counted on 2026-11-23.
+#
+# The signal does not reach a test blocked inside Qt's own C++ event loop,
+# because no Python bytecode runs there to take the signal. No test enters such
+# a loop today. The Qt tests drive the interface with `QTest` mouse calls and
+# `QApplication.processEvents`, and both return to Python.
+#
+# Code that sets its own SIGALRM replaces the plugin's handler and alarm, so it
+# must put both back. `.claude/hooks/guard.py` sets one to stop a guard that
+# runs past its own deadline, and puts the outer handler and the time left back
+# when the guard returns. `tests/unit/test_guard.py` checks that it does.
+#
+# The mutation run takes this limit too, where its own limits do not stop a
+# mutant first. `tools/diff_mutation.py` runs pytest inside `mutants/`, and
+# pytest finds this file as its configuration from there. mutmut 3.8.0 gives
+# each mutant a wall-clock limit of `(the estimated time of its tests + 1) * 15`
+# seconds and twice that in processor time, so for a test of a second or two it
+# stops the mutant long before 300 seconds. The limit here does reach the
+# tool's own rerun of a mutant's whole test files, which allows the rerun 900
+# seconds: a mutant that makes one test loop forever now fails that test after
+# 300 seconds, and the tool reports it as killed rather than as a timeout.
+# `CAUGHT` in `tools/diff_mutation.py` counts either answer as caught.
+timeout = 300
 
 # Mutation testing (`PL-Y1PS`). `make mutate` runs `tools/diff_mutation.py`,
 # which mutates the functions the current branch changes, or every function
