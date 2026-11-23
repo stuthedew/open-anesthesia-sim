@@ -18,6 +18,7 @@ from dataclasses import dataclass, field, fields, replace
 from itertools import pairwise
 from math import ceil, floor, isfinite
 from types import MappingProxyType
+from typing import Final
 
 from anesthesia_sim.app.bookmarks import (
     BookmarkCrossing,
@@ -27,6 +28,7 @@ from anesthesia_sim.app.bookmarks import (
     MarkStanding,
     TimeBookmark,
 )
+from anesthesia_sim.app.branch_controls import FORK_POINT_LABEL, HERE_FORK_NAME, TAKE_FORK_LABEL
 from anesthesia_sim.app.chart_time_base import (
     drawn_seconds,
     extreme_seconds,
@@ -51,7 +53,7 @@ from anesthesia_sim.app.failures import FailureKind
 # that arithmetic. `CLAUDE.md` treats a correct number reached through the wrong
 # divisor as a safety failure, not a rounding error. This module uses nothing else
 # from `app/formatting.py`, because it builds no strings.
-from anesthesia_sim.app.formatting import mac_multiple
+from anesthesia_sim.app.formatting import format_elapsed, mac_multiple
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
     COMPARTMENT_QUANTITIES,
@@ -121,6 +123,15 @@ percentage points in the first hour after a setting change, and by at most
 changes, with columns from 43 s to 579 s apart, the widest a chart draws
 (`PL-Z6C8`, 2026-11-21).
 """
+
+
+# The way out that a refused branch names when an earlier point is still
+# open to it. It names the controls by their words on screen, because a
+# learner reads the refusal in the Branch View beside them (`PL-3JTH`).
+_BRANCH_AT_AN_EARLIER_POINT: Final = (
+    f'an earlier setting change or mark can still be chosen under "{FORK_POINT_LABEL}" and '
+    f'branched at with "{TAKE_FORK_LABEL}"'
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1326,9 +1337,10 @@ class SimulationController:
 
         if self._opened_from is not None:
             raise SimulationConfigurationError(
-                f"this run is a branch opened at {self._opened_from.fork.instant_s} s, and a "
-                "branch carries the agent of the case it continues; changing agent begins a "
-                "new case, so change it on the run this branch came from or start a new one"
+                "this run is a branch opened at "
+                f"{format_elapsed(self._opened_from.fork.instant_s)}, and a branch carries the "
+                "agent of the case it continues; changing agent begins a new case, so change it "
+                "on the run this branch came from or start a new one"
             )
 
         current = self.snapshot()
@@ -2028,8 +2040,8 @@ class SimulationController:
 
         if disagreements:
             raise SimulationConfigurationError(
-                f"a branch at {fork_at_s} s would be rebuilt from values this run did not "
-                "hold there, which would make it a second case rather than a second "
+                f"a branch at {format_elapsed(fork_at_s)} would be rebuilt from values this run "
+                "did not hold there, which would make it a second case rather than a second "
                 f"management of this one: {'; '.join(disagreements)} "
                 '(docs/ARCHITECTURE.md, "What a branch is, and what it shares with its parent")'
             )
@@ -2299,15 +2311,28 @@ class SimulationController:
             SimulationConfigurationError: If any of the following is true. This run is a
                 branch, or its frame has failed (`fork_refusal`). This run
                 stores no state for `instant_s`, because it has not reached
-                that second (`StoredStates.state_at`). Or `instant_s` is the
-                supported run length, where no step is left to take.
+                that second. Or `instant_s` is the supported run length, where
+                no step is left to take.
         """
 
         self._require_forkable()
 
-        # The stored state is read first. Its refusal names the seconds that
-        # this run stores, which is the reason a caller can act on.
-        fork = self._stored_keyframe(instant_s)
+        # The stored state is read first, because a second the run has not
+        # reached is the reason a learner can act on. The stored record owns
+        # the test of which seconds it holds (`StoredStates.state_at`). Its
+        # refusal is worded here again in the branch panel's terms: the
+        # instants as the panel writes them, and the controls by their labels
+        # (`PL-CCVP`).
+        try:
+            fork = self._stored_keyframe(instant_s)
+        except SimulationConfigurationError as unstored:
+            reached_s = self._state.stored_states.reached_s
+
+            raise SimulationConfigurationError(
+                f"this run has reached {format_elapsed(reached_s)}, so it holds no state at "
+                f"{format_elapsed(instant_s)} to branch from; choose an instant it has "
+                f'passed under "{FORK_POINT_LABEL}" and press "{TAKE_FORK_LABEL}"'
+            ) from unstored
 
         # The provenance is the stretch that the step reaching the fork ran
         # under, as for every other branching method. Where the fork is a
@@ -2362,31 +2387,29 @@ class SimulationController:
 
         if self._is_running:
             return (
-                "this run is going, so where it stands moves with every step and an instant read "
-                "off it is gone before it can be branched at; pause it, and resumed_here branches "
-                "where it then stands"
+                "this run is still going, so where it stands moves on with every step; pause it, "
+                f'then press "{HERE_FORK_NAME}" to branch where it stops'
             )
 
         if self._failure_reason is not None:
             return (
-                f"this run stopped at {self._state.elapsed_s} s on a failure, not a pause "
-                f"({self._failure_reason}), so where it stands is not a place to branch; a "
-                "setting change or a mark it passed before is still branched at with resumed_at "
-                "or resumed_at_mark"
+                f"this run stopped at {format_elapsed(self._state.elapsed_s)} on a failure, not "
+                f"a pause ({self._failure_reason}), so where it stands is not a place to branch; "
+                f"{_BRANCH_AT_AN_EARLIER_POINT}"
             )
 
         if self.has_reached_supported_limit:
             return (
-                f"this run stands at {self._state.elapsed_s} s, the supported run length, "
-                "where no step is left to take, so a branch opened where it stands could not be "
-                "run; a setting change or a mark it passed before is still branched at with "
-                "resumed_at or resumed_at_mark"
+                f"this run stands at {format_elapsed(self._state.elapsed_s)}, the supported run "
+                "length, where no step is left to take, so a branch opened where it stands could "
+                f"not be run; {_BRANCH_AT_AN_EARLIER_POINT}"
             )
 
         if self._state.step_count == 0:
             return (
-                "this run stands at its opening and has recorded nothing to branch from; "
-                "resumed_at opens a branch at the opening"
+                "this run stands at its opening and has recorded nothing to branch from; to "
+                f'branch at the opening, choose it under "{FORK_POINT_LABEL}" and press '
+                f'"{TAKE_FORK_LABEL}"'
             )
 
         return None
@@ -2497,10 +2520,10 @@ class SimulationController:
 
         if held not in self._passed_time_bookmarks():
             raise SimulationConfigurationError(
-                f"this run's clock stands at {self._state.elapsed_s} s, short of the mark at "
-                f"{held.instant_s} s, so the case holds no state there to branch from: a mark is "
-                "branched at once the run has passed it, or, standing on the step that crosses "
-                "it, with resumed_here"
+                f"this run's clock stands at {format_elapsed(self._state.elapsed_s)}, short of "
+                f"the mark at {format_elapsed(held.instant_s)}, so the case holds no state there "
+                "to branch from; a mark can be branched at once the run has passed it, or with "
+                f'"{HERE_FORK_NAME}" while the run is stopped on the step that crosses it'
             )
 
         step_count = self._steps_to_reach(held)
@@ -2569,9 +2592,9 @@ class SimulationController:
             return None
 
         return (
-            f"this run is itself a branch opened at {self._opened_from.fork.instant_s} s, "
-            "and a branch of a branch is refused rather than silently flattened; branch "
-            "from the trunk instead"
+            "this run is itself a branch opened at "
+            f"{format_elapsed(self._opened_from.fork.instant_s)}, and a branch of a branch "
+            "is refused rather than silently flattened; branch from the trunk instead"
         )
 
     def _resume_point(self, segment: RunSegment, fork: Keyframe) -> ResumePoint:
@@ -2620,9 +2643,9 @@ class SimulationController:
 
         if self._reason_a_step_would_be_refused_after(step_count) is not None:
             raise SimulationConfigurationError(
-                f"a branch at {fork.instant_s} s would open on the supported run length, "
-                "where no step is left to take, so it could never be run; a setting change "
-                "or a mark before it is still branched at with resumed_at or resumed_at_mark"
+                f"a branch at {format_elapsed(fork.instant_s)} would open on the supported run "
+                "length, where no step is left to take, so it could never be run; "
+                f"{_BRANCH_AT_AN_EARLIER_POINT}"
             )
 
         return ResumePoint(

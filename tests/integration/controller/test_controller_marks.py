@@ -306,7 +306,7 @@ def test_a_case_refuses_a_fork_where_its_trunk_stands_while_the_trunk_is_going()
 
     assert case.here_fork_point is None
 
-    with pytest.raises(SimulationConfigurationError, match="is going"):
+    with pytest.raises(SimulationConfigurationError, match="is still going"):
         case.fork_here()
 
     assert case.branches == ()
@@ -833,7 +833,7 @@ def test_a_mark_still_ahead_of_the_clock_cannot_be_returned_to() -> None:
     ahead = TimeBookmark(CaseInstant(600))
     trunk.add_time_bookmark(ahead)
 
-    with pytest.raises(SimulationConfigurationError, match="short of the mark at 600 s"):
+    with pytest.raises(SimulationConfigurationError, match="short of the mark at 10m"):
         trunk.resumed_at_mark(ahead)
 
     assert trunk.mark_fork_points == ()
@@ -844,7 +844,7 @@ def test_an_instant_nobody_marked_cannot_be_returned_to_as_a_mark() -> None:
 
     trunk = _trunk_paused_past_a_change()
 
-    with pytest.raises(SimulationConfigurationError, match="no time bookmark stands at 60 s"):
+    with pytest.raises(SimulationConfigurationError, match="no time bookmark stands at 1m,"):
         trunk.resumed_at_mark(TimeBookmark(CaseInstant(60)))
 
 
@@ -901,7 +901,7 @@ def test_a_trunk_that_has_not_stepped_can_be_returned_only_to_a_mark_at_its_open
     assert trunk.mark_fork_points == (MarkForkPoint(at_induction, CaseInstant(0)),)
     assert trunk.resumed_at_mark(at_induction).began_at_s == 0.0
 
-    with pytest.raises(SimulationConfigurationError, match="short of the mark at 30 s"):
+    with pytest.raises(SimulationConfigurationError, match="short of the mark at 30s"):
         trunk.resumed_at_mark(ahead)
 
 

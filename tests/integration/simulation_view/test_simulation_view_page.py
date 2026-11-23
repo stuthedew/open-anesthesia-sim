@@ -9,7 +9,7 @@ import pytest
 from PySide6.QtCore import QEvent, QObject, QPoint
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSlider, QWidget
 
-from anesthesia_sim.app import formatting
+from anesthesia_sim.app import area_layout, formatting
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -522,7 +522,7 @@ def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
     layout's margins and spacing, each read from its own widget rather than
     from the drawn height of the Areas. So height given to the middle outside
     the Areas also fails the test. Each Area's least height is the height its
-    View needs as the layout measures it, at the Area's least width (`PL-744F`).
+    View needs as the layout measures it, at the width the Area is drawn (`PL-744F`).
     """
 
     view = _shipped_view_at(application, workspace, 1366, 768, branched=branched)
@@ -549,6 +549,112 @@ def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
 
     assert areas.height() == max(least_px, room_px)
     assert page.verticalScrollBar().maximum() == max(0, least_px - room_px)
+
+
+@pytest.mark.parametrize("workspace", ["Induction", "Maintenance"])
+def test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn(
+    application: QApplication, workspace: str
+) -> None:
+    """`PL-744F`: the Parameters Area is as tall as its dials need at its drawn width.
+
+    In Induction and Maintenance at 1366 by 768 with a branch open, the page
+    scrolls, so the Parameters Area is held at its least height. Its View
+    never scrolls up and down, and its wrapped labels take fewer lines at a
+    wider width. The height is measured at the Area's drawn width less the
+    room a scroll bar takes, so that the View fits whether or not Qt has
+    shown the bar, and the bar is then never needed. In Induction the Area
+    was held at the height measured at its least width, 30 px more than this,
+    and the page scrolled 30 px further for nothing. In Maintenance the
+    labels wrap the same at both widths, so the height is unchanged. The
+    expected height is the View's own layout's least height at that width,
+    worked out here from Qt rather than read from the layout under test.
+    """
+
+    view = _shipped_view_at(application, workspace, 1366, 768, branched=True)
+    areas = view.layout_container
+    (area,) = [area for area in areas.model.areas() if area.view == PARAMETER_CONTROLS]
+    frame = areas.frame(area.id)
+    scroll = frame.view_scroll
+    assert scroll is not None
+    content = frame.content
+    layout = content.layout()
+    assert layout is not None and layout.hasHeightForWidth()
+    width_px = scroll.viewport().width() - scroll.verticalScrollBar().sizeHint().width()
+    content_px = max(
+        content.minimumSizeHint().height(),
+        layout.totalMinimumHeightForWidth(max(width_px, content.minimumSizeHint().width())),
+        REGISTERED[PARAMETER_CONTROLS].minimum.height_px,
+    )
+    header_px = frame.height() - scroll.height()
+
+    assert scroll.verticalScrollBar().maximum() == 0
+    assert frame.height() == header_px + content_px
+
+
+def test_a_frame_that_changes_no_need_does_not_lay_the_areas_out_again(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-744F`: where the narrowed needs were refused, a later frame leaves the Areas alone.
+
+    The layout keeps the needs measured at each Area's drawn width only when
+    laying the Areas out with them keeps every width. The test makes it refuse
+    them every time, by having the width comparison never match. A frame that
+    changes nothing must then not lay the Areas out again. A check that
+    compared the needs at the drawn widths with the needs the refused layout
+    kept found them unequal on every frame, so every tick of the run laid out
+    the whole page again.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768, branched=True)
+    areas = view.layout_container
+    monkeypatch.setattr(area_layout, "_widths", lambda fit: {AreaId(1): id(fit)})
+    # A resize lays the Areas out again, now with the narrowed needs refused.
+    view.resize(1370, 768)
+    _settle(application)
+    view.present(False)
+    _settle(application)
+    settles: list[object] = []
+    original = area_layout.AreaLayout._settle
+
+    def counted(self: area_layout.AreaLayout, kept: object) -> None:
+        settles.append(kept)
+        original(self, kept)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(area_layout.AreaLayout, "_settle", counted)
+
+    for _ in range(3):
+        view.present(False)
+        _settle(application)
+
+    assert areas.isVisible()
+    assert settles == []
+
+
+@pytest.mark.parametrize("height_px", range(1044, 1077, 4))
+def test_a_layout_drawn_again_keeps_its_sizes_where_the_page_scroll_bar_comes_and_goes(
+    application: QApplication, height_px: int
+) -> None:
+    """`PL-744F`: a second frame draws every Area where the first one did.
+
+    A whole View's need is measured at the width its Area is drawn. The page's
+    scroll bar takes width from the Areas when it appears, so a need that fed
+    back through it could give a different layout on each frame. Induction
+    with a branch open at 1366 px wide needs about 1,060 px of window height
+    for the page not to scroll, so these heights put the window on both sides
+    of the height at which the scroll bar comes and goes.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, height_px, branched=True)
+    areas = view.layout_container
+
+    def drawn() -> list[tuple[int, int, int, int]]:
+        return [areas.frame(area.id).geometry().getRect() for area in areas.model.areas()]
+
+    first = drawn()
+    view.present(False)
+    application.processEvents()
+
+    assert drawn() == first
 
 
 @pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)

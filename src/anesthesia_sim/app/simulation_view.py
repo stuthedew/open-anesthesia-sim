@@ -144,6 +144,7 @@ from anesthesia_sim.app.dashboard_frame import (
     input_frame_wait_ms,
     kept_fork_selection,
     pinned_run_label,
+    refused_branch_notice,
     refused_setting_notice,
     run_label,
     trunk_reset_question,
@@ -1431,7 +1432,7 @@ class SimulationView(QWidget):
                 else case.fork_at_mark(point.mark)
             )
         except SimulationConfigurationError as error:
-            self._fork_refusal = refused_setting_notice(error)
+            self._fork_refusal = refused_branch_notice(error)
             self.present(False)
 
             return
@@ -1478,7 +1479,7 @@ class SimulationView(QWidget):
         try:
             branch = case.fork_here()
         except SimulationConfigurationError as error:
-            self._fork_refusal = refused_setting_notice(error)
+            self._fork_refusal = refused_branch_notice(error)
             self.present(False)
 
             return
