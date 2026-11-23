@@ -168,6 +168,7 @@ from anesthesia_sim.app.qt_widgets import (
     DialInput,
     FittedScroll,
     FocusRing,
+    LinesHeldLabel,
     NewCaseDialog,
     NoticeLabel,
     OneLineWhereRoomLabel,
@@ -651,8 +652,12 @@ class RunView(QWidget):
         # scrolls. So a reader whose list shows only its newest entries still
         # sees how many there are, and how many earlier ones are not listed
         # (`PL-HF1B`).
-        self._control_timeline_summary_text = styled_label(
-            "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True
+        self._control_timeline_summary_text = LinesHeldLabel("")
+        style_label(
+            self._control_timeline_summary_text,
+            color=MUTED,
+            size_px=METRIC_QUALIFIER_SIZE,
+            wrap=True,
         )
         self._control_timeline_summary_text.setHidden(True)
 
@@ -2046,15 +2051,9 @@ class RunView(QWidget):
         timeline_column.setSpacing(CONTROL_TIMELINE_ROW_SPACING)
         timeline_column.addWidget(self._control_timeline_heading_text)
         timeline_column.addWidget(self._control_timeline_summary_text)
-        timeline_column.addWidget(
-            styled_label(
-                CONTROL_TIMELINE_CAPTION,
-                color=MUTED,
-                size_px=METRIC_QUALIFIER_SIZE,
-                italic=True,
-                wrap=True,
-            )
-        )
+        caption = LinesHeldLabel(CONTROL_TIMELINE_CAPTION)
+        style_label(caption, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True)
+        timeline_column.addWidget(caption)
         # Only the entries scroll, inside this run's own panel. Each run's
         # heading and count then stay in view when two runs' records share
         # the column and one of them is long (`PL-HF1B`).

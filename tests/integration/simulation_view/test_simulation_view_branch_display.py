@@ -703,8 +703,9 @@ def _outside_a_viewport(widget: QWidget, window: QWidget) -> QWidget | None:
     return None
 
 
+@pytest.mark.parametrize(("width_px", "height_px"), [(1366, 768), (1400, 1000)])
 def test_every_unconditional_value_lies_inside_its_scroll_viewport(
-    application: QApplication,
+    application: QApplication, width_px: int, height_px: int
 ) -> None:
     """Each required value is inside every viewport it sits in, with two long records.
 
@@ -714,9 +715,14 @@ def test_every_unconditional_value_lies_inside_its_scroll_viewport(
     where ancestry and visibility still passed them (`PL-HF1B`). The note is
     found by its text, so this test runs against the column before the fix
     as well.
+
+    Each wrapped line is also given the height its words need at its width.
+    A column that counted the note and the caption at one line each squeezed
+    them at both sizes, so the note's second line was not drawn while its
+    rectangle still lay inside every viewport.
     """
 
-    view = _case_view(application, _branched_case())
+    view = _case_view(application, _branched_case(), width_px=width_px, height_px=height_px)
     _take_fork(view, 60.0)
     _settle(application)
 
@@ -752,6 +758,14 @@ def test_every_unconditional_value_lies_inside_its_scroll_viewport(
 
             assert widget.isVisible(), f"{name} is not on screen"
             assert _outside_a_viewport(widget, view) is None, f"{name} is scrolled out of view"
+
+        for label in panel.findChildren(QLabel):
+            if label.isVisible() and label.wordWrap():
+                lines_need = label.heightForWidth(label.width())
+
+                assert label.height() >= lines_need, (
+                    f"{label.text()!r} has {label.height()} px of the {lines_need} px its lines need"
+                )
 
 
 def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(

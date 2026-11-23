@@ -617,6 +617,58 @@ class OneLineWhereRoomLabel(QLabel):
         return QSize(width, self.heightForWidth(self.sizeHint().width()))
 
 
+class LinesHeldLabel(QLabel):
+    """Words that wrap between words, and keep the height their lines need at their width.
+
+    A word-wrapped `QLabel` reports its height for a width, and a layout that
+    reads it gives the label that height where the room allows. Where the
+    room runs short, the layout counts the label at one line, and squeezes
+    its later lines out of sight. This label takes the height its lines need
+    at the width it was last given as its least height instead. A column of
+    such labels above a list that scrolls then asks for enough height to
+    show every line of them, and the list gives up its height first
+    (`PL-HF1B`).
+
+    The label reports no height for a width of its own. Reporting one would
+    make the layout above it count its minimum as its full height, which
+    for a column holding a scrolling list is the whole list's height.
+
+    Args:
+        text: The words, which wrap between words.
+    """
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text)
+        self.setWordWrap(True)
+
+    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
+        return False
+
+    def _lines_height(self) -> int:
+        """Return the height that the label's lines need at the width it has now."""
+
+        return super().heightForWidth(self.width())
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return QSize(super().sizeHint().width(), self._lines_height())
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return QSize(super().minimumSizeHint().width(), self._lines_height())
+
+    def setText(self, text: str) -> None:  # Qt spells this in camelCase.
+        super().setText(text)
+        # The new words may need another number of lines at this width.
+        self.updateGeometry()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
+        old_width = event.oldSize().width()
+        super().resizeEvent(event)
+
+        # The lines the words need change with the width, and only then.
+        if event.size().width() != old_width:
+            self.updateGeometry()
+
+
 class FlowLayout(QLayout):
     """A row of items that wraps onto further lines when the width runs out.
 
