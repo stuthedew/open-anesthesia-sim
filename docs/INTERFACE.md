@@ -3233,7 +3233,10 @@ control has one name wherever it appears (`PL-XZKW`). It used to sit on the head
 measurements.", where it read as an eighth modelled concentration. At low fresh
 gas flow it could then be taken for the inspired concentration, which the gap
 between the two is there to teach. The version-and-model label takes its place
-on the heading line, beside the values it identifies. Two rules of interface
+on the heading line, beside the values it identifies. It reads, for example,
+"Version 0.7.0 — Sevoflurane model", in regular weight, so that it keeps one
+line beside the substance, the disclaimer and the 1 MAC line in a 1366 px
+window. Two rules of interface
 design decide the place. A setting is grouped with the controls it belongs to,
 because items placed close together are read as one group (Harley A.,
 "Proximity", Nielsen Norman Group, 2020,

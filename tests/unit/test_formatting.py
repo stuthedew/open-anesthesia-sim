@@ -312,10 +312,10 @@ def test_format_subtitle_names_the_running_model_and_its_version() -> None:
     with a literal, so that the test cannot pass with a stale version.
     """
 
-    expected = f"Version {APP_BUILD_VERSION} — Sevoflurane patient model"
+    expected = f"Version {APP_BUILD_VERSION} — Sevoflurane model"
     assert format_subtitle("Sevoflurane") == expected
     assert (
-        format_subtitle("Desflurane") == f"Version {APP_BUILD_VERSION} — Desflurane patient model"
+        format_subtitle("Desflurane") == f"Version {APP_BUILD_VERSION} — Desflurane model"
     )
 
 
@@ -334,9 +334,9 @@ def test_the_subtitle_carries_the_build_identifier_when_there_is_one() -> None:
 
     assert subtitle.startswith(f"Version {APP_VERSION}")
     if APP_BUILD is None:
-        assert subtitle == f"Version {APP_VERSION} — Isoflurane patient model"
+        assert subtitle == f"Version {APP_VERSION} — Isoflurane model"
     else:
-        assert subtitle == f"Version {APP_VERSION}+{APP_BUILD} — Isoflurane patient model"
+        assert subtitle == f"Version {APP_VERSION}+{APP_BUILD} — Isoflurane model"
         assert APP_BUILD.startswith("g")
 
 
@@ -1588,17 +1588,17 @@ def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one(
     subtitle = format_subtitle("Sevoflurane")
 
     assert subtitle == (
-        "Version unavailable (this build is not traceable) — Sevoflurane patient model"
+        "Version unavailable (this build is not traceable) — Sevoflurane model"
     )
     assert "unknown" not in subtitle
-    assert subtitle.endswith("Sevoflurane patient model")
+    assert subtitle.endswith("Sevoflurane model")
 
 
 def test_an_identified_build_still_names_its_version() -> None:
     """The other half of `PL-KCWD`: the ordinary path is unchanged."""
 
     assert format_subtitle("Sevoflurane") == (
-        f"Version {APP_BUILD_VERSION} — Sevoflurane patient model"
+        f"Version {APP_BUILD_VERSION} — Sevoflurane model"
     )
 
 

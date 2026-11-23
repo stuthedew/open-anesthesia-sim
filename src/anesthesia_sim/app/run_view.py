@@ -512,9 +512,13 @@ class RunView(QWidget):
         # would otherwise set how narrow the run rows can get. The record
         # column would then lose that width at a narrow window (`PL-92XM`).
         # The label asks for its one-line width, so the text keeps one line
-        # wherever the row has room for it.
+        # wherever the row has room for it. It is set in regular weight and
+        # says "model" rather than "patient model", so that it fits on the
+        # heading line beside the substance, the disclaimer and the 1 MAC line
+        # in a 1366 px window. In bold it needed 48 px more than the line has
+        # in DejaVu Sans, the font the checks run in (`PL-M4WT`).
         self._subtitle_text = OneLineWhereRoomLabel(format_subtitle(snapshot.agent_display_name))
-        style_label(self._subtitle_text, color=INK, bold=True, wrap=True)
+        style_label(self._subtitle_text, color=INK, bold=False, wrap=True)
         self._agent_header_badge = QFrame()
         self._agent_header_badge.setObjectName(_HEADER_BADGE_NAME)
         badge = QHBoxLayout(self._agent_header_badge)

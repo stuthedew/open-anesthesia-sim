@@ -1475,7 +1475,7 @@ def format_subtitle(agent_display_name: str) -> str:
         The header subtitle.
     """
 
-    return f"{format_build_version()} — {agent_display_name} patient model"
+    return f"{format_build_version()} — {agent_display_name} model"
 
 
 def format_build_version() -> str:
