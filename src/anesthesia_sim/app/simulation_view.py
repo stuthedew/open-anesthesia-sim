@@ -749,11 +749,12 @@ class SimulationView(QWidget):
         The band's left column stacks every run's transport row, then every
         notice banner, then the first run's readout section. A later run's
         readouts join the first run's panels (`RunView.show_readings_of`).
-        While runs are compared, each run's delivered concentration sits on
-        its own transport row. So a later run's readout section is not shown
-        (`PL-QLZ5`). The band's right column holds every run's control-change
-        record. That column scrolls within itself, so a long record never
-        makes the band taller than the rows beside it (`PL-J8K2` Q3). The two
+        Each run's vaporizer setting sits on its own transport row
+        (`PL-M4WT`), and the first run's heading states the values the runs
+        share. So a later run's readout section is not shown (`PL-QLZ5`).
+        The band's right column holds every run's control-change record.
+        That column scrolls within itself, so a long record never makes the
+        band taller than the rows beside it (`PL-J8K2` Q3). The two
         columns split the band's width in the same shares as the charts and
         the sidebar split the Areas' width. So one run's seven readouts stand
         in one row in a 1366 px window (`PL-F2YS`). Nothing new is drawn
@@ -1029,9 +1030,9 @@ class SimulationView(QWidget):
         # A later run's readouts join the first run's panels, so two runs
         # appear as one block of seven (`PL-F2YS`). The readouts leave with the
         # run. The first run's heading then states the substance and the 1 MAC
-        # that the runs share. The later run's delivered concentration moves to
-        # its transport row. So the later run's readout section has nothing left
-        # to show, and it takes no height (`PL-QLZ5`).
+        # that the runs share. Every run's vaporizer setting is on its own
+        # transport row (`PL-M4WT`). So the later run's readout section has
+        # nothing left to show, and it takes no height (`PL-QLZ5`).
         if self._runs:
             placed = (*placed, *self._runs[0].show_readings_of(run))
             readout_section.setHidden(True)

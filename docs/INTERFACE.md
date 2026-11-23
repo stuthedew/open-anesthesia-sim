@@ -3227,7 +3227,9 @@ is opened (`PL-QLZ5`).
 **The vaporizer setting sits with the run's controls, and its label names the
 vaporizer** (`PL-M4WT`). It reads "Vaporizer", then the dial's value in percent
 and in multiples of 1 MAC, on the run's own line, whether one run is shown or
-two. It used to sit on the heading line beside "Model outputs — not
+two. The slider that sets it reads "Sevoflurane vaporizer", with the agent's
+name, and the record of control changes logs a move under "Vaporizer". So the
+control has one name wherever it appears (`PL-XZKW`). It used to sit on the heading line beside "Model outputs — not
 measurements.", where it read as an eighth modelled concentration. At low fresh
 gas flow it could then be taken for the inspired concentration, which the gap
 between the two is there to teach. The version-and-model label takes its place

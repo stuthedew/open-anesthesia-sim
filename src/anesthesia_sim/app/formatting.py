@@ -109,6 +109,7 @@ __all__ = [
     "format_compartment_share",
     "format_chart_time_label",
     "format_delivered_label",
+    "VAPORIZER_LABEL",
     "format_elapsed",
     "format_entered_figure",
     "format_flow",
@@ -1492,10 +1493,22 @@ def format_build_version() -> str:
     return f"Version {APP_BUILD_VERSION}"
 
 
-def format_delivered_label(agent_display_name: str) -> str:
-    """Build the delivered-concentration panel label naming the agent."""
+# What the interface calls the control that sets the delivered concentration,
+# on the slider, in the record of control changes, on the run's line and in the
+# new-case notice. One constant gives it one name everywhere, so renaming it in
+# one place cannot leave another place on the old name (`PL-XZKW`).
+VAPORIZER_LABEL: Final = "Vaporizer"
 
-    return f"Delivered {agent_display_name.lower()}"
+
+def format_delivered_label(agent_display_name: str) -> str:
+    """Build the vaporizer slider's label, which names the agent it delivers.
+
+    The slider, the record of control changes and the run's readout all name
+    the control as the vaporizer, so a learner reads one control under one name
+    (`PL-XZKW`).
+    """
+
+    return f"{agent_display_name} {VAPORIZER_LABEL.lower()}"
 
 
 def format_agent_volume(litres: float) -> str:

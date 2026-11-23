@@ -84,6 +84,7 @@ from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     MAC_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
+    VAPORIZER_LABEL,
     format_agent_residual,
     format_agent_volume,
     format_branch_discard_warning,
@@ -938,7 +939,7 @@ COMPARTMENT_SUBSTANCE_TEMPLATE: Final = "Modelled concentrations: {agent}"
 # dial prints it in. It says that the value is the vaporizer's setting, so a
 # learner cannot read it as a modelled concentration, or as the inspired one
 # at low fresh gas flow (`PL-NWTM`, `PL-M4WT`).
-DELIVERED_LINE_TEMPLATE: Final = "Vaporizer {value} ({secondary})"
+DELIVERED_LINE_TEMPLATE: Final = f"{VAPORIZER_LABEL} {{value}} ({{secondary}})"
 
 # What the confirmation says before a new case replaces a recorded one, in
 # the order a reader meets it: why this is a new case at all, what is about
@@ -956,7 +957,7 @@ NEW_CASE_IS_NOT_A_VIEW_TEXT: Final = (
 )
 NEW_CASE_CARRYOVER_TEMPLATE: Final = (
     "Fresh gas flow, alveolar ventilation and cardiac output carry over. "
-    "Delivered {agent} starts at that agent's own 1 MAC."
+    f"The {{agent}} {VAPORIZER_LABEL.lower()} starts at that agent's own 1 MAC."
 )
 # Both buttons name their outcome rather than answering yes or no. The button
 # that declines is the *default*: it is filled, and it comes last. So the
@@ -3507,7 +3508,7 @@ def _here_fork_label(here: HereForkPoint) -> str:
 
 
 def delivered_line(delivered: SettingReadout) -> str:
-    """Return the delivered concentration in both units, for the readout heading line.
+    """Return the vaporizer setting in both units, for the run's transport row.
 
     The line is written from the same readout as the dial itself, so the line
     and the dial print one setting in one form (`PL-NWTM`).

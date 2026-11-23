@@ -39,7 +39,12 @@ from dataclasses import dataclass
 from typing import Final
 
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
-from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_percent
+from anesthesia_sim.app.formatting import (
+    VAPORIZER_LABEL,
+    format_elapsed,
+    format_flow,
+    format_percent,
+)
 from anesthesia_sim.core.concentration import (
     Fraction,
     Percent,
@@ -81,14 +86,14 @@ _NO_BREAK_SPACE: Final = "\u00a0"
 # interface and may be reworded freely. Keeping them apart stops a wording
 # change from looking like a change to the record.
 #
-# The label says "Delivered agent" rather than "vaporizer" because the model
-# applies a delivered concentration, and a real vaporizer's dial is only one
-# machine's way of setting it. The slider beside the chart also names the
-# agent (`format_delivered_label`). This table cannot, since a timeline
-# outlives the agent that recorded it only by being cleared with the run.
+# The label is `VAPORIZER_LABEL`, the name that the slider and the run's
+# readout also give this control, so one control has one name on screen
+# (`PL-XZKW`).
+# The slider beside the chart also names the agent (`format_delivered_label`).
+# This table cannot, because the table is shared by every agent.
 CONTROL_INPUT_LABELS: Final[Mapping[ControlInput, str]] = {
     ControlInput.FRESH_GAS_FLOW: "Fresh gas flow",
-    ControlInput.DELIVERED: "Delivered agent",
+    ControlInput.DELIVERED: VAPORIZER_LABEL,
     ControlInput.ALVEOLAR_VENTILATION: "Alveolar ventilation",
     ControlInput.CARDIAC_OUTPUT: "Cardiac output",
 }

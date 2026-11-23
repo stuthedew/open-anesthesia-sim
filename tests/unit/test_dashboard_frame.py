@@ -2495,7 +2495,7 @@ def test_refresh_view_updates_delivered_concentration_label_for_current_agent() 
 
     snapshot = _snapshot(agent_id="desflurane", agent_display_name="Desflurane")
 
-    assert _settings_by_control(snapshot)[ControlInput.DELIVERED].name == "Delivered desflurane"
+    assert _settings_by_control(snapshot)[ControlInput.DELIVERED].name == "Desflurane vaporizer"
 
 
 def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> None:
@@ -4721,7 +4721,7 @@ def test_a_preview_label_names_the_control_the_value_and_that_it_is_not_applied(
     )
     assert (
         preview_label(ControlInput.DELIVERED, 3.5, "Sevoflurane", "Run 2")
-        == "Run 2 preview: Delivered sevoflurane 3.50%, not applied"
+        == "Run 2 preview: Sevoflurane vaporizer 3.50%, not applied"
     )
     assert (
         preview_label(ControlInput.CARDIAC_OUTPUT, 8.0, "Isoflurane", None)

@@ -345,11 +345,13 @@ def test_format_delivered_label_names_the_agent_being_delivered() -> None:
 
     A delivered concentration is meaningless without its agent. 2% is a third
     of a MAC of desflurane and a full MAC of sevoflurane. The label therefore
-    includes the agent's name rather than saying "Delivered agent".
+    includes the agent's name rather than saying only "Vaporizer". The slider,
+    the record of control changes and the run's readout all call the control
+    the vaporizer (`PL-XZKW`).
     """
 
-    assert format_delivered_label("Sevoflurane") == "Delivered sevoflurane"
-    assert format_delivered_label("Isoflurane") == "Delivered isoflurane"
+    assert format_delivered_label("Sevoflurane") == "Sevoflurane vaporizer"
+    assert format_delivered_label("Isoflurane") == "Isoflurane vaporizer"
 
 
 def test_the_mac_resolution_is_derived_from_the_percent_resolution() -> None:

@@ -213,7 +213,7 @@ def test_a_drawn_run_lists_and_counts_the_control_changes_it_was_given() -> None
 
     shown = _drawn(controller, _state(pending_agent_name="Desflurane"))
 
-    assert shown.statement.timeline.entries == "1m30s · Delivered agent 1.80% -> 3.00%"
+    assert shown.statement.timeline.entries == "1m30s · Vaporizer 1.80% -> 3.00%"
     assert shown.new_case is not None
     assert any("1 recorded control change " in line for line in shown.new_case.body)
 
@@ -368,7 +368,7 @@ def test_a_halt_lists_the_control_changes_of_the_run_it_stopped() -> None:
 
     shown = _halted(controller, state, KeptValues(state.case, frame.values))
 
-    assert shown.statement.timeline.entries == "1m30s · Delivered agent 1.80% -> 3.00%"
+    assert shown.statement.timeline.entries == "1m30s · Vaporizer 1.80% -> 3.00%"
 
 
 def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_drew() -> None:

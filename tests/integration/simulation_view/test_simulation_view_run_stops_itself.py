@@ -654,7 +654,7 @@ def test_a_halt_after_an_agent_change_names_one_agent(
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
-    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Desflurane vaporizer"
     assert run._subtitle_text.text() == format_subtitle("Desflurane")
     assert run._running_agent_text.text() == "Desflurane"
     assert run._compartment_substance_text.text() == "Modelled concentrations: Desflurane"

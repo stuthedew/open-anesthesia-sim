@@ -630,7 +630,7 @@ def test_driving_a_slider_from_the_snapshot_emits_no_change(application: QApplic
     control.adjustment_started.connect(lambda: started.append(None))
     moved = SettingReadout(
         control=delivered.control,
-        name="Delivered isoflurane",
+        name="Isoflurane vaporizer",
         qualifier=delivered.qualifier,
         unit=delivered.unit,
         decimals=delivered.decimals,

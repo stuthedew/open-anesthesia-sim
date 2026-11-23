@@ -465,10 +465,11 @@ class RunView(QWidget):
         # What this run is called now, read from the dashboard each time a
         # presentation is built.
         self._name = name
-        # Whether the heading's values are folded into the transport row,
-        # which they are while runs are compared. `show_presentation` folds
-        # or unfolds them when a presentation's name says the run set changed
-        # (`_fold_heading_into_transport`).
+        # Whether the agent chip is folded onto one line, which it is while
+        # runs are compared. `show_presentation` folds or unfolds it when a
+        # presentation's name says the run set changed
+        # (`_fold_heading_into_transport`). Folding moves no value between
+        # rows (`PL-M4WT`).
         self._folded = False
         # The run whose readout heading also states this run's substance and
         # 1 MAC. It is set while this run's readouts are drawn in that run's
@@ -1010,8 +1011,8 @@ class RunView(QWidget):
         """Write this run's name on its own panel, from the presentation that holds its values.
 
         The run is named in its transport row, on its readouts and in its
-        control-change heading, and the heading's values fold into the
-        transport row while runs are compared. The name is written by the
+        control-change heading, and its agent chip folds onto one line while
+        runs are compared. The name is written by the
         same call as the run's values, from the same presentation, so this
         panel cannot name the run beside another run's values (`PL-RF2S`).
         The dashboard draws a frame, or halts, after every change to its run

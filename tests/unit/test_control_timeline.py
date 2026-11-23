@@ -214,9 +214,7 @@ def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
 
     (adjustment,) = group_adjustments(timeline)
 
-    assert format_adjustment(adjustment) == (
-        "10s–12s · Delivered agent 2.00% -> 4.00% (2 settings)"
-    )
+    assert format_adjustment(adjustment) == ("10s–12s · Vaporizer 2.00% -> 4.00% (2 settings)")
 
 
 def test_a_rendered_adjustment_carries_a_unit_on_both_of_its_values() -> None:
@@ -338,7 +336,7 @@ def test_a_flow_line_breaks_only_after_its_time_and_after_its_arrow() -> None:
 
 
 def test_a_multi_setting_line_keeps_its_count_with_the_new_value() -> None:
-    line = "10s–12s · Delivered agent 2.00% -> 4.00% (2 settings)"
+    line = "10s–12s · Vaporizer 2.00% -> 4.00% (2 settings)"
 
     assert wrapping_between_parts(line).split(" ") == [
         f"10s–12s{_NBSP}·",
