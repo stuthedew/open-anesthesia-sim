@@ -389,8 +389,10 @@ def declare_application_colours(application: QApplication) -> None:
     **What it does not cover, and why that follows the rule rather than
     leaving a gap.** The `Disabled` colour group is left exactly as the
     platform supplied it, for the reason `declare_interface_colours` gives.
-    So a disabled control with no colour of its own keeps drawing the host's
-    colours. Declaring a disabled colour is a decision under
+    So a disabled control with no colour of its own keeps drawing the
+    platform's colours. On a platform that honours the light request above,
+    those are its light palette's; on one that ignores it, they follow the
+    host appearance. Declaring a disabled colour is a decision under
     `.claude/rules/ui-color.md`, not a style choice. This interface declares
     exactly one, and it is measured.
 
