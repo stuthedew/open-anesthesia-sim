@@ -300,7 +300,7 @@ WASH_IN_HOVER_LABEL: Final = f"Wash-in {WASH_IN_RATIO_PLAIN_NAME} (alveolar / mo
 # such a quotient to be shown as a wash-in fraction (`PL-YH6Z`). Printed under the
 # wash-in label, it would suggest that wash-in can go past completion. It would do so
 # at the dot that a reader is most likely to point at.
-WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Past equilibrium: not a wash-in fraction"
+WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Alveolar exceeds inspired: not a wash-in fraction"
 
 # The word that opens every hover readout. It appears on every hover, not only
 # on the two compartments that have a measured twin, because the readout is
@@ -1699,8 +1699,8 @@ def _wash_in_hover_value(ratio: float) -> str:
     """Return the ratio as the hover prints it, or a notice where it is not wash-in.
 
     The stretch's crossing column, where the trace passes equilibrium, has a quotient
-    above 1. That is elimination rather than wash-in, so no number is printed for it
-    (`PL-YH6Z`).
+    above 1. Alveolar then exceeds inspired, so the quotient is not a wash-in fraction,
+    and no number is printed for it (`PL-YH6Z`, `PL-7PBB`).
     """
 
     if not is_wash_in(ratio):

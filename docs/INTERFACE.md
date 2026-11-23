@@ -4111,8 +4111,9 @@ true:
    it only at equilibrium. Above 1, the alveolar fraction exceeds the inspired
    one, and the number is no longer a wash-in fraction. With ventilation
    running, the patient is then returning agent to the circuit. With alveolar
-   ventilation at zero, no agent moves between the lungs and the circuit, and
-   the ratio passes 1 only because fresh gas washes the circuit out. So the
+   ventilation at zero, no agent moves between the lungs and the circuit. The
+   ratio can then pass 1 because fresh gas washes the circuit out, or because
+   blood returns agent to the alveoli, and neither is elimination. So the
    caption beside the plot names the condition and not a cause. The chart
    draws equilibrium as a labelled reference line.
 
@@ -6098,7 +6099,7 @@ Wash-in FA/FI (alveolar / modelled circuit)
 
 The caption in parentheses says that $`F_I`$ is the modelled circuit, not the
 vaporizer dial. At the one column that a stretch draws past equilibrium, the
-third line reads `Past equilibrium: not a wash-in fraction` instead of a number
+third line reads `Alveolar exceeds inspired: not a wash-in fraction` instead of a number
 (§ "F_A/F_I as a displayed ratio").
 
 The 1 MAC line, the MAC-awake band and the control marks do not respond. What

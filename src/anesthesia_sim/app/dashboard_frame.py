@@ -1267,11 +1267,13 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # that low during a washout, while the patient still holds agent (`PL-P3ZL`).
 # And alveolar exceeds inspired with ventilation stopped too, when no agent
 # moves between the lungs and the circuit, so the patient is not returning any
-# (`PL-7PBB`).
+# (`PL-7PBB`). The sentence does not say "past equilibrium" either. With
+# ventilation stopped, the alveoli still give agent to the blood when the ratio
+# passes 1, so nothing is in equilibrium there.
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
 WASH_IN_ELIMINATION_TEXT: Final = (
-    "Past equilibrium: alveolar exceeds inspired, so the ratio is not a wash-in fraction."
+    "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 

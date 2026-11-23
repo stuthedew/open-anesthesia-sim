@@ -3126,10 +3126,7 @@ def test_the_wash_in_trace_stops_when_alveolar_exceeds_inspired() -> None:
     history = (*_run_history(20), _sample(20, 0.010, 0.030, 0.02, 0.02, 0.01, 0.01))
     state = wash_in_state(_reading(_snapshot(history=history)), 0)
 
-    assert state == (
-        "Past equilibrium: alveolar exceeds inspired, so the ratio is not a wash-in "
-        "fraction."
-    )
+    assert state == ("Alveolar exceeds inspired, so the ratio is not a wash-in fraction.")
 
 
 def test_a_ratio_above_one_with_ventilation_stopped_names_no_elimination() -> None:
@@ -3152,14 +3149,13 @@ def test_a_ratio_above_one_with_ventilation_stopped_names_no_elimination() -> No
     _advance_to(controller, 900)
 
     snapshot = controller.snapshot()
-    reading = _reading(snapshot)
 
+    # The premises: the circuit is above the limit, and alveolar exceeds it.
     assert snapshot.inspired_partial_pressure_fraction >= 1e-4
     assert snapshot.alveolar_partial_pressure_fraction > snapshot.inspired_partial_pressure_fraction
-    assert reading.plotted_ratio is None
-    assert wash_in_state(reading, 0) == (
-        "Past equilibrium: alveolar exceeds inspired, so the ratio is not a wash-in "
-        "fraction."
+    assert _reading(snapshot).plotted_ratio is None
+    assert wash_in_state_lines(_frame(controller)) == (
+        "Alveolar exceeds inspired, so the ratio is not a wash-in fraction.",
     )
 
 
@@ -3202,8 +3198,8 @@ def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_cou
         "Now: F<sub>A</sub>/F<sub>I</sub> = 0.71 (2 earlier stretch(es) not drawn)"
     )
     assert wash_in_state(eliminating, 2) == (
-        "Past equilibrium: alveolar exceeds inspired, so the ratio is not a wash-in "
-        "fraction. (2 earlier stretch(es) not drawn)"
+        "Alveolar exceeds inspired, so the ratio is not a wash-in fraction. "
+        "(2 earlier stretch(es) not drawn)"
     )
     assert wash_in_state(no_ratio, 2) == (
         "Not defined: the inspired concentration is too low to divide by. "
