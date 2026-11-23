@@ -1,0 +1,5 @@
+time	session	guard	rule
+2026-11-23T16:17:03.522205+00:00	e84a9e06-c59d-5113-9d69-e3812a8596b0	gate-status-guard	status-swallowed:pytest
+2026-11-23T16:48:17.578071+00:00	e84a9e06-c59d-5113-9d69-e3812a8596b0	gate-status-guard	status-swallowed:pytest
+2026-11-23T16:48:45.428711+00:00	e84a9e06-c59d-5113-9d69-e3812a8596b0	gate-status-guard	status-swallowed:pytest
+2026-11-23T16:51:58.034339+00:00	e84a9e06-c59d-5113-9d69-e3812a8596b0	gate-status-guard	status-swallowed:make docket

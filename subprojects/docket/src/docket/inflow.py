@@ -107,15 +107,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import (
-    LANE_PRODUCT,
-    LANE_WORKFLOW,
-    MIN_ROOT_CAUSE_ITEMS,
-    Item,
-    is_under,
-    owner_set_priority,
-    pr_number,
-)
+from .model import LANE_PRODUCT, LANE_WORKFLOW, MIN_ROOT_CAUSE_ITEMS, Item, is_under, pr_number
 from .plan import Fact, clusters, facts
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
 from .vcs import FilingParents
@@ -134,51 +126,6 @@ NEW_PATHS_CEILING = 0.13
 #: missed week's investigation is listed where the next cut tells a session
 #: to look before filing another (`PL-P6KV`).
 INFLOW_FEATURE = "convergence-visibility"
-
-#: The bands `PL-04KR` predicts no apparatus filing reaches. Its baseline read
-#: 0, 2, 1, 0 P1 workflow filings a week; a P0 misses it by more.
-UNEXPECTED_BANDS = ("P0", "P1")
-
-
-def _generator_tier(item: Item) -> bool:
-    """Whether `item`'s band records a rank rather than a severity.
-
-    A head raised to `P1` by `generator: live` keeps the band once spent, and
-    an `impairs-generators:` item ranks with it. `PL-04KR`'s baseline predates
-    that rule (2026-09-21), and from 2026-09-28 to 10-11 heads and such items
-    were 8 of the 9 `P1` apparatus filings, so counted, every cut would report
-    a generator already found and already ranked.
-    """
-    return bool(item.root_cause_of or item.impairs_generators)
-
-
-def _unexpected_band(item: Item, config: Config) -> bool:
-    """Whether `item`'s band is the apparatus severity `PL-04KR` predicts none reaches.
-
-    Three readings of a `P0` or `P1` are left out, because each band records
-    something other than how severe an apparatus finding is:
-
-    - **The generator tier**, where the band records a rank (`_generator_tier`).
-    - **An owner-set priority**, where the band records the owner's order,
-      read from `owner-priority:` by `model.owner_set_priority`. `PL-JRVV`
-      was placed at `P1` that way in the week of 2026-10-19 (`PL-P6KV`).
-    - **An item outside the workflow lane**, read from `Item.lane`. Such an
-      item edits the product as well, so its band can come from the product
-      half: a `safety` class pins it to `P1` whatever the apparatus paths are.
-      `PL-04KR`'s baseline of 0, 2, 1 and 0 `P1` filings a week counted
-      workflow-lane items, and only that population reproduces it over the
-      store on 2026-11-03. Counted, crossing items reported `PL-HQF5` and
-      `PL-4RL2` for the week to 2026-10-18 (`PL-00TR`), and `PL-M85T`,
-      `PL-RNYV` and `PL-S79P` for the week to 10-25 (`PL-P6KV`). The cost is
-      that an apparatus defect that also edits a product file is not counted:
-      `PL-7FPD` declared `pyproject.toml`, while its twin `PL-H57W` counted.
-    """
-    return (
-        item.priority in UNEXPECTED_BANDS
-        and item.lane(config.workflow_paths) == LANE_WORKFLOW
-        and not _generator_tier(item)
-        and not owner_set_priority(item)
-    )
 
 
 @dataclass(frozen=True)
@@ -207,10 +154,6 @@ class InflowPeriod:
     #: not reach them. A sweep's own filings are left out with the rest of
     #: `by_head` and `by_sweep`, so a campaign cannot read as fixes failing.
     reentries: int = 0
-    #: Of `filed`, the workflow-lane filings in `UNEXPECTED_BANDS` whose band
-    #: records severity rather than a rank: what `PL-04KR`'s prediction is
-    #: about. `_unexpected_band` says which are left out.
-    severe: Mapping[str, int] = field(default_factory=dict)
     #: Apparatus filings that an item's work filed while that item was open,
     #: where the item's `sweep:` records a deliberate search. Counted apart
     #: for the reason `by_head` is. A filing a head also names is counted
@@ -442,9 +385,6 @@ def analyze(
                 priorities=dict(Counter(item.priority or UNBANDED for item in organic)),
                 new_paths=sum(1 for day in first_named.values() if start <= day <= end),
                 reentries=sum(1 for item in organic if counted[item.identifier]),
-                severe=dict(
-                    Counter(item.priority for item in organic if _unexpected_band(item, config))
-                ),
             )
         )
     reentered = {
@@ -598,6 +538,15 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
     ceiling while their counts rose, from 2026-10-12 and 2026-10-19, still
     break it. A first complete week has no week before it, and is read
     against the ceiling alone.
+
+    No prediction reads a filing's priority. `PL-04KR` also predicted that no
+    workflow filing would reach `P0` or `P1`, and that prediction broke in
+    every week from 2026-10-12 to 11-22. Each week was read, and none held a
+    cause that triage's generator check had not already recorded, because the
+    band records an order as often as a severity: the generator tier, an
+    owner's request, a `safety` class, or the band of the work an item
+    unblocked. The owner chose on 2026-11-23 to stop checking it (`PL-7TB2`).
+    The table still shows each week's filings by priority.
     """
     if report.lane != LANE_WORKFLOW:
         return ()
@@ -618,12 +567,6 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
             f"{last.new_paths} new apparatus paths over {last.total} filings, "
             f"{ratio:.2f} a filing, above the {NEW_PATHS_CEILING} ceiling{against}: the "
             "surface is still growing"
-        )
-    if last.severe:
-        counted = ", ".join(f"{last.severe[band]} {band}" for band in sorted(last.severe))
-        out.append(
-            f"{counted} apparatus filing(s) in the workflow lane whose band no rank or owner "
-            "set, where none was expected"
         )
     if len(complete) > 1 and last.reentries > complete[-2].reentries:
         out.append(
