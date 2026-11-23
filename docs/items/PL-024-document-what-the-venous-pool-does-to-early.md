@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: docs, ux
 feature: chart-readout
-touches: docs/MODEL.md, tests/unit/test_blood.py
+touches: docs/MODEL.md, docs/references/README.md, tests/unit/test_blood.py
 added: 2026-08-24
 closed: 2026-11-22
 pr: 2266
@@ -70,3 +70,5 @@ rather than an omission.
 `docs/MODEL.md` § "Venous blood" now says what the pool does in the first minutes, with these figures, and § "Known limitations" lists venous transit as not represented. `test_the_venous_pool_lag_in_the_first_minutes_is_small_beside_tissue_uptake` in `tests/unit/test_blood.py` computes the figures for each agent.
 
 Docs checked: `docs/MODEL.md` (§ "Venous blood", § "The reference adult", § "Known limitations"), `docs/PARAMETERS.md` (its two mentions of the 14.7 s time constant agree), `docs/INTERFACE.md` and `docs/VERIFICATION.md` (no statement about the early mixed-venous curve), `README.md` (none).
+
+**Blind review, 2026-11-22.** Both passes named the same two findings. First (should-fix, both passes): every figure was measured at 5.0 L/min, and the pool's time constant is its volume over the cardiac output, so a learner who lowers the output stretches the lag. Re-measured with each agent: at 2.0 L/min the mixed-venous value is 81% below the blood leaving the tissues at 30 s, 65-66% at 1 minute, 42-44% at 2 minutes, 15-16% at 5 minutes and 5% at 10 minutes; at 1.0 L/min it is still 31-32% below at 5 minutes and 13% at 10 minutes. `docs/MODEL.md` § "Venous blood" now gives the time constant at 5.0 and 2.0 L/min, ties the figures to 5.0 L/min, gives the 2.0 L/min figures, and says the least exact stretch lasts longer at a low output. The test now runs at both outputs. Second (optional, both passes): "never more than 7%" was below the measured 7.17% for desflurane at 5.0 L/min and 7.45% at 2.0 L/min. The sentence now says "at most about 7%", which the test's limit of 7.5% holds. The share stays at 5.7-7.5% at all three outputs, so the conclusion that a low early reading is mostly uptake holds at any output.

@@ -255,6 +255,28 @@ for the two that do, adopting would mean naming as authority a compilation
 whose own four sources the book never measured.
 
 
+### Mapleson 1963 — an electric analogue for uptake and exchange of inert gases
+
+**Not held here. Held in the private corpus.** It is a publisher-copyright
+journal article, which this public repository may not redistribute
+(§ "Redistribution").
+
+> Mapleson WW. *An electric analogue for uptake and exchange of inert gases and
+> other agents.* J Appl Physiol 1963;18(1):197-204. PMID
+> [13932730](https://pubmed.ncbi.nlm.nih.gov/13932730/), DOI
+> [10.1152/jappl.1963.18.1.197](https://doi.org/10.1152/jappl.1963.18.1.197).
+
+**What has been taken from it, and where it is recorded.** For `PL-024`,
+`docs/MODEL.md` § "Venous blood" takes Appendix 2, "Circulation time and
+disposition of arterial and venous blood" (p. 204). The appendix says that
+while concentrations rise, the venous blood arriving at the lungs is lower than
+the blood leaving the tissues. It says that leaving the circulation time out
+matters only in the first minute or two after a change of inspired
+concentration. It is cited for no stored value in that section.
+
+Route and depth: the corpus's text layer, Appendix 2 read in full on
+2026-11-22. PubMed returns this paper's metadata only, with no abstract.
+
 ### Philip — *Workbook for Gas Man*
 
 **Not held here. Held in the private corpus.** The project owner supplied it on
