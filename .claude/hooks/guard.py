@@ -54,6 +54,7 @@ from __future__ import annotations
 import json
 import signal
 import sys
+import time
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -153,6 +154,11 @@ def _stop(_signum: int, _frame: FrameType | None) -> None:
     raise TimedOut
 
 
+#: The delay given to an outer alarm that fell due while a guard ran. A delay
+#: of zero would cancel the alarm instead of firing it.
+_SOONEST_ALARM_S = 0.001
+
+
 def _error(error: BaseException) -> str:
     """The error, as the last line of its traceback gives it."""
     return "".join(traceback.format_exception_only(type(error), error)).strip()
@@ -163,14 +169,24 @@ def _verdict(guard: Guard, payload: str) -> hook_input.Verdict:
 
     Raises whatever the guard raised, `TimedOut`, or `ValueError` where it
     returned something other than a hook's output.
+
+    The alarm that stops a slow guard replaces any alarm already set, so the
+    handler and the time left on that alarm are put back afterwards. Inside a
+    test, that alarm is pytest-timeout's limit on the test (`PL-FKVR`). An
+    alarm due while the guard ran fires as soon as it returns.
     """
-    signal.signal(signal.SIGALRM, _stop)
-    signal.setitimer(signal.ITIMER_REAL, guard.deadline_s)
+    outer_handler = signal.signal(signal.SIGALRM, _stop)
+    outer_left_s, _ = signal.setitimer(signal.ITIMER_REAL, guard.deadline_s)
+    started_s = time.monotonic()
     try:
         decide = getattr(import_module(guard.module), guard.function)
         output = decide(payload)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, signal.SIG_DFL if outer_handler is None else outer_handler)
+        if outer_left_s > 0:
+            left_s = outer_left_s - (time.monotonic() - started_s)
+            signal.setitimer(signal.ITIMER_REAL, max(left_s, _SOONEST_ALARM_S))
     return hook_input.verdict(output or "")
 
 
