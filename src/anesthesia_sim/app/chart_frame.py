@@ -76,6 +76,7 @@ from anesthesia_sim.app.chart_time_base import (
     fit_to_run,
     fitted_window,
     following_window,
+    held_window,
     preview_window,
     tick_times,
 )
@@ -895,6 +896,16 @@ class ChartFrame:
             chosen by the reader. The caption states which, because the same
             plot showing fifteen minutes and showing twelve hours makes two
             different claims about what a flat trace means.
+        held_start_s: The left edge of the window the reader moved back,
+            which holds still while the run goes on, or None while the window
+            follows the run (`ChartWindow`). A held window shows the past
+            while the readouts show the present, so the chart says so
+            (`dashboard_frame.held_window_notice`). It is kept during a
+            preview, whose window replaces the held one only while the drag
+            is held.
+        newest_instant_s: The instant at which the furthest-advanced run on
+            the chart stands. A held window says how far the run has gone
+            past it.
         start_s: Left edge of the window, in simulated seconds.
         stop_s: Right edge of the window, in simulated seconds.
         tick_times_s: Where the gridlines and axis labels fall, on both
@@ -938,6 +949,8 @@ class ChartFrame:
 
     time_base: ChartTimeBase
     fitted: bool
+    held_start_s: CaseInstant | None
+    newest_instant_s: CaseInstant
     start_s: float
     stop_s: float
     tick_times_s: tuple[float, ...]
@@ -952,6 +965,12 @@ class ChartFrame:
     visible: tuple[RecordedQuantity, ...]
     undrawn_compartments: int
     runs: tuple[RunFrame, ...]
+
+    @property
+    def held(self) -> bool:
+        """Whether the reader holds the window back from the run (`held_start_s`)."""
+
+        return self.held_start_s is not None
 
     @property
     def run_count(self) -> RunCount:
@@ -1089,6 +1108,7 @@ def assemble_chart_frame(
     shown: Collection[RecordedQuantity],
     *,
     plot_width_px: float,
+    held_start_s: CaseInstant | None,
 ) -> ChartFrame:
     """Read every run once and work out everything the frame draws.
 
@@ -1112,6 +1132,11 @@ def assemble_chart_frame(
             report it. It is required rather than defaulted, because a frame
             drawn for a width nobody stated would silently be drawn at the
             minimum column count.
+        held_start_s: The left edge the reader has moved the window to, or
+            None while it follows the run (`ChartWindow`). It is required
+            rather than defaulted, as the width is, so that a caller states
+            which window it wants. Where the held window has reached the
+            run's own window, the frame follows the run (`held_window`).
 
     Returns:
         The frame.
@@ -1164,7 +1189,7 @@ def assemble_chart_frame(
     newest_instant_s = max(run.snapshot.elapsed_s for run in runs)
     require_case_instant("newest_instant_s", newest_instant_s)
 
-    # The visible window has two modes. "Fit run" derives the width from the
+    # The visible window has three modes. "Fit run" derives the width from the
     # newest instant, so that the whole case is drawn, starting at zero. A
     # chosen width is kept exactly and follows that instant, so that a trace's
     # slope on the plot means the same thing at every moment.
@@ -1175,12 +1200,26 @@ def assemble_chart_frame(
     # previews nothing, and the window does not move for it.
     previewing = [run for run in runs if _held_preview(run) is not None]
 
+    #
+    # A window the reader moved back holds still while the run goes on, until
+    # it is moved up to the window that follows the run (`held_window`).
+    held: tuple[float, float] | None = None
+
     if time_base is None:
+        if held_start_s is not None:
+            raise ValueError(
+                f'a window held at {held_start_s} s needs a chosen width, not "Fit run"'
+            )
+
         base = fit_to_run(newest_instant_s)
         start_s, stop_s = fitted_window(base)
     else:
         base = time_base
-        start_s, stop_s = following_window(base, newest_instant_s)
+
+        if held_start_s is not None:
+            held = held_window(base, held_start_s, newest_instant_s)
+
+        start_s, stop_s = held or following_window(base, newest_instant_s)
 
     if previewing:
         start_s, stop_s = preview_window(base, max(run.controller.reached_s for run in previewing))
@@ -1197,6 +1236,8 @@ def assemble_chart_frame(
     return ChartFrame(
         time_base=base,
         fitted=time_base is None,
+        held_start_s=None if held is None else held_start_s,
+        newest_instant_s=newest_instant_s,
         start_s=start_s,
         stop_s=stop_s,
         tick_times_s=tick_times(start_s, stop_s, base.tick_interval_s),

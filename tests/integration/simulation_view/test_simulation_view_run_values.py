@@ -22,7 +22,7 @@ from PySide6.QtWidgets import QAbstractButton, QApplication, QLabel, QWidget
 from anesthesia_sim.app import run_presentation as run_presentation_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app import views as views_module
-from anesthesia_sim.app.chart_time_base import time_base_for_span
+from anesthesia_sim.app.chart_time_base import ChartWindow, time_base_for_span
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import CONTROL_TIMELINE_HEADING, run_label, slider_position
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS, format_elapsed
@@ -486,7 +486,9 @@ def test_a_chart_opened_while_frames_fail_at_a_window_never_drawn_is_withheld(
     _select_time_base(view, "900.0")
     view.layout_container.choose_view(AreaId(3), PARAMETER_CONTROLS)
     _settle(application)
-    assert view.layout_container.frame_requests().keys() == {time_base_for_span(900.0)}
+    assert view.layout_container.frame_requests().keys() == {
+        ChartWindow(time_base_for_span(900.0), None)
+    }
     monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
     view.present(False)
     assert view.runs[0].controller.has_failed is True

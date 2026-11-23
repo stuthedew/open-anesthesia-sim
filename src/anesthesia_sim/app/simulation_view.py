@@ -110,6 +110,7 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app.area_layout import AreaLayout
 from anesthesia_sim.app.bookmarks import BookmarkSet, BookmarkStandings
 from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
+from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
@@ -1964,12 +1965,16 @@ class SimulationView(QWidget):
         # the narrowest sampling. Its checks therefore still run, such as the
         # check for runs that have come to use different agents, and they halt
         # the runs whatever the Areas hold.
-        requests = self._areas.frame_requests() or {None: 0.0}
+        requests = self._areas.frame_requests() or {ChartWindow(None, None): 0.0}
         frames = {
-            time_base: assemble_chart_frame(
-                inputs, time_base, selection.shown, plot_width_px=width_px
+            window: assemble_chart_frame(
+                inputs,
+                window.time_base,
+                selection.shown,
+                plot_width_px=width_px,
+                held_start_s=window.held_start_s,
             )
-            for time_base, width_px in requests.items()
+            for window, width_px in requests.items()
         }
         marks_now = self._marks_now(
             tuple(snapshot.bookmarks for snapshot in snapshots),
@@ -1996,13 +2001,14 @@ class SimulationView(QWidget):
 
             if len(drawn) < len(self._runs):
                 view_frames = {
-                    time_base: assemble_chart_frame(
+                    window: assemble_chart_frame(
                         tuple(inputs[i] for i in drawn),
-                        time_base,
+                        window.time_base,
                         selection.shown,
                         plot_width_px=width_px,
+                        held_start_s=window.held_start_s,
                     )
-                    for time_base, width_px in requests.items()
+                    for window, width_px in requests.items()
                 }
 
             self._areas.refresh(
@@ -2128,8 +2134,8 @@ class SimulationView(QWidget):
         runs = tuple(self._runs[i].presentation() for i in drawn)
         self._areas.refresh(
             {
-                time_base: shown_without_a_frame(self._kept_frames, time_base, runs, selection)
-                for time_base in self._areas.frame_requests()
+                window: shown_without_a_frame(self._kept_frames, window, runs, selection)
+                for window in self._areas.frame_requests()
             },
             runs,
             selection,
