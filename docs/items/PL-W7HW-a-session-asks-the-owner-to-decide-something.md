@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: decision-ownership
+milestone: v0.6.22
 touches: .claude/rules/instruction-writing.md, .claude/skills/docket/modes/design.md, .claude/skills/docket/modes/triage.md, .claude/skills/docket/modes/coordinator.md, docs/maintainer.md, docs/resident-instructions.md, subprojects/docket/src/docket/arming.py
 added: 2026-11-22
 closed: 2026-11-22

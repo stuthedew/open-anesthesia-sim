@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: every-view-in-run-state-tests
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/simulation_view
 deferred-from: v0.7.0 - present at the freeze, but it waits on PL-RF2S, whose third pull request fixes it and which is itself deferred to the next gate; each value shown is right for its own step, so it shows no wrong value
 added: 2026-11-11

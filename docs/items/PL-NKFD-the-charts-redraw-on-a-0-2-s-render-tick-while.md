@@ -2,6 +2,7 @@
 id: PL-NKFD
 title: The charts redraw on a 0.2 s render tick while a dial is held, twice the 0.1 s that Nielsen Norman Group gives as the limit for a user to feel they are directly manipulating the display; measure the frame cost and whether a 0.1 s tick fits it
 status: done
+milestone: v0.6.22
 added: 2026-11-22
 closed: 2026-11-23
 pr: 2264

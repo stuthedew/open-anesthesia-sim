@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, test
 feature: model-claims-held-by-tests
+milestone: v0.6.22
 touches: docs/MODEL.md, tools/doc_check.py
 added: 2026-08-25
 closed: 2026-11-22
