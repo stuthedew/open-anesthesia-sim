@@ -509,9 +509,14 @@ class AreaLayout(QWidget):
         self._pin: tuple[str | None, bool] = (None, False)
         self._settling = False
         self._least: PixelSize | None = None
-        # Each Area's need as of the last settle. When a frame's need changes, the
-        # Areas settle again.
+        # Each Area's need as of the last settle, measured at its least width. When
+        # a frame's need changes, the Areas settle again.
         self._needs: dict[AreaId, PixelSize] = {}
+        # The layout from which the last settle read each Area's width, and each
+        # Area's need measured at that width (`_narrowed`). A frame whose needs at
+        # those widths differ from these makes the Areas settle again.
+        self._width_fit: Fit | None = None
+        self._narrowed_needs: dict[AreaId, PixelSize] = {}
         # Each Area's floor as of the last settle, which `_fits` measures at a dragged width.
         self._floors: dict[AreaId, Floor] = {}
         self._build(frozenset())
@@ -655,7 +660,10 @@ class AreaLayout(QWidget):
         _handle_layout_requests()
         needs = {area_id: self._need(area_id) for area_id in self._frames}
 
-        if needs == self._needs:
+        if needs == self._needs and (
+            self._width_fit is None
+            or self._narrowed(self._width_fit, needs) == self._narrowed_needs
+        ):
             return
 
         self._settle(self._drawn)
@@ -1403,18 +1411,50 @@ class AreaLayout(QWidget):
             needs = {area_id: self._need(area_id) for area_id in self._frames}
             self._needs = needs
             floors = {area_id: self._floor(area_id) for area_id in self._frames}
-            self._floors = floors
             extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
 
-            held = drawn_bounds(needs, floors)
-            least = minimum_extent(tree, AREA_HANDLE_WIDTH, held)
+            # A whole View needs fewer lines of wrapped text at the width it is
+            # drawn than at its least width (`PL-744F`). So the widths are read
+            # first, from a layout at this widget's width that is tall enough
+            # for every need, so that no Area gives up its View for want of
+            # height. Each need is then measured at its Area's width there, and
+            # the Areas are laid out at this widget's size with those needs.
+            # A need's width does not depend on the width it is measured at, so
+            # that layout keeps the same widths wherever the height is enough.
+            # Where it does not keep them, the needs at the least width stand,
+            # as they did before the narrowed needs were measured.
+            tall = PixelSize(
+                extent.width_px,
+                max(
+                    extent.height_px,
+                    minimum_extent(tree, AREA_HANDLE_WIDTH, drawn_bounds(needs, floors)).height_px,
+                ),
+            )
+            width_fit = self._laid_out(tree, tall, needs, floors, kept)
+            narrowed = self._narrowed(width_fit, needs)
+            self._width_fit = width_fit
+            self._narrowed_needs = narrowed
+            fit: Fit | None = None
 
-            if self.isVisible():
-                fit = settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, kept)
-            else:
-                laid_out = apportion(tree, extent, AREA_HANDLE_WIDTH, held)
-                fit = Fit(laid_out, held, frozenset(held), ())
+            if narrowed != needs:
+                narrowed_floors = {
+                    area_id: self._floor(area_id, width_fit.apportionment.areas[area_id].width_px)
+                    for area_id in self._frames
+                }
+                refit = self._laid_out(tree, extent, narrowed, narrowed_floors, kept)
 
+                if _widths(refit) == _widths(width_fit):
+                    needs, floors, fit = narrowed, narrowed_floors, refit
+
+            if fit is None:
+                fit = (
+                    width_fit
+                    if tall == extent
+                    else self._laid_out(tree, extent, needs, floors, kept)
+                )
+
+            self._floors = floors
+            least = minimum_extent(tree, AREA_HANDLE_WIDTH, drawn_bounds(needs, floors))
             self._fit = fit
             self._drawn = fit.drawn
 
@@ -1437,12 +1477,55 @@ class AreaLayout(QWidget):
         finally:
             self._settling = False
 
-    def _need(self, area_id: AreaId) -> PixelSize:
+    def _laid_out(
+        self,
+        tree: Node,
+        extent: PixelSize,
+        needs: Mapping[AreaId, PixelSize],
+        floors: Mapping[AreaId, Floor],
+        kept: AbstractSet[AreaId],
+    ) -> Fit:
+        """Lay out `tree` at `extent` with these needs and floors.
+
+        Once this widget is shown, `settle` decides which Areas draw their View.
+        Before that, every Area keeps its View and is held at its need, because
+        the widget's size is not yet the size at which it will be drawn.
+        """
+
+        if self.isVisible():
+            return settle(tree, extent, AREA_HANDLE_WIDTH, needs, floors, kept)
+
+        held = drawn_bounds(needs, floors)
+        laid_out = apportion(tree, extent, AREA_HANDLE_WIDTH, held)
+
+        return Fit(laid_out, held, frozenset(held), ())
+
+    def _narrowed(self, fit: Fit, needs: Mapping[AreaId, PixelSize]) -> dict[AreaId, PixelSize]:
+        """Return each Area's need measured at the width that `fit` draws the Area.
+
+        Only a whole View's need depends on that width (`_view_need`). An Area
+        that `fit` draws narrower than its least width, or that is not in
+        `fit`, keeps its need from `needs`.
+        """
+
+        areas = fit.apportionment.areas
+
+        return {
+            area_id: (
+                self._need(area_id, areas[area_id].width_px)
+                if area_id in areas and areas[area_id].width_px >= need.width_px
+                else need
+            )
+            for area_id, need in needs.items()
+        }
+
+    def _need(self, area_id: AreaId, drawn_width_px: int | None = None) -> PixelSize:
         """Return the least size at which the Area `area_id` draws its View, header included.
 
-        An Area that shows a notice in place of a View needs only
-        `_structural_minimum`, the smallest size that holds its header and one
-        line of the notice.
+        With `drawn_width_px`, a whole View's height is measured at that width
+        rather than at the Area's least width (`_view_need`). An Area that
+        shows a notice in place of a View needs only `_structural_minimum`, the
+        smallest size that holds its header and one line of the notice.
         """
 
         frame = self._frames[area_id]
@@ -1450,11 +1533,11 @@ class AreaLayout(QWidget):
         if area_id not in self._views:
             return PixelSize(*_structural_minimum(frame))
 
-        view = self._view_need(area_id)
+        view = self._view_need(area_id, drawn_width_px)
 
         return PixelSize(view.width_px, view.height_px + _chrome_height(frame))
 
-    def _floor(self, area_id: AreaId) -> Floor:
+    def _floor(self, area_id: AreaId, drawn_width_px: int | None = None) -> Floor:
         """Return the size at which the Area `area_id` is held while it is too small for its View.
 
         This size is the Area's floor. Its width is the width from `_structural_minimum`. Its
@@ -1479,11 +1562,11 @@ class AreaLayout(QWidget):
         # The probe measures the short statement with the View's need given as both the
         # needed size and the available size. At its floor, the Area has less room than its
         # View needs, so this statement is as wide as the one the Area will show.
-        needed = self._view_need(area_id)
+        needed = self._view_need(area_id, drawn_width_px)
         title = too_small_title(self._registered[shown[0]].title)
         statement = too_small_short_text(needed, needed)
         chrome = _chrome_height(frame)
-        need_height = self._need(area_id).height_px
+        need_height = self._need(area_id, drawn_width_px).height_px
         probe = self._notice_probe
         measured: dict[int, int] = {}
 
@@ -1500,7 +1583,7 @@ class AreaLayout(QWidget):
 
         return Floor(width, height_at)
 
-    def _view_need(self, area_id: AreaId) -> PixelSize:
+    def _view_need(self, area_id: AreaId, drawn_width_px: int | None = None) -> PixelSize:
         """Return the least size at which the View in `area_id` is shown, below the Area's header.
 
         Its height is the minimum height that the View's registry entry
@@ -1511,9 +1594,12 @@ class AreaLayout(QWidget):
         of the View's content, so the View never scrolls up and down
         (`PL-D5J4`). That height counts every line of a label that wraps, as
         `ViewScroll` does when it sizes the View, at the Area's least width,
-        where a wrapped label takes the most lines. It is measured there, and
-        not at the width the Area is drawn, so the need does not depend on the
-        last layout and one settle gives the same sizes as the next. Its width is the
+        where a wrapped label takes the most lines. With `drawn_width_px`, it is
+        measured at that width instead, where the width is at least the least
+        width. A whole View never scrolls up and down, so its Area shows no
+        scroll bar, and the View is drawn as wide as its Area. `_settle` passes
+        the width that its first layout drew the Area, so the need depends only
+        on this widget's size and not on the last layout. Its width is the
         larger of the declared minimum width and the least width Qt would hold
         the View's widget to, with room beside the View for the scroll bar. So
         a View is never scrolled sideways, and a row of controls is never cut
@@ -1531,7 +1617,14 @@ class AreaLayout(QWidget):
 
         if entry.whole:
             least_width = max(declared.width_px, content_width)
-            height = max(height, _least_height_at(widget, least_width))
+            # The room a scroll bar would take is left out of the drawn width.
+            # Measured at the full width, a View one line taller than the
+            # measure, as when Qt shows the bar before the View is fitted,
+            # loses that room to the bar, wraps one line more and stays
+            # scrolled (`PL-744F`).
+            room_width = 0 if drawn_width_px is None else drawn_width_px - scroll.bar_width()
+            measured_width = max(least_width, room_width)
+            height = max(height, _least_height_at(widget, measured_width))
 
         return PixelSize(max(declared.width_px, content_width + scroll.bar_width()), height)
 
@@ -3139,6 +3232,12 @@ def _relative_place(own: Rectangle, other: Rectangle) -> str:
         words.append(_SIDE_WORDS[Side.RIGHT])
 
     return ", ".join(words)
+
+
+def _widths(fit: Fit) -> dict[AreaId, int]:
+    """Return the width that `fit` draws each Area."""
+
+    return {area_id: size.width_px for area_id, size in fit.apportionment.areas.items()}
 
 
 def _least_size(widget: QWidget) -> tuple[int, int]:
