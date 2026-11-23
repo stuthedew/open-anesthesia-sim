@@ -1022,6 +1022,38 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
         assert case.fork_at(change.elapsed_s).run_segments[-1].opened_at_s == (change.elapsed_s)
 
 
+def test_a_branch_opened_with_no_entries_numbers_adjustments_as_a_new_trunk_does() -> None:
+    """A branch that opens with no entries numbers its first adjustment as a new trunk does.
+
+    An adjustment number groups the timeline entries that one act produced. A
+    branch numbers the parent's changes at its fork first, and the learner's
+    adjustments after them, so that no later entry can share an opened
+    entry's number. A branch taken where its trunk is paused between two
+    changes opens with no entries. Its learner's adjustments are then the
+    first on the branch, so they are numbered from 1, as on a new trunk.
+
+    The expected numbers come from a new trunk given the same two
+    adjustments (rule 2 of `.claude/rules/test-oracles.md`).
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_for(trunk, duration_s=30)
+    trunk.pause()
+    branch = trunk.resumed_here()
+
+    fresh = SimulationController()
+
+    for run in (branch, fresh):
+        run.set_fresh_gas_flow(FreshGasFlow(1.0))
+        run.set_cardiac_output(CardiacOutput(4.0))
+
+    assert branch.snapshot().opened_with == ()
+    assert [change.adjustment for change in branch.snapshot().control_timeline] == [
+        change.adjustment for change in fresh.snapshot().control_timeline
+    ]
+
+
 def _developer_note(refusal: BaseException) -> str:
     """Return the notes that a refused branch carries for a developer (`PL-72X2`)."""
 

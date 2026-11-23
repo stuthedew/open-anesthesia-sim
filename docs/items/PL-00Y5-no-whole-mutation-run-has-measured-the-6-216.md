@@ -3,13 +3,15 @@ id: PL-00Y5
 title: No whole mutation run has measured the 6,216 mutants that PL-19M4 added to the run: every module of layout/, 16 modules of app/ that import no Qt, app_metadata.py and user_files.py have no recorded kill rate and their survivors are unsorted
 priority: P2
 effort: L
-status: ready
+status: done
 classes: test
 feature: tests-detect-wrong-values
-touches: docs/mutation-testing.md
+touches: docs/mutation-testing.md, docs/items/PL-33CG-the-mutation-check-of-a-branch-that-changes.md, tests/unit/, tests/integration/controller/
 added: 2026-11-11
+closed: 2026-11-23
+pr: 2281
 payoff: each display and layout module that PL-19M4 brought into the mutation run has a measured kill rate, and each fault its unit tests would miss has a test or an item
-verify: grep -q '^| .layout/model.py. |' docs/mutation-testing.md
+verify: grep -qF '| `layout/model.py` | 1,255 / 1,373 (1 timeout) | 91% |' docs/mutation-testing.md
 sweep: survivors of a whole mutation run over the modules PL-19M4 added to the run
 ---
 
@@ -28,3 +30,11 @@ sweep: survivors of a whole mutation run over the modules PL-19M4 added to the r
 **Generator check.** A one-off. It is the measurement that `PL-19M4`'s change of rule left to do, and `PL-19M4` is itself a one-off under `CLAUDE.md`'s rule that a shared fact has one source of truth. No head's `misread:` line states it: `bin/docket generators --misread` was searched on 2026-11-11 for "list", "module", "import", "hand" and "covers" when `PL-19M4` was triaged.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. `docs/mutation-testing.md` § "Baselines" still holds only the 2026-10-18 and 2026-10-17 runs, and has no row for `layout/model.py` or any other module that `PL-19M4` added.
+
+**Done 2026-11-23.** Whole runs at `0117c839` (8,721 mutants, 89% killed) and at `c66be832` (8,837, 91%) are in `docs/mutation-testing.md` § "Baselines", with one row for each of the 30 modules that hold mutants. All 1,037 survivors and no-unit-test mutants at `0117c839` were sorted: 386 message only, 222 real gaps, 197 caught by an integration or reference test, 150 equivalent, 41 changed on `main` before their test was written, 20 looks only, 15 unreachable and 6 run while a test module is imported. 210 of the real gaps have one of the 89 test functions this branch adds, in 14 unit test files and 10 controller integration test files. The other 12 point at code to change and are in `PL-8LZS` (a field nothing reads), `PL-PZSF` (fields and branches nothing reads or reaches), `PL-6YDJ` (the join's rounded tolerance test) and `PL-Y6XR` (split sizes not checking the bounds count). The sort also filed `PL-1QX0` (mutmut never runs the test of a function called while a test module is imported), `PL-X106` (a legend test whose expected words come from the code under test), `PL-FKVR` (no per-test time limit), `PL-Z4MP` (the controller's redundant record of time marks it halted on) and `PL-VYN4` (a preview refusal that names a branch).
+
+The second tier first chose each survivor's slower tests from a coverage record made with coverage's default `sys.monitoring` recorder, which on Python 3.15 ties each line only to the first test that ran it in each worker. `trace_legend_label` had 4 contexts that way and 625 with `COVERAGE_CORE=ctrace`, read from coverage 7.15.4's `core.py`, `sysmon.py` and `control.py`. The controller and layout model sorts used the `ctrace` record; the earlier sorts did not, so their 197-kill count is a lower bound, as § "Baselines" says. § "Second tier" now gives the recipe for many survivors and the `COVERAGE_CORE=ctrace` setting, and § "Read a survivor" gains the two kinds this sort needed. The PL-33CG record's sentence about random test order was corrected in passing.
+
+The closing check refused the five skips this branch had added to tests that need something a platform may lack: `time.tzset`, git and a git checkout, a child interpreter whose locale is not UTF-8, and `os.O_DIRECTORY`. Each of those tests now stands in for the platform it needs, so it runs the same on Linux, macOS and Windows. The two encoding tests no longer run a child interpreter, which imports the code with no mutant applied, so mutmut's run could not count them against `write_synced`'s two encoding mutants. Twenty mutants of the four functions, each applied by hand on its own, failed the rewritten test for it.
+
+Docs checked for statements this branch made untrue: `docs/mutation-testing.md` (whole), `docs/ARCHITECTURE.md` § "Tests (`tests/`)", `.claude/rules/test-oracles.md`, and the items filed above. No source file changed, so `docs/MODEL.md`, `docs/INTERFACE.md`, `docs/VERIFICATION.md` and `docs/PARAMETERS.md` were not affected.

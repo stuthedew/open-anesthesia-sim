@@ -3125,6 +3125,27 @@ def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> Non
     )
 
 
+def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_count() -> None:
+    """The count of undrawn stretches is added after the state, never in place of it.
+
+    A ratio in the wash-in domain and elimination are checked, each against a
+    literal. The state with no ratio is left out: its sentence says that no
+    agent has reached the circuit, which a count of earlier stretches
+    contradicts, and `PL-P3ZL` changes that sentence.
+    """
+
+    in_domain = read_wash_in(0.0071, 0.01)
+    eliminating = read_wash_in(0.02, 0.01)
+
+    assert wash_in_state(in_domain, 2) == (
+        "Now: F<sub>A</sub>/F<sub>I</sub> = 0.71 (2 earlier stretch(es) not drawn)"
+    )
+    assert wash_in_state(eliminating, 2) == (
+        "Past equilibrium: alveolar exceeds inspired — the patient is returning agent, "
+        "which is elimination and not wash-in. (2 earlier stretch(es) not drawn)"
+    )
+
+
 def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat() -> None:
     """The failure mode that PL-CC23's fixed ceiling introduces, and the guard against it.
 
@@ -3494,6 +3515,53 @@ def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:
     assert no_traces_shown(_frame(controller)) is False
     assert no_traces_shown(_frame(controller, shown=())) is True
     assert no_traces_shown(_frame(controller, shown=(RecordedQuantity.ALVEOLAR,))) is False
+
+
+def test_the_cap_notice_appears_exactly_while_a_second_run_is_drawn() -> None:
+    """The two-compartment cap applies only while two runs are drawn, and the notice says so then.
+
+    A lone run draws every compartment, so a notice there would describe a
+    limit that is not on screen. With two runs, the notice names the cap of
+    two and where every compartment's value can still be read. Every word of
+    the expected notice is a literal here.
+    """
+
+    lone = _frame(_fake_controller(history=_run_history(40)))
+    compared = _compared_frame(
+        _fake_controller(history=_run_history(40)), _fake_controller(history=_run_history(40))
+    )
+
+    assert dashboard_frame.compartment_cap_notice(lone) is None
+    assert dashboard_frame.compartment_cap_notice(compared) == (
+        "Two runs are shown, so the chart draws at most 2 compartments at once. "
+        "Every compartment's value is in the readouts above, for both runs."
+    )
+
+
+def test_each_legend_entry_names_its_compartment_and_line_style_and_then_its_run() -> None:
+    """A legend entry names a compartment and its line style, and adds the run while two are drawn.
+
+    The words are those of the table in `docs/INTERFACE.md` § "The six
+    compartment traces: what separates them", so a reader can learn each style
+    from the legend alone. While a second run is drawn, each entry names the
+    compartment first and the run second.
+    """
+
+    expected = {
+        RecordedQuantity.CIRCUIT: "Circuit (solid)",
+        RecordedQuantity.ALVEOLAR: "Alveolar (long dash)",
+        RecordedQuantity.MIXED_VENOUS: "Mixed venous (short dash)",
+        RecordedQuantity.VESSEL_RICH: "Vessel-rich (even dash)",
+        RecordedQuantity.MUSCLE: "Muscle (dotted)",
+        RecordedQuantity.FAT: "Fat (dash-dot)",
+    }
+
+    for quantity, words in expected.items():
+        assert dashboard_frame.trace_legend_label(trace_style(quantity)) == words
+
+    assert dashboard_frame.compared_trace_legend_label(
+        "Alveolar (long dash)", run_label(SECOND_RUN)
+    ) == ("Alveolar (long dash), Run 2")
 
 
 # --- the new-case question ------------------------------------------------------

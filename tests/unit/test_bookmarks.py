@@ -165,6 +165,20 @@ def test_a_target_refusal_names_the_height_that_failed() -> None:
         _target(multiple=-0.5)
 
 
+def test_a_target_keeps_the_name_it_was_given_without_surrounding_space() -> None:
+    """A target's name is checked as a time bookmark's is: trimmed, and refused when blank.
+
+    The marks panel lists a target under its name. A name lost here would list
+    the target under its compartment and height instead, as if the learner had
+    never named it.
+    """
+
+    assert _target(label="  wash-in  ").label == "wash-in"
+
+    with pytest.raises(SimulationConfigurationError, match="blank"):
+        _target(label="   ")
+
+
 def test_two_targets_differing_only_in_label_name_one_crossing() -> None:
     assert _target(label="wash-in").crossing_key == _target(label="emergence").crossing_key
 
@@ -268,6 +282,49 @@ def test_removing_a_time_bookmark_leaves_the_targets_alone() -> None:
 
     assert after.time_bookmarks == ()
     assert after.mac_targets == (_target(),)
+
+
+def test_adding_a_time_bookmark_leaves_the_targets_alone() -> None:
+    """A time bookmark added to a set that already holds targets keeps every target, in order.
+
+    The other tests add the time bookmark before any target, so they cannot
+    tell this edit from one that builds the new set without its targets. A
+    target dropped that way is a halt that never comes.
+    """
+
+    low = _target(multiple=0.5)
+    high = _target(multiple=0.8)
+    marks = BookmarkSet().with_mac_target(low).with_mac_target(high)
+
+    after = marks.with_time_bookmark(TimeBookmark(CaseInstant(600)))
+
+    assert after.mac_targets == (low, high)
+    assert after.time_bookmarks == (TimeBookmark(CaseInstant(600)),)
+
+
+def test_removing_one_target_leaves_the_other_targets_and_the_time_bookmarks_alone() -> None:
+    """Removing the middle one of three targets keeps the first and the third, and every bookmark.
+
+    So a removal that kept only the first target, only the last or none of
+    them gives a different list from the right one.
+    """
+
+    bookmark = TimeBookmark(CaseInstant(600))
+    low = _target(multiple=0.5)
+    middle = _target(multiple=0.8)
+    high = _target(multiple=1.2)
+    marks = (
+        BookmarkSet()
+        .with_time_bookmark(bookmark)
+        .with_mac_target(low)
+        .with_mac_target(middle)
+        .with_mac_target(high)
+    )
+
+    after = marks.without_mac_target(middle)
+
+    assert after.mac_targets == (low, high)
+    assert after.time_bookmarks == (bookmark,)
 
 
 def test_a_time_bookmark_is_removed_by_its_instant_rather_than_by_its_name() -> None:
@@ -523,6 +580,28 @@ def test_a_reading_exactly_on_the_upper_edge_of_the_band_is_inside_it() -> None:
     assert not target.crossed_between(upper_edge, MacMultiple(1.0))
     assert not target.crossed_between(MacMultiple(1.01), just_above)
     assert target.crossed_between(just_above, upper_edge)
+
+
+@pytest.mark.parametrize("height", [0.5, 2.0])
+def test_the_band_around_a_target_is_the_same_share_of_any_height(height: float) -> None:
+    """The band reaches one part in a hundred thousand of the height on either side, at any height.
+
+    The tests above use a target at 1.00 ×MAC. There, a band that is a share
+    of the height and a band that is divided by the height have the same
+    width. At 0.5 and 2.0 ×MAC the two widths differ by a factor of four. A
+    reading 0.9 parts in a hundred thousand from the height is inside the
+    band, and a reading 1.1 parts away is outside it, above and below.
+    """
+
+    target = _target(multiple=height)
+
+    for side in (1.0, -1.0):
+        start = MacMultiple(height * (1.0 + side * 0.01))
+        inside = MacMultiple(height * (1.0 + side * 0.9e-5))
+        outside = MacMultiple(height * (1.0 + side * 1.1e-5))
+
+        assert target.crossed_between(start, inside)
+        assert not target.crossed_between(start, outside)
 
 
 def test_a_step_that_crossed_nothing_is_reported_as_no_crossing() -> None:

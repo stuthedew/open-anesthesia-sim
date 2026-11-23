@@ -670,3 +670,25 @@ def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
     assert after.exhausted_agent_l == before.exhausted_agent_l
     assert after.stored_agent_l == before.stored_agent_l
     assert after.agent_accounting_passes_validation
+
+
+def test_a_failed_dashboard_frame_stops_a_running_run() -> None:
+    """A run whose dashboard frame failed stops, and takes no further step.
+
+    Every run on the dashboard is drawn in one frame, so a run cannot go on
+    stepping once that frame has failed. Recording the failed frame stops the
+    run by itself, so the run does not depend on a second call that also
+    stops it. The run's status must say that it is not running, as a
+    `bool`: the Start and Pause buttons are enabled from that field.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10)
+
+    controller.record_failed_frame("RuntimeError: this frame could not be assembled")
+    elapsed_s = controller.snapshot().elapsed_s
+    controller.advance()
+
+    assert controller.status().is_running is False
+    assert controller.snapshot().elapsed_s == elapsed_s

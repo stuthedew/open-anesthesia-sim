@@ -430,3 +430,21 @@ def test_the_refusal_to_branch_at_the_supported_run_length_is_pinned_whole(
         "so a branch opened where it stands could not be run; an earlier setting change or "
         'mark can still be chosen under "From" and branched at with "Branch"'
     )
+
+
+def test_a_run_standing_on_the_supported_run_length_says_so_in_its_status(
+    trunk_stepped_onto_the_limit: SimulationController,
+) -> None:
+    """The run's status gives the reason the core would refuse its next step, and no failure.
+
+    The status is the record of a halt that builds no compartment value, for
+    a halt in which taking a snapshot may itself raise. So it must give the
+    run-length reason on its own, without the snapshot.
+    """
+
+    run = trunk_stepped_onto_the_limit
+    status = run.status()
+
+    assert status.is_running is False
+    assert status.supported_limit_reason == _the_reason_the_refused_step_would_give(run)
+    assert status.failure_reason is None
