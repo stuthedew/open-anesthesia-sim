@@ -79,10 +79,11 @@ them. The wording is a placeholder, and it changes what a halt tells a
 learner, so its pull request records the owner's read.
 
 `dashboard_frame.shown_failure_reason` chooses the words for every failure
-banner. `RunView.halt` logs each run's first failure with its traceback at
-error level. `main.open_failure_log` writes the package's error records to
-`failures.log` in the reader's data directory, beside `workspaces.json`, as
-well as to standard error, so the record survives a launch with no terminal.
+banner. `RunView.halt` logs a run's own failure with its traceback at error
+level, and `SimulationView._halt_every_run` logs a dashboard exception once.
+`main.open_failure_log` writes the package's error records to `failures.log`
+in the reader's data directory, beside the saved Workspaces, as well as to
+standard error, so the record survives a launch with no terminal.
 
 **Blind review, 2026-11-22.** Pass 1: F1 should-fix, fixed. The first wording
 said the delivered, exhausted and stored amounts "did not add up", but the
