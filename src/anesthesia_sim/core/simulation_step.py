@@ -47,10 +47,12 @@ from typing import Final
 # case opening, which is dialling from off to 1 MAC at the reference adult's
 # own flows, displaces a compartment by at most 7.3e-2 pp, with desflurane the
 # worst agent. In the first hour at 1 MAC, one standard deviation of a single
-# measured partition coefficient displaces a compartment by 9.0e-2 pp
-# (blood:gas) to 9.9e-1 pp (muscle) (docs/INTERFACE.md "Displayed precision").
-# So an ordinary control action is timed inside the smallest of the model's
-# own parameter uncertainties.
+# measured partition coefficient displaces a compartment by up to 4.0e-2 pp
+# (fat), 5.4e-2 pp (vessel-rich), 9.0e-2 pp (blood:gas) or 9.9e-1 pp (muscle)
+# (docs/INTERFACE.md "Why the readouts show two decimals"). So an ordinary
+# control action's timing error is smaller than the blood:gas and muscle
+# uncertainties, larger than the vessel-rich and fat ones, and more than ten
+# times smaller than the largest of them.
 #
 # This tolerance does not cover an abrupt manoeuvre. A ventilator start made
 # one second late displaces the alveolar reading by up to 1.3 pp, which is

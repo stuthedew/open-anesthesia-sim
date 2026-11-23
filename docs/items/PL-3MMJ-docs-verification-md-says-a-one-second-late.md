@@ -69,7 +69,16 @@ same order as the smallest parameter uncertainty and more than ten times
 smaller than the largest. Each figure was read from the two tables on
 2026-11-23.
 
-Docs checked: `docs/VERIFICATION.md`, both passages; `docs/INTERFACE.md`
+The blind review found the same wrong claim in the comment above
+`SIMULATION_STEP_S` in `src/anesthesia_sim/core/simulation_step.py`, which
+also named the source section by an old title. The comment now gives all four
+shifts and the same comparison. It also found that the summary bullet had
+dropped "in the first hour": over 24 h, one SD of the fat coefficient moves a
+readout by up to 4.4×10⁻¹ pp, which is more than the timing error. The bullet
+now carries the scope.
+
+Docs checked: `docs/VERIFICATION.md`, both passages; the comment above
+`SIMULATION_STEP_S`; `docs/INTERFACE.md`
 § "Why the readouts show two decimals", whose table is the source and needs no
 change; `docs/MODEL.md` § "When a control change takes effect" already
 states the comparison this way, with the same four figures.

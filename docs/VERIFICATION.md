@@ -296,9 +296,9 @@ partition coefficients, delivered and stored fractions, and the mass-balance res
 
 - **The step, 1 s.** Each step is exact, so the length of the step costs no accuracy. Its
   cost is that a control change reaches the model up to one second late. For an ordinary dial
-  change, that delay moves a displayed value by less than one standard deviation of the
-  blood:gas or muscle coefficient does, and by more than one of the vessel-rich or fat
-  coefficient does. For an abrupt ventilation change, it moves the alveolar value by more than
+  change in the first hour at 1 MAC, that delay moves a displayed value by less than one
+  standard deviation of the blood:gas or muscle coefficient does, and by more than one of the
+  vessel-rich or fat coefficient does. For an abrupt ventilation change, it moves the alveolar value by more than
   one standard deviation of any coefficient does.
 - **Compartment volumes from 0.01 to 10 000 L, and partition coefficients from 0.001 to
   10 000.** These limits sit far outside any real patient or agent. The arithmetic has been
