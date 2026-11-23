@@ -463,10 +463,11 @@ _SUPPORTED_RANGE_SOURCE = (
 def test_a_setting_s_range_refusal_is_pinned_whole(
     flow_type: Callable[[float], float], refused: float, expected: str
 ) -> None:
-    """The whole sentence the "Setting refused" banner shows for each flow control.
+    """The whole sentence a developer reads for each flow control's refused setting.
 
-    `refused_setting_notice` prints a refusal word for word, so the sentence
-    is what a learner reads. The other tests here match only a phrase of it,
+    The "Setting refused" banner names each control by its label instead, and
+    logs this sentence (`PL-8QFW`, `tests/unit/test_setting_refusal_wording.py`).
+    The other tests here match only a phrase of it,
     and such a match passes even when the name, the value or the interval is
     wrong (`PL-79PK`). The interval in each expected sentence is copied by
     hand from `docs/INTERFACE.md` §
