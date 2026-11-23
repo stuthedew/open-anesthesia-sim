@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: replay-findings
+milestone: v0.6.23
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/branch_controls.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/qt_widgets.py, docs/INTERFACE.md, docs/ARCHITECTURE.md, tests/integration/controller, tests/integration/simulation_view, tests/unit/test_dashboard_frame.py, tests/unit/test_bookmarks.py
 added: 2026-10-25
 closed: 2026-11-23

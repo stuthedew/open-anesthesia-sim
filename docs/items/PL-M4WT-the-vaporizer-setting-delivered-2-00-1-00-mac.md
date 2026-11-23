@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: replay-findings
+milestone: v0.6.23
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-10-25
 closed: 2026-11-23
