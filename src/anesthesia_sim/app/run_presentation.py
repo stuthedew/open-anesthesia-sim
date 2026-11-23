@@ -62,7 +62,6 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_ACCOUNTING,
     WITHHELD_DELIVERED_LINE_TEXT,
     Accounting,
-    Emphasis,
     NewCaseQuestion,
     Notice,
     Readout,
@@ -215,10 +214,8 @@ class RunPresentation:
             `RunView.owes_a_frame` compares it with the controller's record.
         statement: The run-state widgets: the agent, the status word, the
             transport and the control-change panel.
-        notice: The banner's text, naming the run while a second run is
-            drawn, or None for no banner.
-        notice_emphasis: The emphasis the banner is drawn with. It is
-            `Emphasis.WARNING` when there is no banner.
+        notice: The banner, with its text naming the run while a second run
+            is drawn, and the emphasis it is drawn with. None for no banner.
         one_mac: The line stating 1 MAC of the running agent, or why it
             could not be built. 1 MAC is the divisor of every ×MAC number in
             `values` and `dials`.
@@ -244,8 +241,7 @@ class RunPresentation:
     case: int
     record: RunRecord
     statement: RunStatement
-    notice: str | None
-    notice_emphasis: Emphasis
+    notice: Notice | None
     one_mac: str | NotBuilt
     standing: ValuesStanding
     values: RunValues
@@ -424,6 +420,20 @@ def halted_run(
     )
 
 
+def _compared_banner(banner: Notice | None, run_name: str | None) -> Notice | None:
+    """Return the banner with its text naming the run while a second run is drawn.
+
+    The emphasis is the banner's own, so naming the run never changes its colour.
+    """
+
+    if banner is None:
+        return None
+
+    text = compared_run_notice(banner.text, run_name)
+
+    return None if text is None else replace(banner, text=text)
+
+
 def _at_playback_rate(
     kept: tuple[Readout, ...], playback_rate: PlaybackRate
 ) -> tuple[Readout, ...]:
@@ -491,10 +501,7 @@ def _presentation(
         case=state.case,
         record=record.run_record(),
         statement=statement,
-        notice=compared_run_notice(
-            None if statement.banner is None else statement.banner.text, state.name
-        ),
-        notice_emphasis=Emphasis.WARNING if statement.banner is None else statement.banner.emphasis,
+        notice=_compared_banner(statement.banner, state.name),
         one_mac=one_mac,
         standing=standing,
         values=values,

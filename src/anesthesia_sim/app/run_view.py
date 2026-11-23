@@ -887,9 +887,12 @@ class RunView(QWidget):
         one_mac = presentation.one_mac
         self._one_mac_text.setText("" if isinstance(one_mac, NotBuilt) else one_mac)
         self._delivered_text.setText(presentation.delivered_line)
-        self._notice_text.set_notice(
-            presentation.notice, emphasis_color(presentation.notice_emphasis)
-        )
+        banner = presentation.notice
+
+        if banner is None:
+            self._notice_text.set_notice(None)
+        else:
+            self._notice_text.set_notice(banner.text, emphasis_color(banner.emphasis))
 
         values = presentation.values
         self._readout_row.set_readouts(values.readouts)
