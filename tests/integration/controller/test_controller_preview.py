@@ -110,7 +110,8 @@ def test_a_preview_of_a_run_whose_patient_file_changed_is_refused_naming_each_va
     the rebuilt patient's muscle and fat volumes differ from the run's. A
     preview drawn anyway would show the course of another patient as if it
     were this one's. The refusal names each value that differs once, with
-    both of its values, so its reader can find the edit.
+    both of its values, so its reader can find the edit. Each entry names the
+    preview, which opens no branch (`PL-VYN4`).
     """
 
     run = _isoflurane_run_off_its_defaults()
@@ -132,14 +133,12 @@ def test_a_preview_of_a_run_whose_patient_file_changed_is_refused_naming_each_va
         "a preview would be drawn from values this run does not hold, "
         "so it would predict a different case"
     )
-    assert len(differences) == 2
-    assert differences[0].startswith(
+    assert differences == [
         f"muscle volume_l is {on_file.muscle_volume_l!r} in this run and "
-        f"{edited.muscle_volume_l!r} "
-    )
-    assert differences[1].startswith(
-        f"fat volume_l is {on_file.fat_volume_l!r} in this run and {edited.fat_volume_l!r} "
-    )
+        f"{edited.muscle_volume_l!r} in the preview",
+        f"fat volume_l is {on_file.fat_volume_l!r} in this run and "
+        f"{edited.fat_volume_l!r} in the preview",
+    ]
 
 
 def test_a_preview_on_an_axis_whose_columns_are_a_second_apart_is_drawn_at_every_second() -> None:
