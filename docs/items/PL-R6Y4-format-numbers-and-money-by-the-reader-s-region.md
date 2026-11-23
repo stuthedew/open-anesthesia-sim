@@ -1,10 +1,14 @@
 ---
 id: PL-R6Y4
 title: Format numbers and money by the reader's region through Babel, with the precision table's own patterns and typed input read in the same region
-status: untriaged
+priority: P3
+effort: L
+status: ready
+classes: feature
 feature: localization
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/main.py
 added: 2026-11-22
+payoff: a reader outside the United States sees and types numbers in their own form, with clinical precision unchanged
 ---
 
 **Problem.** Format numbers and money by the reader's region through Babel, with the precision table's own patterns and typed input read in the same region
@@ -25,3 +29,7 @@ added: 2026-11-22
 **Not in v0.7.0.** The owner said on 2026-11-22 that localization need not be built now (project owner, 2026-11-22).
 
 **Generator check.** A one-off: planned work that the localization research (`PL-SRP7`) recommends, not a cause of other items.
+
+**Why it matters.** A reader outside the United States sees numbers in a form that is not their own, and typed input is read in a different form from the one printed.
+
+**Done when.** Each scope point above is met and tested: one region set at start, every Babel call given the precision table's pattern, money shown through `format_currency` with its ISO code, a test that Qt and Babel agree on separators for each supported region, files in one fixed format, and units never chosen by region.

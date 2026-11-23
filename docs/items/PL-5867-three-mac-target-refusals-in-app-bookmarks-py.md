@@ -1,11 +1,16 @@
 ---
 id: PL-5867
 title: Three MAC target refusals in app/bookmarks.py name a compartment by its code value, such as 'vessel_rich', and one quotes a repr; they reach the mark editor's notice verbatim through refused_setting_notice
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: replay-findings
 touches: src/anesthesia_sim/app/bookmarks.py
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 filed-pr: 2291
+payoff: a learner whose mark is refused reads the compartment by its on-screen name, not a code value
 ---
 
 **Problem.** Three MAC target refusals in app/bookmarks.py name a compartment by its code value, such as 'vessel_rich', and one quotes a repr; they reach the mark editor's notice verbatim through refused_setting_notice
@@ -15,3 +20,7 @@ filed-pr: 2291
 **Why it matters.** It is the same fault as `PL-8QFW` in a second notice: a learner reads a code name where the screen labels the compartment in words.
 
 **Done when.** Each refusal that can reach the mark editor names the compartment as the chart's legend names it, read from the one place that label is held, and a test pins the notice the editor shows. The approved-wording list records any changed string.
+
+**Generator check.** An instance of the fault `PL-8QFW` fixed in the banner, found while closing it, in a second notice that `PL-8QFW` did not reach. One-off: no head states the fact, and the label home exists.
+
+**Reproduced 2026-11-23.** `src/anesthesia_sim/app/bookmarks.py` on `main` builds all three messages from `target.quantity.value`.

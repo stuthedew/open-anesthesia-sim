@@ -85,11 +85,11 @@ class ControlInput(StrEnum):
 # and neither is enough alone. A single table can be audited at a glance, and it
 # cannot drift between the recorder and the reader. That is why
 # `chart_frame.COMPARTMENT_TRACES` is one table rather than six call sites. A unit
-# carried *on* each entry makes each recorded change describe itself. A displayed
-# line then reads its unit from the change that produced it, not from a lookup that
-# a later edit could put out of step. `CLAUDE.md`'s safety-critical standard asks for
-# explicit units and for each displayed value to be traceable to its unit. The table
-# and the unit on each entry together meet both requirements.
+# carried *on* each entry makes each recorded change describe itself, so a stored run
+# needs no table to be read. A displayed line takes its unit from this table, through
+# `control_timeline.format_control_value`. `CLAUDE.md`'s safety-critical standard
+# asks for explicit units and for each displayed value to be traceable to its unit.
+# The table and the unit on each entry together meet both requirements.
 #
 # The values are the model's own units, not the interface's. The delivered
 # concentration is stored as the percent the core is set with, which is the percent

@@ -51,7 +51,7 @@ from anesthesia_sim.app.chart_frame import (
     wash_in_stretches,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, grid_spacing_s, time_base_for_span
-from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import (
     PREVIEW_EXACT_S,
@@ -236,13 +236,7 @@ def _input(controller: SimulationController, *marks_at_s: int, run_index: int = 
         controller.snapshot(),
         tuple(
             ControlAdjustment(
-                ControlInput.DELIVERED,
-                CaseInstant(at_s),
-                CaseInstant(at_s),
-                2.0,
-                4.0,
-                CONTROL_INPUT_UNITS[ControlInput.DELIVERED],
-                1,
+                ControlInput.DELIVERED, CaseInstant(at_s), CaseInstant(at_s), 2.0, 4.0, 1
             )
             for at_s in marks_at_s
         ),
