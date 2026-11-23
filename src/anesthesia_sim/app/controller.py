@@ -39,6 +39,7 @@ from anesthesia_sim.app.control_record import (
     control_value,
 )
 from anesthesia_sim.app.control_timeline import CONTROL_INPUT_LABELS
+from anesthesia_sim.app.failures import FailureKind
 
 # This module imports `mac_multiple` rather than writing an inverse transform here,
 # and the import matters. `mac_multiple` contains the whole arithmetic of the second
@@ -184,6 +185,30 @@ class RunStatus:
     default, so a constructor call that leaves it out fails instead of
     reporting no failure.
     """
+    failure_kind: FailureKind | None = field(kw_only=True)
+    """The kind of failure that halted the run, or `None` if it did not fail.
+
+    The banner tells the learner what kind of fault it was in plain words,
+    from this field, and `failure_reason` keeps the exception's own message
+    for the details under the banner (`PL-XWCH`). The kind is recorded with
+    the reason when the run halts, so it is never read back out of the
+    reason's text. It has no default, for the same reason as
+    `rejected_accounting`.
+    """
+
+    def __post_init__(self) -> None:
+        """Refuse a failure reason without its kind, or a kind without its reason.
+
+        Raises:
+            ValueError: One of `failure_reason` and `failure_kind` is None and
+                the other is not.
+        """
+
+        if (self.failure_reason is None) != (self.failure_kind is None):
+            raise ValueError(
+                "a run's failure needs both its reason and its kind, but it has "
+                f"failure_reason={self.failure_reason!r} and failure_kind={self.failure_kind!r}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -858,6 +883,7 @@ class SimulationController:
 
         self._is_running = False
         self._failure_reason: str | None = None
+        self._failure_kind: FailureKind | None = None
         self._rejected_accounting: AgentSimulationValidationResult | None = None
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
@@ -1002,6 +1028,7 @@ class SimulationController:
         # session that has nothing wrong with it. A stale limit reason would
         # do the same to a run that has taken no steps at all.
         self._failure_reason = None
+        self._failure_kind = None
         self._rejected_accounting = None
         self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None
@@ -1055,7 +1082,11 @@ class SimulationController:
         return self._agent_id
 
     def fail(
-        self, reason: str, *, rejected_accounting: AgentSimulationValidationResult | None = None
+        self,
+        reason: str,
+        *,
+        kind: FailureKind,
+        rejected_accounting: AgentSimulationValidationResult | None = None,
     ) -> None:
         """Halt the session because something raised an exception, and record why.
 
@@ -1070,6 +1101,7 @@ class SimulationController:
 
         Args:
             reason: What raised, as `dashboard_frame.halt_disposition` words it.
+            kind: The kind of failure, as `failures.failure_kind` names it.
             rejected_accounting: The failing check that an
                 `AgentSimulationValidationError` carried, or `None` for any
                 other failure. The rollback leaves the run's accounting
@@ -1085,6 +1117,7 @@ class SimulationController:
         # first failure, so it is kept with that failure.
         if self._failure_reason is None:
             self._failure_reason = reason
+            self._failure_kind = kind
             self._rejected_accounting = rejected_accounting
 
     def record_failed_frame(self, reason: str) -> None:
@@ -1326,6 +1359,7 @@ class SimulationController:
             is_running=self._is_running,
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            failure_kind=self._failure_kind,
             rejected_accounting=self._rejected_accounting,
         )
 
@@ -1348,6 +1382,7 @@ class SimulationController:
             is_running=self._is_running,
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            failure_kind=self._failure_kind,
             rejected_accounting=self._rejected_accounting,
             agent_id=self._agent_id,
             agent_display_name=self._agent_display_name,
@@ -1452,6 +1487,7 @@ class SimulationController:
             bookmark_standings=self.bookmark_standings(),
             supported_limit_reason=self.supported_limit_reason,
             failure_reason=self._failure_reason,
+            failure_kind=self._failure_kind,
             rejected_accounting=self._rejected_accounting,
         )
 
@@ -2810,6 +2846,7 @@ class SimulationController:
         self.pause()
         self._runs_discarded += 1
         self._failure_reason = None
+        self._failure_kind = None
         self._rejected_accounting = None
         self._failed_frame_reason = None
         self._recorded_supported_limit_reason = None

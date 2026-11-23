@@ -150,6 +150,7 @@ from anesthesia_sim.app.dashboard_frame import (
     timeline_panel,
     transport,
 )
+from anesthesia_sim.app.failures import failure_kind
 from anesthesia_sim.app.formatting import format_playback_rate, format_subtitle
 from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.playback import (
@@ -161,6 +162,7 @@ from anesthesia_sim.app.playback import (
 )
 from anesthesia_sim.app.qt_widgets import (
     DialInput,
+    FailureDetails,
     FocusRing,
     NewCaseDialog,
     NoticeLabel,
@@ -203,6 +205,7 @@ from anesthesia_sim.app.theme import (
     RUNNING_AGENT_DISPLAY_PADDING,
 )
 from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
+from anesthesia_sim.app_metadata import APP_ISSUES_URL
 from anesthesia_sim.core.agent_simulation_validation import rejected_check
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import (
@@ -230,11 +233,12 @@ _LOG: Final = logging.getLogger(__name__)
 def log_failure(stopped: str, error: BaseException) -> None:
     """Log a failure that stopped `stopped`, with its message and traceback, for a developer.
 
-    The banner may word a failure for the learner and leave out the
-    exception's own message (`dashboard_frame.shown_failure_reason`), so the
-    full message is logged here (`PL-TWZY`). A run that reached its supported
-    run length did not fail, so nothing is logged for it. `main.open_failure_log`
-    keeps the log in a file.
+    The banner words a failure for the learner and leaves out the exception's
+    own message (`dashboard_frame.shown_failure_reason`). The details under the
+    banner show the message, and the traceback is logged here (`PL-TWZY`,
+    `PL-XWCH`). A run that reached its supported run length did not fail, so
+    nothing is logged for it. `failures.open_failure_log` keeps the log in a
+    file.
 
     Args:
         stopped: What the failure stopped, such as a run's name, as the log
@@ -473,6 +477,17 @@ class RunView(QWidget):
             self._status_text, status_word(snapshot, stopped_on_mark=snapshot.stopped_on_mark)
         )
         self._notice_text = NoticeLabel(self)
+        self._failure_details = FailureDetails(self)
+        # The banner and the details under it are placed as one, so the
+        # details always sit beneath the banner they belong to (`PL-XWCH`).
+        self._halt_banner = QWidget(self)
+        halt_banner = QVBoxLayout(self._halt_banner)
+        halt_banner.setContentsMargins(0, 0, 0, 0)
+        halt_banner.addWidget(self._notice_text)
+        halt_banner.addWidget(self._failure_details)
+        # A banner with nothing to say takes no room (`PL-T91K`), so the pair
+        # is hidden while both of its parts are.
+        self._halt_banner.setHidden(True)
 
         self._subtitle_text = styled_label(format_subtitle(snapshot.agent_display_name), color=INK)
         self._subtitle_text.setFont(_bold(self._subtitle_text.font()))
@@ -915,6 +930,10 @@ class RunView(QWidget):
         self._one_mac_text.setText("" if isinstance(one_mac, NotBuilt) else one_mac)
         self._delivered_text.setText(presentation.delivered_line)
         self._notice_text.set_notice(presentation.notice)
+        self._failure_details.set_details(presentation.failure_details, APP_ISSUES_URL)
+        self._halt_banner.setHidden(
+            presentation.notice is None and presentation.failure_details is None
+        )
 
         values = presentation.values
         self._readout_row.set_readouts(values.readouts)
@@ -1732,12 +1751,12 @@ class RunView(QWidget):
             try:
                 rejected = rejected_check(error)
             except TypeError:
-                self.controller.fail(reason)
+                self.controller.fail(reason, kind=failure_kind(error))
                 raise
 
-            self.controller.fail(reason, rejected_accounting=rejected)
+            self.controller.fail(reason, kind=failure_kind(error), rejected_accounting=rejected)
         else:
-            self.controller.fail(reason)
+            self.controller.fail(reason, kind=failure_kind(error))
 
     def _halt_run(self, error: BaseException) -> None:
         """Halt the run, show the halt from its controller's record, then ask for the frame.
@@ -1866,9 +1885,12 @@ class RunView(QWidget):
         return row
 
     def build_notice(self) -> QWidget:
-        """The banner for a halted run or a refused setting, placed above every value."""
+        """The banner for a halted run or a refused setting, placed above every value.
 
-        return self._notice_text
+        A failed run's details sit under the banner (`FailureDetails`).
+        """
+
+        return self._halt_banner
 
     def build_readout_section(self) -> QWidget:
         """Return the substance heading with the interpretation line beside it, then the readouts.

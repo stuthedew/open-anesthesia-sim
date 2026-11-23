@@ -2526,10 +2526,38 @@ again. The banner names the panel as the one exception to "the values shown are
 the last completed step". It says in words that the check failed because the
 rejected step created or lost agent, and that this is a fault in the simulator
 and not a change in the patient. It does not print the totals. The panel shows
-the rejected step's amounts, and the exact totals go to the failure log, the
-file `failures.log` in the reader's data directory, beside the saved Workspaces.
-Where that directory cannot be written, the log goes to standard error only,
-and the application still opens.
+the rejected step's amounts, and the exact totals go to the details under the
+banner and to the failure log, the file `failures.log` in the reader's data
+directory, beside the saved Workspaces. Where that directory cannot be written,
+the log goes to standard error only, and the application still opens.
+
+**Every failure banner names the kind of failure in plain words**, and never
+the error's own message, which is written for a developer. The kind is found
+from the type of error that stopped the run, and each kind has its own words:
+
+1. A failed accounting check: the words above.
+2. A value the model cannot hold, such as a negative amount of agent.
+3. A value the model does not accept, given to it while a run stepped or drew.
+4. A run that could not continue safely for another reason the model names.
+5. Any other error. The banner says that an unexpected error occurred and that
+   its cause is not known, rather than guess at one.
+
+Each banner adds that this is a fault in the simulator and not a change in the
+patient. Microsoft's guidance on error messages asks for a different message
+for each cause that can be detected, and for an unknown cause to be stated as
+unknown (Microsoft, "Error messages", Windows app development design
+guidelines, learn.microsoft.com/en-us/windows/win32/uxguide/mess-error).
+
+**A "Show details" button sits under every failure banner.** It shows three
+lines: the application's name and version, the type and message of the error
+that stopped the run, and the path of the failure log. A run stopped at the
+supported run length did not fail and has no details. "Copy details" puts the
+three lines on the clipboard, and a line under them links the project's issue
+page and asks the reader to paste the details into a new issue. The details
+fold away again whenever a new failure replaces them, so one failure's details
+are not read as the next one's. The same guidance hides detailed information
+in an error message behind a "Show/Hide details" button, so that the message is
+simpler for typical use.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2572,6 +2600,16 @@ in `tests/integration/test_failure_log.py`), and a directory that cannot be made
 does not stop the launch
 (`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`,
 in the same file).
+
+Each kind of failure has its own words and no developer message
+(`test_each_kind_of_failure_has_its_own_plain_words_and_no_developer_message`
+in `tests/unit/test_failure_words.py`), and the details name the build, the
+error and the log (`test_the_details_name_the_build_the_message_and_the_log`,
+in the same file). A real failed step is worded for the learner and keeps its
+message in the details
+(`test_a_failed_step_is_worded_for_the_learner_and_its_message_kept_in_the_details`
+in `tests/integration/simulation_view/test_simulation_view_failure_details.py`).
+The same file tests the toggle, the copy button and the folding of new details.
 
 ### Naming the run in a comparison
 

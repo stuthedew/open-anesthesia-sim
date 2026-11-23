@@ -9,7 +9,7 @@ with no terminal.
 import logging
 from pathlib import Path
 
-from anesthesia_sim.app.main import FAILURE_LOG_NAME, open_failure_log
+from anesthesia_sim.app.failures import FAILURE_LOG_NAME, open_failure_log
 from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE
 
 

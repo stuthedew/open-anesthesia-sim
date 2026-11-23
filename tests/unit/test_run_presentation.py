@@ -37,6 +37,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_MAC_MULTIPLE_TEXT,
     new_case_question,
 )
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.app.run_presentation import (
     KeptValues,
@@ -245,7 +246,7 @@ def test_a_branch_and_a_compared_run_lock_the_agent_selector_on_a_frame_and_on_a
     state = _state(**changes)
     lone = _drawn(controller, _state())
     frame = _drawn(controller, state)
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     halt = _halted(controller, state, KeptValues(state.case, frame.values))
 
@@ -321,7 +322,7 @@ def test_a_compared_run_s_halt_banner_names_the_run() -> None:
     controller = _run_at(30)
     state = _state()
     kept = KeptValues(state.case, _drawn(controller, state).values)
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     lone = _halted(controller, state, kept)
     compared = _halted(controller, replace(state, name="Run 2"), kept)
@@ -337,7 +338,7 @@ def test_a_halt_lists_the_control_changes_of_the_run_it_stopped() -> None:
     controller = _run_with_a_control_change()
     state = _state()
     frame = _drawn(controller, state)
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     shown = _halted(controller, state, KeptValues(state.case, frame.values))
 
@@ -350,7 +351,7 @@ def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_
     controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     shown = _halted(controller, state, KeptValues(state.case, frame.values))
 
@@ -372,7 +373,7 @@ def test_a_halt_after_a_start_over_withholds_every_value_of_the_discarded_run() 
     state = _state()
     frame = _drawn(controller, state)
     controller.set_agent("desflurane")
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
     started_over = replace(state, case=state.case + 1)
 
     shown = _halted(controller, started_over, KeptValues(state.case, frame.values))
@@ -483,7 +484,7 @@ def test_a_halt_s_banner_says_the_run_started_over_only_when_it_did() -> None:
     controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
     kept = KeptValues(state.case, frame.values)
 
     same_run = _halted(controller, state, kept)
@@ -508,7 +509,7 @@ def test_a_halt_s_banner_says_the_charts_are_withheld_only_when_they_are() -> No
     controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
     kept = KeptValues(state.case, frame.values)
 
     charts_kept = _halted(controller, state, kept)
@@ -586,7 +587,7 @@ def test_a_halt_restates_the_playback_rate_the_reader_chose_on_the_halted_run() 
     controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
-    controller.fail("the frame could not be drawn")
+    controller.fail("the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     shown = _halted(
         controller,
@@ -621,7 +622,7 @@ def test_a_halt_after_a_rejected_accounting_step_shows_that_step_s_check(
     controller = _run_at(90)
     state = _state()
     frame = _drawn(controller, state)
-    controller.fail("the accounting check failed")
+    controller.fail("the accounting check failed", kind=FailureKind.ACCOUNTING)
     record = replace(controller.record(), rejected_accounting=raised.value.check)
 
     shown = halted_run(
@@ -663,7 +664,7 @@ def test_dials_that_cannot_be_built_are_carried_and_everything_else_is_still_sta
     machine = parse_breathing_circuit_parameters(payload)
     monkeypatch.setattr(uptake_system, "load_reference_circle_system_parameters", lambda: machine)
     controller = SimulationController()
-    controller.fail("no setting can be offered")
+    controller.fail("no setting can be offered", kind=FailureKind.UNEXPECTED)
     state = _state()
     record = controller.record()
     opening = KeptValues(state.case, withheld_values(state.playback_rate))
@@ -712,7 +713,7 @@ def test_a_halt_is_stated_for_a_record_whose_dials_or_1_mac_line_cannot_be_built
     """
 
     controller = SimulationController()
-    controller.fail("a value was refused")
+    controller.fail("a value was refused", kind=FailureKind.UNEXPECTED)
     state = _state()
     record = replace(controller.record(), **malformed)  # type: ignore[arg-type]
     opening = KeptValues(state.case, withheld_values(state.playback_rate))
@@ -730,7 +731,9 @@ def test_a_halt_is_stated_for_a_record_whose_dials_or_1_mac_line_cannot_be_built
         assert type(shown.one_mac.error) is one_mac
 
     assert shown.notice is not None
-    assert "a value was refused" in shown.notice
+    assert "a value was refused" not in shown.notice
+    assert shown.failure_details is not None
+    assert "What stopped the run: a value was refused" in shown.failure_details
     assert shown.statement.transport.start_enabled is False
     assert shown.statement.transport.pause_enabled is False
     assert shown.record == record.run_record()
@@ -751,7 +754,7 @@ def test_dials_refused_by_the_core_are_carried_like_any_other_refusal(
 
     monkeypatch.setattr(run_presentation, "setting_readouts", refused)
     controller = SimulationController()
-    controller.fail("a value was refused")
+    controller.fail("a value was refused", kind=FailureKind.UNEXPECTED)
     state = _state()
     opening = KeptValues(state.case, withheld_values(state.playback_rate))
 

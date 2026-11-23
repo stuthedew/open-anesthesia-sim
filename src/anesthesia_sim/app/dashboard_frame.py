@@ -28,10 +28,12 @@ outputs" states all three and the reason for each, and an exact-string test
 enforces each of them.
 """
 
+import html
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from math import floor
+from pathlib import Path
 from types import MappingProxyType
 from typing import Final
 
@@ -73,6 +75,7 @@ from anesthesia_sim.app.display_units import (
     REFERENCE_CONDITION_LABEL,
     DisplayUnit,
 )
+from anesthesia_sim.app.failures import FailureKind, failure_kind
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -83,6 +86,7 @@ from anesthesia_sim.app.formatting import (
     format_agent_residual,
     format_agent_volume,
     format_branch_discard_warning,
+    format_build_version,
     format_case_discard_warning,
     format_delivered_label,
     format_elapsed,
@@ -102,6 +106,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, WashInReading
+from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
@@ -245,22 +250,59 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
     "Simulation stopped — {failure_reason}. The values shown are the last completed step, "
     "except the agent accounting panel, which shows the rejected step. {exit}"
 )
-# The reason that every failure banner gives for a step whose agent accounting
-# failed its check. Any other failure shows the exception's own message
-# (`halt_disposition`), but this one has two readers. The core's message names
-# the exception class and prints every total in e-notation under its code name,
-# such as `absolute_error=1.000000e+00 L`, which is for a developer reading the
-# log (`RunView.halt` logs it, and `main.open_failure_log` keeps the log in a
-# file). The learner gets plain words: what happened, that it is a fault in the
-# simulator and not a change in the patient, and, through the banner's own
-# exit, what to do next. The check fails when the amounts are out of balance by
-# more than rounding allows, which can be less than the 0.1 L the panel's
-# amounts are shown to. So the banner says what a failed check means, that agent
-# was created or lost, and does not claim that the amounts on the panel fail to
-# add up (`PL-TWZY`). The wording is a placeholder.
-ACCOUNTING_FAILURE_REASON_TEXT: Final = (
-    "the agent accounting check failed: the rejected step created or lost anesthetic agent. "
-    "This is a fault in the simulator, not a change in the patient"
+# The reasons a failure banner gives, one for each kind of failure that the
+# simulator can tell apart (`failures.FailureKind`). The exception's own
+# message is written for a developer: it names the exception's class, and the
+# accounting check's prints every total in e-notation under its code name,
+# such as `absolute_error=1.000000e+00 L`. So that message goes to the failure
+# log (`run_view.log_failure`) and to the details under the banner
+# (`failure_details`), and the learner gets plain words. Each says what
+# happened, as far as the kind shows it, and that it is a fault in the
+# simulator and not a change in the patient. The banner's own exit says what to
+# do next. An unexpected error says plainly that its cause is not known, rather
+# than guess at one (`PL-XWCH` quotes the guidance). The wording is a
+# placeholder.
+FAULT_NOT_PATIENT_TEXT: Final = "This is a fault in the simulator, not a change in the patient"
+# The controls and lines under a failure's banner that hold the details for a
+# report (`failure_details`, `report_fault_text`). The wording is a
+# placeholder.
+SHOW_FAILURE_DETAILS_LABEL: Final = "Show details"
+HIDE_FAILURE_DETAILS_LABEL: Final = "Hide details"
+COPY_FAILURE_DETAILS_LABEL: Final = "Copy details"
+FAILURE_LOG_NOT_KEPT_TEXT: Final = (
+    "Failure log: none is kept this session, because the data folder could not be used"
+)
+REPORT_FAULT_TEMPLATE: Final = (
+    "To report this fault, copy the details and paste them into a new issue on the "
+    '<a href="{url}" style="color: {link_colour};">project\'s issue page</a>.'
+)
+REPORT_FAULT_NO_PAGE_TEXT: Final = (
+    "To report this fault, copy the details and send them to the project's maintainers."
+)
+# What each kind of failure is, in the words a learner reads. The banner adds
+# `FAULT_NOT_PATIENT_TEXT` after it (`shown_failure_reason`). A refused Reset on
+# a run that had already failed names its own kind without that sentence,
+# because its way out already says that only a fault causes it
+# (`refused_reset_exit`). The accounting check fails when the amounts are out
+# of balance by more than rounding allows, which can be less than the 0.1 L the
+# panel's amounts are shown to. So its words say what a failed check means,
+# that agent was created or lost, and do not claim that the amounts on the
+# panel fail to add up (`PL-TWZY`).
+FAILURE_CAUSE_TEXTS: Final[Mapping[FailureKind, str]] = MappingProxyType(
+    {
+        FailureKind.ACCOUNTING: (
+            "the agent accounting check failed: the rejected step created or lost "
+            "anesthetic agent"
+        ),
+        FailureKind.NUMERICAL: (
+            "the model produced a value it cannot hold, such as a negative amount of agent"
+        ),
+        FailureKind.CONFIGURATION: "the model was given a value it does not accept",
+        FailureKind.EXECUTION: "the simulator could not continue the run safely",
+        FailureKind.UNEXPECTED: (
+            "an unexpected error occurred in the simulator, and its cause is not known"
+        ),
+    }
 )
 # The failure banner that `run_presentation.halted_run` gives before any frame of the
 # stopped run has been drawn. At that point the chart and the readouts still show
@@ -1986,25 +2028,78 @@ def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = F
 def shown_failure_reason(status: RunStatus) -> str | None:
     """Return the reason that a failure banner shows the learner, or None if the run has not failed.
 
-    A step whose agent accounting failed its check is reported in plain words,
-    `ACCOUNTING_FAILURE_REASON_TEXT`, and not in the core's message, which is
-    written for a developer. Every other failure shows the reason the run
-    recorded. A controller records the accounting check only with the first
-    failure (`SimulationController.fail`), so a run that failed for something
-    else first keeps that reason.
+    The banner gives the plain words for the kind of failure that the run
+    recorded (`FAILURE_CAUSE_TEXTS`), never the exception's own message,
+    which is written for a developer. The details under the banner give that
+    message (`failure_details`). A controller keeps its first failure
+    (`SimulationController.fail`), so a run shows the kind of the failure that
+    stopped it.
 
     Args:
         status: The run's status, either a `RunStatus` or the snapshot
             carrying one.
     """
 
+    if status.failure_kind is None:
+        return None
+
+    return f"{FAILURE_CAUSE_TEXTS[status.failure_kind]}. {FAULT_NOT_PATIENT_TEXT}"
+
+
+def failure_details(status: RunStatus, failure_log: Path | None) -> str | None:
+    """Return the details that a failed run shows under its banner, or None if it has not failed.
+
+    The banner gives the learner plain words (`shown_failure_reason`). These
+    details are for a report of the fault: the build, the exception's type and
+    message as the run recorded it, and the file that holds its traceback.
+    Microsoft's guidance on error messages puts such detail behind a "Show
+    details" control, and the Nielsen Norman Group shows error codes for
+    diagnosis only (`PL-XWCH` quotes both). A run stopped at its supported run
+    length did not fail, and has no details.
+
+    Args:
+        status: The run's status, either a `RunStatus` or the snapshot
+            carrying one.
+        failure_log: The file the failure was logged to
+            (`failures.failure_log_path`), or None where no file is kept.
+    """
+
     if status.failure_reason is None:
         return None
 
-    if status.rejected_accounting is not None:
-        return ACCOUNTING_FAILURE_REASON_TEXT
+    log_line = (
+        f"Failure log: {failure_log}" if failure_log is not None else FAILURE_LOG_NOT_KEPT_TEXT
+    )
 
-    return status.failure_reason
+    return "\n".join(
+        (
+            f"{APP_DISPLAY_NAME} — {format_build_version()}",
+            f"What stopped the run: {status.failure_reason}",
+            log_line,
+        )
+    )
+
+
+def report_fault_text(issues_url: str | None, *, link_colour: str) -> str:
+    """Return the line under a failure's details that says how to report the fault, as rich text.
+
+    A learner cannot repair a fault in the simulator, so the useful next step
+    is to report it (`PL-XWCH`). The line links the project's issue page where
+    the installed metadata names one (`app_metadata.APP_ISSUES_URL`).
+
+    Args:
+        issues_url: The issue page, or None where the build kept no metadata.
+        link_colour: The colour the link is drawn in. Qt otherwise draws a
+            link in the palette's link colour, which the host appearance
+            chooses, so the widget that shows the line passes its own.
+    """
+
+    if issues_url is None:
+        return REPORT_FAULT_NO_PAGE_TEXT
+
+    return REPORT_FAULT_TEMPLATE.format(
+        url=html.escape(issues_url, quote=True), link_colour=html.escape(link_colour, quote=True)
+    )
 
 
 def refused_setting_notice(error: SimulationConfigurationError) -> str:
@@ -2060,7 +2155,7 @@ def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | N
         return REFUSED_RESET_EXIT_TEMPLATE.format(way_out=REFUSED_RESET_WAY_OUT_TEXT)
 
     return REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(
-        reason=reason, way_out=REFUSED_RESET_WAY_OUT_TEXT
+        reason=FAILURE_CAUSE_TEXTS[failure_kind(error)], way_out=REFUSED_RESET_WAY_OUT_TEXT
     )
 
 

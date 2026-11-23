@@ -58,8 +58,8 @@ preferences, and the agent cost View says that a change will not be kept.
 
 **A failure that stops a run is also written to a file in the same directory**
 (`PL-TWZY`). The halt banner words a failure for the learner, and leaves out
-the exception's own message where that message is written for a developer. So
-`open_failure_log` sends the log records of `anesthesia_sim` to
+the exception's own message, which is written for a developer. So
+`failures.open_failure_log` sends the log records of `anesthesia_sim` to
 `failures.log` beside `workspaces.json`, as well as to standard error, where
 Python prints them when nothing else is set. A learner who opened the
 application from an icon has no terminal, and the file keeps the record for
@@ -67,18 +67,16 @@ whoever looks into the fault. The file is capped in size, and one older file
 is kept.
 """
 
-import logging
 import os
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
 
 from PySide6.QtCore import QStandardPaths
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.failures import open_failure_log
 from anesthesia_sim.app.preferences import LoadedPreferences, Preferences, PreferencesStore
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
@@ -195,60 +193,6 @@ def open_preferences(standard_location: str, environment: Mapping[str, str]) -> 
     store = PreferencesStore(directory)
 
     return LaunchPreferences(store.load(), store)
-
-
-FAILURE_LOG_NAME = "failures.log"
-"""The file that a launch's failure records are written to, in the reader's data directory."""
-
-FAILURE_LOG_MAX_BYTES = 1_000_000
-"""The size at which the failure log is moved aside and a new one started.
-
-A failure that repeats on every tick could otherwise fill the disk. One
-megabyte holds a few hundred failures with their tracebacks.
-"""
-
-
-def open_failure_log(standard_location: str, environment: Mapping[str, str]) -> Path | None:
-    """Write the package's error records to `failures.log` in the reader's data directory.
-
-    The handler is added to the `anesthesia_sim` logger, so every module's
-    logger under it reaches the file. The file is moved aside to
-    `failures.log.1` when it reaches `FAILURE_LOG_MAX_BYTES`, and a new one is
-    started.
-
-    Args:
-        standard_location: As `open_workspaces` takes it.
-        environment: As `open_workspaces` takes it.
-
-    Returns:
-        The file's path, or None where neither the override nor the platform
-        names a directory, or where the file cannot be opened there. The
-        records then reach standard error only. The log exists to help find a
-        fault, so a directory it cannot use never stops the application from
-        opening. The Workspace and preference stores treat such a directory in
-        the same way.
-    """
-
-    try:
-        directory = user_data_directory(standard_location, environment)
-        directory.mkdir(parents=True, exist_ok=True)
-        path = directory / FAILURE_LOG_NAME
-        handler = RotatingFileHandler(
-            path, maxBytes=FAILURE_LOG_MAX_BYTES, backupCount=1, encoding="utf-8"
-        )
-    except LayoutRefused, OSError:
-        return None
-
-    handler.setLevel(logging.ERROR)
-    handler.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s %(message)s"))
-    package = logging.getLogger("anesthesia_sim")
-    package.addHandler(handler)
-    # Python's last-resort handler prints to standard error only while no
-    # handler is set anywhere on the way up. With the file's handler added,
-    # standard error is added back explicitly.
-    package.addHandler(logging.StreamHandler())
-
-    return path
 
 
 def open_dashboard(

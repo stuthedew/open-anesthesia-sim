@@ -9,6 +9,7 @@ import pytest
 
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from tests.integration.controller.controller_support import (
@@ -57,7 +58,7 @@ def test_each_refusal_to_branch_where_a_run_stands_is_pinned_whole() -> None:
     going = _trunk_with_two_changes()
     going.start()
     failed = _trunk_with_two_changes()
-    failed.fail("a step raised")
+    failed.fail("a step raised", kind=FailureKind.UNEXPECTED)
     opening = SimulationController()
     refusals = {}
 

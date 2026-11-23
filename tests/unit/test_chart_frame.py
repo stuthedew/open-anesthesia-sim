@@ -58,6 +58,7 @@ from anesthesia_sim.app.controller import (
     SimulationController,
 )
 from anesthesia_sim.app.dashboard_frame import run_label
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
@@ -2285,7 +2286,7 @@ def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:
 
 def test_a_stopped_run_draws_no_preview_and_keeps_its_window() -> None:
     controller = _run(60)
-    controller.fail("a failure the test injects")
+    controller.fail("a failure the test injects", kind=FailureKind.UNEXPECTED)
     base = time_base_for_span(900.0)
     plain = assemble_chart_frame(
         [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX

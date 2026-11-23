@@ -70,6 +70,7 @@ from anesthesia_sim.app.dashboard_frame import (
     clock_playback_line,
     compared_run_notice,
     delivered_line,
+    failure_details,
     halt_notice,
     new_case_question,
     notice,
@@ -79,6 +80,7 @@ from anesthesia_sim.app.dashboard_frame import (
     setting_readouts,
     withheld_readouts,
 )
+from anesthesia_sim.app.failures import failure_log_path
 from anesthesia_sim.app.formatting import format_mac_reference
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.layout.run_identity import RunId
@@ -233,6 +235,9 @@ class RunPresentation:
             they stand at this frame (`PL-WM5P`). It is None while no such
             question is open, and on a halt, for the same reason as
             `new_case`.
+        failure_details: The details under a failed run's banner, for a
+            report of the fault (`dashboard_frame.failure_details`), or None
+            while the run has not failed.
     """
 
     run_id: RunId
@@ -241,6 +246,7 @@ class RunPresentation:
     record: RunRecord
     statement: RunStatement
     notice: str | None
+    failure_details: str | None
     one_mac: str | NotBuilt
     standing: ValuesStanding
     values: RunValues
@@ -486,6 +492,7 @@ def _presentation(
         record=record.run_record(),
         statement=statement,
         notice=compared_run_notice(statement.banner, state.name),
+        failure_details=failure_details(record.run_record(), failure_log_path()),
         one_mac=one_mac,
         standing=standing,
         values=values,
