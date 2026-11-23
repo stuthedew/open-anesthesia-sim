@@ -402,6 +402,27 @@ $$
 When $`Q>0`$, the flow-weighted concentration entering the pool is
 $`F_{\mathrm{tissue\ return}} = \sum_i Q_iF_i / Q`$.
 
+**The pool stands in for the time blood takes to return from the tissues to
+the lungs.** At 5.0 L/min of cardiac output its time constant is 14.7 s
+(§ "The reference adult"). Early in a wash-in, the mixed-venous value is low
+mainly because the tissues are taking up agent, and the pool adds a lag on top
+of that. In a run of the reference adult at a 1 MAC dial, the mixed-venous
+value is about 60% below the blood leaving the tissues at 30 s, 40% below at
+1 minute, 20% below at 2 minutes and 5% below at 5 minutes, with each of the
+three agents. Against the alveolar value the lag is small. Over the first
+5 minutes it never makes up more than 7% of the gap between the alveolar and
+the mixed-venous values. So a low mixed-venous reading early in a case shows
+tissue uptake, delayed slightly by the return time.
+
+The direction of the lag is physiological. While concentrations rise, the
+venous blood arriving at the lungs is lower than the blood leaving the
+tissues, because it left them earlier. Mapleson (1963, Appendix 2, p. 204)
+puts the error from leaving that transit out at the first minute or two after
+a change of inspired concentration. The pool's shape differs from a real
+transit. Its value starts to rise in the first second, where in a real
+circulation agent reaches the venous return only after a delay. So the first
+two minutes are the least exact part of the mixed-venous trace.
+
 ### Conservation of agent
 
 $$
@@ -1489,6 +1510,8 @@ Each limitation in this section can change what a displayed value means.
 ### What the model does not represent
 
 - a separate arterial blood-mixing compartment;
+- the time blood takes to travel from the tissues to the lungs, which a
+  well-mixed venous pool stands in for (§ "Venous blood");
 - lung tissue and pulmonary blood (§ "Lung tissue and pulmonary blood");
 - a vessel-poor tissue group (§ "What the model represents");
 - halothane, enflurane, ether or xenon;
