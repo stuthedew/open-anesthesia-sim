@@ -3,13 +3,15 @@ id: PL-B0JG
 title: docs/MODEL.md and app/playback.py give PL-SQJ1's measured playback rate as 99.0 to 99.9% of every rung's setting, but the item's own table measured 20x at 98.9%
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: presentation-safety
 touches: docs/MODEL.md, src/anesthesia_sim/app/playback.py, docs/INTERFACE.md
 added: 2026-09-27
+closed: 2026-11-22
+pr: 2260
 payoff: the authoritative spec states the playback measurement it cites, not a floor a tenth of a point above it
-verify: ! grep -qF '99.0 to 99.9' docs/INTERFACE.md && ! grep -qF '99.0 to 99.9' src/anesthesia_sim/app/playback.py
+verify: ! grep -qF '99.0 to 99.9' docs/INTERFACE.md
 ---
 
 **Problem.** `docs/MODEL.md`'s passage under **What the rate label is a
@@ -35,3 +37,5 @@ states 99.0 as its floor: `! grep -rnE '99\.0 to 99\.9' docs/MODEL.md src/`.
 `PL-SQJ1`'s table row for 20x reads 98.9%.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. `docs/INTERFACE.md` and the module docstring of `app/playback.py` both still say every rung "delivered 99.0 to 99.9%" of its setting, against `PL-SQJ1`'s measured 98.9% at 20x.
+
+**Closed 2026-11-22.** Documentation checked for statements this change made false: `docs/INTERFACE.md` (§§ "Minimum displayed outputs", "Values that must stay reachable", "The code and tests behind the layout requirements", "Minimum contrast for text and graphics", "Color as a cue: agent colors and the alert color", "The code and tests behind the color requirements", "The agent-accounting panel", "What the reader chooses: traces, window and playback rate"), `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md`, `.claude/rules/ui-color.md`, `.claude/skills/run-the-app/SKILL.md`, and the docstrings of `app/dashboard_frame.py`, `app/formatting.py`, `app/playback.py` and `tests/integration/test_qt_rendering.py`.

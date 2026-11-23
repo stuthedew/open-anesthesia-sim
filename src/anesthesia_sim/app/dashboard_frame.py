@@ -24,8 +24,8 @@ requirements rather than wording choices: the "Alveolar" readout with the
 gloss "end-tidal-equivalent" (`PL-NV9W`), the "Circuit" readout with the gloss
 "inspired" (`PL-8M05`), and the "Fresh gas flow" control with the gloss
 "common gas outlet" (`PL-71CF`). `docs/INTERFACE.md` § "Minimum displayed
-outputs" states the first and the third, and an exact-string test enforces
-each of the three.
+outputs" states all three and the reason for each, and an exact-string test
+enforces each of them.
 """
 
 from collections.abc import Callable, Mapping, Sequence
@@ -936,10 +936,9 @@ COMPARING_AGENT_LOCK_TEXT: Final = "Locked while comparing"
 
 # The agent-accounting panel. The amounts are litres of equivalent pure agent
 # gas, which is not the unit in which anyone consumes agent, so the caption
-# says so (`PL-TG60`). The two residual lines print only the power of ten that
-# each value is less than. An order of magnitude is the whole purpose of those
-# lines, and it is the only meaningful digit a rounding residual has
-# (`PL-3PJZ`).
+# says so (`PL-TG60`). The residual line prints only the power of ten that the
+# value is less than. An order of magnitude is the whole purpose of that line,
+# and it is the only meaningful digit a rounding residual has (`PL-3PJZ`).
 ACCOUNTING_HEADING: Final = "Agent accounting validation"
 ACCOUNTING_VALID_TEXT: Final = "Valid"
 ACCOUNTING_FAILED_TEXT: Final = "Validation failed"
@@ -973,14 +972,11 @@ ACCOUNTING_UNIT_CAPTION: Final = (
     f"at {REFERENCE_CONDITION_LABEL}.\n"
     f"{BODY_STORES_CONDITION_LINES}"
 )
-#: The names of the panel's five amount lines, in the order the panel shows them.
-ACCOUNTING_AMOUNT_NAMES: Final = (
-    "Delivered",
-    "Exhausted",
-    "Stored",
-    "Unaccounted",
-    "Absolute error",
-)
+#: The names of the panel's four amount lines, in the order the panel shows them. The
+#: residual is shown once, as "Unaccounted": the panel prints a residual only as the
+#: power of ten it lies below, without its sign, so an absolute-error line would read
+#: the same string (project owner, 2026-10-03, ratified, `PL-XFWG`).
+ACCOUNTING_AMOUNT_NAMES: Final = ("Delivered", "Exhausted", "Stored", "Unaccounted")
 
 # The transport row's labels, and the two selector captions beside it.
 START_LABEL: Final = "Start"
@@ -2313,12 +2309,11 @@ class Accounting:
     Attributes:
         status: "Valid" in accent or "Validation failed" in warning.
         detail: One sentence under it saying what the status means.
-        amounts: Five lines. The first three give delivered, exhausted and
+        amounts: Four lines. The first three give delivered, exhausted and
             stored agent at the resolution that `format_agent_volume`
-            derives. The last two give the unaccounted amount and the
-            absolute error, each as the power of ten that it is less than,
-            because an order of magnitude is what those two lines are for
-            (`PL-TG60`, `PL-3PJZ`).
+            derives. The last gives the unaccounted amount as the power of
+            ten that it is less than, because an order of magnitude is what
+            that line is for (`PL-TG60`, `PL-3PJZ`, `PL-XFWG`).
     """
 
     status: StatusWord
@@ -2359,7 +2354,6 @@ def accounting(snapshot: SimulationSnapshot) -> Accounting:
         exhausted_l=snapshot.exhausted_agent_l,
         stored_l=snapshot.stored_agent_l,
         unaccounted_l=snapshot.unaccounted_agent_l,
-        absolute_error_l=snapshot.agent_accounting_absolute_error_l,
     )
 
     return Accounting(status, detail, amounts)
@@ -2390,27 +2384,20 @@ def rejected_step_accounting(rejected: AgentSimulationValidationResult) -> Accou
             exhausted_l=rejected.exhausted_agent_l,
             stored_l=rejected.currently_stored_agent_l,
             unaccounted_l=rejected.unaccounted_agent_l,
-            absolute_error_l=rejected.absolute_error_l,
         ),
     )
 
 
 def _accounting_amounts(
-    *,
-    delivered_l: float,
-    exhausted_l: float,
-    stored_l: float,
-    unaccounted_l: float,
-    absolute_error_l: float,
+    *, delivered_l: float, exhausted_l: float, stored_l: float, unaccounted_l: float
 ) -> str:
-    """The accounting panel's five amount lines, from one step's totals, in litres."""
+    """The accounting panel's four amount lines, from one step's totals, in litres."""
 
     amounts = (
         format_agent_volume(delivered_l),
         format_agent_volume(exhausted_l),
         format_agent_volume(stored_l),
         format_agent_residual(unaccounted_l),
-        format_agent_residual(absolute_error_l),
     )
 
     return "\n".join(

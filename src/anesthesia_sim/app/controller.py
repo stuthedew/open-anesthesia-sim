@@ -542,7 +542,6 @@ class SimulationSnapshot(RunRecord):
     (`PL-KFTM`).
     """
     unaccounted_agent_l: float
-    agent_accounting_absolute_error_l: float
     agent_accounting_passes_validation: bool
     bookmarks: BookmarkSet
     """The instants and the heights this run is marked at, in two collections.
@@ -1446,7 +1445,6 @@ class SimulationController:
             ),
             stored_agent_l=accounting.currently_stored_agent_l,
             unaccounted_agent_l=accounting.unaccounted_agent_l,
-            agent_accounting_absolute_error_l=accounting.absolute_error_l,
             agent_accounting_passes_validation=accounting.passes_validation,
             control_timeline=self._control_timeline,
             bookmarks=self._bookmarks,
