@@ -46,7 +46,7 @@ says how to read a survivor. mutmut is in the `mutation` dependency group, so
 `make mutate` runs this tool through `uv run --group mutation`.
 
 **mutmut takes its settings from `pyproject.toml`'s `[tool.mutmut]` table,**
-which says why each one is set. This tool decides four things that the table
+which says why each one is set. This tool decides five things that the table
 cannot.
 
 - **Which tests run.** The table names an `@` file as the test selection, and
@@ -84,7 +84,13 @@ cannot.
   changes a test's parameters and so the test's id. mutmut then records exit
   status 255 and reports a timeout, though nothing timed out. This tool runs
   each such mutant's test files again, whole, and reports what they say. The
-  files first run once with no mutant applied, and must pass.
+  files first run once with no mutant applied, and must pass. Both runs leave
+  out the tests that the table deselects.
+- **The order of each mutant's tests.** mutmut stops a mutant's run at its
+  first failing test, so the order decides how long a caught mutant takes. In
+  the `forkserver` mode that the table chooses, mutmut 3.8.0 passes the tests
+  on in no fixed order. So the run script orders them fastest first, as
+  mutmut's `fork` mode does. `RUN_SCRIPT` says how (`PL-33CG`).
 
 **Every run starts with an empty `mutants/` directory.** mutmut keeps each
 verdict until the source of the mutated function changes. A test added since
@@ -273,15 +279,35 @@ print(json.dumps(shown))
 #: `only_mutate` from `pyproject.toml` alone, so the script replaces the list
 #: in mutmut's loaded settings and then calls the command line's entry point.
 #: mutmut starts its helper processes with `fork`, so they keep the replaced
-#: list. `Config.only_mutate` is one of mutmut's internals, so the pinned
-#: version in `pyproject.toml` is what keeps it.
+#: list.
+#:
+#: The script also hands each mutant's tests to the fork server fastest first.
+#: mutmut runs them with pytest's `-x`, so the run then stops at the cheapest
+#: test that catches the mutant, and a slow test runs only on a mutant that
+#: every faster test misses. mutmut 3.8.0 orders the tests this way in its
+#: `fork` mode alone (`ForkRunner.submit`). In the `forkserver` mode that
+#: `pyproject.toml` chooses, it hands them on in the order of a set, so a
+#: 20-second test ran first on a share of the mutants that a faster test
+#: catches (`PL-33CG`). Equal times are ordered by test id, so two runs of
+#: one mutant run its tests in the same order.
+#:
+#: `Config.only_mutate`, `ForkServerRunner.submit` and `state` are mutmut's
+#: internals, so the pinned version in `pyproject.toml` is what keeps them.
 RUN_SCRIPT = """
 import json, sys
 from mutmut.__main__ import cli
 from mutmut.configuration import config
+from mutmut.state import state
+from mutmut.workers.isolation import ForkServerRunner
 only = json.loads(sys.argv[1])
 if only is not None:
     config().only_mutate = only
+submit = ForkServerRunner.submit
+def fastest_first(self, mutant_name, tests, cpu_time_limit, estimated_time):
+    durations = state().duration_by_test
+    ordered = sorted(tests, key=lambda test: (durations[test], test))
+    submit(self, mutant_name, ordered, cpu_time_limit, estimated_time)
+ForkServerRunner.submit = fastest_first
 cli(["run", *sys.argv[2:]])
 """
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
@@ -817,12 +843,20 @@ def _test_files(root: Path, name: str) -> list[str]:
     return sorted({line.partition("::")[0] for line in split_lines(listing.stdout) if line})
 
 
-def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | None:
+def _pytest_in_mutants(
+    root: Path, files: Sequence[str], mutant: str, skipped: Iterable[str]
+) -> int | None:
     """Run whole test files in `mutants/` under `mutant`, or none for `""`; `None` on a timeout.
 
     The mutated copy of the source comes first on the import path, and mutmut's
     trampolines read which mutant to run from the environment, as its own
     workers do.
+
+    The tests in `skipped` are left out, as mutmut's own run leaves out the
+    tests that `deselected` reads from the table. Each of those fails on
+    mutmut's copy of the code with no mutant applied. If one ran here, the run
+    of the files with no mutant would fail, and `settle` would then leave every
+    mutant unsettled.
 
     A run that stopped because a test module raised while it was collected
     returns 1, the status of a failed test. pytest gives that run status 2, the
@@ -831,9 +865,10 @@ def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | N
     """
     environment = {**os.environ, "MUTANT_UNDER_TEST": mutant, "PYTHONPATH": "src"}
     command = [sys.executable, "-m", "pytest", "--rootdir=.", "-x", "-q", "-p", "no:cacheprovider"]
+    leave_out = [arg for test in sorted(skipped) for arg in ("--deselect", test)]
     try:
         done = subprocess.run(
-            [*command, *files],
+            [*command, *leave_out, *files],
             cwd=root / MUTANTS,
             env=environment,
             capture_output=True,
@@ -849,7 +884,9 @@ def _pytest_in_mutants(root: Path, files: Sequence[str], mutant: str) -> int | N
     return done.returncode
 
 
-def settle(root: Path, found: Mapping[str, str], codes: Mapping[str, int]) -> dict[str, str]:
+def settle(
+    root: Path, found: Mapping[str, str], codes: Mapping[str, int], skipped: Iterable[str]
+) -> dict[str, str]:
     """`found`, with each mutant whose pytest run raised given the status of a whole-file run.
 
     A raise while a test module is imported fails the collection, which is a
@@ -857,6 +894,7 @@ def settle(root: Path, found: Mapping[str, str], codes: Mapping[str, int]) -> di
     tells the two apart. The files first run once with no mutant applied, so
     that a failure of this way of running them is never counted as a kill.
     Then the mutants run `RERUN_WORKERS` at a time, as mutmut's own run did.
+    Every run leaves out the tests in `skipped`, which are `deselected(table)`.
     """
     settled = dict(found)
     raised = sorted(name for name in found if codes.get(name) == RAISED)
@@ -868,7 +906,7 @@ def settle(root: Path, found: Mapping[str, str], codes: Mapping[str, int]) -> di
             zip(raised, pool.map(lambda name: _test_files(root, name), raised), strict=True)
         )
         every = sorted({file for named in files.values() for file in named})
-        if every and _pytest_in_mutants(root, every, "") != 0:
+        if every and _pytest_in_mutants(root, every, "", skipped) != 0:
             for name in raised:
                 settled[name] = "unsettled, its test files fail with no mutant applied"
             return settled
@@ -877,7 +915,7 @@ def settle(root: Path, found: Mapping[str, str], codes: Mapping[str, int]) -> di
         for name in raised:
             if not files[name]:
                 settled[name] = "unsettled, mutmut names no test for it"
-        exits = pool.map(lambda name: _pytest_in_mutants(root, files[name], name), named)
+        exits = pool.map(lambda name: _pytest_in_mutants(root, files[name], name, skipped), named)
         for name, code in zip(named, exits, strict=True):
             settled[name] = (
                 "timeout"
@@ -1445,7 +1483,7 @@ def _compared_statuses(
         for name, status in statuses(tree).items()
         if name.rpartition(".")[0] in modules
     }
-    return settle(tree, found, recorded_exit_codes(tree, files))
+    return settle(tree, found, recorded_exit_codes(tree, files), deselected(table))
 
 
 def compare_tests(root: Path, change: Change, table: Mapping[str, object]) -> Compared:
@@ -1683,7 +1721,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise Refusal(
                     f"mutmut ran, but `mutmut results` listed no mutant. {LISTING_UNREAD}"
                 )
-            print(report_all(settle(root, found, recorded_exit_codes(root, files))))
+            codes = recorded_exit_codes(root, files)
+            print(report_all(settle(root, found, codes, deselected(table))))
             return 0
         base = args.base or default_base(root)
         if args.base is None and not resolved(base):
@@ -1722,7 +1761,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 + LISTING_UNREAD
             )
         codes = recorded_exit_codes(root, {unit.path for unit in change.units})
-        print(answer(change, settle(root, found, codes), listed))
+        print(answer(change, settle(root, found, codes, deselected(table)), listed))
         return 0
     except (Refusal, GitUnanswered, OSError, SyntaxError, ValueError, KeyError) as error:
         reason = str(error) if isinstance(error, Refusal) else repr(error)
