@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: documentation-standard
+milestone: v0.6.24
 touches: docs/PARAMETERS.md, docs/references/README.md
 deferred-from: v0.7.0 - captured after the freeze; a repeated citation of sources that are the authority for no stored value, not safety or science
 added: 2026-11-22

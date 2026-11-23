@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: tests-detect-wrong-values
+milestone: v0.6.24
 touches: tests/integration/test_qt_chart.py, src/anesthesia_sim/app/qt_chart.py
 added: 2026-11-23
 closed: 2026-11-23
