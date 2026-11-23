@@ -3,12 +3,15 @@ id: PL-3MMJ
 title: docs/VERIFICATION.md says a one-second-late control change moves a reading less than one standard deviation of any partition coefficient, and that blood:gas gives the smallest shift; its own uncertainty table shows the vessel-rich and fat shifts are smaller than both
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, science
 feature: model-spec-accuracy
 touches: docs/VERIFICATION.md
 added: 2026-11-22
+closed: 2026-11-23
+pr: 2310
 payoff: a developer reading the verification document learns correctly which coefficient uncertainties the one-second timing error is smaller than
+verify: grep -qF 'and by more than one of the vessel-rich or fat' docs/VERIFICATION.md
 ---
 
 **Problem.** docs/VERIFICATION.md says a one-second-late control change moves a reading less than one standard deviation of any partition coefficient, and that blood:gas gives the smallest shift; its own uncertainty table shows the vessel-rich and fat shifts are smaller than both
@@ -50,3 +53,23 @@ check whether the step's adequacy argument still holds as worded.
 **Generator check.** A one-off: the second copy of a claim whose first copy `PL-48MX` corrected; that item's review found this one.
 
 **Reproduced 2026-11-23.** `docs/VERIFICATION.md` on `main` at `d219e317` still says "less than one standard deviation of any" and "The blood:gas shift is the smallest".
+
+**Done 2026-11-23.** Both sentences now state the comparison the way the
+uncertainty table in `docs/INTERFACE.md` § "Why the readouts show two
+decimals" gives it. The one-second timing error of an ordinary control
+action, up to 7.3×10⁻² pp (the case-opening row of the timing table in
+`docs/VERIFICATION.md`), is smaller than the first-hour shift from one SD of
+the blood:gas coefficient (up to 9.0×10⁻² pp) or the muscle coefficient (up to
+9.9×10⁻¹ pp). It is larger than the shift from one SD of the vessel-rich
+coefficient (up to 5.4×10⁻² pp) or the fat coefficient (up to 4.0×10⁻² pp),
+which are the two smallest, not blood:gas. The summary bullet in § "What the
+model was checked against" says the same. The conclusion that the step is
+fine enough stands, on the narrower ground that the timing error is of the
+same order as the smallest parameter uncertainty and more than ten times
+smaller than the largest. Each figure was read from the two tables on
+2026-11-23.
+
+Docs checked: `docs/VERIFICATION.md`, both passages; `docs/INTERFACE.md`
+§ "Why the readouts show two decimals", whose table is the source and needs no
+change; `docs/MODEL.md` § "When a control change takes effect" already
+states the comparison this way, with the same four figures.

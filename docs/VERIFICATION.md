@@ -296,9 +296,10 @@ partition coefficients, delivered and stored fractions, and the mass-balance res
 
 - **The step, 1 s.** Each step is exact, so the length of the step costs no accuracy. Its
   cost is that a control change reaches the model up to one second late. For an ordinary dial
-  change, that delay moves a displayed value by less than one standard deviation of any
-  measured partition coefficient does. For an abrupt ventilation change, it moves the alveolar
-  value by more than one standard deviation of any coefficient does.
+  change, that delay moves a displayed value by less than one standard deviation of the
+  blood:gas or muscle coefficient does, and by more than one of the vessel-rich or fat
+  coefficient does. For an abrupt ventilation change, it moves the alveolar value by more than
+  one standard deviation of any coefficient does.
 - **Compartment volumes from 0.01 to 10 000 L, and partition coefficients from 0.001 to
   10 000.** These limits sit far outside any real patient or agent. The arithmetic has been
   checked against a high-precision calculation across the whole range.
@@ -543,10 +544,13 @@ digit. How many decimals the readout shows is a display choice, and it must not 
 These figures are judged against the model's own parameter uncertainty, which comes before both
 the step and the display. In the first hour at 1 MAC, one standard deviation (SD) of the
 blood:gas coefficient displaces a displayed compartment by up to $`9.0\times10^{-2}`$ pp, and one
-SD of the muscle coefficient by up to $`9.9\times10^{-1}`$ pp. The blood:gas shift is the smallest
-of the four coefficients' shifts, and the muscle shift is the largest. So the timing error of an
-ordinary control action is smaller than the shift from one SD of any coefficient, and in that
-sense the step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
+SD of the muscle coefficient by up to $`9.9\times10^{-1}`$ pp. One SD of the vessel-rich or fat
+coefficient displaces one by up to $`5.4\times10^{-2}`$ or $`4.0\times10^{-2}`$ pp, the two smallest
+shifts. So the timing error of an ordinary control action, up to $`7.3\times10^{-2}`$ pp, is smaller
+than the shift from one SD of the blood:gas or muscle coefficient, and larger than the shift from
+one SD of the vessel-rich or fat coefficient. It is of the same order as the smallest of the model's
+own parameter uncertainties and more than ten times smaller than the largest, and in that sense the
+step is fine enough. The shift for each coefficient is in `docs/INTERFACE.md` § "Why the readouts show two decimals".
 
 **What one second does not buy.** An abrupt manoeuvre's timing error is not kept within one SD
 of any coefficient. A ventilator start that takes effect one second late shifts the alveolar
