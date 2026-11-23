@@ -18,6 +18,7 @@ import json
 import subprocess
 import sys
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -404,7 +405,9 @@ def _stub_reruns(
     """Answer `settle`'s two subprocess helpers from tables, and record each pytest run."""
     runs: list[tuple[tuple[str, ...], str]] = []
 
-    def pytest_in_mutants(root: Path, named: list[str], mutant: str) -> int | None:
+    def pytest_in_mutants(
+        root: Path, named: list[str], mutant: str, skipped: Iterable[str]
+    ) -> int | None:
         runs.append((tuple(named), mutant))
         return exits[mutant]
 
@@ -427,7 +430,7 @@ def test_settle_reruns_each_mutant_whose_pytest_run_raised(
     exits = dict(zip(["", *raised], [0, 1, 0, None, 2, 4], strict=True))
     runs = _stub_reruns(monkeypatch, files, exits)
 
-    assert settle(tmp_path, found, codes) == {
+    assert settle(tmp_path, found, codes, frozenset()) == {
         "m.x_f__mutmut_1": "killed",
         "m.x_f__mutmut_2": "survived",
         "m.x_f__mutmut_3": "timeout",
@@ -456,7 +459,9 @@ def test_settle_reruns_the_mutants_at_once_on_every_worker(
     raised = [f"m.x_f__mutmut_{n}" for n in range(1, 7)]
     barrier = threading.Barrier(3, timeout=10)
 
-    def pytest_in_mutants(root: Path, named: list[str], mutant: str) -> int | None:
+    def pytest_in_mutants(
+        root: Path, named: list[str], mutant: str, skipped: Iterable[str]
+    ) -> int | None:
         if mutant:
             barrier.wait()
         return 0 if not mutant else 1
@@ -466,7 +471,8 @@ def test_settle_reruns_the_mutants_at_once_on_every_worker(
     monkeypatch.setattr(diff_mutation, "_pytest_in_mutants", pytest_in_mutants)
 
     found = dict.fromkeys(raised, "timeout")
-    assert settle(tmp_path, found, dict.fromkeys(raised, 255)) == dict.fromkeys(raised, "killed")
+    codes = dict.fromkeys(raised, 255)
+    assert settle(tmp_path, found, codes, frozenset()) == dict.fromkeys(raised, "killed")
 
 
 def test_settle_counts_no_kill_when_the_files_fail_with_no_mutant(
@@ -477,7 +483,7 @@ def test_settle_counts_no_kill_when_the_files_fail_with_no_mutant(
     files = {"m.x_f__mutmut_1": ["tests/unit/test_f.py"]}
     runs = _stub_reruns(monkeypatch, files, {"": 1, "m.x_f__mutmut_1": 1})
 
-    assert settle(tmp_path, found, codes) == {
+    assert settle(tmp_path, found, codes, frozenset()) == {
         "m.x_f__mutmut_1": "unsettled, its test files fail with no mutant applied",
         "m.x_g__mutmut_1": "survived",
     }
@@ -489,8 +495,51 @@ def test_settle_runs_nothing_when_no_pytest_run_raised(
 ) -> None:
     runs = _stub_reruns(monkeypatch, {}, {})
     found = {"m.x_f__mutmut_1": "survived"}
-    assert settle(tmp_path, found, {"m.x_f__mutmut_1": 0}) == found
+    assert settle(tmp_path, found, {"m.x_f__mutmut_1": 0}, frozenset()) == found
     assert runs == []
+
+
+def test_settle_leaves_out_the_deselected_tests_in_every_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """mutmut's own run leaves these tests out, because each fails on its copy of the code.
+
+    Kept in the run with no mutant applied, one failed it, and every mutant
+    whose pytest run raised was left unsettled.
+    """
+    raised = ["m.x_f__mutmut_1", "m.x_f__mutmut_2"]
+    skipped = frozenset({"tests/unit/test_f.py::test_fails_on_the_copy"})
+    left_out: list[frozenset[str]] = []
+
+    def pytest_in_mutants(
+        root: Path, named: list[str], mutant: str, skipped: Iterable[str]
+    ) -> int | None:
+        left_out.append(frozenset(skipped))
+        return 0 if not mutant else 1
+
+    monkeypatch.setattr(diff_mutation, "_test_files", lambda root, name: ["tests/unit/test_f.py"])
+    monkeypatch.setattr(diff_mutation, "_pytest_in_mutants", pytest_in_mutants)
+
+    found = dict.fromkeys(raised, "timeout")
+    codes = dict.fromkeys(raised, 255)
+    assert settle(tmp_path, found, codes, skipped) == dict.fromkeys(raised, "killed")
+    # The run with no mutant applied, then one run for each mutant.
+    assert left_out == [skipped, skipped, skipped]
+
+
+def test_a_rerun_leaves_out_the_tests_it_is_told_to_skip(tmp_path: Path) -> None:
+    tests = tmp_path / diff_mutation.MUTANTS
+    tests.mkdir()
+    (tests / "test_mixed.py").write_text(
+        "def test_passes():\n    pass\n\n\n"
+        "def test_fails_on_the_copy():\n    raise AssertionError\n"
+    )
+
+    def run(skipped: frozenset[str]) -> int | None:
+        return diff_mutation._pytest_in_mutants(tmp_path, ["test_mixed.py"], "", skipped)
+
+    assert run(frozenset()) == 1
+    assert run(frozenset({"test_mixed.py::test_fails_on_the_copy"})) == 0
 
 
 def test_a_module_that_raises_while_it_is_collected_counts_as_a_kill(tmp_path: Path) -> None:
@@ -505,7 +554,7 @@ def test_a_module_that_raises_while_it_is_collected_counts_as_a_kill(tmp_path: P
     (tests / "test_stops.py").write_text("def test_stops():\n    raise KeyboardInterrupt\n")
 
     def run(name: str) -> int | None:
-        return diff_mutation._pytest_in_mutants(tmp_path, [name], "")
+        return diff_mutation._pytest_in_mutants(tmp_path, [name], "", frozenset())
 
     assert run("test_raises.py") == 1
     assert run("test_passes.py") == 0
