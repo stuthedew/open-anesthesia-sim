@@ -803,14 +803,15 @@ WASH_IN_AXIS_LABEL_SIZE = 34
 # The grey is not darkened, and that decision comes from the chart's hierarchy
 # rather than from the criterion. The lightest trace, `MUSCLE_COLOR`, is 3.43:1
 # on the panel. So a ruling at 3:1 would be 87% as dark as the lightest data
-# line. Furniture would then weigh as much as data. The chart rests on an order: this ruling sits
-# under the `MUTED` reference lines at 5.00:1, which sit under the traces at
-# 3.43-8.85:1, and widths of 1 / 1.5 / 2-3 px say the same. A ruling at 3:1
-# would collapse the bottom rung of that order. 1.31:1 is where charting
-# practice puts a ruling on purpose. ggplot2's `theme_bw` rules its panel at
-# grey92, which is 1.19:1 on white. Matplotlib's default `grid.color` is
-# `#b0b0b0`, which is 2.17:1. It is the darker of the two and still less than
-# 3:1 (both read at the source, 2026-09-27). Making the grey a little darker
-# without claiming 3:1 was also refused, because it would be a change with no
-# standard behind it, which is the state this record exists to end.
+# line. Furniture would then weigh as much as data. The chart rests on an
+# order: this ruling sits under the `MUTED` reference lines at 5.00:1, which
+# sit under the traces at 3.43-8.85:1, and widths of 1 / 1.5 / 2-3 px say the
+# same. A ruling at 3:1 would collapse the bottom rung of that order. 1.31:1 is
+# where charting practice puts a ruling on purpose. ggplot2's `theme_bw` rules
+# its panel at grey92, which is 1.19:1 on white. Matplotlib's default
+# `grid.color` is `#b0b0b0`, which is 2.17:1. It is the darker of the two and
+# still less than 3:1 (both read at the source, 2026-09-27). Making the grey a
+# little darker without claiming 3:1 was also refused, because it would be a
+# change with no standard behind it, which is the state this record exists to
+# end.
 GRIDLINE = "#D9E2EC"

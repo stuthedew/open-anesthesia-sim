@@ -2645,7 +2645,7 @@ Without the run names, a learner could misread a comparison in three ways:
 
 **The run is named in text, not by colour or position.** Colour already
 identifies the compartment in both modes, so it cannot also identify the run.
-The worst contrast between two compartment traces is 1.01:1, against the 3:1
+The worst contrast between two compartment traces is 1.05:1, against the 3:1
 required (§ "The six compartment traces"). The chart therefore shows the run by
 line width instead (`PL-HLD5`), but text has no equivalent of line width.
 Position alone fails a reader who looks away and back, and naming the run exists
