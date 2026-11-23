@@ -148,7 +148,6 @@ from anesthesia_sim.app.dashboard_frame import (
     new_case_question,
     no_traces_shown,
     notice,
-    run_notice,
     off_scale_lines,
     off_scale_notice,
     offered_range,
@@ -161,6 +160,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_setting_notice,
     rejected_step_accounting,
     run_label,
+    run_notice,
     run_statement,
     setting_readouts,
     slider_position,
@@ -1214,7 +1214,7 @@ def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
 
 
 def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
-    """With no frame drawn, a failure is a warning and the supported run length is not (`PL-0889`)."""
+    """With no frame drawn, a failure is a warning and the run-length stop is not (`PL-0889`)."""
 
     at_limit = _snapshot(supported_limit_reason="reached 86400 s")
     failed = _snapshot(failure_reason="RuntimeError: boom")
