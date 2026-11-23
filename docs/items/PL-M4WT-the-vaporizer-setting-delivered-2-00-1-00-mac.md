@@ -3,13 +3,15 @@ id: PL-M4WT
 title: The vaporizer setting "Delivered 2.00% (1.00 ×MAC)" sits on the same heading row as "Modelled concentrations: Sevoflurane" and "Model outputs — not measurements.", so a model input reads as an eighth model output, and at low fresh gas flow it can be taken for the inspired concentration
 priority: P2
 effort: S
-status: ready
+status: done
 classes: ux
 feature: replay-findings
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-10-25
+closed: 2026-11-23
+pr: 2287
 payoff: a learner cannot read the vaporizer setting as a modelled concentration or as the inspired concentration
-verify: grep -q 'def test_the_delivered_line_is_labelled_as_the_vaporizer_setting' tests/unit/test_dashboard_frame.py
+tests: tests/unit/test_dashboard_frame.py::test_the_delivered_line_is_labelled_as_the_vaporizer_setting, tests/integration/simulation_view/test_simulation_view_readouts.py::test_one_run_s_vaporizer_setting_sits_with_its_controls_and_not_under_model_outputs
 ---
 
 **Problem.** `_lay_out_readout_section` adds the substance heading, the interpretation disclaimer, a stretch, `_delivered_text` and `_one_mac_text` to one row (`app/run_view.py`). The line's text is `DELIVERED_LINE_TEMPLATE`, "Delivered {value} ({secondary})" (`app/dashboard_frame.py`). Nothing on it says that it is the dial setting.
@@ -21,3 +23,8 @@ verify: grep -q 'def test_the_delivered_line_is_labelled_as_the_vaporizer_settin
 **Found by.** `PL-TBQS` reviewer replay on #1585, findings r04 F3 and r06 F1, plus `PL-ZWXD`'s fifth #1585 entry. Checked against main on 2026-10-25 by reading the heading row's construction.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and the placement is still the owner's to decide. `_lay_out_readout_section` in `app/run_view.py` still puts `_delivered_text` on the heading row beside `_interpretation_text`, whose text is `INTERPRETATION_DISCLAIMER_TEXT`, "Model outputs — not measurements.". `DELIVERED_LINE_TEMPLATE` in `app/dashboard_frame.py` is still "Delivered {value} ({secondary})", with nothing that says it is the dial setting. One thing has changed since the brief: when two runs are shown, the method that folds the heading moves each run's delivered line to its transport row (`PL-QLZ5`), so the line sits under the disclaimer only while one run is shown.
+
+**Decided 2026-11-23.** The coordinator ruled that the placement does not need the owner, and the session's recommendation was built: the line moves to the run's controls and is labelled as the dial setting. The recommendation went to the coordinator with the research behind it. A search for published guidance on separating set values from measured or modelled values on anaesthesia and ventilator displays found nothing that settles placement, only studies of discrepancies between set and displayed PEEP. Two design rules decide it instead, and `docs/INTERFACE.md` cites both. Items placed close together are read as one group (Harley A., "Proximity", Nielsen Norman Group, 2020, https://www.nngroup.com/articles/gestalt-proximity/, whose text a web fetch returned on 2026-11-23). One thing keeps one place and one name (Nielsen J., "10 Usability Heuristics for User Interface Design", heuristic 4, Nielsen Norman Group, 1994, reviewed 2024, https://www.nngroup.com/articles/ten-usability-heuristics/, read through the same fetch, which quotes its statement: "Users should not have to wonder whether different words, situations, or actions mean the same thing").
+
+**Done 2026-11-23.** The line reads "Vaporizer 1.80% (1.00 ×MAC)" and sits on the run's transport row whether one run is shown or two, so it no longer moves when a branch is taken. The version-and-model label takes its old place on the readout heading line, as it already did with two runs, so the window's least width does not grow. `docs/MODEL.md` needed no change, because it says nothing about where the line sits. Files checked in the documentation sweep: `docs/INTERFACE.md` (the shared-heading paragraph, a new paragraph on the line's place and label, and the record-width section), `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md`. Tests: `test_the_delivered_line_is_labelled_as_the_vaporizer_setting` in `tests/unit/test_dashboard_frame.py`, and `test_one_run_s_vaporizer_setting_sits_with_its_controls_and_not_under_model_outputs` in `tests/integration/simulation_view/test_simulation_view_readouts.py`. Run against `origin/main` at `9f01700c` with only those two test files copied in, both fail: the first with `'Delivered 2.50% (1.39 ×MAC)'.startswith('Vaporizer ')` false, the second with `build_transport_row().isAncestorOf(run._delivered_text)` false. The slider and the record of control changes still call the same control "Delivered sevoflurane" and "Delivered agent", which is filed as `PL-XZKW` and is the chain's next item.
+

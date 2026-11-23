@@ -3219,9 +3219,10 @@ at any width at which the row is laid out (`PL-3355`).
 Each run's vaporizer setting sits on that run's own line, beside its name and
 its controls, such as Start. The values the two runs share appear once, on the
 heading line above the block: the substance, the agent's 1 MAC, and the version
-and model. With one run, the same values sit in the same places. They are the same for both runs because a second run must use
-the first run's agent, and a branch's MAC is checked against its trunk's when
-the branch is opened (`PL-QLZ5`).
+and model. With one run, each of these values keeps the same place. The shared
+values are the same for both runs because a second run must use the first
+run's agent, and a branch's MAC is checked against its trunk's when the branch
+is opened (`PL-QLZ5`).
 
 **The vaporizer setting sits with the run's controls, and its label names the
 vaporizer** (`PL-M4WT`). It reads "Vaporizer", then the dial's value in percent
