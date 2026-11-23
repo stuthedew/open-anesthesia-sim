@@ -457,15 +457,34 @@ YASUDA_TISSUE_BLOOD = {
 }
 
 
+def _rounding_share(tissue_gas: float, tissue_blood: float) -> float:
+    """How far rounding to the printed two decimals can move one quotient, as a share of it.
+
+    Each printed mean can lie up to half a unit in its last place, 0.005,
+    from the value the paper computed. The quotient moves furthest when the
+    two means move apart.
+    """
+
+    half_unit = 0.005
+    quotient = tissue_gas / tissue_blood
+    highest = (tissue_gas + half_unit) / (tissue_blood - half_unit)
+    lowest = (tissue_gas - half_unit) / (tissue_blood + half_unit)
+
+    return max(highest / quotient - 1.0, 1.0 - lowest / quotient)
+
+
 def test_yasudas_full_tables_recover_the_blood_gas_ranges_printed() -> None:
     """Each tissue column of Table 1 over Table 2 lies from the stored blood:gas as printed.
 
-    The four organ columns are printed as one range per agent, and the
-    muscle and fat columns one by one. The transcribed brain, muscle and fat
-    tissue:gas means are first checked against the Yasuda table in
-    § "Where the tissue:gas coefficients come from", and the brain
-    tissue:blood means against the abstract's, so a transcription slip in
-    those columns fails here rather than moving a printed range.
+    The paragraph gives the rounding limit of the four organ columns, one
+    whole-percent range per agent for those columns, and the muscle and fat
+    columns one by one. The transcribed brain, muscle and fat tissue:gas
+    means are first checked against the Yasuda table in § "Where the
+    tissue:gas coefficients come from", and the brain tissue:blood means
+    against the abstract's, so a transcription slip in those columns fails
+    here rather than moving a printed range. The test also checks that each
+    muscle and fat value lies above every organ value by more than both
+    roundings together, as the paragraph says.
     """
 
     for agent_id in YASUDA_TABLE_AGENTS:
@@ -474,49 +493,68 @@ def test_yasudas_full_tables_recover_the_blood_gas_ranges_printed() -> None:
             assert _yasuda_table()[agent_id, tissue][1] == transcribed, (agent_id, tissue)
         assert YASUDA_TISSUE_BLOOD[agent_id][0] == YASUDA_BRAIN_BLOOD[agent_id], agent_id
 
+    organ_count = len(YASUDA_ORGANS)
+    columns = {
+        agent_id: list(zip(YASUDA_TISSUE_GAS[agent_id], YASUDA_TISSUE_BLOOD[agent_id], strict=True))
+        for agent_id in YASUDA_TABLE_AGENTS
+    }
     gaps = {
         agent_id: [
             _signed_percent(
                 tissue_gas / tissue_blood, _agent(agent_id).blood_gas_partition_coefficient
             )
-            for tissue_gas, tissue_blood in zip(
-                YASUDA_TISSUE_GAS[agent_id], YASUDA_TISSUE_BLOOD[agent_id], strict=True
-            )
+            for tissue_gas, tissue_blood in columns[agent_id]
         ]
         for agent_id in YASUDA_TABLE_AGENTS
     }
-    organ_count = len(YASUDA_ORGANS)
+    rounding = {
+        agent_id: [_rounding_share(*column) * 100.0 for column in columns[agent_id]]
+        for agent_id in YASUDA_TABLE_AGENTS
+    }
+
+    (limit,) = _one(r"rounding alone can move a recovered value by up to (\d\.\d)%")
+    organ_rounding = max(max(rounding[agent_id][:organ_count]) for agent_id in YASUDA_TABLE_AGENTS)
+    assert _as_printed(organ_rounding, limit) == limit, rounding
 
     printed = _one(
-        r"Across those four organs, the value recovered is (\d\.\d)% to (\d\.\d)% above the "
-        r"stored sevoflurane value, (\d\.\d)% to (\d\.\d)% above the stored isoflurane value, "
-        r"and between (\d\.\d)% below and (\d\.\d)% above the stored desflurane value"
+        r"Across those four organs, the value recovered is (\d)% to (\d)% above the stored "
+        r"sevoflurane value, (\d)% to (\d)% above the stored isoflurane value, and within "
+        r"(\d)% of the stored desflurane value"
     )
     sevoflurane_organs = gaps["sevoflurane"][:organ_count]
     isoflurane_organs = gaps["isoflurane"][:organ_count]
-    desflurane_organs = gaps["desflurane"][:organ_count]
     computed = (
         min(sevoflurane_organs),
         max(sevoflurane_organs),
         min(isoflurane_organs),
         max(isoflurane_organs),
-        -min(desflurane_organs),
-        max(desflurane_organs),
+        max(abs(gap) for gap in gaps["desflurane"][:organ_count]),
     )
-    assert min(sevoflurane_organs) > 0.0 and min(isoflurane_organs) > 0.0, gaps
-    assert min(desflurane_organs) < 0.0 < max(desflurane_organs), gaps
     for value, cell in zip(computed, printed, strict=True):
         assert _as_printed(value, cell) == cell, (computed, printed)
 
     muscle_and_fat = _one(
-        r"The muscle and fat columns recover more: (\d+\.\d)% and (\d+\.\d)% above the stored "
-        r"value for sevoflurane, (\d+\.\d)% and (\d+\.\d)% for isoflurane, and (\d+\.\d)% and "
-        r"(\d+\.\d)% for desflurane"
+        r"The muscle and fat columns recover more, by more than rounding explains: (\d+)% and "
+        r"(\d+)% above the stored value for sevoflurane, (\d+)% and (\d+)% for isoflurane, "
+        r"and (\d+)% and (\d+)% for desflurane"
     )
     computed_muscle_and_fat = [
         gap for agent_id in YASUDA_TABLE_AGENTS for gap in gaps[agent_id][organ_count:]
     ]
     for value, cell in zip(computed_muscle_and_fat, muscle_and_fat, strict=True):
         assert _as_printed(value, cell) == cell, (computed_muscle_and_fat, muscle_and_fat)
+
     for agent_id in YASUDA_TABLE_AGENTS:
-        assert min(gaps[agent_id][organ_count:]) > max(gaps[agent_id][:organ_count]), agent_id
+        highest_organ = max(
+            gap + share
+            for gap, share in zip(
+                gaps[agent_id][:organ_count], rounding[agent_id][:organ_count], strict=True
+            )
+        )
+        lowest_other = min(
+            gap - share
+            for gap, share in zip(
+                gaps[agent_id][organ_count:], rounding[agent_id][organ_count:], strict=True
+            )
+        )
+        assert lowest_other > highest_organ, (agent_id, gaps, rounding)

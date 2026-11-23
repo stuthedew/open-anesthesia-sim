@@ -47,6 +47,13 @@ No column gives the old 4.9-9.4% range for all three agents. The four organ
 columns agree within 2.4 percentage points for each agent, and the muscle and
 fat columns lie above all of them. The paper's discussion gives no reason;
 it notes only that muscle solubility rose with age (its Figure 2).
+Each printed mean is rounded to two decimals, which can move a quotient by
+up to 1.8% (desflurane kidney, 0.40 / 0.94). So the differences among the four
+organ columns, and the sign of desflurane's gap, are within rounding, and the
+document gives whole percents and states the 1.8%. Both blind review passes
+found the 0.1% figures falsely precise. The muscle and fat columns lie above
+every organ column by more than both roundings together, which the test
+checks.
 `docs/PARAMETERS.md` § "v0.2.0: isoflurane and desflurane" now states the
 organ ranges and the muscle and fat figures, and
 `test_yasudas_full_tables_recover_the_blood_gas_ranges_printed` computes them

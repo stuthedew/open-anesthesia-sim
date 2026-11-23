@@ -45,9 +45,12 @@ blood/gas coefficients adjusted for age" (page 372).
   `docs/PARAMETERS.md` § "v0.2.0: isoflurane and desflurane" compares each
   stored value with its mean.
 - **The blood:gas values that Table 1 over Table 2 recovers** are compared
-  with the stored blood:gas coefficients in the same section, to show how far
-  the stored values lie from what this cohort implies. The paper is not the
-  authority for any blood:gas value, because it measured none.
+  with the stored blood:gas coefficients in the same section. The columns do
+  not agree: the four organ columns recover nearly one value for each agent,
+  and the muscle and fat columns recover more, by more than the tables'
+  rounding explains. So the tables establish no single blood:gas value for
+  this cohort. The paper is not the authority for any blood:gas value,
+  because it measured none.
 
 ## What was not taken
 
