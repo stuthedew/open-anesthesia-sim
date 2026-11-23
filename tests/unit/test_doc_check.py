@@ -288,7 +288,7 @@ def _bound_families_in_one_fixture_document(monkeypatch: pytest.MonkeyPatch) -> 
             family, document=doc_check.MODEL, heading="Displayed precision", level=3
         )
         if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
-        and family.members is doc_check._numeric_paragraph_members
+        and family.members.__name__ == "_numeric_paragraph_members"
         else dataclasses.replace(family, document=doc_check.MODEL)
         if family.document in (doc_check.INTERFACE, doc_check.VERIFICATION)
         # `PL-48MX` moved the numeric paragraphs that the family reads from
@@ -420,6 +420,27 @@ def _this_repository() -> doc_check.Report:
 
 
 @pytest.mark.reads_item_store
+def test_the_interface_document_is_one_numeric_family_from_its_first_heading() -> None:
+    """Every section of `docs/INTERFACE.md` is read for unheld figures, not two of them.
+
+    Before `PL-JP7P` the numeric families covered "Displayed precision" and
+    "Supported input ranges" only, so a figure added to any other section went
+    unchecked. One family on the document's level-1 heading reads them all.
+    """
+
+    numeric = [
+        (family.heading, family.level)
+        for family in REPOSITORY_BOUND_FAMILIES
+        if family.document == doc_check.INTERFACE
+        and family.members.__name__ == "_numeric_paragraph_members"
+    ]
+    text = (Path(__file__).resolve().parents[2] / doc_check.INTERFACE).read_text(encoding="utf-8")
+    first = doc_check.read_headings(doc_check.split_lines(text))[0]
+
+    assert numeric == [("Interface requirements", 1)]
+    assert (first.title, first.level) == numeric[0]
+
+
 def test_this_repository_is_clean() -> None:
     """The real tree must satisfy its own checker, not only a fixture."""
     assert _this_repository().errors == []

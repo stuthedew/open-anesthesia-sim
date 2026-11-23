@@ -9,6 +9,7 @@ module.
 
 from dataclasses import replace
 from math import hypot, inf, nextafter
+from pathlib import Path
 from types import MappingProxyType
 
 import pytest
@@ -65,6 +66,7 @@ from anesthesia_sim.app.formatting import (
     format_mac_multiple,
     format_percent,
     format_wash_in_ratio,
+    mac_awake_band_percent,
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
@@ -107,6 +109,42 @@ FIRST_RUN, SECOND_RUN = RUN_IDS[:2]
 
 
 _PLOT_WIDTH_PX = 900.0
+
+#: The frames below are sevoflurane's, so they divide by sevoflurane's stored
+#: 1 MAC. A frame that names sevoflurane and divides by another MAC would
+#: print MAC multiples that the interface never shows for it, and the worked
+#: examples in `docs/INTERFACE.md` were copied from such a frame (`PL-JP7P`).
+_SEVOFLURANE = load_agent_parameters("sevoflurane")
+_SEVOFLURANE_MAC = MacPercent(float(_SEVOFLURANE.mac_at_age_40_percent))
+_SEVOFLURANE_AXIS_TOP = chart_axis_top_percent(_SEVOFLURANE_MAC)
+_SEVOFLURANE_GRID = chart_grid_interval_percent(_SEVOFLURANE_MAC)
+
+#: The percent that one pixel of the concentration plot spans, for
+#: sevoflurane: the fixed axis top of 3 MAC over the plot's height, which is
+#: 5.4% over 360 px, or 0.015 %/px.
+_PERCENT_PER_PIXEL = float(_SEVOFLURANE_AXIS_TOP) / CHART_HEIGHT
+
+_INTERFACE_PATH = Path(__file__).resolve().parents[2] / "docs" / "INTERFACE.md"
+_HOVER_SECTION_HEADING = "### The chart's hover readout: what the tooltip may show"
+
+
+def _hover_worked_examples() -> list[list[str]]:
+    """Each fenced example in `docs/INTERFACE.md`'s hover section, as its lines.
+
+    The tests below compare the hover with these examples as the document
+    prints them, so that an example and the hover cannot drift apart. Each
+    example used to be typed out again here, and the copies divided by a
+    1 MAC of 2.0% that sevoflurane no longer has (`PL-JP7P`).
+    """
+
+    text = _INTERFACE_PATH.read_text(encoding="utf-8")
+    start = text.index(f"\n{_HOVER_SECTION_HEADING}\n")
+    end = text.index("\n### ", start + 1)
+    blocks = text[start:end].split("\n```\n")
+
+    # The text alternates between prose and fenced blocks, so every second
+    # piece after the first is an example.
+    return [block.splitlines() for block in blocks[1::2]]
 
 
 def _advance(controller: SimulationController, seconds: int) -> None:
@@ -609,7 +647,7 @@ def _run_frame(times_s: tuple[float, ...], **fractions_by_name: tuple[float, ...
         branch_point_s=None,
         agent_id="sevoflurane",
         agent_display_name="Sevoflurane",
-        mac_percent=MacPercent(2.0),
+        mac_percent=_SEVOFLURANE_MAC,
         elapsed_s=times_s[-1],
         times_s=times_s,
         fractions=MappingProxyType(fractions),
@@ -632,15 +670,19 @@ def _frame(
         tick_times_s=(0.0, 600.0),
         columns=CHART_COLUMN_BUDGET_PER_SERIES,
         plot_width_px=_PLOT_WIDTH_PX,
-        mac_percent=MacPercent(2.0),
+        mac_percent=_SEVOFLURANE_MAC,
         mac_age_years=40,
-        axis_top_percent=Percent(6.0),
-        grid_interval_percent=1.0,
-        percent_ticks=percent_axis_ticks(6.0, 1.0),
+        axis_top_percent=_SEVOFLURANE_AXIS_TOP,
+        grid_interval_percent=_SEVOFLURANE_GRID,
+        percent_ticks=percent_axis_ticks(_SEVOFLURANE_AXIS_TOP, _SEVOFLURANE_GRID),
         mac_ticks=(),
-        one_mac_percent=2.0,
-        mac_awake_band_percent=(0.58, 0.78),
-        mac_awake=load_agent_parameters("sevoflurane").mac_awake,
+        one_mac_percent=float(_SEVOFLURANE_MAC),
+        mac_awake_band_percent=mac_awake_band_percent(
+            fraction_of_mac=_SEVOFLURANE.mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=_SEVOFLURANE.mac_awake.standard_deviation_fraction_of_mac,
+            mac_percent=_SEVOFLURANE_MAC,
+        ),
+        mac_awake=_SEVOFLURANE.mac_awake,
         visible=visible,
         undrawn_compartments=0,
         runs=(run,),
@@ -651,13 +693,14 @@ def test_the_hover_reads_as_the_specification_shows() -> None:
     """The hover matches the worked example in `docs/INTERFACE.md` § "The chart's hover readout"."""
 
     run = _run_frame((1208.0,), alveolar=(0.0143,))
+    examples = _hover_worked_examples()
+    one_run, named_run, wash_in = examples[0], examples[1], examples[-1]
+    second = replace(run, label=run_label(SECOND_RUN))
 
-    assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1) == (
-        "Modelled sevoflurane · 20m8s\nAlveolar (end-tidal-equivalent)\n1.43%   0.71 ×MAC"
-    )
-    assert format_wash_in_hover(run, run.wash_in[0], 0, 1) == (
-        f"Modelled sevoflurane · 20m8s\n{WASH_IN_HOVER_LABEL}\n0.71"
-    )
+    assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1).splitlines() == one_run
+    assert format_trace_hover(second, RecordedQuantity.ALVEOLAR, 0, 2).splitlines() == named_run
+    assert wash_in[1] == WASH_IN_HOVER_LABEL
+    assert format_wash_in_hover(run, run.wash_in[0], 0, 1).splitlines() == wash_in
 
 
 def _input_refusing_a_drawn_column(
@@ -878,23 +921,21 @@ def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None
     frame = replace(_frame(first), runs=(first, second))
 
     # Both runs' alveolar points are well inside the radius of this pointer.
-    nearer_second = nearest_trace_point(frame, 1208.0, 1.45, 4.0, 0.0167, 12.0)
-    nearer_first = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+    nearer_second = nearest_trace_point(frame, 1208.0, 1.45, 4.0, _PERCENT_PER_PIXEL, 12.0)
+    nearer_first = nearest_trace_point(frame, 1208.0, 1.43, 4.0, _PERCENT_PER_PIXEL, 12.0)
 
     assert nearer_second is not None
     assert nearer_first is not None
-    assert abs(1.45 - 1.43) / 0.0167 < 12.0, "the two points must contend for this to test anything"
+    assert abs(1.45 - 1.43) / _PERCENT_PER_PIXEL < 12.0, (
+        "the two points must contend for this to test anything"
+    )
 
     # It does not matter which point is marginally nearer. Both pointer
     # positions give one box showing both runs, each named, in drawing order.
     assert nearer_second.readout == nearer_first.readout
     assert tuple(reading.run for reading in nearer_second.readings) == (0, 1)
-    assert nearer_second.readout.splitlines() == [
-        "Modelled sevoflurane",
-        "Alveolar (end-tidal-equivalent)",
-        "Run 1 \u00b7 20m8s   1.43%   0.71 \u00d7MAC",
-        "Run 2 \u00b7 20m8s   1.45%   0.73 \u00d7MAC",
-    ]
+    # The document's third example is this box.
+    assert nearer_second.readout.splitlines() == _hover_worked_examples()[2]
 
     # The values differ, which is why the attribution matters.
     assert nearer_second.readout.splitlines()[2] != nearer_second.readout.splitlines()[3]
@@ -907,20 +948,21 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
     that matter. The case is the reference adult on sevoflurane. The trunk is
     held at 1 MAC, and the branch forks at 10 min with the vaporizer turned
     off. The axis spans 60 minutes and is 900 px wide and
-    `theme.CHART_HEIGHT` tall, which gives 4.00 s/px and 0.0167 %/px. At
-    3492 s, the run still carrying agent shows 0.03%, and the run 48 minutes
-    into emergence shows 0.01%. The percent axis is fixed at 3 MAC
-    (`CHART_AXIS_TOP_MAC`), so these two points are 1.2 px apart. Both points
+    `theme.CHART_HEIGHT` tall, which gives 4.00 s/px and 0.015 %/px. At
+    3492 s, the run still carrying agent holds 0.028% and shows 0.03%, and the
+    run 48 minutes into emergence holds 0.0053% and shows 0.01%. The percent
+    axis is fixed at 3 MAC (`CHART_AXIS_TOP_MAC`), so these two points are
+    1.5 px apart. Both points
     are inside the 12 px radius across the whole hoverable band. The old rule
     kept only the single nearest point overall, and it switched which run was
     reported on 75.4-99.9% of the fat axis.
     """
 
-    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=_PERCENT_PER_PIXEL, radius_pixels=12.0)
     times_s = tuple(3400.0 + 4.0 * column for column in range(50))
-    still_carrying = _run_frame(times_s, fat=tuple(0.00033 for _ in times_s))
+    still_carrying = _run_frame(times_s, fat=tuple(0.00028 for _ in times_s))
     emerging = replace(
-        _run_frame(times_s, fat=tuple(0.00009 for _ in times_s)), label=run_label(SECOND_RUN)
+        _run_frame(times_s, fat=tuple(0.000053 for _ in times_s)), label=run_label(SECOND_RUN)
     )
     frame = replace(
         _frame(still_carrying, visible=(RecordedQuantity.FAT,)), runs=(still_carrying, emerging)
@@ -928,15 +970,17 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
     on_trunk = still_carrying.percents(RecordedQuantity.FAT)[0]
     on_branch = emerging.percents(RecordedQuantity.FAT)[0]
     midpoint = (on_trunk + on_branch) / 2.0
-    # The two traces are less than 1.5 px apart. The item measured the real
+    # The two traces are less than 2 px apart. The item measured the real
     # case at 0.2-1.4 px, which is why a reader cannot see which trace is which.
-    assert abs(on_trunk - on_branch) / 0.0167 < 2.0
+    assert abs(on_trunk - on_branch) / _PERCENT_PER_PIXEL < 2.0
     # Pixel offsets from the midpoint of the two traces at 3492 s, in steps of
     # two pixels, which is the hand movement the item measured.
     offsets = tuple(range(-12, 13, 2))
 
     def hover(x_px: int, y_px: int) -> tuple[int, ...]:
-        target = nearest_trace_point(frame, 3492.0 + x_px * 4.0, midpoint + y_px * 0.0167, **reach)
+        target = nearest_trace_point(
+            frame, 3492.0 + x_px * 4.0, midpoint + y_px * _PERCENT_PER_PIXEL, **reach
+        )
 
         return () if target is None else tuple(reading.run for reading in target.readings)
 
@@ -945,7 +989,10 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
 
         return all(
             nearest_trace_point(
-                replace(frame, runs=(run,)), 3492.0 + x_px * 4.0, midpoint + y_px * 0.0167, **reach
+                replace(frame, runs=(run,)),
+                3492.0 + x_px * 4.0,
+                midpoint + y_px * _PERCENT_PER_PIXEL,
+                **reach,
             )
             is not None
             for run in (still_carrying, emerging)
@@ -954,7 +1001,7 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
     def marginally_nearer(y_px: int) -> int:
         """Return the run that the retired rule would have reported: the nearer point's run."""
 
-        percent = midpoint + y_px * 0.0167
+        percent = midpoint + y_px * _PERCENT_PER_PIXEL
 
         return 0 if abs(percent - on_trunk) < abs(percent - on_branch) else 1
 
@@ -985,9 +1032,9 @@ def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
 
     The case is the reference adult on sevoflurane, on a 60-minute axis
     900 px wide and `theme.CHART_HEIGHT` tall. That gives 4.00 s/px and
-    0.0167 %/px. At 20 minutes on the branched case, the trunk's muscle shows
+    0.015 %/px. At 20 minutes on the branched case, the trunk's muscle shows
     0.19% and its fat shows 0.01%. The percent axis is fixed at 3 MAC
-    (`CHART_AXIS_TOP_MAC`), so these points are 10.7 px apart, well inside the
+    (`CHART_AXIS_TOP_MAC`), so these points are 11.9 px apart, inside the
     12 px radius. Muscle and fat are the pair that a reader comparing two runs
     picks most often. They are also the pair whose values differ most: by a
     median of 17.1-17.9x across the measured cases, and by twofold or more at
@@ -1009,7 +1056,9 @@ def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
         runs=(still_carrying, emerging),
     )
 
-    return frame, dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    return frame, dict(
+        seconds_per_pixel=4.0, percent_per_pixel=_PERCENT_PER_PIXEL, radius_pixels=12.0
+    )
 
 
 def test_two_compartments_within_one_hover_radius_answer_under_their_own_names() -> None:
@@ -1031,12 +1080,14 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
     on_fat = still_carrying.percents(RecordedQuantity.FAT)[0]
     # This is the contention under test. The two traces are within one radius
     # of each other, so no pointer position lies on one and not the other.
-    assert 0.0 < (on_muscle - on_fat) / 0.0167 < 12.0
+    assert 0.0 < (on_muscle - on_fat) / _PERCENT_PER_PIXEL < 12.0
     offsets = tuple(range(-12, 13, 2))
     midpoint = (on_muscle + on_fat) / 2.0
 
     def hover(x_px: int, y_px: int) -> tuple[tuple[RecordedQuantity, int], ...]:
-        target = nearest_trace_point(frame, 1200.0 + x_px * 4.0, midpoint + y_px * 0.0167, **reach)
+        target = nearest_trace_point(
+            frame, 1200.0 + x_px * 4.0, midpoint + y_px * _PERCENT_PER_PIXEL, **reach
+        )
 
         return (
             ()
@@ -1055,7 +1106,7 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
             nearest_trace_point(
                 replace(frame, visible=(quantity,), runs=(run,)),
                 1200.0 + x_px * 4.0,
-                midpoint + y_px * 0.0167,
+                midpoint + y_px * _PERCENT_PER_PIXEL,
                 **reach,
             )
             is not None
@@ -1066,7 +1117,7 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
     def marginally_nearer(y_px: int) -> RecordedQuantity:
         """Return the compartment that the retired rule would have reported, the nearer trace's."""
 
-        percent = midpoint + y_px * 0.0167
+        percent = midpoint + y_px * _PERCENT_PER_PIXEL
 
         return (
             RecordedQuantity.MUSCLE
@@ -1100,13 +1151,8 @@ def test_two_compartments_within_one_hover_radius_answer_under_their_own_names()
     target = nearest_trace_point(frame, 1200.0, midpoint, **reach)
     assert target is not None
     assert target.quantities == (RecordedQuantity.MUSCLE, RecordedQuantity.FAT)
-    assert target.readout.splitlines() == [
-        "Modelled sevoflurane",
-        "Muscle · Run 1 · 20m   0.19%   0.10 ×MAC",
-        "Muscle · Run 2 · 20m   0.09%   0.04 ×MAC",
-        "Fat · Run 1 · 20m   0.01%   0.01 ×MAC",
-        "Fat · Run 2 · 20m   0.01%   <0.01 ×MAC",
-    ]
+    # The document's fourth example is this box.
+    assert target.readout.splitlines() == _hover_worked_examples()[3]
     assert (
         emerging.percents(RecordedQuantity.MUSCLE)[0]
         > still_carrying.percents(RecordedQuantity.FAT)[0] * 5.0
@@ -1181,7 +1227,7 @@ def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:
     assert target is not None
     assert target.readout.splitlines() == [
         "Modelled sevoflurane",
-        "Muscle · 20m   0.19%   0.10 ×MAC",
+        "Muscle · 20m   0.19%   0.11 ×MAC",
         "Fat · 20m   0.01%   0.01 ×MAC",
     ]
 
@@ -1238,13 +1284,13 @@ def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
 
     The geometry here is that shape reduced to two traces. Vessel-rich is
     flat, and mixed venous rises through it by two pixels a column, at the
-    60-minute axis's 4.00 s/px and 0.0167 %/px. The pointer is a quarter of a
+    60-minute axis's 4.00 s/px and 0.015 %/px. The pointer is a quarter of a
     column past 20m, which is the instant it names. It is three pixels above
     the flat trace, where the steep trace's nearest point is three columns
     later.
     """
 
-    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=_PERCENT_PER_PIXEL, radius_pixels=12.0)
     times_s = tuple(1160.0 + 4.0 * column for column in range(20))
     run = _run_frame(
         times_s,
@@ -1253,7 +1299,7 @@ def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
     )
     frame = _frame(run, visible=(RecordedQuantity.MIXED_VENOUS, RecordedQuantity.VESSEL_RICH))
     time_s = 1201.0
-    above_flat = run.percents(RecordedQuantity.VESSEL_RICH)[0] + 3 * 0.0167
+    above_flat = run.percents(RecordedQuantity.VESSEL_RICH)[0] + 3 * _PERCENT_PER_PIXEL
 
     # The retired rule split this geometry. Under this pointer, it reported
     # the two traces twelve seconds apart.
@@ -1271,13 +1317,13 @@ def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
     )
     assert target.readout.splitlines() == [
         "Modelled sevoflurane",
-        "Mixed venous · 20m   0.53%   0.27 ×MAC",
-        "Vessel-rich · 20m   0.60%   0.30 ×MAC",
+        "Mixed venous · 20m   0.53%   0.30 ×MAC",
+        "Vessel-rich · 20m   0.60%   0.33 ×MAC",
     ]
 
     # No pointer height at which the hover reports anything moves the instant.
     for y_px in range(-12, 13):
-        moved = nearest_trace_point(frame, time_s, above_flat + y_px * 0.0167, **reach)
+        moved = nearest_trace_point(frame, time_s, above_flat + y_px * _PERCENT_PER_PIXEL, **reach)
 
         if moved is not None:
             assert {reading.time_s for reading in moved.readings} == {1200.0}
@@ -1377,7 +1423,7 @@ def test_a_trace_answers_only_where_its_point_at_the_named_instant_is_in_reach()
     the one under the pointer.
     """
 
-    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=_PERCENT_PER_PIXEL, radius_pixels=12.0)
     times_s = tuple(1160.0 + 4.0 * column for column in range(18))
     # The trace rises twenty pixels a column, like the near-vertical step that
     # a dial change draws.
@@ -1457,7 +1503,7 @@ def test_a_run_that_draws_no_instant_answers_no_hover_and_silences_no_other() ->
     )
     frame = replace(_frame(drawn), runs=(empty, drawn))
 
-    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, _PERCENT_PER_PIXEL, 12.0)
     wash_in = nearest_wash_in_point(frame, 1208.0, 0.71, 4.0, 0.00575, 12.0)
 
     assert target is not None and tuple(reading.run for reading in target.readings) == (1,)
@@ -1486,7 +1532,7 @@ def test_every_hover_number_is_the_formatter_s_at_the_snapshot_s_own_divisor() -
     fraction = Fraction(0.0123)
 
     assert format_trace_hover(run, RecordedQuantity.VESSEL_RICH, 0, 1).splitlines()[2] == (
-        f"{format_percent(fraction)}   {format_mac_multiple(fraction, MacPercent(2.0))}"
+        f"{format_percent(fraction)}   {format_mac_multiple(fraction, _SEVOFLURANE_MAC)}"
     )
 
 
@@ -1638,10 +1684,12 @@ def test_a_run_out_of_reach_leaves_the_three_line_form_standing() -> None:
     second = replace(_run_frame((1208.0,), alveolar=(0.0193,)), label=run_label(SECOND_RUN))
     frame = replace(_frame(first), runs=(first, second))
 
-    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, _PERCENT_PER_PIXEL, 12.0)
 
     assert target is not None
-    assert (1.93 - 1.43) / 0.0167 > 12.0, "the second run must be out of reach to test anything"
+    assert (1.93 - 1.43) / _PERCENT_PER_PIXEL > 12.0, (
+        "the second run must be out of reach to test anything"
+    )
     assert tuple(reading.run for reading in target.readings) == (0,)
     assert target.readout == format_trace_hover(first, RecordedQuantity.ALVEOLAR, 0, 2)
     assert target.readout.splitlines()[0] == "Modelled sevoflurane · Run 1 · 20m8s"
@@ -1661,15 +1709,15 @@ def test_a_compared_hover_states_each_run_s_own_instant() -> None:
     second = replace(_run_frame((1204.0,), alveolar=(0.0143,)), label=run_label(SECOND_RUN))
     frame = replace(_frame(first), runs=(first, second))
 
-    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, _PERCENT_PER_PIXEL, 12.0)
 
     assert target is not None
     assert tuple(reading.time_s for reading in target.readings) == (1208.0, 1204.0)
     assert target.readout.splitlines() == [
         "Modelled sevoflurane",
         "Alveolar (end-tidal-equivalent)",
-        "Run 1 · 20m8s   1.43%   0.71 ×MAC",
-        "Run 2 · 20m4s   1.43%   0.71 ×MAC",
+        "Run 1 · 20m8s   1.43%   0.79 ×MAC",
+        "Run 2 · 20m4s   1.43%   0.79 ×MAC",
     ]
 
 
@@ -1685,7 +1733,7 @@ def test_a_compared_hover_answers_for_every_run_in_reach_however_many_there_are(
     )
     frame = replace(_frame(runs[0]), runs=runs)
 
-    target = nearest_trace_point(frame, 1208.0, 1.44, 4.0, 0.0167, 12.0)
+    target = nearest_trace_point(frame, 1208.0, 1.44, 4.0, _PERCENT_PER_PIXEL, 12.0)
 
     assert target is not None
     assert tuple(reading.run for reading in target.readings) == (0, 1, 2)

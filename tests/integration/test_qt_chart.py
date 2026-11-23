@@ -669,6 +669,12 @@ def test_the_references_answer_no_hover_and_clear_space_answers_none(
 
     assert chart.readout_at(between, frame.one_mac_percent) is None
     assert chart.readout_at(run.times_s[10], frame.axis_top_percent * 0.95) is None
+    # The MAC-awake band, at its centre, and the dial change's mark, high above
+    # every trace, answer no hover either.
+    band_centre = sum(frame.mac_awake_band_percent) / 2.0
+    (mark_s,) = run.control_marks_s
+    assert chart.readout_at(between, band_centre) is None
+    assert chart.readout_at(mark_s, frame.axis_top_percent * 0.95) is None
 
 
 def test_the_hover_answers_while_the_run_is_playing(application: QApplication) -> None:

@@ -490,7 +490,7 @@ def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
 
     # 0.015% of desflurane: above the percent resolution, below the MAC one.
     assert format_percent(Fraction(0.00015)) == "0.01%"
-    assert format_mac_multiple(Fraction(0.00015), MacPercent(6.0)) == expected
+    assert format_mac_multiple(Fraction(0.00015), MacPercent(6.6)) == expected
     assert format_mac_multiple(Fraction(1e-9), MacPercent(2.0)) == expected
 
 
@@ -1133,10 +1133,10 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
         "Sevoflurane",
         fraction_of_mac=0.34,
         standard_deviation_fraction_of_mac=0.05,
-        mac_percent=MacPercent(2.0),
+        mac_percent=MacPercent(1.8),
     )
 
-    assert reference == "MAC-awake sevoflurane = 0.34 \u00d7MAC (0.68%), band ±1 SD 0.58–0.78%"
+    assert reference == "MAC-awake sevoflurane = 0.34 \u00d7MAC (0.61%), band ±1 SD 0.52–0.70%"
 
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
