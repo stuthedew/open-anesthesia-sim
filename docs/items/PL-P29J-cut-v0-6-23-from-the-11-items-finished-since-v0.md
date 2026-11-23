@@ -1,10 +1,13 @@
 ---
 id: PL-P29J
 title: Cut v0.6.23 from the 11 items finished since v0.6.22
-status: untriaged
+status: done
 feature: release-process
 resource: release-train
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2290
+verify: grep -qF '## Current baseline: v0.6.23' ROADMAP.md
 ---
 
 **Problem.** Cut v0.6.23 from the 11 items finished since v0.6.22
