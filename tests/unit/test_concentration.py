@@ -271,7 +271,10 @@ def test_a_refused_percent_is_named_as_it_was_built() -> None:
 
 
 def test_a_refused_dial_setting_is_pinned_whole() -> None:
-    """Pin the whole sentence that the "Setting refused" banner shows for a dial above 100%.
+    """Pin the whole sentence a developer reads for a dial above 100%.
+
+    The "Setting refused" banner names the dial by its label instead, and logs
+    this sentence (`PL-8QFW`, `tests/unit/test_setting_refusal_wording.py`).
 
     The test above anchors only the start of the message, so the range and the
     cited section could change without any test noticing (`PL-79PK`).

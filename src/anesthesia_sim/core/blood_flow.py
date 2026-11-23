@@ -29,7 +29,7 @@ from anesthesia_sim.core.checked_number import (
     require_not_another_quantity,
     shown,
 )
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import SettingOutsideRange, SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import CardiacOutput, require_cardiac_output
 
 # A perfusion fraction is above zero and at most this value. At 1, one group
@@ -142,11 +142,17 @@ def _restored_blood_flow(blood_flow_l_min: float) -> BloodFlow:
     try:
         whole_cardiac_output_l_min = CardiacOutput(blood_flow_l_min)
     except (TypeError, SimulationConfigurationError) as refusal:
-        raise type(refusal)(
+        message = (
             f"a saved blood_flow_l_min of {shown(blood_flow_l_min)} cannot be restored. A "
             "blood flow is a perfusion fraction of a cardiac output, so it is restored as "
             f"the whole of a cardiac output equal to it, and that is refused: {refusal}"
-        ) from refusal
+        )
+
+        # A range refusal keeps its fields, which its type's constructor requires.
+        if isinstance(refusal, SettingOutsideRange):
+            raise refusal.reworded(message) from refusal
+
+        raise type(refusal)(message) from refusal
 
     return BloodFlow(whole_cardiac_output_l_min, PerfusionFraction(MAXIMUM_PERFUSION_FRACTION))
 

@@ -132,7 +132,11 @@ from anesthesia_sim.core.checked_number import (
     require_not_another_quantity,
     shown,
 )
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import (
+    SettingLimit,
+    SettingOutsideRange,
+    SimulationConfigurationError,
+)
 
 PERCENT_PER_UNIT_FRACTION: Final = 100.0
 """The factor between a fraction and a percent, written once.
@@ -246,9 +250,14 @@ class Percent(float, CheckedQuantity):
         require_a_number(name, percent)
 
         if not 0.0 <= percent <= PERCENT_PER_UNIT_FRACTION:
-            raise SimulationConfigurationError(
+            raise SettingOutsideRange(
                 f"{name} of {shown(percent)} is outside 0 to 100, the range a percent of one "
-                'atmosphere takes (docs/VERIFICATION.md, "Concentrations")'
+                'atmosphere takes (docs/VERIFICATION.md, "Concentrations")',
+                quantity=name,
+                requested=percent,
+                lowest=0.0,
+                highest=PERCENT_PER_UNIT_FRACTION,
+                limit=SettingLimit.PERCENT,
             )
 
         return super().__new__(cls, negative_zero_as_zero(percent))

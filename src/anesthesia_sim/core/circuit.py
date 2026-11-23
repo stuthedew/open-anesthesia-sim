@@ -51,7 +51,11 @@ from anesthesia_sim.core.concentration import (
     require_fraction,
     require_percent,
 )
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import (
+    SettingLimit,
+    SettingOutsideRange,
+    SimulationConfigurationError,
+)
 from anesthesia_sim.core.exponential_approach import exponential_approach_in_time_constants
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, require_compartment_volume
 from anesthesia_sim.core.supported_ranges import (
@@ -241,22 +245,28 @@ def _require_deliverable_flow(
     the caller did not ask for.
 
     Raises:
-        SimulationConfigurationError: the flow is outside the machine's
-            declared deliverable range. Nothing is written.
+        SettingOutsideRange: the flow is outside the machine's declared
+            deliverable range. Nothing is written. The error carries the flow
+            and the range as fields.
     """
 
     if machine_range is None:
         return
 
     if not machine_range.minimum_l_min <= fresh_gas_flow_l_min <= machine_range.maximum_l_min:
-        raise SimulationConfigurationError(
+        raise SettingOutsideRange(
             f"fresh_gas_flow_l_min of {fresh_gas_flow_l_min} is outside what this "
             f"machine can deliver, {machine_range.minimum_l_min} to "
             f"{machine_range.maximum_l_min} L/min; the model's supported input range "
             f"of {MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min "
             f"is not what refused it (the machine's range is declared in its "
             f"data/machines/ profile, the model's in docs/INTERFACE.md, "
-            f'"Supported input ranges")'
+            f'"Supported input ranges")',
+            quantity="fresh_gas_flow_l_min",
+            requested=fresh_gas_flow_l_min,
+            lowest=machine_range.minimum_l_min,
+            highest=machine_range.maximum_l_min,
+            limit=SettingLimit.MACHINE_RANGE,
         )
 
 

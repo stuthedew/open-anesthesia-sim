@@ -43,6 +43,7 @@ import importlib
 import inspect
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -324,10 +325,11 @@ WRITES: dict[str, dict[str, Write]] = {
 def holds_no_writable_field(cls: type) -> bool:
     """Return whether no field of an instance of `cls` can be written once it is built.
 
-    An exception is not a record and is passed too.
+    An exception is not a record and is passed too. So is an `Enum`, whose
+    members refuse a new name or value.
     """
 
-    if issubclass(cls, BaseException):
+    if issubclass(cls, (BaseException, Enum)):
         return True
 
     if dataclasses.is_dataclass(cls):

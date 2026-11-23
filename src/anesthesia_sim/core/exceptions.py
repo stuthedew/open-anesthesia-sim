@@ -37,6 +37,10 @@ acts on the difference:
   reason, and the interface must say so in different words.
 """
 
+from __future__ import annotations
+
+from enum import Enum
+
 
 class AnesthesiaSimulationError(Exception):
     """Base exception for errors raised by the simulation project."""
@@ -50,6 +54,108 @@ class SimulationConfigurationError(AnesthesiaSimulationError):
     detected before any state changes, so the caller can correct the value
     and carry on.
     """
+
+
+class SettingLimit(Enum):
+    """Which limit refused a setting, so that a reader of the refusal can be told in its own words.
+
+    Members:
+        SUPPORTED_INPUT_RANGE: The range of a flow over which the model is
+            claimed to represent a patient (`core/supported_ranges.py`).
+        PERCENT: The range that any percent of one atmosphere takes, 0 to 100
+            (`core/concentration.py`).
+        VAPORIZER_MAXIMUM: The highest concentration that the vaporizer of the
+            running agent delivers (`core/validation.py`).
+        MACHINE_RANGE: The fresh gas flows that the anesthesia machine in use
+            can set (`core/circuit.py`).
+    """
+
+    SUPPORTED_INPUT_RANGE = "the model's supported input range"
+    PERCENT = "the range of a percent"
+    VAPORIZER_MAXIMUM = "the vaporizer's maximum"
+    MACHINE_RANGE = "the machine's range"
+
+
+class SettingOutsideRange(SimulationConfigurationError):
+    """Raised when a setting lies outside the range that one limit allows.
+
+    The message is written for a developer. It names the value by its field
+    name in the code and says where the limit is documented. The interface
+    shows a learner a sentence of its own instead, which names the control by
+    its label on screen. So the field refused, the value, the limit and which
+    limit refused it travel with the error as fields, and the interface builds
+    that sentence from them rather than from the message (`PL-8QFW`).
+
+    The fields are keyword arguments that the constructor requires, so the
+    error cannot be built from its message alone, as Python rebuilds an
+    exception when it is copied or pickled, or as a caller that rewords a
+    refusal builds `type(refusal)(message)`. `__reduce__` rebuilds it with its
+    fields, and `reworded` gives a caller the copy with a new message.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        quantity: str,
+        requested: float,
+        lowest: float,
+        highest: float,
+        limit: SettingLimit,
+    ) -> None:
+        """Build the error.
+
+        Args:
+            message: The refusal, for a developer.
+            quantity: The name of the field that refused the value, as the
+                message names it, such as `"cardiac_output_l_min"`.
+            requested: The value that was refused, in the unit of that field.
+            lowest: The lowest value the limit allows, in the same unit.
+            highest: The highest value the limit allows, in the same unit.
+            limit: Which limit refused the value.
+        """
+
+        super().__init__(message)
+        self.quantity = quantity
+        self.requested = requested
+        self.lowest = lowest
+        self.highest = highest
+        self.limit = limit
+
+    def reworded(self, message: str) -> SettingOutsideRange:
+        """Return this refusal with `message` in place of its own, and every field kept."""
+
+        return SettingOutsideRange(
+            message,
+            quantity=self.quantity,
+            requested=self.requested,
+            lowest=self.lowest,
+            highest=self.highest,
+            limit=self.limit,
+        )
+
+    def __reduce__(self) -> tuple[object, ...]:
+        """Rebuild the error with its fields when it is copied or pickled."""
+
+        return (_rebuilt_setting_outside_range, (str(self), *self._fields()), self.__dict__)
+
+    def _fields(self) -> tuple[object, ...]:
+        return (self.quantity, self.requested, self.lowest, self.highest, self.limit)
+
+
+def _rebuilt_setting_outside_range(
+    message: str,
+    quantity: str,
+    requested: float,
+    lowest: float,
+    highest: float,
+    limit: SettingLimit,
+) -> SettingOutsideRange:
+    """Rebuild a copied or pickled `SettingOutsideRange` through its constructor."""
+
+    return SettingOutsideRange(
+        message, quantity=quantity, requested=requested, lowest=lowest, highest=highest, limit=limit
+    )
 
 
 class SimulationExecutionError(AnesthesiaSimulationError):

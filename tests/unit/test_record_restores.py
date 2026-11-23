@@ -22,6 +22,7 @@ import io
 import json
 import pickle
 from collections.abc import Callable
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -88,7 +89,10 @@ def _core_classes() -> list[tuple[str, type]]:
 
     An exception is left out, because it is rebuilt from its arguments, and
     so is a checked quantity, which `CheckedQuantity.__reduce__` rebuilds
-    through its constructor.
+    through its constructor. An `Enum` is left out too, because a pickle or a
+    copy returns the same member, looked up by its value.
+    `test_every_enum_in_core_rebuilds_as_the_same_member_and_refuses_an_unknown_value`
+    checks that.
     """
 
     found: list[tuple[str, type]] = []
@@ -100,10 +104,47 @@ def _core_classes() -> list[tuple[str, type]]:
             for name, value in vars(module).items()
             if inspect.isclass(value)
             and value.__module__ == module.__name__
-            and not issubclass(value, (BaseException, CheckedQuantity))
+            and not issubclass(value, (BaseException, CheckedQuantity, Enum))
         )
 
     return found
+
+
+def _core_enums() -> list[tuple[str, type[Enum]]]:
+    """Return every `Enum` defined in `core/`."""
+
+    found: list[tuple[str, type[Enum]]] = []
+
+    for path in sorted(CORE.glob("*.py")):
+        module = importlib.import_module(f"anesthesia_sim.core.{path.stem}")
+        found.extend(
+            (f"{path.stem}.{name}", value)
+            for name, value in vars(module).items()
+            if inspect.isclass(value)
+            and value.__module__ == module.__name__
+            and issubclass(value, Enum)
+        )
+
+    return found
+
+
+def test_every_enum_in_core_rebuilds_as_the_same_member_and_refuses_an_unknown_value() -> None:
+    """A pickle or a copy of an `Enum` member returns that member, and no other value loads.
+
+    This is why `_core_classes` leaves an `Enum` out. The lookup by value is
+    the enum's check, so a saved value it does not hold fails to load.
+    """
+
+    enums = _core_enums()
+    assert enums, "core/ defines an Enum, so this test must find at least one"
+
+    for key, enum in enums:
+        for member in enum:
+            for how, rebuild in _REBUILDS:
+                assert rebuild(member) is member, (key, member, how)
+
+        with pytest.raises(ValueError, match="is not a valid"):
+            enum(object())
 
 
 def test_every_class_in_core_restores_by_name_through_its_checks() -> None:

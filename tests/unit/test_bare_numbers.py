@@ -46,7 +46,10 @@ PLAIN_NUMBER = (
     "The plain number that a checked type's constructor stores, or that loading the type "
     "from a pickle or a copy passes back to that constructor."
 )
-SHOWN_IN_A_REFUSAL = "A count that a refusal message shows, which may be the value refused."
+SHOWN_IN_A_REFUSAL = (
+    "A number that a refusal shows or carries. It may be the value refused, which no "
+    "checked type would accept."
+)
 
 # Each of the other reasons names a quantity that one item (`PL-LHCL`) has
 # yet to give a checked type. An entry leaves the list when its quantity
@@ -164,7 +167,14 @@ LISTED: dict[str, dict[str, tuple[str, ...]]] = {
             "negative_zero_as_zero -> return",
         ),
     },
-    SHOWN_IN_A_REFUSAL: {"supported_ranges": ("describe_count(count)",)},
+    SHOWN_IN_A_REFUSAL: {
+        "exceptions": (
+            "SettingOutsideRange.__init__(highest)",
+            "SettingOutsideRange.__init__(lowest)",
+            "SettingOutsideRange.__init__(requested)",
+        ),
+        "supported_ranges": ("describe_count(count)",),
+    },
     COMPARTMENT_STEP: {
         "blood": ("VenousBloodCompartment.advance(simulation_step_s)",),
         "circuit": (
@@ -375,7 +385,9 @@ BARE_NUMBERS: dict[str, str] = {
 # took out twelve, and the prediction that a preview draws added two for the
 # state it starts from and the states it returns (`PL-Z6C8`). The prediction at
 # chosen seconds that a preview draws past its first hour added two more.
-MOST_BARE_NUMBERS = 170
+# A refusal of a setting outside its range added three, for the value refused
+# and the two ends of the limit it broke, which the banner shows (`PL-8QFW`).
+MOST_BARE_NUMBERS = 173
 
 
 def _names_a_bare_number(
