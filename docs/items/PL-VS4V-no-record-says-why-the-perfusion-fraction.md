@@ -21,3 +21,43 @@ payoff: The checks that accept a patient's tissue flows rest on allowances whose
 **Done when.** Each of the two docstrings gives a reason that a record holds, or each value is replaced by one derived from the rounding bounds that `core/rounding.py` already states. A test shows that each allowance lies above the rounding a correct set of flows carries and below the smallest transcription error the loader must refuse, and neither docstring still says that no record gives the reason.
 
 **Generator check.** An instance of the fact that `PL-GJ1W` (no one place states how far a computed value can be from the exact one) names: how far a computed value can be from the exact one, and so what a comparison on it proves. `#2121` gathered both allowances into `core/rounding.py` but could not derive them. That head is still open, so this is not a re-entry.
+
+**Done 2026-11-23.** Neither value moved. Each docstring now gives the two
+edges its value must lie between, each taken from a record the module or its
+tests already hold, and says that the commit that set the number gives no
+reason for that point within the edges. `tests/unit/test_rounding.py` holds
+each value between its edges.
+
+1. `FLOW_FRACTION_TOLERANCE` must be above the rounding of a correct set, a
+   few `MACHINE_EPSILON`, which the existing test checks. It must be below
+   `CARDIAC_OUTPUT_RELATIVE_TOLERANCE` less a few roundings, so that every
+   fraction set the loader accepts gives flows the settings accept. The new
+   `test_the_perfusion_allowance_is_below_the_cardiac_output_allowance_by_more_than_rounding`
+   checks that, and the new
+   `test_flows_from_fractions_at_the_edge_of_the_perfusion_allowance_are_accepted`
+   in `tests/unit/test_governing_equations.py` builds the settings from
+   fractions at 99% of the allowance, both sides, at three cardiac outputs.
+2. `CARDIAC_OUTPUT_RELATIVE_TOLERANCE` must be above that same edge. Its upper
+   edge is the third condition of the derivation in
+   `PROPAGATOR_ROUNDING_UNITS`: excess tissue flow creates agent in the venous
+   pool, which must stay below 2**-9 of the state over one interval. At
+   10 L/min, a 0.01 L pool and 24 h, that caps the allowance at 1.35e-9. The new
+   `test_the_cardiac_output_allowance_creates_less_agent_than_the_propagator_bound_assumes`
+   computes the condition and the cap from `MAXIMUM_CARDIAC_OUTPUT_L_MIN`,
+   `MINIMUM_VOLUME_L` and `MAXIMUM_ELAPSED_SIMULATION_TIME_S`. No test checked
+   that condition before. The 2**-9 that the bound's derivation in the test
+   file assumes is now one named constant there, read by both.
+
+A finding on the way: the fixed part, `CARDIAC_OUTPUT_TOLERANCE_L_S` (1e-12
+L/s), would on its own admit every correct set in the supported range,
+because 1e-12 of 10 L/min is 1.7e-13 L/s. The docstring says so.
+
+Checked by hand: with `FLOW_FRACTION_TOLERANCE` set to 1e-8, seven of the
+thirteen selected tests fail. With `CARDIAC_OUTPUT_RELATIVE_TOLERANCE` at 2e-9
+the propagator-condition test fails, and at 1e-13 the edge test fails.
+
+Docs checked: `docs/VERIFICATION.md` § "Tissue groups and compartment
+capacities in the code" and `docs/PARAMETERS.md`'s paragraph on the two
+perfusion checks name the constant and its value only, and stay true.
+`docs/MODEL.md` § "Blood flow to the tissue groups" gives the perfusion value
+in words, one part in a million million, and stays true.

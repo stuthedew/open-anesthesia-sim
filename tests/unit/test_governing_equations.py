@@ -46,7 +46,11 @@ from anesthesia_sim.core.governing_equations import (
 )
 from anesthesia_sim.core.matrix_exponential import matrix_exponential
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume, PartitionCoefficient
-from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
+from anesthesia_sim.core.parameters import (
+    AGENT_DATA_FILENAMES,
+    require_perfusion_fractions_sum_to_one,
+)
+from anesthesia_sim.core.rounding import FLOW_FRACTION_TOLERANCE
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -794,6 +798,43 @@ def test_rejects_tissue_flows_that_do_not_sum_to_cardiac_output() -> None:
         SimulationConfigurationError, match="the venous balance returns what the tissues receive"
     ):
         _settings(cardiac_output_l_min=CardiacOutput(CARDIAC_OUTPUT_L_MIN * 1.2))
+
+
+@pytest.mark.parametrize("side", (-1.0, 1.0))
+@pytest.mark.parametrize(
+    "cardiac_output_l_min", (MAXIMUM_CARDIAC_OUTPUT_L_MIN, CARDIAC_OUTPUT_L_MIN, 0.37)
+)
+def test_flows_from_fractions_at_the_edge_of_the_perfusion_allowance_are_accepted(
+    side: float, cardiac_output_l_min: float
+) -> None:
+    """A patient whose fractions the loader just accepts can still have a run built from it.
+
+    The fat fraction is moved by 99% of the perfusion allowance, so the three
+    fractions sum to 1 within it, from above or from below. The loader's own
+    check accepts them. Each tissue flow is then its fraction times the
+    cardiac output, as `BloodFlow` forms it. The settings must accept those
+    flows, at the highest supported cardiac output, at this module's
+    reference output and at an output that is not a round number.
+    """
+
+    fractions = (0.76, 0.18, 0.06 + side * 0.99 * FLOW_FRACTION_TOLERANCE)
+    require_perfusion_fractions_sum_to_one(fractions[0] + fractions[1] + fractions[2])
+    cardiac_output = CardiacOutput(cardiac_output_l_min)
+
+    settings = _settings(
+        cardiac_output_l_min=cardiac_output,
+        tissues=tuple(
+            TissueGroupEquationSettings(
+                name=name,
+                volume_l=volume_l,
+                blood_flow_l_min=BloodFlow(cardiac_output, PerfusionFraction(fraction)),
+                tissue_blood_partition_coefficient=tissue_blood,
+            )
+            for (name, volume_l, _, tissue_blood), fraction in zip(TISSUES, fractions, strict=True)
+        ),
+    )
+
+    assert settings.cardiac_output_l_min == cardiac_output_l_min
 
 
 def test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute() -> None:
