@@ -55,14 +55,19 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from tests.integration.simulation_view.simulation_view_support import (
     _advance,
+    _branched_case,
+    _case_view,
     _concentration,
     _dials,
     _drag,
     _select_playback_rate,
     _set_delivered_percent,
     _set_fresh_gas_flow,
+    _setting_row,
+    _settle,
     _shown_view,
     _steps,
+    _take_fork,
     _visible_strings,
     _wash_in,
 )
@@ -255,6 +260,36 @@ def test_the_accessible_tree_names_each_setting_slider_and_gives_its_value_with_
         assert node.text(QAccessible.Text.Name) == f"{dial.name_label.text()}, {unit}"
         assert node.text(QAccessible.Text.Value) == dial.value_label.text()
         assert node.valueInterface().currentValue() == dial.value()
+
+
+def test_each_compared_run_s_dials_name_the_run_to_a_screen_reader(
+    application: QApplication,
+) -> None:
+    """Two runs have a row of the same four dials each, so each dial's name names its run.
+
+    Without the run's name, a screen reader moving to the second row hears
+    the same names again and cannot tell which run a change goes to.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    view.present(False)
+    _settle(application)
+    trunk, branch = view.runs
+
+    assert _setting_row(branch).name_text.text() == "Run 2"
+
+    for run in (trunk, branch):
+        run_name = _setting_row(run).name_text.text()
+
+        assert run_name, "a compared run is named above its dials"
+
+        for dial in _dials(run).sliders:
+            unit = CONTROL_INPUT_DISPLAY_UNITS[dial.slider.control].label
+
+            assert (
+                dial.slider.accessibleName() == f"{dial.name_label.text()} for {run_name}, {unit}"
+            )
 
 
 def test_every_slider_endpoint_reaches_the_core_and_is_accepted(application: QApplication) -> None:

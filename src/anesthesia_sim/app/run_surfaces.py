@@ -184,6 +184,17 @@ class ParameterControls(QWidget):
         for slider, setting in zip(self.sliders, settings, strict=True):
             slider.set_setting(setting)
 
+    def name_run(self, run_name: str | None) -> None:
+        """Name the run in each control's accessible name while runs are compared.
+
+        Args:
+            run_name: What the run is called while a second run is drawn, or
+                None for a lone run (`ParameterSlider.name_run`).
+        """
+
+        for slider in self.sliders:
+            slider.name_run(run_name)
+
 
 class AccountingPanel(QFrame):
     """One run's mass-balance panel: its heading, the status, what it means, and the amounts."""

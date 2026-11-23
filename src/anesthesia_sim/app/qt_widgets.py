@@ -43,6 +43,7 @@ can reach is declared on the palette instead, by
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -1283,17 +1284,22 @@ class _SettingSlider(QSlider):
         A screen reader's own command to set a slider's value arrives here
         in the setting's unit. It is announced first, as each input is, and
         it is ignored while a pointer holds the handle, as a key press is
-        (`PL-M3H5`). Qt keeps the position inside the slider's range.
+        (`PL-M3H5`). A setting outside the slider's range is taken as its
+        nearest end. A value that is not a finite number is ignored, so no
+        adjustment is announced that no value follows.
 
         Args:
             setting: The setting asked for, in the setting's unit.
         """
 
-        if self.isSliderDown():
+        if self.isSliderDown() or not math.isfinite(setting):
             return
 
+        lowest = slider_value(self.minimum(), self.decimals)
+        highest = slider_value(self.maximum(), self.decimals)
+        position = slider_position(min(max(setting, lowest), highest), self.decimals)
         self.input_started.emit()
-        self.setValue(slider_position(setting, self.decimals))
+        self.setValue(position)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
         if self.isSliderDown():
@@ -1424,57 +1430,45 @@ class _SettingSlider(QSlider):
         )
 
 
-class _SettingSliderAccessible(QAccessibleWidget, QAccessibleValueInterface):
+class _SettingSliderValue(QAccessibleValueInterface):
     """Tell assistive technology a setting slider's value in the setting's unit, never its position.
 
-    Each platform's bridge reads a different part of this interface, as
-    Qt 6.10's source shows (read 2026-11-23). On macOS, VoiceOver's value is
-    `currentValue` turned into text, and a value it sets arrives as a number
-    (`qcocoaaccessibility.mm`, `getValueAttribute`; `qcocoaaccessibilityelement.mm`,
-    `accessibilitySetValue`). On Linux, AT-SPI reads and sets `currentValue`,
-    its bounds and its step as numbers (`atspiadaptor.cpp`,
-    `AtSpiAdaptor::valueInterface`). On Windows, UI Automation reads the
-    value pattern's text from `text(QAccessible.Text.Value)` and the range
-    from the numbers (`qwindowsuiavalueprovider.cpp`,
+    Each platform's bridge reads a different part of a slider's accessible
+    interface, as Qt 6.10's source shows (read 2026-11-23). On macOS,
+    VoiceOver's value is `currentValue` turned into text, and a value it sets
+    arrives as a number (`qcocoaaccessibility.mm`, `getValueAttribute`;
+    `qcocoaaccessibilityelement.mm`, `accessibilitySetValue`). On Linux,
+    AT-SPI reads and sets `currentValue`, its bounds and its step as numbers
+    (`atspiadaptor.cpp`, `AtSpiAdaptor::valueInterface`). On Windows, UI
+    Automation reads the value pattern's text from `text(QAccessible.Text.Value)`
+    and the range from the numbers (`qwindowsuiavalueprovider.cpp`,
     `qwindowsuiarangevalueprovider.cpp`).
 
-    So the numbers here are in the setting's unit, and the value text is the
-    readout's own text, from `setting_value_text`. The value text then
-    carries the unit where a platform reads it, as the slider pattern's
-    `aria-valuetext` does where a number alone is not understandable (W3C
-    WAI-ARIA Authoring Practices, Slider Pattern, read 2026-11-23). macOS
-    reads only the number, so `ParameterSlider` puts the unit in the
-    slider's accessible name as well.
+    So the numbers here are in the setting's unit, and
+    `_SettingSliderAccessible` gives the readout's own text as the value
+    text. The value text then carries the unit where a platform reads it, as
+    the slider pattern's `aria-valuetext` does where a number alone is not
+    understandable (W3C WAI-ARIA Authoring Practices, Slider Pattern, read
+    2026-11-23). macOS reads only the number, so `ParameterSlider` puts the
+    unit in the slider's accessible name as well.
+
+    This is an object of its own, not a second base class of
+    `_SettingSliderAccessible`. A Python class with two wrapped Qt bases holds
+    two C++ objects, and Qt's `interface_cast` then received the widget
+    interface's address where it asked for the value interface's. A platform
+    bridge calling `currentValue` through that address would have called
+    another method of the widget interface (measured 2026-11-23, PySide6 6.12).
     """
 
     def __init__(self, slider: _SettingSlider) -> None:
-        """Describe one setting slider.
+        """Describe one setting slider's value.
 
         Args:
             slider: The slider described.
         """
 
-        QAccessibleWidget.__init__(self, slider, QAccessible.Role.Slider)
-        QAccessibleValueInterface.__init__(self)
+        super().__init__()
         self._slider = slider
-
-    # PySide6's stub types the C++ `void *` result as `int`, and the
-    # conversion back to C++ accepts this object for the value interface.
-    def interface_cast(self, interface: QAccessible.InterfaceType) -> object:  # type: ignore[override]
-        """Return this object as the value interface, and defer every other interface to Qt."""
-
-        if interface is QAccessible.InterfaceType.ValueInterface:
-            return self
-
-        return QAccessibleWidget.interface_cast(self, interface)
-
-    def text(self, kind: QAccessible.Text) -> str:
-        """Return the setting as its readout prints it, or Qt's own text for anything else."""
-
-        if kind is QAccessible.Text.Value:
-            return setting_value_text(self._slider.control, self._slider.setting())
-
-        return QAccessibleWidget.text(self, kind)
 
     def currentValue(self) -> float:  # Qt spells this in camelCase.
         """Return the setting in force at the slider, in the setting's unit."""
@@ -1501,6 +1495,44 @@ class _SettingSliderAccessible(QAccessibleWidget, QAccessibleValueInterface):
         """Return one step of the slider, in the setting's unit."""
 
         return slider_value(1, self._slider.decimals)
+
+
+class _SettingSliderAccessible(QAccessibleWidget):
+    """Describe a setting slider to assistive technology, with its value in the setting's unit.
+
+    The value is `_SettingSliderValue`, and the value text is the text the
+    readout beside the slider prints, from `setting_value_text`.
+    """
+
+    def __init__(self, slider: _SettingSlider) -> None:
+        """Describe one setting slider.
+
+        Args:
+            slider: The slider described.
+        """
+
+        super().__init__(slider, QAccessible.Role.Slider)
+        self._slider = slider
+        self._value = _SettingSliderValue(slider)
+
+    # PySide6's stub types the C++ `void *` result as `int`. The binding turns
+    # a returned wrapper into its C++ object's address, which Qt then casts to
+    # the value interface. A number returned here crashed the process.
+    def interface_cast(self, interface: QAccessible.InterfaceType) -> object:  # type: ignore[override]
+        """Return the value object's address for `ValueInterface`, and Qt's result otherwise."""
+
+        if interface is QAccessible.InterfaceType.ValueInterface:
+            return self._value
+
+        return QAccessibleWidget.interface_cast(self, interface)
+
+    def text(self, kind: QAccessible.Text) -> str:
+        """Return the setting as its readout prints it, or Qt's own text for anything else."""
+
+        if kind is QAccessible.Text.Value:
+            return setting_value_text(self._slider.control, self._slider.setting())
+
+        return QAccessibleWidget.text(self, kind)
 
 
 def _setting_slider_accessible(key: str, widget: QObject) -> _SettingSliderAccessible | None:
@@ -1641,6 +1673,10 @@ class ParameterSlider(QWidget):
         self._previewing = False
         # True only while `_on_thumb_released` applies the released value.
         self._releasing = False
+        # The setting's name and unit, and the run's name while runs are
+        # compared, which `_write_accessible_name` puts together.
+        self._setting_name = (setting.name, setting.unit)
+        self._run_name: str | None = None
         self.name_label = styled_label(setting.name, color=INK, bold=True, wrap=True)
         self.qualifier_label = styled_label(
             setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True, wrap=True
@@ -1675,6 +1711,28 @@ class ParameterSlider(QWidget):
         self.slider.valueChanged.connect(self._on_slider_moved)
         self.set_setting(setting)
 
+    def name_run(self, run_name: str | None) -> None:
+        """Name the run in the slider's accessible name while runs are compared.
+
+        Each compared run has a row of the same four sliders. A screen reader
+        that moves from one row to the next would otherwise hear two sliders
+        with the same name, and could not tell which run a change goes to.
+
+        Args:
+            run_name: What the run is called while a second run is drawn, or
+                None for a lone run, which is not named.
+        """
+
+        self._run_name = run_name
+        self._write_accessible_name()
+
+    def _write_accessible_name(self) -> None:
+        # macOS reads a slider's value as a bare number, so the name carries
+        # the unit (`_SettingSliderAccessible`).
+        name, unit = self._setting_name
+        subject = name if self._run_name is None else f"{name} for {self._run_name}"
+        self.slider.setAccessibleName(f"{subject}, {unit}")
+
     def set_setting(self, setting: SettingReadout) -> None:
         """Write the range, position and text from this tick's setting.
 
@@ -1693,9 +1751,8 @@ class ParameterSlider(QWidget):
 
         self.slider.decimals = setting.decimals
         self.name_label.setText(setting.name)
-        # macOS reads a slider's value as a bare number, so the name carries
-        # the unit (`_SettingSliderAccessible`).
-        self.slider.setAccessibleName(f"{setting.name}, {setting.unit}")
+        self._setting_name = (setting.name, setting.unit)
+        self._write_accessible_name()
         self.qualifier_label.setText(setting.qualifier)
         self.qualifier_label.setHidden(not setting.qualifier)
 

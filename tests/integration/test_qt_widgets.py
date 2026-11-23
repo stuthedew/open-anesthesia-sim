@@ -16,9 +16,11 @@ themselves:
 The widgets render on Qt's `offscreen` platform, which `tests/conftest.py` selects.
 """
 
+import math
 from collections.abc import Iterator
 
 import pytest
+import shiboken6
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import (
     QAccessible,
@@ -31,6 +33,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
+    QAccessibleWidget,
     QApplication,
     QDialog,
     QGridLayout,
@@ -967,6 +970,12 @@ def test_assistive_technology_hears_each_slider_as_its_setting_with_the_unit(
         assert interface.text(QAccessible.Text.Value) == setting.value_text
         assert interface.text(QAccessible.Text.Value) == control.value_label.text()
         assert values is not None, setting.control
+        # Qt casts the address that the interface gives for the value
+        # interface, so it must be the address of an object that is one, and
+        # only one. The widget interface's address there would send a
+        # platform's call for the value to another method.
+        assert not isinstance(values, QAccessibleWidget), setting.control
+        assert len(shiboken6.getCppPointer(values)) == 1, setting.control
         assert values.currentValue() == setting.value, setting.control
         assert values.minimumValue() == setting.minimum, setting.control
         assert values.maximumValue() == setting.maximum, setting.control
@@ -990,6 +999,8 @@ def test_a_value_set_by_assistive_technology_applies_once_in_the_setting_s_unit(
 
     It arrives in the setting's unit, is announced as one adjustment before
     it applies, and is ignored while a pointer holds the handle (`PL-M3H5`).
+    A value beyond the range applies as the nearest end. One that is not a
+    finite number is ignored, so no adjustment starts that no value ends.
     """
 
     setting = _settings()[1]
@@ -1006,11 +1017,23 @@ def test_a_value_set_by_assistive_technology_applies_once_in_the_setting_s_unit(
     assert control.value() == asked
 
     events.clear()
+    values.setCurrentValue(math.nan)
+    values.setCurrentValue(math.inf)
+
+    assert events == []
+    assert control.value() == asked
+
+    values.setCurrentValue(setting.maximum * 1e300)
+
+    assert events == [("started", None), ("applied", setting.maximum)]
+    assert control.value() == setting.maximum
+
+    events.clear()
     control.slider.setSliderDown(True)
     values.setCurrentValue(setting.minimum)
 
     assert events == []
-    assert control.value() == asked
+    assert control.value() == setting.maximum
 
 
 def test_a_frame_written_during_a_drag_leaves_the_thumb_under_the_pointer(

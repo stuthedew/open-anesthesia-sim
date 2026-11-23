@@ -1193,8 +1193,9 @@ class RunDials(QWidget):
     and change another's.
 
     While runs are compared, a line above the dials names the run, with the
-    name that the chart's legend and the other panels use. A lone run is not
-    named. The name is written from the presentation on every tick, so it
+    name that the chart's legend and the other panels use, and each dial's
+    accessible name names it too, so a screen reader can tell the rows
+    apart. A lone run is not named. The name is written from the presentation on every tick, so it
     changes with the run set (`PL-CPF2`).
 
     Args:
@@ -1272,6 +1273,7 @@ class RunDials(QWidget):
         else:
             self.controls.show_settings(dials)
 
+        self.controls.name_run(run.name)
         self.not_shown_text.setHidden(True)
 
     def _built(self, dials: tuple[SettingReadout, ...]) -> ParameterControls:
