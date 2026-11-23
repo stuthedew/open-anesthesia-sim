@@ -3,12 +3,15 @@ id: PL-8QFW
 title: A refused setting's banner shows the core's own message, so a learner reads the setting by its Python name, as in 'Setting refused — delivered_concentration_percent exceeds the vaporizer maximum (50% requested, 5% maximum)'
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: replay-findings
 touches: src/anesthesia_sim/core/exceptions.py, src/anesthesia_sim/core/validation.py, src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/blood_flow.py, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, docs/INTERFACE.md, tests/unit/test_setting_refusal_wording.py, tests/unit/test_control_record.py, tests/unit/test_concentration.py, tests/unit/test_supported_ranges.py, tests/integration/simulation_view/test_simulation_view_refusals.py, tests/integration/approved_interface_strings.json
 added: 2026-11-22
+closed: 2026-11-23
+pr: 2291
 payoff: a learner whose setting is refused reads the control's own name, the value asked for and the limit, not a field name from the code
+tests: tests/unit/test_setting_refusal_wording.py::test_the_learner_reads_the_control_s_label_and_the_developer_the_core_s_message, tests/unit/test_setting_refusal_wording.py::test_a_range_refusal_of_another_control_s_field_is_shown_as_it_is, tests/unit/test_setting_refusal_wording.py::test_each_limit_refuses_with_the_value_and_the_limit_as_fields, tests/integration/simulation_view/test_simulation_view_refusals.py::test_a_refused_setting_is_reported_without_stopping_the_run
 ---
 
 **Problem.** A refused setting's banner shows the core's own message, so a learner reads the setting by its Python name, as in 'Setting refused — delivered_concentration_percent exceeds the vaporizer maximum (50% requested, 5% maximum)'
