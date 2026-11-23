@@ -3,13 +3,16 @@ id: PL-XWCH
 title: Every halt banner other than the accounting check's shows the exception's class name and its developer message to the learner, because halt_disposition records '{TypeName}: {message}' and the banner prints it whole (found in PL-TWZY)
 priority: P2
 effort: M
-status: ready
+status: done
 classes: ux
 feature: interface-design-review
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, docs/INTERFACE.md
 added: 2026-11-22
+closed: 2026-11-23
+pr: 2269
 filed-pr: 2259
 payoff: a learner whose run stops on a simulator fault reads in plain words what kind of fault it was, and can copy the details into a report
+tests: tests/unit/test_failure_words.py::test_each_kind_of_failure_has_its_own_plain_words_and_no_developer_message, tests/integration/simulation_view/test_simulation_view_failure_details.py::test_a_failed_step_is_worded_for_the_learner_and_its_message_kept_in_the_details, tests/integration/simulation_view/test_simulation_view_failure_details.py::test_a_halt_of_each_kind_is_worded_by_its_kind_and_named_in_the_details, tests/integration/simulation_view/test_simulation_view_failure_details.py::test_show_details_reveals_the_details_copy_and_the_report_line
 ---
 
 **Problem.** Every halt banner other than the accounting check's shows the exception's class name and its developer message to the learner, because halt_disposition records '{TypeName}: {message}' and the banner prints it whole (found in PL-TWZY)
@@ -119,3 +122,12 @@ run's name while two runs are drawn). Not fixed here: on X11 with no
 clipboard manager, copied details are lost when the application closes,
 which the refused-Reset banner asks the learner to do. The failure log keeps
 the message. `PL-PYWF` records the clipboard gap.
+
+**Docs checked, 2026-11-23.** `docs/INTERFACE.md` (the failure banner, Show
+details and the refused-Reset paragraph, rewritten in this branch),
+`docs/ARCHITECTURE.md` (the package map, which now lists `app/failures.py`,
+and § on halts, where the snapshot now carries the failure's kind beside its
+reason), `README.md`, `docs/MODEL.md` and `docs/VERIFICATION.md` (no
+statement about the banner's words). The other places that name
+`pyproject.toml`, `controller.py` or `dashboard_frame.py` describe other
+parts of those files and stay true.

@@ -888,8 +888,10 @@ fork there is rejected (`_resume_point`, `PL-VHQX`), as § "What a branch is,
 and what it shares with its parent" says.
 
 Failing a run (`fail()`) sets a third run state, after running and paused. The
-snapshot carries it as `failure_reason`, and the dashboard renders it as
-"Stopped — simulation error" with a banner over the values. A halted run must
+snapshot carries the error as `failure_reason` and its kind as `failure_kind`,
+which `app/failures.py` sorts from the error's type. The dashboard renders the
+run as "Stopped — simulation error", with a banner over the values worded from
+the kind and the error behind its Show details button. A halted run must
 never look like a pause, because a pause is a run that continues when asked and
 a halt is a run that cannot continue.
 
