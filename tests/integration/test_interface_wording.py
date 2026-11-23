@@ -67,6 +67,7 @@ import pytest
 from PySide6.QtCore import QEvent
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import dashboard_frame as dashboard_frame_module
 from anesthesia_sim.app.area_layout import AreaNotice
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -417,6 +418,30 @@ def _at_the_supported_run_length(application: QApplication, patch: pytest.Monkey
     return _strings_shown(application, controller)
 
 
+def _approaching_the_supported_run_length(
+    application: QApplication, patch: pytest.MonkeyPatch
+) -> list[str]:
+    """Sevoflurane paused 2 min into a run whose limit is moved to just past the warning.
+
+    The banner that announces the stop opens `APPROACHING_LIMIT_NOTICE_S`
+    before the supported run length (`PL-H2K2`). Reaching it at the real
+    length takes more than 80 000 steps, so the banner's check reads a
+    limit moved to two minutes past the warning's span, which puts the run
+    inside it from its third minute. Only the banner's countdown reads the
+    moved limit, and its digits are masked.
+    """
+
+    patch.setattr(
+        dashboard_frame_module,
+        "MAXIMUM_ELAPSED_SIMULATION_TIME_S",
+        dashboard_frame_module.APPROACHING_LIMIT_NOTICE_S + 2 * _SECONDS_PER_MINUTE,
+    )
+    controller = SimulationController()
+    _run_to(controller, 2 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller)
+
+
 def _in_the_run_state_scenario(
     name: str,
 ) -> Callable[[QApplication, pytest.MonkeyPatch], list[str]]:
@@ -481,6 +506,7 @@ EVENT_POINTS: Final[Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], li
     "price set": _with_a_price_set,
     "setting refused": _a_refused_setting,
     "supported run length reached": _at_the_supported_run_length,
+    "supported run length approaching": _approaching_the_supported_run_length,
     "branched in a pinned Workspace": _branched_in_a_pinned_workspace,
     **{
         name: _in_the_run_state_scenario(name)
