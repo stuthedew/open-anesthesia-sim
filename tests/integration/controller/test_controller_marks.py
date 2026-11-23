@@ -15,6 +15,7 @@ from anesthesia_sim.app.controller import (
     MarkForkPoint,
     SimulationController,
 )
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -27,6 +28,7 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from tests.integration.controller.controller_support import (
     _advance_for,
+    _advance_through_halts,
     _advance_until_halted,
     _described,
     _states_agree_after_the_fork,
@@ -935,3 +937,216 @@ def test_a_case_refuses_a_mark_its_trunk_has_not_reached_and_keeps_nothing() -> 
         case.fork_at_mark(ahead)
 
     assert case.branches == ()
+
+
+# ------------------------------- what the run did with a mark, as it moves on
+#
+# A MAC target has no clock time, so its standing is only what the run did:
+# the heights it halted on, and the step it stands on while it is stopped. The
+# tests below hold that record to the run's history. Each expected standing
+# comes from an unmarked run of the same case, or from a run that halts on the
+# height to find the step that crosses it.
+
+
+def _mac_multiple_of(fraction: float, mac_percent: float) -> float:
+    """Return a compartment fraction as a multiple of the agent's MAC, worked out here.
+
+    The MAC is a percent of one atmosphere, so dividing it by 100 gives it as
+    the same kind of fraction as the compartment's.
+    """
+
+    return fraction / (mac_percent / 100.0)
+
+
+def _steps_to_cross(target: MacTarget) -> int:
+    """Return how many steps a default run takes to cross `target`, found by halting a run there."""
+
+    finder = SimulationController()
+    finder.add_mac_target(target)
+    finder.start()
+    _advance_until_halted(finder, limit_s=400)
+
+    return finder._state.step_count
+
+
+def test_a_height_the_run_halted_on_stays_reached_after_it_halts_on_a_higher_one() -> None:
+    """A target that halted the run reads reached for the rest of the run.
+
+    The run halts on a 0.3 ×MAC alveolar target, is started again, halts on a
+    0.5 ×MAC alveolar target, and is started again. It is paused 30 s later,
+    on a step that crosses neither height. A height has no clock time, so only
+    the run's record of the heights it halted on can say that the first target
+    was reached. A record that kept only the latest halt would show the first
+    target as one the run can still reach, which a learner would read as a
+    level the patient has not yet been at.
+
+    The expected standings come from an unmarked run of the same length. Its
+    alveolar reading ends above both heights, and under one set of settings
+    it rises the whole way, so it passed each height once.
+    """
+
+    lower = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3), "first")
+    higher = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5), "second")
+    marked = SimulationController()
+    marked.add_mac_target(lower)
+    marked.add_mac_target(higher)
+    marked.start()
+    _advance_until_halted(marked, limit_s=400)
+    marked.start()
+    _advance_until_halted(marked, limit_s=400)
+    marked.start()
+    _advance_for(marked, duration_s=30)
+    marked.pause()
+
+    unmarked = SimulationController()
+    unmarked.start()
+    _advance_for(unmarked, duration_s=marked._state.step_count)
+    at_the_end = unmarked.snapshot()
+    mac_percent = at_the_end.agent_mac_percent
+
+    assert at_the_end.elapsed_s == marked.snapshot().elapsed_s
+    assert _mac_multiple_of(at_the_end.alveolar_partial_pressure_fraction, mac_percent) > 0.5
+
+    standings = marked.snapshot().bookmark_standings
+
+    assert standings.of_mac_target(lower) is MarkStanding.REACHED
+    assert standings.of_mac_target(higher) is MarkStanding.REACHED
+
+
+def test_removing_one_mark_leaves_the_standing_of_every_other_mark_as_it_was() -> None:
+    """Removing a mark forgets what the run did with that mark and with no other.
+
+    The run holds time marks at 30 s and 600 s, a 0.3 ×MAC alveolar target
+    and a 0.5 ×MAC fat target, and runs to 200 s. Then one more mark of each
+    kind is removed. The removal must not turn a mark the run has not reached
+    into one it has. A row that read passed or reached for a mark still ahead
+    would tell the learner that the patient had already been there.
+
+    The expected standings are worked out apart from the controller. The clock
+    stands at 200 s, so the mark at 30 s is behind it and the mark at 600 s is
+    ahead. An unmarked run of the same 200 s has an alveolar reading above
+    0.3 ×MAC and a fat reading below 0.5 ×MAC. Both rise the whole way under
+    one set of settings.
+    """
+
+    behind = TimeBookmark(CaseInstant(30), "behind")
+    ahead = TimeBookmark(CaseInstant(600), "ahead")
+    removed_instant = TimeBookmark(CaseInstant(60), "removed")
+    reached = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3), "reached")
+    not_reached = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5), "not reached")
+    removed_height = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.9), "removed")
+    run = SimulationController()
+
+    for bookmark in (behind, ahead, removed_instant):
+        run.add_time_bookmark(bookmark)
+
+    for target in (reached, not_reached, removed_height):
+        run.add_mac_target(target)
+
+    _advance_through_halts(run, duration_s=200)
+    run.pause()
+    run.remove_time_bookmark(removed_instant)
+    run.remove_mac_target(removed_height)
+
+    unmarked = SimulationController()
+    unmarked.start()
+    _advance_for(unmarked, duration_s=200)
+    at_200_s = unmarked.snapshot()
+    mac_percent = at_200_s.agent_mac_percent
+
+    assert run.snapshot().elapsed_s == at_200_s.elapsed_s == 200
+    assert _mac_multiple_of(at_200_s.alveolar_partial_pressure_fraction, mac_percent) > 0.3
+    assert _mac_multiple_of(at_200_s.fat_partial_pressure_fraction, mac_percent) < 0.5
+
+    standings = run.snapshot().bookmark_standings
+
+    assert standings.of_time_bookmark(behind) is MarkStanding.PASSED
+    assert standings.of_time_bookmark(ahead) is MarkStanding.STILL_RUNNING
+    assert standings.of_mac_target(reached) is MarkStanding.REACHED
+    assert standings.of_mac_target(not_reached) is MarkStanding.STILL_RUNNING
+
+
+def test_a_height_crossed_by_the_last_step_reads_reached_only_while_the_run_is_stopped() -> None:
+    """A run stands on its last step only while it is stopped and has not failed.
+
+    A finder run halts on a 0.3 ×MAC alveolar target to find the step that
+    crosses it. Four runs of the same case then end on that step, and the
+    target is added to each only afterwards, so no step halted on it.
+
+    1. A trunk that is still going stands on no step, because its position
+       moves with every step. The target is still to come.
+    2. The same trunk, once paused, stands on the step, so the target reads
+       reached.
+    3. A trunk that failed on that step is not paused (`RunStatus.failure_reason`),
+       so the target reads not reached before the failure.
+    4. A branch opened at 60 s that steps on to the same step and is paused
+       stands on that step, as the trunk does. Its own fork lies far below the
+       height, so only the step it stands on can reach the target.
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3))
+    crossing_steps = _steps_to_cross(target)
+
+    def on_the_crossing_step() -> SimulationController:
+        run = SimulationController()
+        run.start()
+        _advance_for(run, duration_s=crossing_steps)
+
+        return run
+
+    going = on_the_crossing_step()
+    going.add_mac_target(target)
+
+    assert going.is_running
+    assert going.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.STILL_RUNNING
+
+    going.pause()
+
+    assert going.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+    failed = on_the_crossing_step()
+    failed.fail("a step raised", kind=FailureKind.UNEXPECTED)
+    failed.add_mac_target(target)
+
+    assert failed.snapshot().bookmark_standings.of_mac_target(target) is (
+        MarkStanding.NOT_REACHED_BEFORE_FAILURE
+    )
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_for(trunk, duration_s=60)
+    trunk.pause()
+    branch = trunk.resumed_here()
+    branch.start()
+    _advance_for(branch, duration_s=crossing_steps - 60)
+    branch.pause()
+    branch.add_mac_target(target)
+
+    assert branch.snapshot().elapsed_s == crossing_steps * SIMULATION_STEP_S
+    assert branch.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_a_mark_added_on_the_step_a_learner_paused_on_does_not_make_the_pause_a_halt() -> None:
+    """The halt record names a mark only where a run stopped on it, never where it was paused.
+
+    A trunk is paused by hand on the step that crosses a 0.3 ×MAC alveolar
+    target, and the target is added afterwards. The target reads reached,
+    because the run stands on the step that crossed it. But no mark stopped
+    the run, so there is no halt record, and the place offered for a branch
+    is not a stop on a mark. A banner that called the pause a halt would tell
+    the learner that the run had stopped itself at a height they marked.
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3))
+    crossing_steps = _steps_to_cross(target)
+    paused = SimulationController()
+    paused.start()
+    _advance_for(paused, duration_s=crossing_steps)
+    paused.pause()
+    paused.add_mac_target(target)
+
+    snapshot = paused.snapshot()
+
+    assert snapshot.bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+    assert snapshot.bookmark_halt is None
+    assert paused.here_fork_point == HereForkPoint(snapshot.elapsed_s, stopped_on_mark=False)
