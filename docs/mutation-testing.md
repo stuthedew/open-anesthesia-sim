@@ -199,8 +199,9 @@ progress goes to `mutants/diff_mutation.log`.
 
 ## Read a survivor
 
-Sort each survivor into one of four kinds before you write a test for it. The
-279 survivors of the 2026-10-17 audit are the worked example.
+Sort each survivor into one of the six kinds below before you write a test for
+it. The 279 survivors of the 2026-10-17 audit are the worked example for the
+first four, and the 1,037 of the 2026-11-23 run for the last two.
 
 1. **Message only.** The mutant changes only the text of an error message or a
    label. 174 of the 279 were this kind. `PL-79PK` holds the tests that pin
@@ -212,6 +213,16 @@ Sort each survivor into one of four kinds before you write a test for it. The
 4. **A real gap.** A test could tell the mutant from the original, and none
    does. 54 were this kind. Write the test that kills the mutant. If the gap is
    not in the change under review, file an item for it.
+5. **Looks only.** The mutant changes only how something looks, such as a
+   colour or a margin in a style sheet, and no value that `docs/INTERFACE.md`
+   requires. 20 of the 1,037 were this kind.
+6. **Run while a test module is imported.** The mutated function runs while a
+   test module is being imported, for example as a decorator. mutmut records
+   which tests call a function only while a test runs, so it never runs the
+   test that checks the function's effect against the mutant, and reports a
+   survivor that an existing test kills (`PL-1QX0`). Run the test files that
+   use the function whole, with `MUTANT_UNDER_TEST` set, before you call it a
+   gap. 6 of the 1,037 were this kind, all in `app/halt_gate.py`.
 
 Before you call a survivor a real gap, run it against the whole suite, as the
 next section says.
@@ -234,6 +245,29 @@ were caught outside the unit tests. To check one survivor:
 
 A failure in step 3 means that a slower test catches the mutant. A pass means
 that the mutant survives all three test trees.
+
+A whole run leaves too many survivors to run the whole suite against each one.
+The 2026-11-23 run left 1,037. For many survivors, run each one only against
+the integration and reference tests that reach its function, in mutmut's copy
+of the code:
+
+1. Record which tests run which lines, with one coverage context for each test:
+   `COVERAGE_CORE=ctrace QT_QPA_PLATFORM=offscreen uv run pytest -q -n 4 -p no:cacheprovider --cov=anesthesia_sim --cov-context=test --cov-report= tests/integration tests/reference`.
+   It took 12 minutes for 1,779 tests on four cores on 2026-11-23.
+2. For each survivor, take the tests whose context covers a line of its
+   function's body, fastest first.
+3. From `mutants/`, run those tests with `-x`, with `PYTHONPATH=src` and
+   `MUTANT_UNDER_TEST` set to the survivor's name.
+
+`COVERAGE_CORE=ctrace` matters. On Python 3.14 and later, coverage 7.15 records
+lines with `sys.monitoring` unless its own settings ask for dynamic contexts
+(`coverage/core.py`). That recorder returns `sys.monitoring.DISABLE` once it
+has recorded a line (`coverage/sysmon.py`, `sysmon_line_lines`), so each line
+is tied only to the first test that ran it in each worker. pytest-cov switches
+the context for each test without that setting, and coverage only warns that
+"context data may be incomplete" (`coverage/control.py`, `switch_context`). On
+2026-11-23 the default recorder tied `trace_legend_label` to 4 tests, and
+`ctrace` tied it to 625.
 
 ## Pitfalls
 
@@ -382,6 +416,97 @@ date.
 
 A kill rate below is killed / (killed + survived). Mutants that timed out or
 that no test reaches are left out of it.
+
+### 2026-11-23 the modules added to the run, forkserver mode, at `0117c839` and `c66be832`
+
+These runs measure the 39 files that `PL-19M4` brought into the run: every
+module of `layout/`, the modules of `app/` that import no Qt, `app_metadata.py`,
+`user_files.py` and the package `__init__.py` files. Each used mutmut 3.8.0 in
+forkserver mode with no warm-up, against the simulator unit test files, as
+`make mutate ARGS=--all` does.
+
+1. **At `0117c839`**, before any test was added for them, the run had 8,721
+   mutants against 72 unit test files. 7,677 were killed, 963 survived, 7 timed
+   out and 74 were reached by no unit test, so about 89% were killed. It took
+   52 minutes on four cores, and 56 with the rerun of mutants whose test
+   modules failed while importing.
+2. **At `c66be832`**, after the 89 test functions that `PL-00Y5` added and a
+   merge of `main`, the run had 8,837 mutants against 75 unit test files. 7,986
+   were killed, 788 survived, 8 timed out and 55 were reached by no unit test,
+   so about 91% were killed. It took 58 minutes, and 63 with the rerun.
+
+| Module | At `0117c839` | Rate | At `c66be832` | Rate |
+| --- | --- | --- | --- | --- |
+| `app/view_contract.py` | 0 / 12 | 0% | 0 / 12 | 0% |
+| `app/stylesheets.py` | 4 / 25 | 16% | 4 / 25 | 16% |
+| `user_files.py` | 18 / 30 | 60% | 24 / 30 | 80% |
+| `app_metadata.py` | 19 / 31 | 61% | 39 / 42 | 93% |
+| `app/halt_gate.py` | 23 / 31 | 74% | 23 / 31 | 74% |
+| `app/controller.py` | 902 / 1,164 (58 no unit test) | 77% | 923 / 1,183 (50 no unit test) | 78% |
+| `layout/tree.py` | 39 / 50 | 78% | 39 / 50 | 78% |
+| `app/view_registry.py` | 106 / 132 (5 no unit test) | 80% | 106 / 132 (5 no unit test) | 80% |
+| `app/playback.py` | 59 / 73 | 81% | 62 / 73 | 85% |
+| `app/preferences.py` | 315 / 379 | 83% | 327 / 379 | 86% |
+| `layout/shipped.py` | 59 / 70 | 84% | 59 / 70 | 84% |
+| `layout/store.py` | 358 / 424 (1 timeout, 1 no unit test) | 84% | 396 / 424 (2 timeouts) | 93% |
+| `layout/exceptions.py` | 6 / 7 | 86% | 6 / 7 | 86% |
+| `app/bookmarks.py` | 204 / 235 | 87% | 214 / 241 | 89% |
+| `app/compartment_schematic.py` | 127 / 145 (6 no unit test) | 88% | 150 / 151 | 99% |
+| `app/unconditional_set.py` | 34 / 38 | 89% | 34 / 38 | 89% |
+| `app/agent_cost.py` | 178 / 197 | 90% | 184 / 197 | 93% |
+| `layout/serialization.py` | 635 / 703 | 90% | 636 / 703 | 90% |
+| `layout/sizing.py` | 638 / 709 (2 timeouts) | 90% | 672 / 708 (3 timeouts) | 95% |
+| `layout/model.py` | 1,255 / 1,373 (1 timeout) | 91% | 1,272 / 1,373 (1 timeout) | 93% |
+| `app/chart_frame.py` | 747 / 797 | 94% | 791 / 816 | 97% |
+| `layout/workspace.py` | 311 / 331 (3 timeouts) | 94% | 312 / 332 (2 timeouts) | 94% |
+| `app/compartment_selection.py` | 65 / 68 | 96% | 65 / 68 | 96% |
+| `app/control_timeline.py` | 135 / 141 | 96% | 135 / 141 | 96% |
+| `app/dashboard_frame.py` | 1,064 / 1,093 (4 no unit test) | 97% | 1,126 / 1,156 | 97% |
+| `app/run_presentation.py` | 256 / 261 | 98% | 267 / 271 | 99% |
+| `layout/migrations.py` | 77 / 78 | 99% | 77 / 78 | 99% |
+| `app/control_record.py` | 10 / 10 | 100% | 10 / 10 | 100% |
+| `app/currency_code.py` | 3 / 3 | 100% | 3 / 3 | 100% |
+| `layout/run_identity.py` | 30 / 30 | 100% | 30 / 30 | 100% |
+
+The two columns differ in code as well as in tests. `main` changed
+`app/bookmarks.py`, `app/chart_frame.py`, `app/controller.py`,
+`app/dashboard_frame.py`, `app/run_presentation.py`, `app/view_contract.py` and
+`app_metadata.py` between the two commits, so part of each of their changes
+comes from the code. `main` also added `app/failures.py` and
+`app/branch_controls.py` after `0117c839`, and neither run measured them.
+
+Every survivor and every mutant that no unit test reached at `0117c839` was
+sorted by the kinds in § "Read a survivor", 1,037 in all:
+
+| Kind | Count |
+| --- | --- |
+| Message only | 386 |
+| A real gap | 222 |
+| Caught by an integration or reference test | 197 |
+| Equivalent | 150 |
+| Changed on `main` before its test was written, so the mutation no longer applies | 41 |
+| Looks only | 20 |
+| Unreachable | 15 |
+| Run while a test module is imported | 6 |
+
+210 of the 222 real gaps have a test. The other 12 point at code that should
+change rather than at a missing test, and each is in an item: a field that
+nothing reads (`PL-8LZS` and `PL-PZSF`), a join that adds the alignment
+tolerance before it compares (`PL-6YDJ`), and a layout function that does not
+check how many bounds it was given (`PL-Y6XR`). 42 of the gaps are in
+`app/controller.py`, whose tests are integration tests, which mutmut does not
+run. That is why its rate moves by one point.
+
+The 197 caught by a slower test are a lower bound. For every module except
+`app/controller.py`, `layout/model.py`, `layout/tree.py`,
+`layout/exceptions.py` and `layout/migrations.py`, the second tier chose its
+tests from a coverage record that tied each line to too few tests (§ "Second
+tier"). A slower test may also catch some of those modules' real gaps, and
+each of them was given a unit test anyway.
+
+A mutant that no unit test reaches is not unreachable. Of the 74 at
+`0117c839`, an integration or reference test caught 45, and 9 were real gaps.
+14 changed only a message, 5 had changed on `main`, and 1 was equivalent.
 
 ### 2026-10-18 whole tree, forkserver mode, at `d7c1d74c`
 
