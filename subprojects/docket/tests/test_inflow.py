@@ -7,6 +7,7 @@ filings are counted apart from the inflow the question is about.
 
 from __future__ import annotations
 
+import os
 import subprocess
 from dataclasses import replace
 from datetime import date
@@ -16,10 +17,10 @@ import pytest
 
 from docket.cli import _missed_expectations, main
 from docket.config import Config
-from docket.inflow import UNBANDED, analyze, missed
+from docket.inflow import UNBANDED, LaneHistory, analyze, lane_history, missed
 from docket.model import LANE_PRODUCT, Item, reentry_faults
 from docket.render import format_inflow
-from docket.vcs import FilingParents
+from docket.vcs import FileRevisions, FilingParents, file_revisions
 
 CONFIG = Config(
     items_dir="docs/items",
@@ -754,3 +755,115 @@ def test_the_command_counts_a_sweep_from_the_commit_that_filed_its_findings(
 
     # period, filed, /day, re-entry, +head, +sweep: the sweep and PL-0RD1 are ordinary
     assert row[1] == "2" and row[5] == "2"
+
+
+GONE = "tests/unit/test_gone.py"
+LISTED = (*CONFIG.workflow_paths, GONE)
+HISTORY = LaneHistory(
+    lists=((date(2026, 9, 1), LISTED), (date(2026, 9, 10), CONFIG.workflow_paths))
+)
+
+
+def test_a_filing_is_judged_by_its_own_days_list_as_well_as_todays() -> None:
+    """A path taken off the list later still counts for a filing made while it was listed."""
+    assert GONE in HISTORY.workflow_paths(date(2026, 9, 3), CONFIG.workflow_paths)
+    assert GONE in HISTORY.workflow_paths(date(2026, 8, 20), CONFIG.workflow_paths)
+    assert GONE not in HISTORY.workflow_paths(date(2026, 9, 10), CONFIG.workflow_paths)
+    # Today's list is kept: a test file is listed only once it exists, after
+    # the item that files the work to create it.
+    assert "tools/new_check.py" in HISTORY.workflow_paths(
+        date(2026, 9, 3), (*CONFIG.workflow_paths, "tools/new_check.py")
+    )
+
+
+def test_deleting_a_listed_file_leaves_an_earlier_weeks_row_unchanged() -> None:
+    """The week of 2026-11-02 lost filings after #2149 deleted a listed test file (`PL-LJK4`)."""
+    items = [_item("PL-0GN1", date(2026, 9, 3), touches=(GONE,))]
+
+    judged_then = analyze(items, CONFIG, today=date(2026, 9, 12), lanes=HISTORY)
+    judged_today = analyze(items, CONFIG, today=date(2026, 9, 12))
+
+    assert judged_then.periods[0].filed == 1
+    assert judged_then.periods[0].new_paths == 1
+    assert judged_today.periods == ()
+
+
+def test_an_unreadable_history_judges_by_todays_list_and_says_so() -> None:
+    """The floor: a reading that could not use the history must not pass for one that did."""
+    lanes = lane_history(FileRevisions(declined="this clone is shallow"))
+    items = [_item(f"PL-{n:04d}", date(2026, 9, 1)) for n in range(1000, 1010)]
+    items += [_item("PL-2000", date(2026, 9, 8), reenters=("PL-FXD0",))]
+    items += [_item("PL-FXD0", date(2026, 8, 30), closed=date(2026, 8, 31))]
+
+    report = analyze(items, CONFIG, today=date(2026, 9, 16), lanes=lanes)
+
+    assert report.lanes_unread == "this clone is shallow"
+    assert "this clone is shallow" in format_inflow(report)
+    lines = missed(report, date(2026, 9, 16))
+    assert any("today's list of workflow paths alone" in line for line in lines)
+
+
+def test_a_config_text_that_cannot_be_read_declines_the_whole_history() -> None:
+    """Skipping it would judge its days by a neighbour's list without saying so."""
+    lanes = lane_history(
+        FileRevisions(
+            revisions=(
+                (date(2026, 9, 1), 'workflow_paths = ["tools"]\n'),
+                (date(2026, 9, 5), "workflow_paths = tools\n"),
+            )
+        )
+    )
+
+    assert lanes.lists == ()
+    assert "2026-09-05" in lanes.declined
+
+
+def test_the_config_history_declines_on_a_shallow_clone() -> None:
+    """The texts a shallow clone is missing are the oldest, which old filings are judged by."""
+
+    def run(args: list[str], root: Path) -> str:
+        return "true\n" if args[:2] == ["rev-parse", "--is-shallow-repository"] else ""
+
+    revisions = file_revisions(Path("."), "HEAD", "docket.toml", runner=run)
+
+    assert revisions.revisions == ()
+    assert "shallow" in revisions.declined
+
+
+def test_the_command_judges_a_filing_by_the_config_committed_on_its_day(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """End to end, on real git: a listed file taken off the list later still counts."""
+    root = tmp_path
+    store = root / "docs" / "items"
+    store.mkdir(parents=True)
+
+    def git(*args: str, when: str = "2026-09-01T12:00:00") -> None:
+        env = {**os.environ, "GIT_COMMITTER_DATE": when, "GIT_AUTHOR_DATE": when}
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
+
+    def config(*paths: str) -> None:
+        listed = ", ".join(f'"{path}"' for path in paths)
+        (root / "docket.toml").write_text(
+            f'items_dir = "docs/items"\nworkflow_paths = [{listed}]\n'
+        )
+
+    subprocess.run(["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)], check=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    config("tools", "docs/items", GONE)
+    (store / "PL-0GN1-x.md").write_text(
+        "---\nid: PL-0GN1\ntitle: Item PL-0GN1\nstatus: untriaged\n"
+        f"touches: {GONE}\nadded: 2026-09-03\n---\n\nBody.\n"
+    )
+    git("add", "-A")
+    git("commit", "-qm", "PL-0GN1: capture a finding in a listed test file")
+    config("tools", "docs/items")
+    git("add", "-A")
+    git("commit", "-qm", "PL-0DL1: delete the test file", when="2026-09-10T12:00:00")
+
+    assert main(["inflow", "--items", str(store), "--today", "2026-09-12"]) == 0
+    row = capsys.readouterr().out.splitlines()[1].split()
+
+    # period, filed: PL-0GN1 counts, because the list of its day named the file
+    assert row[1] == "1"

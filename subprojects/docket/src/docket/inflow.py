@@ -106,11 +106,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
-from .config import Config
+from .config import Config, workflow_paths_in
 from .model import LANE_PRODUCT, LANE_WORKFLOW, MIN_ROOT_CAUSE_ITEMS, Item, is_under, pr_number
 from .plan import Fact, clusters, facts
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
-from .vcs import FilingParents
+from .vcs import FileRevisions, FilingParents
 
 #: What a filing with no `priority:` yet is counted as, so an untriaged capture
 #: is shown rather than dropped from the mix.
@@ -224,6 +224,9 @@ class Inflow:
     #: some item records `sweep:` and git could not say which item's work
     #: filed each item. Those filings are then counted in `filed`.
     sweeps_unread: str = ""
+    #: Why each filing was judged by today's `workflow_paths` alone rather
+    #: than by its own day's as well, or `""` (`PL-LJK4`).
+    lanes_unread: str = ""
     #: How many of the re-entries counted carry no `filed-pr:`, so whether
     #: the pull request that closed the item they name also filed them could
     #: not be checked. They are counted, as every re-entry was before
@@ -250,21 +253,89 @@ def counted_reentries(item: Item, by_id: Mapping[str, Item]) -> tuple[str, ...]:
     )
 
 
-def apparatus_paths(item: Item, config: Config, excluded: tuple[str, ...]) -> frozenset[str]:
-    """The paths `item` declares under `workflow_paths`, store paths left out."""
+@dataclass(frozen=True)
+class LaneHistory:
+    """`workflow_paths` as each committed text of `docket.toml` declared it, oldest first.
+
+    A filing's lane is a fact of the day it was filed. `docket.toml` lists the
+    apparatus test files one by one, so deleting one takes its entry off the
+    list, and judged by today's list alone, every earlier filing that named it
+    moved out of the workflow lane: the week of 2026-11-02 read 12 `P1`
+    apparatus filings at the v0.6.17 cut and 9 after #2149 (`PL-LJK4`).
+    """
+
+    lists: tuple[tuple[date, tuple[str, ...]], ...] = ()
+    #: Why the history could not be read, or `""`. Every filing is then judged
+    #: by today's list alone, as it was before `PL-LJK4`.
+    declined: str = ""
+
+    def workflow_paths(self, filed: date, today: tuple[str, ...]) -> tuple[str, ...]:
+        """The paths that count as apparatus for a filing made on `filed`.
+
+        They are the list committed last on or before that day, together with
+        today's. Today's list is kept because an apparatus test file is listed
+        only once it exists, and the item that files the work to create it is
+        filed first. A day before the first committed text is judged by that
+        text.
+        """
+        if not self.lists:
+            return today
+        then = self.lists[0][1]
+        for committed, paths in self.lists:
+            if committed > filed:
+                break
+            then = paths
+        return tuple(dict.fromkeys((*then, *today)))
+
+
+def lane_history(revisions: FileRevisions) -> LaneHistory:
+    """Read `workflow_paths` out of each committed text of `docket.toml`.
+
+    A text that is not TOML, or whose `workflow_paths` is not a list of
+    strings, declines the whole history rather than skipping that text, since
+    the days it covered would then be judged by a neighbour's list.
+    """
+    if revisions.declined:
+        return LaneHistory(declined=revisions.declined)
+    lists = []
+    for committed, text in revisions.revisions:
+        try:
+            lists.append((committed, workflow_paths_in(text)))
+        except ValueError as error:
+            return LaneHistory(
+                declined=f"the docket.toml committed on {committed} could not be read: {error}"
+            )
+    return LaneHistory(lists=tuple(lists))
+
+
+def apparatus_paths(
+    item: Item, config: Config, excluded: tuple[str, ...], workflow: tuple[str, ...] | None = None
+) -> frozenset[str]:
+    """The paths `item` declares under `workflow_paths`, store paths left out.
+
+    `workflow` replaces `config.workflow_paths` where a caller has read the
+    list as it stood when `item` was filed.
+    """
+    paths = config.workflow_paths if workflow is None else workflow
     return frozenset(
         path.strip().strip("/")
-        for path in item.generator_question_paths(config.workflow_paths, config.new_work_classes)
-        if is_under(path, config.workflow_paths) and not is_under(path, excluded)
+        for path in item.generator_question_paths(paths, config.new_work_classes)
+        if is_under(path, paths) and not is_under(path, excluded)
     )
 
 
-def product_paths(item: Item, config: Config) -> frozenset[str]:
-    """The product paths for which triage's generator check asks `item` where it came from."""
+def product_paths(
+    item: Item, config: Config, workflow: tuple[str, ...] | None = None
+) -> frozenset[str]:
+    """The product paths for which triage's generator check asks `item` where it came from.
+
+    `workflow` is read as `apparatus_paths` reads it.
+    """
+    paths = config.workflow_paths if workflow is None else workflow
     return frozenset(
         path.strip().strip("/")
-        for path in item.generator_question_paths(config.workflow_paths, config.new_work_classes)
-        if not is_under(path, config.workflow_paths)
+        for path in item.generator_question_paths(paths, config.new_work_classes)
+        if not is_under(path, paths)
     )
 
 
@@ -323,24 +394,48 @@ def analyze(
     today: date | None = None,
     lane: str = LANE_WORKFLOW,
     filing: FilingParents | None = None,
+    lanes: LaneHistory | None = None,
 ) -> Inflow:
     """Count the filings in `items` period by period.
 
     `filing` is `vcs.filing_parents`' answer. It is needed only where an item
     records `sweep:`, and a caller with no such item passes nothing.
+
+    `lanes` is `lane_history`'s answer. With it, each filing is judged by the
+    `workflow_paths` of its own day as well as today's. A history that could
+    not be read judges each by today's alone, and the report says why. A
+    caller that passes nothing gets today's list and no such note: `docket
+    inflow` and `docket release` always pass one.
     """
+    history = lanes or LaneHistory()
+
+    def workflow(item: Item) -> tuple[str, ...]:
+        if item.added is None:
+            return config.workflow_paths
+        return history.workflow_paths(item.added, config.workflow_paths)
+
     if lane == LANE_PRODUCT:
         excluded: tuple[str, ...] = ()
-        named = {item.identifier: product_paths(item, config) for item in items}
+        named = {item.identifier: product_paths(item, config, workflow(item)) for item in items}
     else:
         excluded = store_paths(config)
-        named = {item.identifier: apparatus_paths(item, config, excluded) for item in items}
+        named = {
+            item.identifier: apparatus_paths(item, config, excluded, workflow(item))
+            for item in items
+        }
     filings = sorted(
         ((item.added, item) for item in items if item.added is not None and named[item.identifier]),
         key=lambda pair: (pair[0], pair[1].identifier),
     )
     if not filings:
-        return Inflow(periods=(), anchor=None, by=by, excluded=excluded, lane=lane)
+        return Inflow(
+            periods=(),
+            anchor=None,
+            by=by,
+            excluded=excluded,
+            lane=lane,
+            lanes_unread=history.declined,
+        )
 
     headed = _filed_by_head(items)
     sweeps_unread = ""
@@ -451,6 +546,7 @@ def analyze(
         successors=successors,
         answered=answered,
         sweeps_unread=sweeps_unread,
+        lanes_unread=history.declined,
         unchecked_reentries=sum(
             1
             for _, item in filings
@@ -578,5 +674,10 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
         lines.append(
             "a sweep's filings could not be told apart, so these counts include them: "
             f"{report.sweeps_unread}"
+        )
+    if lines and report.lanes_unread:
+        lines.append(
+            "each filing's lane was judged by today's list of workflow paths alone, so a "
+            f"filing naming a file since removed from it may be missing: {report.lanes_unread}"
         )
     return tuple(lines)

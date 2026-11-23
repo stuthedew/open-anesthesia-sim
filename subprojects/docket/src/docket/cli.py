@@ -63,7 +63,7 @@ from .feature_match import (
     unfeatured_pairs,
 )
 from .feature_match import profiles as feature_profiles
-from .inflow import INFLOW_FEATURE
+from .inflow import INFLOW_FEATURE, LaneHistory, lane_history
 from .inflow import analyze as analyze_inflow
 from .inflow import missed as missed_inflow
 from .lines import split_lines
@@ -210,6 +210,7 @@ from .vcs import (
     default_branch,
     failing_pull_requests,
     fetch_remote,
+    file_revisions,
     filed_here,
     filed_with_work,
     files_in_flight,
@@ -4170,7 +4171,7 @@ def cmd_release(args: argparse.Namespace) -> int:
     print(f"{current} -> {version}\n")
     print(notes)
     missed = _missed_expectations(
-        items, config, args.today or date.today(), _sweep_filing(args, items)
+        items, config, args.today or date.today(), _sweep_filing(args, items), _lane_history(args)
     )
     if missed:
         print(missed)
@@ -5020,6 +5021,7 @@ def cmd_inflow(args: argparse.Namespace) -> int:
         today=args.today or date.today(),
         lane=args.lane,
         filing=_sweep_filing(args, items),
+        lanes=_lane_history(args),
     )
     print(render.format_inflow(report))
     return 0
@@ -5042,8 +5044,28 @@ def _sweep_filing(args: argparse.Namespace, items: Sequence[Item]) -> FilingPare
     return filing_parents(inv.root, "HEAD", inv.tracked, runner=inv.git)
 
 
+def _lane_history(args: argparse.Namespace) -> LaneHistory:
+    """`workflow_paths` as each committed text of the config declared it, for `inflow`.
+
+    A filing's lane is judged by its own day's list as well as today's, so
+    taking a deleted file off the list does not move earlier filings out of
+    the workflow lane (`PL-LJK4`). The history is `HEAD`'s, as `_sweep_filing`
+    reads it.
+    """
+    inv = _invocation(args)
+    if inv.git is None:
+        return LaneHistory(
+            declined=f"`--no-git` was given, so git was not asked for {CONFIG_NAME}'s history"
+        )
+    return lane_history(file_revisions(inv.root, "HEAD", CONFIG_NAME, runner=inv.git))
+
+
 def _missed_expectations(
-    items: Sequence[Item], config: Config, today: date, filing: FilingParents | None = None
+    items: Sequence[Item],
+    config: Config,
+    today: date,
+    filing: FilingParents | None = None,
+    lanes: LaneHistory | None = None,
 ) -> str:
     """What a cut says about apparatus inflow: the predictions it broke, or nothing.
 
@@ -5058,7 +5080,9 @@ def _missed_expectations(
     """
     if not config.workflow_paths:
         return ""
-    lines = missed_inflow(analyze_inflow(items, config, today=today, filing=filing), today)
+    lines = missed_inflow(
+        analyze_inflow(items, config, today=today, filing=filing, lanes=lanes), today
+    )
     if not lines:
         return ""
     return "\n".join(

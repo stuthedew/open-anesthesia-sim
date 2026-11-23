@@ -4425,6 +4425,7 @@ def format_inflow(report: Inflow) -> str:
         left_out = " and ".join(report.excluded) or "nothing"
         population = [
             "filing: an item whose `touches` name a path under workflow_paths, whatever its lane.",
+            "A filing is judged by the list committed on its own day as well as today's.",
             f"Left out of that test, since every capture writes there: {left_out}.",
         ]
     lines += [
@@ -4455,6 +4456,13 @@ def format_inflow(report: Inflow) -> str:
             "+sweep is ? because git could not say which item's work filed each item, so a",
             "sweep's filings are counted in filed. The reason:",
             f"  {report.sweeps_unread}.",
+        ]
+    if report.lanes_unread:
+        lines += [
+            "",
+            "Each filing was judged by today's workflow_paths alone, so a filing that names",
+            "a file since taken off the list may be missing from its row. The reason:",
+            f"  {report.lanes_unread}.",
         ]
     if report.unchecked_reentries:
         lines += [
