@@ -1,12 +1,13 @@
 ---
 id: PL-Z4MP
 title: The controller keeps a set of time marks it halted on, which the clock check already answers since whole-second steps
-priority: P3
+priority: P2
 effort: S
 status: done
 classes: defect
 feature: one-source-of-truth
 touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, tests/integration/controller/test_controller_marks.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/unit/test_supported_range_edges.py
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 closed: 2026-11-23
 pr: 2304
@@ -20,9 +21,14 @@ tests: tests/integration/controller/test_controller_marks.py::test_a_removed_tim
 So two records answer one question, whether the run has been at a marked instant. Today they agree, which is why four mutants of the writes survive as equivalent in the mutation sort of `PL-00Y5`. A later change to one of the writes could make them disagree, and the halt set, being asked first, would then decide a time mark's standing (Passed or Still running) on its own. `_forget_unmarked` mutants 5 to 8 show the shape: when one mark was removed, each turned the standing of a mark that was left to Passed or Reached, for a mark the run had not reached.
 
 **What to do.** Remove `_reached_instants_s`, its four writes, the `reached_instants_s` argument of `bookmark_standings` and `_time_bookmark_standing`, and the first case in that function's docstring, so that the clock alone decides a time mark's standing, as the docstring's own rule says. Check first that no other reader takes the set, and that the MAC-target halt record, which a height needs because a height has no clock time, is a separate field. `tests/integration/controller/test_controller_marks.py::test_removing_one_mark_leaves_the_standing_of_every_other_mark_as_it_was` holds the standings this change must keep.
+
+**Why it matters.** Two records answer whether a run has been at a marked instant. Today they agree. A later change to one write could make them disagree, and the halt set, asked first, would then show a mark as Passed that the run has not reached.
+
 **Done when.** `SimulationController` keeps no record of the instants at which a run halted on a time bookmark, and `_time_bookmark_standing` in `app/bookmarks.py` decides a time bookmark's standing from the run's opening instant and its clock alone. The standings that the mark tests pin, `test_removing_one_mark_leaves_the_standing_of_every_other_mark_as_it_was` among them, are unchanged, and a removed time bookmark's record still says whether the run had passed it.
 
 **Generator check.** A one-off. The fact read twice is whether the run has been at a marked instant. Before `PL-SZ6G` a step could end past a mark, so the halt record was needed, and nothing removed it once every step ended on a whole second. No head's `misread:` in `bin/docket generators --misread` names a mark's standing or the halt record.
+
+**Reproduced 2026-11-23.** `SimulationController._reached_instants_s` is still written in `src/anesthesia_sim/app/controller.py`.
 
 **Checked before the removal, 2026-11-23.** The set had two readers: `bookmark_standings`, through `_reached_now`, and `remove_time_bookmark`, for `RemovedMark.reached`. The MAC target record is a separate field, `_reached_crossings`, which stays. The set could hold an instant outside `opened_at_s <= instant_s <= elapsed_s` only if a step could end after a mark it crossed. A step is one second (`SIMULATION_STEP_S`) and a mark is a whole number of seconds, so every halt, every branch's opening step and every restored mark falls inside that span, and a reset or an agent change clears the set as it moves the clock back. If a longer step ever returns, `test_a_branch_returned_to_a_mark_opens_on_it_and_reads_it_as_passed` (a mark at 47 s) fails, because the branch would open after its own mark. The `_time_bookmark_standing` docstring says so.
 

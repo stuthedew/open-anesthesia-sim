@@ -1,9 +1,16 @@
 ---
 id: PL-PZSF
 title: Fields and arguments that nothing reads in the display modules, and three docstrings that misstate what their functions raise or print, found by sorting the mutation survivors of PL-00Y5
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: refactor, defect
+feature: tests-detect-wrong-values
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/layout/serialization.py, src/anesthesia_sim/layout/model.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 filed-pr: 2281
+payoff: the display modules hold no field nobody reads and no docstring that misstates what its function raises
 ---
 
 **Problem.** Fields and arguments that nothing reads in the display modules, and three docstrings that misstate what their functions raise or print, found by sorting the mutation survivors of PL-00Y5
@@ -19,3 +26,9 @@ filed-pr: 2281
 7. Two branches in `app/controller.py` that no learner reaches: `_axis_spacing_s` returns 0 for an axis of zero width, and both callers then raise the spacing to at least 1 with `max(spacing_s, 1)` (mutants 21 and 22); and `preview_window`'s empty prediction is reached only through the public method, never from the chart (mutant 18, which `test_controller_preview.py` now checks). The two preview caches, `_preview_memo` and `_prediction_memo`, change only the cost of a preview, so no test of a result can see them switched off (`preview_settings` 8 and 54, `preview_window` 30 and 126). Keep them, and say in a comment that a test would have to count calls.
 
 **What to do.** Remove each field, argument and branch that nothing reads or reaches, or say in a comment why it stays. Correct the three docstrings.
+
+**Why it matters.** A field that nothing reads, or a docstring that misstates what a function raises, leads the next developer to rely on something that is not true. None changes a displayed value today.
+
+**Done when.** Each field, argument and branch in the list is removed or carries a comment saying why it stays, the three docstrings match their functions, and the mutation survivors listed are killed or recorded as equivalent.
+
+**Generator check.** A one-off: the remainder of one mutation sort, not a misread fact.
