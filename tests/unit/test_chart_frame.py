@@ -1109,10 +1109,10 @@ def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
     the trunk held at 1 MAC, and a branch of it with the vaporizer turned off
     at 10 min. At 20 minutes the trunk's muscle shows 0.14% and its fat 0.01%.
     The percent axis is fixed at 3 MAC (`CHART_AXIS_TOP_MAC`), so these points
-    are about 9 px apart, inside the 12 px radius. Muscle and fat are the pair that a reader comparing two runs
-    picks most often. They are also the pair whose values differ most: by a
-    median of 17.1-17.9x across the measured cases, and by twofold or more at
-    every switch.
+    are about 9 px apart, inside the 12 px radius. Muscle and fat are the pair
+    that a reader comparing two runs picks most often. They are also the pair
+    whose values differ most: by a median of 17.1-17.9x across the measured
+    cases, and by twofold or more at every switch.
     """
 
     case = _case_at_twenty_minutes()
