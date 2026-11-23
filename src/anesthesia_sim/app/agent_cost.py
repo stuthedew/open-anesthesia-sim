@@ -102,7 +102,8 @@ __all__ = [
 #: The View's heading. The wording is a placeholder.
 AGENT_COST_HEADING: Final = "Vaporizer output"
 
-#: How the label and the captions name the agent while the values are withheld.
+#: How the label over the amount and the label over the cost name the agent while the
+#: values are withheld.
 WITHHELD_AGENT_NAME: Final = "Agent"
 
 #: The label over the delivered amount. It names the agent, because the
@@ -159,8 +160,8 @@ class DeliveredShown:
         captions: What each amount is, in the same order.
         agent_id: The agent the run delivered, or None while the values are
             withheld. The cost readout uses it to look up the reader's price.
-        agent_name: The agent's display name in lower case, as the captions
-            print it.
+        agent_name: The agent's display name in lower case, as the cost
+            readout prints it.
         liquid_ml: The delivered agent in millilitres of liquid, unrounded,
             or None when it could not be converted or is withheld. The cost
             is computed from it, never from the rounded text.
@@ -218,18 +219,18 @@ def _converted_liquid_ml(snapshot: SimulationSnapshot) -> float | None:
         return None
 
 
-def _captions(agent: str) -> tuple[str, ...]:
-    """Return what each unit's amount is, for `agent`, in the order of `AGENT_COST_VIEW_UNITS`."""
+def _captions() -> tuple[str, ...]:
+    """Return what each unit's amount is, in the order of `AGENT_COST_VIEW_UNITS`.
+
+    The captions name no agent, so every run shows the same ones.
+    """
 
     templates = {
         AgentAmountUnit.MILLILITRES_OF_LIQUID: LIQUID_CAPTION_TEMPLATE,
         AgentAmountUnit.LITRES_OF_VAPOUR: VAPOUR_CAPTION_TEMPLATE,
     }
 
-    return tuple(
-        templates[unit].format(unit=AGENT_AMOUNT_UNIT_DISPLAY[unit].label, agent=agent)
-        for unit in AGENT_COST_VIEW_UNITS
-    )
+    return tuple(templates[unit] for unit in AGENT_COST_VIEW_UNITS)
 
 
 def delivered_shown(snapshot: SimulationSnapshot) -> DeliveredShown:
@@ -261,7 +262,7 @@ def delivered_shown(snapshot: SimulationSnapshot) -> DeliveredShown:
         format_elapsed(snapshot.elapsed_s),
         DELIVERED_LABEL_TEMPLATE.format(agent=snapshot.agent_display_name),
         tuple(amounts[unit] for unit in AGENT_COST_VIEW_UNITS),
-        _captions(agent_name),
+        _captions(),
         snapshot.agent_id,
         agent_name,
         liquid_ml,
@@ -277,7 +278,7 @@ WITHHELD_DELIVERED: Final = DeliveredShown(
     WITHHELD_ELAPSED_TIME_TEXT,
     DELIVERED_LABEL_TEMPLATE.format(agent=WITHHELD_AGENT_NAME),
     tuple(f"\u2014 {AGENT_AMOUNT_UNIT_DISPLAY[unit].label}" for unit in AGENT_COST_VIEW_UNITS),
-    _captions(WITHHELD_AGENT_NAME.lower()),
+    _captions(),
     None,
     WITHHELD_AGENT_NAME.lower(),
     None,

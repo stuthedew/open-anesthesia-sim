@@ -933,6 +933,10 @@ class SimulationController:
         self._rejected_accounting: AgentSimulationValidationResult | None = None
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
+        # Two caches serve a preview. Each changes only how long a preview
+        # takes, not what it shows. So a test can see one switched off only by
+        # counting the calls it saves.
+        #
         # The last preview's settings, cached so that a drag held while the run
         # plays builds them once rather than on every frame. The cache key
         # contains every input the settings depend on (`preview_settings`).
@@ -2751,6 +2755,10 @@ class SimulationController:
 
         step_count = StepCount(int(fork.instant_s) // SIMULATION_STEP_S)
 
+        # A fork's instant is a whole second and a step is 1 s, so no fork fails
+        # this check today. It stays in case the step is changed from 1 s. A
+        # fork between two steps is then refused, rather than opening a branch
+        # whose step count disagrees with its clock.
         if step_count * SIMULATION_STEP_S != fork.instant_s:
             raise SimulationConfigurationError(
                 f"{fork.instant_s} s is not a whole number of this run's "
@@ -3994,7 +4002,9 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> int:
     prediction is drawn at the run's own resolution. The spacing is rounded
     down onto whole seconds, and is never less than one second, because a run
     stands only on whole seconds (`chart_time_base.grid_spacing_s`). It is
-    zero for an axis of zero width.
+    zero for an axis of zero width. The chart never asks for such an axis, but
+    `drawn_window` and `preview_window` accept one from any caller, and both
+    then space their columns one second apart.
 
     Raises:
         SimulationConfigurationError: If `columns` is fewer than two, either
