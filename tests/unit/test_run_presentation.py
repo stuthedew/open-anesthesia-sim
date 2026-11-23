@@ -81,7 +81,7 @@ _AGENT_NAMES = ("sevoflurane", "desflurane", "isoflurane")
 _CLOCK_INDEX = next(index for index, panel in enumerate(READOUT_PANELS) if panel.quantity is None)
 #: The delivered line of a run whose dials cannot be built, written out by hand.
 #: Both values are withheld and each keeps its unit (`PL-SV2Q`).
-_WITHHELD_DELIVERED_LINE = "Delivered \u2014% (\u2014 \u00d7MAC)"
+_WITHHELD_DELIVERED_LINE = "Vaporizer \u2014% (\u2014 \u00d7MAC)"
 
 
 def _state(**changes: object) -> RunPanelState:
@@ -190,7 +190,7 @@ def test_a_drawn_run_states_the_snapshot_it_was_given_on_every_part() -> None:
     assert shown.values.accounting.status.text == "Valid"
     assert shown.one_mac == "1 MAC sevoflurane (age 40) = 1.8%"
     assert shown.statement.agent_id == "sevoflurane"
-    assert shown.delivered_line == "Delivered 1.80% (1.00 ×MAC)"
+    assert shown.delivered_line == "Vaporizer 1.80% (1.00 ×MAC)"
     assert not isinstance(shown.dials, NotBuilt)
     assert shown.new_case is None
 
@@ -213,7 +213,7 @@ def test_a_drawn_run_lists_and_counts_the_control_changes_it_was_given() -> None
 
     shown = _drawn(controller, _state(pending_agent_name="Desflurane"))
 
-    assert shown.statement.timeline.entries == "1m30s · Delivered agent 1.80% -> 3.00%"
+    assert shown.statement.timeline.entries == "1m30s · Vaporizer 1.80% -> 3.00%"
     assert shown.new_case is not None
     assert any("1 recorded control change " in line for line in shown.new_case.body)
 
@@ -368,7 +368,7 @@ def test_a_halt_lists_the_control_changes_of_the_run_it_stopped() -> None:
 
     shown = _halted(controller, state, KeptValues(state.case, frame.values))
 
-    assert shown.statement.timeline.entries == "1m30s · Delivered agent 1.80% -> 3.00%"
+    assert shown.statement.timeline.entries == "1m30s · Vaporizer 1.80% -> 3.00%"
 
 
 def test_a_halt_keeps_every_value_of_the_last_frame_while_the_run_is_the_one_it_drew() -> None:

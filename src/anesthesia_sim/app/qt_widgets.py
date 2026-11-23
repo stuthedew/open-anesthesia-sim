@@ -1340,7 +1340,7 @@ class ParameterSlider(QWidget):
     never moves the slider under the pointer. The slider is never shorter than
     `PARAMETER_SLIDER_LEAST_LENGTH`, so the card's least width holds it
     (`PL-V4Q8`). The name and its gloss break between words when the card is
-    narrow, so a long name such as "Delivered sevoflurane" does not set the
+    narrow, so a long name such as "Sevoflurane vaporizer" does not set the
     card's least width. The value and its unit never break (`PL-D5J4`).
 
     **A pointer drag applies on release, and previews until then**

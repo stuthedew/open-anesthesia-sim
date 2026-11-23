@@ -127,7 +127,7 @@ def test_every_minimum_displayed_output_reads_its_value_from_its_widget(
         UnconditionalValue.ADMINISTERED_SUBSTANCE: lambda text: text.endswith("Isoflurane"),
         # 1.5% over isoflurane's 1 MAC of 1.17% is 1.282, which rounds to 1.28.
         UnconditionalValue.DELIVERED_CONCENTRATION: (
-            lambda text: text == "Delivered 1.50% (1.28 ×MAC)"
+            lambda text: text == "Vaporizer 1.50% (1.28 ×MAC)"
         ),
         UnconditionalValue.ONE_MAC: lambda text: (
             text == f"1 MAC isoflurane (age 40) = {mac_percent}%"
@@ -136,9 +136,7 @@ def test_every_minimum_displayed_output_reads_its_value_from_its_widget(
         # The record joins the two into one adjustment from the agent's opening
         # 1 MAC of 1.17% to 1.50%, spanning 0 s to 1 min.
         UnconditionalValue.CONTROL_INPUT_RECORD: (
-            lambda text: (
-                "0s–1m\xa0· Delivered\xa0agent\xa01.17%\xa0-> 1.50%\xa0(2\xa0settings)" in text
-            )
+            lambda text: "0s–1m\xa0· Vaporizer\xa01.17%\xa0-> 1.50%\xa0(2\xa0settings)" in text
         ),
     }
     mac = MacPercent(mac_percent)
@@ -644,8 +642,8 @@ def test_dropping_a_branch_takes_its_values_out_of_the_shared_block(
 
     assert [len(panel.findChildren(QLabel)) for panel in trunk._readout_row.panels] == labels_alone
     assert all(panel.run_name_label.isHidden() for panel in trunk._readout_row.panels)
-    assert trunk.build_readout_section().isAncestorOf(trunk._delivered_text)
-    assert trunk.build_transport_row().isAncestorOf(trunk._agent_header_badge)
+    assert trunk.build_transport_row().isAncestorOf(trunk._delivered_text)
+    assert trunk.build_readout_section().isAncestorOf(trunk._agent_header_badge)
     assert trunk._running_agent_display.maximumWidth() == AGENT_SELECTOR_WIDTH
     assert trunk._delivered_text.isVisible()
     assert trunk._agent_header_badge.isVisible()
@@ -689,15 +687,36 @@ def test_a_branch_taken_after_a_dropped_one_is_named_by_a_new_number(
     assert _wash_in(view).legend._run_names == ("Run 1", "Run 3")
 
 
+def test_one_run_s_vaporizer_setting_sits_with_its_controls_and_not_under_model_outputs(
+    application: QApplication,
+) -> None:
+    """The setting is on the transport row with one run as with two (`PL-M4WT`).
+
+    On the heading line it sat beside "Model outputs — not measurements.", so
+    a model input read as an eighth modelled concentration. With two runs it
+    already sat on each run's transport row (`PL-QLZ5`). It is now there for
+    one run too, so it does not move when a branch is taken.
+    """
+
+    view = _case_view(application, _branched_case(), width_px=_LAPTOP_WIDTH_PX)
+    (run,) = view.runs
+
+    assert run.build_transport_row().isAncestorOf(run._delivered_text)
+    assert not run.build_readout_section().isAncestorOf(run._delivered_text)
+    assert run.build_readout_section().isAncestorOf(run._interpretation_text)
+    assert run._delivered_text.isVisible()
+    assert run._delivered_text.text() == "Vaporizer 1.80% (1.00 ×MAC)"
+
+
 def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
     application: QApplication,
 ) -> None:
-    """Each compared run's controls and delivered concentration share one line, one control high.
+    """Each compared run's controls and vaporizer setting share one line, one control high.
 
     With two runs, each run's transport row and readout heading used to sit
     one above the other. The four lines left the chart about 200 px on the
     1366 by 700 laptop reference (`PL-JG82`). Now the rows are folded
-    together. A run's line carries its own delivered concentration, and the
+    together. A run's line carries its own vaporizer setting, and the
     agent chip puts its caption on the same line as the agent's name. The
     values both runs share are stated once, on the heading line above the
     paired readouts (`PL-QLZ5`). Those values are the substance, the agent's
@@ -716,7 +735,7 @@ def test_two_compared_runs_take_one_line_each_above_one_shared_heading(
 
         assert line.isAncestorOf(run._delivered_text)
         assert run._delivered_text.isVisible()
-        assert run._delivered_text.text() == "Delivered 1.80% (1.00 ×MAC)"
+        assert run._delivered_text.text() == "Vaporizer 1.80% (1.00 ×MAC)"
         assert run._running_agent_display.isVisible()
         assert line.height() <= run._playback_rate_dropdown.height(), "the line is two high"
 

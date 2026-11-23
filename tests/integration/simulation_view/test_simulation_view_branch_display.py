@@ -787,7 +787,7 @@ def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
     view = _shown_view(application, controller)
     run = view.runs[0]
 
-    assert run._delivered_text.text() == "Delivered 1.80% (1.00 ×MAC)"
+    assert run._delivered_text.text() == "Vaporizer 1.80% (1.00 ×MAC)"
     assert run._one_mac_text.text() == "1 MAC sevoflurane (age 40) = 1.8%"
 
     controller.set_delivered_concentration_percent(
@@ -795,7 +795,7 @@ def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
     )
     view.present(False)
 
-    assert run._delivered_text.text() == "Delivered 3.00% (1.67 ×MAC)"
+    assert run._delivered_text.text() == "Vaporizer 3.00% (1.67 ×MAC)"
     assert run._delivered_text.isVisible()
     assert run._one_mac_text.isVisible()
 

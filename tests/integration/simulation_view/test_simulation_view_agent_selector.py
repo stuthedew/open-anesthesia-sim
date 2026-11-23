@@ -252,7 +252,7 @@ def test_the_delivered_label_on_screen_names_the_current_agent(application: QApp
 
     run = _shown_view(application, SimulationController(agent_id="desflurane")).runs[0]
 
-    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Desflurane vaporizer"
 
 
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:

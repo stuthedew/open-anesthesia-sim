@@ -807,7 +807,7 @@ def test_a_preview_held_across_an_agent_change_ends_rather_than_name_the_earlier
     _hold_thumb(control, 3.0, CONCENTRATION_DISPLAY_DECIMALS)
     view.render_tick()
     assert [plot.preview_label(0) for plot in plots] == [
-        "Preview: Delivered sevoflurane 3.00%, not applied"
+        "Preview: Sevoflurane vaporizer 3.00%, not applied"
     ] * 2
 
     _select_agent(run, "desflurane")

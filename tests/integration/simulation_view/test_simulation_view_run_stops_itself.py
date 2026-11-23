@@ -654,7 +654,7 @@ def test_a_halt_after_an_agent_change_names_one_agent(
     assert controller.agent_id == "desflurane"
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
-    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Delivered desflurane"
+    assert _dials(run)._delivered_concentration_slider.name_label.text() == "Desflurane vaporizer"
     assert run._subtitle_text.text() == format_subtitle("Desflurane")
     assert run._running_agent_text.text() == "Desflurane"
     assert run._compartment_substance_text.text() == "Modelled concentrations: Desflurane"
@@ -918,7 +918,7 @@ def _no_settings() -> dict[str, object]:
 
     return {
         "no dials": ([], False, "This run's setting controls cannot be shown."),
-        "delivered line": "Delivered \u2014% (\u2014 \u00d7MAC)",
+        "delivered line": "Vaporizer \u2014% (\u2014 \u00d7MAC)",
     }
 
 
@@ -1578,8 +1578,8 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting(
     assert row.controls is None
     assert row.not_shown_text.text() == "This run's setting controls cannot be shown."
     assert row.not_shown_text.text() in dashboard.visible_strings()
-    assert run._delivered_text.text() != "Delivered 8.00% (4.00 \u00d7MAC)"
-    assert run._delivered_text.text() == "Delivered \u2014% (\u2014 \u00d7MAC)"
+    assert run._delivered_text.text() != "Vaporizer 8.00% (4.00 \u00d7MAC)"
+    assert run._delivered_text.text() == "Vaporizer \u2014% (\u2014 \u00d7MAC)"
 
     monkeypatch.undo()
     dashboard.present(False)
