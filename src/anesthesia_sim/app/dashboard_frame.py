@@ -1262,14 +1262,16 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # What the wash-in plot is showing at this instant. A trace that stops has
 # to say at which of its two boundaries it stopped: an inspired concentration
 # too low to divide by, or an alveolar concentration above the inspired. A
-# reader shown only an empty plot could not tell the two apart. The first sentence names the
-# condition and not a cause, because the inspired concentration also falls
+# reader shown only an empty plot could not tell the two apart. Each sentence
+# names the condition and not a cause. The inspired concentration also falls
 # that low during a washout, while the patient still holds agent (`PL-P3ZL`).
+# And alveolar exceeds inspired with ventilation stopped too, when no agent
+# moves between the lungs and the circuit, so the patient is not returning any
+# (`PL-7PBB`).
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
 WASH_IN_ELIMINATION_TEXT: Final = (
-    "Past equilibrium: alveolar exceeds inspired — the patient is returning agent, "
-    "which is elimination and not wash-in."
+    "Past equilibrium: alveolar exceeds inspired, so the ratio is not a wash-in fraction."
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 

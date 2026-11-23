@@ -37,9 +37,12 @@ plausible-looking number is worse here than no number at all.
 2. *The quotient must not exceed one.* The condition $`F_A \le F_I`$ is
    exactly the uptake regime. Alveolar gas gives agent up to the blood, so the
    alveolar fraction stays below the inspired fraction and reaches it only at
-   equilibrium. Above one, the tissues are returning agent faster than it is
-   being delivered. That is elimination, not wash-in, and the number is no
-   longer a wash-in fraction. The curve claims to be the textbook wash-in
+   equilibrium. Above one, the alveolar fraction exceeds the inspired one,
+   and the number is no longer a wash-in fraction. With ventilation running,
+   the patient is then returning agent to the circuit. With alveolar
+   ventilation at zero, no agent moves between the lungs and the circuit, and
+   the ratio passes one only because fresh gas washes the circuit out. So the
+   caption beside the plot names the condition and not a cause (`PL-7PBB`). The curve claims to be the textbook wash-in
    graph, so drawing such a number on it would teach a wash-in that went past
    completion.
    The rule allows `WASH_IN_ROUNDING_ALLOWANCE` above one for rounding, and
