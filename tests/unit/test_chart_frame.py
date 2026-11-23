@@ -542,7 +542,11 @@ def test_a_change_at_the_instant_a_fitted_window_ends_is_marked() -> None:
     """
 
     frame = assemble_chart_frame(
-        [_input(_run(900), 900)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(_run(900), 900)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.stop_s == 900.0
@@ -848,7 +852,11 @@ def test_a_run_that_returns_to_wash_in_draws_two_stretches_and_only_the_first_en
     controller.set_delivered_concentration_percent(Percent(4.0))
     _advance(controller, 300)
     frame = assemble_chart_frame(
-        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     first, second = frame.runs[0].wash_in
 
@@ -2507,6 +2515,7 @@ def test_a_fork_on_either_edge_of_the_window_is_marked_there() -> None:
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert at_right.stop_s == 900.0
@@ -2518,6 +2527,7 @@ def test_a_fork_on_either_edge_of_the_window_is_marked_there() -> None:
         time_base_for_span(900.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert at_left.start_s == 318.0
