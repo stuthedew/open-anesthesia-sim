@@ -2127,6 +2127,46 @@ def test_a_preview_after_turning_the_dial_off_draws_each_peak_the_run_would_reac
     assert abs(drawn[peak_s][state_index] - truth_by_second[peak_s][state_index]) <= limit
 
 
+def test_a_preview_draws_a_crossing_between_its_exact_hour_and_its_first_later_column() -> None:
+    """The pair that joins a preview's exact first hour to its later columns is searched too.
+
+    With the fresh gas at 1 L/min and the dial at 8% for 1509 s, a preview of
+    the dial at 0.5% predicts F_A/F_I last outside the wash-in domain 13 s
+    after the exact hour ends, and the first later column is 42 s after it.
+    The expected second comes from one-second predictions of the same
+    settings and state.
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(1.0))
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance(controller, 1509)
+    preview = SettingPreview(ControlInput.DELIVERED, 0.5)
+    exact_s = 1509 + PREVIEW_EXACT_S
+    states = predicted_states(
+        controller.preview_settings(preview),
+        controller._state.stored_states.state_at(CaseInstant(1509)),
+        CaseInstant(1509),
+        CaseInstant(exact_s + 600),
+    )
+    inside = [
+        (ratio := wash_in_ratio(state[ALVEOLAR_FRACTION], state[INSPIRED_FRACTION])) is not None
+        and is_wash_in(ratio)
+        for state in states
+    ]
+    crossing_s = next(
+        1509 + index
+        for index, (before, after) in enumerate(zip(inside, inside[1:], strict=False))
+        if 1509 + index > exact_s and not before and after
+    )
+
+    window = controller.preview_window(preview, 0.0, 1509.0 + 8 * 3600.0, 300)
+    later_s = [second for second in window.times_s if second > exact_s]
+
+    assert later_s[0] == crossing_s
+
+
 def test_a_later_crossing_is_found_between_columns_two_seconds_apart_and_never_on_one() -> None:
     """`_with_later_crossings` searches every pair at least two seconds apart, and adds no column.
 
