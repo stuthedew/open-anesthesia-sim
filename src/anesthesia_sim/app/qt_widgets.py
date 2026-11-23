@@ -116,9 +116,12 @@ from anesthesia_sim.app.dashboard_frame import (
     MARK_NAME_FIELD_LABEL,
     MARK_NAME_PLACEHOLDER,
     REMOVE_MARK_LABEL,
+    REMOVED_MARK_TEMPLATE,
     SHOW_FAILURE_DETAILS_LABEL,
     TARGET_FORM_HEADING,
     TIME_FORM_HEADING,
+    UNDO_REMOVAL_LABEL,
+    UNDO_REMOVAL_NAME_TEMPLATE,
     BookmarkPanel,
     ForkOffer,
     ForkPoint,
@@ -1891,39 +1894,64 @@ class MarkList(QWidget):
     pointer. So a press of any Remove button in this list within the
     platform's double-click interval of the last removal is ignored, and a
     double-click removes one mark rather than two. A press after that
-    interval is a press of the mark the row then shows.
+    interval is a press of the mark the row then shows. The Undo button keeps
+    the same interval, because after an undo the button can offer the
+    removal before it, in the same place.
+
+    Under the rows, a line names the mark last removed from this list, with
+    an Undo button that puts it back (`PL-5GX4`). The line has no time
+    limit. It stays until the marks change in some other way, so a reader
+    who notices a mistake late can still undo it.
 
     Attributes:
         remove_requested: Emitted with a row's position in the list when its
             Remove button is pressed.
+        undo_requested: Emitted when the Undo button is pressed.
         heading_label: The collection's name.
         empty_label: The line that stands in for the rows when the collection
             is empty.
         rows: One `MarkRow` per mark, in the order they were added.
+        undo_label: Names the mark that the Undo button puts back.
+        undo_button: Puts the mark back.
         remove_notice: Why the last removal from this list was refused,
             hidden when there is nothing to say.
     """
 
     remove_requested = Signal(int)
+    undo_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.heading_label = styled_label("", color=INK, bold=True)
         self.empty_label = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True)
         self.rows: list[MarkRow] = []
+        self.undo_label = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True)
+        self.undo_button = QPushButton(UNDO_REMOVAL_LABEL)
+        self.undo_button.setStyleSheet(outlined_button_stylesheet())
+        self.undo_button.clicked.connect(self._ask_to_undo)
         self.remove_notice = NoticeLabel()
-        # When this list last asked for a removal, so that the second press
-        # of a double-click is not taken for a press of the next mark.
-        self._last_removal = QElapsedTimer()
+        # When this list last asked for a removal or an undo, so that the
+        # second press of a double-click is not taken for a press of the next
+        # mark or of the next undo.
+        self._last_press = QElapsedTimer()
         self._rows_column = QVBoxLayout()
         self._rows_column.setContentsMargins(0, 0, 0, 0)
         self._rows_column.setSpacing(MARK_ROW_SPACING)
+        self._undo_row = QWidget()
+        undo_row = QHBoxLayout(self._undo_row)
+        undo_row.setContentsMargins(0, 0, 0, 0)
+        undo_row.setSpacing(MARK_ROW_BULLET_SPACING)
+        undo_row.addWidget(self.undo_label, 1)
+        undo_row.addWidget(self.undo_button, 0, Qt.AlignmentFlag.AlignTop)
+        self._undo_row.setHidden(True)
+        self.undo_button.setDisabled(True)
         column = QVBoxLayout(self)
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_ROW_SPACING)
         column.addWidget(self.heading_label)
         column.addWidget(self.empty_label)
         column.addLayout(self._rows_column)
+        column.addWidget(self._undo_row)
         column.addWidget(self.remove_notice)
 
     def set_listing(self, listing: MarkListing) -> None:
@@ -1957,17 +1985,49 @@ class MarkList(QWidget):
 
         return [row.remove_button for row in self.rows]
 
-    def _ask_to_remove(self, row: int, *_: object) -> None:
-        """Ask for the mark in `row` to be removed, unless this list just asked for one."""
+    def set_undo(self, mark_text: str | None) -> None:
+        """Offer to put back the mark that `mark_text` names, or offer nothing where it is None.
 
-        if (
-            self._last_removal.isValid()
-            and self._last_removal.elapsed() < QApplication.doubleClickInterval()
-        ):
+        The button is disabled by the same expression that hides it, as every
+        control on this dashboard is (`tools/agent_identity_check.py`).
+        """
+
+        offered = mark_text is not None
+        self.undo_label.setText(REMOVED_MARK_TEMPLATE.format(mark=mark_text) if offered else "")
+        self.undo_button.setAccessibleName(
+            UNDO_REMOVAL_NAME_TEMPLATE.format(mark=mark_text) if offered else UNDO_REMOVAL_LABEL
+        )
+        self.undo_button.setDisabled(not offered)
+        self._undo_row.setHidden(not offered)
+
+    def _ask_to_remove(self, row: int, *_: object) -> None:
+        """Ask for the mark in `row` to be removed, unless this list just asked for something."""
+
+        if self._pressed_just_now():
             return
 
-        self._last_removal.start()
         self.remove_requested.emit(row)
+
+    def _ask_to_undo(self, *_: object) -> None:
+        """Ask for the last removal to be undone, unless this list just asked for something."""
+
+        if self._pressed_just_now():
+            return
+
+        self.undo_requested.emit()
+
+    def _pressed_just_now(self) -> bool:
+        """Whether this list took a press within the double-click interval, else note this one."""
+
+        if (
+            self._last_press.isValid()
+            and self._last_press.elapsed() < QApplication.doubleClickInterval()
+        ):
+            return True
+
+        self._last_press.start()
+
+        return False
 
     def text(self) -> str:
         """What the collection draws under its heading, one row to a line.
@@ -2041,6 +2101,20 @@ class BookmarksPanel(QWidget):
 
         self.times.hide()
         self.targets.hide()
+
+    def show_undo(self, undo: MarkUndo | None) -> None:
+        """Offer to undo the last removal under the list it came from, and nothing under the other.
+
+        Args:
+            undo: The removal that an Undo would reverse, or None where there
+                is none to offer.
+        """
+
+        for button, listed in (
+            (MarkButton.REMOVE_TIME, self.times),
+            (MarkButton.REMOVE_TARGET, self.targets),
+        ):
+            listed.set_undo(undo.mark_text if undo is not None and undo.button is button else None)
 
     def show_refusal(self, refusal: MarkRefusal | None) -> None:
         """Show why the last edit was refused under the list or form it came from. Clear the others.
@@ -2330,6 +2404,20 @@ class MarkRefusal:
 
     button: MarkButton
     text: str
+
+
+@dataclass(frozen=True, slots=True)
+class MarkUndo:
+    """The removal that the Undo button would reverse, and the list it was removed from.
+
+    Attributes:
+        button: The Remove button's kind, `REMOVE_TIME` or `REMOVE_TARGET`,
+            which names the list the Undo is offered under.
+        mark_text: The removed mark's own words (`dashboard_frame.stated_mark`).
+    """
+
+    button: MarkButton
+    mark_text: str
 
 
 @dataclass(frozen=True, slots=True)

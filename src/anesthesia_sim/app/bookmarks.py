@@ -581,6 +581,24 @@ class BookmarkSet:
 
         return BookmarkSet((*self.time_bookmarks, bookmark), self.mac_targets)
 
+    def with_time_bookmark_at(self, position: int, bookmark: TimeBookmark) -> BookmarkSet:
+        """This set with `bookmark` put back at `position` among the time bookmarks.
+
+        An undone removal uses this, so the mark returns to the row it was
+        removed from (`PL-5GX4`). A position past the end puts the mark at
+        the end.
+
+        Raises:
+            ValueError: If `position` is negative.
+            SimulationConfigurationError: If the instant is already marked, as
+                `with_time_bookmark` raises it.
+        """
+
+        _require_position(position)
+        kept = self.time_bookmarks
+
+        return BookmarkSet((*kept[:position], bookmark, *kept[position:]), self.mac_targets)
+
     def without_time_bookmark(self, bookmark: TimeBookmark) -> BookmarkSet:
         """This set with the bookmark at `bookmark`'s instant removed.
 
@@ -635,6 +653,23 @@ class BookmarkSet:
         """
 
         return BookmarkSet(self.time_bookmarks, (*self.mac_targets, target))
+
+    def with_mac_target_at(self, position: int, target: MacTarget) -> BookmarkSet:
+        """This set with `target` put back at `position` among the MAC targets.
+
+        `with_time_bookmark_at` gives the reason, and a position past the end
+        puts the target at the end.
+
+        Raises:
+            ValueError: If `position` is negative.
+            SimulationConfigurationError: If the same compartment and height
+                are already marked, as `with_mac_target` raises it.
+        """
+
+        _require_position(position)
+        kept = self.mac_targets
+
+        return BookmarkSet(self.time_bookmarks, (*kept[:position], target, *kept[position:]))
 
     def without_mac_target(self, target: MacTarget) -> BookmarkSet:
         """This set with the target that names `target`'s crossing removed.
@@ -947,6 +982,20 @@ def _require_readings(
                 f"the {side} reading names no {target.quantity.value} compartment, so the "
                 f"target at {target.mac_multiple} ×MAC on it cannot be tested for a crossing"
             )
+
+
+def _require_position(position: int) -> None:
+    """Refuse a negative position in a list of marks.
+
+    A negative index counts from the end in Python, so a mark put back at -1
+    would land one row above the last rather than where it was removed from.
+
+    Raises:
+        ValueError: If `position` is negative. The message names it.
+    """
+
+    if position < 0:
+        raise ValueError(f"a mark is put back at a position of 0 or more, not {position}")
 
 
 def _refuse_repeats(keys: Iterable[object], what: str, named: str) -> None:

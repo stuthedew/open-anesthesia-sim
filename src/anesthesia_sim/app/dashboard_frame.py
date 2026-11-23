@@ -878,6 +878,12 @@ ADD_MARK_LABEL: Final = "Add"
 # The label of the button on each listed mark. The button's accessible name
 # adds the mark's own text, so a screen reader says which mark it removes.
 REMOVE_MARK_LABEL: Final = "Remove"
+# The line under a list after a mark is removed from it, and the button that
+# puts the mark back (`PL-5GX4`). The button's accessible name names the mark,
+# as the Remove button's does.
+REMOVED_MARK_TEMPLATE: Final = "Removed: {mark}"
+UNDO_REMOVAL_LABEL: Final = "Undo"
+UNDO_REMOVAL_NAME_TEMPLATE: Final = "Undo removing {mark}"
 INSTANT_FIELD_LABEL: Final = "Instant"
 COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
@@ -2961,6 +2967,20 @@ def _standing_clauses(answers: Sequence[tuple[str, MarkStanding]]) -> tuple[str,
         MARK_ATTRIBUTION_TEMPLATE.format(run=label, said=MARK_STANDING_COMPARED_TEXT[standing])
         for label, standing in answers
     )
+
+
+def stated_mark(mark: TimeBookmark | MacTarget) -> str:
+    """Return a mark's own words, as its row in the Bookmarks View begins.
+
+    The row adds each run's standing after these words (`bookmark_panel`).
+    The line that offers to undo a removal names the mark in the same words,
+    without a standing, because the removed mark has none on screen.
+    """
+
+    if isinstance(mark, TimeBookmark):
+        return _stated_time_bookmark(mark)
+
+    return _stated_mac_target(mark)
 
 
 def _stated_time_bookmark(bookmark: TimeBookmark) -> str:

@@ -159,7 +159,7 @@ from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import BookmarkPanel, ForkOffer, ForkPoint
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
-from anesthesia_sim.app.qt_widgets import DialInput, MarkButton, MarkEntry, MarkRefusal
+from anesthesia_sim.app.qt_widgets import DialInput, MarkButton, MarkEntry, MarkRefusal, MarkUndo
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.layout.run_identity import RunId
@@ -220,12 +220,15 @@ class MarksPresentation:
             selected in its lists, or None before the reader entered
             anything. Every copy shows this one entry (`PL-CHX0`).
         refusal: Why the reader's last edit was refused, or None.
+        undo: The removal that an Undo would reverse, or None where there is
+            none to offer (`PL-5GX4`).
     """
 
     panel: BookmarkPanel | None
     reachable_height_mac: float | None
     entry: MarkEntry | None
     refusal: MarkRefusal | None
+    undo: MarkUndo | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -294,6 +297,8 @@ class ViewRequests:
             the list that the given Remove button belongs to. The case
             removes it from every run or refuses it, and the next tick shows
             the marks and any refusal.
+        mark_undo: Asks for the last removal to be undone. The case puts the
+            mark back in every run, and the next tick shows it.
         branch_point: Says that the reader selected the given point in a
             copy of the branch control, or no point.
         branch: Asks for a branch at the selected point.
@@ -312,6 +317,7 @@ class ViewRequests:
     mark_entry: Callable[[MarkEntry], None]
     mark_edit: Callable[[MarkButton, MarkEntry], None]
     mark_remove: Callable[[MarkButton, int], None]
+    mark_undo: Callable[[], None]
     branch_point: Callable[[ForkPoint | None], None]
     branch: Callable[[], None]
     branch_here: Callable[[], None]

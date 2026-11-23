@@ -1404,8 +1404,9 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
     Every copy of the forms shows the same entry, because the dashboard keeps
     it and hands it in every tick (`MarkEntry`). A press of an Add button
     sends the copy's entry with the request, and a press of a row's Remove
-    button sends which list the row is in and its place in that list. The
-    dashboard makes the edit.
+    button sends which list the row is in and its place in that list. A press
+    of an Undo button asks for the last removal back. The dashboard makes the
+    edit, and keeps which removal an Undo would reverse (`PL-5GX4`).
 
     Args:
         context: What the View is built from.
@@ -1432,6 +1433,8 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
         panel.targets.remove_requested.connect(
             partial(self._requests.mark_remove, MarkButton.REMOVE_TARGET)
         )
+        panel.times.undo_requested.connect(self._requests.mark_undo)
+        panel.targets.undo_requested.connect(self._requests.mark_undo)
         editor.entry_edited.connect(self._report_entry)
 
         return panel
@@ -1445,7 +1448,7 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
             self._requests.mark_entry(self._panel.editor.entry())
 
     def _write(self, panel: BookmarksPanel, shown: MarksPresentation) -> None:
-        """Write the lists, the height bound, the entry and the refusal from one tick.
+        """Write the lists, the height bound, the entry, the refusal and the undo from one tick.
 
         The editor's signals are blocked while the tick is written, so that
         a bound that holds the height control down is not mistaken for the
@@ -1476,6 +1479,7 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
 
             self._entry_written = entry
             panel.show_refusal(shown.refusal)
+            panel.show_undo(shown.undo)
 
 
 class BranchView(_CasePanelView[ForkPanel, BranchPresentation]):
