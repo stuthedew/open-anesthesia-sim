@@ -1,9 +1,12 @@
 ---
 id: PL-6Y11
 title: Cut v0.6.22 from the 44 items finished since v0.6.21
-status: untriaged
+status: done
 resource: release-train
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2278
+verify: grep -qF '## Current baseline: v0.6.22' ROADMAP.md
 ---
 
 **Problem.** Cut v0.6.22 from the 40 items finished since v0.6.21
