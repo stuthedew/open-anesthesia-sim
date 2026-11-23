@@ -368,6 +368,17 @@ chart or a list that ended without a count would tell the reader that nothing
 else happened. Each chart shows the count of adjustments it leaves unmarked,
 because each chart has its own time window (§ "The chart's time base").
 
+**The list states its count where the reader can always see it.** A line under
+each run's heading gives the number of adjustments the run has, and how many
+earlier ones the list leaves out. Only the entries scroll, inside each run's own
+panel, so the heading and the count stay in view however long the list grows,
+and when two runs' records share the column. A list that scrolls is otherwise
+read as complete: in a usability study reported by Flaherty, six of eight users
+did not realize they could scroll a page whose visible part looked finished
+(Flaherty K. The illusion of completeness: what it is and how to avoid it.
+Nielsen Norman Group, 2016,
+https://www.nngroup.com/articles/illusion-of-completeness/) (`PL-HF1B`).
+
 **The timeline itself has no limit.** The limits above apply only to what is
 shown. Capping the timeline would lose the settings needed to reproduce the run.
 Dropping the oldest entries would remove the start of the case, which is the
