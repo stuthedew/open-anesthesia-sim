@@ -51,9 +51,10 @@ class FailureKind(Enum):
     #: A step or a prediction produced a state the model cannot hold, from
     #: valid inputs, such as a negative amount or a fraction above 1.
     NUMERICAL = "numerical"
-    #: The model was given a value it does not accept while a run stepped or
-    #: drew. A setting the reader chose is refused before it is applied, and is
-    #: not a failure.
+    #: One part of the simulator gave another a value that it does not
+    #: accept, such as a settings record that a Reset or a step refuses. A
+    #: setting the reader chose is refused before it is applied, and is not a
+    #: failure, so the reader's own dial never causes this kind.
     CONFIGURATION = "configuration"
     #: The run could not continue safely for another reason that the core
     #: names, other than reaching the supported run length.

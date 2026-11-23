@@ -179,6 +179,8 @@ class RunPanelState:
         rejected_setting_notice: The notice for a setting the run refused,
             or None.
         refused_reset_notice: The notice for a Reset the run refused, or None.
+        refused_reset_reason: The message of the error with which a Reset
+            was refused, for the failure's details, or None.
         pending_agent_name: The agent that an open new-case question
             proposes, or None while no such question is open.
         reset_question: The open Reset question, restated from the runs as
@@ -198,6 +200,7 @@ class RunPanelState:
     branch_offered: bool
     rejected_setting_notice: str | None
     refused_reset_notice: str | None
+    refused_reset_reason: str | None
     pending_agent_name: str | None
     reset_question: NewCaseQuestion | None
     charts_withheld: bool
@@ -507,7 +510,12 @@ def _presentation(
         record=record.run_record(),
         statement=statement,
         notice=_compared_banner(statement.banner, state.name),
-        failure_details=failure_details(record.run_record(), failure_log_path()),
+        failure_details=failure_details(
+            record.run_record(),
+            failure_log_path(),
+            run_name=state.name,
+            refused_reset_reason=state.refused_reset_reason,
+        ),
         one_mac=one_mac,
         standing=standing,
         values=values,

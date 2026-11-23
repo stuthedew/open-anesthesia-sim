@@ -819,7 +819,8 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
 
     assert banner is not None
     assert banner.startswith(
-        "Simulation stopped — the model was given a value it does not accept. "
+        "Simulation stopped — one part of the simulator gave another "
+        "a value that it does not accept. "
         "This is a fault in the simulator, not a change in the patient. "
     )
     assert reason not in banner
@@ -1068,7 +1069,8 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
     assert first == REFUSED_RESET_EXIT_TEMPLATE.format(way_out=REFUSED_RESET_WAY_OUT_TEXT)
     assert pressed_again == first
     assert after_failure == (
-        f"Reset was refused — the model was given a value it does not accept. {way_out}"
+        f"Reset was refused — one part of the simulator gave another "
+        f"a value that it does not accept. {way_out}"
     )
     assert this_refusal not in after_failure
 
@@ -1078,7 +1080,8 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
 
     assert drawn is not None and drawn.endswith(first)
     assert drawn.startswith(
-        "Simulation stopped — the model was given a value it does not accept. This is a fault "
+        "Simulation stopped — one part of the simulator gave another "
+        "a value that it does not accept. This is a fault "
         "in the simulator, not a change in the patient. The values shown are"
     )
     assert "perfused at" not in drawn
@@ -1263,7 +1266,12 @@ def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
         _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
     )
     stopped = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s)
-    failed = replace(approaching, failure_reason="RuntimeError: boom", is_running=False)
+    failed = replace(
+        approaching,
+        failure_reason="RuntimeError: boom",
+        failure_kind=FailureKind.UNEXPECTED,
+        is_running=False,
+    )
 
     assert refused is not None
     assert refused.text.startswith("Setting refused — too high.")

@@ -217,8 +217,9 @@ STATUS_SUPPORTED_LIMIT_TEXT: Final = "Stopped — supported run length reached"
 # The three notice banners, in precedence order. The stopped-run wording says
 # what the values *are* rather than warning about them. Rolling the failed
 # step back is what made that possible (`PL-026`). Whether a step was rolled
-# back is for the failure's own message to say, and `SimulationNumericalError`'s
-# message does say it. The banner no longer says it of every failure, because
+# back is for the failure's own message to say, which the details under the
+# banner show (`failure_details`), and `SimulationNumericalError`'s message does
+# say it. The banner does not say it of every failure, because
 # a setting that raised an exception (`PL-YK2V`) and a displayed value that the
 # interface rejected (`PL-7DJK`) failed no step. The run-length wording does not
 # reuse the failure's wording, because nothing failed and nothing was rolled
@@ -251,10 +252,11 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
     "except the agent accounting panel, which shows the rejected step. {exit}"
 )
 # The reasons a failure banner gives, one for each kind of failure that the
-# simulator can tell apart (`failures.FailureKind`). The exception's own
-# message is written for a developer: it names the exception's class, and the
-# accounting check's prints every total in e-notation under its code name,
-# such as `absolute_error=1.000000e+00 L`. So that message goes to the failure
+# simulator can tell apart (`failures.FailureKind`). The reason a run records
+# is written for a developer: it names the exception's class beside its
+# message (`halt_disposition`), and the accounting check's message prints every
+# total in e-notation under its code name, such as
+# `absolute_error=1.000000e+00 L`. So that message goes to the failure
 # log (`run_view.log_failure`) and to the details under the banner
 # (`failure_details`), and the learner gets plain words. Each says what
 # happened, as far as the kind shows it, and that it is a fault in the
@@ -296,7 +298,9 @@ FAILURE_CAUSE_TEXTS: Final[Mapping[FailureKind, str]] = MappingProxyType(
         FailureKind.NUMERICAL: (
             "the model produced a value it cannot hold, such as a negative amount of agent"
         ),
-        FailureKind.CONFIGURATION: "the model was given a value it does not accept",
+        FailureKind.CONFIGURATION: (
+            "one part of the simulator gave another a value that it does not accept"
+        ),
         FailureKind.EXECUTION: "the simulator could not continue the run safely",
         FailureKind.UNEXPECTED: (
             "an unexpected error occurred in the simulator, and its cause is not known"
@@ -2065,38 +2069,68 @@ def shown_failure_reason(status: RunStatus) -> str | None:
     return f"{FAILURE_CAUSE_TEXTS[status.failure_kind]}. {FAULT_NOT_PATIENT_TEXT}"
 
 
-def failure_details(status: RunStatus, failure_log: Path | None) -> str | None:
+def failure_details(
+    status: RunStatus,
+    failure_log: Path | None,
+    *,
+    run_name: str | None,
+    refused_reset_reason: str | None,
+) -> str | None:
     """Return the details that a failed run shows under its banner, or None if it has not failed.
 
     The banner gives the learner plain words (`shown_failure_reason`). These
-    details are for a report of the fault: the build, the exception's type and
-    message as the run recorded it, and the file that holds its traceback.
-    Microsoft's guidance on error messages puts such detail behind a "Show
-    details" control, and the Nielsen Norman Group shows error codes for
-    diagnosis only (`PL-XWCH` quotes both). A run stopped at its supported run
-    length did not fail, and has no details.
+    details are for a report of the fault: the build, the run while two are
+    drawn, the exception's type and message as the run recorded it, a refused
+    Reset's own message, and the file that holds the traceback. Microsoft's
+    guidance on error messages puts such detail behind a "Show details"
+    control, and the Nielsen Norman Group shows error codes for diagnosis only
+    (`PL-XWCH` quotes both). A run stopped at its supported run length did not
+    fail, and has no details.
+
+    The log's path is given from the home folder, as `~/...`. The report line
+    asks the learner to paste the details into a public issue, and the full
+    path usually holds their login name.
 
     Args:
         status: The run's status, either a `RunStatus` or the snapshot
             carrying one.
         failure_log: The file the failure was logged to
             (`failures.failure_log_path`), or None where no file is kept.
+        run_name: What the run is called while a second run is drawn, or None.
+        refused_reset_reason: The message of the error with which a Reset was
+            refused on this run, or None. A controller keeps its first failure,
+            so a refusal after an earlier failure is otherwise named nowhere.
     """
 
     if status.failure_reason is None:
         return None
 
-    log_line = (
-        f"Failure log: {failure_log}" if failure_log is not None else FAILURE_LOG_NOT_KEPT_TEXT
+    lines = [f"{APP_DISPLAY_NAME} — {format_build_version()}"]
+
+    if run_name is not None:
+        lines.append(f"Stopped run: {run_name}")
+
+    lines.append(f"What stopped the run: {status.failure_reason}")
+
+    if refused_reset_reason is not None and refused_reset_reason != status.failure_reason:
+        lines.append(f"Reset was then refused: {refused_reset_reason}")
+
+    lines.append(
+        f"Failure log: {_from_home(failure_log)}"
+        if failure_log is not None
+        else FAILURE_LOG_NOT_KEPT_TEXT
     )
 
-    return "\n".join(
-        (
-            f"{APP_DISPLAY_NAME} — {format_build_version()}",
-            f"What stopped the run: {status.failure_reason}",
-            log_line,
-        )
-    )
+    return "\n".join(lines)
+
+
+def _from_home(path: Path) -> str:
+    """Return `path` written from the home folder as `~`, where it lies under it."""
+
+    try:
+        return str(Path("~") / path.relative_to(Path.home()))
+    except ValueError:
+        return str(path)
 
 
 def report_fault_text(issues_url: str | None, *, link_colour: str) -> str:

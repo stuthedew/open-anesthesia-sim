@@ -82,7 +82,10 @@ def test_each_failure_is_sorted_by_its_most_specific_type(
             FailureKind.NUMERICAL,
             "the model produced a value it cannot hold, such as a negative amount of agent.",
         ),
-        (FailureKind.CONFIGURATION, "the model was given a value it does not accept."),
+        (
+            FailureKind.CONFIGURATION,
+            "one part of the simulator gave another a value that it does not accept.",
+        ),
         (FailureKind.EXECUTION, "the simulator could not continue the run safely."),
         (
             FailureKind.UNEXPECTED,
@@ -130,28 +133,110 @@ def test_a_run_that_has_not_failed_shows_no_failure_words_or_details() -> None:
         ),
     ):
         assert shown_failure_reason(status) is None
-        assert failure_details(status, Path("/data/failures.log")) is None
+        assert (
+            failure_details(
+                status, Path("/data/failures.log"), run_name=None, refused_reset_reason=None
+            )
+            is None
+        )
 
 
-def test_the_details_name_the_build_the_message_and_the_log() -> None:
-    """The details hold what a report of the fault needs, one fact a line."""
+def test_the_details_name_the_build_the_message_and_the_log(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The details hold what a report of the fault needs, one fact a line.
 
+    The log's path is written from the home folder, because the report line
+    asks the learner to paste the details into a public issue and the full
+    path holds their login name.
+    """
+
+    monkeypatch.setenv("HOME", str(tmp_path))
     reason = "SimulationNumericalError: fraction of -1.0 is outside 0 to 1"
-    log = Path("/home/learner/.local/share/Open Anesthesia Simulator/failures.log")
+    log = tmp_path / ".local" / "share" / "Open Anesthesia Simulator" / "failures.log"
 
-    details = failure_details(_failed(reason, FailureKind.NUMERICAL), log)
+    details = failure_details(
+        _failed(reason, FailureKind.NUMERICAL), log, run_name=None, refused_reset_reason=None
+    )
 
     assert details == (
         f"Open Anesthesia Simulator — Version {APP_BUILD_VERSION}\n"
         f"What stopped the run: {reason}\n"
-        f"Failure log: {log}"
+        "Failure log: ~/.local/share/Open Anesthesia Simulator/failures.log"
     )
+    assert str(tmp_path) not in details
+
+
+def test_a_log_outside_the_home_folder_is_given_in_full(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    log = tmp_path / "elsewhere" / "failures.log"
+
+    details = failure_details(
+        _failed("TypeError: boom", FailureKind.UNEXPECTED),
+        log,
+        run_name=None,
+        refused_reset_reason=None,
+    )
+
+    assert details is not None
+    assert details.splitlines()[-1] == f"Failure log: {log}"
+
+
+def test_the_details_name_the_run_while_two_are_drawn_and_a_later_refused_reset() -> None:
+    """Copied details say which run stopped, and a refused Reset is not lost to the first failure.
+
+    A controller keeps its first failure, so without the last line a Reset
+    refused after an earlier failure would be named only in the log.
+    """
+
+    first = "SimulationNumericalError: fraction of -1.0 is outside 0 to 1"
+    refusal = (
+        "SimulationConfigurationError: the tissue groups are perfused at 5.0 L/min in total "
+        "but cardiac output is 6.0 L/min"
+    )
+
+    details = failure_details(
+        _failed(first, FailureKind.NUMERICAL),
+        None,
+        run_name="Branch 1",
+        refused_reset_reason=refusal,
+    )
+
+    assert details == (
+        f"Open Anesthesia Simulator — Version {APP_BUILD_VERSION}\n"
+        "Stopped run: Branch 1\n"
+        f"What stopped the run: {first}\n"
+        f"Reset was then refused: {refusal}\n"
+        "Failure log: none is kept this session, because the data folder could not be used"
+    )
+
+
+def test_a_refused_reset_that_stopped_the_run_is_named_once() -> None:
+    refusal = "SimulationConfigurationError: the tissue groups are perfused at 5.0 L/min"
+
+    details = failure_details(
+        _failed(refusal, FailureKind.CONFIGURATION),
+        None,
+        run_name=None,
+        refused_reset_reason=refusal,
+    )
+
+    assert details is not None
+    assert details.count("perfused") == 1
+    assert "Reset was then refused" not in details
 
 
 def test_the_details_say_when_no_failure_log_is_kept() -> None:
     """A data folder that could not be used keeps no log, and the details do not name one."""
 
-    details = failure_details(_failed("TypeError: boom", FailureKind.UNEXPECTED), None)
+    details = failure_details(
+        _failed("TypeError: boom", FailureKind.UNEXPECTED),
+        None,
+        run_name=None,
+        refused_reset_reason=None,
+    )
 
     assert details is not None
     assert details.splitlines()[-1] == (
@@ -196,7 +281,8 @@ def test_a_refused_reset_after_an_earlier_failure_names_its_own_kind_once() -> N
     )
 
     assert exit_text.startswith(
-        "Reset was refused — the model was given a value it does not accept. No setting can "
+        "Reset was refused — one part of the simulator gave another "
+        "a value that it does not accept. No setting can "
         "repair this"
     )
     assert "perfused" not in exit_text

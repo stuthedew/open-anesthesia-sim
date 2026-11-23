@@ -1490,6 +1490,13 @@ class FailureDetails(QWidget):
         self.report_text = styled_label("", color=INK, wrap=True)
         self.report_text.setTextFormat(Qt.TextFormat.RichText)
         self.report_text.setOpenExternalLinks(True)
+        # A label lets only the mouse follow a link by default, so the link is
+        # also put in the tab order and followed with Enter (WCAG 2.2 SC 2.1.1).
+        self.report_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByKeyboard
+        )
+        self.report_text.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self._details: str | None = None
 
         buttons = QHBoxLayout()

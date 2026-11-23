@@ -141,7 +141,7 @@ _TIMED_STOP_S = 61
 #: one whose model produced a value it cannot hold. The exception's own message
 #: is shown only in the details under the banner (`PL-XWCH`).
 _CONFIGURATION_BANNER: Final = (
-    "Simulation stopped — the model was given a value it does not accept. "
+    "Simulation stopped — one part of the simulator gave another a value that it does not accept. "
     "This is a fault in the simulator, not a change in the patient."
 )
 _NUMERICAL_BANNER: Final = (
@@ -354,7 +354,7 @@ def test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour(
     failed = SimulationController()
     failed.start()
     failed.advance()
-    failed.fail("RuntimeError: the frame could not be drawn")
+    failed.fail("RuntimeError: the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     assert stopped.has_reached_supported_limit is True
 
@@ -2028,7 +2028,8 @@ def test_a_reset_refused_on_a_failed_run_keeps_the_failure_and_states_the_refusa
     assert notice is not None
     assert notice.startswith(_NUMERICAL_BANNER)
     assert notice.endswith(
-        "Reset was refused — the model was given a value it does not accept. "
+        "Reset was refused — one part of the simulator gave another "
+        "a value that it does not accept. "
         f"{REFUSED_RESET_WAY_OUT_TEXT}"
     )
     assert f"What stopped the run: {failure}" in _failure_details(run)

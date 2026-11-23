@@ -409,6 +409,10 @@ class RunView(QWidget):
         # the simulation, so there is no core state for it to belong to
         # (`PL-M4M0`).
         self._refused_reset_notice: str | None = None
+        # The refused Reset's own message, for the failure's details
+        # (`dashboard_frame.failure_details`). It is set and cleared with the
+        # notice above.
+        self._refused_reset_reason: str | None = None
         # The setting a reader is dragging on this run and has not applied,
         # or None while no thumb is held (`PL-5B1N`). It is held here rather
         # than in the controller for the same reason: nothing about the
@@ -809,6 +813,7 @@ class RunView(QWidget):
             and self.controller.fork_refusal is None,
             rejected_setting_notice=self._rejected_setting_notice,
             refused_reset_notice=self._refused_reset_notice,
+            refused_reset_reason=self._refused_reset_reason,
             pending_agent_name=(
                 None
                 if self._new_case_dialog is None or self._pending_agent_id is None
@@ -1221,6 +1226,7 @@ class RunView(QWidget):
         else:
             self._rejected_setting_notice = None
             self._refused_reset_notice = None
+            self._refused_reset_reason = None
 
         settled = settled_notice is None and self._rejected_setting_notice is None
 
@@ -1496,15 +1502,18 @@ class RunView(QWidget):
                 self._refused_reset_notice = refused_reset_exit(
                     error, recorded_failure_reason=self.controller.status().failure_reason
                 )
+                _, self._refused_reset_reason = halt_disposition(error)
             else:
                 self._rejected_setting_notice = None
                 self._refused_reset_notice = None
+                self._refused_reset_reason = None
                 self._announce_the_start_over()
 
             raise
 
         self._rejected_setting_notice = None
         self._refused_reset_notice = None
+        self._refused_reset_reason = None
         self._announce_the_start_over()
         self.presentation_requested.emit(False)
 
