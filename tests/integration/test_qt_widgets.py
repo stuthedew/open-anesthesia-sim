@@ -20,7 +20,7 @@ from collections.abc import Iterator
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QKeyEvent, QPalette, QWheelEvent
+from PySide6.QtGui import QColor, QFontMetrics, QKeyEvent, QMouseEvent, QPalette, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -802,6 +802,139 @@ def test_a_key_step_applies_at_once_and_previews_nothing(application: QApplicati
 
     assert applied == [(slider_value(start + 1, setting.decimals), DialInput.STEP)]
     assert previewed == []
+
+
+def test_a_key_or_wheel_while_the_thumb_is_held_applies_nothing(application: QApplication) -> None:
+    """A held thumb is the only input, so the chart never calls an applied value "not applied".
+
+    Before `PL-M3H5`, a Right key press while the handle was held applied the
+    next step at once, while the preview still labelled the held value "not
+    applied" until release.
+    """
+
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    events: list[tuple[str, float | None]] = []
+    control.preview_moved.connect(lambda value: events.append(("preview", value)))
+    control.preview_ended.connect(lambda: events.append(("ended", None)))
+    control.value_changed.connect(
+        lambda value, dial_input: events.append((f"applied on {dial_input.value}", value))
+    )
+    start = slider_position(setting.value, setting.decimals)
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(start + 5)
+    held = list(events)
+
+    QTest.keyClick(control.slider, Qt.Key.Key_Right)
+    control.slider.wheelEvent(_wheel_event(control.slider, Qt.ScrollPhase.NoScrollPhase))
+
+    assert events == held
+    assert control.slider.sliderPosition() == start + 5
+
+    control.slider.setSliderDown(False)
+
+    assert events == [
+        *held,
+        ("applied on a released thumb", slider_value(start + 5, setting.decimals)),
+        ("ended", None),
+    ]
+
+
+def test_a_key_or_swipe_begun_while_the_thumb_was_held_stays_ignored_after_the_release(
+    application: QApplication,
+) -> None:
+    """A key held through the release, or a swipe begun during the hold, adds nothing to the drag.
+
+    Their later events are a held key's repeats and a swipe's updates, which
+    announce no adjustment of their own. So if they applied after the release,
+    their steps would be counted as part of the drag. A fresh press of the key
+    after the release is an adjustment of its own, as usual.
+    """
+
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    events: list[tuple[str, float | None]] = []
+    control.slider.input_started.connect(lambda: events.append(("input", None)))
+    control.value_changed.connect(
+        lambda value, dial_input: events.append((f"applied on {dial_input.value}", value))
+    )
+    start = slider_position(setting.value, setting.decimals)
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(start + 5)
+    control.slider.keyPressEvent(_key_event(repeat=False))
+    control.slider.keyPressEvent(_key_event(repeat=True))
+    control.slider.wheelEvent(_wheel_event(control.slider, Qt.ScrollPhase.ScrollBegin))
+    control.slider.setSliderDown(False)
+    released = slider_value(start + 5, setting.decimals)
+
+    assert events == [("applied on a released thumb", released)]
+
+    control.slider.keyPressEvent(_key_event(repeat=True))
+    control.slider.wheelEvent(_wheel_event(control.slider, Qt.ScrollPhase.ScrollUpdate))
+    control.slider.wheelEvent(_wheel_event(control.slider, Qt.ScrollPhase.ScrollMomentum))
+    control.slider.wheelEvent(_wheel_event(control.slider, Qt.ScrollPhase.ScrollEnd))
+
+    assert events == [("applied on a released thumb", released)]
+    assert control.slider.sliderPosition() == start + 5
+
+    control.slider.keyPressEvent(_key_event(repeat=False))
+
+    assert events == [
+        ("applied on a released thumb", released),
+        ("input", None),
+        (
+            "applied on a key, the wheel or a click on the track",
+            slider_value(start + 6, setting.decimals),
+        ),
+    ]
+
+
+def test_a_second_mouse_button_while_the_thumb_is_held_does_nothing(
+    application: QApplication,
+) -> None:
+    """A middle press during a left drag starts no input and leaves the drag as it was.
+
+    Under Qt's Fusion style the middle button moves the handle to the pointer.
+    Handled as a fresh press, it would announce an adjustment and restart the
+    preview at the value in force, labelled "not applied".
+    """
+
+    setting = _settings()[0]
+    control = ParameterSlider(setting)
+    events: list[tuple[str, float | None]] = []
+    control.slider.input_started.connect(lambda: events.append(("input", None)))
+    control.preview_moved.connect(lambda value: events.append(("preview", value)))
+    start = slider_position(setting.value, setting.decimals)
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(start + 5)
+    held = list(events)
+    centre = QPointF(control.slider.width() / 2, control.slider.height() / 2)
+    both = Qt.MouseButton.LeftButton | Qt.MouseButton.MiddleButton
+
+    control.slider.mousePressEvent(
+        QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            centre,
+            control.slider.mapToGlobal(centre),
+            Qt.MouseButton.MiddleButton,
+            both,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+    control.slider.mouseReleaseEvent(
+        QMouseEvent(
+            QEvent.Type.MouseButtonRelease,
+            centre,
+            control.slider.mapToGlobal(centre),
+            Qt.MouseButton.MiddleButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+    )
+
+    assert events == held
+    assert control.slider.isSliderDown()
+    assert control.slider.sliderPosition() == start + 5
 
 
 def test_a_frame_written_during_a_drag_leaves_the_thumb_under_the_pointer(

@@ -359,7 +359,12 @@ slider's handle is held, the run keeps its setting and the chart draws a preview
 (§ "A preview of an unapplied setting"). Releasing the handle applies the value
 once, so a drag records one setting change. A key press, one notch of the scroll
 wheel or a click on the slider away from its handle is a single input, and is an
-adjustment of its own.
+adjustment of its own. While the handle is held, a key press, a wheel notch or a
+second mouse button on that slider does nothing, so the drag is the one input
+and the preview never labels as unapplied a value the run has already applied.
+A key still held after the release, or a trackpad swipe begun during the hold,
+stays ignored until the key is let go or the swipe ends, so its steps are never
+counted as part of the drag.
 
 A displayed adjustment states the interval it spans and how many settings the
 model ran under during it. The count is shown because an adjustment made over

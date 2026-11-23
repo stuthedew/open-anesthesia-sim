@@ -1219,6 +1219,18 @@ class _SettingSlider(QSlider):
     by one held key. A trackpad swipe is announced only where it begins, for
     the same reason.
 
+    **A key press, a wheel turn or a second mouse button while the handle is
+    held does nothing** (`PL-M3H5`). Qt's slider applies a key step at once
+    even while the handle is down, and the chart would still label the held
+    value "not applied" until the release. So while a pointer holds the
+    handle, the drag is the one input, as a drag-and-drop library keeps
+    standard keys from acting during a mouse drag (react-beautiful-dnd,
+    docs/sensors/mouse.md, read 2026-11-23). A key whose press was ignored
+    stays ignored while it is held, and a trackpad swipe that began during the
+    hold stays ignored until it ends. Otherwise a key held past the release
+    would repeat into the run with no announcement, and its steps would be
+    counted as part of the drag.
+
     Attributes:
         jumping: True only while a press on the track moves the handle to
             the pointer.
@@ -1232,24 +1244,61 @@ class _SettingSlider(QSlider):
         super().__init__(Qt.Orientation.Horizontal)
         self.jumping = False
         self._grab_offset: int | None = None
+        self._ignored_keys: set[int] = set()
+        self._ignoring_swipe = False
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
+        if self.isSliderDown():
+            self._ignored_keys.add(event.key())
+            event.accept()
+            return
+
+        if event.isAutoRepeat() and event.key() in self._ignored_keys:
+            event.accept()
+            return
+
+        self._ignored_keys.discard(event.key())
+
         if not event.isAutoRepeat():
             self.input_started.emit()
 
         super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
+        if not event.isAutoRepeat():
+            self._ignored_keys.discard(event.key())
+
+        super().keyReleaseEvent(event)
 
     def wheelEvent(self, event: QWheelEvent) -> None:  # Qt spells this in camelCase.
         # A mouse wheel sends each notch as an event with no scroll phase. A
         # trackpad swipe sends one event that begins the gesture and then many
         # small ones, its momentum included, so it is announced only where it
         # begins and is one adjustment however far it moves the value.
-        if event.phase() in (Qt.ScrollPhase.NoScrollPhase, Qt.ScrollPhase.ScrollBegin):
+        starts = event.phase() in (Qt.ScrollPhase.NoScrollPhase, Qt.ScrollPhase.ScrollBegin)
+
+        if starts:
+            self._ignoring_swipe = False
+
+        if self.isSliderDown() or self._ignoring_swipe:
+            self._ignoring_swipe = event.phase() not in (
+                Qt.ScrollPhase.NoScrollPhase,
+                Qt.ScrollPhase.ScrollEnd,
+            )
+            event.accept()
+            return
+
+        if starts:
             self.input_started.emit()
 
         super().wheelEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        if event.buttons() != event.button():
+            # Another button is already down, so this press is ignored.
+            event.accept()
+            return
+
         self.input_started.emit()
         button = event.button().value
         moves_to_pointer = self.style().styleHint(
@@ -1308,6 +1357,11 @@ class _SettingSlider(QSlider):
         event.accept()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        if event.buttons():
+            # A second button was let go while the first still holds the handle.
+            event.accept()
+            return
+
         self._grab_offset = None
         super().mouseReleaseEvent(event)
 
