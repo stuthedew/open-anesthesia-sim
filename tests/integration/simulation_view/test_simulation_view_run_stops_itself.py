@@ -5,6 +5,7 @@ These tests cover a run that stops itself (`PL-T995`).
 `simulation_view_support.py` describes the whole suite.
 """
 
+import logging
 import time
 from collections.abc import Callable, Mapping
 from typing import Final, NoReturn
@@ -862,12 +863,10 @@ def _no_settings() -> dict[str, object]:
 
 #: The amounts that the panel should show for the failing check from `_a_failing_check`.
 #: They are written by hand. 40.0 L delivered, less 20.0 L exhausted and 14.0 L stored,
-#: leaves 6.0 L unaccounted. The panel does not show the unaccounted amount or the
-#: absolute error exactly. It shows the next power of ten above each one, so both lines
-#: show "<10¹ L".
+#: leaves 6.0 L unaccounted. The panel does not show the unaccounted amount exactly.
+#: It shows the next power of ten above it, "<10¹ L".
 _REJECTED_CHECK_AMOUNTS: Final = (
-    "Delivered: 40.0 L\nExhausted: 20.0 L\nStored: 14.0 L\n"
-    "Unaccounted: <10¹ L\nAbsolute error: <10¹ L"
+    "Delivered: 40.0 L\nExhausted: 20.0 L\nStored: 14.0 L\nUnaccounted: <10¹ L"
 )
 
 
@@ -1709,6 +1708,55 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
         "No frame has been drawn since the run started over: the readouts and the charts "
         "are withheld, and the run itself stands at its last completed step."
     ) in banner
+
+
+@pytest.mark.parametrize("scenario", ["accounting halt", "accounting halt, no frame drawn"])
+def test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    scenario: str,
+) -> None:
+    """The banner after a failed accounting check says what happened in plain words.
+
+    Until `PL-TWZY`, the banner showed the core's message for a developer: the
+    exception's class name, and every total in e-notation under a code name, such
+    as `absolute_error=1.000000e+00 L`. The expected opening is written out here
+    rather than read from the interface's constant. The core's message, with its
+    totals, still reaches the log for a developer, once for the run. In the case
+    with no frame drawn, the frame then fails too. That is a second fault, so the
+    dashboard logs it once as well, after the run's own record. The injected check has 40.0 L
+    delivered, 20.0 L exhausted and 14.0 L stored, which leaves 6.0 L unaccounted
+    (`_a_failing_check`).
+    """
+
+    caplog.set_level(logging.ERROR, logger="anesthesia_sim.app")
+
+    run, _ = _ONE_STATE_SCENARIOS[scenario](application, monkeypatch)
+
+    banner = run._notice_text.notice()
+    assert banner is not None
+    assert banner.startswith(
+        "Simulation stopped — the agent accounting check failed: the rejected step created "
+        "or lost anesthetic agent. This is a fault in the simulator, not a change in the "
+        "patient. "
+    ), banner
+    assert banner.endswith("Reset to start a new run."), banner
+    assert not any(f"{digit}e" in banner for digit in "0123456789"), f"e-notation in {banner!r}"
+    assert "Error" not in banner
+    assert "=" not in banner
+    assert "_" not in banner
+
+    logged = [record.getMessage() for record in caplog.records]
+    assert logged[0].startswith("Run 1 stopped on a failure: AgentSimulationValidationError: ")
+    assert "unaccounted=6.000000e+00 L" in logged[0]
+    assert all(record.exc_info is not None for record in caplog.records)
+
+    if scenario == "accounting halt":
+        assert len(logged) == 1, logged
+    else:
+        assert len(logged) == 2, logged
+        assert logged[1].startswith("Every run on the dashboard stopped on a failure: "), logged
 
 
 def test_an_accounting_error_with_a_check_of_the_wrong_type_still_halts_the_run(

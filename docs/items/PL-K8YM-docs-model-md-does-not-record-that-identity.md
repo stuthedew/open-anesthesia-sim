@@ -3,12 +3,14 @@ id: PL-K8YM
 title: docs/MODEL.md does not record that identity-carrying controls are never rendered disabled, nor the running-agent chip beside the selector and header
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, ux
 feature: presentation-safety
 touches: docs/MODEL.md, docs/INTERFACE.md
 added: 2026-09-07
-verify: grep -q '_running_agent_display' docs/INTERFACE.md
+closed: 2026-11-22
+pr: 2260
+verify: grep -qF 'No control that carries the agent' docs/INTERFACE.md
 ---
 
 **Problem.** docs/MODEL.md does not record that identity-carrying controls are never rendered disabled, nor the running-agent chip beside the selector and header
@@ -61,3 +63,5 @@ never-disabled bar among the ones this interface holds above AA, with the
 reasoning for declining the exemption.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and both statements are now in `docs/INTERFACE.md`, not `docs/MODEL.md`, since `PL-CTXZ` (#2109). The paragraph that opens "The agent selector and the header back the written name" still names two carriers, and `_running_agent_display` (in `app/run_view.py`) is not named anywhere in `docs/INTERFACE.md`. § "Color contrast, and the standard this interface is held to" still does not state that no control carrying agent identity is ever rendered disabled. That rule is enforced by `tools/agent_identity_check.py` and stated in `.claude/rules/ui-color.md`, but not in the interface document.
+
+**Closed 2026-11-22.** Documentation checked for statements this change made false: `docs/INTERFACE.md` (§§ "Minimum displayed outputs", "Values that must stay reachable", "The code and tests behind the layout requirements", "Minimum contrast for text and graphics", "Color as a cue: agent colors and the alert color", "The code and tests behind the color requirements", "The agent-accounting panel", "What the reader chooses: traces, window and playback rate"), `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md`, `.claude/rules/ui-color.md`, `.claude/skills/run-the-app/SKILL.md`, and the docstrings of `app/dashboard_frame.py`, `app/formatting.py`, `app/playback.py` and `tests/integration/test_qt_rendering.py`.

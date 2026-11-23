@@ -1806,6 +1806,9 @@ class ForkPanel(QWidget):
             `clicked` is connected by the view.
         lock_text: Why the control is not offered, shown where the control
             was.
+        pin_text: Shown above the controls while the Workspace is pinned to
+            one run, saying that a branch taken here will not be drawn in it
+            (`PL-RXR8`).
         notice: Why the last requested branch was refused.
     """
 
@@ -1834,6 +1837,8 @@ class ForkPanel(QWidget):
         self.here_button.setHidden(True)
         self.lock_text = styled_label("", color=MUTED, wrap=True)
         self.lock_text.setHidden(True)
+        self.pin_text = styled_label("", color=MUTED, wrap=True)
+        self.pin_text.setHidden(True)
         self.notice = NoticeLabel(self)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
         # The points behind the selector's entries, one per entry, in the
@@ -1845,7 +1850,9 @@ class ForkPanel(QWidget):
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(BOOKMARK_ROW_SPACING)
         # The panel has no heading of its own: the Area header above it says
-        # "Branch", and so does the button (`PL-8LMY`).
+        # "Branch", and so does the button (`PL-8LMY`). The pin's notice comes
+        # first, so it is read before either button is pressed (`PL-RXR8`).
+        column.addWidget(self.pin_text)
         controls = QHBoxLayout()
         controls.setSpacing(CONTROL_ROW_SPACING)
         controls.addWidget(self._point_label)
@@ -1942,6 +1949,8 @@ class ForkPanel(QWidget):
         self.here_button.setHidden(not offer.here_offered)
         self.lock_text.setText(offer.lock_reason)
         self.lock_text.setHidden(not offer.locked)
+        self.pin_text.setText(offer.pinned_notice)
+        self.pin_text.setHidden(not offer.pinned_notice)
         self.notice.set_notice(offer.refusal)
 
 
