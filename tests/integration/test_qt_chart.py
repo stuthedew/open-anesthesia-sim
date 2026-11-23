@@ -21,7 +21,7 @@ from collections.abc import Iterator
 import numpy as np
 import pytest
 from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QMouseEvent, QPainter, QPalette, QPen
+from PySide6.QtGui import QColor, QFont, QFontInfo, QImage, QMouseEvent, QPainter, QPalette, QPen
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
@@ -50,6 +50,7 @@ from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
 from anesthesia_sim.app.controller import BranchedCase, SettingPreview, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    MAX_DISPLAYED_RUNS,
     compared_trace_legend_label,
     run_label,
     trace_legend_label,
@@ -76,6 +77,7 @@ from anesthesia_sim.app.qt_widgets import FlowLayout
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.stylesheets import foreground_stylesheet
 from anesthesia_sim.app.theme import (
+    CHART_LEAST_HEIGHT,
     COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
@@ -867,6 +869,85 @@ def test_the_hover_answers_the_point_under_the_pointer(application: QApplication
     _wait_for_hover(wash_in, under_pointer)
 
     assert wash_in.hover_text() == under_pointer
+
+
+#: How far the hover box may cross the plot's edge, in pixels. The box and the
+#: plot are mapped in floating point, and a box placed on an edge measures as
+#: outside it by less than 0.05 px, which `test_qt_rendering.py` measured
+#: (`PL-J0F7`).
+_BOX_EDGE_TOLERANCE_PX = 0.5
+
+
+@pytest.mark.parametrize("family", [None, "DejaVu Sans"], ids=["platform font", "CI font"])
+def test_the_tallest_hover_box_fits_the_plot_at_its_least_height(
+    application: QApplication, family: str | None
+) -> None:
+    """The box with every trace stays whole inside a wide plot at its least height (`PL-S0HP`).
+
+    The tallest box the concentration plot shows names the agent and then all
+    six compartments. It appears where every trace is inside the hover radius,
+    as at the start of a run, when all six are at zero. Two compared runs show
+    fewer lines, because a compared chart draws at most two compartments.
+    `PL-571L` took half a line from the plot's height for the top tick label,
+    so the box's last line, a value the learner is reading, could have been
+    cut off by the plot's edge. Measured on 2026-11-22, the box was 113.0 px
+    and the plot 113.1 px in the container's font, and 106.0 px and 114.9 px
+    in DejaVu Sans, the font the CI runners draw in. The test runs in both, so
+    a change to either height that cuts the box off fails here.
+
+    The plot is 900 px wide, so the time axis's title stays on one line. On a
+    plot about 400 px wide the title breaks onto a second line, which takes a
+    line from the plot, and the box no longer fits. A 13-pixel font does not
+    fit either. `PL-HXSD` holds both cases.
+    """
+
+    old_font = application.font()
+
+    if family is not None:
+        font = QFont(old_font)
+        font.setFamily(family)
+        application.setFont(font)
+        # Qt substitutes another family without an error when the one asked
+        # for is missing, and the case would then measure a font it does not name.
+        assert QFontInfo(application.font()).family() == family
+
+    try:
+        controller = SimulationController(agent_id="desflurane")
+        _advance(controller, 120)
+        controller.pause()
+        frame = _frame(controller, span_s=900.0)
+        chart = ConcentrationChart()
+        chart.resize(int(_PLOT_WIDTH_PX), chart.minimumSizeHint().height())
+        chart.show()
+        application.processEvents()
+        chart.draw(frame)
+        chart.grab()
+        application.processEvents()
+        assert chart.height() == CHART_LEAST_HEIGHT
+
+        # One pixel in from the plot's corner, where the pointer is over the
+        # plot rather than on its axes, and every trace is still within reach.
+        x_px, y_px = chart.plot_pixel(0.0, 0.0)
+        pixel = QPoint(x_px + 1, y_px - 1)
+        _move_pointer(chart, pixel)
+        deadline = QDeadlineTimer(_HOVER_WAIT_MS)
+        while chart.hover_text() is None and not deadline.hasExpired():
+            QTest.qWait(10)
+        readout = chart.hover_text()
+        assert readout is not None, "no hover answered at the plot's corner"
+        assert len(readout.splitlines()) == 1 + len(COMPARTMENT_TRACES), readout
+        assert 1 + len(COMPARTMENT_TRACES) > 1 + MAX_DISPLAYED_RUNS * COMPARED_COMPARTMENT_CAP
+        box = chart.hover_box()
+        assert box is not None
+        area = chart.plot_area().adjusted(
+            -_BOX_EDGE_TOLERANCE_PX,
+            -_BOX_EDGE_TOLERANCE_PX,
+            _BOX_EDGE_TOLERANCE_PX,
+            _BOX_EDGE_TOLERANCE_PX,
+        )
+        assert area.contains(box), f"the box {box} leaves the plot {chart.plot_area()}"
+    finally:
+        application.setFont(old_font)
 
 
 def _leave(chart: ConcentrationChart | WashInChart, pixel: QPoint) -> None:
