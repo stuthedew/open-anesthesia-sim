@@ -52,8 +52,8 @@ def test_a_branch_at_a_second_the_run_has_not_reached_refusal_is_pinned_whole() 
         trunk.resumed_at(CaseInstant(121))
 
     assert str(refusal.value) == (
-        "this run stores no state at 121 s: it stores one state for each second from 0 s, "
-        "where it opened, to 120 s, the second it has reached"
+        "this run has reached 2m, so it holds no state at 2m1s to branch from; choose an "
+        'instant it has passed under "From" and press "Branch"'
     )
 
 

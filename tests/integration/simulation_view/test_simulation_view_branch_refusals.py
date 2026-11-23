@@ -213,7 +213,11 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
     assert case.branches == ()
     notice = panel.notice.notice()
     assert notice is not None
-    assert "90" in notice
+    # The refused instant is written as the entry the learner chose wrote it,
+    # "1m30s", not in raw seconds (`PL-CCVP`).
+    assert unreached.label == "1m30s"
+    assert f"no state at {unreached.label} to branch from" in notice
+    assert "90 s" not in notice
 
 
 def test_a_mark_branch_the_case_refuses_is_reported_and_adds_no_run(

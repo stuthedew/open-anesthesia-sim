@@ -720,9 +720,10 @@ taken from the "From" selector's opening entry instead.
 
 **A refused branch says so in the branch panel, in the panel's own words**
 (`PL-3JTH`). The notice opens "Branch not opened —", because no setting was
-changed, and then gives the reason. The reason names the controls a learner can
-use instead by their labels, such as "From", "Branch" and "Branch here", and
-gives each instant as the panel writes it, such as "2m".
+changed, and then gives the reason. The reason gives each instant as the panel
+writes it, such as "2m" or "1m30s". Where another control would open the
+branch, the reason names it by its label, such as "From", "Branch" or "Branch
+here".
 
 **For developers.** A run marked at 60 s after its clock reached 180 s is
 returned to, and the branch agrees with its trunk at each of the 61 seconds

@@ -2311,15 +2311,28 @@ class SimulationController:
             SimulationConfigurationError: If any of the following is true. This run is a
                 branch, or its frame has failed (`fork_refusal`). This run
                 stores no state for `instant_s`, because it has not reached
-                that second (`StoredStates.state_at`). Or `instant_s` is the
-                supported run length, where no step is left to take.
+                that second. Or `instant_s` is the supported run length, where
+                no step is left to take.
         """
 
         self._require_forkable()
 
-        # The stored state is read first. Its refusal names the seconds that
-        # this run stores, which is the reason a caller can act on.
-        fork = self._stored_keyframe(instant_s)
+        # The stored state is read first, because a second the run has not
+        # reached is the reason a learner can act on. The stored record owns
+        # the test of which seconds it holds (`StoredStates.state_at`). Its
+        # refusal is worded here again in the branch panel's terms: the
+        # instants as the panel writes them, and the controls by their labels
+        # (`PL-CCVP`).
+        try:
+            fork = self._stored_keyframe(instant_s)
+        except SimulationConfigurationError as unstored:
+            reached_s = self._state.stored_states.reached_s
+
+            raise SimulationConfigurationError(
+                f"this run has reached {format_elapsed(reached_s)}, so it holds no state at "
+                f"{format_elapsed(instant_s)} to branch from; choose an instant it has "
+                f'passed under "{FORK_POINT_LABEL}" and press "{TAKE_FORK_LABEL}"'
+            ) from unstored
 
         # The provenance is the stretch that the step reaching the fork ran
         # under, as for every other branching method. Where the fork is a
