@@ -104,6 +104,7 @@ from hypothesis import strategies as st
 
 import anesthesia_sim
 from anesthesia_sim.app.bookmarks import BookmarkCrossing, BookmarkSet, TimeBookmark
+from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
 from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
@@ -114,6 +115,7 @@ from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationSnapshot,
 )
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
@@ -165,6 +167,36 @@ def _equation_settings_at(cardiac_output_l_min: CardiacOutput) -> UptakeEquation
 # either side.
 MARK = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S // 2))
 
+
+def _chart_runs() -> tuple[RunInput, ...]:
+    """One run that has not started, as a frame of the charts reads it."""
+
+    controller = SimulationController()
+
+    return (RunInput("Run 1", controller, controller.snapshot(), ()),)
+
+
+def _chart_frame() -> ChartFrame:
+    """The frame one tick draws for a run that has not started, at the narrowest width.
+
+    A frame records the instant its window was held at and the run's newest
+    instant (`PL-Z7LY`), so its constructor is drawn at both.
+    """
+
+    return assemble_chart_frame(
+        _chart_runs(),
+        SELECTABLE_TIME_BASES[0],
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=CHART_PLOT_WIDTH_PX,
+        held_start_s=None,
+    )
+
+
+# The width of a chart's plot, in logical pixels, for a frame drawn here. Any
+# positive width gives the frame a column for each pixel.
+CHART_PLOT_WIDTH_PX = 600.0
+
+
 # How to build each class that a guard's quantity is found on, and the record
 # that a constructor is built from, with only its drawn fields replaced. Each
 # is built at its defaults where it has them. The bookmark set holds the one
@@ -173,6 +205,7 @@ MARK = TimeBookmark(CaseInstant(MAXIMUM_ELAPSED_SIMULATION_TIME_S // 2))
 # here fails the test by name.
 RECEIVERS: Mapping[type, Callable[[], object]] = {
     AgentUptakeSystem: AgentUptakeSystem.default,
+    ChartFrame: _chart_frame,
     AlveolarCompartment: lambda: AgentUptakeSystem.default().alveoli,
     BookmarkCrossing: lambda: BookmarkCrossing(MARK.instant_s, time_bookmarks=(MARK,)),
     BookmarkSet: lambda: BookmarkSet(time_bookmarks=(MARK,)),
@@ -214,7 +247,9 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 # A value for each parameter that the guard being drawn does not bound, where
 # a function behind the guard takes one without a default. The values are the
 # count of a run that has not stepped and the state it opens at, and the
-# narrowest width that the chart's selector offers. The venous pool
+# narrowest width that the chart's selector offers. A chart frame is assembled
+# for one run that has not started, with every compartment shown, and a
+# window is stepped from one that starts at zero. The venous pool
 # stepped on its own takes a one-second step towards a tissue return of zero.
 # The other values give a bookmark set's view of a run that has reached no
 # mark, has crossed no height and is neither at its cap nor failed. The squarings
@@ -228,11 +263,15 @@ TYPICAL: Mapping[str, object] = {
     "initial_state": AgentUptakeSystem.default().state_vector(),
     "name": "Branch 1",
     "opening": AgentUptakeSystem.default().case_state(),
+    "plot_width_px": CHART_PLOT_WIDTH_PX,
     "reached_crossings": frozenset(),
     "reached_instants_s": frozenset(),
     "run_failed": False,
+    "runs": _chart_runs(),
     "seconds": (),
+    "shown": COMPARTMENT_QUANTITIES,
     "squarings": 0,
+    "start_s": 0.0,
     "simulation_step_s": 1.0,
     "snapshot": None,
     "step_count": StepCount(0),

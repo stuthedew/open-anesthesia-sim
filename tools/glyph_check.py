@@ -127,6 +127,15 @@ _RESIDUAL_EXPONENT_SEEN = (
     "-20 to 1, as a raised small figure of one height with no replacement box."
 )
 
+# How the two arrows that step a chart's window were seen.
+_WINDOW_STEP_SEEN = (
+    " - LATER_WINDOW_TEXT and EARLIER_WINDOW_TEXT in app/dashboard_frame.py, the arrows "
+    "either side of a chart's time-base selector (PL-Z7LY). Seen in the Qt build (PySide6 "
+    "6.12.0, offscreen, 2026-11-23) on the concentration chart's buttons in the container's "
+    "Inter and in DejaVu Sans, which CI draws in, at device pixel ratios 1 and 2, as a "
+    "solid triangle with no replacement box."
+)
+
 CONFIRMED: dict[int, str] = {
     0x00A0: (
         "NO-BREAK SPACE - EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE in "
@@ -181,6 +190,8 @@ CONFIRMED: dict[int, str] = {
         "confirmed middle dot it must not be mistaken for (PL-FPY2, 2026-09-22)."
     ),
     0x2070: "SUPERSCRIPT ZERO" + _RESIDUAL_EXPONENT_SEEN,
+    0x25B6: "BLACK RIGHT-POINTING TRIANGLE" + _WINDOW_STEP_SEEN,
+    0x25C0: "BLACK LEFT-POINTING TRIANGLE" + _WINDOW_STEP_SEEN,
     0x2074: "SUPERSCRIPT FOUR" + _RESIDUAL_EXPONENT_SEEN,
     0x2075: "SUPERSCRIPT FIVE" + _RESIDUAL_EXPONENT_SEEN,
     0x2076: "SUPERSCRIPT SIX" + _RESIDUAL_EXPONENT_SEEN,

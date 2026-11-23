@@ -54,7 +54,7 @@ from anesthesia_sim.app.area_layout import (
     _AreaHandle,
 )
 from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
-from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
+from anesthesia_sim.app.chart_time_base import ChartWindow, time_base_for_span
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
@@ -1049,8 +1049,8 @@ def test_a_view_that_cannot_be_built_is_a_notice_in_its_area_alone(
 
 
 def _frames(
-    windows: tuple[ChartTimeBase | None, ...],
-) -> tuple[dict[ChartTimeBase | None, ShownFrame], CompartmentSelection]:
+    windows: tuple[ChartWindow, ...],
+) -> tuple[dict[ChartWindow, ShownFrame], CompartmentSelection]:
     """Return a frame drawn for each of `windows` from one unstarted run, as the dashboard does."""
 
     controller = SimulationController()
@@ -1059,7 +1059,14 @@ def _frames(
     inputs = [RunInput(run_label(RunId(SessionToken("0" * 32), 1)), controller, snapshot, ())]
     frames = {
         window: shown_drawn(
-            assemble_chart_frame(inputs, window, selection.shown, plot_width_px=400.0), selection
+            assemble_chart_frame(
+                inputs,
+                window.time_base,
+                selection.shown,
+                plot_width_px=400.0,
+                held_start_s=window.held_start_s,
+            ),
+            selection,
         )
         for window in windows
     }
@@ -1075,20 +1082,24 @@ def test_every_view_is_drawn_in_reading_order_with_the_frame_for_its_window(
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), Area(AreaId(2), _OTHER), _area(3)), 4)
     container = _show_with(application, shown, model)
     zoomed = time_base_for_span(900.0)
-    frames, selection = _frames((None, zoomed))
+    frames, selection = _frames((ChartWindow(None, None), ChartWindow(zoomed, None)))
 
     for setting, view in enumerate(_BUILT):
         view.setting = setting
 
-    _BUILT[0].request = FrameRequest(None, 300.0)
-    _BUILT[2].request = FrameRequest(zoomed, 300.0)
+    _BUILT[0].request = FrameRequest(ChartWindow(None, None), 300.0)
+    _BUILT[2].request = FrameRequest(ChartWindow(zoomed, None), 300.0)
 
     assert container.owes_a_frame
 
     container.refresh(frames, (), selection, _PREFERENCES, _NO_CASE)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1, 1]
-    assert [view.ticks[0].frame for view in _BUILT] == [frames[None], None, frames[zoomed]]
+    assert [view.ticks[0].frame for view in _BUILT] == [
+        frames[ChartWindow(None, None)],
+        None,
+        frames[ChartWindow(zoomed, None)],
+    ]
     assert all(view.ticks[0].selection is selection for view in _BUILT)
     assert all(view.ticks[0].preferences is _PREFERENCES for view in _BUILT)
     assert _REFRESHED == _BUILT
@@ -1110,8 +1121,8 @@ def test_a_view_asking_for_a_window_with_no_frame_is_refused(
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
-    frames, selection = _frames((None,))
-    _BUILT[1].request = FrameRequest(time_base_for_span(900.0), 300.0)
+    frames, selection = _frames((ChartWindow(None, None),))
+    _BUILT[1].request = FrameRequest(ChartWindow(time_base_for_span(900.0), None), 300.0)
 
     with pytest.raises(KeyError):
         container.refresh(frames, (), selection, _PREFERENCES, _NO_CASE)
@@ -1129,14 +1140,14 @@ def test_a_tick_with_no_frame_reaches_every_view_and_carries_each_window_s_frame
 
     model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
     container = _show_with(application, shown, model)
-    _, selection = _frames((None,))
+    _, selection = _frames((ChartWindow(None, None),))
     zoomed = time_base_for_span(900.0)
-    _BUILT[1].request = FrameRequest(zoomed, 300.0)
+    _BUILT[1].request = FrameRequest(ChartWindow(zoomed, None), 300.0)
     withheld = ShownFrame(ValuesStanding.WITHHELD, None, selection)
 
     case = _NO_CASE
 
-    container.refresh({zoomed: withheld}, (), selection, _PREFERENCES, case)
+    container.refresh({ChartWindow(zoomed, None): withheld}, (), selection, _PREFERENCES, case)
 
     assert [len(view.ticks) for view in _BUILT] == [1, 1]
     assert [view.ticks[0].frame for view in _BUILT] == [None, withheld]
@@ -1159,7 +1170,7 @@ def test_a_tick_with_no_frame_reaches_every_view_though_one_raises(
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
     container = _show_with(application, shown, model)
-    _, selection = _frames((None,))
+    _, selection = _frames((ChartWindow(None, None),))
     _BUILT[0].failure = RuntimeError("the first View could not show the tick")
     _BUILT[1].failure = RuntimeError("the second View could not show the tick")
 
@@ -1181,7 +1192,7 @@ def test_a_tick_with_a_frame_stops_at_the_first_view_that_raises(
 
     model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
     container = _show_with(application, shown, model)
-    frames, selection = _frames((None,))
+    frames, selection = _frames((ChartWindow(None, None),))
     _BUILT[1].failure = RuntimeError("the second View could not draw the frame")
 
     with pytest.raises(RuntimeError, match="the second View could not draw the frame"):
@@ -1201,12 +1212,15 @@ def test_each_window_is_sampled_for_the_widest_view_that_asks_for_it(
 
     assert container.frame_requests() == {}
 
-    _BUILT[0].request = FrameRequest(None, 300.0)
-    _BUILT[1].request = FrameRequest(zoomed, 200.0)
-    _BUILT[2].request = FrameRequest(None, 650.5)
-    _BUILT[3].request = FrameRequest(zoomed, 120.0)
+    _BUILT[0].request = FrameRequest(ChartWindow(None, None), 300.0)
+    _BUILT[1].request = FrameRequest(ChartWindow(zoomed, None), 200.0)
+    _BUILT[2].request = FrameRequest(ChartWindow(None, None), 650.5)
+    _BUILT[3].request = FrameRequest(ChartWindow(zoomed, None), 120.0)
 
-    assert container.frame_requests() == {None: 650.5, zoomed: 200.0}
+    assert container.frame_requests() == {
+        ChartWindow(None, None): 650.5,
+        ChartWindow(zoomed, None): 200.0,
+    }
 
 
 def test_an_unknown_kind_can_be_replaced_from_its_own_chooser(

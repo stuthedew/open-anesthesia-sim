@@ -14,6 +14,7 @@ width.
 """
 
 import math
+import re
 
 import pytest
 
@@ -23,12 +24,17 @@ from anesthesia_sim.app.chart_time_base import (
     SELECTABLE_TIME_BASES,
     TIME_BASE_LADDER,
     ChartTimeBase,
+    ChartWindow,
     drawn_seconds,
+    earlier_start_s,
     extreme_seconds,
     extreme_seconds_with_gaps,
     fit_to_run,
     fitted_window,
     following_window,
+    gridline_at_or_before,
+    held_window,
+    later_start_s,
     preview_window,
     tick_times,
     time_base_for_span,
@@ -507,3 +513,82 @@ def test_a_crossing_already_drawn_or_with_no_ratio_adds_nothing() -> None:
     assert wash_in_crossing_seconds(200, RATIOS_FROM_200_S, (205, 208)) == set()
     assert wash_in_crossing_seconds(200, RATIOS_FROM_200_S, (203, 204)) == set()
     assert wash_in_crossing_seconds(0, with_a_gap_first, (0, 4)) == set()
+
+
+# ------------------------------------------------------ a window the reader holds
+
+
+def test_a_step_earlier_moves_back_at_least_one_gridline_interval() -> None:
+    """`PL-Z7LY`: a step moves to a gridline at least one interval back, and less than two.
+
+    The fifteen-minute rung is ruled every 180 s. From 2118 s, one interval
+    back is 1938 s, and the gridline at or before it is 1800 s. From a
+    gridline, the step is exactly one interval. A step that would cross zero
+    stops at zero.
+    """
+
+    base = time_base_for_span(900.0)
+
+    assert earlier_start_s(base, 2118.0) == 1800
+    assert earlier_start_s(base, 2178.0) == 1980
+    assert earlier_start_s(base, 1980.0) == 1800
+    assert earlier_start_s(base, 179.0) == 0
+    assert earlier_start_s(base, 0.5) == 0
+    assert isinstance(earlier_start_s(base, 2118.0), CaseInstant)
+
+
+def test_nothing_is_earlier_than_a_window_that_starts_at_zero() -> None:
+    with pytest.raises(ValueError, match=re.escape("a window that starts at 0.0 s has nothing")):
+        earlier_start_s(time_base_for_span(900.0), 0.0)
+
+
+def test_a_step_later_follows_the_run_once_it_reaches_the_run_s_own_window() -> None:
+    """At 3000 s the following window starts at 2118 s, so a step to 2160 s follows the run."""
+
+    base = time_base_for_span(900.0)
+    newest = CaseInstant(3000)
+
+    assert later_start_s(base, 1620.0, newest) == 1800
+    assert later_start_s(base, 1700.0, newest) == 1980
+    assert later_start_s(base, 1800.0, newest) == 1980
+    assert later_start_s(base, 1980.0, newest) is None
+
+
+def test_a_held_edge_moves_back_onto_another_width_s_gridline() -> None:
+    """A width change keeps a held window's place, on the new width's gridlines.
+
+    The thirty-minute rung is ruled every 300 s, so an edge held at 4320 s
+    on the fifteen-minute rung moves back to 4200 s. An edge already on a
+    gridline stays where it is.
+    """
+
+    wider = time_base_for_span(1800.0)
+
+    assert wider.tick_interval_s == 300.0
+    assert gridline_at_or_before(wider, CaseInstant(4320)) == 4200
+    assert gridline_at_or_before(wider, CaseInstant(4200)) == 4200
+    assert gridline_at_or_before(wider, CaseInstant(299)) == 0
+    assert isinstance(gridline_at_or_before(wider, CaseInstant(4320)), CaseInstant)
+
+
+def test_a_held_window_keeps_its_width_and_gives_way_to_the_run_s_own() -> None:
+    """A held window is exactly as wide as the rung, and only holds before the following window."""
+
+    base = time_base_for_span(900.0)
+
+    assert held_window(base, CaseInstant(1800), CaseInstant(3000)) == (1800.0, 2700.0)
+    # 2118 s is where the following window starts at 3000 s.
+    assert held_window(base, CaseInstant(2117), CaseInstant(3000)) == (2117.0, 3017.0)
+    assert held_window(base, CaseInstant(2160), CaseInstant(3000)) is None
+    # After a Reset the run is back at zero, and the window follows it.
+    assert held_window(base, CaseInstant(1800), CaseInstant(0)) is None
+
+
+def test_a_held_window_needs_a_chosen_width_and_a_checked_instant() -> None:
+    with pytest.raises(ValueError, match=re.escape('needs a chosen width, not "Fit run"')):
+        ChartWindow(None, CaseInstant(1800))
+
+    with pytest.raises(TypeError):
+        ChartWindow(time_base_for_span(900.0), 1800)  # type: ignore[arg-type]
+
+    assert ChartWindow(None, None) == ChartWindow(None, None)

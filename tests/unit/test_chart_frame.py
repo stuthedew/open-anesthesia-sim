@@ -334,7 +334,11 @@ def test_the_hover_gloss_is_the_readout_row_s_required_hedge() -> None:
 def test_every_trace_of_a_run_draws_the_same_instants_and_ends_at_the_readout() -> None:
     controller = _run(600)
     frame = assemble_chart_frame(
-        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     run = frame.runs[0]
 
@@ -351,7 +355,9 @@ def test_every_trace_of_a_run_draws_the_same_instants_and_ends_at_the_readout() 
 
 def test_the_frame_refuses_no_runs_and_runs_on_different_agents() -> None:
     with pytest.raises(ValueError, match="at least one run"):
-        assemble_chart_frame([], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+        assemble_chart_frame(
+            [], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX, held_start_s=None
+        )
 
     with pytest.raises(ValueError, match="same agent"):
         assemble_chart_frame(
@@ -359,6 +365,7 @@ def test_the_frame_refuses_no_runs_and_runs_on_different_agents() -> None:
             None,
             COMPARTMENT_QUANTITIES,
             plot_width_px=_PLOT_WIDTH_PX,
+            held_start_s=None,
         )
 
 
@@ -374,13 +381,19 @@ def test_the_frame_refuses_a_newest_instant_not_built_as_one() -> None:
     stale = replace(run, snapshot=replace(run.snapshot, elapsed_s=1e9))
 
     with pytest.raises(TypeError, match="newest_instant_s of 1000000000.0 was not built as"):
-        assemble_chart_frame([stale], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+        assemble_chart_frame(
+            [stale], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX, held_start_s=None
+        )
 
 
 def test_the_window_fits_the_longer_of_two_runs_and_both_draw_into_it() -> None:
     short, long = _run(60), _run(500)
     frame = assemble_chart_frame(
-        [_input(short), _input(long)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(short), _input(long)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.fitted
@@ -413,6 +426,7 @@ def test_the_fitted_window_reaches_a_branch_s_newest_instant_rather_than_its_len
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert (branch.began_at_s, newest_s) == pytest.approx((120.0, 150.0))
@@ -427,7 +441,11 @@ def test_a_chosen_width_is_held_exactly_and_follows_the_run() -> None:
     controller = _run(1200)
     base = time_base_for_span(900.0)
     frame = assemble_chart_frame(
-        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert not frame.fitted
@@ -446,6 +464,7 @@ def test_hidden_traces_are_left_out_of_the_visible_set_but_still_evaluated() -> 
         None,
         [RecordedQuantity.FAT, RecordedQuantity.CIRCUIT],
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.visible == (RecordedQuantity.CIRCUIT, RecordedQuantity.FAT)
@@ -457,7 +476,11 @@ def test_the_references_are_placed_from_the_running_agent_s_own_values() -> None
         controller = _run(10, agent_id)
         snapshot = controller.snapshot()
         frame = assemble_chart_frame(
-            [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+            [_input(controller)],
+            None,
+            COMPARTMENT_QUANTITIES,
+            plot_width_px=_PLOT_WIDTH_PX,
+            held_start_s=None,
         )
 
         assert frame.mac_percent == snapshot.agent_mac_percent
@@ -478,6 +501,7 @@ def test_control_marks_are_the_most_recent_that_fit_and_the_rest_are_counted() -
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     run = frame.runs[0]
 
@@ -499,6 +523,7 @@ def test_a_mark_before_a_sliding_window_s_start_is_neither_drawn_nor_counted() -
         time_base_for_span(900.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     run = frame.runs[0]
 
@@ -533,7 +558,7 @@ def test_a_plot_owes_a_frame_only_when_it_needs_more_columns_than_it_drew() -> N
 
     run = _run(1200)
     frame = assemble_chart_frame(
-        [_input(run)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(run)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX, held_start_s=None
     )
 
     assert frame.columns == 901
@@ -566,7 +591,11 @@ def test_no_chord_is_wider_than_one_pixel_of_time() -> None:
 
     for base in TIME_BASE_LADDER:
         frame = assemble_chart_frame(
-            [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+            [_input(controller)],
+            base,
+            COMPARTMENT_QUANTITIES,
+            plot_width_px=_PLOT_WIDTH_PX,
+            held_start_s=None,
         )
         pixel_s = base.span_s / _PLOT_WIDTH_PX
         times = frame.runs[0].times_s
@@ -585,7 +614,13 @@ def test_a_frame_refuses_a_width_that_is_not_a_width() -> None:
     controller = _run(10)
 
     with pytest.raises(ValueError, match="pixels wide"):
-        assemble_chart_frame([_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=-1.0)
+        assemble_chart_frame(
+            [_input(controller)],
+            None,
+            COMPARTMENT_QUANTITIES,
+            plot_width_px=-1.0,
+            held_start_s=None,
+        )
 
 
 # ------------------------------------------------------------------ the axes
@@ -644,7 +679,11 @@ def test_the_frame_draws_both_axes_at_the_top_it_carries() -> None:
 
     controller = _run(10, "desflurane")
     frame = assemble_chart_frame(
-        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     low = replace(frame, ceiling=ChartCeiling.LOW)
 
@@ -699,7 +738,11 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     controller.set_delivered_concentration_percent(Percent(0.0))
     _advance(controller, 300)
     frame = assemble_chart_frame(
-        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     run = frame.runs[0]
 
@@ -734,6 +777,7 @@ def test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium(
         time_base_for_span(time_base_s),
         COMPARTMENT_QUANTITIES,
         plot_width_px=plot_width_px,
+        held_start_s=None,
     )
     (stretch,) = frame.runs[0].wash_in
 
@@ -757,7 +801,11 @@ def test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus() -> N
     controller.set_delivered_concentration_percent(Percent(0.0))
     _advance(controller, 300)
     frame = assemble_chart_frame(
-        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     run = frame.runs[0]
     stretch = run.wash_in[0]
@@ -817,6 +865,8 @@ def _frame(
     return ChartFrame(
         time_base=TIME_BASE_LADDER[5],
         fitted=True,
+        held_start_s=None,
+        newest_instant_s=CaseInstant(3600),
         start_s=0.0,
         stop_s=3600.0,
         tick_times_s=(0.0, 600.0),
@@ -901,7 +951,9 @@ def test_a_drawn_fraction_past_one_atmosphere_is_refused_before_any_frame_exists
         SimulationConfigurationError,
         match=r"^muscle partial_pressure_fraction of 1\.0000000000001568 is outside 0 to 1",
     ):
-        assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+        assemble_chart_frame(
+            [run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX, held_start_s=None
+        )
 
 
 def test_a_refused_drawn_value_names_its_compartment_as_a_step_would() -> None:
@@ -921,7 +973,9 @@ def test_a_refused_drawn_value_names_its_compartment_as_a_step_would() -> None:
             SimulationConfigurationError,
             match=rf"^{COMPARTMENT_FRACTION_NAMES[quantity]} of 1\.0000000000000002 is outside",
         ):
-            assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+            assemble_chart_frame(
+                [run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX, held_start_s=None
+            )
 
 
 @pytest.mark.parametrize("value", [float("nan"), inf, -inf], ids=["nan", "inf", "-inf"])
@@ -942,7 +996,9 @@ def test_a_non_finite_drawn_value_is_refused_naming_its_compartment(value: float
             SimulationConfigurationError,
             match=rf"^{COMPARTMENT_FRACTION_NAMES[quantity]} of {value} is outside 0 to 1",
         ):
-            assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+            assemble_chart_frame(
+                [run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX, held_start_s=None
+            )
 
 
 @pytest.mark.parametrize("ratio", [float("nan"), inf, -inf], ids=["nan", "inf", "-inf"])
@@ -973,7 +1029,11 @@ def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> 
     """
 
     frame = assemble_chart_frame(
-        [_input(_run(60))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(_run(60))],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert isinstance(frame.axis_top_percent, Percent)
@@ -1004,7 +1064,9 @@ def test_an_axis_top_past_one_atmosphere_is_refused_when_the_frame_is_assembled(
     with pytest.raises(
         SimulationConfigurationError, match=r"^axis_top_percent of 120\.0 is outside 0 to 100"
     ):
-        assemble_chart_frame([run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
+        assemble_chart_frame(
+            [run], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX, held_start_s=None
+        )
 
 
 def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:
@@ -1519,6 +1581,7 @@ def test_a_vertical_hand_movement_never_moves_the_instant_a_hover_reports(compar
         time_base_for_span(3600.0),
         (RecordedQuantity.ALVEOLAR, RecordedQuantity.FAT) if compared else COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     reach = dict(
         seconds_per_pixel=(frame.stop_s - frame.start_s) / _PLOT_WIDTH_PX,
@@ -1734,7 +1797,11 @@ def test_the_hover_value_belongs_to_the_instant_it_prints(
     _advance(controller, seconds)
 
     frame = assemble_chart_frame(
-        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=plot_width_px
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=plot_width_px,
+        held_start_s=None,
     )
     run = frame.runs[0]
     near = [index for index, time_s in enumerate(run.times_s) if 5 <= time_s <= 7]
@@ -1924,7 +1991,11 @@ def test_the_frame_refuses_two_runs_whose_mac_is_stated_for_different_ages() -> 
         r"they share one MAC axis and one 1 MAC line; given 1\.8% at age 40, 1\.8% at age 70$",
     ):
         assemble_chart_frame(
-            [first, older], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+            [first, older],
+            None,
+            COMPARTMENT_QUANTITIES,
+            plot_width_px=_PLOT_WIDTH_PX,
+            held_start_s=None,
         )
 
 
@@ -2074,7 +2145,11 @@ def test_a_run_count_or_index_that_is_not_an_int_is_refused(value: object) -> No
 
 def test_a_frame_s_run_count_is_the_checked_count_of_its_runs() -> None:
     frame = assemble_chart_frame(
-        [_input(_run(60))], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(_run(60))],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert isinstance(frame.run_count, RunCount)
@@ -2119,6 +2194,7 @@ def test_a_frame_of_two_runs_draws_the_capped_set_and_says_what_it_left_out() ->
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.visible == COMPARTMENT_QUANTITIES[:COMPARED_COMPARTMENT_CAP]
@@ -2140,6 +2216,7 @@ def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.runs[0].branch_point_s is None
@@ -2182,6 +2259,7 @@ def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_ope
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.runs[0].branch_point_s is None
@@ -2203,6 +2281,7 @@ def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:
         time_base_for_span(900.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.start_s > 60.0
@@ -2240,6 +2319,7 @@ def test_a_preview_matches_a_twin_run_that_applied_the_setting() -> None:
         base,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     applied.set_fresh_gas_flow(FreshGasFlow(6.0))
     _advance(applied, 600)
@@ -2512,6 +2592,7 @@ def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_dra
         base,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     preview = frame.runs[0].preview
     assert preview is not None
@@ -2537,7 +2618,11 @@ def test_a_preview_at_the_run_s_own_setting_coincides_with_what_the_run_then_dra
 
     # The predicted F_A/F_I is the run's own later ratio too, on the shared instants.
     later_frame = assemble_chart_frame(
-        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     later_ratio = {
         t: ratio
@@ -2579,13 +2664,18 @@ def test_a_preview_window_keeps_its_width_and_puts_the_reach_at_mid_plot() -> No
     controller = _run(1200)
     base = time_base_for_span(900.0)
     following = assemble_chart_frame(
-        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     previewing = assemble_chart_frame(
         [_previewing(controller, ControlInput.FRESH_GAS_FLOW, 6.0)],
         base,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert following.stop_s - following.start_s == pytest.approx(900.0)
@@ -2601,6 +2691,7 @@ def test_a_preview_is_drawn_only_inside_its_region_and_carries_its_label() -> No
         time_base_for_span(1800.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     run = frame.runs[0]
     preview = run.preview
@@ -2623,7 +2714,11 @@ def test_a_preview_is_drawn_only_inside_its_region_and_carries_its_label() -> No
 def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:
     controller = _run(300)
     frame = assemble_chart_frame(
-        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.runs[0].preview is None
@@ -2634,13 +2729,18 @@ def test_a_stopped_run_draws_no_preview_and_keeps_its_window() -> None:
     controller.fail("a failure the test injects", kind=FailureKind.UNEXPECTED)
     base = time_base_for_span(900.0)
     plain = assemble_chart_frame(
-        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        [_input(controller)],
+        base,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     frame = assemble_chart_frame(
         [_previewing(controller, ControlInput.FRESH_GAS_FLOW, 6.0)],
         base,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
     assert frame.runs[0].preview is None
@@ -2654,6 +2754,7 @@ def test_the_hover_never_answers_from_a_preview() -> None:
         time_base_for_span(1800.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     preview = frame.runs[0].preview
     assert preview is not None
@@ -2722,6 +2823,7 @@ def test_a_compared_run_previews_from_its_own_reach_and_the_window_centres_on_it
         base,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     preview = frame.runs[1].preview
 
