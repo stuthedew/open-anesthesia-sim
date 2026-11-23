@@ -1522,7 +1522,8 @@ def _extends_a_stretch(
     """Return whether the column at `column` is the crossing point to draw.
 
     `None` marks a column with no quotient at all, under `app/wash_in.py`'s
-    rule 1: there is no agent in the circuit yet, so there is nothing to draw.
+    rule 1: the inspired concentration is too low to divide by, so there is
+    nothing to draw.
     Every other out-of-domain column crossed equilibrium, and it is drawn
     when it is close enough to stay on the plot. A column outside the window
     extends nothing. The bounds check returns that result rather than raising

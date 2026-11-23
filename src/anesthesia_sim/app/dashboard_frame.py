@@ -1260,11 +1260,13 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
     "Every compartment's value is in " + READOUTS_PLACE_TEXT + ", for both runs."
 )
 # What the wash-in plot is showing at this instant. A trace that stops has
-# to say at which of its two boundaries it stopped. "Nothing has reached the
-# circuit yet" and "the patient is giving agent back" are opposite
-# situations, and a reader shown only an empty plot could tell neither.
+# to say at which of its two boundaries it stopped: an inspired concentration
+# too low to divide by, or an alveolar concentration above the inspired. A
+# reader shown only an empty plot could not tell the two apart. The first sentence names the
+# condition and not a cause, because the inspired concentration also falls
+# that low during a washout, while the patient still holds agent (`PL-P3ZL`).
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
-WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: no agent has reached the circuit yet."
+WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
 WASH_IN_ELIMINATION_TEXT: Final = (
     "Past equilibrium: alveolar exceeds inspired — the patient is returning agent, "
     "which is elimination and not wash-in."
