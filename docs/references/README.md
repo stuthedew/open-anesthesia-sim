@@ -480,7 +480,9 @@ four chapters are the ones this project would reach for first:
 
 - **Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
   anesthesia.** pp. 159–86. PMID
-  [18175091](https://pubmed.ncbi.nlm.nih.gov/18175091/). The circle system, why
+  [18175091](https://pubmed.ncbi.nlm.nih.gov/18175091/), DOI
+  [10.1007/978-3-540-74806-9_8](https://doi.org/10.1007/978-3-540-74806-9_8),
+  checked against PubMed 2026-11-23. The circle system, why
   inhaled and intravenous kinetics are modelled differently, the F_A/F_I curve,
   the general anesthetic equation, and the delivered-to-inspired discrepancy
   under low fresh gas flow. **Same two authors as the De Wolf et al. 2012 *BMC

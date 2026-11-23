@@ -64,7 +64,10 @@ paper by authors, journal and year, keep every page read, the route and the
 depth, and point to `docs/references/README.md` § "Yasuda et al. 1991 — the two
 human kinetics papers". The Workbook and Hendrickx and De Wolf entry names the
 chapter in *Modern Anesthetics*, keeps its pages, and points to the two README
-entries that carry the full citations. The README's Hendrickx and De Wolf entry
+entries that carry the full citations. The README's entry for the chapter
+gave its PMID but not its DOI, which only `docs/PARAMETERS.md` had written out,
+so the entry now gives the DOI too, checked against PubMed's record for PMID
+18175091 on 2026-11-23. The README's Hendrickx and De Wolf entry
 said `docs/MODEL.md` § "Known limitations" cites pp. 163 and 165-66. That was
 stale since `PL-48MX` moved the cautions to `docs/PARAMETERS.md`, so it now
 names `docs/MODEL.md` § "What the model represents" for p. 163 and
