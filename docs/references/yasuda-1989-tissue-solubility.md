@@ -52,6 +52,12 @@ blood/gas coefficients adjusted for age" (page 372).
   this cohort. The paper is not the authority for any blood:gas value,
   because it measured none.
 
+- **The brain:blood means for desflurane, isoflurane and sevoflurane**, from
+  Table 2, are quoted in `docs/VERIFICATION.md` beside this paper's citation.
+  They support leaving desflurane's vessel-rich coefficient unchanged, and no
+  stored or displayed value is computed from them. They were checked against
+  the full text on 2026-11-23.
+
 ## What was not taken
 
 - **Halothane's values**, because the simulator has no halothane agent.

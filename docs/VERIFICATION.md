@@ -2245,7 +2245,10 @@ group published it three years before its pair of kinetic studies:
   isoflurane, and halothane in human tissues.* Anesth Analg 1989;69(3):370-3.
   PMID 2774233. Brain:blood, mean ± SD: I-653 (desflurane) 1.29 ± 0.05,
   isoflurane 1.57 ± 0.10, sevoflurane 1.70 ± 0.09, halothane 1.94 ± 0.17.
-  Read from the abstract and checked against PubMed on 2026-09-08.
+  Checked on 2026-11-23 against Table 2 (p. 371) of the full text, which is
+  held in the private reference corpus. The paper calculates these ratios by
+  dividing its measured brain:gas coefficients (Table 1) by published
+  blood:gas coefficients adjusted for age (p. 372).
 
 <!-- not-restated: 0.05 -->
 
