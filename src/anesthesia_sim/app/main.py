@@ -14,11 +14,14 @@ controls stay, and on macOS a maximized window is the zoomed window. So
 also the reference's own default window state (`docs/interface-provenance.md`
 § "Adopted").
 
-The first frame is drawn after the window is shown, because a frame is built
-from the plot's laid-out width. The timers start after that, so the first
-thing a reader sees is a drawn, paused run. The platform applies the maximized
-size later. Each chart then needs a new frame at its new width on the next
-render tick (`ConcentrationChart.owes_a_frame`).
+The first frame is drawn before the window is sized. A readout stays empty
+until a frame fills it, and an empty label claims less width than its value
+needs, so a window sized from the empty dashboard could open narrower than its
+own minimum. The timers start after the window is shown, so the first thing a
+reader sees is a drawn, paused run. The charts' first frame is sampled before
+their plots are laid out, and the platform applies the maximized size later
+still. Each chart then needs a new frame at its new width on the next render
+tick (`ConcentrationChart.owes_a_frame`).
 
 **What is opened is a case, not a run** (`PL-VKJW`). `BranchedCase` makes two
 runs on one axis into one patient under two managements, rather than two
@@ -306,13 +309,14 @@ def main() -> None:
     if screen is None:
         raise RuntimeError("no primary screen is available to open the window on")
 
+    # The module docstring says why the first frame comes first.
+    view.present(False)
     window.setGeometry(
         initial_window_geometry(
             screen.availableGeometry(), window.minimumSizeHint(), WINDOW_SCREEN_FRACTION
         )
     )
     window.showMaximized()
-    view.present(False)
     view.start_simulation_timer()
     sys.exit(app.exec())
 
