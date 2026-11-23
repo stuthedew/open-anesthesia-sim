@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: replay-findings
+milestone: v0.6.23
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/dashboard_frame.py
 added: 2026-11-23
 closed: 2026-11-23

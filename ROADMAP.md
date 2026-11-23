@@ -27,62 +27,50 @@ explicit out-of-scope list.
   the cause produced point back to it. A head is live while the cause still
   produces items, and spent once it no longer does.
 
-## Current baseline: v0.6.22
+## Current baseline: v0.6.23
 
-In v0.6.22 the reader chooses the top of the concentration chart from 1.5, 3
-or 4.5 MAC with an "Axis top" control beside the time base. Each chart View
-keeps its own top with its layout, and the axis never rescales on its own. The
-percent axis is labelled at round values, so isoflurane's axis no longer reads
-0.585 or 1.755 %, and the notice for a trace above the plot names its top in
-both percent and MAC. From 1 hour 40 minutes before a run reaches the
-supported run length of 24 hours, a banner counts down to the stop, and the
-stop itself is drawn in the muted colour of a boundary rather than the colour
-of a failure. When the computer fires fewer than 95% of the playback ticks,
-the delivered rate is shown beside the set one. The fat trace is drawn in a
-dark olive that differs from the 1 MAC line and from the MAC-awake band's
-edges in each colour-vision model the contrast check uses, every trace keeps a
-3:1 contrast over the band's fill, and each wash-in stretch ends on the second
-it crosses equilibrium. A failed accounting check halts the run with a notice
-in plain words, and the accounting panel shows its residual once. Every other
-halt on a fault also names the kind of failure in plain words, and keeps the
-error itself behind a Show details button. The hover box is drawn whole on a
-short or narrow chart. The charts follow a moving dial within 0.1 s while
-frames are cheap. The record of control changes keeps a readable width at
-every window width, whatever the version label beside it says. More of
-`docs/MODEL.md`'s figures, and every figure in `docs/INTERFACE.md`, are each
-held to a named test, a source or a dated run. The release has 45 items. It is
-a patch on both halves of the patch test in § "Versioning decision": the
+In v0.6.23 the reader can step the concentration chart and the wash-in plot
+back through a run, with an arrow on either side of the time base. A window
+moved back holds still while the run goes on. The time axis title then says
+that the chart is not following the run, and a line under the controls gives
+the time shown and the run's present time beside a "Follow the run" button,
+which returns the chart to the live window in one press. The vaporizer setting
+reads "Vaporizer" on the run's controls row, so it can no longer be taken for
+a modelled concentration on the heading line, and the dial, the control record
+and the readout all use that one name. A refused branch gives its instants as
+the branch panel writes them, names the control that would open the branch,
+and keeps the developer's detail out of the learner's message. The Bookmarks
+View lists each mark once, with a Remove button on its row, and Undo puts a
+removed mark back. Each run's record of control changes states how many
+changes it holds and how many it leaves out, in a line that stays in view
+however long the list grows. At 1366 by 768 with a branch open, each Area is
+held only as tall as its View needs at the width it is drawn, and the page
+scrolls by no more than the Areas lack. The release has 11 items. It is a
+patch on both halves of the patch test in § "Versioning decision": the
 schematic milestone is not finished until the project owner has test-driven
 it, and v0.7.0 is given to a milestone section, so no patch release may take
-that number. v0.6.22 finishes four features: `decision-ownership`,
-`every-view-in-run-state-tests`, `model-claims-held-by-tests` and
-`review-hold`.
-
-Five of the items, `PL-SGBT`, `PL-8LDF`, `PL-41YP`, `PL-W7HW` and `PL-V9KN`,
-merged in `#2247`, `#2248`, `#2251` and `#2252` before v0.6.21's pull request
-landed, so their work is inside the v0.6.21 tag. They are described here, and
-v0.6.21's notes point to this release.
+that number. v0.6.23 finishes one feature: `replay-findings`.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
 has cleared and the project owner has test-driven `main`. All 19 Required
-scope ids have closed, and Gate 3's list has cleared: when v0.6.22 was cut,
+scope ids have closed, and Gate 3's list has cleared: when v0.6.23 was cut,
 191 of its 200 entries had cleared and the other 9 were deferred to the next
 gate. What is left before v0.7.0 is the owner's test drive.
 
-**No equation, step or stored value changed. The code in `core/` changed in
-comments and docstrings only:**
+**No equation, step or stored value changed. Neither `core/` nor the stored
+data changed at all:**
 
-| Tree | v0.6.21 tag | This cut | What moved |
+| Tree | v0.6.22 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `0dd1759` | `23b4a39` | `core/` as below; `app/`'s reader-chosen chart top and round percent labels (`#2270`), the 24-hour countdown and boundary colour (`#2267`), the delivered playback rate (`#2272`), trace colours and contrast (`#2271`), the wash-in ending (`#2265`), the 0.1 s chart redraw (`#2264`), the plain-words accounting halt and the pinned-Workspace branch notice (`#2259`), the accounting residual shown once (`#2260`), a dial's frame drawn at once (`#2257`), the control-change record's width (`#2275`), the plain-words failure banners and Show details (`#2269`), the hover box drawn whole on a short or narrow chart (`#2276`) and the light colour scheme asked of Qt (`#2273`) |
-| `src/anesthesia_sim/core/` | `0c045e7` | `e63728e` | a comment in `supported_ranges.py` that now says the 0.35 to 9.5 MAC-hour range comes from the fluoride studies the review summarizes (`#2256`), and a docstring in `rounding.py` that gives the 0.01 percentage-point display step as 0.56% of sevoflurane's 1 MAC at age 40 (`#2279`); `tools/ast_identity.py` finds no code moved |
-| `src/anesthesia_sim/data/` | `23468b5` | `056f3e7` | the Yasuda 1989 source note in each of the three agent files, which now states the blood:gas each tissue column implies (`#2279`); every stored value is the same |
-| `tests/reference/` | `bc9e5f8` | `2e5f2d7` | tests that hold the lung-store, fat, altitude, supported-range, independent-solution and published wash-in figures of `docs/MODEL.md` (`#2255`, `#2256`, `#2263`), the figures of `docs/INTERFACE.md` (`#2268`), and the blood:gas figures in the agent files' source notes (`#2279`) |
+| `src/` | `23b4a39` | `bd6c061` | `app/` only: the chart window stepped back and followed again (`#2283`), the vaporizer setting's name and place (`#2287`), the branch refusals' wording (`#2284`, `#2289`), the Bookmarks View's rows and Undo (`#2285`, `#2288`), the control-change record's count line (`#2280`) and the Areas' heights with a branch open (`#2282`, `#2286`) |
+| `src/anesthesia_sim/core/` | `e63728e` | `e63728e` | nothing |
+| `src/anesthesia_sim/data/` | `056f3e7` | `056f3e7` | nothing |
+| `tests/reference/` | `2e5f2d7` | `2e5f2d7` | nothing |
 
 **How far a run moved.** Both tags ran the same 81 cases and three runs of
 24 hours. Every compartment fraction, every agent total and all 174,960
 formatted readouts are identical, and all 271 stops on a marked crossing or a
-MAC target are at the same instant. `PL-6Y11` names the scripts that measured
+MAC target are at the same instant. `PL-P29J` names the scripts that measured
 this.
 
 § "What a tag ships that its notes may not name" says how work ships that
@@ -257,7 +245,8 @@ so no release's notes name it (`PL-KRS6`).
 | v0.6.19 | Completed | **The release where a run steps in whole seconds, so a control change takes effect at the next whole second and a branch can open at any second the run has reached; where every agent amount names the 20 °C and 1 atm it is stated at; and where every shipped Workspace fits the window, with the bookmarks and the branch control as Views.** | 146 items | `PL-572Q` |
 | v0.6.20 | Completed | **The release where every MAC multiple divides by Mapleson's MAC at age 40 and the 1 MAC line names that age; where the model document is split by reader, so `docs/MODEL.md` describes the model for a clinician; where the shipped Workspaces fit a 1366 by 768 screen; and where Tab follows reading order and every control with the keyboard focus shows a ring.** | 57 items | `PL-245L` |
 | v0.6.21 | Completed | **The release where the agent cost View shows a cost as money to the cent; where a branch taken in a Workspace pinned to a closed run says where its comparison went; where a copied run is rebuilt through its checks; and where the published-data tests give a reason for each of their limits.** | 32 items | `PL-4N9Z` |
-| v0.6.22 | Completed / current baseline | **The release where the reader chooses the top of the concentration chart from 1.5, 3 or 4.5 MAC, with the percent axis labelled at round values; where a run warns before it stops at 24 hours and draws that stop as a boundary rather than a failure; where the screen says when the computer cannot keep up with the set playback rate; where more of the model document's figures, and every figure in the interface specification, are each held to a test or a source; and where the control-change record stays readable at every window width; and where a run stopped by a fault names the kind of failure in plain words, with the error behind Show details.** | 45 items | `PL-6Y11` |
+| v0.6.22 | Completed | **The release where the reader chooses the top of the concentration chart from 1.5, 3 or 4.5 MAC, with the percent axis labelled at round values; where a run warns before it stops at 24 hours and draws that stop as a boundary rather than a failure; where the screen says when the computer cannot keep up with the set playback rate; where more of the model document's figures, and every figure in the interface specification, are each held to a test or a source; and where the control-change record stays readable at every window width; and where a run stopped by a fault names the kind of failure in plain words, with the error behind Show details.** | 45 items | `PL-6Y11` |
+| v0.6.23 | Completed / current baseline | **The release where the reader can step a chart's window back through the run and follow the run again in one press; where the vaporizer setting has one name and sits with the run's controls rather than among the modelled concentrations; where a refused branch uses the branch panel's own words; and where a removed mark can be put back with Undo.** | 11 items | `PL-P29J` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.

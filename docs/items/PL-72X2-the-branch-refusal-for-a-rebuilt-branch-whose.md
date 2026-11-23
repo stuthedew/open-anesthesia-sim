@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: replay-findings
+milestone: v0.6.23
 touches: src/anesthesia_sim/app/controller.py, tests/unit/test_controller_branch_refusal.py, tests/integration/controller/test_controller_branching.py, tests/integration/simulation_view/test_simulation_view_branch_refusals.py
 added: 2026-11-23
 closed: 2026-11-23
