@@ -107,7 +107,13 @@ from anesthesia_sim.app.bookmarks import BookmarkCrossing, BookmarkSet, TimeBook
 from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
 from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
-from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.controller import (
+    BranchedCase,
+    RunRecord,
+    RunSettings,
+    SimulationController,
+    SimulationSnapshot,
+)
 from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
@@ -181,7 +187,12 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     Keyframe: lambda: Keyframe(CaseInstant(0), AgentUptakeSystem.default().case_state()),
     PatientCompartments: lambda: AgentUptakeSystem.default().patient,
     RunDefinition: _run_definition,
+    # A run's settings, record and snapshot check that a failure's reason and its
+    # kind are recorded together (`PL-XWCH`), so their constructors are drawn.
+    RunRecord: lambda: SimulationController().record(),
+    RunSettings: lambda: SimulationController().settings(),
     SimulationController: SimulationController,
+    SimulationSnapshot: lambda: SimulationController().snapshot(),
     SimulationState: SimulationState,
     StoredStates: lambda: StoredStates(
         AgentUptakeSystem.default().case_state(), CaseInstant(0), UNCOMPENSATED

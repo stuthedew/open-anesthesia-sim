@@ -99,7 +99,6 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
-    REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE,
     REFUSED_RESET_EXIT_TEMPLATE,
     REFUSED_RESET_WAY_OUT_TEXT,
     RENDER_INTERVAL_S,
@@ -178,6 +177,7 @@ from anesthesia_sim.app.dashboard_frame import (
     wash_in_state_lines,
     withheld_readouts,
 )
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
@@ -394,6 +394,7 @@ def _snapshot(
     exhausted_agent_l: float = 0.002345,
     stored_agent_l: float = 0.01,
     rejected_accounting: AgentSimulationValidationResult | None = None,
+    failure_kind: FailureKind | None = None,
 ) -> SimulationSnapshot:
     """Build a snapshot, defaulting MAC and MAC-awake from the named agent's data file.
 
@@ -466,6 +467,13 @@ def _snapshot(
         bookmark_standings=_unreached(BookmarkSet() if bookmarks is None else bookmarks),
         supported_limit_reason=supported_limit_reason,
         failure_reason=failure_reason,
+        # A failure given without its kind is one the test injects, which the
+        # simulator does not raise on purpose.
+        failure_kind=(
+            failure_kind
+            if failure_kind is not None or failure_reason is None
+            else FailureKind.UNEXPECTED
+        ),
         rejected_accounting=rejected_accounting,
     )
 
@@ -766,9 +774,13 @@ def test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause() -> None
     """
 
     paused = RunStatus(
-        is_running=False, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason=None,
+        failure_kind=None,
+        rejected_accounting=None,
     )
-    failed = replace(paused, failure_reason="TypeError: boom")
+    failed = replace(paused, failure_reason="TypeError: boom", failure_kind=FailureKind.UNEXPECTED)
     at_limit = replace(paused, supported_limit_reason="this run has reached 86400 s")
 
     on_mark = status_word(paused, stopped_on_mark=True)
@@ -784,7 +796,10 @@ def test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause() -> None
 
 
 def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
-    snapshot = _snapshot(failure_reason="SimulationNumericalError: the step could not be completed")
+    snapshot = _snapshot(
+        failure_reason="SimulationNumericalError: the step could not be completed",
+        failure_kind=FailureKind.NUMERICAL,
+    )
 
     assert status_word(snapshot, stopped_on_mark=False).text == "Stopped — simulation error"
     assert status_word(snapshot, stopped_on_mark=False).emphasis is Emphasis.WARNING
@@ -792,7 +807,10 @@ def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
     banner = notice(snapshot, None)
 
     assert banner is not None
-    assert "the step could not be completed" in banner
+    # The exception's own message is written for a developer, so it goes to
+    # the details under the banner and not into the banner (`PL-XWCH`).
+    assert "the step could not be completed" not in banner
+    assert "SimulationNumericalError" not in banner
     # PL-026: the numbers beside the banner come from the last completed
     # step, because the core rolls a failed step back. The reader must be
     # told that much. A banner that only says something went wrong leaves
@@ -804,7 +822,8 @@ def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
     assert "last completed step" in banner
     assert "rolled back" not in banner
     assert banner == (
-        "Simulation stopped — SimulationNumericalError: the step could not be completed. "
+        "Simulation stopped — the model produced a value it cannot hold, such as a negative "
+        "amount of agent. This is a fault in the simulator, not a change in the patient. "
         "The values shown are the last completed step. Reset to start a new run."
     )
 
@@ -836,13 +855,19 @@ def test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_
         is_running=False,
         supported_limit_reason=None,
         failure_reason=reason,
+        failure_kind=FailureKind.CONFIGURATION,
         rejected_accounting=None,
     )
 
     banner = halt_notice(status)
 
     assert banner is not None
-    assert banner.startswith(f"Simulation stopped — {reason}.")
+    assert banner.startswith(
+        "Simulation stopped — one part of the simulator gave another "
+        "a value that it does not accept. "
+        "This is a fault in the simulator, not a change in the patient. "
+    )
+    assert reason not in banner
     assert "No frame of the stopped run could be drawn" in banner
     assert "the last frame drawn before it stopped" in banner
     assert "rolled back" not in banner
@@ -870,13 +895,16 @@ def test_an_undrawn_halt_after_the_run_started_over_says_its_readouts_are_withhe
         is_running=False,
         supported_limit_reason=None,
         failure_reason="RuntimeError: boom",
+        failure_kind=FailureKind.UNEXPECTED,
         rejected_accounting=None,
     )
 
     banner = halt_notice(failed, started_over=True)
 
     assert banner == (
-        "Simulation stopped — RuntimeError: boom. No frame has been drawn since the run "
+        "Simulation stopped — an unexpected error occurred in the simulator, and its cause "
+        "is not known. This is a fault in the simulator, not a change in the patient. "
+        "No frame has been drawn since the run "
         "started over: the readouts and the charts are withheld, and the run itself stands "
         "at its last completed step. Reset to start a new run."
     )
@@ -886,6 +914,7 @@ def test_an_undrawn_halt_after_the_run_started_over_says_its_readouts_are_withhe
         is_running=False,
         supported_limit_reason="supported run length",
         failure_reason=None,
+        failure_kind=None,
         rejected_accounting=None,
     )
 
@@ -907,19 +936,29 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
         is_running=False,
         supported_limit_reason=None,
         failure_reason="TypeError: boom",
+        failure_kind=FailureKind.UNEXPECTED,
         rejected_accounting=None,
     )
     at_limit = RunStatus(
         is_running=False,
         supported_limit_reason=limit,
         failure_reason=None,
+        failure_kind=None,
         rejected_accounting=None,
     )
     paused = RunStatus(
-        is_running=False, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+        is_running=False,
+        supported_limit_reason=None,
+        failure_reason=None,
+        failure_kind=None,
+        rejected_accounting=None,
     )
     running = RunStatus(
-        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+        is_running=True,
+        supported_limit_reason=None,
+        failure_reason=None,
+        failure_kind=None,
+        rejected_accounting=None,
     )
 
     assert isinstance(_snapshot(), RunStatus)
@@ -934,7 +973,8 @@ def test_a_halt_is_stated_from_the_run_status_alone() -> None:
     assert (transport(at_limit).start_enabled, transport(at_limit).pause_enabled) == (False, False)
     assert (transport(running).start_enabled, transport(running).pause_enabled) == (False, True)
     assert halt_notice(failed) is not None
-    assert "TypeError: boom" in (halt_notice(failed) or "")
+    assert "an unexpected error occurred" in (halt_notice(failed) or "")
+    assert "TypeError: boom" not in (halt_notice(failed) or "")
     # Nothing is wrong with the state in which a run stops at the supported
     # run length. The next frame therefore draws, and one wording serves both.
     assert halt_notice(at_limit) == notice(at_limit, None)
@@ -1043,16 +1083,22 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
         is_running=False,
         supported_limit_reason=None,
         failure_reason=this_refusal,
+        failure_kind=FailureKind.CONFIGURATION,
         rejected_accounting=None,
     )
     earlier = RunStatus(
         is_running=False,
         supported_limit_reason=None,
         failure_reason="SimulationNumericalError: boom",
+        failure_kind=FailureKind.NUMERICAL,
         rejected_accounting=None,
     )
     running = RunStatus(
-        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+        is_running=True,
+        supported_limit_reason=None,
+        failure_reason=None,
+        failure_kind=None,
+        rejected_accounting=None,
     )
 
     first = refused_reset_exit(error, recorded_failure_reason=None)
@@ -1066,22 +1112,31 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
     assert first == f"Reset was refused for this reason. {way_out}"
     assert first == REFUSED_RESET_EXIT_TEMPLATE.format(way_out=REFUSED_RESET_WAY_OUT_TEXT)
     assert pressed_again == first
-    assert after_failure == f"Reset was refused — {this_refusal}. {way_out}"
-    assert after_failure == REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE.format(
-        reason=this_refusal, way_out=REFUSED_RESET_WAY_OUT_TEXT
+    assert after_failure == (
+        f"Reset was refused — one part of the simulator gave another "
+        f"a value that it does not accept. {way_out}"
     )
+    assert this_refusal not in after_failure
 
     drawn = notice(refusal, None, refused_reset=first)
     undrawn = halt_notice(refusal, refused_reset=first)
     kept = notice(earlier, None, refused_reset=after_failure)
 
     assert drawn is not None and drawn.endswith(first)
-    assert drawn.startswith(f"Simulation stopped — {refusal.failure_reason}. The values shown are")
-    assert drawn.count("perfused at") == 1
+    assert drawn.startswith(
+        "Simulation stopped — one part of the simulator gave another "
+        "a value that it does not accept. This is a fault "
+        "in the simulator, not a change in the patient. The values shown are"
+    )
+    assert "perfused at" not in drawn
     assert undrawn is not None and undrawn.endswith(first)
     assert "No frame of the stopped run could be drawn" in undrawn
     assert kept is not None and kept.endswith(after_failure)
-    assert kept.startswith("Simulation stopped — SimulationNumericalError: boom. ")
+    assert kept.startswith(
+        "Simulation stopped — the model produced a value it cannot hold, such as a negative "
+        "amount of agent. This is a fault in the simulator, not a change in the patient. "
+        ""
+    )
     for banner in (drawn, undrawn, kept):
         assert RESET_EXIT_TEXT not in banner
     # Reset is the way out whenever it was not what was refused.
@@ -1110,16 +1165,22 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
         is_running=False,
         supported_limit_reason=None,
         failure_reason="SimulationNumericalError: boom",
+        failure_kind=FailureKind.NUMERICAL,
         rejected_accounting=None,
     )
     at_limit = RunStatus(
         is_running=False,
         supported_limit_reason="reached 86400 s of simulated time",
         failure_reason=None,
+        failure_kind=None,
         rejected_accounting=None,
     )
     running = RunStatus(
-        is_running=True, supported_limit_reason=None, failure_reason=None, rejected_accounting=None
+        is_running=True,
+        supported_limit_reason=None,
+        failure_reason=None,
+        failure_kind=None,
+        rejected_accounting=None,
     )
     refused_reset = (
         "Reset was refused for this reason. No setting can repair this, because only a fault "
@@ -1132,18 +1193,23 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
     )
 
     assert notice(failed, refused) == (
-        "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
-        f"completed step. {refused}. {reset_keeps}"
+        "Simulation stopped — the model produced a value it cannot hold, such as a negative "
+        "amount of agent. This is a fault in the simulator, not a change in the patient. "
+        f"The values shown are the last completed step. {refused}. {reset_keeps}"
     )
     assert notice(failed, refused, branch_offered=True) == notice(failed, refused)
     assert halt_notice(failed, refused) == (
-        "Simulation stopped — SimulationNumericalError: boom. No frame of the stopped run "
+        "Simulation stopped — the model produced a value it cannot hold, such as a negative "
+        "amount of agent. This is a fault in the simulator, not a change in the patient. "
+        "No frame of the stopped run "
         "could be drawn: the readouts and every chart that still has a plot show the last "
         "frame drawn before it stopped. The run itself stands at its last completed step. "
         f"{refused}. {reset_keeps}"
     )
     assert notice(failed, refused, refused_reset=refused_reset) == (
-        "Simulation stopped — SimulationNumericalError: boom. The values shown are the last "
+        "Simulation stopped — the model produced a value it cannot hold, such as a negative "
+        "amount of agent. This is a fault in the simulator, not a change in the patient. "
+        "The values shown are the last "
         f"completed step. {refused_reset} {refused}."
     )
     limit_banner = notice(at_limit, refused, branch_offered=True)
@@ -1244,7 +1310,12 @@ def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
         _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
     )
     stopped = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s)
-    failed = replace(approaching, failure_reason="RuntimeError: boom", is_running=False)
+    failed = replace(
+        approaching,
+        failure_reason="RuntimeError: boom",
+        failure_kind=FailureKind.UNEXPECTED,
+        is_running=False,
+    )
 
     assert refused is not None
     assert refused.text.startswith("Setting refused — too high.")
@@ -1416,13 +1487,15 @@ def test_a_failure_outranks_the_supported_run_length_in_the_notice() -> None:
     snapshot = _snapshot(
         is_running=False,
         failure_reason="SimulationNumericalError: boom",
+        failure_kind=FailureKind.NUMERICAL,
         supported_limit_reason="this run has reached 86400 s of simulated time",
     )
     banner = notice(snapshot, None)
 
     assert status_word(snapshot, stopped_on_mark=False).text == "Stopped — simulation error"
     assert banner is not None
-    assert "boom" in banner
+    assert "the model produced a value it cannot hold" in banner
+    assert "supported run length" not in banner
 
 
 def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
@@ -1453,14 +1526,19 @@ def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
     """
 
     refused = refused_setting_notice(SimulationConfigurationError("a value the core refused"))
-    failed = _snapshot(failure_reason="SimulationNumericalError: boom")
+    failed = _snapshot(
+        failure_reason="SimulationNumericalError: boom", failure_kind=FailureKind.NUMERICAL
+    )
     at_limit = _snapshot(supported_limit_reason="this run has reached 86400 s of simulated time")
 
     failure_banner = notice(failed, refused)
     limit_banner = notice(at_limit, refused)
 
     assert failure_banner is not None
-    assert failure_banner.startswith("Simulation stopped — SimulationNumericalError: boom. ")
+    assert failure_banner.startswith(
+        "Simulation stopped — the model produced a value it cannot hold, such as a negative "
+        "amount of agent. "
+    )
     assert limit_banner is not None
     assert limit_banner.startswith(
         "Simulation stopped — this run reached the supported run length of "
@@ -2635,6 +2713,7 @@ def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> 
         exhausted_agent_l=2.06,
         stored_agent_l=1.9319,
         failure_reason=f"AgentSimulationValidationError: {raised.value}",
+        failure_kind=FailureKind.ACCOUNTING,
         rejected_accounting=rejected,
     )
 

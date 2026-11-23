@@ -71,6 +71,7 @@ from anesthesia_sim.app.dashboard_frame import (
     clock_playback_line,
     compared_run_notice,
     delivered_line,
+    failure_details,
     halt_run_notice,
     new_case_question,
     readouts,
@@ -80,6 +81,7 @@ from anesthesia_sim.app.dashboard_frame import (
     setting_readouts,
     withheld_readouts,
 )
+from anesthesia_sim.app.failures import failure_log_path
 from anesthesia_sim.app.formatting import format_mac_reference
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.layout.run_identity import RunId
@@ -177,6 +179,8 @@ class RunPanelState:
         rejected_setting_notice: The notice for a setting the run refused,
             or None.
         refused_reset_notice: The notice for a Reset the run refused, or None.
+        refused_reset_reason: The message of the error with which a Reset
+            was refused, for the failure's details, or None.
         pending_agent_name: The agent that an open new-case question
             proposes, or None while no such question is open.
         reset_question: The open Reset question, restated from the runs as
@@ -201,6 +205,7 @@ class RunPanelState:
     branch_offered: bool
     rejected_setting_notice: str | None
     refused_reset_notice: str | None
+    refused_reset_reason: str | None
     pending_agent_name: str | None
     reset_question: NewCaseQuestion | None
     charts_withheld: bool
@@ -240,6 +245,9 @@ class RunPresentation:
             they stand at this frame (`PL-WM5P`). It is None while no such
             question is open, and on a halt, for the same reason as
             `new_case`.
+        failure_details: The details under a failed run's banner, for a
+            report of the fault (`dashboard_frame.failure_details`), or None
+            while the run has not failed.
     """
 
     run_id: RunId
@@ -248,6 +256,7 @@ class RunPresentation:
     record: RunRecord
     statement: RunStatement
     notice: Notice | None
+    failure_details: str | None
     one_mac: str | NotBuilt
     standing: ValuesStanding
     values: RunValues
@@ -519,6 +528,12 @@ def _presentation(
         record=record.run_record(),
         statement=statement,
         notice=_compared_banner(statement.banner, state.name),
+        failure_details=failure_details(
+            record.run_record(),
+            failure_log_path(),
+            run_name=state.name,
+            refused_reset_reason=state.refused_reset_reason,
+        ),
         one_mac=one_mac,
         standing=standing,
         values=values,
