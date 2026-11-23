@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-claims-held-by-tests
+milestone: v0.6.22
 touches: src/anesthesia_sim/core/rounding.py
 added: 2026-11-23
 closed: 2026-11-23

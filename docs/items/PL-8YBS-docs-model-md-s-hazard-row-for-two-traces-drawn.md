@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: chart-readout
+milestone: v0.6.22
 touches: docs/MODEL.md, docs/VERIFICATION.md, tests/unit/test_chart_frame.py
 added: 2026-09-26
 closed: 2026-11-22

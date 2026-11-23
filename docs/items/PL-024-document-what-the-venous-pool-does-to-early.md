@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, ux
 feature: chart-readout
+milestone: v0.6.22
 touches: docs/MODEL.md, docs/references/README.md, tests/unit/test_blood.py
 added: 2026-08-24
 closed: 2026-11-22
