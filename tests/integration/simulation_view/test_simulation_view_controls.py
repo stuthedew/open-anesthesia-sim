@@ -453,18 +453,26 @@ def test_one_input_on_a_dial_of_a_running_run_draws_every_part_of_the_screen_at_
     }
 
 
-def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_leaves_the_rest_to_the_tick(
+def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_the_rest_within_a_tenth_of_a_second(
     application: QApplication,
 ) -> None:
-    """Five wheel events before a render tick draw one frame of their own, not five (`PL-2WVC`).
+    """Five wheel events in a burst draw one frame at once and one 0.1 s later, not five.
 
     On Windows and on Linux under X11, Qt reports every event of a spinning
     wheel or a trackpad swipe with no scroll phase, so the phase cannot tell
-    a burst from one notch. The first event draws its frame at once. The
-    other four come before the next render tick, so they leave their frame
-    to it, and the tick draws the latest state, so the last value is never
-    left undrawn. After the tick, a lone notch draws its frame at once
-    again. Before the fix, each of the five events drew a frame of its own.
+    a burst from one notch (`PL-2WVC`). The first event draws its frame at
+    once. The other four come less than 0.1 s after that frame, so they
+    leave their frame to the end of the 0.1 s, which draws the latest state,
+    so the last value is never left undrawn. 0.1 s is Nielsen Norman
+    Group's limit for a user to feel that they are directly moving what is
+    on screen (`PL-NKFD`). Once an interval ends with nothing owed, a lone
+    notch draws its frame at once again. Before `PL-2WVC`, each of the five
+    events drew a frame of its own. Before `PL-NKFD`, the four waited for
+    the render tick, up to 0.2 s.
+
+    The test stands for the passing of the 0.1 s by calling the method that
+    the timer calls when it ends, as other tests stand for the render tick
+    by calling `render_tick`.
 
     Each notch steps the flow by one count, 0.1 L/min, from 4.0 L/min. The
     run takes one step of one second before each notch, so the notches are
@@ -481,6 +489,9 @@ def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_leaves_the_rest_to_
     presented = view.presented_frames
     plots = (_concentration(view).chart, _wash_in(view).chart)
 
+    # The interval is Nielsen Norman Group's 0.1 s limit, in milliseconds.
+    assert view._input_frame_timer.interval() == 100
+
     for _ in range(5):
         _advance(controller, 1)
         _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
@@ -488,19 +499,62 @@ def test_a_burst_of_wheel_events_draws_one_frame_at_once_and_leaves_the_rest_to_
     assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.5)
     assert view.presented_frames == presented + 1
     assert view._render_pending is True
+    assert view._input_frame_timer.isActive()
     assert [plot.control_mark_times(0) for plot in plots] == [(1.0,), (1.0,)]
 
-    view.render_tick()
+    view.input_frame_due()
 
     assert view.presented_frames == presented + 2
     assert view._render_pending is False
+    assert view._input_frame_timer.isActive()
     assert [plot.control_mark_times(0) for plot in plots] == [(1.0, 2.0, 3.0, 4.0, 5.0)] * 2
+
+    view.input_frame_due()
+
+    assert view.presented_frames == presented + 2
+    assert not view._input_frame_timer.isActive()
 
     _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
 
     assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.6)
     assert view.presented_frames == presented + 3
     assert view._render_pending is False
+
+
+def test_a_render_tick_that_draws_a_burst_s_owed_frame_ends_the_burst(
+    application: QApplication,
+) -> None:
+    """When the render tick draws the frame that a burst owed, the end of the 0.1 s draws nothing.
+
+    The render tick and the 0.1 s after an input's frame both draw a frame
+    that an input left owed (`PL-NKFD`). Whichever comes first draws it. The
+    other then has nothing to draw, so the frame is drawn once, and the next
+    input draws its frame at once.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    slider = _dials(run)._fresh_gas_flow_slider.slider
+    _style_slider(slider, _Platform.FUSION)
+    presented = view.presented_frames
+
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+    view.render_tick()
+
+    assert view.presented_frames == presented + 2
+    assert view._render_pending is False
+
+    view.input_frame_due()
+
+    assert view.presented_frames == presented + 2
+    assert not view._input_frame_timer.isActive()
+
+    _scroll_up(slider, Qt.ScrollPhase.NoScrollPhase)
+
+    assert controller.settings().fresh_gas_flow_l_min == pytest.approx(4.3)
+    assert view.presented_frames == presented + 3
 
 
 def test_a_click_that_moves_the_handle_to_the_pointer_draws_one_frame(
