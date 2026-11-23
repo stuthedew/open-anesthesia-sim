@@ -357,7 +357,6 @@ def _unreached(marks: BookmarkSet) -> BookmarkStandings:
 def _standings(
     marks: BookmarkSet,
     *,
-    reached_instants_s: frozenset[int] = frozenset(),
     reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset(),
     opened_at_s: int = 0,
     elapsed_s: int = 0,
@@ -367,7 +366,6 @@ def _standings(
     """Return one run's standings on that set, by default for a run that has just opened."""
 
     return marks.standings(
-        reached_instants_s=frozenset(CaseInstant(instant_s) for instant_s in reached_instants_s),
         reached_crossings=reached_crossings,
         opened_at_s=CaseInstant(opened_at_s),
         elapsed_s=CaseInstant(elapsed_s),

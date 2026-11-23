@@ -151,8 +151,10 @@ class RemovedMark:
     Attributes:
         mark: The mark as the run held it.
         position: Its row in its list, counted from 0.
-        reached: Whether the run had halted on the instant, or had crossed
-            the height.
+        reached: Whether the run had passed the instant, or had crossed the
+            height, when the mark was removed. `restore_mark` puts back only
+            a height's record, because the run's clock decides an instant's
+            standing again.
         run_number: Which run on the controller removed it
             (`SimulationController.runs_discarded`). A reset or an agent
             change begins a new run, whose standings owe nothing to the old
@@ -961,7 +963,6 @@ class SimulationController:
         # that was removed and added back then left the stored crossing naming
         # the old object.
         self._stands_where_it_stopped = False
-        self._reached_instants_s: frozenset[CaseInstant] = frozenset()
         self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
         # `_bookmarks` is set here and not in `_build_state`, deliberately.
         # `set_agent` also calls `_build_state`. A mark is the learner's question rather
@@ -995,7 +996,6 @@ class SimulationController:
         """
 
         self._leave_where_it_stopped()
-        self._reached_instants_s = frozenset()
         self._reached_crossings = frozenset()
 
     def _leave_where_it_stopped(self) -> None:
@@ -1584,7 +1584,7 @@ class SimulationController:
         removed = RemovedMark(
             held,
             self._bookmarks.time_bookmarks.index(held),
-            held.instant_s in self._reached_now()[0],
+            held in self._passed_time_bookmarks(),
             self._runs_discarded,
         )
         self._bookmarks = self._bookmarks.without_time_bookmark(bookmark)
@@ -1615,7 +1615,7 @@ class SimulationController:
         held_targets = self._bookmarks.mac_targets
         # Read before the removal, because a step the run stands on is tested
         # against the marks it holds at the time (`_crossings_stood_on`).
-        reached_heights = self._reached_now()[1]
+        reached_heights = self._heights_reached_now()
         self._bookmarks = self._bookmarks.without_mac_target(target)
         # The removal above refused a target that no held target matches, so
         # exactly one held target names this crossing.
@@ -1635,11 +1635,12 @@ class SimulationController:
     def restore_mark(self, removed: RemovedMark) -> None:
         """Put back a mark that this controller removed, where it was and as the run had it.
 
-        The mark returns to its row (`BookmarkSet.with_time_bookmark_at`). If
-        the run had halted on the instant or crossed the height, and no new
-        run has begun since the removal, the run's record of that is put back
-        too, so the mark's standing is what it was. A run that crossed a
-        height while the mark was removed did not record the crossing, so the
+        The mark returns to its row (`BookmarkSet.with_time_bookmark_at`). A
+        time bookmark needs nothing more, because the run's clock decides its
+        standing. If the run had crossed a target's height, and no new run has
+        begun since the removal, the run's record of that is put back too, so
+        the target's standing is what it was. A run that crossed a height
+        while the target was removed did not record the crossing, so the
         restored target then shows as not yet reached, as any newly added
         target would.
 
@@ -1655,9 +1656,6 @@ class SimulationController:
 
         if isinstance(mark, TimeBookmark):
             self._bookmarks = self._bookmarks.with_time_bookmark_at(removed.position, mark)
-
-            if same_run:
-                self._reached_instants_s |= {mark.instant_s}
         else:
             self._bookmarks = self._bookmarks.with_mac_target_at(removed.position, mark)
 
@@ -1665,25 +1663,25 @@ class SimulationController:
                 self._reached_crossings |= {mark.crossing_key}
 
     def _forget_unmarked(self) -> None:
-        """Drop what the run did with marks that the learner has since removed.
+        """Drop what the run did with targets that the learner has since removed.
 
-        A mark's standing is what the run did with it. A removed mark has no row
-        in the bookmark panel, so there is nowhere to show its standing. Leaving
-        its standing behind would name a mark that is no longer listed. That is
-        the kind of stale state that `.claude/rules/expert-review.md` asks to be
-        designed out rather than warned about.
+        A target's standing is what the run did with it. A removed target has
+        no row in the bookmark panel, so there is nowhere to show its standing.
+        Leaving its standing behind would name a target that is no longer
+        listed. That is the kind of stale state that
+        `.claude/rules/expert-review.md` asks to be designed out rather than
+        warned about. A time bookmark leaves nothing behind, because the run's
+        clock decides its standing.
 
-        A mark that is added back is then a new mark to the standings. The
-        standings and the halt record (`_halt_crossing`) both test the new mark
-        against the step the run stands on, from the same two stored states. So
-        the halt record and the mark's row cannot disagree about whether the run
-        stopped on it.
+        A target that is added back is then a new target to the standings. The
+        standings and the halt record (`_halt_crossing`) both test the new
+        target against the step the run stands on, from the same two stored
+        states. So the halt record and the target's row cannot disagree about
+        whether the run stopped on it.
         """
 
-        instants = frozenset(bookmark.instant_s for bookmark in self._bookmarks.time_bookmarks)
         crossings = frozenset(target.crossing_key for target in self._bookmarks.mac_targets)
 
-        self._reached_instants_s &= instants
         self._reached_crossings &= crossings
 
     @property
@@ -3686,7 +3684,7 @@ class SimulationController:
         method (`SimulationView._restate_bookmark_panel`). When a halt comes from a failed
         frame, `snapshot()` may refuse as well, so the halt cannot read the standings
         from a snapshot. Every input below comes from the run's own record: the
-        instants and heights it reached, its opening instant, its clock, the run-length
+        heights it reached, its opening instant, its clock, the run-length
         guard and the failure. None of these inputs builds a `Fraction`. So this method
         cannot raise for a value that a frame would refuse (`PL-YHR3`).
 
@@ -3700,46 +3698,39 @@ class SimulationController:
         had not reached *yet*, although its next step would raise as its last one
         did.
 
-        **The marks the run crossed include those crossed by two particular
-        steps, checked against the marks as they are now** (`PL-1ZQ4`,
+        **The heights the run crossed include those crossed by two particular
+        steps, checked against the targets as they are now** (`PL-1ZQ4`,
         project owner 2026-10-17, ratified). The two steps are the step a
         branch opened on and, while the run is stopped, the step it stopped
-        on. A mark that lies inside either step counts as crossed by that step.
-        The marks are the ones that exist at this call, not the ones that
-        existed when the step was taken. So a mark added after the step has the
-        same standing on the trunk and on every branch, whichever came first,
-        the mark or the branch.
+        on. A target that either step crossed counts as reached. The targets
+        are the ones that exist at this call, not the ones that existed when
+        the step was taken. So a target added after the step has the same
+        standing on the trunk and on every branch, whichever came first, the
+        target or the branch. A time bookmark's standing is read from the
+        run's clock alone (`PL-Z4MP`).
         """
 
-        reached_instants_s, reached_crossings = self._reached_now()
-
         return self._bookmarks.standings(
-            reached_instants_s=reached_instants_s,
-            reached_crossings=reached_crossings,
+            reached_crossings=self._heights_reached_now(),
             opened_at_s=self.began_at_s,
             elapsed_s=self._state.elapsed_s,
             stopped_at_cap=self.has_reached_supported_limit,
             run_failed=self._failure_reason is not None,
         )
 
-    def _reached_now(
-        self,
-    ) -> tuple[frozenset[CaseInstant], frozenset[tuple[RecordedQuantity, float]]]:
-        """Return the instants and heights this run has reached, as its marks' standings read them.
+    def _heights_reached_now(self) -> frozenset[tuple[RecordedQuantity, float]]:
+        """Return the heights this run has reached, as its targets' standings read them.
 
         They are what the run recorded as it went, and what the steps in
         `_crossings_stood_on` cross. `bookmark_standings` shows these, and a
-        removed mark's record keeps whether its mark was among them
+        removed target's record keeps whether its target was among them
         (`RemovedMark.reached`). So a target shown as reached when it was
         removed is reached again when an Undo puts it back, even after the run
         has left the step that crossed it (blind review of `PL-5GX4`).
         """
 
-        stood_on = self._crossings_stood_on()
-
-        return (
-            self._reached_instants_s.union(*(_reached_instants(crossing) for crossing in stood_on)),
-            self._reached_crossings.union(*(_reached_heights(crossing) for crossing in stood_on)),
+        return self._reached_crossings.union(
+            *(_reached_heights(crossing) for crossing in self._crossings_stood_on())
         )
 
     def _crossings_stood_on(self) -> tuple[BookmarkCrossing, ...]:
@@ -3842,7 +3833,6 @@ class SimulationController:
         """
 
         for crossing in self._crossings_stood_on():
-            self._reached_instants_s |= _reached_instants(crossing)
             self._reached_crossings |= _reached_heights(crossing)
 
     def advance(self) -> None:
@@ -3960,9 +3950,10 @@ class SimulationController:
 
         This method keeps no record of which marks halted the run.
         `_halt_crossing` tests the step again against the current marks at
-        every call (`PL-XV0D`). The record of the marks that the run has
-        reached keeps both the instants and the heights, as the mark
-        standings require.
+        every call (`PL-XV0D`). The run does keep a record of the heights it
+        has reached, because a height has no clock time from which to read
+        its standing. A time bookmark's standing is read from the run's clock
+        (`PL-Z4MP`).
 
         Args:
             crossing: What the step just taken passed through.
@@ -3970,14 +3961,7 @@ class SimulationController:
 
         self._is_running = False
         self._stands_where_it_stopped = True
-        self._reached_instants_s |= _reached_instants(crossing)
         self._reached_crossings |= _reached_heights(crossing)
-
-
-def _reached_instants(crossing: BookmarkCrossing) -> frozenset[CaseInstant]:
-    """The marked instants that `crossing` reached, in the form the standings match on."""
-
-    return frozenset(bookmark.instant_s for bookmark in crossing.time_bookmarks)
 
 
 def _reached_heights(crossing: BookmarkCrossing) -> frozenset[tuple[RecordedQuantity, float]]:

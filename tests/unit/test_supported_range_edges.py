@@ -265,7 +265,6 @@ TYPICAL: Mapping[str, object] = {
     "opening": AgentUptakeSystem.default().case_state(),
     "plot_width_px": CHART_PLOT_WIDTH_PX,
     "reached_crossings": frozenset(),
-    "reached_instants_s": frozenset(),
     "run_failed": False,
     "runs": _chart_runs(),
     "seconds": (),
