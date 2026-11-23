@@ -764,7 +764,8 @@ def test_every_unconditional_value_lies_inside_its_scroll_viewport(
                 lines_need = label.heightForWidth(label.width())
 
                 assert label.height() >= lines_need, (
-                    f"{label.text()!r} has {label.height()} px of the {lines_need} px its lines need"
+                    f"{label.text()!r} has {label.height()} px"
+                    f" of the {lines_need} px its lines need"
                 )
 
 
