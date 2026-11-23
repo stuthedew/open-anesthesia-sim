@@ -3,6 +3,7 @@ id: PL-V9KN
 title: The published-data test hold should hold a change to a test's code and let an edit only to its comments, docstrings or failure messages merge on green, decided by comparing the parsed files
 status: done
 feature: review-hold
+milestone: v0.6.22
 touches: subprojects/docket/src/docket/arming.py, subprojects/docket/tests/test_arming.py, .claude/skills/pull-request/SKILL.md
 added: 2026-11-22
 closed: 2026-11-22

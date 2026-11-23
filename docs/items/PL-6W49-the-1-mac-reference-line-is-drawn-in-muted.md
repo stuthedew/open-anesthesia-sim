@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: replay-findings
+milestone: v0.6.22
 touches: src/anesthesia_sim/app/theme.py, tools/contrast_check.py, docs/MODEL.md
 added: 2026-10-25
 closed: 2026-11-23

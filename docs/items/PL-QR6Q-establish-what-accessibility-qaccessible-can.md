@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: presentation-safety
+milestone: v0.6.22
 touches: ROADMAP.md, src/anesthesia_sim/app
 blocked-by: PL-25KS
 added: 2026-09-13
