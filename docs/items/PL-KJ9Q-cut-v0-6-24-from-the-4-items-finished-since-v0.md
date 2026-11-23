@@ -1,10 +1,13 @@
 ---
 id: PL-KJ9Q
 title: Cut v0.6.24 from the 4 items finished since v0.6.23
-status: untriaged
+status: done
 feature: release-process
 resource: release-train
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2296
+verify: grep -qF '## Current baseline: v0.6.24' ROADMAP.md
 ---
 
 **Problem.** Cut v0.6.24 from the 4 items finished since v0.6.23
@@ -40,3 +43,7 @@ cut, already names that week, so no new item was filed.
 
 **Features.** `bin/docket feature --similar` paired no two features above a
 0.36 word overlap, and no pair read as one goal, so none were merged.
+
+**Documents checked.** `ROADMAP.md` (the version row, the baseline mark and
+§ "Current baseline"), `docs/releases/v0.6.24.md` and `docs/releases/v0.6.23.md`
+(no pointer lines owed). No other document names the current version.
