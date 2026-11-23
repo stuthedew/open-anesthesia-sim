@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 import anesthesia_sim
 import anesthesia_sim.app.main as app_main
 from anesthesia_sim.app.controller import BranchedCase
-from anesthesia_sim.app.main import FAILURE_LOG_NAME
+from anesthesia_sim.app.failures import FAILURE_LOG_NAME
 from anesthesia_sim.app.qt_widgets import WINDOW_SCREEN_FRACTION, initial_window_geometry
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import INK, PANEL

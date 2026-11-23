@@ -93,14 +93,17 @@ from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.dashboard_frame import (
     ADD_MARK_LABEL,
     COMPARTMENT_FIELD_LABEL,
+    COPY_FAILURE_DETAILS_LABEL,
     DEFAULT_MAXIMUM_TARGET_MAC,
     FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
+    HIDE_FAILURE_DETAILS_LABEL,
     INSTANT_ENTRY_SUFFIX,
     INSTANT_FIELD_LABEL,
     MARK_NAME_FIELD_LABEL,
     MARK_NAME_PLACEHOLDER,
     REMOVE_MARK_LABEL,
+    SHOW_FAILURE_DETAILS_LABEL,
     TAKE_FORK_LABEL,
     TARGET_FORM_HEADING,
     TIME_FORM_HEADING,
@@ -114,6 +117,7 @@ from anesthesia_sim.app.dashboard_frame import (
     height_entry_maximum_mac,
     readout_columns,
     readout_row_width,
+    report_fault_text,
     slider_position,
     slider_value,
     widest_fork_point_label,
@@ -1505,6 +1509,120 @@ class NoticeLabel(QLabel):
         """The banner's text, or None while it is hidden."""
 
         return self._notice
+
+
+class FailureDetails(QWidget):
+    """The details under a failed run's banner, for a report of the fault, and nothing otherwise.
+
+    The banner gives the learner plain words. The details, the build, the
+    exception's own message and the failure log's path, are written for a
+    developer, so they stay behind "Show details" until asked for. "Copy
+    details" puts them on the clipboard, and the line under them links the
+    project's issue page (`dashboard_frame.failure_details`,
+    `dashboard_frame.report_fault_text`, `PL-XWCH`). The widget is hidden while
+    the run has not failed, and folds the details away again when a new
+    failure's details replace them.
+
+    Attributes:
+        toggle: The button that shows or hides the details.
+        details_text: The details, selectable so that part of them can be copied.
+        copy_button: The button that copies the details to the clipboard.
+        report_text: The line that says how to report the fault.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.toggle = QPushButton(SHOW_FAILURE_DETAILS_LABEL)
+        self.toggle.setStyleSheet(outlined_button_stylesheet())
+        self.toggle.setCheckable(True)
+        self.details_text = styled_label("", color=INK, wrap=True)
+        self.details_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+            | Qt.TextInteractionFlag.TextSelectableByKeyboard
+        )
+        self.copy_button = QPushButton(COPY_FAILURE_DETAILS_LABEL)
+        self.copy_button.setStyleSheet(outlined_button_stylesheet())
+        self.report_text = styled_label("", color=INK, wrap=True)
+        self.report_text.setTextFormat(Qt.TextFormat.RichText)
+        self.report_text.setOpenExternalLinks(True)
+        # A label lets only the mouse follow a link by default, so the link is
+        # also put in the tab order and followed with Enter (WCAG 2.2 SC 2.1.1).
+        self.report_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+            | Qt.TextInteractionFlag.LinksAccessibleByKeyboard
+        )
+        self.report_text.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self._details: str | None = None
+        self._run_name: str | None = None
+
+        buttons = QHBoxLayout()
+        buttons.setContentsMargins(0, 0, 0, 0)
+        buttons.addWidget(self.toggle)
+        buttons.addWidget(self.copy_button)
+        buttons.addStretch(1)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.addLayout(buttons)
+        column.addWidget(self.details_text)
+        column.addWidget(self.report_text)
+
+        self.toggle.toggled.connect(self._show_details)
+        self.copy_button.clicked.connect(self.copy_details)
+        self.set_details(None, None, run_name=None)
+
+    def set_details(
+        self, details: str | None, issues_url: str | None, *, run_name: str | None
+    ) -> None:
+        """Show the details of a failure, or hide the widget when the run has not failed.
+
+        The link to the issue page is drawn in the line's own `INK`, and Qt
+        underlines it, so the host appearance does not choose its colour.
+
+        Args:
+            details: `dashboard_frame.failure_details`'s result this tick.
+            issues_url: The project's issue page, or None where the build kept
+                no metadata (`app_metadata.APP_ISSUES_URL`).
+            run_name: What the run is called while a second run is drawn, or
+                None. A screen reader then names the run in each button's
+                name, because two runs' buttons read alike.
+        """
+
+        report = report_fault_text(issues_url, link_colour=INK)
+
+        if details != self._details:
+            # New details are folded away, so a reader who opened one failure's
+            # details does not read them as the next failure's.
+            self.toggle.setChecked(False)
+
+        self._details = details
+        self._run_name = run_name
+        self.copy_button.setAccessibleName(self._named(COPY_FAILURE_DETAILS_LABEL))
+        self.details_text.setText(details or "")
+        self.report_text.setText(report)
+        self.setHidden(details is None)
+        self._show_details(self.toggle.isChecked())
+
+    def details(self) -> str | None:
+        """The details this widget holds, or None while the run has not failed."""
+
+        return self._details
+
+    def copy_details(self) -> None:
+        """Put the details on the clipboard, as plain text."""
+
+        if self._details is not None:
+            QApplication.clipboard().setText(self._details)
+
+    def _named(self, label: str) -> str:
+        return label if self._run_name is None else f"{label} for {self._run_name}"
+
+    def _show_details(self, shown: bool) -> None:
+        label = HIDE_FAILURE_DETAILS_LABEL if shown else SHOW_FAILURE_DETAILS_LABEL
+        self.toggle.setText(label)
+        self.toggle.setAccessibleName(self._named(label))
+        self.details_text.setHidden(not shown)
+        self.copy_button.setHidden(not shown)
+        self.report_text.setHidden(not shown)
 
 
 def lay_out_question(

@@ -32,6 +32,7 @@ from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING
 from anesthesia_sim.app.views import AccountingView
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
+from tests.integration.simulation_view.simulation_view_support import _failure_details
 
 _SECONDS_PER_MINUTE = 60.0
 _WINDOW_WIDTH_PX = 1400
@@ -157,7 +158,7 @@ def test_a_reset_that_raises_after_clearing_the_run_withholds_every_value(
     # was refused (blind review of `PL-MVCF`).
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "RuntimeError: the reset failed after it cleared the run" in notice
+    assert "RuntimeError: the reset failed after it cleared the run" in _failure_details(run)
     assert REFUSED_RESET_WAY_OUT_TEXT not in notice
 
 

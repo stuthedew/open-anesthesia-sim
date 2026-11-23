@@ -813,7 +813,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
 def _restore_package_log_handlers() -> Iterator[None]:
     """Remove each handler that a test added to the package's logger, and close it.
 
-    `main()` opens the failure log (`main.open_failure_log`), which adds a file
+    `main()` opens the failure log (`failures.open_failure_log`), which adds a file
     handler and a standard-error handler to the `anesthesia_sim` logger. Left
     in place, they would write a later test's records into an earlier test's
     temporary directory.
