@@ -102,6 +102,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -792,6 +793,11 @@ class SimulationView(QWidget):
         self._record_column = _spaced_column(records, PAGE_SPACING)
         self._record_column.addStretch(1)
 
+        # The run rows keep their own height at the top of the band. Where the
+        # records beside them need more height, the band is that tall, and the
+        # rest of the run rows' side stays empty rather than stretching each
+        # run's line (`PL-HF1B`).
+        run_rows.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         row.addWidget(run_rows, _RUN_ROWS_STRETCH)
         row.addWidget(records, _RECORD_COLUMN_STRETCH)
         self._unconditional_region = region
