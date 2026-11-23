@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: test
 feature: tests-detect-wrong-values
-touches: docs/mutation-testing.md
+touches: docs/mutation-testing.md, docs/items/PL-33CG-the-mutation-check-of-a-branch-that-changes.md
 added: 2026-11-11
 payoff: each display and layout module that PL-19M4 brought into the mutation run has a measured kill rate, and each fault its unit tests would miss has a test or an item
 verify: grep -q '^| .layout/model.py. |' docs/mutation-testing.md
