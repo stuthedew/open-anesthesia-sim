@@ -4500,6 +4500,9 @@ def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> 
     if not branches:
         raise ValueError("a trunk's Reset asks only before it discards a branch; none was given")
 
+    # While `MAX_DISPLAYED_RUNS` is 2, only one branch can be drawn, so each
+    # join below holds one branch. The joins stay so that a higher limit cannot
+    # leave a branch that the Reset discards out of the question.
     names = " and ".join(branch.name for branch in branches)
 
     return NewCaseQuestion(

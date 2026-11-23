@@ -422,7 +422,11 @@ class PreferencesStore:
         """Write `preferences` atomically and return the file's path.
 
         Raises:
-            TypeError: `preferences` is not a `Preferences`.
+            TypeError: `preferences` is not a `Preferences`, or a refused
+                entry holds a value that JSON cannot write, such as a set.
+            ValueError: a refused entry holds a number that is not finite,
+                such as NaN, or holds itself. No entry read from the file can
+                hold such a value, so only a `RefusedEntry` built in code can.
             PreferencesFileError: nothing has been loaded, saving is off for
                 the session, or the operating system refused a step. The
                 message names the file and the reason. A failed save leaves
@@ -465,7 +469,6 @@ class PreferencesStore:
             ) from None
 
         sync_directory_quietly(self._directory)
-        self._loaded = LoadedPreferences(preferences, writable=True, notice=None)
 
         return self.path
 

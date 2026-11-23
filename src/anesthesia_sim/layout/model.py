@@ -414,11 +414,7 @@ class LayoutModel:
         found: dict[Side, Handle] = {}
 
         for depth in range(len(place.path) - 1, -1, -1):
-            split = _node_at(tree, place.path[:depth])
-
-            if isinstance(split, Area):
-                continue
-
+            split = _split_at(tree, place.path[:depth])
             index = place.path[depth]
             row = split.orientation is Orientation.ROW
             before, after = (Side.LEFT, Side.RIGHT) if row else (Side.ABOVE, Side.BELOW)
@@ -562,7 +558,11 @@ class LayoutModel:
             kept = sizes[position] * at
             given = sizes[position] - kept
 
-            if kept <= 0 or given <= 0:
+            # Only the kept part can round to zero, for an `at` so small that the
+            # product underflows. Because `at` is below one, `kept` is below
+            # `sizes[position]`, and the difference of two unequal floats is
+            # never zero. So the given part is always above zero.
+            if kept <= 0:
                 raise LayoutRefused(
                     f"a cut at {at!r} of Area {area_id}'s {measure} leaves a part with no size"
                 )
@@ -1021,10 +1021,9 @@ def _dragged(
             `BORDER_ALIGNMENT_TOLERANCE` of the window. This happens when a
             border or an edge now lies at, past or within that tolerance of the
             border or edge on the child's far side. It also happens when the
-            sizes that the tree would store place those two that close. A split
-            whose own extent is zero is refused the same way, before any size is
-            divided by that extent. The message names the first such split in
-            depth-first order: its children left with no room, and its Areas.
+            sizes that the tree would store place those two that close. The
+            message names the first such split in depth-first order: its
+            children left with no room, and its Areas.
     """
 
     resized: dict[tuple[int, ...], tuple[float, ...]] = {}
@@ -1048,7 +1047,11 @@ def _dragged(
                 high,
             )
             squeezed = _squeezed(node, placed)
-            sizes = () if squeezed else _fractions(placed)
+            # `_fractions` divides by this split's extent, which is never zero.
+            # The extent is the window's own, or a share that a split above
+            # placed, and that split has already refused a drag that left the
+            # share no room.
+            sizes = _fractions(placed)
 
             # The tree stores fractions, and placing a border again from those
             # fractions can make a gap a little smaller through rounding. So the
@@ -1171,6 +1174,10 @@ def _rect_at(tree: Node, path: tuple[int, ...]) -> _Rect:
     node = tree
 
     for index in path:
+        # Every caller passes a path that it found in this tree, so this check
+        # never fails today. It stays because the type checker needs `node` to
+        # be a split below it, and so that a wrong path from a later caller
+        # raises `NotInLayout` rather than an `IndexError`.
         if isinstance(node, Area) or index >= len(node.children):
             raise NotInLayout(f"the path {path} leads to no node of this tree")
 
@@ -1491,6 +1498,10 @@ def _node_at(tree: Node, path: tuple[int, ...]) -> Node:
     node = tree
 
     for index in path:
+        # Every caller passes a path that it found in this tree, so this check
+        # never fails today. It stays because the type checker needs `node` to
+        # be a split below it, and so that a wrong path from a later caller
+        # raises `NotInLayout` rather than an `IndexError`.
         if isinstance(node, Area) or index >= len(node.children):
             raise NotInLayout(f"the path {path} leads to no node of this tree")
 
@@ -1508,6 +1519,10 @@ def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
 
     node = _node_at(tree, path)
 
+    # Every caller passes the path of a split that it found in this tree, so
+    # this check never fails today. It stays because the return type needs it,
+    # and so that a later caller with an Area's path is refused rather than
+    # handed an Area.
     if isinstance(node, Area):
         raise NotInLayout(f"the path {path} leads to an Area, not a split")
 
@@ -1524,6 +1539,9 @@ def _replaced(node: Node, path: tuple[int, ...], replacement: Node) -> Node:
     if not path:
         return replacement
 
+    # Every caller passes a path that it found in this tree, so this check
+    # never fails today. It stays because the type checker needs `node` to be a
+    # split below it, and so that a wrong path from a later caller is refused.
     if isinstance(node, Area):
         raise NotInLayout(f"the path {path} steps into an Area, which holds no node")
 
