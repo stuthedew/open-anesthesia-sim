@@ -10,6 +10,7 @@ from collections.abc import Callable
 import pytest
 
 from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
+from anesthesia_sim.app.branch_controls import TAKE_FORK_LABEL
 from anesthesia_sim.app.controller import (
     BranchedCase,
     HereForkPoint,
@@ -599,7 +600,7 @@ def test_resuming_past_a_bookmark_turns_its_fork_into_the_paused_point() -> None
 
     assert marked.here_fork_point is None
 
-    with pytest.raises(SimulationConfigurationError, match="is going"):
+    with pytest.raises(SimulationConfigurationError, match="is still going"):
         marked.resumed_here()
 
     marked.pause()
@@ -628,7 +629,7 @@ def test_a_failed_run_offers_no_place_to_branch_where_it_stands() -> None:
         trunk.resumed_here()
 
     assert "a step raised" in str(refusal.value)
-    assert "resumed_at" in str(refusal.value)
+    assert f'"{TAKE_FORK_LABEL}"' in str(refusal.value)
     assert trunk.resumed_at(trunk.run_segments[-1].opened_at_s).began_at_s == (
         trunk.run_segments[-1].opened_at_s
     )

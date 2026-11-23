@@ -720,10 +720,22 @@ step left for a branch to take. A run that stands at its opening is refused,
 because it has recorded nothing to branch from. A branch at the opening is
 taken from the "From" selector's opening entry instead.
 
+**A refused branch says so in the branch panel, in the panel's own words**
+(`PL-3JTH`). The notice opens "Branch not opened —", because no setting was
+changed, and then gives the reason. The reason gives each instant as the panel
+writes it, such as "2m" or "1m30s". Where another control would open the
+branch, the reason names it by its label, such as "From", "Branch" or "Branch
+here".
+
 **For developers.** A run marked at 60 s after its clock reached 180 s is
 returned to, and the branch agrees with its trunk at each of the 61 seconds
 (`test_a_mark_set_behind_the_clock_can_be_returned_to` in
-`tests/integration/controller/test_controller_marks.py`).
+`tests/integration/controller/test_controller_marks.py`). The branch controls'
+words are read from `app/branch_controls.py` by both the panel and the
+controller, and
+`test_a_refused_branch_names_the_on_screen_control_and_a_formatted_instant` in
+`tests/integration/controller/test_controller_branch_refusals.py` checks a
+refusal's wording.
 
 #### How a branch is drawn
 

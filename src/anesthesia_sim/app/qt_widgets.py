@@ -102,13 +102,13 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
+from anesthesia_sim.app.branch_controls import FORK_POINT_LABEL, TAKE_FORK_LABEL
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.dashboard_frame import (
     ADD_MARK_LABEL,
     COMPARTMENT_FIELD_LABEL,
     COPY_FAILURE_DETAILS_LABEL,
     DEFAULT_MAXIMUM_TARGET_MAC,
-    FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
     HIDE_FAILURE_DETAILS_LABEL,
     INSTANT_ENTRY_SUFFIX,
@@ -117,7 +117,6 @@ from anesthesia_sim.app.dashboard_frame import (
     MARK_NAME_PLACEHOLDER,
     REMOVE_MARK_LABEL,
     SHOW_FAILURE_DETAILS_LABEL,
-    TAKE_FORK_LABEL,
     TARGET_FORM_HEADING,
     TIME_FORM_HEADING,
     BookmarkPanel,

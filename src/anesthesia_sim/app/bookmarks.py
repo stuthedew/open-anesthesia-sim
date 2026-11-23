@@ -51,6 +51,7 @@ from enum import StrEnum
 from math import isfinite
 from types import MappingProxyType
 
+from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -596,7 +597,8 @@ class BookmarkSet:
 
         if len(kept) == len(self.time_bookmarks):
             raise SimulationConfigurationError(
-                f"no time bookmark stands at {bookmark.instant_s} s, so there is none to remove"
+                f"no time bookmark stands at {format_elapsed(bookmark.instant_s)}, so there is "
+                "none to remove"
             )
 
         return BookmarkSet(kept, self.mac_targets)
@@ -619,7 +621,8 @@ class BookmarkSet:
                 return held
 
         raise SimulationConfigurationError(
-            f"no time bookmark stands at {bookmark.instant_s} s, so there is no mark there"
+            f"no time bookmark stands at {format_elapsed(bookmark.instant_s)}, so there is no "
+            "mark there"
         )
 
     def with_mac_target(self, target: MacTarget) -> BookmarkSet:

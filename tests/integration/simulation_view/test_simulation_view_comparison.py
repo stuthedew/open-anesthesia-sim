@@ -154,7 +154,7 @@ def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplica
     assert len(view.runs) == 1
     refusal = panel.notice.notice()
     assert refusal is not None
-    assert "90" in refusal
+    assert "1m30s" in refusal
 
     view.runs[TRUNK_RUN_INDEX]._reset_button.click()
     _settle(application)

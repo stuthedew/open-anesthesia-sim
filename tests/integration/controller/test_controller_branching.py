@@ -565,10 +565,10 @@ def test_an_instant_the_run_never_reached_is_refused() -> None:
 
     trunk = _trunk_with_two_changes()
 
-    with pytest.raises(SimulationConfigurationError, match="stores no state at 720 s") as refusal:
+    with pytest.raises(SimulationConfigurationError, match="no state at 12m to branch") as refusal:
         trunk.resumed_at(CaseInstant(trunk.snapshot().elapsed_s + 600))
 
-    assert "from 0 s, where it opened, to 120 s, the second it has reached" in str(refusal.value)
+    assert "this run has reached 2m" in str(refusal.value)
 
 
 def test_a_non_finite_fork_instant_cannot_be_built() -> None:
@@ -894,7 +894,7 @@ def test_a_case_refuses_a_fork_at_a_second_its_trunk_has_not_reached() -> None:
 
     case = BranchedCase(_trunk_with_two_changes())
 
-    with pytest.raises(SimulationConfigurationError, match="stores no state at 121 s"):
+    with pytest.raises(SimulationConfigurationError, match="no state at 2m1s to branch"):
         case.fork_at(CaseInstant(121))
 
     assert case.branches == ()
