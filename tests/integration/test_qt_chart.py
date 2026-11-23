@@ -2081,7 +2081,7 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     # line the plot is not drawing. The expected words are written out here,
     # never built by the functions that write the legend. The run at index i
     # was given `RUN_IDS[i]`, so it is called "Run" followed by i + 1
-    # (`docs/INTERFACE.md` § "Minimum displayed outputs").
+    # (`docs/INTERFACE.md` § "Naming the run in a comparison").
     marks = legend.compared_marks
 
     assert len(marks) == len(frame.visible) * len(frame.runs)
@@ -2108,20 +2108,28 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
             assert entry.pen.widthF() == drawn.widthF()
             assert _dashes_px(entry.pen) == pytest.approx(_dashes_px(drawn))
 
-    # The wash-in legend names each run too, and the branch point's entry says
-    # which line marks it.
-    wash_in_named = {mark.label for mark in wash_in_legend.compared_marks}
+    # The wash-in legend names each run too, each beside its own curve's pen,
+    # since the width is all that tells the two curves apart.
+    wash_in_marks = wash_in_legend.compared_marks
 
-    assert wash_in_named == {
-        "F<sub>A</sub>/F<sub>I</sub> (solid), Run 1",
-        "F<sub>A</sub>/F<sub>I</sub> (solid), Run 2",
-    }
+    assert len(wash_in_marks) == len(frame.runs)
 
-    branch_mark = legend.branch_mark
+    for index in range(len(frame.runs)):
+        entry = next(
+            mark
+            for mark in wash_in_marks
+            if mark.label == f"F<sub>A</sub>/F<sub>I</sub> (solid), Run {index + 1}"
+        )
+        drawn = wash_in.drawn_pen(index)
 
-    assert branch_mark is not None
-    assert branch_mark.label == "Branch point (vertical, solid)"
-    assert branch_mark.vertical
+        assert entry.pen.color().name() == drawn.color().name()
+        assert entry.pen.widthF() == drawn.widthF()
+
+    # Both legends name the branch point beside a vertical line.
+    for branch_mark in (legend.branch_mark, wash_in_legend.branch_mark):
+        assert branch_mark is not None
+        assert branch_mark.label == "Branch point (vertical, solid)"
+        assert branch_mark.vertical
 
 
 # ------------------------------------------------------ the preview of a dragged setting

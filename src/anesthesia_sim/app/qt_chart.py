@@ -2668,13 +2668,14 @@ class TraceLegend(QWidget):
         # above it. A compartment trace is a modelled quantity, and a
         # clinical reference is a published constant. A control mark is a
         # record of something the *user* did.
-        branch_swatch = _LineSwatch(
+        self._branch_swatch = _LineSwatch(
             _branch_point_pen(),
             CONTROL_MARK_SWATCH_WIDTH,
             CONTROL_MARK_SWATCH_HEIGHT,
             vertical=True,
         )
-        self._branch_entry = _legend_entry(branch_swatch, _legend_label(BRANCH_POINT_LEGEND_LABEL))
+        self._branch_label = _legend_label(BRANCH_POINT_LEGEND_LABEL)
+        self._branch_entry = _legend_entry(self._branch_swatch, self._branch_label)
         self._branch_entry.setHidden(True)
         run_record = _legend_row("Run record:", [_control_mark_entry()])
         run_record.addWidget(self._branch_entry)
@@ -2799,19 +2800,19 @@ class TraceLegend(QWidget):
         """
 
         return tuple(
-            LegendMark(entry.label.text(), entry.swatch._pen, entry.swatch._vertical)
+            _drawn_mark(entry.label, entry.swatch)
             for entry in self._compared_entries
             if not entry.widget.isHidden()
         )
 
     @property
     def branch_mark(self) -> LegendMark | None:
-        """The fork's legend entry, or None while it is not shown."""
+        """The fork's legend entry as it is drawn, or None while it is not shown."""
 
         if self._branch_entry.isHidden():
             return None
 
-        return LegendMark(BRANCH_POINT_LEGEND_LABEL, _branch_point_pen(), True)
+        return _drawn_mark(self._branch_label, self._branch_swatch)
 
     def _refresh_compared_row(self) -> None:
         """Write one entry per drawn curve, and hide the rest of the pool."""
@@ -2976,9 +2977,7 @@ class WashInLegend(QWidget):
             (equilibrium_swatch, _legend_label(EQUILIBRIUM_LEGEND_LABEL)),
             (mark_swatch, mark_label),
         ]
-        self._marks = tuple(
-            LegendMark(label.text(), swatch._pen, swatch._vertical) for swatch, label in entries
-        )
+        self._marks = tuple(_drawn_mark(label, swatch) for swatch, label in entries)
         self._trace_swatch = trace_swatch
         self._trace_label = entries[0][1]
 
@@ -2996,9 +2995,8 @@ class WashInLegend(QWidget):
             CONTROL_MARK_SWATCH_HEIGHT,
             vertical=True,
         )
-        self._branch_entry = _legend_entry(
-            self._branch_swatch, _legend_label(BRANCH_POINT_LEGEND_LABEL)
-        )
+        self._branch_label = _legend_label(BRANCH_POINT_LEGEND_LABEL)
+        self._branch_entry = _legend_entry(self._branch_swatch, self._branch_label)
         self._branch_entry.setHidden(True)
         row.addWidget(self._branch_entry)
         self._compared_entries = [_PooledEntry(row) for _ in range(MAX_DISPLAYED_RUNS)]
@@ -3051,10 +3049,25 @@ class WashInLegend(QWidget):
         """One entry per run while more than one is drawn, each in that run's own pen."""
 
         return tuple(
-            LegendMark(entry.label.text(), entry.swatch._pen, entry.swatch._vertical)
+            _drawn_mark(entry.label, entry.swatch)
             for entry in self._compared_entries
             if not entry.widget.isHidden()
         )
+
+    @property
+    def branch_mark(self) -> LegendMark | None:
+        """The fork's legend entry as it is drawn, or None while it is not shown."""
+
+        if self._branch_entry.isHidden():
+            return None
+
+        return _drawn_mark(self._branch_label, self._branch_swatch)
+
+
+def _drawn_mark(label: QLabel, swatch: _LineSwatch) -> LegendMark:
+    """Read one legend entry back as it is drawn: the label's words and the swatch's pen."""
+
+    return LegendMark(label.text(), swatch._pen, swatch._vertical)
 
 
 def _legend_label(text: str) -> QLabel:
