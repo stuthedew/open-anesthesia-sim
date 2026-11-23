@@ -22,7 +22,12 @@ from anesthesia_sim.app.dashboard_frame import (
     shown_failure_reason,
 )
 from anesthesia_sim.app.failures import FailureKind, failure_kind
-from anesthesia_sim.app_metadata import APP_BUILD_VERSION, ISSUES_URL_LABEL, project_url
+from anesthesia_sim.app_metadata import (
+    APP_BUILD_VERSION,
+    ISSUES_URL_LABEL,
+    labelled_url,
+    project_url,
+)
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
@@ -256,6 +261,12 @@ def test_the_report_line_links_the_issue_page_escaped_and_in_the_given_colour() 
     )
 
 
+def test_a_quote_in_the_link_colour_cannot_end_its_attribute_either() -> None:
+    line = report_fault_text("https://example.org/issues", link_colour="#1F2933\" x='y")
+
+    assert 'style="color: #1F2933&quot; x=&#x27;y;"' in line
+
+
 def test_a_build_with_no_issue_page_says_to_send_the_details_instead() -> None:
     assert report_fault_text(None, link_colour="#1F2933") == (
         "To report this fault, copy the details and send them to the project's maintainers."
@@ -269,6 +280,17 @@ def test_the_installed_metadata_names_the_project_s_issue_page() -> None:
         "https://github.com/stuthedew/open-anesthesia-sim/issues"
     )
     assert project_url("No such label") is None
+
+
+def test_a_url_s_label_ends_at_the_first_comma_so_a_url_may_hold_one() -> None:
+    lines = [
+        "Repository, https://example.org/repository",
+        "Issues, https://example.org/issues?labels=a,b",
+    ]
+
+    assert labelled_url(lines, "Issues") == "https://example.org/issues?labels=a,b"
+    assert labelled_url(lines, "Repository") == "https://example.org/repository"
+    assert labelled_url(["Issues,  "], "Issues") is None
 
 
 def test_a_refused_reset_after_an_earlier_failure_names_its_own_kind_once() -> None:
@@ -299,7 +321,13 @@ def test_a_status_refuses_a_failure_reason_without_its_kind(
 ) -> None:
     """A banner with no words for its failure, or words for no failure, cannot be built."""
 
-    with pytest.raises(ValueError, match="needs both its reason and its kind"):
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"^a run's failure needs both its reason and its kind, but it has "
+            r"failure_reason=.* and failure_kind=.*$"
+        ),
+    ):
         RunStatus(
             is_running=False,
             supported_limit_reason=None,

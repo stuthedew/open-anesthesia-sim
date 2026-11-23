@@ -16,6 +16,7 @@ import json
 from collections.abc import Iterator
 from dataclasses import fields, is_dataclass, replace
 from importlib.resources import files
+from pathlib import Path
 from typing import Any, NoReturn, cast
 
 import pytest
@@ -37,7 +38,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_MAC_MULTIPLE_TEXT,
     new_case_question,
 )
-from anesthesia_sim.app.failures import FailureKind
+from anesthesia_sim.app.failures import FailureKind, open_failure_log
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.app.run_presentation import (
     KeptValues,
@@ -58,6 +59,7 @@ from anesthesia_sim.app.run_presentation import (
     withheld_values,
 )
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
+from anesthesia_sim.app_metadata import APP_BUILD_VERSION
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.concentration import Percent
@@ -69,6 +71,7 @@ from anesthesia_sim.core.parameters import parse_breathing_circuit_parameters
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.run_identity import RunId, RunIdentities
+from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE
 
 _IDENTITIES = RunIdentities()
 _RUN_ID = _IDENTITIES.mint()
@@ -760,6 +763,36 @@ def test_a_halt_is_stated_for_a_record_whose_dials_or_1_mac_line_cannot_be_built
     assert shown.statement.transport.start_enabled is False
     assert shown.statement.transport.pause_enabled is False
     assert shown.record == record.run_record()
+
+
+def test_a_halt_s_details_name_the_run_a_later_refused_reset_and_the_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The details take the run's name, a later refused Reset and the log from the panel state.
+
+    The expected text is written out, so a halt that dropped any of the
+    three would fail here (`PL-XWCH`).
+    """
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    open_failure_log("", {USER_DIRECTORY_VARIABLE: str(tmp_path / "data")})
+    controller = SimulationController()
+    controller.fail("TypeError: boom", kind=FailureKind.UNEXPECTED)
+    state = _state(
+        name="Run 2", comparing=True, refused_reset_reason="SimulationConfigurationError: stale"
+    )
+    record = controller.record()
+    opening = KeptValues(state.case, withheld_values(state.playback_rate))
+
+    shown = halted_run(record, group_adjustments(record.control_timeline), state, opening)
+
+    assert shown.failure_details == (
+        f"Open Anesthesia Simulator — Version {APP_BUILD_VERSION}\n"
+        "Stopped run: Run 2\n"
+        "What stopped the run: TypeError: boom\n"
+        "Reset was then refused: SimulationConfigurationError: stale\n"
+        "Failure log: ~/data/failures.log"
+    )
 
 
 def test_dials_refused_by_the_core_are_carried_like_any_other_refusal(

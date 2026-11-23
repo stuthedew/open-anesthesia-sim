@@ -2161,8 +2161,10 @@ def report_fault_text(issues_url: str | None, *, link_colour: str) -> str:
     if issues_url is None:
         return REPORT_FAULT_NO_PAGE_TEXT
 
+    # `html.escape` escapes both quote characters by default, so neither value
+    # can close the attribute it is written into.
     return REPORT_FAULT_TEMPLATE.format(
-        url=html.escape(issues_url, quote=True), link_colour=html.escape(link_colour, quote=True)
+        url=html.escape(issues_url), link_colour=html.escape(link_colour)
     )
 
 

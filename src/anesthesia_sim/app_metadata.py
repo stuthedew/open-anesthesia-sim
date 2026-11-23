@@ -1,6 +1,7 @@
 """App identity/version constants, read from installed package metadata."""
 
 import subprocess
+from collections.abc import Iterable
 from importlib.metadata import PackageNotFoundError, metadata, version
 from pathlib import Path
 
@@ -33,17 +34,29 @@ def project_url(label: str) -> str | None:
     """Return the project URL that the installed metadata gives under `label`, or None.
 
     `pyproject.toml`'s `[project.urls]` writes each one, and the installed
-    metadata carries it as a `Project-URL` line of the form "label, URL". A
-    build that kept no metadata has none, as for `APP_VERSION`.
+    metadata carries it as a `Project-URL` line. A build that kept no metadata
+    has none, as for `APP_VERSION`.
 
     Args:
         label: The URL's label, such as "Issues".
     """
 
     try:
-        lines = metadata(DISTRIBUTION_NAME).get_all("Project-URL") or []
+        # A metadata field's name is matched without regard to case, so the
+        # spelling of the name here cannot change the result.
+        lines = metadata(DISTRIBUTION_NAME).get_all("Project-URL") or []  # pragma: no mutate
     except PackageNotFoundError:
         return None
+
+    return labelled_url(lines, label)
+
+
+def labelled_url(lines: Iterable[object], label: str) -> str | None:
+    """Return the URL of the first `Project-URL` line labelled `label`, or None.
+
+    Each line has the form "label, URL". The label ends at the first comma,
+    because a URL may hold a comma of its own.
+    """
 
     for line in lines:
         name, _, url = str(line).partition(",")

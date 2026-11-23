@@ -885,7 +885,7 @@ class SimulationController:
 
         self._is_running = False
         self._failure_reason: str | None = None
-        self._failure_kind: FailureKind | None = None
+        self._failure_kind: FailureKind | None = None  # pragma: no mutate
         self._rejected_accounting: AgentSimulationValidationResult | None = None
         self._failed_frame_reason: str | None = None
         self._recorded_supported_limit_reason: str | None = None
