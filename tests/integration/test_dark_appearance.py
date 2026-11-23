@@ -472,7 +472,7 @@ def test_the_border_between_two_areas_shows_the_page_rather_than_the_host(
 def test_the_marks_editor_draws_the_theme_rather_than_the_host_palette(
     dark_host: QApplication,
 ) -> None:
-    """The editor's entries, spin boxes and lists keep this interface's surface.
+    """The editor's entries and spin boxes keep this interface's surface.
 
     This is `PL-RKRY`'s regression test, and it turns the project owner's
     screenshot into assertions. Eleven widgets in the editor, then a dialog,
@@ -503,7 +503,6 @@ def test_the_marks_editor_draws_the_theme_rather_than_the_host_palette(
     placeholder = editor.time_label_edit.palette().color(QPalette.ColorRole.PlaceholderText)
 
     assert placeholder.name().upper() == MUTED.upper()
-    assert _commonest(_colours(editor.time_list, dark_host)) == PANEL.upper()
 
     # The vacuity guard: an entry that declares nothing, under the same host.
     bare = _shown(QLineEdit(), dark_host)

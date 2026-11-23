@@ -48,7 +48,6 @@ from tests.integration.simulation_view.simulation_view_support import (
     _fork_panel,
     _halted_branch_view,
     _halted_trunk_case,
-    _mark_editor,
     _marks_panel,
     _offered_fork_instants,
     _paused_run_with_history,
@@ -764,9 +763,8 @@ def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
     panel = _fork_panel(view)
     _select_fork_entry(view, _BEHIND_MARK_LABEL)
 
-    editor = _mark_editor(view)
-    editor.time_list.setCurrentRow(case.trunk.snapshot().bookmarks.time_bookmarks.index(mark))
-    editor.remove_time_button.click()
+    row = case.trunk.snapshot().bookmarks.time_bookmarks.index(mark)
+    _marks_panel(view).times.rows[row].remove_button.click()
 
     labels = [panel.point_selector.itemText(row) for row in range(panel.point_selector.count())]
 

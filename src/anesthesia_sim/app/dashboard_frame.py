@@ -873,14 +873,15 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
 
 
-# The headings of the marks editor's two forms. They differ from the headings
-# of the two lists above the forms, because the Bookmarks View shows both, and
-# two identical headings would leave a reader unsure which one a row belongs
-# to. The wording is a placeholder (`PL-CHX0`).
-TIME_FORM_HEADING: Final = "Edit time bookmarks"
-TARGET_FORM_HEADING: Final = "Edit MAC targets"
+# The headings of the marks editor's two forms. Each names the one action
+# its form does, so a reader does not take a form for a second copy of the
+# list above it (`PL-G1JM`). The wording is a placeholder (`PL-CHX0`).
+TIME_FORM_HEADING: Final = "Add a time bookmark"
+TARGET_FORM_HEADING: Final = "Add a MAC target"
 ADD_MARK_LABEL: Final = "Add"
-REMOVE_MARK_LABEL: Final = "Remove selected"
+# The label of the button on each listed mark. The button's accessible name
+# adds the mark's own text, so a screen reader says which mark it removes.
+REMOVE_MARK_LABEL: Final = "Remove"
 INSTANT_FIELD_LABEL: Final = "Instant"
 COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
@@ -931,12 +932,6 @@ def height_entry_maximum_mac(reachable_mac: float) -> float:
     return floor(reachable_mac * scale + WHOLE_COUNT_TOLERANCE) / scale
 
 
-REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
-"""Conditional text, which is where a sentence is appropriate.
-
-It appears only after a press that did nothing, and costs nothing when it
-does not appear (`.claude/rules/ui-reader.md`). The two empty-list lines above
-are standing text, and are labels for that reason."""
 # Names the substance that the six readouts belong to (`PL-TCD1`). It is a
 # label rather than a sentence. It says "Modelled" rather than giving a bare
 # agent name, because the hazard on this row is a reader comparing these
