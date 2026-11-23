@@ -5,7 +5,6 @@ priority: P3
 effort: S
 status: done
 feature: presentation-safety
-milestone: v0.6.22
 touches: docs/INTERFACE.md, src/anesthesia_sim/app/dashboard_frame.py
 added: 2026-11-22
 closed: 2026-11-22

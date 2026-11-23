@@ -6,7 +6,6 @@ effort: S
 status: done
 classes: ux
 feature: replay-findings
-milestone: v0.6.22
 touches: src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py
 added: 2026-10-25
 closed: 2026-11-23

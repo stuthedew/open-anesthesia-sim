@@ -6,7 +6,6 @@ effort: S
 status: done
 classes: defect, science
 feature: model-claims-held-by-tests
-milestone: v0.6.22
 touches: docs/PARAMETERS.md, docs/MODEL.md, docs/references, src/anesthesia_sim/data/agents, tests/reference/test_parameter_source_figures.py
 added: 2026-11-22
 closed: 2026-11-23

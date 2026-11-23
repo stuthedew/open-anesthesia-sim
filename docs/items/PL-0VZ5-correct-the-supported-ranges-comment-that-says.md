@@ -3,7 +3,6 @@ id: PL-0VZ5
 title: Correct the supported-ranges comment that says Kharasch's review measured how sevoflurane metabolism scales with dose from 0.35 to 9.5 MAC-hours
 status: done
 feature: model-claims-held-by-tests
-milestone: v0.6.22
 touches: src/anesthesia_sim/core/supported_ranges.py
 added: 2026-11-22
 closed: 2026-11-22

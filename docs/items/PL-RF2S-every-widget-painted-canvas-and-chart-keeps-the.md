@@ -6,7 +6,6 @@ effort: L
 status: done
 classes: safety, refactor
 feature: every-view-in-run-state-tests
-milestone: v0.6.22
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_surfaces.py, src/anesthesia_sim/app/run_presentation.py, src/anesthesia_sim/app/qt_agent_cost.py, src/anesthesia_sim/app/qt_schematic.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/controller.py, tests/integration, tests/unit, tools/contrast_check.py, docs/ARCHITECTURE.md, docs/INTERFACE.md, docs/items/PL-7H9X-a-workspace-pinned-in-an-earlier-session-says.md, pyproject.toml, docs/mutation-testing.md, .claude/skills/docket/modes/close-out.md
 deferred-from: v0.7.0 - a new problem, not present at the freeze (817a4d88, 2026-10-25): its three members were filed on 2026-11-10; not live: checked 2026-11-10, the audit found no wrong value on screen behind any member, and the gap is in the tests
 added: 2026-11-11

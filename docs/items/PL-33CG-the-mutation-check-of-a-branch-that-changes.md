@@ -6,7 +6,6 @@ effort: S
 status: done
 classes: session-cost
 feature: tests-detect-wrong-values
-milestone: v0.6.22
 touches: tools/diff_mutation.py, tests/unit/test_diff_mutation.py, docs/mutation-testing.md, .claude/skills/docket/modes/close-out.md
 added: 2026-11-11
 closed: 2026-11-23

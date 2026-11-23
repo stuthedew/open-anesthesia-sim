@@ -6,7 +6,6 @@ effort: S
 status: done
 classes: ux, safety
 feature: chart-readout
-milestone: v0.6.22
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, docs/INTERFACE.md, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py
 added: 2026-11-22
 closed: 2026-11-22
