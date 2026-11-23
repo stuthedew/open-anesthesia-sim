@@ -58,6 +58,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _dial_readings,
     _dials,
     _failing_assembly,
+    _failure_details,
     _fresh_run,
     _real_step_failure,
     _select_playback_rate,
@@ -486,7 +487,7 @@ def test_a_failed_step_stops_the_run_instead_of_killing_the_loop(application: QA
     assert run._notice_text.isHidden() is False
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "SimulationNumericalError" in notice
+    assert "SimulationNumericalError" in _failure_details(run)
     # The failure was drawn, not just recorded.
     assert view.presented_frames >= presented + 1
 
@@ -544,7 +545,7 @@ def test_a_failed_render_stops_the_run_rather_than_freezing_the_display(
     assert run._status_text.text() == "Stopped — simulation error"
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "RuntimeError" in notice
+    assert "RuntimeError" in _failure_details(run)
 
 
 def test_a_frame_that_cannot_be_drawn_on_a_discrete_action_halts_every_run(
@@ -588,7 +589,7 @@ def test_a_frame_that_cannot_be_drawn_on_a_discrete_action_halts_every_run(
         assert run._status_text.text() == "Stopped — simulation error"
         notice = run._notice_text.notice()
         assert notice is not None
-        assert "RuntimeError" in notice
+        assert "RuntimeError" in _failure_details(run)
 
 
 def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
@@ -631,7 +632,7 @@ def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
         assert run._status_text.text() == "Stopped — simulation error"
         notice = run._notice_text.notice()
         assert notice is not None
-        assert "RuntimeError: this run's frame could not be built" in notice
+        assert "RuntimeError: this run's frame could not be built" in _failure_details(run)
         assert run._pause_button.isEnabled() is False
         assert run._start_button.isEnabled() is False
 
@@ -676,7 +677,7 @@ def test_a_halt_after_a_frame_whose_value_could_not_be_written_is_still_stated(
     assert run._status_text.text() == STATUS_FAILED_TEXT
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "ValueError: the readouts could not show these values" in notice
+    assert "ValueError: the readouts could not show these values" in _failure_details(run)
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
 
@@ -893,7 +894,7 @@ def test_a_halt_whose_dials_and_1_mac_line_cannot_be_built_is_still_stated(
     assert run._status_text.text() == STATUS_FAILED_TEXT
     notice = run._notice_text.notice()
     assert notice is not None
-    assert "RuntimeError: this frame could not be assembled" in notice
+    assert "RuntimeError: this frame could not be assembled" in _failure_details(run)
     assert run._pause_button.isEnabled() is False
     assert run._start_button.isEnabled() is False
     assert run._one_mac_text.text() == ""

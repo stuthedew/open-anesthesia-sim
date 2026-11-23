@@ -465,6 +465,19 @@ def _setting_controls(view: SimulationView) -> ParameterControlsView:
     return next(v for v in view.layout_container.views() if isinstance(v, ParameterControlsView))
 
 
+def _failure_details(run: RunView) -> str:
+    """Return the details under a failed run's banner, which name the exception that stopped it.
+
+    The banner gives the learner plain words for the kind of failure, and the
+    exception's own message is shown only in these details (`PL-XWCH`).
+    """
+
+    details = run._failure_details.details()
+    assert details is not None, "the run shows no details of a failure"
+
+    return details
+
+
 def _setting_row(run: RunView) -> RunDials:
     """A run's place in the first setting controls View of the dashboard that holds the run."""
 

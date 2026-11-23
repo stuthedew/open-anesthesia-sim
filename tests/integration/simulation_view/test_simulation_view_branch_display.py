@@ -569,10 +569,14 @@ def test_hidden_notice_banners_take_no_height(application: QApplication, compare
     run._handle_delivered_concentration_change(_ABOVE_ANY_VAPORIZER_PERCENT)
     _settle(application)
     shown = banners[-1]
+    # The banner is placed with the failure details under it, as one
+    # (`PL-XWCH`). A refused setting has no details, so the pair is the banner.
+    placed = run._halt_banner
 
     assert shown.isVisible()
-    assert shown.y() == transports.geometry().bottom() + 1 + PAGE_SPACING
-    assert readouts.y() == shown.geometry().bottom() + 1 + PAGE_SPACING
+    assert run._failure_details.isHidden()
+    assert placed.y() == transports.geometry().bottom() + 1 + PAGE_SPACING
+    assert readouts.y() == placed.geometry().bottom() + 1 + PAGE_SPACING
 
 
 def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) -> None:

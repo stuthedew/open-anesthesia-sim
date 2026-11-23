@@ -188,9 +188,10 @@ about a third of the 2-hour limit, so the controller's mutants stay in the compa
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
 mutmut is pinned to version 3.8.0 in the `mutation` dependency group, so
 `uv sync` leaves it out and no test needs it. The tool's docstring
-explains the four things that it decides and mutmut's settings cannot: which
+explains the five things that it decides and mutmut's settings cannot: which
 tests run, which functions changed, which files mutmut mutates and which
-mutants it is asked for, and what a "timeout" really was.
+mutants it is asked for, what a "timeout" really was, and the order of each
+mutant's tests.
 `pyproject.toml`'s `[tool.mutmut]` table says why each mutmut setting is there.
 
 mutmut works in a copy of the tree called `mutants/`, which git ignores. Its
@@ -252,6 +253,26 @@ date.
   `[tool.mutmut]` avoid this. mutmut's default warm-up, `collect`, imports the
   test modules before any mutant is applied and brings the problem back, so
   the warm-up is set to `none`.
+- **mutmut's forkserver mode runs a mutant's tests in no fixed order.**
+  mutmut runs a mutant's tests with pytest's `-x`, so the run stops at the
+  first test that fails. In fork mode, mutmut 3.8.0 orders the tests fastest
+  first, so a slow test runs only on a mutant that every faster test misses.
+  In forkserver mode it passes them to pytest in the order of a Python set,
+  and pytest runs them in that order. The 20-second test in
+  `tests/unit/test_generated_runs.py` therefore often ran before a faster test
+  that would have caught the mutant. mutmut 3.8.1 and mutmut's main branch
+  did the same on 2026-11-23. `make mutate` orders each mutant's tests fastest
+  first itself, as fork mode does (`RUN_SCRIPT` in `tools/diff_mutation.py`).
+  On the 253 mutants of `core/governing_equations.py` and
+  `core/prediction.py`, the run took 1,037 seconds before this change and 581
+  seconds after it, with the same verdict for every mutant (`PL-33CG`). The
+  generated-run test stays in the run. With the tests in order, it runs only
+  on a mutant that every faster test misses, and leaving it out of the same
+  run saved 124 seconds.
+  Running the long tests last is the test prioritization of Just, Kapfhammer
+  and Schweiggert, "Using non-redundant mutation operators and test suite
+  prioritization to achieve efficient and scalable mutation analysis", ISSRE
+  2012, § IV.B.
 - **Every call into a file that mutmut mutates is slow.** mutmut replaces each
   function of such a file with a wrapper. The wrapper looks up the mutant
   under test and then calls the original function or the mutant. Before its
@@ -284,6 +305,8 @@ date.
   collect the test and stops with exit status 4. mutmut's worker turns that
   into exit status 255, which mutmut reports as a timeout. `make mutate` runs
   the test files of each such mutant again, whole, and reports what they say.
+  These runs leave out the tests that `[tool.mutmut]` deselects, as mutmut's
+  own run does, because each of them fails on mutmut's copy of the code.
   In a trial on 2026-10-17, all 5 of the mutants that mutmut reported as
   timeouts were killed when their test files ran whole. The audit counted
   about 49 mutants that fork mode killed and forkserver mode reported as

@@ -1493,8 +1493,9 @@ Reset kept and that differs from the one the branch opened under.
 **The simulator refuses Reset when the tissue flows no longer sum to the cardiac
 output.** This mismatch can happen only when a perfusion fraction is changed in
 a way that bypasses its range check (`PL-HQF5`, `PL-Z0HN`). A refused Reset
-leaves the run exactly as it was. The refusal message gives the two flows as
-they were set, in L/min, the unit every readout shows.
+leaves the run exactly as it was. The refusal message, shown in the failure's
+details under the banner, gives the two flows as they were set, in L/min, the
+unit every readout shows.
 
 After a refused Reset, the interface halts the run, as it does when a step
 fails (`PL-M4M0`). The status word, the run controls and the banner show the
@@ -2713,10 +2714,49 @@ again. The banner names the panel as the one exception to "the values shown are
 the last completed step". It says in words that the check failed because the
 rejected step created or lost agent, and that this is a fault in the simulator
 and not a change in the patient. It does not print the totals. The panel shows
-the rejected step's amounts, and the exact totals go to the failure log, the
-file `failures.log` in the reader's data directory, beside the saved Workspaces.
-Where that directory cannot be written, the log goes to standard error only,
-and the application still opens.
+the rejected step's amounts, and the exact totals go to the details under the
+banner and to the failure log, the file `failures.log` in the reader's data
+directory, beside the saved Workspaces. Where that directory cannot be written,
+the log goes to standard error only, and the application still opens.
+
+**Every failure banner names the kind of failure in plain words**, and never
+the error's own message, which is written for a developer. The kind is found
+from the type of error that stopped the run, and each kind has its own words:
+
+1. A failed accounting check: the words above.
+2. A value the model cannot hold, such as a negative amount of agent.
+3. A value that one part of the simulator gave another and that it does not
+   accept. A setting the learner chose is refused before it is applied, so the
+   learner's own dial never causes this kind.
+4. A run that could not continue safely for another reason the model names.
+5. Any other error. The banner says that an unexpected error occurred and that
+   its cause is not known, rather than guess at one.
+
+Each banner adds that this is a fault in the simulator and not a change in the
+patient. Microsoft's guidance on error messages asks for a different message
+for each cause that can be detected, and for an unknown cause to be stated as
+unknown (Microsoft, "Error messages", Windows app development design
+guidelines, learn.microsoft.com/en-us/windows/win32/uxguide/mess-error).
+
+**A "Show details" button sits under every failure banner.** It shows these
+lines:
+
+1. The application's name and version.
+2. The run's name, while two runs are drawn.
+3. The type and message of the error that stopped the run.
+4. The message of a Reset refused after that, if any. A run keeps its first
+   failure, so this line is the only place on screen that names the refusal.
+5. The path of the failure log, written from the home folder as `~`, because
+   the full path usually holds the learner's login name.
+
+A run stopped at the supported run length did not fail and has no details.
+"Copy details" puts the lines on the clipboard, and a line under them links the
+project's issue page and asks the reader to paste the details into a new issue.
+The link is in the tab order and opens with Enter. The details fold away again
+whenever a new failure replaces them, so one failure's details
+are not read as the next one's. The same guidance hides detailed information
+in an error message behind a "Show/Hide details" button, so that the message is
+simpler for typical use.
 
 **A dial moved on a stopped run is refused** before anything is applied, and
 springs back to the run's setting. The model computes no step after a stop, so
@@ -2762,6 +2802,17 @@ in `tests/integration/test_failure_log.py`), and a directory that cannot be made
 does not stop the launch
 (`test_a_data_directory_that_cannot_be_made_keeps_no_file_and_lets_the_launch_go_on`,
 in the same file).
+
+Each kind of failure has its own words and no developer message
+(`test_each_kind_of_failure_has_its_own_plain_words_and_no_developer_message`
+in `tests/unit/test_failure_words.py`), and the details name the build, the
+error and the log (`test_the_details_name_the_build_the_message_and_the_log`,
+in the same file). A real failed step is worded for the learner and keeps its
+message in the details
+(`test_a_failed_step_is_worded_for_the_learner_and_its_message_kept_in_the_details`
+in `tests/integration/simulation_view/test_simulation_view_failure_details.py`).
+The same file tests the toggle, the copy button, the folding of new details,
+each kind's words on a real halt, the refused Reset's line and the run's name.
 
 ### Naming the run in a comparison
 

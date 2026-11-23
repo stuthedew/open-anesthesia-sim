@@ -359,8 +359,8 @@ end, taken from the run's stored states, and that allowance is removed
 (`PL-Z6C8`). The band keeps its value. It is far wider than one unit in the
 last place of a reading, which is 2.2e-16 of the reading. It is also far
 finer than anything displayed. A percentage shown to two decimals resolves
-0.01 percentage points, which is 0.5% of 1 MAC of sevoflurane, about five
-hundred times this band.
+0.01 percentage points, which is 0.56% of sevoflurane's 1 MAC at age 40,
+about 560 times this band.
 """
 
 WHOLE_COUNT_TOLERANCE: Final = 1e-9

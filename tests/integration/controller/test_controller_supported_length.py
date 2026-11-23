@@ -20,6 +20,7 @@ from anesthesia_sim.app.dashboard_frame import (
     status_word,
     transport,
 )
+from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import format_supported_run_length
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
@@ -108,7 +109,7 @@ def test_a_run_at_the_supported_run_length_that_then_fails_gives_each_reason_in_
     controller.start()
     controller.advance()
     controller.halt_at_supported_limit("reached 86400 s of simulated time")
-    controller.fail("RuntimeError: the frame could not be drawn")
+    controller.fail("RuntimeError: the frame could not be drawn", kind=FailureKind.UNEXPECTED)
 
     snapshot = controller.snapshot()
 
