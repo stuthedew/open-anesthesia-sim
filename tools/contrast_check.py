@@ -400,6 +400,20 @@ VISION_MODELS: tuple[str, ...] = ("normal", *DICHROMACY_TRANSFORMS)
 #: (PL-GVXP).
 TRACE_FLOOR = AA_NON_TEXT
 
+#: The palette name of the MAC-awake band's fill over the panel, which this
+#: tool derives rather than reads (`palette_from_sources`). Inside the band each
+#: trace is drawn against this colour, so SC 1.4.11's "against adjacent
+#: color(s)" makes it a background every trace must clear `TRACE_FLOOR`
+#: against, in all four models for the reason `TRACE_FLOOR` gives (PL-GT8W).
+BAND_COMPOSITE = "MAC_AWAKE_BAND_COMPOSITE"
+
+#: How a report names `BAND_COMPOSITE` to a reader.
+BAND_COMPOSITE_NAME = "the MAC-awake band composite"
+
+#: The `criterion` of a requirement that no success criterion sets, which a
+#: report prints as this project's own bar rather than as an SC number.
+PROJECT_BAR = "project"
+
 
 @dataclass(frozen=True)
 class Requirement:
@@ -550,6 +564,14 @@ class Exemption:
 #: fill's edge against the empty part of its container is the PANEL pair.
 _COMPARTMENT_MARK = (
     "a plotted compartment trace, the fill of its schematic container, and its share-bar segment"
+)
+
+#: What each trace is against inside the MAC-awake band: the adjacent colour
+#: there is the band's fill over the panel, which `BAND_COMPOSITE` names and
+#: `palette_from_sources` derives from `MAC_AWAKE_BAND_FILL_OPACITY` (PL-GT8W).
+_BAND_CROSSING = (
+    "a plotted compartment trace where it crosses the MAC-awake band, measured against "
+    f"{BAND_COMPOSITE_NAME}, the band's fill over the panel"
 )
 
 REQUIREMENTS: tuple[AnyRequirement, ...] = (
@@ -964,6 +986,17 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement("VESSEL_RICH_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
     Requirement("MUSCLE_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
     Requirement("FAT_COLOR", "PANEL", AA_NON_TEXT, "1.4.11", _COMPARTMENT_MARK),
+    *(
+        Requirement(trace, BAND_COMPOSITE, AA_NON_TEXT, "1.4.11", _BAND_CROSSING)
+        for trace in (
+            "CIRCUIT_COLOR",
+            "ALVEOLAR_COLOR",
+            "MIXED_VENOUS_COLOR",
+            "VESSEL_RICH_COLOR",
+            "MUSCLE_COLOR",
+            "FAT_COLOR",
+        )
+    ),
     Requirement(
         "MAC_AWAKE_BAND_COLOR",
         "PANEL",
@@ -992,6 +1025,19 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "string. It is deliberately quieter than MAC_AWAKE_BAND_COLOR - the two "
         "traces have converged by the time a run reaches 1 MAC and have not at "
         "MAC-awake, so the band is the trace-critical mark of the two (PL-F52R)",
+    ),
+    Requirement(
+        "FAT_COLOR",
+        "ONE_MAC_LINE_COLOR",
+        1.5,
+        PROJECT_BAR,
+        "the 1 MAC reference line told apart from the fat trace by lightness as "
+        "well as by its dash. Both are dashed lines, and after a long case the fat "
+        "trace is nearly flat, which is the look `ONE_MAC_LINE_COLOR`'s comment "
+        "gives a reference. No success criterion asks two lines to contrast with "
+        "each other. The minimum is set above the 1.48 that six traces cannot all "
+        "exceed against each other, so the reference is more distinct from fat "
+        "than any two traces can be made (PL-6W49)",
     ),
 )
 
@@ -1058,12 +1104,12 @@ KNOWN_SHORTFALLS: dict[tuple[str, str], Shortfall] = {}
 #: gridlines outright. Each use falls under a carve-out the
 #: criterion states in its own words, given per use below. Darkening was
 #: refused on the chart's hierarchy rather than on the criterion: a ruling at
-#: 3:1 would be 87% as dark as the lightest trace (`MUSCLE_COLOR`, 3.43:1) and
-#: a hue step from `FAT_COLOR` (4.76:1), so furniture would weigh as much as
-#: data, and the order the chart rests on - ruling at 1.31:1, under `MUTED`
-#: reference lines at 5.00:1, under traces at 3.43-6.02:1, with widths 1 / 1.5
-#: / 2-3 px carrying the same order - would collapse at its bottom rung. 1.31:1
-#: is where charting practice puts a ruling deliberately: ggplot2's `theme_bw`
+#: 3:1 would be 87% as dark as the lightest trace (`MUSCLE_COLOR`, 3.43:1), so
+#: furniture would weigh as much as data, and the order the chart rests on -
+#: ruling at 1.31:1, under `MUTED` reference lines at 5.00:1, under traces at
+#: 3.43-8.85:1, with widths 1 / 1.5 / 2-3 px carrying the same order - would
+#: collapse at its bottom rung. 1.31:1 is where charting practice puts a ruling
+#: deliberately: ggplot2's `theme_bw`
 #: rules its panel at grey92, 1.19:1 on white, and Matplotlib's default
 #: `grid.color` is `#b0b0b0`, 2.17:1, the darker of the two and still under 3:1
 #: (both read at source on 2026-09-27; the item names the files). A little
@@ -1450,6 +1496,7 @@ def palette_from_sources(sources: Iterable[tuple[Path, str]]) -> dict[str, str]:
         Color name to six-digit sRGB hex, as `read_palette` returns it.
     """
     palette: dict[str, str] = {}
+    band_opacity: float | None = None
     for relative, source in sources:
         tree = ast.parse(source, filename=relative.as_posix())
         for statement in tree.body:
@@ -1467,10 +1514,53 @@ def palette_from_sources(sources: Iterable[tuple[Path, str]]) -> dict[str, str]:
                 if target.id == "AGENT_COLOR_SCHEMES":
                     palette.update(_collect_agent_schemes(value, palette))
                     continue
+                if (
+                    target.id == "MAC_AWAKE_BAND_FILL_OPACITY"
+                    and isinstance(value, ast.Constant)
+                    and isinstance(value.value, float)
+                ):
+                    band_opacity = value.value
+                    continue
                 resolved = _string_value(value, palette)
                 if resolved is not None and HEX_VALUE_RE.fullmatch(resolved):
                     palette[target.id] = resolved
+    band = palette.get("MAC_AWAKE_BAND_COLOR")
+    panel = palette.get("PANEL")
+    if band_opacity is not None and band is not None and panel is not None:
+        palette[BAND_COMPOSITE] = composite_over(band, band_opacity, panel)
     return palette
+
+
+def composite_over(foreground: str, opacity: float, background: str) -> str:
+    """The colour a fill at `opacity` shows over `background`, as Qt paints it.
+
+    QPainter's default composition, source-over, blends the stored sRGB values
+    and not linear light, so this does the same and rounds each channel to the
+    nearest of the 256 levels a pixel holds.
+
+    Args:
+        foreground: The fill's colour, six-digit sRGB hex.
+        opacity: The fill's opacity, from 0 to 1.
+        background: The colour under the fill, six-digit sRGB hex.
+
+    Returns:
+        The composite, six-digit sRGB hex.
+
+    Raises:
+        ValueError: `opacity` is outside 0 to 1.
+    """
+    if not 0.0 <= opacity <= 1.0:
+        raise ValueError(f"an opacity lies from 0 to 1, got {opacity!r}")
+    top = foreground.lstrip("#")
+    under = background.lstrip("#")
+    channels = (
+        round(
+            int(under[index : index + 2], 16) * (1.0 - opacity)
+            + int(top[index : index + 2], 16) * opacity
+        )
+        for index in (0, 2, 4)
+    )
+    return "#" + "".join(f"{channel:02X}" for channel in channels)
 
 
 def read_symbols(root: Path) -> frozenset[str]:
@@ -2121,6 +2211,8 @@ class Report:
     trace_pairs: tuple[tuple[str, str, str, float], ...]
     #: `(trace, vision model, ratio)` for each trace under `TRACE_FLOOR`.
     below_trace_floor: tuple[tuple[str, str, float], ...]
+    #: The same, against `BAND_COMPOSITE` rather than `PANEL` (PL-GT8W).
+    below_band_floor: tuple[tuple[str, str, float], ...]
     #: How many modules under `APP` the palette and the symbols came from, so
     #: the report says what it read rather than leaving that to be assumed.
     modules_read: int
@@ -2159,6 +2251,7 @@ class Report:
                 self.author_styled_disabled,
                 self.undeclared_controls_errors,
                 self.below_trace_floor,
+                self.below_band_floor,
             )
         )
 
@@ -2278,6 +2371,21 @@ def analyze(root: Path, base: str | None = None) -> Report:
         if (ratio := contrast_ratio(as_seen(palette[name], model), palette["PANEL"]))
         and round(ratio, DISPLAY_DECIMALS) < TRACE_FLOOR
     )
+    # Inside the band each trace is seen against the band's fill, so the same
+    # floor applies there. A palette without the composite has already put
+    # `BAND_COMPOSITE` in `missing` through the requirement that names it.
+    below_band_floor = tuple(
+        (name, model, ratio)
+        for model in VISION_MODELS
+        for name in drawn
+        if BAND_COMPOSITE in palette
+        and (
+            ratio := contrast_ratio(
+                as_seen(palette[name], model), as_seen(palette[BAND_COMPOSITE], model)
+            )
+        )
+        and round(ratio, DISPLAY_DECIMALS) < TRACE_FLOOR
+    )
     undeclared_controls, undeclared_controls_errors = read_undeclared_controls(root)
     return Report(
         results=tuple(results),
@@ -2299,10 +2407,16 @@ def analyze(root: Path, base: str | None = None) -> Report:
         author_styled_disabled=check_authored_disabled_colours_are_measured(root),
         trace_pairs=trace_pairs,
         below_trace_floor=below_trace_floor,
+        below_band_floor=below_band_floor,
         modules_read=len(app_modules(root)),
         undeclared_controls=undeclared_controls,
         undeclared_controls_errors=undeclared_controls_errors,
     )
+
+
+def criterion_text(criterion: str) -> str:
+    """How a report names a requirement's criterion: an SC number, or this project's own bar."""
+    return "this project's own bar" if criterion == PROJECT_BAR else f"SC {criterion}"
 
 
 def _plural(count: int, noun: str) -> str:
@@ -2375,7 +2489,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
             lines.append(
                 f"  {requirement.label} on {requirement.background}: "
                 f"{result.rounded:.2f} < {requirement.minimum} "
-                f"(SC {requirement.criterion}) - {requirement.why}"
+                f"({criterion_text(requirement.criterion)}) - {requirement.why}"
             )
 
     if report.repaired:
@@ -2496,6 +2610,16 @@ def format_report(report: Report, *, matrix: bool) -> str:
         lines.append(
             "  Every trace clears this as displayed and as simulated for each "
             "dichromacy - see TRACE_FLOOR for why all four."
+        )
+
+    if report.below_band_floor:
+        lines.append("")
+        lines.append(f"Chart traces below {TRACE_FLOOR}:1 against {BAND_COMPOSITE_NAME}:")
+        for name, model, ratio in report.below_band_floor:
+            lines.append(f"  {name:<20} {model:<13} {ratio:.2f}")
+        lines.append(
+            "  Inside the MAC-awake band each trace is drawn over the band's fill, so "
+            "MAC_AWAKE_BAND_FILL_OPACITY decides this background (PL-GT8W)."
         )
 
     if matrix and report.trace_pairs:

@@ -3436,7 +3436,17 @@ and label colours, so neither is mistaken for a compartment.
 MAC-awake.** It covers roughly the middle two thirds of a population, not its
 full range. A rule marks each edge, on its published value, with a light fill
 between the two. Nothing pads the band outward, even where it is thin, so the
-space between the rules is exactly the published spread.
+space between the rules is exactly the published spread. The fill is light
+enough that every trace keeps 3:1 against it in all four vision models, because
+the band is where a reader compares the crossings (`PL-GT8W`).
+
+**The 1 MAC line is grey and the fat trace is not.** Grey marks the chart's
+furniture: the reference line, the control marks and the gridlines. The fat
+trace is a dark ochre, darker than the line, so after a long case, when fat is
+nearly flat, the two differ in colour and lightness as well as in their dashes.
+The contrast check holds the pair at least 1.5:1 apart. Six traces cannot all
+be held more than 1.48:1 apart from each other, so the line is further from fat
+than the traces can be from each other (`PL-6W49`).
 
 **The 1 MAC line marks the nominal value, not the dialled one.** A fixed line
 sits at the same height in every run, so runs stay comparable. A line that
@@ -3826,7 +3836,8 @@ Two criteria carry most of the weight:
   both, the page background is the stricter test, and it is the one that
   counts.
 - **SC 1.4.11, Non-text Contrast**, requires 3:1 for graphical objects. Here
-  that means each chart trace against the panel it is drawn on, each agent
+  that means each chart trace against the panel it is drawn on, and against
+  the MAC-awake band's fill where the trace crosses the band, each agent
   swatch treated as a shape, and the active track of each parameter slider,
   which shows where the slider's value sits in its range. It also means the
   two chart references, which are the MAC-awake band and the 1 MAC line, and
@@ -4198,21 +4209,21 @@ The legend entry beside each checkbox names its trace's style in words, so a
 reader can learn every style from the legend alone.
 
 **Color cannot be the first cue, because some pairs of trace colors are almost
-equally bright.** The closest pairs are vessel-rich and fat, and mixed venous and
-fat. No other choice of colors fixes this. Each color has at least the 3:1
+equally bright.** The closest pairs are alveolar and muscle, and circuit and
+mixed venous. No other choice of colors fixes this. Each color has at least the 3:1
 contrast against the panel that WCAG success criterion 1.4.11 requires, both as
 displayed and as simulated for protanopia, deuteranopia and tritanopia. The
 colors are chosen to label their compartment and to clear that minimum.
 
 **The colors decide which line style goes on which compartment.** The two traces
-whose colors are hardest to separate get the two styles that are easiest to
-separate by shape. The next pair gets the next easiest, and so on. Fat's
-dash-dot therefore differs in dash length, gap length and rhythm from both the
-vessel-rich even dash and the mixed venous short dash. The one pair of styles
-that a reader could confuse is dotted, with 2 px dots, and short dash, with 4 px
-dashes. That pair goes to muscle and mixed venous, whose colors are the second
-most widely separated pair among these six (1.45 in the table below, after
-circuit and alveolar at 1.62).
+whose colors are hardest to separate get styles that are easy to separate by
+shape: alveolar's long dash against muscle's dots, and circuit's solid line
+against mixed venous's short dash. Fat's dash-dot differs in dash length, gap
+length and rhythm from both the vessel-rich even dash and the mixed venous short
+dash. The one pair of styles that a reader could confuse is dotted, with 2 px
+dots, and short dash, with 4 px dashes. That pair goes to muscle and mixed
+venous, whose colors are 1.45 apart at worst, more than ten of the fifteen
+pairs in the table below.
 
 **With two runs on the plot, at most two compartments are drawn** (`PL-HLD5`,
 `PL-8PSW`). The cap applies to the plot only. All six readouts stay on screen for
@@ -4252,28 +4263,28 @@ simulated for each dichromacy:
 | Mixed venous | `#7C3AED` | 5.70 | 5.96 | 4.68 | 5.55 |
 | Vessel-rich | `#DC2626` | 4.83 | 7.18 | 4.14 | 4.84 |
 | Muscle | `#D17206` | 3.43 | 3.96 | 3.22 | 3.46 |
-| Fat | `#64748B` | 4.76 | 4.74 | 4.76 | 4.77 |
+| Fat | `#5D4710` | 8.85 | 9.05 | 8.78 | 8.85 |
 
 The contrast between each pair of traces is far lower, and the design in this
 section rests on it:
 
 | Pair | Normal | Protanopia | Deuteranopia | Tritanopia | Worst |
 | --- | --- | --- | --- | --- | --- |
-| Vessel-rich / Fat | 1.01 | 1.51 | 1.15 | 1.02 | **1.01** |
-| Mixed venous / Fat | 1.20 | 1.26 | 1.02 | 1.16 | **1.02** |
 | Alveolar / Muscle | 1.05 | 1.23 | 1.19 | 1.05 | **1.05** |
 | Circuit / Mixed venous | 1.06 | 1.05 | 1.33 | 1.08 | **1.05** |
 | Alveolar / Vessel-rich | 1.34 | 2.22 | 1.08 | 1.33 | **1.08** |
 | Mixed venous / Vessel-rich | 1.18 | 1.20 | 1.13 | 1.15 | **1.13** |
-| Circuit / Fat | 1.26 | 1.19 | 1.31 | 1.26 | **1.19** |
-| Muscle / Fat | 1.39 | 1.20 | 1.48 | 1.38 | **1.20** |
 | Alveolar / Mixed venous | 1.58 | 1.84 | 1.22 | 1.53 | **1.22** |
-| Alveolar / Fat | 1.32 | 1.47 | 1.24 | 1.31 | **1.24** |
 | Circuit / Vessel-rich | 1.25 | 1.27 | 1.50 | 1.24 | **1.24** |
+| Vessel-rich / Fat | 1.83 | 1.26 | 2.12 | 1.83 | **1.26** |
 | Vessel-rich / Muscle | 1.41 | 1.81 | 1.28 | 1.40 | **1.28** |
+| Circuit / Fat | 1.47 | 1.60 | 1.41 | 1.47 | **1.41** |
 | Circuit / Muscle | 1.75 | 1.43 | 1.93 | 1.74 | **1.43** |
 | Mixed venous / Muscle | 1.66 | 1.50 | 1.45 | 1.61 | **1.45** |
+| Mixed venous / Fat | 1.55 | 1.52 | 1.88 | 1.59 | **1.52** |
 | Circuit / Alveolar | 1.67 | 1.75 | 1.62 | 1.66 | **1.62** |
+| Muscle / Fat | 2.58 | 2.28 | 2.72 | 2.56 | **2.28** |
+| Alveolar / Fat | 2.45 | 2.80 | 2.29 | 2.44 | **2.29** |
 
 Other colors would not help, because the closest pair among any six colors has a
 contrast ceiling of $`21^{1/5}\approx1.84`$. Contrast ratios multiply along a

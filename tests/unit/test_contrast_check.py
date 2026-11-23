@@ -1236,8 +1236,98 @@ def test_the_worst_trace_contrast_pair_is_the_one_docs_model_records() -> None:
         for model in contrast_check.VISION_MODELS
     )
 
-    assert round(worst[0], 2) == 1.01
-    assert (worst[1], worst[2]) == ("VESSEL_RICH_COLOR", "FAT_COLOR")
+    assert round(worst[0], 2) == 1.05
+    assert (worst[1], worst[2]) == ("ALVEOLAR_COLOR", "MUSCLE_COLOR")
+
+
+# --- the MAC-awake band composite and the 1 MAC line (PL-GT8W, PL-6W49) -----
+
+
+def test_a_fill_over_the_panel_blends_the_stored_values() -> None:
+    """`INK` at 14% over white is `#E0E4E7`, the composite `PL-GT8W` measured the band at.
+
+    Each channel is 255 * 0.86 + the ink's channel * 0.14, rounded: red
+    255 * 0.86 + 36 * 0.14 = 224.34, green 255 * 0.86 + 59 * 0.14 = 227.56 and
+    blue 255 * 0.86 + 83 * 0.14 = 230.92.
+    """
+    assert contrast_check.composite_over("#243B53", 0.14, "#FFFFFF") == "#E0E4E7"
+    assert contrast_check.composite_over("#243B53", 0.0, "#FFFFFF") == "#FFFFFF"
+    assert contrast_check.composite_over("#243B53", 1.0, "#FFFFFF") == "#243B53"
+
+
+@pytest.mark.parametrize("opacity", [-0.01, 1.01])
+def test_an_opacity_outside_zero_to_one_is_refused(opacity: float) -> None:
+    with pytest.raises(ValueError, match="opacity"):
+        contrast_check.composite_over("#243B53", opacity, "#FFFFFF")
+
+
+def test_the_palette_derives_the_band_composite_from_the_theme(tmp_path: Path) -> None:
+    """The composite comes from the band colour, its opacity and the panel, so none is copied."""
+    root = _repo(
+        tmp_path,
+        theme=THEME_SOURCE + "\nMAC_AWAKE_BAND_COLOR = INK\nMAC_AWAKE_BAND_FILL_OPACITY = 0.14\n",
+    )
+
+    palette = contrast_check.read_palette(root)
+
+    assert palette[contrast_check.BAND_COMPOSITE] == "#E0E4E7"
+
+
+def test_a_band_fill_that_drops_a_trace_below_the_floor_is_an_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, declare
+) -> None:
+    """The band's old fill, which dropped the muscle trace to 2.68:1 inside the band (`PL-GT8W`)."""
+    declare(())
+    theme = (
+        THEME_SOURCE
+        + "\nMAC_AWAKE_BAND_COLOR = INK\nMAC_AWAKE_BAND_FILL_OPACITY = 0.14\n"
+        + 'MUSCLE_COLOR = "#D17206"\n'
+    )
+    root = _repo(tmp_path, theme=theme)
+    monkeypatch.setattr(contrast_check, "TRACES", ("MUSCLE_COLOR",))
+
+    report = contrast_check.analyze(root)
+
+    assert report.errors
+    assert report.below_trace_floor == ()
+    assert ("MUSCLE_COLOR", "normal") in [
+        (name, model) for name, model, _ in report.below_band_floor
+    ]
+    assert contrast_check.BAND_COMPOSITE_NAME in contrast_check.format_report(report, matrix=False)
+
+
+def test_every_trace_clears_the_floor_inside_the_shipped_band() -> None:
+    """Each trace reaches 3:1 against the band's fill, in all four vision models."""
+    report = contrast_check.analyze(REPO_ROOT)
+    declared = {
+        requirement.foreground
+        for requirement in contrast_check.REQUIREMENTS
+        if requirement.background == contrast_check.BAND_COMPOSITE
+        and isinstance(requirement, contrast_check.Requirement)
+    }
+
+    assert report.below_band_floor == ()
+    assert declared == set(contrast_check.TRACES)
+
+
+def test_the_one_mac_line_is_held_apart_from_the_fat_trace() -> None:
+    """`PL-6W49`: the pair is declared, and a grey fat trace like the old one fails it."""
+    (requirement,) = (
+        each
+        for each in contrast_check.REQUIREMENTS
+        if isinstance(each, contrast_check.Requirement)
+        and (each.foreground, each.background) == ("FAT_COLOR", "ONE_MAC_LINE_COLOR")
+    )
+    palette = contrast_check.read_palette(REPO_ROOT)
+
+    assert "told apart from the fat trace" in requirement.why
+    assert (
+        contrast_check.contrast_ratio(palette["FAT_COLOR"], palette["ONE_MAC_LINE_COLOR"])
+        >= requirement.minimum
+    )
+    assert contrast_check.contrast_ratio("#64748B", palette["ONE_MAC_LINE_COLOR"]) < (
+        requirement.minimum
+    )
 
 
 def test_the_separation_ceiling_falls_once_every_trace_must_clear_the_panel() -> None:
