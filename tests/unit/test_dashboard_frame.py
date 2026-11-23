@@ -2592,8 +2592,8 @@ def test_the_accounting_panel_reports_the_failure_after_an_accounting_halt() -> 
     banner = notice(halted, None)
 
     assert banner is not None
-    assert "The rejected step's totals: " in banner
-    assert "delivered=4.240000e+00 L" in banner
+    assert "the agent accounting check failed" in banner
+    assert "e+00" not in banner, "the totals are for the log, and the panel shows them"
     assert "except the agent accounting panel, which shows the rejected step" in banner
 
 
@@ -4077,6 +4077,41 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
 
     assert offer.locked is True
     assert offer.lock_reason == comparing_fork_lock_text(COMPARED)
+
+
+def test_fork_offer_names_the_pin_only_beside_a_branch_that_can_be_taken() -> None:
+    """A pinned Workspace says before the press that a branch will not be drawn there (`PL-RXR8`).
+
+    The notice is written out here rather than read from the template. It is
+    given while a branch is offered and the Workspace is pinned. It is not
+    given while the Workspace is unpinned, while two runs are open, because
+    the lock caption then names the pin, or while nothing is offered, because
+    there is no press for it to come before.
+    """
+
+    points = (CaseInstant(0), CaseInstant(60))
+    expected = (
+        "This Workspace is pinned to Run 1, so it will not draw a branch taken here "
+        "beside it. Unpin it from the Workspace's tab to compare the two runs here."
+    )
+
+    pinned = fork_offer(points, marks=(), comparing=None, here=None, pinned_to="Run 1")
+    unpinned = fork_offer(points, marks=(), comparing=None, here=None, pinned_to=None)
+    comparing = fork_offer(points, marks=(), comparing=COMPARED, here=None, pinned_to="Run 1")
+    nothing_offered = fork_offer((), marks=(), comparing=None, here=None, pinned_to="Run 1")
+    only_here = fork_offer(
+        (),
+        marks=(),
+        comparing=None,
+        here=HereForkPoint(CaseInstant(45), stopped_on_mark=False),
+        pinned_to="Run 1",
+    )
+
+    assert pinned.pinned_notice == expected
+    assert unpinned.pinned_notice == ""
+    assert comparing.pinned_notice == ""
+    assert nothing_offered.pinned_notice == ""
+    assert only_here.pinned_notice == expected
 
 
 def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:

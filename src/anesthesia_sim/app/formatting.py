@@ -1539,10 +1539,10 @@ def format_agent_residual(litres: float) -> str:
     arithmetic ran, not by anything modelled, and a correct last-bit change
     to the propagator changes them. `docs/INTERFACE.md` § "Displayed precision"
     has the measurement. Any finer form would print a digit that is noise.
-    The signed values are still shown when
-    they mean something: a failing check halts the run, and the failure
-    notice prints the signed unaccounted amount with six decimal places, such
-    as `1.000000e+00 L`.
+    The signed values are still recorded when
+    they mean something: a failing check halts the run, and the application's
+    log records the signed unaccounted amount with six decimal places, such
+    as `1.000000e+00 L`, for a developer (`PL-TWZY`).
 
     Exactly zero is shown as `0 L`. A value that is not finite cannot come
     out of the accounting check. If one arrives, it is printed as itself
