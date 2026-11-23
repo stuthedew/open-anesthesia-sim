@@ -262,6 +262,7 @@ def _require_deliverable_flow(
             f"is not what refused it (the machine's range is declared in its "
             f"data/machines/ profile, the model's in docs/INTERFACE.md, "
             f'"Supported input ranges")',
+            quantity="fresh_gas_flow_l_min",
             requested=fresh_gas_flow_l_min,
             lowest=machine_range.minimum_l_min,
             highest=machine_range.maximum_l_min,

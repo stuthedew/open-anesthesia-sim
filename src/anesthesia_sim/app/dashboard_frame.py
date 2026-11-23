@@ -59,6 +59,7 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_DISPLAY_UNITS,
+    CONTROL_INPUT_FIELDS,
     ControlInput,
     control_value,
 )
@@ -66,7 +67,6 @@ from anesthesia_sim.app.control_timeline import (
     CONTROL_INPUT_LABELS,
     ControlAdjustment,
     format_adjustment,
-    format_control_value,
 )
 from anesthesia_sim.app.controller import (
     HereForkPoint,
@@ -415,7 +415,7 @@ REFUSED_SETTING_OUTSIDE_RANGE_TEMPLATE: Final = (
     "the {setting} setting cannot be {requested}, because {reason}"
 )
 #: Why each limit refused the setting, in the learner's words. `lowest` and `highest`
-#: are the limit's two ends, written as the control's readout writes a value.
+#: are the limit's two ends, written exactly (`_exact_setting`).
 SETTING_LIMIT_REASONS: Final[Mapping[SettingLimit, str]] = MappingProxyType(
     {
         SettingLimit.SUPPORTED_INPUT_RANGE: (
@@ -2274,14 +2274,17 @@ def setting_refusal_for_a_learner(
     by its field name in the code, such as `delivered_concentration_percent`.
     The error returned names the control by its label on screen, gives the value
     asked for and the limit, and says which limit refused it
-    (`SETTING_LIMIT_REASONS`). Each value is written as the control's readout
-    writes it (`format_control_value`). The developer's message is kept whole,
+    (`SETTING_LIMIT_REASONS`). Each value is written exactly
+    (`_exact_setting`). The developer's message is kept whole,
     as the returned error's note (Python's `add_note`, PEP 678) and as its
     cause. The branch refusals keep a developer's detail the same way
     (`SimulationController._branch_from`, `PL-72X2`).
 
     Any other refusal is returned as it is. The controller words those for the
-    learner itself, as it does a setting on a stopped run.
+    learner itself, as it does a setting on a stopped run. So is a range
+    refusal of another control's field, which the settings record can raise
+    while it checks every field after one control moves. Reworded for this
+    control, it would name the wrong control and the wrong unit.
 
     Args:
         control: The control that asked for the setting.
@@ -2291,16 +2294,19 @@ def setting_refusal_for_a_learner(
         The refusal to show in the banner.
     """
 
-    if not isinstance(error, SettingOutsideRange):
+    if (
+        not isinstance(error, SettingOutsideRange)
+        or error.quantity != CONTROL_INPUT_FIELDS[control]
+    ):
         return error
 
     refusal = SimulationConfigurationError(
         REFUSED_SETTING_OUTSIDE_RANGE_TEMPLATE.format(
             setting=CONTROL_INPUT_LABELS[control].lower(),
-            requested=_refused_value(control, error.requested),
+            requested=_exact_setting(control, error.requested),
             reason=SETTING_LIMIT_REASONS[error.limit].format(
-                lowest=format_control_value(control, error.lowest),
-                highest=format_control_value(control, error.highest),
+                lowest=_exact_setting(control, error.lowest),
+                highest=_exact_setting(control, error.highest),
             ),
         )
     )
@@ -2310,23 +2316,21 @@ def setting_refusal_for_a_learner(
     return refusal
 
 
-def _refused_value(control: ControlInput, value: float) -> str:
-    """Return a refused value as the control's readout would write it, or as the core shows it.
+def _exact_setting(control: ControlInput, value: float) -> str:
+    """Return a refused value or a limit exactly, followed by the unit the control's slider shows.
 
-    A refused value can lie where the readout's formatter cannot write it: a
-    concentration above 100% is not a `Percent`, and an `int` too large for a
-    `float` overflows a fixed-point format. Such a value is written as the
-    core's own message writes it (`shown`), followed by the unit that the
-    control's slider shows, with no space before a percent sign, as the
-    readout writes one.
+    The value is written as the core's own message writes it (`shown`), which
+    is the shortest text that reads back as the same number. The readout's
+    format rounds, to 0.1 L/min or 0.01%, so a value just past a limit would be
+    written equal to the limit or inside it: 10.04 L/min as "10.0 L/min"
+    beside a highest flow of "10.0 L/min". A refusal reaches the banner only
+    when a slider and a limit disagree, which is most likely at such a
+    boundary. A percent sign follows with no space, as the readout writes one.
     """
 
-    try:
-        return format_control_value(control, value)
-    except SimulationConfigurationError, OverflowError:
-        unit = CONTROL_INPUT_DISPLAY_UNITS[control].label
+    unit = CONTROL_INPUT_DISPLAY_UNITS[control].label
 
-        return f"{shown(value)}{'' if unit == '%' else ' '}{unit}"
+    return f"{shown(value)}{'' if unit == '%' else ' '}{unit}"
 
 
 def refused_branch_notice(error: SimulationConfigurationError) -> str:

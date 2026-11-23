@@ -135,35 +135,42 @@ class ControlSettings(Protocol):
     def cardiac_output_l_min(self) -> float: ...
 
 
+# The name of the settings field that holds each control's value. A refusal from the
+# core names the field it refused by this name (`SettingOutsideRange.quantity`), so
+# the interface rewords a refusal for a control only when the refusal is about that
+# control's own field (`PL-8QFW`). `control_value` reads each field by this name.
+CONTROL_INPUT_FIELDS: Final[Mapping[ControlInput, str]] = {
+    ControlInput.FRESH_GAS_FLOW: "fresh_gas_flow_l_min",
+    ControlInput.DELIVERED: "delivered_concentration_percent",
+    ControlInput.ALVEOLAR_VENTILATION: "alveolar_ventilation_l_min",
+    ControlInput.CARDIAC_OUTPUT: "cardiac_output_l_min",
+}
+
+
 def control_value(settings: ControlSettings, control: ControlInput) -> float:
     """Return the value that `settings` holds for `control`, in the unit the control was set in.
 
-    This is the one place that says which settings field holds each control's
-    value. The controller calls it to work out which changes a branch starts
-    with. `dashboard_frame.setting_readouts` calls it to get the value shown
-    beside each slider. So a control's recorded change and its readout come
-    from the same field (`PL-000W`).
+    `CONTROL_INPUT_FIELDS` is the one place that says which settings field
+    holds each control's value, and this function reads that field. The
+    controller calls it to work out which changes a branch starts with.
+    `dashboard_frame.setting_readouts` calls it to get the value shown beside
+    each slider. So a control's recorded change and its readout come from the
+    same field (`PL-000W`).
 
     The function returns the value as it was set, not a converted value. So the
     result compares exactly equal to the value that a setter recorded. For
     example, the delivered concentration is returned as the percent that was
     dialled (`PL-NJPB`).
 
-    The `match` statement has no default case. If a new `ControlInput` member
-    has no case here, the function has a path that returns nothing, and `mypy`
-    rejects that. So a fifth control cannot appear in a readout or a recorded
-    change until this function says which field holds it.
+    Every field in `CONTROL_INPUT_FIELDS` is a property of the
+    `ControlSettings` protocol, so the attribute named exists on each record
+    that matches it. A fifth control has no entry until the table names its
+    field, and reading its value raises `KeyError` until then.
     """
 
-    match control:
-        case ControlInput.FRESH_GAS_FLOW:
-            return settings.fresh_gas_flow_l_min
-        case ControlInput.DELIVERED:
-            return settings.delivered_concentration_percent
-        case ControlInput.ALVEOLAR_VENTILATION:
-            return settings.alveolar_ventilation_l_min
-        case ControlInput.CARDIAC_OUTPUT:
-            return settings.cardiac_output_l_min
+    value: float = getattr(settings, CONTROL_INPUT_FIELDS[control])
+
+    return value
 
 
 @dataclass(frozen=True, slots=True)

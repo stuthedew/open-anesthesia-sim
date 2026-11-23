@@ -24,8 +24,9 @@ from tests.integration.simulation_view.simulation_view_support import _dials, _s
 
 # The whole banner a learner reads for each refused vaporizer setting. Each is typed
 # by hand: isoflurane's vaporizer maximum is 5% (`data/agents/isoflurane.json`), and
-# the vaporizer's readout writes a percent to two decimals (docs/INTERFACE.md,
-# "Displayed precision"). The developer's message is the one the core raises, and it
+# the banner writes each value exactly, as Python's `repr` writes it, so a value
+# just past a limit never reads as equal to it. The developer's message is the one
+# the core raises, and it
 # reaches the failure log rather than the banner (`PL-8QFW`).
 _UNCHANGED = "The simulation is unchanged and still running its previous setting."
 
@@ -35,15 +36,15 @@ _UNCHANGED = "The simulation is unchanged and still running its previous setting
     [
         (
             50.0,
-            "Setting refused — the vaporizer setting cannot be 50.00%, because this agent's "
-            f"vaporizer delivers at most 5.00%. {_UNCHANGED}",
+            "Setting refused — the vaporizer setting cannot be 50.0%, because this agent's "
+            f"vaporizer delivers at most 5.0%. {_UNCHANGED}",
             "delivered_concentration_percent exceeds the vaporizer maximum "
             "(50% requested, 5% maximum)",
         ),
         (
             150.0,
             "Setting refused — the vaporizer setting cannot be 150.0%, because a "
-            f"concentration can only be from 0.00% to 100.00%. {_UNCHANGED}",
+            f"concentration can only be from 0.0% to 100.0%. {_UNCHANGED}",
             "delivered_concentration_percent of 150.0 is outside 0 to 100",
         ),
     ],

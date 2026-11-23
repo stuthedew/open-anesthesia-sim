@@ -253,6 +253,7 @@ class Percent(float, CheckedQuantity):
             raise SettingOutsideRange(
                 f"{name} of {shown(percent)} is outside 0 to 100, the range a percent of one "
                 'atmosphere takes (docs/VERIFICATION.md, "Concentrations")',
+                quantity=name,
                 requested=percent,
                 lowest=0.0,
                 highest=PERCENT_PER_UNIT_FRACTION,

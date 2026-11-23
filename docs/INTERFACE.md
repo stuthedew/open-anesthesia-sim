@@ -940,9 +940,11 @@ settings record (`UptakeEquationSettings` in `core/governing_equations.py`). The
 `SimulationController.reset` and `SimulationController._record_control_change` say how the
 controller refuses or undoes a setting that the settings record refuses.
 A refusal outside a range is a `SettingOutsideRange`, whose message names the setting by its
-field in the code, for a developer. Its fields hold the value, the limit and which limit refused
-it, and `setting_refusal_for_a_learner` in `app/dashboard_frame.py` builds the banner's sentence
-from them. The run's view logs the developer's message at error level, so it reaches the failure
+field in the code, for a developer. Its fields hold the field's name, the value, the limit and
+which limit refused it, and `setting_refusal_for_a_learner` in `app/dashboard_frame.py` builds the
+banner's sentence from them, writing each value exactly so that a value just past a limit never
+reads as equal to it. A refusal of another control's field is shown unchanged rather than
+reworded for the control that moved. The run's view logs the developer's message at error level, so it reaches the failure
 log, because a slider offers only values its run accepts (`PL-8QFW`).
 `tests/unit/test_setting_refusal_wording.py` checks each limit's fields and sentence, and
 `tests/integration/simulation_view/test_simulation_view_refusals.py` checks the whole banner and

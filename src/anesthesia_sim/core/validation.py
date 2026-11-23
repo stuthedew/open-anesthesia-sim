@@ -238,6 +238,7 @@ def require_within_vaporizer_maximum(
         f"{name} exceeds the vaporizer maximum "
         f"({delivered_concentration_percent:g}% requested, "
         f"{max_delivered_concentration_percent:g}% maximum)",
+        quantity=name,
         requested=delivered_concentration_percent,
         lowest=0.0,
         highest=max_delivered_concentration_percent,

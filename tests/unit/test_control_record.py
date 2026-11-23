@@ -66,7 +66,7 @@ def test_each_control_reads_the_value_it_was_set_to(
     """Each control's value is the number it was set to, in the unit it was set in.
 
     The test checks both records: the one the controller reads and the one the
-    readouts read. So the single field map in `control_value` cannot be right
+    readouts read. So the single field map in `CONTROL_INPUT_FIELDS` cannot be right
     for one record and wrong for the other. The delivered concentration is the
     percent that was dialled, not a fraction (`PL-NJPB`).
     """

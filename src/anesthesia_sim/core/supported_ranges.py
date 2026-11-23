@@ -433,6 +433,7 @@ def _require_supported(name: str, value: float, minimum: float, maximum: float) 
             f"{minimum} to {maximum} L/min, which is the domain this "
             f"compartment model is claimed to represent a patient over "
             f'(docs/INTERFACE.md, "Supported input ranges")',
+            quantity=name,
             requested=value,
             lowest=minimum,
             highest=maximum,
