@@ -5,8 +5,12 @@ widgets say. These tests check what the dashboard *paints*, for a real run
 advanced several simulated minutes, under the `offscreen` platform that
 `tests/conftest.py` selects. Without them, a session in the web container
 could not review a presentation change at all (`PL-YCWZ`, closing
-`PL-2QMK`). The grab that a test reads is the same screenshot that
-`docs/worker.md` tells a session how to write.
+`PL-2QMK`). Each dashboard here is built as `main()` in
+`src/anesthesia_sim/app/main.py` builds it: the application's colours are
+declared first, and the view is built over a `BranchedCase`, so its Branch
+section is on the page (`PL-SGRS`). The grab that a test reads is therefore
+the screenshot that `.claude/skills/run-the-app/SKILL.md` tells a session how
+to take.
 
 The assertions are chosen to last rather than to match pixels exactly. They
 check that:
@@ -37,16 +41,16 @@ from pathlib import Path
 
 import pytest
 from PySide6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QImage, QMouseEvent
+from PySide6.QtGui import QColor, QFontMetrics, QImage, QMouseEvent, QPalette
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app import qt_chart
 from anesthesia_sim.app.chart_frame import ChartFrame, format_trace_hover
 from anesthesia_sim.app.chart_time_base import SELECTABLE_TIME_BASES
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.qt_chart import ConcentrationChart, WashInChart
-from anesthesia_sim.app.qt_widgets import MetricPanel
+from anesthesia_sim.app.qt_widgets import ForkPanel, MetricPanel, declare_application_colours
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -149,9 +153,32 @@ _HOVER_WAIT_MS = 5000
 
 @pytest.fixture(scope="module")
 def application() -> Iterator[QApplication]:
-    existing = QApplication.instance()
+    """Yield the application with its colours declared as `main()` declares them.
 
-    yield existing if isinstance(existing, QApplication) else QApplication([])
+    The palette it had before is put back afterwards, so that no other module
+    run in the same process is drawn under this one's declaration.
+    """
+
+    existing = QApplication.instance()
+    application = existing if isinstance(existing, QApplication) else QApplication([])
+    previous = QPalette(application.palette())
+    declare_application_colours(application)
+
+    yield application
+
+    application.setPalette(previous)
+
+
+def _shipped_view(controller: SimulationController) -> SimulationView:
+    """Build the dashboard over `controller` as the case's trunk, as `main()` builds it.
+
+    Built without `case=`, the view hides its Branch section, which every
+    shipped dashboard shows.
+    """
+
+    case = BranchedCase(controller)
+
+    return SimulationView((case.trunk,), case=case, workspaces=_EVERY_VIEW)
 
 
 def _concentration(view: SimulationView) -> ConcentrationView:
@@ -187,7 +214,7 @@ def dashboard(application: QApplication) -> Iterator[SimulationView]:
         Percent(controller.snapshot().delivered_concentration_percent * 1.5)
     )
     _advance(controller, 180.0)
-    view = SimulationView((controller,), workspaces=_EVERY_VIEW)
+    view = _shipped_view(controller)
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     view.show()
     application.processEvents()
@@ -321,7 +348,7 @@ def _induction_view(application: QApplication) -> SimulationView:
     controller.start()
     _advance(controller, _INDUCTION_S)
     controller.pause()
-    view = SimulationView((controller,), workspaces=_EVERY_VIEW)
+    view = _shipped_view(controller)
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     view.show()
     application.processEvents()
@@ -531,6 +558,22 @@ def test_the_readout_row_and_the_sidebar_are_inside_the_page(dashboard: Simulati
     assert all(_within(panel, page) for panel in run._readout_row.panels)
     assert _within(accounting_panel, page)
     assert _within(timeline_panel, page)
+
+
+def test_the_rendered_dashboard_is_the_one_that_ships(dashboard: SimulationView) -> None:
+    """The page these tests read carries the Branch section, as every shipped dashboard does.
+
+    Before `PL-SGRS` the fixture built the view without a case. The view then
+    hides its Branch section, so the geometry checks above never saw the page
+    that `main()` shows.
+    """
+
+    page = dashboard.findChild(QWidget, "dashboardPage")
+    shown = [panel for panel in dashboard.findChildren(ForkPanel) if panel.isVisible()]
+
+    assert page is not None
+    assert len(shown) == 1
+    assert _within(shown[0], page)
 
 
 # ------------------------------------------------------------- the hover
