@@ -3128,19 +3128,17 @@ def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> Non
 def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_count() -> None:
     """The count of undrawn stretches is added after the state, never in place of it.
 
-    Each of the three states is checked: a ratio in the wash-in domain, no
-    agent in the circuit, and elimination. Each expected line is a literal.
+    A ratio in the wash-in domain and elimination are checked, each against a
+    literal. The state with no ratio is left out: its sentence says that no
+    agent has reached the circuit, which a count of earlier stretches
+    contradicts, and `PL-P3ZL` changes that sentence.
     """
 
     in_domain = read_wash_in(0.0071, 0.01)
-    no_agent = read_wash_in(0.0, 0.0)
     eliminating = read_wash_in(0.02, 0.01)
 
     assert wash_in_state(in_domain, 2) == (
         "Now: F<sub>A</sub>/F<sub>I</sub> = 0.71 (2 earlier stretch(es) not drawn)"
-    )
-    assert wash_in_state(no_agent, 2) == (
-        "Not defined: no agent has reached the circuit yet. (2 earlier stretch(es) not drawn)"
     )
     assert wash_in_state(eliminating, 2) == (
         "Past equilibrium: alveolar exceeds inspired — the patient is returning agent, "
