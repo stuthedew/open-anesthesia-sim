@@ -254,6 +254,13 @@ CHART_LEAST_HEIGHT = 160
 # short Area, and shows fewer rows without scrolling.
 CHART_KEY_LEAST_HEIGHT = 36
 
+# The least height of the box that holds one run's list of control changes.
+# Where two runs' records share the record column and one list is long, that
+# list's box is squeezed to this height and the reader scrolls it, while each
+# run's heading and count of changes stay in view (`PL-HF1B`). 30 px shows two
+# lines of the list's text. It is a placeholder that `PL-HF1B` chose.
+RECORD_ENTRIES_LEAST_HEIGHT = 30
+
 PAGE_PADDING = 16
 
 PANEL_PADDING = 14

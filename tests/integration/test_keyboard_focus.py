@@ -134,7 +134,7 @@ def test_every_tab_stop_on_the_dashboard_shows_the_focus(
 
     # The controls that drew no mark before `PL-63FQ` are all in the walk.
     assert {"_SettingSlider", "SelectorComboBox", "TimeBaseSelector", "FocusedComboBox"} <= kinds
-    assert {"QScrollArea", "ViewScroll", "_KeyScroll"} <= kinds
+    assert {"QScrollArea", "ViewScroll", "FittedScroll"} <= kinds
     assert _unmarked(dashboard, application) == []
 
 

@@ -91,7 +91,7 @@ from functools import partial
 from time import perf_counter
 from typing import Final
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QShowEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
@@ -102,7 +102,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -355,6 +354,28 @@ def _holder(
         layout.addWidget(holder)
 
     return holder
+
+
+class _RecordColumn(QWidget):
+    """The column of control-change records, as tall as the run rows beside it.
+
+    Each run's list of changes scrolls inside its own panel and gives up
+    height before that panel's heading and count of changes do. So every
+    run's heading and count stay in view, however long another run's list
+    grows (`PL-HF1B`). The column asks for no more height than those parts
+    need. Asked for its wrapped text's height instead, it would make the
+    region as tall as every list in it, and push the Areas down.
+    """
+
+    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
+        """The column's height follows the run rows, never the width of its text."""
+
+        return False
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The records' width, and the least height that shows every heading and count."""
+
+        return QSize(super().sizeHint().width(), self.minimumSizeHint().height())
 
 
 @dataclass(frozen=True, slots=True)
@@ -764,28 +785,17 @@ class SimulationView(QWidget):
         run_column.addWidget(readouts)
         self._readout_rows = readouts
 
-        records = QWidget()
+        records = _RecordColumn()
         records.setObjectName(_RECORD_COLUMN_NAME)
         records.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         records.setStyleSheet(page_stylesheet(_RECORD_COLUMN_NAME))
         self._record_column = _spaced_column(records, PAGE_SPACING)
         self._record_column.addStretch(1)
-        record_scroll = QScrollArea()
-        record_scroll.setWidgetResizable(True)
-        record_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        record_scroll.setStyleSheet(scroll_area_stylesheet())
-        record_scroll.setWidget(records)
-        FocusRing(record_scroll)
-        # The record column is as tall as the run rows beside it and no taller.
-        # With its height policy set to ignored, the band takes the left
-        # column's height, and the record scrolls inside it.
-        record_scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored)
 
         row.addWidget(run_rows, _RUN_ROWS_STRETCH)
-        row.addWidget(record_scroll, _RECORD_COLUMN_STRETCH)
+        row.addWidget(records, _RECORD_COLUMN_STRETCH)
         self._unconditional_region = region
         self._run_rows = run_rows
-        self._record_scroll = record_scroll
         self._records = records
 
         return region
@@ -908,11 +918,7 @@ class SimulationView(QWidget):
         chain = _focusable_widgets(self)
         placed = [
             *[widget for widget in chain if self._run_rows.isAncestorOf(widget)],
-            *[
-                widget
-                for widget in chain
-                if widget is self._record_scroll or self._record_scroll.isAncestorOf(widget)
-            ],
+            *[widget for widget in chain if self._records.isAncestorOf(widget)],
             *self._tabs.focus_order(),
             *self._areas.focus_order(chain),
         ]
@@ -1012,7 +1018,6 @@ class SimulationView(QWidget):
             readout_section,
             _holder(self._record_column, (run.build_control_record(),), before_stretch=True),
         )
-        self._hold_record_column_width()
         # A later run's readouts join the first run's panels, so two runs
         # appear as one block of seven (`PL-F2YS`). The readouts leave with the
         # run. The first run's heading then states the substance and the 1 MAC
@@ -1040,20 +1045,6 @@ class SimulationView(QWidget):
         self._owe_focus_order()
 
         return run
-
-    def _hold_record_column_width(self) -> None:
-        """Keep the record column at least as wide as its records need.
-
-        A scroll area takes no minimum width from what it holds, so without
-        this the region would give the whole of a narrow window's shortfall
-        to the record column, and its lines would be cut off behind a
-        horizontal scroll bar (`PL-6XPZ`). The width includes the vertical
-        scroll bar, which takes its width from the records when the column
-        is taller than the run rows beside it.
-        """
-
-        scroll_bar = self._record_scroll.verticalScrollBar().sizeHint().width()
-        self._record_scroll.setMinimumWidth(self._records.minimumSizeHint().width() + scroll_bar)
 
     def _a_question_is_open(self) -> bool:
         """Whether a window-modal question is open, in which case every run holds.

@@ -79,6 +79,8 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QSlider,
     QSpinBox,
     QStyle,
@@ -126,6 +128,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.stylesheets import (
+    clear_scroll_area_stylesheet,
     filled_button_stylesheet,
     foreground_stylesheet,
     outlined_button_stylesheet,
@@ -158,6 +161,7 @@ from anesthesia_sim.app.theme import (
     PARAMETER_QUALIFIER_SIZE,
     PARAMETER_SLIDER_LEAST_LENGTH,
     PRIMARY,
+    VIEW_ROW_SPACING,
     WARNING,
 )
 from anesthesia_sim.core.concentration import MacMultiple
@@ -2853,3 +2857,70 @@ class FocusedDateEdit(QDateEdit):
     def __init__(self) -> None:
         super().__init__()
         wheel_only_with_focus(self)
+
+
+class FittedScroll(QScrollArea):
+    """Holds rows that a reader reads in order, and scrolls them where its space is too short.
+
+    The box asks for the height that the rows need at the width the box has,
+    and takes no more. Where its space is shorter than the rows, it is
+    squeezed to `least_height_px`, and the reader scrolls the rows inside
+    the box. A chart View's key, which holds the lines that qualify its plot
+    and its legend, is one such box (`PL-CBYS`). Each run's list of control
+    changes is another (`PL-HF1B`).
+
+    Args:
+        rows: The rows, in the order they are read.
+        least_height_px: The height the box keeps however short its space is.
+    """
+
+    def __init__(self, rows: Sequence[QWidget], least_height_px: int) -> None:
+        super().__init__()
+        self._body = QWidget()
+        column = QVBoxLayout(self._body)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(VIEW_ROW_SPACING)
+
+        for row in rows:
+            column.addWidget(row)
+
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setMinimumHeight(least_height_px)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
+        # The box paints nothing of its own, so the panel it sits on shows
+        # behind the rows. `setWidget` would otherwise fill the rows'
+        # background from the palette.
+        self.setStyleSheet(clear_scroll_area_stylesheet())
+        self.viewport().setAutoFillBackground(False)
+        self.setWidget(self._body)
+        self._body.setAutoFillBackground(False)
+        FocusRing(self)
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The widest row's least width with the scroll bar beside it, and the box's least height.
+
+        The box never scrolls sideways, so a box narrower than its widest row
+        would cut that row off at the right. A `QScrollArea`'s own least width
+        counts only its scroll bar, so the layout around the box would
+        otherwise leave out every row in it (`PL-CBYS`).
+        """
+
+        least = super().minimumSizeHint()
+        width = self._body.minimumSizeHint().width() + self.verticalScrollBar().sizeHint().width()
+
+        return QSize(max(least.width(), width), least.height())
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """The rows' width, and the height the rows need at the width the box has."""
+
+        hint = self._body.sizeHint()
+        height = self._body.heightForWidth(self.viewport().width())
+
+        return QSize(hint.width(), hint.height() if height < 0 else height)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        # The height that the rows need depends on the box's width.
+        self.updateGeometry()

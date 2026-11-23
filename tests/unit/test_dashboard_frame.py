@@ -2765,7 +2765,7 @@ def test_a_run_with_no_changes_says_so_rather_than_showing_an_empty_panel() -> N
 
     assert panel.entries == NO_CONTROL_CHANGES_TEXT
     assert panel.entries == "No settings changed yet in this run."
-    assert panel.overflow == ""
+    assert panel.summary == ""
 
 
 def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None:
@@ -2782,7 +2782,7 @@ def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None
     panel = timeline_panel(adjustments)
 
     assert len(panel.entries.splitlines()) == MAX_LISTED_ADJUSTMENTS == 12
-    assert "3 earlier change(s) not listed" in panel.overflow
+    assert panel.summary == "15 change(s); 3 earlier change(s) not listed"
 
 
 def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None:
@@ -2808,7 +2808,7 @@ def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None
 
     assert frame.runs[0].undrawn_control_marks == 2
     assert unmarked_changes_lines(frame) == ("2 control change(s) in this window not marked",)
-    assert "not marked" not in timeline_panel(adjustments).overflow
+    assert "not marked" not in timeline_panel(adjustments).summary
 
 
 def test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared() -> None:
@@ -2846,7 +2846,7 @@ def test_a_chart_whose_window_marks_every_change_says_nothing_about_marks() -> N
     assert unmarked_changes_lines(frame) == (None,)
 
 
-def test_the_unlisted_count_stands_alone_in_the_overflow_line() -> None:
+def test_the_summary_counts_every_change_and_the_earlier_ones_not_listed() -> None:
     adjustments = group_adjustments(
         tuple(
             _control_change(index, ControlInput.CARDIAC_OUTPUT, 5.0, 4.0, adjustment=index + 1)
@@ -2854,7 +2854,7 @@ def test_the_unlisted_count_stands_alone_in_the_overflow_line() -> None:
         )
     )
 
-    assert timeline_panel(adjustments).overflow == "1 earlier change(s) not listed"
+    assert timeline_panel(adjustments).summary == "13 change(s); 1 earlier change(s) not listed"
 
 
 def test_the_interface_says_a_control_mark_is_an_input_not_a_measurement() -> None:

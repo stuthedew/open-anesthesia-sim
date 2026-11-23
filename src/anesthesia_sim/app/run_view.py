@@ -166,6 +166,7 @@ from anesthesia_sim.app.playback import (
 )
 from anesthesia_sim.app.qt_widgets import (
     DialInput,
+    FittedScroll,
     FocusRing,
     NewCaseDialog,
     NoticeLabel,
@@ -207,6 +208,7 @@ from anesthesia_sim.app.theme import (
     PLAYBACK_RATE_SELECTOR_WIDTH,
     READOUT_HEADING_SPACING,
     READOUT_SECTION_SPACING,
+    RECORD_ENTRIES_LEAST_HEIGHT,
     RUNNING_AGENT_DISPLAY_PADDING,
 )
 from anesthesia_sim.app.unconditional_set import UnconditionalValue, compartment_value
@@ -645,10 +647,14 @@ class RunView(QWidget):
         self._control_timeline_text.setMinimumWidth(
             _widest_rendering_px(self._control_timeline_text, longest_unbroken_parts())
         )
-        self._control_timeline_overflow_text = styled_label(
-            "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
+        # The count of changes sits under the heading, outside the list that
+        # scrolls. So a reader whose list shows only its newest entries still
+        # sees how many there are, and how many earlier ones are not listed
+        # (`PL-HF1B`).
+        self._control_timeline_summary_text = styled_label(
+            "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True
         )
-        self._control_timeline_overflow_text.setHidden(True)
+        self._control_timeline_summary_text.setHidden(True)
 
         # These sections are laid out once, here, so that the build methods
         # return the containers these widgets are already in (`PL-N67T`,
@@ -936,8 +942,8 @@ class RunView(QWidget):
         self._subtitle_text.setText(statement.subtitle)
         self._compartment_substance_text.setText(statement.substance_heading)
         self._control_timeline_text.setText(wrapping_between_parts(statement.timeline.entries))
-        self._control_timeline_overflow_text.setText(statement.timeline.overflow)
-        self._control_timeline_overflow_text.setHidden(not statement.timeline.overflow)
+        self._control_timeline_summary_text.setText(statement.timeline.summary)
+        self._control_timeline_summary_text.setHidden(not statement.timeline.summary)
         # The 1 MAC line states the divisor of the delivered line beside it and of the
         # cards' ×MAC numbers. Both lines are written before the cards. So a refusal
         # raised for the cards cannot leave another agent's 1 MAC on screen, or
@@ -2039,6 +2045,7 @@ class RunView(QWidget):
         )
         timeline_column.setSpacing(CONTROL_TIMELINE_ROW_SPACING)
         timeline_column.addWidget(self._control_timeline_heading_text)
+        timeline_column.addWidget(self._control_timeline_summary_text)
         timeline_column.addWidget(
             styled_label(
                 CONTROL_TIMELINE_CAPTION,
@@ -2048,8 +2055,13 @@ class RunView(QWidget):
                 wrap=True,
             )
         )
-        timeline_column.addWidget(self._control_timeline_text)
-        timeline_column.addWidget(self._control_timeline_overflow_text)
+        # Only the entries scroll, inside this run's own panel. Each run's
+        # heading and count then stay in view when two runs' records share
+        # the column and one of them is long (`PL-HF1B`).
+        self._control_timeline_entries = FittedScroll(
+            (self._control_timeline_text,), RECORD_ENTRIES_LEAST_HEIGHT
+        )
+        timeline_column.addWidget(self._control_timeline_entries)
 
         return timeline_panel_frame
 

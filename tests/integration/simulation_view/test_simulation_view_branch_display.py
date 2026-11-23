@@ -10,9 +10,16 @@ import re
 from typing import Any
 
 import pytest
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QPushButton, QSplitter, QWidget
+from PySide6.QtWidgets import (
+    QAbstractScrollArea,
+    QApplication,
+    QLabel,
+    QPushButton,
+    QSplitter,
+    QWidget,
+)
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import AreaLayout
@@ -21,6 +28,7 @@ from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CONTROL_TIMELINE_HEADING,
+    MAX_LISTED_ADJUSTMENTS,
     run_label,
 )
 from anesthesia_sim.app.formatting import format_elapsed
@@ -664,6 +672,86 @@ def test_no_unconditional_value_sits_inside_the_layout_container(application: QA
 
             if value is not UnconditionalValue.HALT_REASON:
                 assert widget.isVisible(), f"{value.value} is not on screen"
+
+
+def _outside_a_viewport(widget: QWidget, window: QWidget) -> QWidget | None:
+    """Return the first viewport, or the window, that does not show all of `widget`.
+
+    A widget scrolled out of its scroll area is still a visible descendant of
+    the window, so `isVisible` and `isAncestorOf` pass it. Its rectangle,
+    mapped into each viewport it sits in, is what says whether a reader sees
+    it.
+    """
+
+    ancestor = widget.parentWidget()
+
+    while ancestor is not None:
+        holder = ancestor.parentWidget()
+        shows_a_scroll = isinstance(holder, QAbstractScrollArea) and ancestor is holder.viewport()
+
+        if shows_a_scroll or ancestor is window:
+            shown = QRect(widget.mapTo(ancestor, QPoint(0, 0)), widget.size())
+
+            if not ancestor.rect().contains(shown):
+                return ancestor
+
+        if ancestor is window:
+            return None
+
+        ancestor = holder
+
+    return None
+
+
+def test_every_unconditional_value_lies_inside_its_scroll_viewport(
+    application: QApplication,
+) -> None:
+    """Each required value is inside every viewport it sits in, with two long records.
+
+    Each run records more changes than its list shows, so each run's note on
+    the changes not listed appears. In one scrolling column the trunk's
+    entries pushed that note, and the branch's whole record, below the fold,
+    where ancestry and visibility still passed them (`PL-HF1B`). The note is
+    found by its text, so this test runs against the column before the fix
+    as well.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    for run in view.runs:
+        run.controller.start()
+
+        for index in range(MAX_LISTED_ADJUSTMENTS + 2):
+            run.controller.begin_control_adjustment()
+            run.controller.set_fresh_gas_flow(FreshGasFlow(2.0 + index * 0.1))
+            _advance(run.controller, 1)
+
+    view.present(False)
+    _settle(application)
+    required = unconditional_set(INHALED_AGENT).values
+
+    for run in view.runs:
+        widgets = run.unconditional_widgets()
+        panel = widgets[UnconditionalValue.CONTROL_INPUT_RECORD]
+        (note,) = (
+            label
+            for label in panel.findChildren(QLabel)
+            if "2 earlier change(s) not listed" in label.text()
+        )
+        shown = {
+            **{value.value: widgets[value] for value in required},
+            "the record's heading": run._control_timeline_heading_text,
+            "the record's note on changes not listed": note,
+        }
+
+        for name, widget in shown.items():
+            if widget is widgets[UnconditionalValue.HALT_REASON]:
+                continue
+
+            assert widget.isVisible(), f"{name} is not on screen"
+            assert _outside_a_viewport(widget, view) is None, f"{name} is scrolled out of view"
 
 
 def test_the_readout_heading_states_the_dial_and_the_mac_it_divides_by(
