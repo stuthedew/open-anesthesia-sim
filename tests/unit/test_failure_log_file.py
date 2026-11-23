@@ -7,10 +7,13 @@ a failure name the same file. The `tests/conftest.py` fixture removes each
 handler a test adds.
 """
 
+import io
 import logging
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+import pytest
 
 from anesthesia_sim.app.failures import (
     FAILURE_LOG_MAX_BYTES,
@@ -53,6 +56,25 @@ def test_the_log_keeps_one_earlier_file_and_writes_utf_8(tmp_path: Path) -> None
     assert handler.maxBytes == FAILURE_LOG_MAX_BYTES
     assert handler.backupCount == 1
     assert handler.encoding == "utf-8"
+
+
+def test_the_log_is_utf_8_where_the_platform_s_default_encoding_is_not(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The file's encoding is named, so a record holding "µg" is written the same on every platform.
+
+    This container runs Python in UTF-8 mode, where the default would be
+    UTF-8 anyway. The platform's default is replaced by a Windows code page
+    here, as on a Windows launch outside UTF-8 mode.
+    """
+
+    def windows_default(encoding: str | None, stacklevel: int = 2) -> str:
+        return encoding or "cp1252"
+
+    monkeypatch.setattr(io, "text_encoding", windows_default)
+    open_failure_log("", {USER_DIRECTORY_VARIABLE: str(tmp_path)})
+
+    assert _file_handler().encoding == "utf-8"
 
 
 def test_each_record_is_written_with_its_time_logger_and_level(tmp_path: Path) -> None:
