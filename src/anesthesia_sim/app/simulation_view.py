@@ -88,6 +88,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from functools import partial
+from time import perf_counter
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -140,6 +141,7 @@ from anesthesia_sim.app.dashboard_frame import (
     comparing_fork_lock_text,
     displayed_run_count,
     fork_offer,
+    input_frame_wait_ms,
     kept_fork_selection,
     pinned_run_label,
     refused_setting_notice,
@@ -512,10 +514,6 @@ class SimulationView(QWidget):
         # (`PL-VN6M`).
         self._compartment_selection = INITIAL_COMPARTMENT_SELECTION
         self._render_pending = False
-        # Whether a frame has been drawn at once for a dial input since the
-        # last render tick. Further inputs before the tick leave their frame
-        # to it (`present_input`, `PL-2WVC`).
-        self._drew_for_an_input = False
         # How many runs the last attempted frame was drawn over. `render_tick`
         # draws when the run set has changed since then (`PL-0LG6`).
         self._drawn_run_count = 0
@@ -584,6 +582,13 @@ class SimulationView(QWidget):
         self._render_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._render_timer.setInterval(round(RENDER_INTERVAL_S * MILLISECONDS_PER_SECOND))
         self._render_timer.timeout.connect(self.render_tick)
+        # Runs from the end of a dial input's frame until the next may draw
+        # (`input_frame_wait_ms`). An input in that time leaves its frame to
+        # the timer's end (`present_input`, `PL-NKFD`).
+        self._input_frame_timer = QTimer(self)
+        self._input_frame_timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._input_frame_timer.setSingleShot(True)
+        self._input_frame_timer.timeout.connect(self.input_frame_due)
 
     @property
     def runs(self) -> tuple[RunView, ...]:
@@ -1727,12 +1732,13 @@ class SimulationView(QWidget):
         readouts, and do not wait for the tick (`PL-RF2S`). Until the tick,
         those panels show a later step than the charts. So a dial input asks
         through `present_input`, which coalesces only an input that follows
-        another within one render interval (`PL-2WVC`).
+        another within `INPUT_FRAME_INTERVAL_MS` (`PL-2WVC`, `PL-NKFD`).
 
         Args:
             coalesce: True to mark a frame as owed and let the render tick
-                draw it, as a held thumb's movement does. False to draw at
-                once, as every discrete action does (`PL-R2YM`).
+                draw it, as a released thumb's value does until the end of
+                its preview. False to draw at once, as every discrete action
+                does (`PL-R2YM`).
         """
 
         if coalesce:
@@ -1745,25 +1751,53 @@ class SimulationView(QWidget):
 
     @halt_gate
     def present_input(self) -> None:
-        """Draw a frame for a dial input at once, or leave it to the render tick after another.
+        """Draw a frame for a dial input at once, or when the wait after the last one ends.
 
-        A key press, a wheel event or a click on the track draws its frame at
-        once, so the readouts, the schematic and the charts show the same
-        step after it (`PL-2WVC`). An input that follows another before the
-        next render tick leaves its frame to that tick instead, which draws
-        the latest state. So a burst of inputs, such as a held key, a
-        spinning wheel or a trackpad swipe, draws at most one frame of its
-        own in each render interval, besides the tick's (`PL-R2YM`). The
-        rule counts render ticks rather than reading a clock, and does not
-        depend on what the platform reports about a wheel event's phase.
+        A key press, a wheel event, a click on the track or a move of a held
+        thumb draws its frame at once, so the readouts, the schematic and the
+        charts show the same step after it (`PL-2WVC`). An input during the
+        wait after that frame leaves its frame to the wait's end, which draws
+        the latest state (`input_frame_due`). So during a burst of inputs,
+        such as a held key, a spinning wheel, a trackpad swipe or a dragged
+        thumb, frames start 100 ms apart while a frame takes less than half
+        of that, and leave the thread free for as long as they drew when a
+        frame takes longer (`input_frame_wait_ms`, `PL-R2YM`, `PL-NKFD`).
+        The rule does not depend on what the platform reports about a wheel
+        event's phase.
         """
 
-        if self._drew_for_an_input:
+        if self._input_frame_timer.isActive():
             self.present(True)
             return
 
-        self._drew_for_an_input = True
+        self._draw_input_frame()
+
+    def _draw_input_frame(self) -> None:
+        """Draw a frame now, then start the wait before the next input's frame from its cost."""
+
+        started_s = perf_counter()
         self.present(False)
+        cost_ms = (perf_counter() - started_s) * MILLISECONDS_PER_SECOND
+        self._input_frame_timer.start(input_frame_wait_ms(cost_ms))
+
+    @halt_gate
+    def input_frame_due(self) -> None:
+        """Draw the frame that an input left owed, and start the next interval if one was.
+
+        The input timer calls this method when the wait after an input's
+        frame ends. Nothing is drawn when the render tick has drawn the owed
+        frame since, and the burst then ends, so the next input draws at
+        once.
+        """
+
+        # The timer has stopped by the time it calls this method. A test that
+        # calls it directly stands for that moment.
+        self._input_frame_timer.stop()
+
+        if not self._render_pending:
+            return
+
+        self._draw_input_frame()
 
     @halt_gate
     def render_tick(self) -> None:
@@ -1794,12 +1828,7 @@ class SimulationView(QWidget):
         The run count and each run's record are stored where they are written,
         including in the halt, so neither of them can leave a frame owed
         forever either.
-
-        Each tick also lets the next dial input draw its frame at once again
-        (`present_input`).
         """
-
-        self._drew_for_an_input = False
 
         if (
             not any(run.is_running for run in self._runs)
@@ -1811,6 +1840,15 @@ class SimulationView(QWidget):
             return
 
         self._render_pending = False
+
+        # A tick during a burst of dial inputs is drawn as an input's frame,
+        # so the wait before the next input frame starts again from it. A
+        # drag on a playing run then does not draw two frames a few
+        # milliseconds apart (`PL-NKFD`).
+        if self._input_frame_timer.isActive():
+            self._draw_input_frame()
+            return
+
         self._refresh_view()
 
     def _views_owe_a_frame(self) -> bool:
@@ -2665,12 +2703,13 @@ class SimulationView(QWidget):
         self._render_timer.start()
 
     def stop_timers(self) -> None:
-        """Stop every run's step timer and the render timer, as a test's teardown does."""
+        """Stop every run's step timer and the dashboard's own timers, as a test's teardown does."""
 
         for run in self._runs:
             run.stop_timers()
 
         self._render_timer.stop()
+        self._input_frame_timer.stop()
 
     # ------------------------------------------------------------- reading
 

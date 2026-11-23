@@ -553,10 +553,15 @@ def test_a_drag_that_halts_the_run_leaves_its_label_on_the_dial(
     run = view.runs[0]
     dial = _dials(run)._fresh_gas_flow_slider
     assert dial.value_label.text() == "2.0 L/min"
+    # The press draws its preview's frame at once (`PL-NKFD`), so the
+    # snapshot is made to refuse only after it, and the release's frame is
+    # the one that halts the run.
+    dial.slider.setSliderDown(True)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
     capfd.readouterr()
 
-    _set_fresh_gas_flow(run, 4.0)
+    dial.slider.setSliderPosition(slider_position(4.0, FLOW_DISPLAY_DECIMALS))
+    dial.slider.setSliderDown(False)
 
     assert "Traceback" not in capfd.readouterr().err
     assert controller.has_failed is True
@@ -742,9 +747,15 @@ def test_a_drag_that_halts_the_run_lists_the_record_the_run_holds(
     controller = _paused_run_with_history()
     run = _shown_view(application, controller).runs[0]
     assert run._control_timeline_text.text() != NO_CONTROL_CHANGES_TEXT
+    dial = _dials(run)._fresh_gas_flow_slider
+    # The press draws its preview's frame at once (`PL-NKFD`), so the
+    # snapshot is made to refuse only after it, and the release's frame is
+    # the one that halts the run.
+    dial.slider.setSliderDown(True)
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
 
-    _set_fresh_gas_flow(run, 4.0)
+    dial.slider.setSliderPosition(slider_position(4.0, FLOW_DISPLAY_DECIMALS))
+    dial.slider.setSliderDown(False)
 
     assert controller.has_failed is True
     assert run._status_text.text() == STATUS_FAILED_TEXT
