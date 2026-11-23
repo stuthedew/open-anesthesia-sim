@@ -189,6 +189,11 @@ class RunPanelState:
             that draws none, because the runs they show are not the runs
             their last frame was drawn from (`kept_frames_match`). A halt's
             banner then says that the charts are withheld.
+        delivered_fraction: The fraction of the set rate that the run is
+            delivering while the clock line should name it, as
+            `playback.TickPace.disclosed_fraction` returns it, or None
+            (`PL-2NYN`). A halted run is not playing, so `halted_run` does not
+            read it.
     """
 
     run_id: RunId
@@ -204,6 +209,7 @@ class RunPanelState:
     pending_agent_name: str | None
     reset_question: NewCaseQuestion | None
     charts_withheld: bool
+    delivered_fraction: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -323,6 +329,15 @@ def drawn_run(
     """
 
     values = drawn_values(snapshot, state.playback_rate)
+
+    if state.delivered_fraction is not None:
+        values = replace(
+            values,
+            readouts=_at_playback_rate(
+                values.readouts, state.playback_rate, state.delivered_fraction
+            ),
+        )
+
     new_case = (
         None
         if state.pending_agent_name is None
@@ -443,12 +458,15 @@ def _compared_banner(banner: Notice | None, run_name: str | None) -> Notice | No
 
 
 def _at_playback_rate(
-    kept: tuple[Readout, ...], playback_rate: PlaybackRate
+    kept: tuple[Readout, ...], playback_rate: PlaybackRate, delivered_fraction: float | None = None
 ) -> tuple[Readout, ...]:
-    """Return kept readouts with the clock's playback line restated at `playback_rate`."""
+    """Return readouts with the clock's playback line restated at `playback_rate`.
+
+    `delivered_fraction` is as `dashboard_frame.clock_playback_line` takes it.
+    """
 
     return tuple(
-        replace(readout, secondary=clock_playback_line(playback_rate))
+        replace(readout, secondary=clock_playback_line(playback_rate, delivered_fraction))
         if panel.is_clock
         else readout
         for panel, readout in zip(READOUT_PANELS, kept, strict=True)

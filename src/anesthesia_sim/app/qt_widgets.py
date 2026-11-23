@@ -578,6 +578,45 @@ class ClauseWrappingLabel(QLabel):
             super().setText(lines)
 
 
+class OneLineWhereRoomLabel(QLabel):
+    """Words on one line where the row has room, wrapped between words where it has not.
+
+    Qt's own word wrap guesses a width of its own for a label's size hint, so
+    a label in a row asks for that width even where the row has room for the
+    whole text. It then breaks onto two lines in a wide window too. This
+    label asks for its one-line width instead, and keeps Qt's word wrap for a
+    row that gives it less. Its least width is its longest word, so a long
+    text cannot hold the row it sits in at the text's full length
+    (`PL-92XM`).
+
+    Args:
+        text: The words on one line.
+    """
+
+    def __init__(self, text: str) -> None:
+        super().__init__(text)
+        self.setWordWrap(True)
+
+    def _extra_px(self) -> int:
+        margins = self.contentsMargins()
+
+        return margins.left() + margins.right() + 2 * self.margin()
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        # One pixel more than the text's advance, so the layout's rounding
+        # cannot leave the words a fraction too narrow and break them.
+        width = self.fontMetrics().horizontalAdvance(self.text()) + 1 + self._extra_px()
+
+        return QSize(width, self.heightForWidth(width))
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        metrics = self.fontMetrics()
+        widest = max(metrics.horizontalAdvance(word) for word in self.text().split() or [""])
+        width = widest + 1 + self._extra_px()
+
+        return QSize(width, self.heightForWidth(self.sizeHint().width()))
+
+
 class FlowLayout(QLayout):
     """A row of items that wraps onto further lines when the width runs out.
 

@@ -102,6 +102,7 @@ __all__ = [
     "format_agent_residual",
     "format_agent_volume",
     "format_delivered_agent",
+    "format_delivered_playback_rate",
     "format_branch_discard_warning",
     "format_case_discard_warning",
     "format_compartment_amount",
@@ -1121,6 +1122,71 @@ def format_playback_rate(multiplier: int) -> str:
     """
 
     return f"{multiplier}\u00d7 real time"
+
+
+# The delivered playback rate is shown to two significant figures. It is
+# measured over a window of 50 ticks, and one lost tick moves it by 2%, so a
+# third figure would claim more than the measurement holds (`PL-2NYN`).
+DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES: Final = 2
+# Below 1% of the set rate the line states the bound, not the measurement.
+# Only a stall of minutes inside the 5 s window reaches it, and a smaller
+# fraction printed to two figures would need more room than the clock panel
+# reserves for the line (`PL-2NYN`).
+DELIVERED_PLAYBACK_RATE_FLOOR: Final = 0.01
+
+
+def format_delivered_playback_rate(multiplier: int, delivered_fraction: float) -> str:
+    """Return the clock line for a run that plays slower than its set rate.
+
+    The line names the rate the run is delivering and the rate that was set,
+    as `about 280× of 300×`. The set rate stays on screen, so the label still
+    states the mode the reader chose, and the word "about" marks the first
+    number as a measurement of the computer, not a setting.
+    `docs/INTERFACE.md` § "Interface boundary" says when the line takes this
+    form. The delivered rate is rounded to
+    `DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES` significant figures, with
+    halves rounded to even. A fraction below `playback.PACE_CLEARED_AT`
+    never rounds up to the set rate. Below `DELIVERED_PLAYBACK_RATE_FLOOR`
+    the line names that bound instead, as `below 3.0× of 300×`.
+
+    Args:
+        multiplier: The set rate, as `format_playback_rate` takes it.
+        delivered_fraction: The fraction of the set rate that the run is
+            delivering, as `playback.TickPace.disclosed_fraction` returns it.
+
+    Raises:
+        TypeError: If either argument is not a number, or is a `bool`, or if
+            `multiplier` is not a whole number.
+        ValueError: If `multiplier` is less than 1, or if
+            `delivered_fraction` is not more than 0 and less than 1. A
+            fraction of 1 or more is not a shortfall, and the plain label
+            states it.
+    """
+
+    if isinstance(multiplier, bool) or not isinstance(multiplier, int):
+        raise TypeError(f"a playback multiplier is a whole number, not {multiplier!r}")
+
+    if isinstance(delivered_fraction, bool) or not isinstance(delivered_fraction, int | float):
+        raise TypeError(f"a delivered fraction is a number, not {delivered_fraction!r}")
+
+    if multiplier < 1:
+        raise ValueError(f"a playback multiplier is at least 1, not {multiplier!r}")
+
+    if not 0.0 < delivered_fraction < 1.0:
+        raise ValueError(
+            f"a delivered fraction is more than 0 and less than 1, not {delivered_fraction!r}"
+        )
+
+    below_floor = delivered_fraction < DELIVERED_PLAYBACK_RATE_FLOOR
+    rounded, decimals = _round_to_figures(
+        Decimal(multiplier)
+        * Decimal(DELIVERED_PLAYBACK_RATE_FLOOR if below_floor else delivered_fraction),
+        DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES,
+        None,
+    )
+    qualifier = "below" if below_floor else "about"
+
+    return f"{qualifier} {rounded:.{max(decimals, 0)}f}\u00d7 of {multiplier}\u00d7"
 
 
 def _duration_components(duration_s: float) -> tuple[int, int, float]:

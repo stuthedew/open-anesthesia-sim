@@ -153,18 +153,13 @@ decided a crossing from two calculations of the same step, a trunk that halted
 at a target's exact height could leave a branch opened on the halting step
 showing that target as still running.
 
-**For developers.** A crossing is decided from the two states that the run
-stored for the ends of the step: the second before and the second the step
-reached (`SimulationController._step_ending_here`, § "Each second has one
-stored state"). Each end has one reading, so the run, a branch and a later
-review of the halt all decide from the same two numbers.
-
-The height band (`HEIGHT_BAND` in `core/rounding.py`) is there because a steady
-compartment's reading moves in its last digit from step to step. Its docstring
-gives the measurement that showed this. A marked instant needs no reading,
-because whether a step crosses it depends only on the step's two seconds.
-
-The tests are in `tests/unit/test_bookmarks.py` unless another file is named. A
+**For developers.** The tests are in `tests/unit/test_bookmarks.py` unless another file
+is named. A marked run computes the same values as an unmarked one, element
+for element (`test_a_mark_changes_nothing_the_run_computes` in
+`tests/integration/controller/test_controller_bookmarks.py`). Each playback rate
+takes its steps on the ticks worked out by hand
+(`test_a_supported_rate_takes_its_steps_on_the_ticks_worked_out_by_hand` in
+`tests/unit/test_playback.py`). A
 halt lands on the same step at 1x and at 300x
 (`test_a_halt_lands_on_the_same_step_at_1x_and_at_300x`) and leaves the run
 paused on the crossing step
@@ -187,9 +182,28 @@ and never by leaving its height
 (`test_a_target_is_not_crossed_by_leaving_its_height_in_either_direction`). A
 reading on either edge of the band is inside it
 (`test_a_reading_exactly_on_the_lower_edge_of_the_band_is_inside_it` and
-`test_a_reading_exactly_on_the_upper_edge_of_the_band_is_inside_it`). A branch
+`test_a_reading_exactly_on_the_upper_edge_of_the_band_is_inside_it`), and the
+band is one part in a hundred thousand of the height
+(`test_a_reading_within_one_part_in_a_hundred_thousand_of_the_height_is_at_it`),
+about five hundred times finer than the MAC readout
+(`test_a_mark_s_height_band_is_finer_than_the_mac_readout_by_the_factor_printed`
+in `tests/reference/test_interface_figures.py`). A mark on the supported run
+length stops the run there
+(`test_a_trunk_halted_on_a_mark_at_the_supported_run_length_reads_as_stopped_there`
+in `tests/integration/controller/test_controller_supported_length.py`). A branch
 opened on a halting step agrees with the trunk
 (`test_a_branch_opened_on_a_halting_step_agrees_with_the_trunk`).
+
+A crossing is decided from the two states that the run
+stored for the ends of the step: the second before and the second the step
+reached (`SimulationController._step_ending_here`, § "Each second has one
+stored state"). Each end has one reading, so the run, a branch and a later
+review of the halt all decide from the same two numbers.
+
+The height band (`HEIGHT_BAND` in `core/rounding.py`) is there because a steady
+compartment's reading moves in its last digit from step to step. Its docstring
+gives the measurement that showed this. A marked instant needs no reading,
+because whether a step crosses it depends only on the step's two seconds.
 
 #### What a mark's row reports
 
@@ -623,6 +637,15 @@ state, and the branch did run under those settings from there. Its own
 timeline still states them, as its copy of the trunk's changes made before
 Start.
 
+**For developers.** A branch opened where a paused run stands runs under the
+dials and records the reaching stretch as its provenance
+(`test_every_door_at_a_paused_instant_agrees_after_an_edit_made_there` in
+`tests/integration/controller/test_controller_paused_edits.py`). A change made
+at the reached second replaces the stretch in force and never the reaching
+stretch (`test_a_change_at_the_reached_instant_never_replaces_the_reaching_stretch`
+and `test_the_reaching_stretch_at_a_keyframe_is_the_one_before_it` in
+`tests/unit/test_run_definition.py`).
+
 #### Returning to a mark, and branching where a run is paused
 
 **Returning to a mark the run has already passed is a branch taken at the
@@ -684,6 +707,11 @@ step left for a branch to take. A run that stands at its opening is refused,
 because it has recorded nothing to branch from. A branch at the opening is
 taken from the "From" selector's opening entry instead.
 
+**For developers.** A run marked at 60 s after its clock reached 180 s is
+returned to, and the branch agrees with its trunk at each of the 61 seconds
+(`test_a_mark_set_behind_the_clock_can_be_returned_to` in
+`tests/integration/controller/test_controller_marks.py`).
+
 #### How a branch is drawn
 
 **A branch's chart starts at the fork.** The branch holds its parent's states
@@ -699,10 +727,10 @@ columns sit on multiples of the column spacing in the case's own time
 (§ "What the chart draws"). So a trunk and a branch are drawn at the same
 seconds. Take a 120 s sevoflurane run and a branch of it, drawn on a 13-column
 axis spanning 120 s, with the fork deliberately off the grid at a control
-change at 55 s. All 8 of the branch's columns are seconds that the trunk also
-draws. With the branch anchored to its own zero, it would draw 55, 65, 75 …
-and share 2 of 8, so the two traces could not be read against each other at
-matched points.
+change at 55 s. Every column the branch draws is a second that the trunk also
+draws. With the branch anchored to its own zero, its grid would fall at 65, 75,
+85 … s, off the trunk's grid at multiples of 10 s, so the two traces could not
+be read against each other at matched points.
 
 **A branch taken at a mark draws at most one column that its trunk does not,
 the fork itself.** The 55 s fork above lands on the trunk's own columns,
@@ -720,6 +748,13 @@ that second.
 **At the columns they share, a branch and its parent draw the same values in
 every digit** while no setting differs, because each draws the states it
 stored.
+
+**For developers.** The 120 s run forked at 55 s draws every branch column on
+a trunk column (`test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from`
+in `tests/integration/controller/test_controller_branching.py`). A branch taken
+at the 45 s mark draws one column its trunk does not, its fork
+(`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`
+in `tests/integration/controller/test_controller_marks.py`).
 
 #### The code and tests behind branching
 
@@ -1860,9 +1895,13 @@ Under the conditions set out below, it may also:
 - form the ratio of two modelled fractions where this document names it as a
   displayed quantity;
 - declare where one adjustment of a control begins, so that the run's record
-  of its inputs can be read as the user's actions that produced it; and
+  of its inputs can be read as the user's actions that produced it;
 - choose how many simulation steps to take at a time, so that a run can be
-  played faster than real time.
+  played faster than real time; and
+- measure how often its tick fires, and name the rate it delivered beside the
+  set rate when the computer falls behind (§ "What the reader chooses: traces,
+  window and playback rate"). The measurement never changes how many steps a
+  run takes.
 
 It must not:
 
@@ -1975,6 +2014,20 @@ to a whole second and never less than one second.
 The gaps grow with the spacing, so a narrower plot has larger gaps and a wider
 plot smaller ones. They bound the error in a trace's *shape* inside one pixel
 column, never in a displayed value.
+
+**For developers.** No segment between drawn instants spans more than one pixel
+of time or one second, whichever is longer
+(`test_no_chord_is_wider_than_one_pixel_of_time` in
+`tests/unit/test_chart_frame.py`), and a window whose columns are one second
+apart draws every second
+(`test_a_window_whose_columns_are_one_second_apart_draws_every_second` in
+`tests/unit/test_chart_time_base.py`). The spacing is the window divided by
+one less than the number of columns the plot draws, which follows its width,
+rounded down to whole seconds and never less than one (`chart_columns` and
+`grid_spacing_s`)
+(`test_the_column_spacing_is_whole_seconds_and_widens_only_up_to_one_second`
+in `tests/unit/test_chart_frame.py`). No test computes the table's gaps, which
+were measured on 2026-11-21 (`PL-SZ6G`).
 
 **A compartment can peak or dip between two columns, and the chart draws that
 peak or trough too.** Because the alveoli and the venous blood keep filling
@@ -2137,14 +2190,18 @@ the model computes.
 screen.** Real time is too slow to watch the two compartments that make uptake
 and distribution worth teaching. At the reference settings, sevoflurane's
 isolated time constant is about 135 min for the muscle group and about 42 h for
-fat (`docs/MODEL.md` § "Tissue groups").
+fat (`docs/MODEL.md` § "Tissue groups",
+`test_the_isolated_time_constants_are_the_ones_printed` in
+`tests/reference/test_interface_figures.py`).
 The interface advances the run in ticks, one every 100 ms of real time. Each
 tick adds the playback rate times 100 ms to the simulated time that the run is
 owed, and the run takes one step for each whole second owed. At real time the
 run therefore takes one step on every tenth tick, so the clock and the readouts
 change once a second. At 5× it takes one step on every second tick. At 20×,
-60× and 300× it takes 2, 6 and 30 steps on every tick. Faster playback is
-allowed under three conditions of different kinds.
+60× and 300× it takes 2, 6 and 30 steps on every tick
+(`test_a_supported_rate_takes_its_steps_on_the_ticks_worked_out_by_hand` in
+`tests/unit/test_playback.py`). Faster playback is allowed under three
+conditions of different kinds.
 <!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
 The first condition is arithmetic. A rate is a whole number of simulated
@@ -2186,9 +2243,34 @@ count of the steps taken. Whether the run keeps pace with real time depends on
 the computer. When the computer cannot run a tick in time, the tick is lost,
 and no extra steps make it up. The **delivered rate** is the set rate times the
 fraction of ticks that ran. In a measurement on 2026-09-27, every rate from 1×
-to 300× delivered 98.9 to 99.9% of its setting over 8 to 30 s. On a computer
-that loses ticks, the run plays slower than the label says, and nothing on
-screen shows the delivered rate.
+to 300× delivered 98.9 to 99.9% of its setting over 8 to 30 s.
+
+**When the computer falls behind, the line names the delivered rate as well
+as the set one.** The interface measures the delivered rate over the last 50
+ticks, which is 5 s of real time. When it falls below 95% of the set rate, the
+line under the clock reads, for example, "about 240× of 300×". The first number
+is a measurement of the computer, not a setting, and the word "about" says so.
+It is rounded to two significant figures, because one lost tick in the window
+moves it by 2%. The set rate stays on the line, so the mode that the reader
+chose is still shown. A reader timing a wash-in against a watch could notice a
+shortfall of 5% at any rate, and the 2026-09-27 measurement could not tell a
+shortfall of 1% from its own edges, so the threshold sits between the two. The
+line returns to the plain label only when the delivered rate reaches 97%. That
+gap keeps a computer that hovers near 95% from making the line flicker between
+its two forms, which is the reason alarm systems give an alarm a deadband
+wider than its signal's noise. The measurement starts again whenever the run
+pauses, is held by a question, starts over or changes rate, so a pause is never
+counted as lost ticks. A run that is not playing shows the plain label, from the
+frame that Pause draws onward. Below 1% of the set rate, which only a stall of
+minutes inside the window reaches, the line states that bound instead, as
+"below 3.0× of 300×", so the line never needs more room than its panel keeps
+for it. The line stays in the muted colour of the rate label,
+because nothing is wrong with the model. The measurement never changes how
+many steps the run takes, so the run's values are the same whether or not the
+line names a delivered rate.
+<!-- provenance: app/playback.py PACE_WINDOW_TICKS = 50 -->
+<!-- provenance: app/formatting.py DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES = 2 -->
+<!-- not-restated: 5 % -->
 
 ### The code and tests behind the interface boundary
 
@@ -2251,6 +2333,11 @@ one, and a steady trace is not redrawn on every frame. A grid anchored to the
 viewport would move on every scroll and resize, and rewrite the whole chart on
 every frame. A grid anchored to each run's own start would put a branch forked
 at 55 s on 55, 65, 75 … while the run it branched from draws 0, 10, 20 ….
+`test_a_window_draws_its_ends_its_grid_columns_and_each_setting_change` in
+`tests/unit/test_chart_time_base.py` holds the absolute grid, and
+`test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from` in
+`tests/integration/controller/test_controller_branching.py` holds the 55 s
+branch to its trunk's columns.
 
 Each control change is a drawn instant because the run has a kink there: the
 derivative of the circuit fraction is discontinuous. Without a drawn instant
@@ -2345,12 +2432,32 @@ The 2026-09-27 measurement used the real dashboard on the offscreen platform,
 with both timers running, and the tick period stayed at 100 ms to within 4 ms.
 <!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
-Showing only the set rate is a decision (project owner, 2026-09-27, ratified,
-over qualifying the label as "up to 300×", which trades a precise claim that is
-true for a vague one, and over building the disclosure now). A proposed change
-would show the delivered rate beside the set one when fewer than 95% of ticks
-run over a 50-tick window (`PL-2NYN`). If a delivered rate below 99% is
-measured on the owner's own machine, the decision is reopened (`PL-SQJ1`).
+Showing the set rate, and the delivered rate only when the computer falls
+behind, follows a decision (project owner, 2026-09-27, ratified, over
+qualifying the label as "up to 300×", which trades a precise claim that is
+true for a vague one). `PL-2NYN` built the disclosure. `TickPace` in
+`app/playback.py` records the monotonic clock on each tick that plays the run,
+and `RunView.step_tick` restarts it on every tick that does not. The fraction
+is the time that 50 tick intervals owe divided by the time they took, so a lost
+tick and a late tick both count. Qt emits one timeout for several that fell
+due while its event loop was busy (Qt 6 documentation, `QTimer`, "Accuracy and
+Timer Resolution", https://doc.qt.io/qt-6/qtimer.html), so a lost tick appears as a gap of two intervals. The gap of
+two percentage points follows alarm practice, which sizes a deadband just above
+the signal's noise (ISA, "AutoQuiz: Alarm deadband setting",
+https://blog.isa.org/autoquiz-alarm-deadband-setting). ISA-18.2 clause
+10.5.5.2 requires an alarm system to offer a deadband (as quoted by exida, "Why
+should I use an alarm deadband?",
+https://www.exida.com/Blog/why-should-i-use-an-alarm-deadband). The clock line is built by
+`dashboard_frame.clock_playback_line` and worded by
+`formatting.format_delivered_playback_rate`. The clock panel reserves the width
+of the longest delivered-rate line, so the panel does not move when the line
+changes form. Tests with a fake clock hold the threshold on both sides, the
+deadband and the restart (`tests/unit/test_playback.py`), and the line drawn on
+screen, the run's unchanged values and the return to the plain label
+(`test_a_computer_that_falls_behind_shows_the_delivered_rate_beside_the_set_one`
+in `tests/integration/simulation_view/test_simulation_view_loops.py`). If a
+delivered rate below 99% is measured on the owner's own machine, the decision
+is reopened (`PL-SQJ1`).
 
 ## Minimum displayed outputs
 
@@ -2363,8 +2470,11 @@ entry are the tests that check whether the output is drawn on the display.
   wherever simulated time is drawn, and at every rate, including real time
   (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). A paused,
   reset or halted run still shows the rate it would play at. The status word in
-  the row of playback controls says whether the clock is moving. See
-  § "Interface boundary" for what the rate does and does not assert;
+  the row of playback controls says whether the clock is moving. While the
+  computer delivers less than 95% of the set rate, the line also names the
+  delivered rate
+  (`test_a_computer_that_falls_behind_shows_the_delivered_rate_beside_the_set_one`).
+  See § "Interface boundary" for what the rate does and does not assert;
 - how much simulated time the chart is showing, and whether that span was the
   reader's choice or fits the whole run so far
   (`test_the_axis_caption_states_the_span_the_chart_is_showing`,
@@ -2454,6 +2564,13 @@ any of them on a chart or plot, but can remove the chart or the plot itself
 (§ "What this list requires once the layout is the reader's"). Of the chart
 entries, only the span of
 simulated time is the reader's choice, and no particular span is required.
+
+**For developers.** Hiding a trace changes only what the chart draws
+(`test_hiding_a_trace_changes_only_what_is_drawn` in
+`tests/integration/simulation_view/test_simulation_view_readouts.py`). The 1 MAC
+line and the MAC-awake band are painted on every shown concentration chart
+(`test_the_references_and_the_ruling_are_painted_and_the_ruling_sits_underneath`
+in `tests/integration/test_qt_chart.py`).
 
 Telling a halted run from a paused one is a required output. Both stop the
 numbers advancing, and under `docs/VERIFICATION.md` § "Step atomicity" both leave the simulation in a
@@ -2644,15 +2761,18 @@ names a branch only when one can be taken. It names Reset alone while no Area
 shows the branch View, and while the run is compared with another, because
 comparison locks the branch control.
 
-**For developers.** For each scenario, a test requires every screen element in a
-group to describe the step that the scenario names. It also requires every other
-screen element to be listed with the reason it belongs to no group. On a
-dashboard that holds no case to branch, the banner names Reset alone.
+**For developers.** Every value on screen and its qualifiers come from one
+state (`test_every_value_and_its_qualifiers_on_screen_come_from_one_state` in
+`tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`).
+For each scenario, that test requires every screen element in a group to
+describe the step that the scenario names. It also requires every other screen
+element to be listed with the reason it belongs to no group. On a dashboard
+that holds no case to branch, the banner names Reset alone. After a Reset whose
+first frame fails, each chart withholds its frame and its 1 MAC entry
+(`test_a_reset_whose_first_frame_fails_withholds_each_chart_s_frame` in
+`tests/integration/simulation_view/test_simulation_view_run_values.py`).
 
-Every value on screen and its qualifiers come from one state
-(`test_every_value_and_its_qualifiers_on_screen_come_from_one_state` in
-`tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`). A
-Reset or an agent change that fails after it has cleared the run withholds every
+A Reset or an agent change that fails after it has cleared the run withholds every
 value (`test_a_reset_that_raises_after_clearing_the_run_withholds_every_value`
 and
 `test_an_agent_change_that_raises_after_rebuilding_the_run_withholds_every_value`
@@ -2965,6 +3085,13 @@ line and states where the ratio is not defined. These references exist so that a
 trace is never read without its clinical anchor. Where no trace is drawn there
 is nothing to anchor, so leaving the chart out loses nothing.
 
+**For developers.** The references are painted on every concentration chart
+that is shown
+(`test_the_references_and_the_ruling_are_painted_and_the_ruling_sits_underneath`
+in `tests/integration/test_qt_chart.py`), and the axis caption states the span
+the chart shows (`test_the_axis_caption_states_the_span_the_chart_is_showing`
+in `tests/unit/test_dashboard_frame.py`).
+
 #### No required value may be covered
 
 **No value this list requires may be covered while the application treats it
@@ -3071,6 +3198,13 @@ version and model. They are the same for both runs because a second run must use
 the first run's agent, and a branch's MAC is checked against its trunk's when
 the branch is opened (`PL-QLZ5`).
 
+**For developers.** The tests are
+`test_two_compared_runs_take_one_line_each_above_one_shared_heading` and
+`test_two_runs_share_one_readout_block_whose_values_name_their_runs`, in
+`tests/integration/simulation_view/test_simulation_view_readouts.py`, and
+`test_a_branch_rebuilt_under_another_mac_is_refused`, in
+`tests/integration/controller/test_controller_branching.py`.
+
 #### The code and tests behind the layout requirements
 
 **For developers.** The unconditional tiers and the control-input record are
@@ -3171,8 +3305,11 @@ non-overlapping areas rests on this project's own reasoning about covered
 values, as `ROADMAP.md` planned-milestone item 34 records.
 
 Stacking the two runs' values leaves each panel at its one-run width, so the row
-stays seven panels across at 1366 px. Placed side by side, the values would make
-each panel roughly twice as wide (`PL-F2YS`).
+stays seven panels across at 1366 px
+(`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` in
+`tests/integration/simulation_view/test_simulation_view_readouts.py`). Placed
+side by side, the values would make each panel roughly twice as wide
+(`PL-F2YS`).
 
 ### MAC multiples as a display unit
 
@@ -3207,6 +3344,21 @@ clinical situations.
 <!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- derived: a quarter of a MAC of desflurane from data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
+**For developers.** The interface states the 1 MAC it divides by and writes the
+unit as a ratio
+(`test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio` in
+`tests/integration/simulation_view/test_simulation_view_whole_interface.py`).
+Each MAC readout divides by its own agent's 1 MAC
+(`test_each_mac_readout_uses_its_own_agent_divisor` in
+`tests/unit/test_dashboard_frame.py`), and 1 MAC of every agent reads as 1
+(`test_one_mac_of_every_agent_reads_as_one` in `tests/unit/test_formatting.py`).
+The MAC axis ticks fall on round MAC values
+(`test_mac_axis_ticks_land_on_round_mac_values_inside_the_plotted_range` in
+`tests/unit/test_formatting.py`). The share of a desflurane MAC that 1.8% makes
+is computed by `test_the_dial_maxima_are_the_mac_multiples_printed` in
+`tests/reference/test_interface_figures.py`.
+<!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
+
 #### What a MAC multiple means
 
 **What a MAC multiple means depends on the compartment.** MAC is defined for the
@@ -3220,11 +3372,13 @@ standardized surgical stimulus. So:
   it means only *this compartment's partial pressure equals N times the
   alveolar partial pressure that would be 1 MAC*. It is a ratio of partial
   pressures, **not** a statement that the patient is at N MAC of anesthetic
-  depth.
+  depth. Every compartment is readable in MAC multiples
+  (`test_every_compartment_is_readable_in_mac_multiples` in
+  `tests/unit/test_dashboard_frame.py`).
 
 Three limitations apply to every compartment, including the alveolar one:
 
-1. MAC falls about 6% per decade of age (Mapleson 1996). The model's
+1. MAC falls about 6% per decade of age (Mapleson 1996, PMID 8777094). The model's
    reference adult has no age parameter, so every run divides by the MAC at
    age 40.
 2. The MAC multiples of co-administered agents are additive, and the model runs
@@ -3239,7 +3393,9 @@ MAC axis title. The axis ticks show bare numbers, such as `0.5` and `1.0`, so
 only the title says what they are. That title labels six traces at once, and
 five of them are not the alveolar compartment. No text on the display explains
 the difference between a ratio and a depth, so the sign is the only thing that
-marks it.
+marks it. Every MAC multiple carries the sign
+(`test_format_mac_multiple_carries_the_multiplication_sign` in
+`tests/unit/test_formatting.py`).
 
 **The agent's 1 MAC is shown beside the chart with the age it is stated
 for**, for example as "1 MAC sevoflurane (age 40) = 1.8%". A reader can
@@ -3249,13 +3405,16 @@ is also the vaporizer's starting position. In each agent's data file, the
 authority for the stored 1 MAC is Mapleson's 1996 meta-analysis, which gives
 each agent's MAC at age 40. `docs/PARAMETERS.md` § \"Delivery-limit and MAC
 parameters" gives the source of each agent's 1 MAC and its confidence limits.
+The run states its agent's MAC at age 40 in full
+(`test_a_run_states_its_agent_s_mac_at_age_40_in_full` in
+`tests/unit/test_formatting.py`).
 <!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 
 **The 1 MAC prints with at most two decimals and no trailing zero**: 1.8%
 sevoflurane, 1.17% isoflurane and 6.6% desflurane. Two decimals show
 isoflurane's 1.17% in full. A trailing zero would claim a digit that the MAC's
 uncertainty does not support, because Mapleson's 95% limits are about ±7% of
-the MAC (±10% for desflurane). The GUM rounds an estimate to be consistent with
+the MAC (±10% for desflurane; PMID 8777094). The GUM rounds an estimate to be consistent with
 its uncertainty (JCGM 100:2008, *Evaluation of measurement data: Guide to the
 expression of uncertainty in measurement*, § 7.2.6). The Joint Commission's
 "Do Not Use" list allows a trailing zero only where it shows the precision of
@@ -3266,16 +3425,6 @@ setting and a computed concentration at the dial's step.
 <!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
 <!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 
-**For developers.** The display code converts percent to MAC multiples in
-`app/formatting.py`, outside the model's code in `core/`. It takes the agent's
-1 MAC as an argument. Each snapshot of the simulation's state carries that 1 MAC
-beside the concentrations it scales and the agent it belongs to
-(`SimulationSnapshot.agent_mac_percent`), with the age it is stated for
-(`SimulationSnapshot.agent_mac_age_years`). Both come from one `PatientMac`,
-which `mac_for_patient()` in `core/mac.py` builds from the agent and the
-patient. The display code therefore cannot pair
-one agent's concentrations with another agent's 1 MAC.
-
 Both units are shown because a unit selector would make the axis unit a mode,
 and a chart read under the wrong assumed unit is a misreading that no
 disclaimer catches. The agent's 1 MAC is shown because the project's rules
@@ -3285,21 +3434,27 @@ because its reader, an anesthesia provider, knows what MAC is defined against,
 and a dozen lines of text between the reader and the plot cost more than they
 gave (`PL-6580`).
 
-The stored 1 MAC (`mac_at_age_40_percent`) is a tier-2 value under
-`docs/PARAMETERS.md` § \"Source hierarchy: what may be cited as the authority for a value".
-Its adopted source in each agent's data file is Mapleson 1996, which is also
-the source for the fall in MAC with age.
-
-The multiple carries the multiplication sign
-(`test_format_mac_multiple_carries_the_multiplication_sign` in
-`tests/unit/test_formatting.py`), every compartment can be read in MAC multiples
-(`test_every_compartment_is_readable_in_mac_multiples` in
-`tests/unit/test_dashboard_frame.py`), and the 1 MAC value stays on screen
+**For developers.** The 1 MAC value stays on screen
 (`test_the_1_mac_value_stays_on_screen_where_the_rows_above_the_plot_scroll` in
 `tests/integration/simulation_view/test_simulation_view_page.py`). The MAC axis
 and the references follow the agent
 (`test_the_mac_axis_and_references_follow_the_agent` in
 `tests/integration/simulation_view/test_simulation_view_charts.py`).
+
+The display code converts percent to MAC multiples in
+`app/formatting.py`, outside the model's code in `core/`. It takes the agent's
+MAC as an argument. Each snapshot of the simulation's state carries that MAC
+beside the concentrations it scales and the agent it belongs to
+(`SimulationSnapshot.agent_mac_percent`), with the age it is stated for
+(`SimulationSnapshot.agent_mac_age_years`). Both come from one `PatientMac`,
+which `mac_for_patient()` in `core/mac.py` builds from the agent and the
+patient. The display code therefore cannot pair
+one agent's concentrations with another agent's MAC.
+
+The stored 1 MAC (`mac_at_age_40_percent`) is a tier-2 value under
+`docs/PARAMETERS.md` § \"Source hierarchy: what may be cited as the authority for a value".
+Its adopted source in each agent's data file is Mapleson 1996 (PMID 8777094),
+which is also the source for the fall in MAC with age.
 
 #### The chart's fixed MAC axis
 
@@ -3311,12 +3466,16 @@ agent. The "Axis top" control sits beside the time base, under the chart's
 heading, and names the top in force in words. The axis never grows or shrinks to fit a trace. The top stays where the
 reader put it across runs and across both runs of a comparison, so runs drawn
 one after another are comparable too. Each chart View keeps its own top and
-saves it with its layout.
+saves it with its layout
+(`test_the_chart_ceiling_is_the_chosen_top_times_the_agent_s_mac` in
+`tests/unit/test_formatting.py`).
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **Every gridline stands at a MAC multiple that the right axis labels.** The
 right axis is labelled every half MAC at a top of 3 or 4.5 ×MAC, and every
-quarter MAC at 1.5 ×MAC, so it never has more than ten intervals.
+quarter MAC at 1.5 ×MAC, so it never has more than ten intervals
+(`test_each_axis_is_labelled_at_round_values_of_its_own_unit` in
+`tests/unit/test_chart_frame.py`).
 
 **The left axis is labelled at round percentages, each at its own tick mark.**
 A MAC multiple is rarely a round percentage. At isoflurane's MAC of 1.17%, half
@@ -3327,7 +3486,8 @@ more labels than the right axis has. At 3 ×MAC isoflurane is labelled 0, 1, 2
 and 3%, sevoflurane 0 to 5%, and desflurane 0, 5, 10 and 15%. The gridlines
 stay on the MAC multiples, so a percent label and a gridline near it can be
 different values: desflurane's 1.5 ×MAC gridline is 9.9%, beside the 10%
-label.
+label (`test_each_axis_is_labelled_at_round_values_of_its_own_unit` in
+`tests/unit/test_chart_frame.py` works each label list by hand).
 <!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- not-restated: 5 % -->
@@ -3341,7 +3501,11 @@ labelled in, and says that the readouts are not cut off and keep showing their
 values. Inhalational induction commonly uses sevoflurane's 8% dial setting,
 which is 4.44 ×MAC, above the standard top. At the 4.5 ×MAC top, no agent's
 vaporizer can take a trace off the plot at the MAC for age 40. At a lower MAC,
-such as an older patient's, the off-scale notice can still appear at that top.
+such as an older patient's, the off-scale notice can still appear at that top
+(`test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat`
+in `tests/unit/test_dashboard_frame.py`;
+`test_the_dial_maxima_are_the_mac_multiples_printed` in
+`tests/reference/test_interface_figures.py` computes the 4.44).
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 
@@ -3379,7 +3543,9 @@ only when the reader changes it (`PL-V67Q`'s design round, project owner,
 
 The three tops are `ChartCeiling` in `app/formatting.py`. The low top puts
 1 MAC at two thirds of the plot's height. The high top is above every agent's
-vaporizer maximum, the highest being sevoflurane's 8%, at 4.44 ×MAC.
+vaporizer maximum, the highest being sevoflurane's 8%, at 4.44 ×MAC
+(`test_the_high_ceiling_is_above_every_agent_s_vaporizer_maximum` in
+`tests/unit/test_formatting.py`).
 <!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 
 A second axis that shows the same quantity in another unit, as Celsius beside
@@ -3402,6 +3568,9 @@ overpressure induction works in. Desflurane's vaporizer is the most limited. Its
 maximum could never be exceeded, but the chart would then draw the same MAC
 multiple at different heights for different agents, because the dial maxima run
 from 2.73 ×MAC for desflurane to 4.44 ×MAC for sevoflurane (`PL-CC23`).
+`test_the_dial_maxima_are_the_mac_multiples_printed` in
+`tests/reference/test_interface_figures.py` computes these multiples and the
+19.8% top.
 <!-- derived: 2.73 from data/agents/desflurane.json max_delivered_concentration_percent = 18, mac_at_age_40_percent = 6.6 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
@@ -3456,7 +3625,9 @@ reference settings, sevoflurane's isolated time constant is about 135 min for
 muscle and about 42 h for fat (`docs/MODEL.md` § "Tissue groups"), while
 induction lasts minutes. A five-minute window hides everything slower than the
 vessel-rich group. A twelve-hour window puts a five-minute induction in the
-leftmost 0.7% of the plot.
+leftmost 0.7% of the plot. `test_the_isolated_time_constants_are_the_ones_printed`
+and `test_the_widest_window_shows_an_induction_and_a_minute_grid_as_printed`, in
+`tests/reference/test_interface_figures.py`, compute these figures.
 
 **A chosen width keeps slopes comparable within a run and between runs.** It
 stays the same at every moment of every run. Seconds per pixel then depend on
@@ -3516,7 +3687,9 @@ one step up or down visibly changes the view.
 Four to six intervals look like a grid rather than a bare axis or a hatch
 pattern. No single fixed interval does that across the whole ladder. The 60 s
 interval used before would draw 720 gridlines across a twelve-hour axis, enough
-to look like a solid block.
+to look like a solid block
+(`test_the_widest_window_shows_an_induction_and_a_minute_grid_as_printed` in
+`tests/reference/test_interface_figures.py`).
 
 The doubling is there because a mode named for showing the whole run would
 misstate what is on screen if it showed only the last twelve hours of a
@@ -3600,6 +3773,19 @@ starts. The line sits at the stored MAC, the MAC at age 40, and is labelled as
 a reference adult value, not as this patient's MAC, because this model has no
 age parameter.
 
+**For developers.** The references stand at the running agent's own values and
+follow it
+(`test_the_references_stand_at_the_running_agent_s_own_values_and_follow_it` in
+`tests/integration/test_qt_chart.py`), and the 1 MAC line is painted where the
+axis says (`test_the_one_mac_line_is_painted_where_the_axis_says` in
+`tests/integration/test_qt_rendering.py`). The band is the stored fraction
+scaled by the stored MAC
+(`test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac` in
+`tests/unit/test_formatting.py`), and its legend swatch is ruled on both edges
+like the chart's band
+(`test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark` in
+`tests/integration/test_qt_chart.py`).
+
 **The band is not a prediction for the patient on the screen.** It is the
 strongest claim that the evidence supports. The interface shows no
 time-to-wake-up figure of any kind, because this model does not support a
@@ -3629,8 +3815,9 @@ up agent for many hours, so the blood returning to the lungs stays below the
 alveolar gas. That keeps the alveolar fraction below the inspired fraction, and
 rebreathing keeps the inspired fraction below the dial (`PL-39KH`). In the
 3-hour run above, the vessel-rich trace reached only 0.84 MAC, as the alveolar
-trace did. This shortfall happens in real patients too, and it is worth
-teaching.
+trace did (`test_the_mac_awake_washout_figures_match_the_model` in
+`tests/reference/test_mac_awake_washout_figures.py`). This shortfall happens in
+real patients too, and it is worth teaching.
 
 **All three stored MAC-awake fractions belong against the vessel-rich
 trace**, because each was determined at equilibrium, not by fast washout.
@@ -3646,7 +3833,7 @@ published percent would draw the band too high.
 **The *absolute height* of the MAC-awake band and the 1 MAC line inherits every
 limitation of the stored MAC.** The MAC-awake fractions come from primary
 measurements in humans (tier 1). The stored MAC is Mapleson's meta-analytic
-MAC at age 40, not a measurement, so the source hierarchy grades it tier 2
+MAC at age 40 (PMID 8777094), not a measurement, so the source hierarchy grades it tier 2
 (`docs/PARAMETERS.md` § \"Source hierarchy: what may be cited as the authority for a value").
 `docs/PARAMETERS.md` § \"Delivery-limit and MAC parameters" records its limitations. The interface
 shows that MAC, so a reader can compare it with the value they would use.
@@ -3669,14 +3856,15 @@ that a patient is more awake than they are.
 **The stored MAC is a fourth source of error in the band's height**
 (`PL-GCGX`). The band is drawn at a fraction of the stored MAC, Mapleson's MAC
 at age 40, and `docs/PARAMETERS.md` § "The stored MAC" gives its 95% confidence
-limits of about ±7%, and ±10% for desflurane. A dial set in percent fixes the
+limits of about ±7%, and ±10% for desflurane (PMID 8777094). A dial set in percent fixes the
 traces, so an error in the stored MAC moves the band against them by the same
 proportion. In a run left at its opening 1 MAC dial, the error does not move
 the band against the traces. The dial opens at the stored MAC and the model is
 linear in the dial, so the traces move with the band, and the error is in the
 percent that the dial delivers instead. In the washout run described earlier in
 this section, the vessel-rich trace crosses sevoflurane's drawn band centre of
-0.612% at 6.55 min. A patient older than 40 has a lower MAC, so the band drawn
+0.612% at 6.55 min (`test_the_mac_awake_washout_figures_match_the_model`). A
+patient older than 40 has a lower MAC, so the band drawn
 at the MAC at age 40 sits above that patient's own and teaches an earlier
 wake-up.
 <!-- derived: 0.612 percent from data/agents/sevoflurane.json mac_awake.fraction_of_mac = 0.34, mac_at_age_40_percent = 1.8 -->
@@ -3715,7 +3903,9 @@ for the overpressure induction that the chart must be able to show
 band ruled on its upper edge only, over an unruled fill, looks like a line with
 a shadow beneath it, whatever the fill's height, so the two references would no
 longer differ in shape. Two rules with a gap between them look like an interval
-at any height the axis leaves.
+at any height the axis leaves. The shares of the plot height are computed by
+`test_the_mac_awake_band_takes_the_share_of_the_plot_printed` in
+`tests/reference/test_interface_figures.py`.
 
 <!-- derived: 3.33 percent from data/agents/sevoflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.05 -->
 <!-- derived: 4.20 percent from data/agents/desflurane.json mac_awake.standard_deviation_fraction_of_mac = 0.063 -->
@@ -3724,7 +3914,8 @@ at any height the axis leaves.
 The time-to-wake-up readout is left out because a figure such as "time to
 wake-up: 14 min" would be taken as a per-patient prediction. No disclaimer
 beside it would undo that, because readers act on the number and not on the
-disclaimer.
+disclaimer (`test_the_interface_never_predicts_a_time_to_wake_up` in
+`tests/integration/simulation_view/test_simulation_view_whole_interface.py`).
 
 The washout figures come from simulating sevoflurane uptake
 (`AgentUptakeSystem.for_agent("sevoflurane")`) in steps of 1 s. Since the
@@ -3860,7 +4051,9 @@ inside that window.
 
 The 0.01% limit on $`F_I`$ is derived from the concentration display's
 resolution (`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`), so it follows that
-resolution if the display changes.
+resolution if the display changes
+(`test_the_denominator_floor_is_the_displayed_resolution` in
+`tests/unit/test_wash_in.py`).
 
 The rounding allowance of 1e-6 (`WASH_IN_ROUNDING_ALLOWANCE`, `PL-N559`) is
 there because, at zero cardiac output, the stepped run settles on a
@@ -3959,7 +4152,9 @@ slider, a selector, a scroll area or a list. Each of those draws a 2 px ring
 inside its edge, in INK, or in the agent's foreground on the agent selector.
 Start, Pause and Reset carry the same ring, and they also look different while
 held down. The ring shows only when the keyboard moved the focus, as the
-platform's own focus marks do. A plot takes no key, so Tab does not stop on it.
+platform's own focus marks do. A plot takes no key, so Tab does not stop on it
+(`test_every_tab_stop_on_the_dashboard_shows_the_focus` in
+`tests/integration/test_keyboard_focus.py`).
 <!-- provenance: app/theme.py FOCUS_RING_WIDTH = 2 -->
 
 #### Minimum contrast for text and graphics
@@ -3989,6 +4184,8 @@ Two criteria carry most of the weight:
   its range. It also means the two chart references, which are the MAC-awake
   band and the 1 MAC line, and the lines that the layout draws on an Area
   border, under the current Workspace tab and during a corner drag.
+  `test_the_shipped_palette_holds`, in `tests/unit/test_contrast_check.py`,
+  checks every one of these pairs.
 
 <!-- not-restated: 4.5 -->
 
@@ -4059,7 +4256,9 @@ paragraph on boundaries is what excuses the groove.
 Darkening the grey was refused because of the chart's visual order, in which a
 gridline sits below a reference line and a reference line below a trace. A
 gridline at 3:1 would be 87% as dark as the lightest trace (3.43:1), and that
-order would collapse. Line widths of 1 / 1.5 / 2-3 px also carry that order.
+order would collapse (`test_the_trace_colour_tables_are_what_the_palette_gives`
+in `tests/reference/test_interface_figures.py`). Line widths of 1 / 1.5 / 2-3 px
+also carry that order.
 
 #### How the ratios are measured, and why the window is always light
 
@@ -4309,8 +4508,9 @@ palette a dark host supplies. The dashboard it renders draws every registered
 kind of View. It
 fails on any content widget that resolves to that palette, and it checks the
 chrome and the untouched `Disabled` group against the same host. Under that
-host palette, 94.3% of the page scroll bar's pixels are darker than mid-grey
-without the interface's own palette, and none are with it.
+host palette, 94.3% of the page scroll bar's pixels were darker than mid-grey
+without the interface's own palette, and none were with it, when measured on
+2026-09-22 (`PL-KRZW`). The test requires more than half without it.
 
 A second test (`tests/integration/simulation_view/test_simulation_view_foreground.py`) catches any control
 that declares no color, including one added later. It builds the dashboard
@@ -4381,7 +4581,9 @@ shape: alveolar's long dash against muscle's dots, and circuit's solid line
 against mixed venous's short dash. Fat's dash-dot differs in dash length, gap
 length and rhythm from both the vessel-rich even dash and the mixed venous short
 dash, which is what tells fat from vessel-rich for a reader with protanopia. The one pair of styles that a reader could confuse is dotted, with 2 px
-dots, and short dash, with 4 px dashes. That pair goes to muscle and mixed
+dots, and short dash, with 4 px dashes
+(`test_the_six_line_styles_are_the_ones_the_model_document_tabulates` in
+`tests/unit/test_chart_frame.py`). That pair goes to muscle and mixed
 venous, whose colors are 1.45 apart at worst, more than eleven of the fifteen
 pairs in the table below.
 
@@ -4506,6 +4708,12 @@ The first run is widened, rather than the second narrowed, so that no trace is
 drawn narrower than 2 px. A 1 px antialiased line renders lighter than its color
 and would fall below the 3:1 minimum against the panel that every trace must
 meet.
+
+**For developers.** The tests are
+`test_two_runs_cap_the_drawn_compartments_and_count_what_they_removed`,
+`test_two_runs_differ_only_in_width_and_the_first_is_the_wider` and
+`test_no_trace_and_no_preview_is_drawn_thinner_than_two_pixels`, in
+`tests/unit/test_chart_frame.py`.
 
 [^brettel1997]: Brettel H, Viénot F, Mollon JD. Computerized simulation of
     color appearance for dichromats. J Opt Soc Am A. 1997;14(10):2647-2655.
@@ -4878,9 +5086,17 @@ across with others, with one run or two** (measured 2026-11-14). At that width
 the row is within a few pixels of what seven across needs, so the font decides.
 With four across, the readouts take two lines. A window frame or a dock at the
 side of the screen narrows the row further. The record wraps its lines at this
-width too. It narrows further when the row of run controls above the readouts
-needs more room, for example for a long version label, and it can then cut off
-the end of its longest lines (`PL-6XPZ`).
+width too.
+
+**At every window width, the record is at least as wide as the widest part of
+any line it can show.** A line breaks only after the time or after the arrow,
+so its middle part, such as "Alveolar ventilation 12.0 L/min ->", cannot be
+narrower than its text. The record keeps that width however narrow the window
+is, and the readout row gives way instead by stepping down to four across. The
+version-and-model label beside the run controls wraps between words where the
+row is short of room, so a long version label does not take width from the
+record (`PL-6XPZ`, `PL-92XM`).
+<!-- provenance: core/supported_ranges.py MAXIMUM_ALVEOLAR_VENTILATION_L_MIN = 12 -->
 
 **For developers.** A function sets the row's column count from its width
 (`readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py`). A constant
@@ -4918,9 +5134,10 @@ With the tests' font, a 1366 px window gives the region 1334 px (measured
 1366 px window opens the row seven across, with one run and in compare mode
 (`test_a_1366_px_window_opens_one_run_s_readout_row_on_seven_columns` and
 `test_two_runs_share_one_readout_block_whose_values_name_their_runs` in `tests/integration/simulation_view/test_simulation_view_readouts.py`). A 1280 px
-window gives the region 1248 px. The left column takes at least its share,
-1014 px. With the font in the container where the tests were written, that is
-29 px more than seven across needs (measured 2026-11-22). With the font on the
+window gives the region 1248 px. The left column takes 1008 px, less than its
+share, because the record's least width is more than the record's share. With
+the font in the container where the tests were written, that is 23 px more than
+seven across needs (measured 2026-11-22). With the font on the
 CI runner, seven across needed 1068 px on 2026-11-14 and the row got 1060 px, so
 it opened on four. The clock's widest reading was then `23h59m59.9s`. It is now
 `23h59m59s`, which narrows the clock's column by 20 px with the tests' font, so
@@ -4929,11 +5146,22 @@ where seven fit and four across otherwise, with one run and with two
 (`test_a_1280_px_window_opens_one_run_s_readout_row_on_seven_or_four_columns`
 and
 `test_a_1280_px_window_opens_two_compared_runs_readout_row_on_seven_or_four_columns` in `tests/integration/simulation_view/test_simulation_view_readouts.py`).
-The left
-column cannot narrow below the transport row's minimum width, which includes
-the version label. So below about 1366 px a longer version string widens the
-left column and narrows the record (`PL-6XPZ`). A function wraps the
-control-change record (`wrapping_between_parts`).
+The right
+column never narrows below the widest unbroken part of a record line. A
+function lists those parts at each control's largest recordable value, the end
+of the longest supported run and the most settings a run can step under
+(`longest_unbroken_parts` in `src/anesthesia_sim/app/control_timeline.py`). The
+record's text label measures them with each digit drawn as the font's widest
+digit, because digits differ in width in some fonts. With the tests' font that
+least width is 228 px for the column, which is more than its share in a window
+narrower than about 1300 px, and the row then opens four across below a 1260 px
+window (measured 2026-11-22). The version-and-model label wraps, so the
+transport row's least width no longer grows with the version string. A test
+checks the record at the narrowest window the dashboard allows, with the
+longest version text the label can carry
+(`test_the_control_change_record_is_readable_at_the_minimum_window_width` in
+`tests/integration/simulation_view/test_simulation_view_page.py`). A function
+wraps the control-change record (`wrapping_between_parts`).
 
 #### Time, flows and the chart
 
@@ -5371,18 +5599,19 @@ The box has three lines: the run context, what the value is, and the value.
 ```
 Modelled sevoflurane · 20m8s
 Alveolar (end-tidal-equivalent)
-1.43%   0.71 ×MAC
+1.28%   0.71 ×MAC
 ```
 
-The lines that qualify the value come first, so a reader reaches `1.43%` only after
+The lines that qualify the value come first, so a reader reaches `1.28%` only after
 passing "Modelled" and the compartment. A qualifier below the number would come too
 late, because the number has already been read.
 
 1. **Run context: "Modelled", the agent, the run when more than one is drawn, and
    the instant.** "Modelled" appears in every box, not only for the compartments
    that a monitor also measures. The agent is there because one percentage means
-   different things under different agents: 1.43% is 0.71 MAC of sevoflurane and
-   0.24 MAC of desflurane. The instant is printed in whole seconds, in
+   different things under different agents: 1.28% is 0.71 MAC of sevoflurane and
+   0.19 MAC of desflurane (`test_the_hover_s_percent_is_the_mac_multiples_printed`
+   in `tests/reference/test_interface_figures.py`). The instant is printed in whole seconds, in
    the form that the clock, the time axis and the time stamp of each control change
    also use, such as `20m8s`. It is the exact instant of the value in the box, not a
    rounded one.
@@ -5437,7 +5666,7 @@ width and the legend to be sufficient).
 ```
 Modelled sevoflurane · Run 2 · 20m8s
 Alveolar (end-tidal-equivalent)
-1.43%   0.71 ×MAC
+1.28%   0.71 ×MAC
 ```
 
 The box follows the rule for naming the run (§ "Naming the run in a comparison"),
@@ -5458,10 +5687,12 @@ the other over most of the area from which either can be reached.
 The two runs' fat values can still differ. Take a sevoflurane case held at 1 MAC,
 and call it the trunk. The branch is a second run forked from it at 10 min with
 the vaporizer turned off. At 3492 s the fat value reads either `0.03%   0.02 ×MAC`
-or `0.01%   <0.01 ×MAC`, depending on the run. The modelled values are 0.031% and
-0.006%, about a fivefold difference in stored agent that the box shows as
+or `0.01%   <0.01 ×MAC`, depending on the run. The modelled values are 0.028% and
+0.005%, about a fivefold difference in stored agent that the box shows as
 threefold, between a run still carrying agent and a run 48 minutes into
-emergence. The slow compartments are the ones this chart exists to teach.
+emergence (`test_the_hover_s_fat_values_after_a_fork_are_the_ones_printed` in
+`tests/reference/test_interface_figures.py`). The slow compartments are the ones
+this chart exists to teach.
 
 A single run goes unnamed because there is nothing to tell it apart from, and a
 name would suggest a comparison that is not on screen. A reader always sees when
@@ -5503,8 +5734,8 @@ the axis compression is fixed).
 ```
 Modelled sevoflurane
 Alveolar (end-tidal-equivalent)
-Run 1 · 20m8s   1.43%   0.71 ×MAC
-Run 2 · 20m8s   1.45%   0.73 ×MAC
+Run 1 · 20m8s   1.28%   0.71 ×MAC
+Run 2 · 20m8s   1.35%   0.75 ×MAC
 ```
 
 **Every compartment whose drawn point is inside the hover radius is also reported**
@@ -5518,20 +5749,22 @@ with its compartment, and its gloss where it has one, such as "Alveolar
 
 ```
 Modelled sevoflurane
-Muscle · Run 1 · 20m   0.19%   0.10 ×MAC
-Muscle · Run 2 · 20m   0.09%   0.04 ×MAC
-Fat · Run 1 · 20m   0.01%   0.01 ×MAC
-Fat · Run 2 · 20m   0.01%   <0.01 ×MAC
+Muscle · Run 1 · 20m   0.14%   0.08 ×MAC
+Muscle · Run 2 · 20m   0.08%   0.05 ×MAC
+Fat · Run 1 · 20m   0.01%   <0.01 ×MAC
+Fat · Run 2 · 20m   <0.01%   <0.01 ×MAC
 ```
 
 The box reports every trace in reach because, where traces crowd together, no
-hand can aim at one rather than another. Two runs' fat traces lie 0.2–1.4 px
-apart, and at that separation no rule for picking one trace can follow the
-reader's aim (`PL-QYBW`). The earlier rule reported only the nearest point, so a
-2 px movement could switch the box to another run or compartment, and to a
-different number. The box itself stayed put. Only the name and the numbers
-changed, and the reader had already read past the name. Now no movement too
-small to aim with decides what the box shows.
+hand can aim at one rather than another. Two runs' fat traces lay 0.2–1.4 px
+apart when measured on 2026-09-19, and at that separation no rule for picking
+one trace can follow the reader's aim (`PL-QYBW`). The earlier rule reported
+only the nearest point, so a 2 px movement could switch the box to another run
+or compartment, and to a different number. The box itself stayed put. Only the
+name and the numbers changed, and the reader had already read past the name.
+Now no movement too small to aim with decides what the box shows
+(`test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers` in
+`tests/unit/test_chart_frame.py`).
 
 The percent axis stays linear, which crowds the slow compartments together.
 Because the box reports every trace in reach, the crowding needs no change of
@@ -5712,8 +5945,9 @@ the three would report is already on screen. The MAC value used to compute the
 MAC multiples is stated beside the chart, and the input timeline lists each
 control change with its old and new value.
 
-**For developers.** The line, the band and the marks do not respond because all
-three cross every trace: the line and the band run across the plot, and the marks
+**For developers.** The line, the band and the marks do not respond
+(`test_the_references_answer_no_hover_and_clear_space_answers_none` in
+`tests/integration/test_qt_chart.py`) because all three cross every trace: the line and the band run across the plot, and the marks
 are vertical and full height. If they responded, an annotation would appear under
 the pointer wherever a reader aims at a trace that passes behind one of them. That
 is exactly where a reading is most wanted: a trace crossing 1 MAC is the event the
@@ -5926,7 +6160,9 @@ presses under Fusion and under a style that returns the macOS hints
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel
-(§ "The six compartment traces: what separates them").
+(§ "The six compartment traces: what separates them";
+`test_no_trace_and_no_preview_is_drawn_thinner_than_two_pixels` in
+`tests/unit/test_chart_frame.py`).
 
 Neither dash pattern nor reduced opacity can mark a curve as predicted. The
 muscle curve is already dotted, and drawing the run solid with a dotted preview
@@ -5973,9 +6209,11 @@ price makes a correct amount lead to a wrong conclusion.
 
 **A bare "mL" does not say whether it means liquid or vapour.** The schematic
 labels its amounts in millilitres of vapour (`ROADMAP.md`, v0.7.0 entry 1).
-Gas Man quotes its price as "Cost/mL vapor" (printed p. 174). One millilitre
-of liquid isoflurane gives about 196 mL of vapour, so a volume or a price read
-as vapour is wrong by that factor.
+Gas Man quotes its price as "Cost/mL vapor" (printed p. 174, read from the
+private reference corpus on 2026-11-23). One millilitre of liquid isoflurane
+gives about 196 mL of vapour, so a volume or a price read as vapour is wrong by
+that factor (`test_the_vapour_per_liquid_figures_are_the_derived_ratios` in
+`tests/reference/test_interface_figures.py`).
 
 **The displayed cost reproduces the four costs printed in Gas Man's two
 isoflurane exercises.** The simulator runs each exercise from its patient
@@ -5996,7 +6234,9 @@ of the cost's last digit. In the example above, 39 mL times USD 0.2047 is
 USD 7.98. The cost is USD 8.07 because it uses the unrounded 39.42 mL. At
 USD 115.13 per 240 mL bottle, 60 min of desflurane at 6 % and 1 L/min costs
 USD 8.23. Shown as 17 mL and USD 0.4797 per mL, the two figures multiply to
-USD 8.15.
+USD 8.15. `test_the_figures_shown_beside_a_cost_multiply_as_printed` and
+`test_the_costs_beside_the_rounded_figures_are_the_unrounded_products`, in
+`tests/reference/test_interface_figures.py`, compute these figures.
 
 
 **The cost is the delivered agent's liquid equivalent times the price per
@@ -6025,7 +6265,11 @@ these four cases:
   finite, which extreme entries can cause, such as a bottle price of 10 to the
   power 308 for a 0.5 mL bottle. The same applies to a cost too large to be held
   to its minor unit, above about USD 3.5 × 10^13, where the cents shown would
-  come from the computer's rounding rather than from the price; or
+  come from the computer's rounding rather than from the price
+  (`test_no_cost_is_shown_where_one_cannot_be_trusted` in
+  `tests/unit/test_agent_cost.py`, and
+  `test_a_cost_too_large_to_show_to_its_minor_unit_is_refused` in
+  `tests/unit/test_formatting.py`); or
 - the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
@@ -6042,7 +6286,8 @@ default price for isoflurane is $20.47 for a 100 mL bottle (Philip JH,
 *Workbook for Gas Man*, Appendix C, printed p. 171). The book calls its
 defaults "USA bottle volume and bottle cost as of March 5, 2008" (printed
 p. 105). Chapter 14 gives $78.00 per 100 mL bottle "on March 5, 2008" (printed
-p. 141).
+p. 141). These pages were read from the private reference corpus on
+2026-11-23.
 
 **The simulator keeps at most one price for each agent, and the price records
 five things:**
@@ -6079,7 +6324,8 @@ disagree with the bottle price and volume. The form still allows three mistakes:
 
 - a price per millilitre typed as the bottle price. The cost is then 100 to
   250 times too low, because the bottles in Gas Man's defaults hold 100 to
-  250 mL of the volatile agents (printed pp. 171-172);
+  250 mL of the volatile agents (printed pp. 171-172, read from the private
+  reference corpus on 2026-11-23);
 - a bottle volume typed in litres, such as 0.25, or as 1 for one bottle. The
   cost is then 100 to 1000 times too high; and
 - the price and the volume swapped. The price per millilitre is then inverted.
@@ -6089,7 +6335,9 @@ The first two mistakes make the price per millilitre on the readout wrong by the
 same factor as the cost. A swap stands out only where the bottle price and
 volume differ widely. At Gas Man's sevoflurane default of 240.34 for a 250 mL
 bottle (printed p. 172), a swap changes the cost by 8 %, and nothing on screen
-would show it.
+would show it
+(`test_a_swapped_bottle_price_and_volume_moves_the_cost_by_the_share_printed` in
+`tests/reference/test_interface_figures.py`).
 
 <!-- not-restated: 8 % -->
 
@@ -6192,9 +6440,13 @@ holds less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fif
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
 its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC
 dial, across the simulator's three agents, fat holds a fifth of the stored agent
-at one hour and a third at three hours, which the chart's fat trace cannot show.
-Every container is drawn at one width, so its filled area is not an amount
-either.
+at one hour and a third at three hours, which the chart's fat trace cannot show
+(`test_fat_holds_the_share_printed_while_its_container_stays_nearly_empty` in
+`tests/reference/test_interface_figures.py`). Every container is drawn at one
+width, so its filled area is not an amount either
+(`test_a_container_s_height_is_its_tension_and_not_its_amount` and
+`test_each_container_is_marked_every_half_mac_of_the_standard_scale` in
+`tests/unit/test_compartment_schematic.py`).
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 A tension above the top of the scale fills its container to the top. The
@@ -6202,8 +6454,12 @@ schematic marks the container as off the scale when the tension is above the
 top by more than the smallest step that the readouts show
 (§ "What the concentration readouts show"). The concentration chart uses the
 same test for a trace above its axis, in its off-scale notice. The container's
-label still prints the tension. The circuit rises above the top, towards 4 MAC,
-when a sevoflurane dial is at its 8% maximum.
+label still prints the tension
+(`test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value`
+in `tests/unit/test_compartment_schematic.py`). The circuit rises above the
+top, towards 4.44 ×MAC, when a sevoflurane dial is at its 8% maximum
+(`test_the_circuit_goes_off_the_schematic_s_scale_at_the_dial_maximum` in
+`tests/reference/test_interface_figures.py`).
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 **A container's amount is the agent that the model holds in that compartment,
@@ -6213,7 +6469,10 @@ reference condition of 20 °C and 760 mmHg, dry, shown in millilitres ($`M_x`$ i
 expresses an amount of agent, not gas present in the body. This subsection's
 rules for an agent amount also apply to every other View that shows one,
 including the share bar (`PL-S79P`) and the agent cost View (`PL-B396`).
-§ "Displayed precision" derives the precision at which amounts are shown.
+§ "Displayed precision" derives the precision at which amounts are shown. The
+label names the reference condition
+(`test_the_reference_condition_label_names_the_conversions_temperature_and_pressure`
+in `tests/unit/test_display_units.py`).
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **An agent amount's unit always names vapour or liquid, and is never a bare
@@ -6222,7 +6481,7 @@ about 180 to 210, depending on the agent. At the reference condition, 1 mL of
 liquid gives about 183 mL of sevoflurane vapour or about 210 mL of desflurane
 vapour (`docs/PARAMETERS.md` § "Agent amount"). A vapour amount is written "mL vapour", as in
 "38 mL vapour". A liquid amount is written "mL of liquid", as in
-"4 mL of liquid". The model holds no liquid, so a liquid amount is worked
+"39 mL of liquid". The model holds no liquid, so a liquid amount is worked
 out from a vapour amount, as the volume of liquid agent that would give that
 much vapour. That volume is what a vaporizer uses up. A caption under a liquid
 amount says that the vaporizer used this liquid. The accounting View shows
@@ -6230,7 +6489,10 @@ amounts in litres, under a caption that begins "Litres of equivalent pure
 agent gas", which marks them as vapour, and names their condition. The agent cost panel writes its delivered amount
 as "mL of liquid" or "L vapour", whichever unit the reader chose, and its
 caption says what that unit measures. These spellings may change while the
-interface is being built.
+interface is being built. `test_the_vapour_per_liquid_figures_are_the_derived_ratios`
+in `tests/reference/test_interface_figures.py` computes the factors, and
+`test_each_unit_has_the_spellings_a_reader_meets` in
+`tests/unit/test_display_units.py` checks the spellings.
 
 **The share bar shows each compartment's share of all the agent the run holds,
 circuit included.** The bar is divided into six segments, in the containers'
@@ -6285,7 +6547,9 @@ display unit" gives the reason for 3 MAC.
 
 The containers' common width is there because, for sevoflurane, fat's container
 drawn to scale would take about 500 px of a View 600 px wide, and four of the
-others would take between 1 and 7 px each. The roadmap records the designs that
+others would take between 1 and 7 px each
+(`test_fat_s_container_drawn_to_scale_takes_the_width_printed` in
+`tests/reference/test_interface_figures.py`). The roadmap records the designs that
 the schematic was chosen over (`ROADMAP.md` § "v0.7.0 - the schematic").
 
 The run writes the schematic where it writes its readouts, from the same

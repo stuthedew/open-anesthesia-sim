@@ -76,10 +76,12 @@ frame (`PL-X7D5`, `PL-RF2S`).
 **Timers move the run and nothing else** (decision D7). Each run has one
 `QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
 number of steps that the playback rate sets, and it never draws. The
-dashboard's own render timer does the drawing. No wall clock is read.
-Simulation time is a count of the steps taken. A tick takes no step while a
-question is open in the window, because the question blocks the Pause button
-(`hold_while`).
+dashboard's own render timer does the drawing. Simulation time is a count of
+the steps taken. Each tick reads a monotonic clock, but only to measure the
+rate the ticks deliver, which the clock line names when the computer falls
+behind (`PL-2NYN`). The reading never decides how many steps a tick takes. A
+tick takes no step while a question is open in the window, because the
+question blocks the Pause button (`hold_while`).
 """
 
 from __future__ import annotations
@@ -87,10 +89,11 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Mapping
 from dataclasses import replace
+from time import monotonic
 from typing import Final
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics
+from PySide6.QtGui import QColor, QFontMetrics
 from PySide6.QtWidgets import (
     QBoxLayout,
     QDialog,
@@ -109,6 +112,7 @@ from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import (
     AdjustmentGrouping,
     ControlAdjustment,
+    longest_unbroken_parts,
     wrapping_between_parts,
 )
 from anesthesia_sim.app.controller import (
@@ -158,6 +162,7 @@ from anesthesia_sim.app.playback import (
     SUPPORTED_PLAYBACK_RATES,
     OwedSimulatedTime,
     PlaybackRate,
+    TickPace,
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import (
@@ -166,8 +171,10 @@ from anesthesia_sim.app.qt_widgets import (
     FocusRing,
     NewCaseDialog,
     NoticeLabel,
+    OneLineWhereRoomLabel,
     ReadoutRow,
     SelectorComboBox,
+    style_label,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -425,6 +432,7 @@ class RunView(QWidget):
         self._preview_name: str | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
         self._owed_time = OwedSimulatedTime()
+        self._pace = TickPace(SIMULATION_TICK_INTERVAL_MS)
         self._adjustment_grouping = AdjustmentGrouping()
         # The agent that a reader has asked for and not yet confirmed, and the
         # dialog that asks them. Together they are the state "a destructive
@@ -494,8 +502,15 @@ class RunView(QWidget):
         # is hidden while both of its parts are.
         self._halt_banner.setHidden(True)
 
-        self._subtitle_text = styled_label(format_subtitle(snapshot.agent_display_name), color=INK)
-        self._subtitle_text.setFont(_bold(self._subtitle_text.font()))
+        # The badge's text wraps between words rather than holding the
+        # transport row at its full length. A development build's version
+        # string, or the longer text of a build without package metadata,
+        # would otherwise set how narrow the run rows can get. The record
+        # column would then lose that width at a narrow window (`PL-92XM`).
+        # The label asks for its one-line width, so the text keeps one line
+        # wherever the row has room for it.
+        self._subtitle_text = OneLineWhereRoomLabel(format_subtitle(snapshot.agent_display_name))
+        style_label(self._subtitle_text, color=INK, bold=True, wrap=True)
         self._agent_header_badge = QFrame()
         self._agent_header_badge.setObjectName(_HEADER_BADGE_NAME)
         badge = QHBoxLayout(self._agent_header_badge)
@@ -641,6 +656,13 @@ class RunView(QWidget):
             color=MUTED,
             size_px=METRIC_QUALIFIER_SIZE,
             wrap=True,
+        )
+        # The record column narrows with the window, and a part of a line
+        # cannot break. So the label claims the width of the widest part any
+        # line can have, and the region holds the column at least that wide
+        # (`PL-6XPZ`, `PL-92XM`).
+        self._control_timeline_text.setMinimumWidth(
+            _widest_rendering_px(self._control_timeline_text, longest_unbroken_parts())
         )
         self._control_timeline_overflow_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
@@ -826,6 +848,14 @@ class RunView(QWidget):
                 else self._reset_question()
             ),
             charts_withheld=self._charts_withheld(),
+            # Only a run that is playing delivers a rate. A paused, held or
+            # stopped run draws its frame before the next tick restarts the
+            # measurement, so the fraction is withheld here.
+            delivered_fraction=(
+                self._pace.disclosed_fraction
+                if self.controller.is_running and not self._held()
+                else None
+            ),
         )
 
         if drawn is None:
@@ -1540,6 +1570,9 @@ class RunView(QWidget):
             return
 
         self._playback_rate = playback_rate_for(int(multiplier))
+        # A faster rate gives each tick more steps to take, so the ticks
+        # measured at the old rate say nothing about the new one.
+        self._pace.restart()
         self.presentation_requested.emit(False)
 
     # ---------------------------------------------------- the new-case flow
@@ -1659,6 +1692,7 @@ class RunView(QWidget):
 
         self._preview = None
         self._owed_time.clear()
+        self._pace.restart()
         self._case += 1
         self.case_restarted.emit()
 
@@ -1839,10 +1873,19 @@ class RunView(QWidget):
         fires late costs the run real time but never changes its trajectory, because
         no step is made up. A tick takes no step while `hold_while`'s
         predicate returns True, that is, while a question is open.
+
+        Each tick that plays the run records the monotonic clock in
+        `TickPace`, which measures the rate the ticks deliver for the clock
+        line (`PL-2NYN`). The reading never changes how many steps are taken.
+        A tick that does not play the run restarts the measurement, so a
+        pause is never counted as lost ticks.
         """
 
         if not self.controller.is_running or self._held():
+            self._pace.restart()
             return
+
+        self._pace.record(monotonic())
 
         steps = self._owed_time.steps_due(
             self._playback_rate, tick_interval_ms=SIMULATION_TICK_INTERVAL_MS
@@ -2043,8 +2086,21 @@ class RunView(QWidget):
         return timeline_panel_frame
 
 
-def _bold(font: QFont) -> QFont:
-    bold = QFont(font)
-    bold.setBold(True)
+def _widest_rendering_px(label: QLabel, parts: tuple[str, ...]) -> int:
+    """Return the width, in pixels, of the widest of `parts` in `label`'s font.
 
-    return bold
+    Each digit is measured as the font's widest digit. In a font whose
+    digits differ in width, "10.0" can be wider than "12.0", so measuring
+    the largest value alone would not bound every value below it.
+    """
+
+    label.ensurePolished()
+    metrics = label.fontMetrics()
+    widest_digit = max("0123456789", key=metrics.horizontalAdvance)
+
+    return max(
+        metrics.horizontalAdvance(
+            "".join(widest_digit if character in "0123456789" else character for character in part)
+        )
+        for part in parts
+    )
