@@ -73,13 +73,13 @@ has its own Remove button, which removes that mark and no other. After a
 removal, the mark below moves up into the pressed row, so a second press in
 that list within the platform's double-click interval removes nothing. After a
 removal, a line under the list names the removed mark, beside an Undo button
-that puts the mark back in its row. A run that reached the mark is shown as
-having reached it again, unless the run was started over, or its agent
-changed, in between.
+that puts the mark back in its row. A run that had reached the mark is shown
+as having reached it again.
 The offer has no time limit, so WCAG 2.2 Success Criterion 2.2.1 (Timing
 Adjustable) does not apply to it, as it would to a message that disappears
 after a few seconds. It stays until the marks change in another
-way, a branch opens or closes, or the case changes. Undo goes back through
+way, a branch opens or closes, or a run starts over with a Reset or an agent
+change. Undo goes back through
 several removals in turn, the latest first. The forms
 that add a mark sit below the lists and each run's standing on them. No window
 opens to edit a mark (§ "What this list requires once the layout is the

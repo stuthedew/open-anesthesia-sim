@@ -7,7 +7,7 @@ added: 2026-11-23
 closed: 2026-11-23
 pr: 2288
 filed-pr: 2285
-tests: tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_undo_puts_a_removed_mark_back_in_its_row_in_every_run, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_undo_goes_back_through_several_removals_the_latest_first, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_a_mark_added_after_a_removal_ends_the_offer_to_undo_it, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_an_undone_removal_of_a_target_a_branch_reached_still_says_it_was_reached, tests/integration/controller/test_controller_marks.py::test_a_reached_target_put_back_after_its_removal_reads_reached_where_it_was, tests/integration/controller/test_controller_marks.py::test_a_target_put_back_after_a_reset_reads_as_the_new_run_has_it, tests/unit/test_bookmarks.py::test_a_mark_put_back_lands_at_its_position_or_at_the_end
+tests: tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_undo_puts_a_removed_mark_back_in_its_row_in_every_run, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_undo_goes_back_through_several_removals_the_latest_first, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_a_mark_added_after_a_removal_ends_the_offer_to_undo_it, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_a_reset_ends_the_offer_to_undo_a_removal_from_the_case_before_it, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_an_undone_removal_of_a_target_a_branch_reached_still_says_it_was_reached, tests/integration/controller/test_controller_marks.py::test_a_reached_target_put_back_after_its_removal_reads_reached_where_it_was, tests/integration/controller/test_controller_marks.py::test_a_target_reached_by_the_step_a_paused_run_stands_on_is_reached_after_undo, tests/integration/controller/test_controller_marks.py::test_a_target_put_back_after_a_reset_reads_as_the_new_run_has_it, tests/unit/test_bookmarks.py::test_a_mark_put_back_lands_at_its_position_or_at_the_end
 ---
 
 **Problem.** Offer Undo after a mark is removed in the Bookmarks View, so an accidental removal can be reversed in one press rather than by entering the mark again (Baymard: undo is the ideal guard against accidental presses; found in PL-G1JM's review)
@@ -49,8 +49,8 @@ removals (`SimulationView._latest_removal`). Each run gives back a record of
 the mark it removed (`RemovedMark`) and puts it back itself
 (`SimulationController.restore_mark`), at its old row
 (`BookmarkSet.with_time_bookmark_at`, `with_mac_target_at`). A target the run
-had reached reads as reached again, unless the run was started over or its
-agent changed in between. The Undo button keeps the Remove buttons'
+had reached reads as reached again. A Reset or an agent change ends the offer,
+because the removal belonged to the run before it. The Undo button keeps the Remove buttons'
 double-click guard, because after an Undo the button can offer the removal
 before it in the same place.
 
@@ -67,3 +67,20 @@ fail. With the run check dropped (`same_run = removed.reached`),
 `test_a_target_put_back_after_a_reset_reads_as_the_new_run_has_it` fails. The
 reached tests let the run go on past its halt, because while a run stands on
 its halt the halt alone shows the target as reached.
+
+**Blind review, 2026-11-23.** Two passes. Both found that the offer outlived
+a Reset or an agent change with one run on screen, because neither the runs
+nor the marks changed (should-fix). `_latest_removal` now also ends the offer
+when a run's `runs_discarded` count has moved since the removal, and
+`test_a_reset_ends_the_offer_to_undo_a_removal_from_the_case_before_it`
+holds it. One pass found that a target reached only through the step a
+paused run stands on (`PL-1ZQ4`) was recorded as not reached, so after Start
+an Undo put it back as still to come (should-fix). The record now reads the
+standing the way `bookmark_standings` does (`_reached_now`), before the
+removal, and
+`test_a_target_reached_by_the_step_a_paused_run_stands_on_is_reached_after_undo`
+holds it. Both tests fail on the code before the fix: the first with `assert
+not True` on the Undo button's visibility, the second with `STILL_RUNNING is
+REACHED`. The optional finding was taken too: the run number is now
+`runs_discarded`, so the controller keeps one count of runs begun rather
+than two that could drift apart.

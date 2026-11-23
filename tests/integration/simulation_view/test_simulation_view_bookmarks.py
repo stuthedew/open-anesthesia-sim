@@ -1139,6 +1139,37 @@ def test_a_mark_added_after_a_removal_ends_the_offer_to_undo_it(application: QAp
     assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0, 900.0]
 
 
+def test_a_reset_ends_the_offer_to_undo_a_removal_from_the_case_before_it(
+    application: QApplication,
+) -> None:
+    """A Reset keeps the controller and the marks, but the removal belonged to the run before.
+
+    Blind review of `PL-5GX4` found the offer still shown after a Reset with
+    one run on screen, where neither the runs nor the marks had changed.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+    times = _marks_panel(view).times
+
+    for instant_s in (300, 600):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    times.rows[0].remove_button.click()
+    _settle(application)
+
+    assert times.undo_button.isVisibleTo(times)
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert not times.undo_button.isVisibleTo(times)
+    assert times.undo_button.isEnabled() is False
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0]
+
+
 def test_a_double_click_on_undo_puts_back_one_mark(application: QApplication) -> None:
     """The next removal back is offered where the last Undo was, so a double-click undoes one."""
 

@@ -981,6 +981,41 @@ def test_a_reached_target_put_back_after_its_removal_reads_reached_where_it_was(
     assert after.bookmark_standings == before.bookmark_standings
 
 
+def test_a_target_reached_by_the_step_a_paused_run_stands_on_is_reached_after_undo() -> None:
+    """A target added on a paused run's crossing step, removed, then put back after Start.
+
+    Blind review of `PL-5GX4` found this sequence. The target reads as reached
+    only through the step the paused run stands on (`PL-1ZQ4`). Start keeps
+    that step's crossings only for the marks held at the time, and this one
+    was removed then. The expected standing is the one a finder run halts on
+    at the same step, which never removes the target.
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3))
+    finder = SimulationController()
+    finder.add_mac_target(target)
+    finder.start()
+    _advance_until_halted(finder, limit_s=400)
+    assert finder.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+    paused = SimulationController()
+    paused.start()
+
+    for _ in range(finder._state.step_count):
+        paused.advance()
+
+    paused.pause()
+    paused.add_mac_target(target)
+    assert paused.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+    removed = paused.remove_mac_target(target)
+    paused.start()
+    _advance_for(paused, duration_s=10)
+    paused.restore_mark(removed)
+
+    assert paused.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+
 def test_a_time_mark_put_back_after_its_removal_returns_to_its_row() -> None:
     """The middle of three time marks returns between the other two, as the run held it."""
 

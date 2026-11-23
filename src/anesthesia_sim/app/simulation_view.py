@@ -2369,9 +2369,11 @@ class SimulationView(QWidget):
 
         The latest removal can be undone only while the same runs are on
         screen and the case's marks are the ones it left. Any other edit, a
-        branch opened or closed, or a new case ends that. The removal and
-        every one before it are then forgotten, because each was made on top
-        of the next, and none can be undone without it.
+        branch opened or closed, or a new case ends that. A Reset or an agent
+        change starts a new case on the same controller, so the offer also
+        ends when a run's `runs_discarded` count has moved since the removal.
+        The removal and every one before it are then forgotten, because each
+        was made on top of the next, and none can be undone without it.
         """
 
         if not self._removals:
@@ -2380,7 +2382,10 @@ class SimulationView(QWidget):
         latest = self._removals[-1]
         controllers = tuple(run.controller for run in self._runs)
         same_runs = len(controllers) == len(latest.controllers) and all(
-            held is shown for held, shown in zip(latest.controllers, controllers, strict=True)
+            held is shown and shown.runs_discarded == removed.run_number
+            for held, shown, removed in zip(
+                latest.controllers, controllers, latest.removed, strict=True
+            )
         )
 
         if not same_runs or controllers[TRUNK_RUN_INDEX].bookmarks != latest.marks_after:
