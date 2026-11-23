@@ -10,7 +10,7 @@ from enum import Enum
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QPointF, Qt
-from PySide6.QtGui import QKeyEvent, QWheelEvent
+from PySide6.QtGui import QAccessible, QAccessibleInterface, QKeyEvent, QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app.control_record import CONTROL_INPUT_DISPLAY_UNITS
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import MAX_DISPLAYED_RUNS, slider_position
 from anesthesia_sim.app.formatting import (
@@ -54,14 +55,19 @@ from anesthesia_sim.core.supported_ranges import (
 )
 from tests.integration.simulation_view.simulation_view_support import (
     _advance,
+    _branched_case,
+    _case_view,
     _concentration,
     _dials,
     _drag,
     _select_playback_rate,
     _set_delivered_percent,
     _set_fresh_gas_flow,
+    _setting_row,
+    _settle,
     _shown_view,
     _steps,
+    _take_fork,
     _visible_strings,
     _wash_in,
 )
@@ -215,6 +221,75 @@ def test_the_integer_sliders_span_the_supported_input_ranges(application: QAppli
     ):
         assert control.slider.minimum() == slider_position(minimum, FLOW_DISPLAY_DECIMALS)
         assert control.slider.maximum() == slider_position(maximum, FLOW_DISPLAY_DECIMALS)
+
+
+def _accessible_tree(root: QAccessibleInterface) -> list[QAccessibleInterface]:
+    """Every node of the accessible tree under `root`, as Qt hands it to the platform."""
+
+    nodes = [root]
+
+    for node in nodes:
+        nodes.extend(node.child(index) for index in range(node.childCount()))
+
+    return nodes
+
+
+def test_the_accessible_tree_names_each_setting_slider_and_gives_its_value_with_the_unit(
+    application: QApplication,
+) -> None:
+    """`PL-9QY5`: each dial reaches assistive technology as its setting, not as a step count.
+
+    The walk reads the tree that Qt hands to the platform's accessibility
+    interface, from the window down, as `PL-QR6Q` did when it found each
+    slider unnamed and valued in steps, such as 180 for 1.80% sevoflurane.
+    """
+
+    view = _shown_view(application, SimulationController())
+    dials = _dials(view.runs[0]).sliders
+    reached = {
+        id(node.object()): node
+        for node in _accessible_tree(QAccessible.queryAccessibleInterface(view.window()))
+        if node.role() is QAccessible.Role.Slider
+    }
+
+    for dial in dials:
+        node = reached.get(id(dial.slider))
+        unit = CONTROL_INPUT_DISPLAY_UNITS[dial.slider.control].label
+
+        assert node is not None, dial.name_label.text()
+        assert node.text(QAccessible.Text.Name) == f"{dial.name_label.text()}, {unit}"
+        assert node.text(QAccessible.Text.Value) == dial.value_label.text()
+        assert node.valueInterface().currentValue() == dial.value()
+
+
+def test_each_compared_run_s_dials_name_the_run_to_a_screen_reader(
+    application: QApplication,
+) -> None:
+    """Two runs have a row of the same four dials each, so each dial's name names its run.
+
+    Without the run's name, a screen reader moving to the second row hears
+    the same names again and cannot tell which run a change goes to.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    view.present(False)
+    _settle(application)
+    trunk, branch = view.runs
+
+    assert _setting_row(branch).name_text.text() == "Run 2"
+
+    for run in (trunk, branch):
+        run_name = _setting_row(run).name_text.text()
+
+        assert run_name, "a compared run is named above its dials"
+
+        for dial in _dials(run).sliders:
+            unit = CONTROL_INPUT_DISPLAY_UNITS[dial.slider.control].label
+
+            assert (
+                dial.slider.accessibleName() == f"{dial.name_label.text()} for {run_name}, {unit}"
+            )
 
 
 def test_every_slider_endpoint_reaches_the_core_and_is_accepted(application: QApplication) -> None:

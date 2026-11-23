@@ -4302,6 +4302,31 @@ platform's own focus marks do. A plot takes no key, so Tab does not stop on it
 `tests/integration/test_keyboard_focus.py`).
 <!-- provenance: app/theme.py FOCUS_RING_WIDTH = 2 -->
 
+**A setting slider tells assistive technology the setting, with its unit**
+(`PL-9QY5`). Screen-reader support as a whole is not yet a commitment, but a
+control that reports a clinical value must report the right one, as WCAG 2.2
+SC 4.1.2 (Name, Role, Value) requires at Level A. Each of the four setting
+sliders reports the setting's name and unit as its accessible name, such as
+"Fresh gas flow, L/min". It reports its value as a number in that unit, such
+as 4.0, and as text with the unit, such as "4.0 L/min". The text comes from
+the same function as the readout above the slider. A slider never reports its
+internal step count, such as 40 for 4.0 L/min or 180 for 1.80% sevoflurane.
+On macOS, VoiceOver reads only the number, so the name carries the unit. While
+runs are compared, each row of sliders belongs to one run, and each slider's
+name names the run, such as "Fresh gas flow for Run 2, L/min", so that a
+screen reader can tell the rows apart. A value that a screen reader sets
+arrives in the setting's unit and counts as one input, like a key press. It is
+ignored while the handle is held, a value beyond the range applies as the
+nearest end, and a value that is not a finite number is ignored
+(`test_assistive_technology_hears_each_slider_as_its_setting_with_the_unit` and
+`test_a_value_set_by_assistive_technology_applies_once_in_the_setting_s_unit`
+in `tests/integration/test_qt_widgets.py`, and
+`test_the_accessible_tree_names_each_setting_slider_and_gives_its_value_with_the_unit`
+and `test_each_compared_run_s_dials_name_the_run_to_a_screen_reader` in
+`tests/integration/simulation_view/test_simulation_view_controls.py`).
+<!-- not-restated: 4.0 L/min -->
+<!-- not-restated: 1.80 % -->
+
 #### Minimum contrast for text and graphics
 
 Two criteria carry most of the weight:

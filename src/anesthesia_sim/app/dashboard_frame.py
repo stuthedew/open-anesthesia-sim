@@ -1756,12 +1756,35 @@ def _setting_words(
 
     name = control.name if control.name is not None else format_delivered_label(agent_display_name)
 
-    if control.control is ControlInput.DELIVERED:
-        return name, format_percent(
+    return name, setting_value_text(control.control, value)
+
+
+def setting_value_text(control: ControlInput, value: float) -> str:
+    """Return a setting's value as the readout above its slider prints it, with its unit.
+
+    The readout, the preview's label in the plot and the value a screen
+    reader hears from the slider all take their text from here, so the three
+    cannot word one setting two ways (`PL-9QY5`).
+
+    Args:
+        control: The setting.
+        value: The setting, in the control's own unit: litres per minute for
+            a flow, and percent of one atmosphere for the dial.
+
+    Returns:
+        The value and its unit, such as "1.80%" or "4.0 L/min".
+
+    Raises:
+        SimulationConfigurationError: If the dial's value is not a percent
+            from 0 to 100 (`fraction_from_percent`).
+    """
+
+    if control is ControlInput.DELIVERED:
+        return format_percent(
             fraction_from_percent(Percent(value, name="delivered_concentration_percent"))
         )
 
-    return name, format_flow(value)
+    return format_flow(value)
 
 
 def preview_label(

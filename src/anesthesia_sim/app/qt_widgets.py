@@ -43,6 +43,7 @@ can reach is declared on the palette instead, by
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -63,6 +64,8 @@ from PySide6.QtCore import (
     Signal,
 )
 from PySide6.QtGui import (
+    QAccessible,
+    QAccessibleValueInterface,
     QColor,
     QFont,
     QFontMetrics,
@@ -77,6 +80,7 @@ from PySide6.QtGui import (
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
+    QAccessibleWidget,
     QApplication,
     QComboBox,
     QDateEdit,
@@ -104,6 +108,7 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.branch_controls import FORK_POINT_LABEL, TAKE_FORK_LABEL
 from anesthesia_sim.app.chart_frame import trace_style
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import (
     ADD_MARK_LABEL,
     COMPARTMENT_FIELD_LABEL,
@@ -133,6 +138,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_columns,
     readout_row_width,
     report_fault_text,
+    setting_value_text,
     slider_position,
     slider_value,
     widest_fork_point_label,
@@ -1231,21 +1237,69 @@ class _SettingSlider(QSlider):
     would repeat into the run with no announcement, and its steps would be
     counted as part of the drag.
 
+    **Assistive technology is told the setting, not the position**
+    (`PL-9QY5`). The slider's position is a count of display steps, such as
+    180 for 1.80% sevoflurane, and Qt's own accessible slider reports that
+    count. `_SettingSliderAccessible` reports the value the position stands
+    for instead, in the setting's own unit.
+
     Attributes:
         jumping: True only while a press on the track moves the handle to
             the pointer.
+        control: The setting this slider sets, which words its value for
+            assistive technology.
+        decimals: The setting's display resolution, as in
+            `SettingReadout.decimals`.
         input_started: Emitted at the start of each input, before the value
             it applies arrives.
     """
 
     input_started = Signal()
 
-    def __init__(self) -> None:
+    def __init__(self, control: ControlInput, decimals: int) -> None:
+        """Build the slider for one setting.
+
+        Args:
+            control: The setting this slider sets.
+            decimals: The setting's display resolution.
+        """
+
         super().__init__(Qt.Orientation.Horizontal)
+        _install_setting_slider_accessibility()
         self.jumping = False
+        self.control = control
+        self.decimals = decimals
         self._grab_offset: int | None = None
         self._ignored_keys: set[int] = set()
         self._ignoring_swipe = False
+
+    def setting(self) -> float:
+        """Return the setting that the slider's value stands for, in the setting's unit."""
+
+        return slider_value(self.value(), self.decimals)
+
+    def apply_from_assistive_technology(self, setting: float) -> None:
+        """Apply a setting that assistive technology asks for, as one input, like a key press.
+
+        A screen reader's own command to set a slider's value arrives here
+        in the setting's unit. It is announced first, as each input is, and
+        it is ignored while a pointer holds the handle, as a key press is
+        (`PL-M3H5`). A setting outside the slider's range is taken as its
+        nearest end. A value that is not a finite number is ignored, so no
+        adjustment is announced that no value follows.
+
+        Args:
+            setting: The setting asked for, in the setting's unit.
+        """
+
+        if self.isSliderDown() or not math.isfinite(setting):
+            return
+
+        lowest = slider_value(self.minimum(), self.decimals)
+        highest = slider_value(self.maximum(), self.decimals)
+        position = slider_position(min(max(setting, lowest), highest), self.decimals)
+        self.input_started.emit()
+        self.setValue(position)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
         if self.isSliderDown():
@@ -1376,6 +1430,155 @@ class _SettingSlider(QSlider):
         )
 
 
+class _SettingSliderValue(QAccessibleValueInterface):
+    """Tell assistive technology a setting slider's value in the setting's unit, never its position.
+
+    Each platform's bridge reads a different part of a slider's accessible
+    interface, as Qt 6.10's source shows (read 2026-11-23). On macOS,
+    VoiceOver's value is `currentValue` turned into text, and a value it sets
+    arrives as a number (`qcocoaaccessibility.mm`, `getValueAttribute`;
+    `qcocoaaccessibilityelement.mm`, `accessibilitySetValue`). On Linux,
+    AT-SPI reads and sets `currentValue`, its bounds and its step as numbers
+    (`atspiadaptor.cpp`, `AtSpiAdaptor::valueInterface`). On Windows, UI
+    Automation reads the value pattern's text from `text(QAccessible.Text.Value)`
+    and the range from the numbers (`qwindowsuiavalueprovider.cpp`,
+    `qwindowsuiarangevalueprovider.cpp`).
+
+    So the numbers here are in the setting's unit, and
+    `_SettingSliderAccessible` gives the readout's own text as the value
+    text. The value text then carries the unit where a platform reads it, as
+    the slider pattern's `aria-valuetext` does where a number alone is not
+    understandable (W3C WAI-ARIA Authoring Practices, Slider Pattern, read
+    2026-11-23). macOS reads only the number, so `ParameterSlider` puts the
+    unit in the slider's accessible name as well.
+
+    This is an object of its own, not a second base class of
+    `_SettingSliderAccessible`. A Python class with two wrapped Qt bases holds
+    two C++ objects, and Qt's `interface_cast` then received the widget
+    interface's address where it asked for the value interface's. A platform
+    bridge calling `currentValue` through that address would have called
+    another method of the widget interface (measured 2026-11-23, PySide6 6.12).
+    """
+
+    def __init__(self, slider: _SettingSlider) -> None:
+        """Describe one setting slider's value.
+
+        Args:
+            slider: The slider described.
+        """
+
+        super().__init__()
+        self._slider = slider
+
+    def currentValue(self) -> float:  # Qt spells this in camelCase.
+        """Return the setting in force at the slider, in the setting's unit."""
+
+        return self._slider.setting()
+
+    def setCurrentValue(self, value: object) -> None:  # Qt spells this in camelCase.
+        """Apply a setting that assistive technology asks for, in the setting's unit."""
+
+        if isinstance(value, int | float):
+            self._slider.apply_from_assistive_technology(float(value))
+
+    def minimumValue(self) -> float:  # Qt spells this in camelCase.
+        """Return the slider's lowest setting, in the setting's unit."""
+
+        return slider_value(self._slider.minimum(), self._slider.decimals)
+
+    def maximumValue(self) -> float:  # Qt spells this in camelCase.
+        """Return the slider's highest setting, in the setting's unit."""
+
+        return slider_value(self._slider.maximum(), self._slider.decimals)
+
+    def minimumStepSize(self) -> float:  # Qt spells this in camelCase.
+        """Return one step of the slider, in the setting's unit."""
+
+        return slider_value(1, self._slider.decimals)
+
+
+class _SettingSliderAccessible(QAccessibleWidget):
+    """Describe a setting slider to assistive technology, with its value in the setting's unit.
+
+    The value is `_SettingSliderValue`, and the value text is the text the
+    readout beside the slider prints, from `setting_value_text`.
+    """
+
+    def __init__(self, slider: _SettingSlider) -> None:
+        """Describe one setting slider.
+
+        Args:
+            slider: The slider described.
+        """
+
+        super().__init__(slider, QAccessible.Role.Slider)
+        self._slider = slider
+        self._value = _SettingSliderValue(slider)
+
+    # PySide6's stub types the C++ `void *` result as `int`. The binding turns
+    # a returned wrapper into its C++ object's address, which Qt then casts to
+    # the value interface. A number returned here crashed the process.
+    def interface_cast(self, interface: QAccessible.InterfaceType) -> object:  # type: ignore[override]
+        """Return the value object's address for `ValueInterface`, and Qt's result otherwise."""
+
+        if interface is QAccessible.InterfaceType.ValueInterface:
+            return self._value
+
+        return QAccessibleWidget.interface_cast(self, interface)
+
+    def text(self, kind: QAccessible.Text) -> str:
+        """Return the setting as its readout prints it, or Qt's own text for anything else."""
+
+        if kind is QAccessible.Text.Value:
+            return setting_value_text(self._slider.control, self._slider.setting())
+
+        return QAccessibleWidget.text(self, kind)
+
+
+def _setting_slider_accessible(key: str, widget: QObject) -> _SettingSliderAccessible | None:
+    """Return the accessible interface for a setting slider, and nothing for any other object.
+
+    Qt asks each installed factory for an object's interface, once per class
+    name from the object's own class up to `QObject`, and keeps the first
+    interface returned. Returning `None` leaves every other object to Qt.
+
+    Args:
+        key: The class name Qt is asking about.
+        widget: The object Qt is describing.
+
+    Returns:
+        The setting slider's interface, or `None`.
+    """
+
+    if isinstance(widget, _SettingSlider):
+        return _SettingSliderAccessible(widget)
+
+    return None
+
+
+# Whether `_setting_slider_accessible` is installed. Qt keeps one list of
+# factories for the process, so one installation serves every slider.
+_accessibility_installed = False
+
+
+def _install_setting_slider_accessibility() -> None:
+    """Install `_setting_slider_accessible` the first time a setting slider is built.
+
+    PySide6 installs a factory only once a `QApplication` exists, and a
+    widget cannot be built before one, so the first slider is the earliest
+    point that is always late enough. A probe on 2026-11-23 under PySide6
+    6.12 found a factory installed before the `QApplication` never called.
+    """
+
+    global _accessibility_installed
+
+    if _accessibility_installed:
+        return
+
+    QAccessible.installFactory(_setting_slider_accessible)
+    _accessibility_installed = True
+
+
 class ParameterSlider(QWidget):
     """One setting: its name, its gloss, the value in force and an integer slider under it.
 
@@ -1465,17 +1668,20 @@ class ParameterSlider(QWidget):
         self.setObjectName("parameterPanel")
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(panel_stylesheet(self.objectName()))
-        self._decimals = setting.decimals
         # Whether a preview is shown for this slider's held thumb, which
         # `preview_ended` ends.
         self._previewing = False
         # True only while `_on_thumb_released` applies the released value.
         self._releasing = False
+        # The setting's name and unit, and the run's name while runs are
+        # compared, which `_write_accessible_name` puts together.
+        self._setting_name = (setting.name, setting.unit)
+        self._run_name: str | None = None
         self.name_label = styled_label(setting.name, color=INK, bold=True, wrap=True)
         self.qualifier_label = styled_label(
             setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True, wrap=True
         )
-        self.slider = _SettingSlider()
+        self.slider = _SettingSlider(setting.control, setting.decimals)
         self.slider.setSingleStep(1)
         self.slider.setPageStep(1)
         self.slider.setTracking(False)
@@ -1505,6 +1711,28 @@ class ParameterSlider(QWidget):
         self.slider.valueChanged.connect(self._on_slider_moved)
         self.set_setting(setting)
 
+    def name_run(self, run_name: str | None) -> None:
+        """Name the run in the slider's accessible name while runs are compared.
+
+        Each compared run has a row of the same four sliders. A screen reader
+        that moves from one row to the next would otherwise hear two sliders
+        with the same name, and could not tell which run a change goes to.
+
+        Args:
+            run_name: What the run is called while a second run is drawn, or
+                None for a lone run, which is not named.
+        """
+
+        self._run_name = run_name
+        self._write_accessible_name()
+
+    def _write_accessible_name(self) -> None:
+        # macOS reads a slider's value as a bare number, so the name carries
+        # the unit (`_SettingSliderAccessible`).
+        name, unit = self._setting_name
+        subject = name if self._run_name is None else f"{name} for {self._run_name}"
+        self.slider.setAccessibleName(f"{subject}, {unit}")
+
     def set_setting(self, setting: SettingReadout) -> None:
         """Write the range, position and text from this tick's setting.
 
@@ -1521,8 +1749,10 @@ class ParameterSlider(QWidget):
             setting: The control as drawn this tick.
         """
 
-        self._decimals = setting.decimals
+        self.slider.decimals = setting.decimals
         self.name_label.setText(setting.name)
+        self._setting_name = (setting.name, setting.unit)
+        self._write_accessible_name()
         self.qualifier_label.setText(setting.qualifier)
         self.qualifier_label.setHidden(not setting.qualifier)
 
@@ -1541,11 +1771,11 @@ class ParameterSlider(QWidget):
     def value(self) -> float:
         """The value the slider's position stands for, in the setting's unit."""
 
-        return slider_value(self.slider.value(), self._decimals)
+        return self.slider.setting()
 
     def _on_slider_moved(self, position: int) -> None:
         dial_input = DialInput.RELEASE if self._releasing else DialInput.STEP
-        self.value_changed.emit(slider_value(position, self._decimals), dial_input)
+        self.value_changed.emit(slider_value(position, self.slider.decimals), dial_input)
 
     def _on_thumb_pressed(self) -> None:
         """Start a preview where the handle stands, unless the press was on the groove.
@@ -1558,11 +1788,11 @@ class ParameterSlider(QWidget):
             return
 
         self._previewing = True
-        self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self._decimals))
+        self.preview_moved.emit(slider_value(self.slider.sliderPosition(), self.slider.decimals))
 
     def _on_thumb_moved(self, position: int) -> None:
         self._previewing = True
-        self.preview_moved.emit(slider_value(position, self._decimals))
+        self.preview_moved.emit(slider_value(position, self.slider.decimals))
 
     def _on_thumb_released(self) -> None:
         """Apply where the thumb was released, then end the preview.
