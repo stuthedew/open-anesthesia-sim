@@ -355,3 +355,31 @@ def test_a_recorded_change_is_stamped_with_the_instant_it_took_effect() -> None:
     _advance_for(controller, 2)
     window = controller.drawn_window(0.0, controller.snapshot().elapsed_s, 150)
     assert change.elapsed_s in window.times_s
+
+
+def test_a_control_changed_again_after_others_at_one_instant_keeps_their_changes() -> None:
+    """A control's second change at one instant merges into its first, and the changes between stay.
+
+    On a paused run every change takes effect at the same instant. Here the
+    fresh gas flow goes from 4 to 5 L/min, the vaporizer from 1.8% to 3%, the
+    alveolar ventilation from 4 to 5 L/min, and the flow again to 6 L/min.
+    The two flow changes are one change from 4 to 6 L/min. The vaporizer and
+    ventilation changes made between them are still recorded, in order.
+    """
+
+    controller = SimulationController()
+
+    controller.set_fresh_gas_flow(FreshGasFlow(5.0))
+    controller.set_delivered_concentration_percent(Percent(3.0))
+    controller.set_alveolar_ventilation(AlveolarVentilation(5.0))
+    controller.set_fresh_gas_flow(FreshGasFlow(6.0))
+
+    flow, dial, ventilation = controller.snapshot().control_timeline
+    # The data files give 4.0 L/min of fresh gas and of alveolar ventilation,
+    # and the run opens at sevoflurane's 1.80%, Mapleson 1996's MAC at age 40.
+    assert flow.control is ControlInput.FRESH_GAS_FLOW
+    assert (flow.previous_value, flow.new_value) == (4.0, 6.0)
+    assert dial.control is ControlInput.DELIVERED
+    assert (dial.previous_value, dial.new_value) == pytest.approx((1.8, 3.0))
+    assert ventilation.control is ControlInput.ALVEOLAR_VENTILATION
+    assert (ventilation.previous_value, ventilation.new_value) == (4.0, 5.0)

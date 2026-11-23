@@ -113,6 +113,18 @@ def test_a_tick_that_owes_one_and_a_half_steps_takes_one_step_then_two() -> None
     assert steps == [1, 2, 1, 2]
 
 
+def test_a_tick_that_owes_one_and_a_half_steps_has_a_control_grid_of_two_steps() -> None:
+    """At 15x with a 100 ms tick, the grid is 2 s, because every second tick takes two steps.
+
+    The test above shows the ticks taking one step and two in turn. A change
+    made during play can therefore wait up to two steps before it acts. Each
+    offered rate owes a whole number of steps per tick, so only a rate like
+    this one tells a count rounded up to whole steps from the 1.5 steps owed.
+    """
+
+    assert PlaybackRate(15).control_grid_s(tick_interval_ms=TICK_INTERVAL_MS) == 2
+
+
 def test_clearing_the_owed_time_owes_nothing() -> None:
     """A run that starts over owes no part of a second from the run before it."""
 
@@ -261,6 +273,17 @@ def test_a_tick_interval_below_one_millisecond_is_refused(interval_ms: int) -> N
 
     with pytest.raises(SimulationConfigurationError, match="at least 1 ms"):
         PlaybackRate(1).simulated_ms_per_tick(tick_interval_ms=interval_ms)
+
+
+def test_a_tick_interval_of_one_millisecond_is_accepted() -> None:
+    """One millisecond is the shortest whole interval, and a tick of it owes the multiplier in ms.
+
+    The test above checks the refused side of the edge. This one checks the
+    accepted side, as `test_a_tick_pace_accepts_an_interval_of_1_ms` does for
+    the pace.
+    """
+
+    assert PlaybackRate(60).simulated_ms_per_tick(tick_interval_ms=1) == 60
 
 
 @pytest.mark.parametrize("interval_ms", [True, 100.0, "100", None])

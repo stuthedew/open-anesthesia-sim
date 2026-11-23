@@ -5,7 +5,10 @@ These tests cover whether a run holds anything a reset would discard.
 `controller_support.py` holds what several of these files share.
 """
 
+import pytest
+
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from tests.integration.controller.controller_support import (
     _advance_for,
@@ -175,3 +178,35 @@ def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
 
     assert branch.snapshot().fresh_gas_flow_l_min == 1.0
     assert branch.snapshot().has_recorded_run is True
+
+
+def test_the_count_of_runs_begun_goes_up_once_at_the_build_and_at_each_reset_and_agent_change() -> (
+    None
+):
+    """The controller counts one run begun when it is built, and one more at each start-over.
+
+    The run view compares the count before and after a Reset or an agent
+    change. A change of count means that the values on screen describe a run
+    that is gone, so the view withholds them until a frame draws and drops
+    the old case's notices and preview (`PL-MVCF`). So every start-over must
+    change the count, the first one after the build included. A refused agent
+    change is refused before anything is cleared, so it leaves the count as
+    it was. The expected counts follow from that rule, counted here by hand.
+    """
+
+    controller = SimulationController()
+
+    assert controller.runs_discarded == 1
+
+    controller.reset()
+
+    assert controller.runs_discarded == 2
+
+    controller.set_agent("desflurane")
+
+    assert controller.runs_discarded == 3
+
+    with pytest.raises(SimulationConfigurationError, match="unknown agent_id"):
+        controller.set_agent("halothane")
+
+    assert controller.runs_discarded == 3

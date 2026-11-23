@@ -532,6 +532,28 @@ def test_a_mark_before_a_sliding_window_s_start_is_neither_drawn_nor_counted() -
     assert run.undrawn_control_marks == 0
 
 
+def test_a_change_at_the_instant_a_fitted_window_ends_is_marked() -> None:
+    """A fitted window ends at the run's newest instant, and a change made then is drawn.
+
+    "Fit run" keeps no space to the right of the run, so a run of exactly
+    15 minutes is drawn on the 15-minute width, which ends at 900 s
+    (`ChartTimeBase.live_headroom_s`). A setting changed at that instant is
+    marked at the live end of the curve it moves.
+    """
+
+    frame = assemble_chart_frame(
+        [_input(_run(900), 900)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
+    )
+
+    assert frame.stop_s == 900.0
+    assert frame.runs[0].control_marks_s == (900,)
+    assert frame.runs[0].undrawn_control_marks == 0
+
+
 def test_chart_columns_is_one_per_pixel_boundary_and_never_below_the_floor() -> None:
     """`PL-GS3R`: the count follows the plot's width, not the span, and rounds a fraction up."""
 
@@ -703,6 +725,32 @@ def test_the_percent_axis_refuses_a_flat_axis_or_no_interval() -> None:
         percent_axis_ticks(6.0, 0)
 
 
+def test_a_top_that_is_a_whole_number_of_round_steps_is_labelled_at_the_top() -> None:
+    """A round step that divides the top exactly is used, and the top itself gets a label.
+
+    In both cases the top divided by the allowed intervals is already a round
+    step. The rounding allowance must count that step as fitting, rather than
+    move on to the next coarser step. It must also count the top as a whole
+    number of steps, so that the label at the top is not dropped. A 2% MAC at
+    the standard top of 3 MAC gives the first case: a 6% axis beside a MAC
+    axis of six half-MAC intervals. Each expected list is worked by hand.
+    """
+
+    assert percent_axis_ticks(6.0, 6) == tuple((float(step), str(step)) for step in range(7))
+    assert percent_axis_ticks(1.0, 2) == ((0.0, "0.0"), (0.5, "0.5"), (1.0, "1.0"))
+
+
+def test_the_percent_axis_accepts_a_single_interval_and_a_top_below_one_percent() -> None:
+    """The axis refuses only a top that is not above zero, or fewer than one interval.
+
+    A top of 0.5% is a valid axis, and one interval is the fewest that the
+    axis may be divided into. The expected list is worked by hand: the step
+    is the whole top, and a step of 0.5 is printed with one decimal.
+    """
+
+    assert percent_axis_ticks(0.5, 1) == ((0.0, "0.0"), (0.5, "0.5"))
+
+
 def test_the_wash_in_axis_is_labelled_at_quarter_fractions_up_to_equilibrium() -> None:
     assert wash_in_axis_ticks() == (
         (0.0, "0.00"),
@@ -725,6 +773,36 @@ def test_wash_in_stretches_break_where_the_domain_does_and_end_on_the_crossing()
 def test_a_crossing_above_the_ceiling_is_not_drawn() -> None:
     assert wash_in_stretches([0.5, 0.9, 1.3], WASH_IN_TERMINUS_CEILING) == [(0, 2)]
     assert wash_in_stretches([0.5, 0.9, 1.04], WASH_IN_TERMINUS_CEILING) == [(0, 3)]
+
+
+def test_a_crossing_column_exactly_at_the_ceiling_is_drawn() -> None:
+    """A crossing column whose quotient equals the ceiling is drawn, at either end of a stretch.
+
+    The ceiling is the highest quotient that a crossing column may have.
+    """
+
+    ceiling = WASH_IN_TERMINUS_CEILING
+
+    assert wash_in_stretches([0.5, 0.9, ceiling], ceiling) == [(0, 3)]
+    assert wash_in_stretches([ceiling, 0.9, 0.5], ceiling) == [(0, 3)]
+
+
+def test_a_stretch_that_returns_to_wash_in_starts_on_its_crossing_column() -> None:
+    """A stretch extends back to the column where its curve crossed equilibrium, as it does ahead.
+
+    The quotients are those of a run whose dial was closed and then opened
+    again. The ratio rose above equilibrium, then fell back through it. The
+    column at 1.02 is the crossing before the second stretch, so that stretch
+    starts there, on the line. The column at 1.3 is above the ceiling, so the
+    first stretch ends where its in-domain columns end. In the second case the
+    window opens on the crossing column, and the stretch extends back to it
+    too.
+    """
+
+    quotients = [0.9, 1.3, 1.02, 0.5, 0.6]
+
+    assert wash_in_stretches(quotients, WASH_IN_TERMINUS_CEILING) == [(0, 1), (2, 5)]
+    assert wash_in_stretches(quotients[2:], WASH_IN_TERMINUS_CEILING) == [(0, 3)]
 
 
 def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> None:
@@ -752,6 +830,43 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     assert 1.0 < stretch.ratios[-1] <= WASH_IN_TERMINUS_CEILING
     assert all(ratio <= 1.0 for ratio in stretch.ratios[:-1])
     assert run.undrawn_wash_in_stretches == 0
+
+
+def test_a_run_that_returns_to_wash_in_draws_two_stretches_and_only_the_first_ends() -> None:
+    """Each stretch holds only its own columns, and only the stretch that stopped has a terminus.
+
+    The run washes in at a 2% dial for 10 minutes, eliminates with the dial
+    closed for 5 minutes, and washes in again at 4%. The first stretch ends on
+    its crossing column. The second runs to the run's live end, which is not
+    an ending, so it carries no terminus marker. Both stretches are checked
+    against the wash-in domain and the time the dial was opened again, not
+    against values read from the frame.
+    """
+
+    controller = SimulationController()
+    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.start()
+    _advance(controller, 600)
+    controller.set_delivered_concentration_percent(Percent(0.0))
+    _advance(controller, 300)
+    controller.set_delivered_concentration_percent(Percent(4.0))
+    _advance(controller, 300)
+    frame = assemble_chart_frame(
+        [_input(controller)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
+    )
+    first, second = frame.runs[0].wash_in
+
+    assert first.ends_above_equilibrium
+    assert not second.ends_above_equilibrium
+    # The dial was opened again at 900 s, and wash-in cannot resume before it.
+    assert first.times_s[-1] < 900.0 < second.times_s[0]
+    # Every point except a stretch's crossing column is inside the wash-in domain.
+    assert all(is_wash_in(ratio) for ratio in first.ratios[:-1])
+    assert all(is_wash_in(ratio) for ratio in second.ratios[1:])
 
 
 @pytest.mark.parametrize(("time_base_s", "plot_width_px"), [(14400, 1200), (43200, 900)])
@@ -1016,6 +1131,22 @@ def test_a_wash_in_stretch_refuses_a_non_finite_ratio(ratio: float) -> None:
         match=rf"^the wash-in ratio F_A/F_I at 8\.0 s is {ratio}, which is not finite$",
     ):
         WashInStretch((4.0, 8.0), (0.5, ratio), False)
+
+
+def test_a_wash_in_stretch_refuses_instants_and_ratios_of_different_lengths() -> None:
+    """A stretch holds one ratio for each drawn instant, so tuples of different lengths are refused.
+
+    Every reader takes an instant and its ratio at the same index. A stretch
+    whose tuples differ in length cannot be read that way, so it is refused
+    when it is built rather than when it is drawn. The refusal is the
+    `ValueError` that `zip(..., strict=True)` raises.
+    """
+
+    with pytest.raises(ValueError):
+        WashInStretch((4.0, 8.0, 12.0), (0.5, 0.6), False)
+
+    with pytest.raises(ValueError):
+        WashInStretch((4.0, 8.0), (0.5, 0.6, 0.7), False)
 
 
 def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> None:
@@ -1904,6 +2035,68 @@ def test_the_wash_in_hover_answers_its_own_stretches_in_its_own_units() -> None:
     assert nearest_wash_in_point(frame, 100.0, 1.0, **reach) is None
 
 
+def test_a_point_exactly_one_radius_from_the_pointer_is_reported_on_both_plots() -> None:
+    """The radius is how far a point may be and still be reported, so a point that far is reported.
+
+    The pointer is level with the drawn point at 100 s and 12 s to its right.
+    At one second per pixel, that is exactly 12 px, which is the radius. The
+    next drawn instant is 100 s further on, so the pointer still names 100 s.
+    A pointer the smallest possible step further right is out of reach.
+    """
+
+    run = _run_frame((0.0, 100.0, 200.0), alveolar=(0.0, 0.01, 0.01))
+    frame = _frame(run, visible=(RecordedQuantity.ALVEOLAR,))
+    beyond_s = nextafter(112.0, inf)
+
+    on_trace = nearest_trace_point(frame, 112.0, 1.0, 1.0, 0.01, 12.0)
+    on_wash_in = nearest_wash_in_point(frame, 112.0, 0.71, 1.0, 0.002, 12.0)
+
+    assert on_trace is not None
+    assert (on_trace.anchor.time_s, on_trace.anchor.value) == (100.0, 1.0)
+    assert on_wash_in is not None
+    assert (on_wash_in.anchor.time_s, on_wash_in.anchor.value) == (100.0, 0.71)
+    assert nearest_trace_point(frame, beyond_s, 1.0, 1.0, 0.01, 12.0) is None
+    assert nearest_wash_in_point(frame, beyond_s, 0.71, 1.0, 0.002, 12.0) is None
+
+
+def test_a_pointer_past_a_run_s_last_drawn_instant_reads_that_instant_on_both_plots() -> None:
+    """Past the last drawn point, the drawn instant nearest the pointer in time is the last one.
+
+    "Fit run" can leave the axis wider than the run, so a pointer can rest in
+    the empty space to the right of the live end. Here it is 3 px to the right
+    of the last point.
+    """
+
+    run = _run_frame((0.0, 100.0, 200.0), alveolar=(0.0, 0.01, 0.012))
+    frame = _frame(run, visible=(RecordedQuantity.ALVEOLAR,))
+
+    on_trace = nearest_trace_point(frame, 203.0, 1.2, 1.0, 0.01, 12.0)
+    on_wash_in = nearest_wash_in_point(frame, 203.0, 0.71, 1.0, 0.002, 12.0)
+
+    assert on_trace is not None and on_trace.anchor.time_s == 200.0
+    assert on_wash_in is not None and on_wash_in.anchor.time_s == 200.0
+
+
+def test_a_pointer_midway_across_a_wash_in_gap_reads_the_earlier_stretch() -> None:
+    """A pointer equally far in time from two stretches reads the earlier one.
+
+    The first stretch ends on its crossing column at 60 s, and the next one
+    starts on its crossing column at 80 s. A pointer at 70 s is 10 s from
+    each. A tie between two columns of one stretch goes to the earlier column,
+    and a tie between two stretches goes the same way. So the instant that the
+    readout states depends only on where the pointer is.
+    """
+
+    early = WashInStretch((40.0, 50.0, 60.0), (0.97, 0.99, 1.02), True)
+    late = WashInStretch((80.0, 90.0), (1.03, 0.98), False)
+    run = replace(_run_frame((40.0, 90.0)), wash_in=(early, late))
+
+    target = nearest_wash_in_point(_frame(run), 70.0, 1.025, 1.0, 0.002, 12.0)
+
+    assert target is not None
+    assert (target.anchor.time_s, target.anchor.value) == (60.0, 1.02)
+
+
 def test_a_run_out_of_reach_leaves_the_three_line_form_standing() -> None:
     """Reporting every run in reach is not the same as reporting every run drawn.
 
@@ -2031,6 +2224,24 @@ def test_a_compared_hover_is_answered_for_at_least_one_run() -> None:
 
     with pytest.raises(ValueError, match="a chart draws at least one run"):
         format_compared_trace_hover(((run, RecordedQuantity.ALVEOLAR, 0),), 0)
+
+
+def test_a_compared_trace_readout_of_one_point_names_its_agent_compartment_and_run() -> None:
+    """The compared form refuses an empty list of readings, so a single reading is valid input.
+
+    The wash-in plot's compared form is already given a single reading
+    (`test_the_wash_in_hover_withholds_the_ratio_at_an_elimination_terminus`).
+    The expected lines are worked by hand: 1.43% over sevoflurane's 1.8% MAC
+    is 0.79 ×MAC, and 1208 s is 20m8s.
+    """
+
+    run = _run_frame((1208.0,), alveolar=(0.0143,))
+
+    assert format_compared_trace_hover(((run, RecordedQuantity.ALVEOLAR, 0),), 2).splitlines() == [
+        "Modelled sevoflurane",
+        "Alveolar (end-tidal-equivalent)",
+        "Run 1 · 20m8s   1.43%   0.79 ×MAC",
+    ]
 
 
 def test_the_wash_in_hover_answers_every_run_in_reach_in_its_own_units() -> None:
@@ -2286,6 +2497,41 @@ def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:
 
     assert frame.start_s > 60.0
     assert frame.runs[1].branch_point_s is None
+
+
+def test_a_fork_on_either_edge_of_the_window_is_marked_there() -> None:
+    """The window includes both of its edges, so a fork that falls on one is drawn.
+
+    A branch taken at the trunk's newest instant forks on the right edge of a
+    fitted window: both runs stand at 900 s, which is where that window ends.
+    A chosen 15-minute width that follows a trunk at 1 200 s starts at 318 s.
+    That is 1 200 s, plus 2% of the width as headroom (18 s), less the 900 s
+    width. A branch taken at 318 s forks on that left edge.
+    """
+
+    trunk = _run(900)
+    at_right = assemble_chart_frame(
+        (_input(trunk), _input(BranchedCase(trunk).fork_at(CaseInstant(900)), run_index=1)),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
+    )
+
+    assert at_right.stop_s == 900.0
+    assert at_right.runs[1].branch_point_s == 900
+
+    trunk = _run(1200)
+    at_left = assemble_chart_frame(
+        (_input(trunk), _input(BranchedCase(trunk).fork_at(CaseInstant(318)), run_index=1)),
+        time_base_for_span(900.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
+    )
+
+    assert at_left.start_s == 318.0
+    assert at_left.runs[1].branch_point_s == 318
 
 
 # ---------------------------------------------------- previewing a dragged setting

@@ -53,9 +53,7 @@ from anesthesia_sim.app.controller import BranchedCase, SettingPreview, Simulati
 from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     PREVIEW_TIME_AXIS_CAPTION_TEMPLATE,
-    compared_trace_legend_label,
     run_label,
-    trace_legend_label,
 )
 from anesthesia_sim.app.formatting import (
     format_chart_time_label,
@@ -63,7 +61,6 @@ from anesthesia_sim.app.formatting import (
     mac_axis_ticks,
 )
 from anesthesia_sim.app.qt_chart import (
-    BRANCH_POINT_LEGEND_LABEL,
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
     HOVER_RADIUS_PIXELS,
@@ -1998,6 +1995,18 @@ def _dashes_px(pen) -> list[float]:
     return [length * pen.widthF() for length in pen.dashPattern()]
 
 
+#: Each compartment's legend words: its name and its line style, from the table
+#: in `docs/INTERFACE.md` § "The six compartment traces: what separates them".
+COMPARTMENT_LEGEND_WORDS = {
+    RecordedQuantity.CIRCUIT: "Circuit (solid)",
+    RecordedQuantity.ALVEOLAR: "Alveolar (long dash)",
+    RecordedQuantity.MIXED_VENOUS: "Mixed venous (short dash)",
+    RecordedQuantity.VESSEL_RICH: "Vessel-rich (even dash)",
+    RecordedQuantity.MUSCLE: "Muscle (dotted)",
+    RecordedQuantity.FAT: "Fat (dash-dot)",
+}
+
+
 def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     application: QApplication,
 ) -> None:
@@ -2069,7 +2078,10 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
 
     # Every drawn curve has a legend entry that names both its compartment and
     # its run, drawn in the curve's own pen, so the legend cannot describe a
-    # line the plot is not drawing.
+    # line the plot is not drawing. The expected words are written out here,
+    # never built by the functions that write the legend. The run at index i
+    # was given `RUN_IDS[i]`, so it is called "Run" followed by i + 1
+    # (`docs/INTERFACE.md` § "Naming the run in a comparison").
     marks = legend.compared_marks
 
     assert len(marks) == len(frame.visible) * len(frame.runs)
@@ -2077,45 +2089,47 @@ def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
     for mark in marks:
         assert not mark.vertical
 
+    def words(quantity: RecordedQuantity, index: int) -> str:
+        return f"{COMPARTMENT_LEGEND_WORDS[quantity]}, Run {index + 1}"
+
     named = {mark.label for mark in marks}
     expected = {
-        compared_trace_legend_label(
-            trace_legend_label(trace_style(quantity)), run_label(RUN_IDS[index])
-        )
-        for quantity in frame.visible
-        for index in range(len(frame.runs))
+        words(quantity, index) for quantity in frame.visible for index in range(len(frame.runs))
     }
 
     assert named == expected
 
     for quantity in frame.visible:
         for index in range(len(frame.runs)):
-            label = compared_trace_legend_label(
-                trace_legend_label(trace_style(quantity)), run_label(RUN_IDS[index])
-            )
-            entry = next(mark for mark in marks if mark.label == label)
+            entry = next(mark for mark in marks if mark.label == words(quantity, index))
             drawn = chart.drawn_pen(index, quantity)
 
             assert entry.pen.color().name() == drawn.color().name()
             assert entry.pen.widthF() == drawn.widthF()
             assert _dashes_px(entry.pen) == pytest.approx(_dashes_px(drawn))
 
-    # Every run's name appears in text, on both legends, and the fork is named.
-    wash_in_named = {mark.label for mark in wash_in_legend.compared_marks}
+    # The wash-in legend names each run too, each beside its own curve's pen,
+    # since the width is all that tells the two curves apart.
+    wash_in_marks = wash_in_legend.compared_marks
 
-    assert wash_in_named == {
-        compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, run_label(RUN_IDS[index]))
-        for index in range(len(frame.runs))
-    }
+    assert len(wash_in_marks) == len(frame.runs)
 
     for index in range(len(frame.runs)):
-        assert any(run_label(RUN_IDS[index]) in label for label in named)
+        entry = next(
+            mark
+            for mark in wash_in_marks
+            if mark.label == f"F<sub>A</sub>/F<sub>I</sub> (solid), Run {index + 1}"
+        )
+        drawn = wash_in.drawn_pen(index)
 
-    branch_mark = legend.branch_mark
+        assert entry.pen.color().name() == drawn.color().name()
+        assert entry.pen.widthF() == drawn.widthF()
 
-    assert branch_mark is not None
-    assert branch_mark.label == BRANCH_POINT_LEGEND_LABEL
-    assert branch_mark.vertical
+    # Both legends name the branch point beside a vertical line.
+    for branch_mark in (legend.branch_mark, wash_in_legend.branch_mark):
+        assert branch_mark is not None
+        assert branch_mark.label == "Branch point (vertical, solid)"
+        assert branch_mark.vertical
 
 
 # ------------------------------------------------------ the preview of a dragged setting

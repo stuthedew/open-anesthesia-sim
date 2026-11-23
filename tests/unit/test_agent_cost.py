@@ -564,3 +564,23 @@ def test_an_entry_that_states_another_price_is_dated_at_the_day_of_entry(
         entry_date(_STORED_PRICE, bottle_price, bottle_volume_ml, currency, _ENTRY_DAY)
         == _ENTRY_DAY
     )
+
+
+def test_a_cost_is_drawn_as_a_value_and_a_missing_cost_as_a_reason_under_one_label() -> None:
+    """The readout says whether it holds a cost or a reason, and names the agent either way.
+
+    The panel draws a reason as a sentence rather than as a value, so that the
+    reason is never the largest text on screen (`PL-PZD9`). The label over
+    both says in words that the price is the reader's (`docs/INTERFACE.md`
+    § "A cost at the reader's price", item 6). So a readout with no cost
+    still names the run's agent, as one with a cost does.
+    """
+
+    shown = delivered_shown(_run("isoflurane", 2.0, 8.0, 13.0))
+    priced = cost_shown(shown, _priced(_GAS_MAN_ISOFLURANE))
+    unpriced = cost_shown(shown, Preferences())
+
+    assert priced.is_reason is False
+    assert unpriced.is_reason is True
+    assert priced.label == "Cost of the isoflurane, at your price"
+    assert unpriced.label == "Cost of the isoflurane, at your price"

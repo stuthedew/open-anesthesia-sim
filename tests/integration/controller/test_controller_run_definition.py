@@ -5,6 +5,7 @@ These tests cover the run definition and the drawn window it supplies.
 `controller_support.py` holds what several of these files share.
 """
 
+import math
 from collections.abc import Callable
 
 import pytest
@@ -20,6 +21,7 @@ from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationExecutionError
 from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
+from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.stored_states import StoredStates
 from anesthesia_sim.core.supported_ranges import (
@@ -763,3 +765,88 @@ def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() ->
             f"the dial change at {change_s} s is not drawn at the {time_base.span_s} s time base"
         )
         assert window.times_s[-1] == pytest.approx(min(time_base.span_s, elapsed_s))
+
+
+def _alveolar_fractions_after_the_dial_is_lowered_stepped_in_core(run_s: int) -> list[float]:
+    """Return each second's alveolar fraction of 8% sevoflurane lowered to 1% at 120 s.
+
+    The run is stepped in `core/` without a controller, so the expected values
+    are not read from the controller under test.
+    """
+
+    state = SimulationState(uptake_system=uptake_system.AgentUptakeSystem.for_agent("sevoflurane"))
+    state.uptake_system.set_delivered_concentration_percent(Percent(8.0))
+    fractions = [state.uptake_system.case_state()[ALVEOLAR_FRACTION]]
+
+    for second in range(1, run_s + 1):
+        fractions.append(state.advance().state[ALVEOLAR_FRACTION])
+
+        if second == 120:
+            state.uptake_system.set_delivered_concentration_percent(Percent(1.0))
+
+    return fractions
+
+
+def test_a_peak_between_the_two_columns_of_a_narrow_window_is_drawn() -> None:
+    """A window of a few seconds still draws a peak that falls between two of its columns.
+
+    After the dial is lowered from 8% to 1% at 120 s, the alveoli keep
+    filling for a few seconds, and the alveolar fraction peaks at 128 s. An
+    axis from 126 s to 129 s in two columns has one interval of 3 s, so its
+    columns are 126 s and 129 s and the peak lies between them. Each stretch
+    between two columns is searched for a peak, and the search is skipped
+    only where every second of the window is already a column (`PL-BLZJ`).
+    Without the search, the alveolar trace is drawn below its peak. The
+    peak's second and height come from a run stepped in `core/`.
+    """
+
+    expected = _alveolar_fractions_after_the_dial_is_lowered_stepped_in_core(129)
+    peak_s = max(range(126, 130), key=lambda second: expected[second])
+
+    # The test is of a peak that neither column draws, above both of them.
+    assert 126 < peak_s < 129
+    assert expected[peak_s] > max(expected[126], expected[129])
+
+    controller = SimulationController()
+    controller.set_delivered_concentration_percent(Percent(8.0))
+    controller.start()
+    _advance_for(controller, duration_s=120)
+    controller.set_delivered_concentration_percent(Percent(1.0))
+    _advance_for(controller, duration_s=9)
+
+    window = controller.drawn_window(126.0, 129.0, 2)
+    drawn = dict(
+        zip(
+            window.times_s,
+            window.compartment_fractions(RecordedSeries("sevoflurane", RecordedQuantity.ALVEOLAR)),
+            strict=True,
+        )
+    )
+
+    assert window.times_s[0] == 126
+    assert window.times_s[-1] == 129
+    assert peak_s in drawn
+    assert drawn[peak_s] == expected[peak_s]
+    assert max(drawn.values()) == max(expected[126:130])
+
+
+@pytest.mark.parametrize(
+    ("start_s", "stop_s"), [(0.0, math.inf), (math.nan, 10.0)], ids=["infinite-stop", "nan-start"]
+)
+def test_a_drawn_window_refuses_an_axis_with_either_bound_not_finite(
+    start_s: float, stop_s: float
+) -> None:
+    """An axis whose start or stop alone is not finite is refused.
+
+    Each bound is checked on its own, so an axis that is finite at one end
+    and not at the other is refused as a configuration error, as the drawn
+    window's docstring says. A bound that is not finite has no whole second
+    to round to, so the window could not be clipped to the run.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=10)
+
+    with pytest.raises(SimulationConfigurationError, match="an axis runs between finite instants"):
+        controller.drawn_window(start_s, stop_s, 150)
