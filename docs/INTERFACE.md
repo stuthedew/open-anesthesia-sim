@@ -1894,9 +1894,13 @@ Under the conditions set out below, it may also:
 - form the ratio of two modelled fractions where this document names it as a
   displayed quantity;
 - declare where one adjustment of a control begins, so that the run's record
-  of its inputs can be read as the user's actions that produced it; and
+  of its inputs can be read as the user's actions that produced it;
 - choose how many simulation steps to take at a time, so that a run can be
-  played faster than real time.
+  played faster than real time; and
+- measure how often its tick fires, and name the rate it delivered beside the
+  set rate when the computer falls behind (§ "What the reader chooses: traces,
+  window and playback rate"). The measurement never changes how many steps a
+  run takes.
 
 It must not:
 
@@ -2238,9 +2242,34 @@ count of the steps taken. Whether the run keeps pace with real time depends on
 the computer. When the computer cannot run a tick in time, the tick is lost,
 and no extra steps make it up. The **delivered rate** is the set rate times the
 fraction of ticks that ran. In a measurement on 2026-09-27, every rate from 1×
-to 300× delivered 98.9 to 99.9% of its setting over 8 to 30 s. On a computer
-that loses ticks, the run plays slower than the label says, and nothing on
-screen shows the delivered rate.
+to 300× delivered 98.9 to 99.9% of its setting over 8 to 30 s.
+
+**When the computer falls behind, the line names the delivered rate as well
+as the set one.** The interface measures the delivered rate over the last 50
+ticks, which is 5 s of real time. When it falls below 95% of the set rate, the
+line under the clock reads, for example, "about 240× of 300×". The first number
+is a measurement of the computer, not a setting, and the word "about" says so.
+It is rounded to two significant figures, because one lost tick in the window
+moves it by 2%. The set rate stays on the line, so the mode that the reader
+chose is still shown. A reader timing a wash-in against a watch could notice a
+shortfall of 5% at any rate, and the 2026-09-27 measurement could not tell a
+shortfall of 1% from its own edges, so the threshold sits between the two. The
+line returns to the plain label only when the delivered rate reaches 97%. That
+gap keeps a computer that hovers near 95% from making the line flicker between
+its two forms, which is the reason alarm systems give an alarm a deadband
+wider than its signal's noise. The measurement starts again whenever the run
+pauses, is held by a question, starts over or changes rate, so a pause is never
+counted as lost ticks. A run that is not playing shows the plain label, from the
+frame that Pause draws onward. Below 1% of the set rate, which only a stall of
+minutes inside the window reaches, the line states that bound instead, as
+"below 3.0× of 300×", so the line never needs more room than its panel keeps
+for it. The line stays in the muted colour of the rate label,
+because nothing is wrong with the model. The measurement never changes how
+many steps the run takes, so the run's values are the same whether or not the
+line names a delivered rate.
+<!-- provenance: app/playback.py PACE_WINDOW_TICKS = 50 -->
+<!-- provenance: app/formatting.py DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES = 2 -->
+<!-- not-restated: 5 % -->
 
 ### The code and tests behind the interface boundary
 
@@ -2402,12 +2431,32 @@ The 2026-09-27 measurement used the real dashboard on the offscreen platform,
 with both timers running, and the tick period stayed at 100 ms to within 4 ms.
 <!-- provenance: app/dashboard_frame.py SIMULATION_TICK_INTERVAL_MS = 100 -->
 
-Showing only the set rate is a decision (project owner, 2026-09-27, ratified,
-over qualifying the label as "up to 300×", which trades a precise claim that is
-true for a vague one, and over building the disclosure now). A proposed change
-would show the delivered rate beside the set one when fewer than 95% of ticks
-run over a 50-tick window (`PL-2NYN`). If a delivered rate below 99% is
-measured on the owner's own machine, the decision is reopened (`PL-SQJ1`).
+Showing the set rate, and the delivered rate only when the computer falls
+behind, follows a decision (project owner, 2026-09-27, ratified, over
+qualifying the label as "up to 300×", which trades a precise claim that is
+true for a vague one). `PL-2NYN` built the disclosure. `TickPace` in
+`app/playback.py` records the monotonic clock on each tick that plays the run,
+and `RunView.step_tick` restarts it on every tick that does not. The fraction
+is the time that 50 tick intervals owe divided by the time they took, so a lost
+tick and a late tick both count. Qt emits one timeout for several that fell
+due while its event loop was busy (Qt 6 documentation, `QTimer`, "Accuracy and
+Timer Resolution", https://doc.qt.io/qt-6/qtimer.html), so a lost tick appears as a gap of two intervals. The gap of
+two percentage points follows alarm practice, which sizes a deadband just above
+the signal's noise (ISA, "AutoQuiz: Alarm deadband setting",
+https://blog.isa.org/autoquiz-alarm-deadband-setting). ISA-18.2 clause
+10.5.5.2 requires an alarm system to offer a deadband (as quoted by exida, "Why
+should I use an alarm deadband?",
+https://www.exida.com/Blog/why-should-i-use-an-alarm-deadband). The clock line is built by
+`dashboard_frame.clock_playback_line` and worded by
+`formatting.format_delivered_playback_rate`. The clock panel reserves the width
+of the longest delivered-rate line, so the panel does not move when the line
+changes form. Tests with a fake clock hold the threshold on both sides, the
+deadband and the restart (`tests/unit/test_playback.py`), and the line drawn on
+screen, the run's unchanged values and the return to the plain label
+(`test_a_computer_that_falls_behind_shows_the_delivered_rate_beside_the_set_one`
+in `tests/integration/simulation_view/test_simulation_view_loops.py`). If a
+delivered rate below 99% is measured on the owner's own machine, the decision
+is reopened (`PL-SQJ1`).
 
 ## Minimum displayed outputs
 
@@ -2420,8 +2469,11 @@ entry are the tests that check whether the output is drawn on the display.
   wherever simulated time is drawn, and at every rate, including real time
   (`test_the_playback_rate_is_drawn_under_the_clock_it_governs`). A paused,
   reset or halted run still shows the rate it would play at. The status word in
-  the row of playback controls says whether the clock is moving. See
-  § "Interface boundary" for what the rate does and does not assert;
+  the row of playback controls says whether the clock is moving. While the
+  computer delivers less than 95% of the set rate, the line also names the
+  delivered rate
+  (`test_a_computer_that_falls_behind_shows_the_delivered_rate_beside_the_set_one`).
+  See § "Interface boundary" for what the rate does and does not assert;
 - how much simulated time the chart is showing, and whether that span was the
   reader's choice or fits the whole run so far
   (`test_the_axis_caption_states_the_span_the_chart_is_showing`,

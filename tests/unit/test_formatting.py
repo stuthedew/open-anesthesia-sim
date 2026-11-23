@@ -54,6 +54,7 @@ from anesthesia_sim.app.formatting import (
     format_compartment_amount,
     format_compartment_share,
     format_delivered_label,
+    format_delivered_playback_rate,
     format_elapsed,
     format_entered_figure,
     format_mac_awake_reference,
@@ -2387,3 +2388,72 @@ def test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_perc
     largest_relative_rounding = 0.5 / 10 ** (PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES - 1)
 
     assert largest_relative_rounding == pytest.approx(0.0005)
+
+
+@pytest.mark.parametrize(
+    ("multiplier", "delivered_fraction", "line"),
+    [
+        # 300 x 0.91 = 273, which two significant figures give as 270.
+        (300, 0.91, "about 270\u00d7 of 300\u00d7"),
+        # 60 x 0.5 = 30.
+        (60, 0.5, "about 30\u00d7 of 60\u00d7"),
+        # 5 x 0.9 = 4.5, kept to one decimal.
+        (5, 0.9, "about 4.5\u00d7 of 5\u00d7"),
+        # 1 x 0.9 = 0.90, whose trailing zero is a significant figure.
+        (1, 0.9, "about 0.90\u00d7 of 1\u00d7"),
+        # 20 x 0.499 = 9.98, which rounds up to 10 and is shown with two figures.
+        (20, 0.499, "about 10\u00d7 of 20\u00d7"),
+        # 1% of 1x is 0.010x, still a measurement.
+        (1, 0.01, "about 0.010\u00d7 of 1\u00d7"),
+        # Below 1% the line states the bound: 1% of 1x is 0.010x, of 300x 3.0x.
+        (1, 0.0099, "below 0.010\u00d7 of 1\u00d7"),
+        (300, 0.0033, "below 3.0\u00d7 of 300\u00d7"),
+        (300, 1e-9, "below 3.0\u00d7 of 300\u00d7"),
+    ],
+)
+def test_the_delivered_rate_line_names_both_rates_to_two_figures(
+    multiplier: int, delivered_fraction: float, line: str
+) -> None:
+    """Each expected line is worked out by hand from the set rate and the fraction."""
+
+    assert format_delivered_playback_rate(multiplier, delivered_fraction) == line
+
+
+@pytest.mark.parametrize("multiplier", [1, 5, 20, 60, 300])
+def test_a_named_delivered_rate_never_rounds_up_to_the_set_rate(multiplier: int) -> None:
+    """Just below the 97% at which the line clears, the delivered figure is still smaller.
+
+    Otherwise the line would read "about 300x of 300x", a shortfall that
+    states no shortfall.
+    """
+
+    line = format_delivered_playback_rate(multiplier, 0.9699)
+    delivered = float(line.removeprefix("about ").split("\u00d7")[0])
+
+    assert delivered < multiplier
+
+
+@pytest.mark.parametrize(
+    ("multiplier", "delivered_fraction", "error", "named"),
+    [
+        (300, 1.0, ValueError, "1.0"),
+        (300, 0.0, ValueError, "0.0"),
+        (300, -0.5, ValueError, "-0.5"),
+        (300, float("nan"), ValueError, "nan"),
+        (0, 0.5, ValueError, "0"),
+        (300.0, 0.5, TypeError, "300.0"),
+        (True, 0.5, TypeError, "True"),
+        (300, True, TypeError, "True"),
+        (300, "0.5", TypeError, "'0.5'"),
+    ],
+)
+def test_the_delivered_rate_line_refuses_a_rate_or_fraction_it_cannot_state(
+    multiplier: object, delivered_fraction: object, error: type[Exception], named: str
+) -> None:
+    """A fraction of 1 or more is no shortfall, and a non-number is a defect upstream.
+
+    Each refusal names the value that failed, so the input behind it can be found.
+    """
+
+    with pytest.raises(error, match=f"not {re.escape(named)}$"):
+        format_delivered_playback_rate(multiplier, delivered_fraction)  # type: ignore[arg-type]
