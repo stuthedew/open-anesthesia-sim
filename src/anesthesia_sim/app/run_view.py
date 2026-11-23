@@ -160,6 +160,7 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import (
+    DialInput,
     FocusRing,
     NewCaseDialog,
     NoticeLabel,
@@ -327,9 +328,13 @@ class RunView(QWidget):
             the run.
         presentation_requested: Emitted with the coalesce flag when an action
             on this run means the dashboard must draw a frame. `True`, as for
-            a slider drag, leaves the frame to the next render tick. `False`
-            asks for a frame now. `SimulationView.present` handles the signal
-            (`PL-R2YM`).
+            a held thumb's movement, leaves the frame to the next render
+            tick. `False` asks for a frame now. `SimulationView.present`
+            handles the signal (`PL-R2YM`).
+        input_presentation_requested: Emitted when a dial input set a
+            value that needs a frame. The dashboard draws one at once unless
+            it has already drawn one for an input since the last render tick
+            (`SimulationView.present_input`, `PL-2WVC`).
         case_restarted: Emitted when this run has started over from
             induction, after a Reset or an accepted change of agent. On a
             trunk run, that starts a new case, so no branch taken from the old
@@ -339,6 +344,7 @@ class RunView(QWidget):
     """
 
     presentation_requested = Signal(bool)
+    input_presentation_requested = Signal()
     case_restarted = Signal()
 
     def __init__(
@@ -974,8 +980,9 @@ class RunView(QWidget):
     def _refresh_against_last_frame(self, snapshot: SimulationSnapshot) -> None:
         """Rewrite this run's own widgets now, from `snapshot`, while the charts wait.
 
-        After a coalesced slider change, what is shown beside the dial must
-        be updated at once. It has to agree with the snapshot from the moment
+        After a dial input, what is shown beside the dial must be updated at
+        once, because the frame for the input may wait for the render tick
+        (`DialInput`). It has to agree with the snapshot from the moment
         the setting is applied (`PL-018`). The frame itself waits for the
         render tick (`PL-R2YM`). The values written here are kept, and the
         dashboard hands them to every View when this run then asks for a
@@ -1135,7 +1142,9 @@ class RunView(QWidget):
     # ------------------------------------------------------------ settings
 
     @halt_gate
-    def _apply_setting(self, apply: Callable[[], None], *, coalesce: bool = False) -> None:
+    def _apply_setting(
+        self, apply: Callable[[], None], *, dial_input: DialInput | None = None
+    ) -> None:
         """Forward one setting to the run, and report how it was received.
 
         A `SimulationConfigurationError` is a refusal. It means that the core rejected
@@ -1151,13 +1160,16 @@ class RunView(QWidget):
         the run failed, and a failed run refuses every dial (`PL-3B34`), so the setting
         that clears that way out is an agent switch, which starts a new case.
 
-        The method leaves the frame for the render tick to draw only when two things
-        are true: `coalesce` is set, and no refusal was in effect before the call or
-        is in effect after it. When a setting is refused, or a refusal is cleared, the
-        dial on screen and the simulation disagree, so the frame for either must not
-        wait for a tick (`PL-R2YM`).
+        A setting that no dial input set, such as Start, draws its frame at once. So
+        does a setting that is refused, or that clears a refusal, because the dial on
+        screen and the simulation then disagree, and the frame for either must not
+        wait for a tick (`PL-R2YM`). Otherwise the dial input decides. A value set by
+        a key, the wheel or a click on the track asks the dashboard for a frame, which
+        it draws at once unless it has drawn one for an input since the last render
+        tick (`SimulationView.present_input`, `PL-2WVC`). A released thumb's value
+        leaves the frame to the end of the preview, which follows at once.
 
-        A coalesced change still rewrites this run's own labels at once, from a
+        A dial input still rewrites this run's own labels at once, from a
         snapshot read after the change. The dashboard then shows every View the runs
         at once, with no frame, so the dials and the other panels of the run move with
         its readouts (`SimulationView.present`). If reading that snapshot raises, the
@@ -1173,8 +1185,8 @@ class RunView(QWidget):
 
         Args:
             apply: The controller call that applies the setting.
-            coalesce: Whether the caller reports continuously, as a dragged
-                slider does.
+            dial_input: The kind of dial input that set the value, or None
+                for a setting that no dial set.
         """
 
         settled_notice = self._rejected_setting_notice
@@ -1187,12 +1199,18 @@ class RunView(QWidget):
             self._rejected_setting_notice = None
             self._refused_reset_notice = None
 
-        deferred = coalesce and settled_notice is None and self._rejected_setting_notice is None
+        settled = settled_notice is None and self._rejected_setting_notice is None
 
-        if deferred:
-            self._refresh_against_last_frame(self.snapshot())
+        if dial_input is None or not settled:
+            self.presentation_requested.emit(False)
+            return
 
-        self.presentation_requested.emit(deferred)
+        self._refresh_against_last_frame(self.snapshot())
+
+        if dial_input is DialInput.RELEASE:
+            self.presentation_requested.emit(True)
+        else:
+            self.input_presentation_requested.emit()
 
     @halt_gate
     def start_adjustment(self) -> None:
@@ -1259,47 +1277,62 @@ class RunView(QWidget):
         self.presentation_requested.emit(False)
 
     @halt_gate
-    def request_setting(self, control: ControlInput, value: float) -> None:
+    def request_setting(self, control: ControlInput, value: float, dial_input: DialInput) -> None:
         """Apply the value that one of this run's dials was moved to, in whichever View holds it.
 
         The dashboard calls this method when a View asks for the change.
+        `dial_input` decides when the frame for it is drawn (`_apply_setting`).
         """
 
-        handlers: Mapping[ControlInput, Callable[[float], None]] = {
+        handlers: Mapping[ControlInput, Callable[[float, DialInput], None]] = {
             ControlInput.FRESH_GAS_FLOW: self._handle_fresh_gas_flow_change,
             ControlInput.DELIVERED: self._handle_delivered_concentration_change,
             ControlInput.ALVEOLAR_VENTILATION: self._handle_alveolar_ventilation_change,
             ControlInput.CARDIAC_OUTPUT: self._handle_cardiac_output_change,
         }
-        handlers[control](value)
+        handlers[control](value, dial_input)
 
     # Each dial's value is built into its checked type inside the call that
     # `_apply_setting` makes. So a value that the model refuses is refused
     # inside that call, and is reported as a refused setting. The vaporizer
     # dial's `Percent` below works the same way (`PL-0YYV`).
+    #
+    # Each handler takes the kind of dial input that set the value
+    # (`_apply_setting`). A test that calls a handler stands for a key, the
+    # wheel or a click on the track, which is the default.
 
-    def _handle_fresh_gas_flow_change(self, flow_l_min: float) -> None:
+    def _handle_fresh_gas_flow_change(
+        self, flow_l_min: float, dial_input: DialInput = DialInput.STEP
+    ) -> None:
         self._apply_setting(
-            lambda: self.controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min)), coalesce=True
+            lambda: self.controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min)),
+            dial_input=dial_input,
         )
 
-    def _handle_delivered_concentration_change(self, percent: float) -> None:
+    def _handle_delivered_concentration_change(
+        self, percent: float, dial_input: DialInput = DialInput.STEP
+    ) -> None:
         self._apply_setting(
             lambda: self.controller.set_delivered_concentration_percent(
                 Percent(percent, name="delivered_concentration_percent")
             ),
-            coalesce=True,
+            dial_input=dial_input,
         )
 
-    def _handle_alveolar_ventilation_change(self, flow_l_min: float) -> None:
+    def _handle_alveolar_ventilation_change(
+        self, flow_l_min: float, dial_input: DialInput = DialInput.STEP
+    ) -> None:
         self._apply_setting(
             lambda: self.controller.set_alveolar_ventilation(AlveolarVentilation(flow_l_min)),
-            coalesce=True,
+            dial_input=dial_input,
         )
 
-    def _handle_cardiac_output_change(self, flow_l_min: float) -> None:
+    def _handle_cardiac_output_change(
+        self, flow_l_min: float, dial_input: DialInput = DialInput.STEP
+    ) -> None:
         self._apply_setting(
-            lambda: self.controller.set_cardiac_output(CardiacOutput(flow_l_min)), coalesce=True
+            lambda: self.controller.set_cardiac_output(CardiacOutput(flow_l_min)),
+            dial_input=dial_input,
         )
 
     # ----------------------------------------------------------- transport
