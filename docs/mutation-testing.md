@@ -261,13 +261,14 @@ of the code:
 
 `COVERAGE_CORE=ctrace` matters. On Python 3.14 and later, coverage 7.15 records
 lines with `sys.monitoring` unless its own settings ask for dynamic contexts
-(`coverage/core.py`). That recorder returns `sys.monitoring.DISABLE` once it
-has recorded a line (`coverage/sysmon.py`, `sysmon_line_lines`), so each line
-is tied only to the first test that ran it in each worker. pytest-cov switches
-the context for each test without that setting, and coverage only warns that
-"context data may be incomplete" (`coverage/control.py`, `switch_context`). On
-2026-11-23 the default recorder tied `trace_legend_label` to 4 tests, and
-`ctrace` tied it to 625.
+(the module `coverage.core` in coverage 7.15.4). That recorder returns
+`sys.monitoring.DISABLE` once it has recorded a line
+(`coverage.sysmon.SysMonitor.sysmon_line_lines`), so each line is tied only to
+the first test that ran it in each worker. pytest-cov switches the context for
+each test without that setting, and coverage only warns that "context data may
+be incomplete" (`coverage.control.Coverage.switch_context`). On 2026-11-23 the
+default recorder tied `trace_legend_label` to 4 tests, and `ctrace` tied it to
+625.
 
 ## Pitfalls
 
