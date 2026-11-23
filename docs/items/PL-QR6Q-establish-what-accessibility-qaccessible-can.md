@@ -10,6 +10,7 @@ touches: ROADMAP.md, src/anesthesia_sim/app
 blocked-by: PL-25KS
 added: 2026-09-13
 closed: 2026-11-23
+pr: 2277
 payoff: stops ROADMAP item 20 promising screen-reader support nobody has checked the shipped toolkit can deliver, before Phase 2 builds controls on top of it
 verify: grep -qF 'so the work left is this project' ROADMAP.md
 ---
