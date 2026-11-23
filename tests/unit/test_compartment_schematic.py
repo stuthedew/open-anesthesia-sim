@@ -281,23 +281,24 @@ def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_near
 
 
 @pytest.mark.parametrize("agent_id", ["sevoflurane", "desflurane", "isoflurane"])
-def test_each_container_is_marked_at_the_chart_s_gridlines(agent_id: str) -> None:
+def test_each_container_is_marked_every_half_mac_of_the_standard_scale(agent_id: str) -> None:
     """`PL-8W1B`: the marks stand at every 0.5 MAC below the 3 MAC top, for every agent.
 
-    The chart rules its axis every 0.5 MAC from 0 to 3 MAC (`docs/INTERFACE.md`
-    § "The compartment schematic: what its heights, amounts and share bar
-    assert"). So a container is marked at five sixths of its height and below,
-    in sixths. The caption names the spacing in percent and in MAC. The percent
-    is half of the agent's MAC, read from its data file apart from the code
-    under test.
+    At its standard top the chart labels its MAC axis every 0.5 MAC from 0 to
+    3 MAC (`docs/INTERFACE.md` § "The compartment schematic: what its heights,
+    amounts and share bar assert"). So a container is marked at five sixths
+    of its height and below, in sixths. The caption names the top in percent
+    and in MAC, and the spacing in MAC. The top's percent is three times the
+    agent's MAC, read from its data file apart from the code under test.
     """
 
     controller = SimulationController(agent_id=agent_id)
     snapshot = controller.snapshot()
-    half_mac = 0.5 * load_agent_parameters(agent_id).mac_at_age_40_percent
+    top = 3 * load_agent_parameters(agent_id).mac_at_age_40_percent
 
     assert scale_marks(snapshot) == pytest.approx([sixth / 6 for sixth in range(1, 6)])
-    assert f"every {half_mac:g}% of 1 atm (0.5 ×MAC)" in scale_caption(snapshot)
+    assert f"0 to {top:g}% of 1 atm (3 ×MAC)" in scale_caption(snapshot)
+    assert "Marks stand every 0.5 ×MAC." in scale_caption(snapshot)
 
 
 def test_withheld_values_draw_no_marks() -> None:
