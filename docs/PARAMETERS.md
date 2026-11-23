@@ -1112,15 +1112,26 @@ paragraph (`test_the_vessel_rich_coefficients_match_yasudas_brain_values_as_prin
 **Yasuda's paper is not a source for the stored blood:gas values.** It measured
 none. Its Table 2 tissue:blood figures are calculated "by dividing the
 tissue/gas partition coefficient by the published values for the blood/gas
-coefficients adjusted for age" (*Anesth Analg* 1989;69(3):370-3). So Table 1 ÷
-Table 2 recovers the age-adjusted blood:gas of the 65.8-year-old cohort. The
+coefficients adjusted for age" (*Anesth Analg* 1989;69(3):370-3). So dividing
+Table 1 by Table 2 should recover the age-adjusted blood:gas values that the
+paper used, for patients whose mean age was 65.8 years. The
 abstract gives Table 2's brain column: 1.70 for sevoflurane, 1.57 for isoflurane
 and 1.29 for desflurane (PMID 2774233). Dividing the brain values above by them,
 it recovers 0.676, 1.331 and 0.419. These are 4.1% and 2.4% above the stored
 sevoflurane and isoflurane values and 0.3% below the stored desflurane value
 (`test_yasudas_brain_column_recovers_the_blood_gas_coefficients_printed`).
-Whether the other tissues' columns give the same values has no test yet
-(`PL-S5JJ`), because the full Table 2 is not in this repository.
+
+Both full tables are on page 371 of the paper. The heart, liver and kidney
+columns recover nearly the brain's values. Across those four organs, the value
+recovered is 4.0% to 4.6% above the stored sevoflurane value, 1.8% to 4.2%
+above the stored isoflurane value, and between 0.3% below and 1.3% above the
+stored desflurane value. The muscle and fat columns recover more: 17.0% and
+10.1% above the stored value for sevoflurane, 15.9% and 10.0% for isoflurane,
+and 10.8% and 5.0% for desflurane. The paper does not say why its muscle and
+fat columns differ from the other four
+(`test_yasudas_full_tables_recover_the_blood_gas_ranges_printed`).
+<!-- not-restated: 1.8 % -->
+<!-- not-restated: 5.0 % -->
 
 #### Why the stored values were kept
 
