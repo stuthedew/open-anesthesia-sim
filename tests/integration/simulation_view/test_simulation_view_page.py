@@ -129,6 +129,34 @@ def test_the_control_change_record_is_readable_at_the_minimum_window_width(
     assert view._record_scroll.horizontalScrollBar().maximum() == 0
 
 
+@pytest.mark.parametrize(("version_is_known", "width_px"), [(True, 1366), (False, 1920)])
+def test_the_version_and_model_label_keeps_one_line_where_its_row_has_room(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    version_is_known: bool,
+    width_px: int,
+) -> None:
+    """The label wraps only where its row is short of room, not at a width Qt guesses.
+
+    Qt's word wrap asks a layout for about forty characters' width, so the
+    label broke over two lines at every window width, and the transport row
+    grew taller in a wide window too. The blind review of `PL-6XPZ` found it.
+    A development build's label fits on one line at 1366 px. The longest
+    text, for a build whose version cannot be read, needs a wider window,
+    and wraps at 1366 px because the row is then short of room.
+    """
+
+    monkeypatch.setattr(formatting, "APP_VERSION_IS_KNOWN", version_is_known)
+    view = _shown_view(application, SimulationController(), width_px=width_px)
+    _settle(application)
+    label = view.runs[0]._subtitle_text
+    one_line = label.fontMetrics().lineSpacing()
+
+    assert ("unavailable" in label.text()) is not version_is_known
+    assert label.width() > label.fontMetrics().horizontalAdvance(label.text())
+    assert label.height() < 2 * one_line
+
+
 def test_the_sidebar_panels_measured_are_the_ones_the_page_holds(application: QApplication) -> None:
     """Each panel the width test measures is the page's only panel of its kind, and is shown.
 

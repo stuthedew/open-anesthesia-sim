@@ -90,7 +90,7 @@ from dataclasses import replace
 from typing import Final
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics
+from PySide6.QtGui import QColor, QFontMetrics
 from PySide6.QtWidgets import (
     QBoxLayout,
     QDialog,
@@ -165,8 +165,10 @@ from anesthesia_sim.app.qt_widgets import (
     FocusRing,
     NewCaseDialog,
     NoticeLabel,
+    OneLineWhereRoomLabel,
     ReadoutRow,
     SelectorComboBox,
+    style_label,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -481,11 +483,10 @@ class RunView(QWidget):
         # string, or the longer text of a build without package metadata,
         # would otherwise set how narrow the run rows can get. The record
         # column would then lose that width at a narrow window (`PL-92XM`).
-        # The text keeps one line wherever the row has room for it.
-        self._subtitle_text = styled_label(
-            format_subtitle(snapshot.agent_display_name), color=INK, wrap=True
-        )
-        self._subtitle_text.setFont(_bold(self._subtitle_text.font()))
+        # The label asks for its one-line width, so the text keeps one line
+        # wherever the row has room for it.
+        self._subtitle_text = OneLineWhereRoomLabel(format_subtitle(snapshot.agent_display_name))
+        style_label(self._subtitle_text, color=INK, bold=True, wrap=True)
         self._agent_header_badge = QFrame()
         self._agent_header_badge.setObjectName(_HEADER_BADGE_NAME)
         badge = QHBoxLayout(self._agent_header_badge)
@@ -2045,10 +2046,3 @@ def _widest_rendering_px(label: QLabel, parts: tuple[str, ...]) -> int:
         )
         for part in parts
     )
-
-
-def _bold(font: QFont) -> QFont:
-    bold = QFont(font)
-    bold.setBold(True)
-
-    return bold
