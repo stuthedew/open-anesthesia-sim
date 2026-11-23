@@ -2347,17 +2347,25 @@ class SimulationView(QWidget):
     ) -> bool:
         """Remove the mark at `row` of `marks` from every run.
 
-        Each row's Remove button is drawn from the same marks, so `row` is
-        always within them. A row outside them would mean the list on screen
-        no longer matches the marks, and nothing is removed rather than a
-        mark the reader did not press.
+        Each row's Remove button is drawn from the same marks, and the list
+        is drawn again before the next press can arrive, so `row` is always
+        within them.
 
         Returns:
             Whether the Remove was offered to the runs.
+
+        Raises:
+            IndexError: `row` is outside `marks`, so the list on screen no
+                longer matches the case's marks. The halt gate halts every run
+                and says so, rather than removing a mark the reader did not
+                press.
         """
 
         if not 0 <= row < len(marks):
-            return False
+            raise IndexError(
+                f"a Remove button asked for row {row} of a list of {len(marks)} marks, "
+                "so the list on screen no longer matches the case's marks"
+            )
 
         selected = marks[row]
 

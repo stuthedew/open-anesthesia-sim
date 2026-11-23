@@ -9,6 +9,7 @@ from typing import NoReturn
 
 import pytest
 from PySide6.QtCore import QPoint
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QListWidget, QPushButton, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -239,6 +240,83 @@ def test_a_row_s_remove_button_removes_that_row_s_mark_and_no_other(
     assert len(panel.times.rows) == len(panel.targets.rows) == 2
     assert editor.add_time_notice.notice() is None
     assert panel.times.remove_notice.notice() is None
+
+
+def test_a_double_click_on_a_remove_button_removes_one_mark(application: QApplication) -> None:
+    """The second press of a double-click lands on the mark that moved up, and removes nothing.
+
+    After a removal the mark below moves up into the pressed row, under the
+    pointer. A blind review of `PL-G1JM` found that a double-click then took
+    two marks from every run. A press within the platform's double-click
+    interval of the last removal from that list is ignored, and a press after
+    it removes the mark the row then shows.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    editor = _mark_editor(view)
+
+    for instant_s in (300, 600, 900):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    times = _marks_panel(view).times
+    times.rows[0].remove_button.click()
+    times.rows[0].remove_button.click()
+
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0, 900.0]
+
+    QTest.qWait(QApplication.doubleClickInterval() + 50)
+    times.rows[0].remove_button.click()
+
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [900.0]
+
+
+def test_the_tab_key_visits_the_remove_buttons_before_the_forms_below_them(
+    application: QApplication,
+) -> None:
+    """Tab goes down the View: each time mark's Remove, each target's Remove, then the forms.
+
+    The Remove buttons are built after the forms, when marks are added, so
+    an order taken from when each widget was built would put them after the
+    forms. A target is added before a time mark here, so that order would
+    also put the target's button first. A blind review of `PL-G1JM` expected
+    both. Qt placed each new button with the other widgets of its own list
+    instead, and this test holds that order.
+    """
+
+    view = _shown_view(application, SimulationController())
+    editor = _mark_editor(view)
+    editor.height_spin.setValue(0.8)
+    editor.add_target_button.click()
+    editor.instant_spin.setValue(600)
+    editor.add_time_button.click()
+    panel = _marks_panel(view)
+    expected = [
+        panel.times.rows[0].remove_button,
+        panel.targets.rows[0].remove_button,
+        editor.instant_spin,
+        editor.time_label_edit,
+        editor.add_time_button,
+        editor.compartment_combo,
+    ]
+    wanted = {id(widget) for widget in expected}
+    visited: list[QWidget] = []
+    widget = expected[0]
+
+    # The chain also holds widgets inside these controls, such as a spin
+    # box's own text field, so the walk keeps only the controls listed. The
+    # limit makes a chain that never reaches them all fail instead of hang.
+    for _ in range(len(view.findChildren(QWidget))):
+        if id(widget) in wanted:
+            visited.append(widget)
+
+        if len(visited) == len(expected):
+            break
+
+        widget = widget.nextInFocusChain()
+
+    assert visited == expected
 
 
 def test_each_remove_button_names_its_mark_to_a_screen_reader(application: QApplication) -> None:

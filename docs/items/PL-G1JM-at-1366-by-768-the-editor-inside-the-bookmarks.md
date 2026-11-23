@@ -51,6 +51,24 @@ selected" button under it, below the read-only lists at the top of the View.
    rows were rewritten to press a row's button, and the two that held the
    selection after a removal or a rebuild were removed with the selection.
 
+5. **Blind review, two passes.** Both found that after a removal the mark
+   below moves up into the pressed row, so a double-click removed two marks.
+   Fixed: a press of a Remove button within the platform's double-click
+   interval of the last removal from that list is ignored
+   (`test_a_double_click_on_a_remove_button_removes_one_mark`, which fails
+   on the code before the fix with "assert [900] == [600.0, 900.0]"). Baymard
+   Institute recommends undo as the ideal guard against accidental presses
+   and confirmation only where undo costs too much (Holst, "Handling
+   Accidental Taps on Touch Devices", 2017,
+   https://baymard.com/research-articles/handling-accidental-taps-on-touch-devices,
+   read 2026-11-23). A removed mark can already be entered again in the form,
+   so the guard is enough here, and an Undo is filed as `PL-5GX4`. Pass 1 also
+   found that a row outside the marks was ignored in silence. It now raises,
+   and the halt gate halts every run and says so. Pass 2 expected the new
+   Remove buttons to come after the forms in the Tab order. Measured, they do
+   not: `test_the_tab_key_visits_the_remove_buttons_before_the_forms_below_them`
+   passes without any ordering code, and holds that order.
+
 Files checked: `docs/INTERFACE.md` (the Bookmarks View paragraph and its note
 for developers, both changed), `docs/ARCHITECTURE.md`, `docs/MODEL.md` and
 `README.md` (nothing names the editor's lists). The on-screen wording changes

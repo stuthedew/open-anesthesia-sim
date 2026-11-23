@@ -69,7 +69,9 @@ the values that an unmarked run computes, element for element. The only thing a 
 the run stops.
 
 **The marks are added and removed in the Bookmarks View.** Each listed mark
-has its own Remove button, which removes that mark and no other. The forms
+has its own Remove button, which removes that mark and no other. After a
+removal, the mark below moves up into the pressed row, so a second press in
+that list within the platform's double-click interval removes nothing. The forms
 that add a mark sit below the lists and each run's standing on them. No window
 opens to edit a mark (§ "What this list requires once the layout is the
 reader's").

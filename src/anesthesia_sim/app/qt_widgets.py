@@ -50,7 +50,18 @@ from functools import partial
 from math import ceil
 from typing import Final
 
-from PySide6.QtCore import QEvent, QObject, QPoint, QRect, QRectF, QSignalBlocker, QSize, Qt, Signal
+from PySide6.QtCore import (
+    QElapsedTimer,
+    QEvent,
+    QObject,
+    QPoint,
+    QRect,
+    QRectF,
+    QSignalBlocker,
+    QSize,
+    Qt,
+    Signal,
+)
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -1877,6 +1888,12 @@ class MarkList(QWidget):
     button that removes it, so the list is shown once and no row has to be
     selected first (`PL-G1JM`).
 
+    After a removal, the mark below moves up into the pressed row, under the
+    pointer. So a press of any Remove button in this list within the
+    platform's double-click interval of the last removal is ignored, and a
+    double-click removes one mark rather than two. A press after that
+    interval is a press of the mark the row then shows.
+
     Attributes:
         remove_requested: Emitted with a row's position in the list when its
             Remove button is pressed.
@@ -1896,6 +1913,9 @@ class MarkList(QWidget):
         self.empty_label = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True)
         self.rows: list[MarkRow] = []
         self.remove_notice = NoticeLabel()
+        # When this list last asked for a removal, so that the second press
+        # of a double-click is not taken for a press of the next mark.
+        self._last_removal = QElapsedTimer()
         self._rows_column = QVBoxLayout()
         self._rows_column.setContentsMargins(0, 0, 0, 0)
         self._rows_column.setSpacing(MARK_ROW_SPACING)
@@ -1920,7 +1940,7 @@ class MarkList(QWidget):
 
         while len(self.rows) < len(listing.rows):
             row = MarkRow(self)
-            row.remove_button.clicked.connect(partial(self.remove_requested.emit, len(self.rows)))
+            row.remove_button.clicked.connect(partial(self._ask_to_remove, len(self.rows)))
             self._rows_column.addWidget(row)
             self.rows.append(row)
 
@@ -1932,6 +1952,23 @@ class MarkList(QWidget):
 
         for row, text in zip(self.rows, listing.rows, strict=True):
             row.set_text(text)
+
+    def remove_buttons(self) -> list[QPushButton]:
+        """Return each row's Remove button, from the first row to the last."""
+
+        return [row.remove_button for row in self.rows]
+
+    def _ask_to_remove(self, row: int, *_: object) -> None:
+        """Ask for the mark in `row` to be removed, unless this list just asked for one."""
+
+        if (
+            self._last_removal.isValid()
+            and self._last_removal.elapsed() < QApplication.doubleClickInterval()
+        ):
+            return
+
+        self._last_removal.start()
+        self.remove_requested.emit(row)
 
     def text(self) -> str:
         """What the collection draws under its heading, one row to a line.
