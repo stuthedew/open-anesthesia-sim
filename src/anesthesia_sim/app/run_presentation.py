@@ -47,7 +47,7 @@ from types import MappingProxyType
 
 from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED, DeliveredShown, delivered_shown
 from anesthesia_sim.app.chart_frame import ChartFrame
-from anesthesia_sim.app.chart_time_base import ChartTimeBase
+from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_schematic import (
     WITHHELD_SCHEMATIC,
     SchematicShown,
@@ -590,7 +590,7 @@ class KeptFrames:
 
     cases: tuple[tuple[RunId, int], ...]
     selection: CompartmentSelection
-    frames: Mapping[ChartTimeBase | None, ChartFrame]
+    frames: Mapping[ChartWindow, ChartFrame]
 
 
 def run_cases(runs: Sequence[RunPresentation]) -> tuple[tuple[RunId, int], ...]:
@@ -600,7 +600,7 @@ def run_cases(runs: Sequence[RunPresentation]) -> tuple[tuple[RunId, int], ...]:
 
 
 def kept_frames(
-    frames: Mapping[ChartTimeBase | None, ChartFrame],
+    frames: Mapping[ChartWindow, ChartFrame],
     runs: Sequence[RunPresentation],
     selection: CompartmentSelection,
 ) -> KeptFrames:
@@ -666,7 +666,7 @@ def shown_drawn(frame: ChartFrame, selection: CompartmentSelection) -> ShownFram
 
 def shown_without_a_frame(
     kept: KeptFrames | None,
-    time_base: ChartTimeBase | None,
+    window: ChartWindow,
     runs: Sequence[RunPresentation],
     selection: CompartmentSelection,
 ) -> ShownFrame:
@@ -683,16 +683,16 @@ def shown_without_a_frame(
     Args:
         kept: The frames of the last tick that drew, or None when no frame
             has been drawn for the runs the Views show.
-        time_base: The window the chart asks for.
+        window: The window the chart asks for.
         runs: The presentations of the runs the chart shows now, in drawing
             order.
         selection: The compartment selection in force.
 
     Returns:
-        The kept frame for `time_base`, or a withheld one.
+        The kept frame for `window`, or a withheld one.
     """
 
     if kept is None or not kept_frames_match(kept, run_cases(runs)):
         return ShownFrame(ValuesStanding.WITHHELD, None, selection)
 
-    return ShownFrame(ValuesStanding.KEPT, kept.frames.get(time_base), kept.selection)
+    return ShownFrame(ValuesStanding.KEPT, kept.frames.get(window), kept.selection)

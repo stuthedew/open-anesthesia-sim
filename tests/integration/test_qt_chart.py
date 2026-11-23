@@ -181,6 +181,7 @@ def _frame(
         None if span_s is None else time_base_for_span(span_s),
         shown,
         plot_width_px=plot_width_px,
+        held_start_s=None,
     )
 
 
@@ -490,6 +491,7 @@ def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplic
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
     chart = _shown(application, ConcentrationChart(), 480)
     chart.draw(frame)
@@ -2141,6 +2143,7 @@ def _previewing_frame(
         time_base_for_span(1800.0),
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
     )
 
 

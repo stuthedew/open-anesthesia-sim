@@ -110,6 +110,7 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app.area_layout import AreaLayout
 from anesthesia_sim.app.bookmarks import BookmarkSet, BookmarkStandings
 from anesthesia_sim.app.chart_frame import RunInput, assemble_chart_frame
+from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import (
     INITIAL_COMPARTMENT_SELECTION,
     CompartmentSelection,
@@ -125,7 +126,6 @@ from anesthesia_sim.app.controller import (
 from anesthesia_sim.app.dashboard_frame import (
     FORK_NOTHING_SELECTED_TEXT,
     MAX_DISPLAYED_RUNS,
-    REMOVE_NOTHING_SELECTED_TEXT,
     RENDER_INTERVAL_S,
     TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
@@ -711,6 +711,7 @@ class SimulationView(QWidget):
             preview_end=self._handle_preview_end_request,
             mark_entry=self._handle_mark_entry_request,
             mark_edit=self._handle_mark_edit_request,
+            mark_remove=self._handle_mark_remove_request,
             branch_point=self._handle_branch_point_request,
             branch=self._handle_fork,
             branch_here=self._handle_here_fork,
@@ -1961,12 +1962,16 @@ class SimulationView(QWidget):
         # the narrowest sampling. Its checks therefore still run, such as the
         # check for runs that have come to use different agents, and they halt
         # the runs whatever the Areas hold.
-        requests = self._areas.frame_requests() or {None: 0.0}
+        requests = self._areas.frame_requests() or {ChartWindow(None, None): 0.0}
         frames = {
-            time_base: assemble_chart_frame(
-                inputs, time_base, selection.shown, plot_width_px=width_px
+            window: assemble_chart_frame(
+                inputs,
+                window.time_base,
+                selection.shown,
+                plot_width_px=width_px,
+                held_start_s=window.held_start_s,
             )
-            for time_base, width_px in requests.items()
+            for window, width_px in requests.items()
         }
         marks_now = self._marks_now(
             tuple(snapshot.bookmarks for snapshot in snapshots),
@@ -1993,13 +1998,14 @@ class SimulationView(QWidget):
 
             if len(drawn) < len(self._runs):
                 view_frames = {
-                    time_base: assemble_chart_frame(
+                    window: assemble_chart_frame(
                         tuple(inputs[i] for i in drawn),
-                        time_base,
+                        window.time_base,
                         selection.shown,
                         plot_width_px=width_px,
+                        held_start_s=window.held_start_s,
                     )
-                    for time_base, width_px in requests.items()
+                    for window, width_px in requests.items()
                 }
 
             self._areas.refresh(
@@ -2125,8 +2131,8 @@ class SimulationView(QWidget):
         runs = tuple(self._runs[i].presentation() for i in drawn)
         self._areas.refresh(
             {
-                time_base: shown_without_a_frame(self._kept_frames, time_base, runs, selection)
-                for time_base in self._areas.frame_requests()
+                window: shown_without_a_frame(self._kept_frames, window, runs, selection)
+                for window in self._areas.frame_requests()
             },
             runs,
             selection,
@@ -2226,19 +2232,16 @@ class SimulationView(QWidget):
     def _show_marks(self, marks: CaseMarks) -> None:
         """Keep `marks` as the lists every bookmarks View shows, and the entry as they hold it.
 
-        A shorter list can drop a selected row, and the bound can lower the
-        height, without the reader editing anything. The entry is kept as the
-        editor then holds it (`MarkEntry.kept_through`), so a copy built later
-        shows what the copies on screen show, and a dropped row stays dropped.
+        The bound can lower the height without the reader editing anything.
+        The entry is kept as the editor then holds it (`MarkEntry.held_within`),
+        so a copy built later shows what the copies on screen show.
         """
 
         self._marks_shown = marks.panel
         self._reachable_height_mac = marks.reachable_height_mac
 
         if self._mark_entry is not None:
-            self._mark_entry = self._mark_entry.kept_through(
-                marks.panel, marks.reachable_height_mac
-            )
+            self._mark_entry = self._mark_entry.held_within(marks.reachable_height_mac)
 
     @halt_gate
     def _handle_mark_entry_request(self, entry: MarkEntry) -> None:
@@ -2248,9 +2251,9 @@ class SimulationView(QWidget):
         one copy at a time. The dashboard keeps the entry, as it keeps the
         branch control's selected point (`_handle_branch_point_request`). So
         two Areas that show the Bookmarks View never show two different
-        entries, and the Add and Remove buttons of every copy act on the same
-        values. The copy that the reader edits already holds the entry, so
-        the tick leaves its fields as they are and the cursor does not move.
+        entries, and the Add buttons of every copy act on the same values.
+        The copy that the reader edits already holds the entry, so the tick
+        leaves its fields as they are and the cursor does not move.
         """
 
         self._mark_entry = entry
@@ -2258,40 +2261,54 @@ class SimulationView(QWidget):
 
     @halt_gate
     def _handle_mark_edit_request(self, button: MarkButton, entry: MarkEntry) -> None:
-        """Make the edit that `button` asks for on every run, with the entry of the copy pressed.
+        """Add the mark that `button` asks for to every run, with the entry of the copy pressed.
 
-        An Add reads the mark from the entry, and empties both name fields
+        The mark is read from the entry, and both name fields are emptied
         once the mark is offered to the runs (`MarkEntry.without_names`). A
-        Remove reads the selected row from the entry, and the mark itself from
-        the trunk's snapshot. If the trunk's snapshot rejects a value, the
-        read raises, and the gate halts every run with the halt on screen
-        (`PL-F2T2`). A refusal is shown under the button that asked for the
-        edit, in every copy of the editor.
+        refusal is shown under the button that asked for the mark, in every
+        copy of the editor.
         """
 
         self._mark_entry = entry
         self._mark_refusal = None
+        self._show_edit(self._add_mark(button, entry))
+
+    @halt_gate
+    def _handle_mark_remove_request(self, button: MarkButton, row: int) -> None:
+        """Remove the mark at `row` of the list that `button` belongs to, from every run.
+
+        The mark itself is read from the trunk's snapshot, because each row
+        of the list is drawn from it. If the snapshot rejects a value, the
+        read raises, and the gate halts every run with the halt on screen
+        (`PL-F2T2`). A refusal is shown under that list, in every copy of
+        the View. The entry in the add forms is left as it is.
+        """
+
+        self._mark_refusal = None
+        bookmarks = self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks
 
         if button is MarkButton.REMOVE_TIME:
             applied = self._remove_mark(
-                self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.time_bookmarks,
-                entry.time_row,
+                bookmarks.time_bookmarks,
+                row,
                 lambda run, mark: run.remove_time_bookmark(mark),
                 button,
             )
-        elif button is MarkButton.REMOVE_TARGET:
-            applied = self._remove_mark(
-                self._runs[TRUNK_RUN_INDEX].snapshot().bookmarks.mac_targets,
-                entry.target_row,
-                lambda run, mark: run.remove_mac_target(mark),
-                button,
-            )
         else:
-            applied = self._add_mark(button, entry)
+            applied = self._remove_mark(
+                bookmarks.mac_targets, row, lambda run, mark: run.remove_mac_target(mark), button
+            )
 
-        # An edit offered to the runs is drawn in a frame, because it can
-        # change every run's marks. A refusal before any run was asked changes
-        # only the editor, so only the Views of the case are handed a tick.
+        self._show_edit(applied)
+
+    def _show_edit(self, applied: bool) -> None:
+        """Draw what an edit of the marks changed.
+
+        An edit offered to the runs is drawn in a frame, because it can
+        change every run's marks. A refusal before any run was asked changes
+        only the editor, so only the Views of the case are handed a tick.
+        """
+
         if applied:
             self.present(False)
         else:
@@ -2334,34 +2351,31 @@ class SimulationView(QWidget):
         remove: Callable[[SimulationController, M], None],
         button: MarkButton,
     ) -> bool:
-        """Remove the mark at `row` of `marks` from every run, or refuse where no row is selected.
+        """Remove the mark at `row` of `marks` from every run.
 
-        After an accepted Remove, no row is selected in that list. The mark
-        below the removed one moves up into its row. Kept selected, it would
-        become the mark that a second press of Remove takes from every run,
-        though the reader never chose it. A refused Remove changed no list,
-        so it keeps the selection.
+        Each row's Remove button is drawn from the same marks, and the list
+        is drawn again before the next press can arrive, so `row` is always
+        within them.
 
         Returns:
             Whether the Remove was offered to the runs.
+
+        Raises:
+            IndexError: `row` is outside `marks`, so the list on screen no
+                longer matches the case's marks. The halt gate halts every run
+                and says so, rather than removing a mark the reader did not
+                press.
         """
 
         if not 0 <= row < len(marks):
-            self._mark_refusal = MarkRefusal(button, REMOVE_NOTHING_SELECTED_TEXT)
-
-            return False
-
-        selected = marks[row]
-        self._apply_to_every_run(lambda run: remove(run, selected), button)
-
-        if self._mark_refusal is None and self._mark_entry is not None:
-            self._mark_entry = (
-                replace(self._mark_entry, time_row=-1)
-                if button is MarkButton.REMOVE_TIME
-                else replace(self._mark_entry, target_row=-1)
+            raise IndexError(
+                f"a Remove button asked for row {row} of a list of {len(marks)} marks, "
+                "so the list on screen no longer matches the case's marks"
             )
 
-        return True
+        selected = marks[row]
+
+        return self._apply_to_every_run(lambda run: remove(run, selected), button)
 
     def _apply_to_every_run(
         self, edit: Callable[[SimulationController], None], button: MarkButton

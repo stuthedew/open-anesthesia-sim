@@ -62,6 +62,7 @@ from anesthesia_sim.app.formatting import format_flow, format_percent
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
+    BookmarksPanel,
     DialInput,
     FlowLayout,
     MarkButton,
@@ -1164,13 +1165,12 @@ def test_the_marks_editor_seats_each_field_in_its_cell(application: QApplication
     a widget by where it is written in its form, and a widget written in two or
     three neighbouring columns spans them.
 
-    `PL-CHX0` moved the editor from a window into the Bookmarks View, where an
-    Area about 150 pixels tall scrolls it. Each Remove button stays directly
-    under the list it acts on, as it was in the window. A Remove button above
-    its list could be pressed while the list was scrolled out of view, and it
-    would then remove a row the reader could not see. Each button's refusal
-    is the row directly under it, so that it is on screen next to the button
-    that was pressed.
+    `PL-G1JM` took the lists and their Remove buttons out of the forms, so
+    the marks are listed once, above the forms, each with its own Remove
+    button. Each Add button sits beside the name field, the last field of its
+    form, which saves a row in a short Area. Each Add button's refusal is the
+    row directly under it, so that it is on screen next to the button that
+    was pressed.
     """
 
     editor = MarkEditor()
@@ -1181,12 +1181,9 @@ def test_the_marks_editor_seats_each_field_in_its_cell(application: QApplication
         "instant_spin": (1, 1, 1, 1),
         "instant_preview": (1, 2, 1, 1),
         MARK_NAME_FIELD_LABEL: (2, 0, 1, 1),
-        "time_label_edit": (2, 1, 1, 2),
-        "add_time_button": (3, 1, 1, 1),
-        "add_time_notice": (4, 0, 1, 3),
-        "time_list": (5, 0, 1, 3),
-        "remove_time_button": (6, 1, 1, 1),
-        "remove_time_notice": (7, 0, 1, 3),
+        "time_label_edit": (2, 1, 1, 1),
+        "add_time_button": (2, 2, 1, 1),
+        "add_time_notice": (3, 0, 1, 3),
     }
     assert _form_cells(editor, _form(editor, 1)) == {
         TARGET_FORM_HEADING: (0, 0, 1, 3),
@@ -1195,12 +1192,9 @@ def test_the_marks_editor_seats_each_field_in_its_cell(application: QApplication
         HEIGHT_FIELD_LABEL: (2, 0, 1, 1),
         "height_spin": (2, 1, 1, 1),
         MARK_NAME_FIELD_LABEL: (3, 0, 1, 1),
-        "target_label_edit": (3, 1, 1, 2),
-        "add_target_button": (4, 1, 1, 1),
-        "add_target_notice": (5, 0, 1, 3),
-        "target_list": (6, 0, 1, 3),
-        "remove_target_button": (7, 1, 1, 1),
-        "remove_target_notice": (8, 0, 1, 3),
+        "target_label_edit": (3, 1, 1, 1),
+        "add_target_button": (3, 2, 1, 1),
+        "add_target_notice": (4, 0, 1, 3),
     }
 
 
@@ -1241,21 +1235,17 @@ def test_the_marks_editor_tabs_through_its_controls_from_top_to_bottom(
         "instant_spin",
         "time_label_edit",
         "add_time_button",
-        "time_list",
-        "remove_time_button",
         "compartment_combo",
         "height_spin",
         "target_label_edit",
         "add_target_button",
-        "target_list",
-        "remove_target_button",
     ]
 
 
 def test_an_entry_written_into_the_editor_is_the_entry_it_returns_and_is_not_reported(
     application: QApplication,
 ) -> None:
-    """`set_entry` fills every field and selection, and does not report the write as an edit.
+    """`set_entry` fills every field, and does not report the write as an edit.
 
     The dashboard copies what a reader entered in one copy of the editor into
     the others with `set_entry` (`PL-CHX0`). If that write emitted
@@ -1265,19 +1255,10 @@ def test_an_entry_written_into_the_editor_is_the_entry_it_returns_and_is_not_rep
     """
 
     editor = MarkEditor()
-    rows = ("10m – first", "20m – second", "30m – third")
-    editor.time_list.addItems(list(rows))
-    editor.target_list.addItems(list(rows))
     edited: list[bool] = []
     editor.entry_edited.connect(lambda: edited.append(True))
     entry = MarkEntry(
-        instant_s=1800,
-        time_name="incision",
-        compartment_row=3,
-        height_mac=1.25,
-        target_name="deep",
-        time_row=2,
-        target_row=1,
+        instant_s=1800, time_name="incision", compartment_row=3, height_mac=1.25, target_name="deep"
     )
 
     editor.set_entry(entry)
@@ -1294,41 +1275,42 @@ def test_an_entry_written_into_the_editor_is_the_entry_it_returns_and_is_not_rep
 def test_a_refusal_shows_under_the_button_that_was_pressed_and_clears_the_others(
     application: QApplication,
 ) -> None:
-    """Each refusal shows under one button, and the next one replaces it.
+    """Each refusal shows in one place, and the next one replaces it.
 
-    The four buttons share one refusal at a time, as the editor's single
-    notice did before `PL-CHX0`. Each is shown under the button that was
-    pressed, so that it is in view of that button.
+    The four kinds of button share one refusal at a time, as the editor's
+    single notice did before `PL-CHX0`. An Add button's refusal is shown under
+    it, and a Remove button's under the list that holds its row, so that each
+    is in view of the button that was pressed (`PL-G1JM`).
     """
 
-    editor = MarkEditor()
+    panel = BookmarksPanel()
     notices = {
-        MarkButton.ADD_TIME: editor.add_time_notice,
-        MarkButton.REMOVE_TIME: editor.remove_time_notice,
-        MarkButton.ADD_TARGET: editor.add_target_notice,
-        MarkButton.REMOVE_TARGET: editor.remove_target_notice,
+        MarkButton.ADD_TIME: panel.editor.add_time_notice,
+        MarkButton.REMOVE_TIME: panel.times.remove_notice,
+        MarkButton.ADD_TARGET: panel.editor.add_target_notice,
+        MarkButton.REMOVE_TARGET: panel.targets.remove_notice,
     }
 
     for pressed in MarkButton:
-        editor.show_refusal(MarkRefusal(pressed, f"refused by {pressed.value}"))
+        panel.show_refusal(MarkRefusal(pressed, f"refused by {pressed.value}"))
 
         assert {button: notice.notice() for button, notice in notices.items()} == {
             button: f"refused by {pressed.value}" if button is pressed else None
             for button in MarkButton
         }
 
-    editor.show_refusal(None)
+    panel.show_refusal(None)
 
     assert [notice.isHidden() for notice in notices.values()] == [True] * 4
 
 
-def test_each_remove_button_is_drawn_below_the_list_it_removes_from(
+def test_each_add_button_is_drawn_beside_its_name_field_and_above_its_refusal(
     application: QApplication,
 ) -> None:
-    """On screen, each Remove button is drawn under its whole list, and each Add button above it.
+    """On screen, each Add button is on its name field's row, and its refusal is below both.
 
     The cells above say where the grid places each widget. This test checks the
-    drawn geometry, so a list drawn over its button also fails (`PL-CHX0`).
+    drawn geometry, so a field drawn over its button also fails (`PL-CHX0`).
     """
 
     editor = MarkEditor()
@@ -1337,12 +1319,16 @@ def test_each_remove_button_is_drawn_below_the_list_it_removes_from(
     application.processEvents()
 
     try:
-        for add, listing, remove in (
-            (editor.add_time_button, editor.time_list, editor.remove_time_button),
-            (editor.add_target_button, editor.target_list, editor.remove_target_button),
+        for name, add, notice in (
+            (editor.time_label_edit, editor.add_time_button, editor.add_time_notice),
+            (editor.target_label_edit, editor.add_target_button, editor.add_target_notice),
         ):
-            assert add.geometry().bottom() < listing.geometry().top()
-            assert listing.geometry().bottom() < remove.geometry().top()
+            notice.set_notice("refused")
+            application.processEvents()
+
+            assert name.geometry().right() < add.geometry().left()
+            assert add.geometry().top() <= name.geometry().center().y() <= add.geometry().bottom()
+            assert max(name.geometry().bottom(), add.geometry().bottom()) < notice.geometry().top()
     finally:
         editor.close()
 
@@ -1379,15 +1365,7 @@ def test_a_mouse_wheel_over_an_unfocused_field_scrolls_the_area_and_changes_no_m
 
     editor = MarkEditor()
     editor.set_entry(
-        MarkEntry(
-            instant_s=600,
-            time_name="",
-            compartment_row=2,
-            height_mac=1.0,
-            target_name="",
-            time_row=-1,
-            target_row=-1,
-        )
+        MarkEntry(instant_s=600, time_name="", compartment_row=2, height_mac=1.0, target_name="")
     )
     scroll = QScrollArea()
     scroll.setWidget(editor)
@@ -1404,7 +1382,11 @@ def test_a_mouse_wheel_over_an_unfocused_field_scrolls_the_area_and_changes_no_m
 
     try:
         for field in (editor.instant_spin, editor.compartment_combo, editor.height_spin):
-            scroll.ensureWidgetVisible(field)
+            # The box starts from the top for each field, with no margin
+            # round it. Otherwise the scroll left by the field before can put
+            # the box at its end, and the forms are short since `PL-G1JM`.
+            bar.setValue(0)
+            scroll.ensureWidgetVisible(field, 0, 0)
             application.processEvents()
             before = bar.value()
 

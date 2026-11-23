@@ -68,11 +68,13 @@ of the case, not an input to it. A run that halts at its marks computes exactly
 the values that an unmarked run computes, element for element. The only thing a mark changes is when
 the run stops.
 
-**The marks are added and removed in the Bookmarks View**, below the lists of
-marks and each run's standing on them. No window opens to edit a mark
-(§ "What this list requires once the layout is the reader's"). After a mark is
-removed, no mark in that list is selected, so a second press of its Remove
-button removes nothing.
+**The marks are added and removed in the Bookmarks View.** Each listed mark
+has its own Remove button, which removes that mark and no other. After a
+removal, the mark below moves up into the pressed row, so a second press in
+that list within the platform's double-click interval removes nothing. The forms
+that add a mark sit below the lists and each run's standing on them. No window
+opens to edit a mark (§ "What this list requires once the layout is the
+reader's").
 
 **The run halts on the simulation step that crossed a mark, at every playback
 rate.** Every step is tested for a crossing. At the faster rates, a halt is
@@ -3225,8 +3227,10 @@ stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
 does not declare it. The interpretation statement is
 `INTERPRETATION_DISCLAIMER_TEXT`.
 
-The marks editor is `MarkEditor`, in `app/qt_widgets.py`, and each copy of the
-Bookmarks View holds one. A test adds and removes marks with a run playing and
+The forms that add a mark are `MarkEditor`, and each listed mark with its
+Remove button is a `MarkRow` of a `MarkList`, all in `app/qt_widgets.py`. Each
+copy of the Bookmarks View holds one `MarkEditor` and one `MarkList` for each
+kind of mark. A test adds and removes marks with a run playing and
 checks that no window opens
 (`test_editing_a_mark_while_a_run_plays_opens_no_window`, in
 `tests/integration/simulation_view/test_simulation_view_comparison.py`).
@@ -3667,8 +3671,8 @@ any the reader can choose.
 **Every axis label carries its own unit, and each chart states its width.** A
 label reads `0`, `45s`, `3m`, `1m30s` or `1h30m`. The time axis's title names
 the width in words, after "simulated time". It says whether the reader chose the width, or it is
-the whole run so far, or the window is centred on the current time for a
-preview.
+the whole run so far, or the window is held and not following the run, or the
+window is centred on the current time for a preview.
 
 **Each chart has its own time base** (project owner, 2026-10-19, ratified, over
 one shared window saved per Workspace; `PL-L59K`). The concentration chart and
@@ -3680,6 +3684,38 @@ Each notice that depends on a chart's window describes that window and appears
 on that chart. These are the notice that names traces above the top of the axis,
 the count of control changes the chart could not mark, and the count of F_A/F_I
 stretches it could not draw.
+
+**At a chosen width, a reader can move the window back through the run and
+hold it there** (`PL-Z7LY`). An arrow on each side of the time-base selector
+moves the window one step earlier or later. A step moves the left edge to a
+gridline at least one gridline interval away and less than two, so most of the
+window stays on screen, and both edges fall on labelled times. Neither arrow is
+offered under "Fit run", which already shows the whole run, or during a
+preview. Nothing is offered earlier than a window that starts at zero.
+
+**A window moved earlier holds still while the run goes on, and the chart says
+so.** The readouts above the chart show the present while the plot shows the
+past, and a learner who took the plot for the present would read stale values
+as current. So while the window is held, the time axis's title ends "held: not
+following the run". A line under the controls, in the warning colour, names the
+window's edges and the run's current time, such as "Showing 30m to 45m. The run
+is now at 50m." With more than one run on the chart, it names each run's time,
+such as "Now: Run 1 at 50m, Run 2 at 2m.", because a branch and the run it came
+from stand at different times. Beside it, a "Follow the run" button returns the window to
+following the run in one click.
+
+**The window follows the run again only when the reader or the run's history
+says so.** A step later that reaches the window that follows the run ends the
+hold, as scrolling to the bottom of a live log does. So does "Follow the run",
+and so does choosing "Fit run". A Reset or an agent change starts the run again
+from zero, so the held part of the run no longer exists, and the chart follows
+the new run. Pausing, resuming and taking a branch leave a held window where it
+is. Choosing another width keeps the hold, with its left edge moved back to the
+new width's last gridline at or before it. A chart whose frame is withheld shows
+no window, so it shows no held line and offers no step. A preview centres the window on the run's reach while the drag lasts, and
+the held window returns when it ends. The held position is not saved, so a
+chart built again, by a Workspace switch or on reopening the layout, follows
+the run.
 
 **A chart saves its width in its Workspace.** The Induction Workspace
 that comes with the simulator saves its concentration chart at the 15-minute
@@ -3720,6 +3756,24 @@ The roadmap for v0.6.0 asks for a time base per chart (`ROADMAP.md`
 Each chart's notices describe its own window, because a notice naming a clipped
 trace that the chart does not draw would be false for that chart. Charts with
 the same time-base setting are drawn from one frame.
+
+A held window is a left edge kept beside the chosen width
+(`chart_time_base.ChartWindow`), and the dashboard assembles one frame for each
+distinct window that a View asks for. `held_window` decides whether a held
+edge still holds against the run's newest instant, and `earlier_start_s` and
+`later_start_s` take the steps. The controls belong to each chart View's
+`_TimeWindow` in `app/views.py`, and `dashboard_frame.held_window_notice`
+writes the line. The step size follows trend displays that scroll by part of
+the window, such as GE Vernova's Proficy Operations Hub, whose example scrolls
+a one-hour trend back by fifteen minutes. The hold and its one-click return
+follow live-tail displays such as Logz.io's Live Tail, which keeps the state
+"always visible" and returns to the newest entries in one click. The sources
+are recorded in `PL-Z7LY`. The tests in
+`tests/integration/simulation_view/test_simulation_view_held_window.py` drive
+the arrows and the button through a pause, a Reset, an agent change and a
+branch, and those in `tests/unit/test_chart_time_base.py` check the steps
+(`test_a_step_earlier_moves_back_at_least_one_gridline_interval`) and where a
+hold gives way (`test_a_held_window_keeps_its_width_and_gives_way_to_the_run_s_own`).
 
 The tests in `tests/integration/simulation_view/test_simulation_view_charts.py`
 check that a time base changes nothing the run recorded

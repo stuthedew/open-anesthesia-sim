@@ -88,6 +88,7 @@ from anesthesia_sim.app.formatting import (
     format_branch_discard_warning,
     format_build_version,
     format_case_discard_warning,
+    format_chart_time_label,
     format_delivered_label,
     format_delivered_playback_rate,
     format_elapsed,
@@ -872,14 +873,15 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
     return MARK_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(instant_s))
 
 
-# The headings of the marks editor's two forms. They differ from the headings
-# of the two lists above the forms, because the Bookmarks View shows both, and
-# two identical headings would leave a reader unsure which one a row belongs
-# to. The wording is a placeholder (`PL-CHX0`).
-TIME_FORM_HEADING: Final = "Edit time bookmarks"
-TARGET_FORM_HEADING: Final = "Edit MAC targets"
+# The headings of the marks editor's two forms. Each names the one action
+# its form does, so a reader does not take a form for a second copy of the
+# list above it (`PL-G1JM`). The wording is a placeholder (`PL-CHX0`).
+TIME_FORM_HEADING: Final = "Add a time bookmark"
+TARGET_FORM_HEADING: Final = "Add a MAC target"
 ADD_MARK_LABEL: Final = "Add"
-REMOVE_MARK_LABEL: Final = "Remove selected"
+# The label of the button on each listed mark. The button's accessible name
+# adds the mark's own text, so a screen reader says which mark it removes.
+REMOVE_MARK_LABEL: Final = "Remove"
 INSTANT_FIELD_LABEL: Final = "Instant"
 COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
@@ -930,12 +932,6 @@ def height_entry_maximum_mac(reachable_mac: float) -> float:
     return floor(reachable_mac * scale + WHOLE_COUNT_TOLERANCE) / scale
 
 
-REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
-"""Conditional text, which is where a sentence is appropriate.
-
-It appears only after a press that did nothing, and costs nothing when it
-does not appear (`.claude/rules/ui-reader.md`). The two empty-list lines above
-are standing text, and are labels for that reason."""
 # Names the substance that the six readouts belong to (`PL-TCD1`). It is a
 # label rather than a sentence. It says "Modelled" rather than giving a bare
 # agent name, because the hazard on this row is a reader comparing these
@@ -1085,6 +1081,28 @@ CHOSEN_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown"
 # shows neither the whole run nor the newest stretch, so the caption says what
 # it does show (`PL-5B1N`).
 PREVIEW_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown, centred on now during the preview"
+# A window the reader moved back holds still while the run goes on
+# (`chart_time_base.held_window`). It then shows the past while every readout
+# shows the present, so the axis title says it is not following the run, and
+# a line above the plot says how far the run has gone past it (`PL-Z7LY`).
+HELD_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown, held: not following the run"
+# With one run on the chart, the line gives that run's time. With more, it
+# names each run's time, because the runs stand at different instants and
+# one time would be read as the run the reader is watching.
+HELD_WINDOW_NOTICE_TEMPLATE: Final = "Showing {start} to {stop}. {now}"
+HELD_ONE_RUN_NOW_TEMPLATE: Final = "The run is now at {now}."
+HELD_RUNS_NOW_TEMPLATE: Final = "Now: {runs}."
+HELD_RUN_NOW_TEMPLATE: Final = "{label} at {now}"
+# The controls that move a chart's window. The arrows sit either side of the
+# time-base selector, as a date picker's do, so a step reads as a step through
+# time. Each also carries a name that a screen reader speaks and a tooltip
+# says, because an arrow alone names no action. The button that ends a hold
+# uses the axis title's own words for the state it returns to.
+EARLIER_WINDOW_TEXT: Final = "\u25c0"
+LATER_WINDOW_TEXT: Final = "\u25b6"
+EARLIER_WINDOW_NAME: Final = "Show an earlier part of the run"
+LATER_WINDOW_NAME: Final = "Show a later part of the run"
+FOLLOW_RUN_TEXT: Final = "Follow the run"
 
 # The wash-in section. It says that its values are modelled with
 # `INTERPRETATION_DISCLAIMER_TEXT`, on a line of its own rather than at the end
@@ -3606,7 +3624,7 @@ def run_statement(
 
 
 def time_axis_caption(frame: ChartFrame) -> str:
-    """Return the span of the run that the chart shows, and whether the reader or the run chose it.
+    """Return the span of the run that the chart shows, and what set it: reader, hold or run.
 
     Args:
         frame: The frame drawn this tick.
@@ -3623,7 +3641,50 @@ def time_axis_caption(frame: ChartFrame) -> str:
     if frame.fitted:
         return FITTED_TIME_AXIS_CAPTION_TEMPLATE.format(span=span)
 
+    if frame.held:
+        return HELD_TIME_AXIS_CAPTION_TEMPLATE.format(span=span)
+
     return CHOSEN_TIME_AXIS_CAPTION_TEMPLATE.format(span=span)
+
+
+def held_window_notice(frame: ChartFrame) -> str | None:
+    """Return the line that says what a held window shows and where the run is now, or None.
+
+    The line appears only while the reader holds the window back from the
+    run (`ChartFrame.held`). It names the window's edges as the axis labels
+    them, and each run's instant as the clock states it, so a reader can see
+    how far the readouts have moved past the plot. With two runs on the
+    chart it names each run, because a branch and its trunk stand at
+    different instants. It is left out
+    during a preview, whose window is centred on the run's reach rather than
+    the held one.
+
+    Args:
+        frame: The frame drawn this tick.
+
+    Returns:
+        The line, or None where the window follows the run or a preview
+        replaces it.
+    """
+
+    if not frame.held or any(run.preview is not None for run in frame.runs):
+        return None
+
+    if len(frame.runs) == 1:
+        now = HELD_ONE_RUN_NOW_TEMPLATE.format(now=format_elapsed(frame.runs[0].elapsed_s))
+    else:
+        now = HELD_RUNS_NOW_TEMPLATE.format(
+            runs=", ".join(
+                HELD_RUN_NOW_TEMPLATE.format(label=run.label, now=format_elapsed(run.elapsed_s))
+                for run in frame.runs
+            )
+        )
+
+    return HELD_WINDOW_NOTICE_TEMPLATE.format(
+        start=format_chart_time_label(frame.start_s),
+        stop=format_chart_time_label(frame.stop_s),
+        now=now,
+    )
 
 
 def mac_reference_caption(frame: ChartFrame) -> str:

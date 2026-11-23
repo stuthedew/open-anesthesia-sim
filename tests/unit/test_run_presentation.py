@@ -25,7 +25,7 @@ from anesthesia_sim.app import run_presentation
 from anesthesia_sim.app.agent_cost import WITHHELD_DELIVERED
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import ChartFrame, RunInput, assemble_chart_frame
-from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
+from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, ChartWindow
 from anesthesia_sim.app.compartment_schematic import WITHHELD_SCHEMATIC
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.control_timeline import group_adjustments
@@ -570,7 +570,7 @@ def test_a_halt_keeps_the_frames_only_while_none_shows_a_preview() -> None:
     trunk = _run_at(90)
     selection = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 2)
     frame = _frame_of(trunk, "Run 1")
-    kept = kept_frames({None: frame}, (_drawn(trunk, _state()),), selection)
+    kept = kept_frames({ChartWindow(None, None): frame}, (_drawn(trunk, _state()),), selection)
     # Any value stands for a preview here: the rule asks only whether one is drawn.
     previewing = replace(frame, runs=(replace(frame.runs[0], preview=cast(Any, object())),))
     kept_with_a_preview = replace(kept, frames={None: frame, TIME_BASE_LADDER[0]: previewing})
@@ -601,7 +601,7 @@ def test_kept_frames_match_only_the_runs_they_were_drawn_from(
     branch = _run_at(60)
     selection = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 2)
     drawn = (_drawn(trunk, _state()), _drawn(branch, _state(run_id=_SECOND_RUN_ID)))
-    kept = kept_frames({None: _frame_of(trunk, "Run 1")}, drawn, selection)
+    kept = kept_frames({ChartWindow(None, None): _frame_of(trunk, "Run 1")}, drawn, selection)
 
     assert kept_frames_match(kept, cases) is match
     assert kept_frames_match(None, cases) is False
@@ -898,6 +898,7 @@ def _frame_of(controller: SimulationController, label: str) -> ChartFrame:
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=400.0,
+        held_start_s=None,
     )
 
 
@@ -916,10 +917,10 @@ def test_the_last_frame_is_kept_while_every_run_is_the_one_it_drew() -> None:
     drawn_with = CompartmentSelection(COMPARTMENT_QUANTITIES[:2], 1)
     in_force = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
     runs = (_drawn(controller, _state()),)
-    kept = kept_frames({None: frame}, runs, drawn_with)
+    kept = kept_frames({ChartWindow(None, None): frame}, runs, drawn_with)
 
     shown = shown_without_a_frame(
-        kept, None, (_halted(controller, _state(), _kept(runs)),), in_force
+        kept, ChartWindow(None, None), (_halted(controller, _state(), _kept(runs)),), in_force
     )
 
     assert shown == ShownFrame(ValuesStanding.KEPT, frame, drawn_with)
@@ -931,9 +932,9 @@ def test_a_kept_window_with_no_frame_keeps_whatever_the_plot_shows() -> None:
     controller = _run_at(90)
     selection = CompartmentSelection(COMPARTMENT_QUANTITIES, 1)
     runs = (_drawn(controller, _state()),)
-    kept = kept_frames({None: _frame_of(controller, "Run 1")}, runs, selection)
+    kept = kept_frames({ChartWindow(None, None): _frame_of(controller, "Run 1")}, runs, selection)
 
-    shown = shown_without_a_frame(kept, TIME_BASE_LADDER[0], runs, selection)
+    shown = shown_without_a_frame(kept, ChartWindow(TIME_BASE_LADDER[0], None), runs, selection)
 
     assert shown == ShownFrame(ValuesStanding.KEPT, None, selection)
 
@@ -956,7 +957,7 @@ def test_the_last_frame_is_withheld_once_the_runs_are_not_the_ones_it_drew(now: 
     trunk_state = _state()
     branch_state = _state(run_id=_SECOND_RUN_ID)
     drawn = (_drawn(trunk, trunk_state), _drawn(branch, branch_state))
-    kept = kept_frames({None: _frame_of(trunk, "Run 1")}, drawn, selection)
+    kept = kept_frames({ChartWindow(None, None): _frame_of(trunk, "Run 1")}, drawn, selection)
     runs = {
         "started over": (_halted(trunk, replace(trunk_state, case=1), _kept(drawn)), drawn[1]),
         "removed": drawn[:1],
@@ -964,7 +965,9 @@ def test_the_last_frame_is_withheld_once_the_runs_are_not_the_ones_it_drew(now: 
         "never drawn": drawn,
     }[now]
 
-    shown = shown_without_a_frame(None if now == "never drawn" else kept, None, runs, selection)
+    shown = shown_without_a_frame(
+        None if now == "never drawn" else kept, ChartWindow(None, None), runs, selection
+    )
 
     assert shown == ShownFrame(ValuesStanding.WITHHELD, None, selection)
 

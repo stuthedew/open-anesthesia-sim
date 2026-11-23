@@ -1196,7 +1196,7 @@ def test_every_dashboard_control_is_restated_on_a_halt(
         if not entries:
             unexcused.append(" < ".join(type(widget).__name__ for widget in chain[:6]))
 
-    assert _mark_editor(view).time_list.count() == 1
+    assert len(_marks_panel(view).times.rows) == 1
     assert sorted(set(unexcused)) == [], (
         "these controls are in no RunView and still offer their action after every run "
         "halted: disable or hide each on a halt, or name its place in LIVE_ON_A_HALT with "
@@ -1252,27 +1252,22 @@ def test_a_dial_write_that_refuses_on_a_halt_still_restates_every_panel(
 def test_a_withdrawn_bookmark_panel_withdraws_the_editor_s_lists(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A halt that withdraws the bookmark panel withdraws the editor's lists and Remove buttons too.
+    """A halt that withdraws the bookmark lists withdraws each row's Remove button with them.
 
-    The editor lists the same rows as the lists above it. A halt that could not work out
-    the marks' standings used to hide the panel but leave the editor, then a window of
-    its own, listing the last frame's rows. The editor then still showed the mark ahead of the
-    clock as still to come, and its Remove button still worked on that row (`PL-F5KT`).
-    The next frame that is drawn shows both again.
+    A halt that could not work out the marks' standings used to hide the panel but
+    leave the editor, then a window of its own, listing the last frame's rows. The
+    editor then still showed the mark ahead of the clock as still to come, and its
+    Remove button still worked on that row (`PL-F5KT`). Each Remove button is now on
+    its mark's row, so it is hidden with the list. The next frame shows both again.
     """
 
     controller = _paused_run_with_history()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     view = _shown_view(application, controller)
-    editor = _mark_editor(view)
-    withdrawn = (
-        editor.time_list,
-        editor.remove_time_button,
-        editor.target_list,
-        editor.remove_target_button,
-    )
-    assert editor.time_list.count() == 1
-    assert not any(widget.isHidden() for widget in withdrawn)
+    panel = _marks_panel(view)
+    remove = panel.times.rows[0].remove_button
+    assert len(panel.times.rows) == 1
+    assert remove.isVisibleTo(view) is True
 
     def unanswerable(self: SimulationController) -> NoReturn:
         raise RuntimeError("the run could not say where it stands on its marks")
@@ -1283,13 +1278,14 @@ def test_a_withdrawn_bookmark_panel_withdraws_the_editor_s_lists(
     view.present(False)
 
     assert controller.has_failed is True
-    assert _marks_panel(view).times.isHidden() is True
-    assert all(widget.isHidden() for widget in withdrawn)
+    assert panel.times.isHidden() is True
+    assert panel.targets.isHidden() is True
+    assert remove.isVisibleTo(view) is False
 
     monkeypatch.undo()
     view.present(False)
 
-    assert not any(widget.isHidden() for widget in withdrawn)
+    assert remove.isVisibleTo(view) is True
 
 
 #: A mark name long enough that its row wraps in the bookmark panel at any

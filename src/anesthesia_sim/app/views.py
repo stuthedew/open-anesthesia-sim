@@ -61,17 +61,30 @@ from types import MappingProxyType
 from typing import Final, cast
 
 from PySide6.QtCore import QSignalBlocker, Qt
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.agent_cost import AGENT_COST_HEADING, UNIT_CHOICE_LABEL, UNIT_CHOICES
 from anesthesia_sim.app.chart_frame import ChartFrame
-from anesthesia_sim.app.chart_time_base import ChartTimeBase, saved_time_base, saved_time_base_value
+from anesthesia_sim.app.chart_time_base import (
+    ChartTimeBase,
+    ChartWindow,
+    earlier_start_s,
+    gridline_at_or_before,
+    later_start_s,
+    saved_time_base,
+    saved_time_base_value,
+)
 from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CHART_CEILING_LABEL,
     CHART_HEADING,
+    EARLIER_WINDOW_NAME,
+    EARLIER_WINDOW_TEXT,
+    FOLLOW_RUN_TEXT,
     INTERPRETATION_DISCLAIMER_TEXT,
+    LATER_WINDOW_NAME,
+    LATER_WINDOW_TEXT,
     NO_CASE_TO_BRANCH_TEXT,
     NO_TRACES_SHOWN_TEXT,
     SETTING_CONTROLS_NOT_SHOWN_TEXT,
@@ -83,6 +96,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SettingReadout,
     compared_panel_heading,
     compartment_cap_notice,
+    held_window_notice,
     mac_awake_caption,
     mac_reference_caption,
     no_traces_shown,
@@ -109,6 +123,7 @@ from anesthesia_sim.app.qt_widgets import (
     BookmarksPanel,
     FittedScroll,
     FocusedComboBox,
+    FocusRing,
     ForkPanel,
     MarkButton,
     MarkEntry,
@@ -121,14 +136,20 @@ from anesthesia_sim.app.run_presentation import (
     ValuesStanding,
 )
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
-from anesthesia_sim.app.stylesheets import panel_stylesheet, selector_stylesheet
+from anesthesia_sim.app.stylesheets import (
+    panel_stylesheet,
+    selector_stylesheet,
+    transport_button_stylesheet,
+)
 from anesthesia_sim.app.theme import (
     CHART_KEY_LEAST_HEIGHT,
+    CONTROL_BORDER_WIDTH,
     INK,
     METRIC_QUALIFIER_SIZE,
     MUTED,
     PAGE_SPACING,
     PANEL_PADDING,
+    PANEL_RADIUS,
     VIEW_HEADING_SPACING,
     VIEW_ROW_SPACING,
     WARNING,
@@ -147,6 +168,7 @@ from anesthesia_sim.app.view_contract import (
     ViewTick,
     unreadable_state_text,
 )
+from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.run_identity import RunId
 
 __all__ = [
@@ -374,7 +396,7 @@ def _read_ceiling(saved: object) -> tuple[ChartCeiling, str | None]:
 
 
 class _TimeWindow:
-    """A chart View's own time window, with the control that sets it and its saved form.
+    """A chart View's own time window, with the controls that set and move it, and its saved form.
 
     Each chart holds its window (project owner, 2026-10-19, `PL-L59K`). The
     window starts from the saved state, or from "Fit run" where none was
@@ -382,12 +404,28 @@ class _TimeWindow:
     shows the window that the plot last drew, so where a frame fails, the
     control goes on naming what is on the plot (`PL-G3K7`).
 
+    At a chosen width, the arrows either side of the selector move the window
+    one gridline earlier or later (`PL-Z7LY`). A window moved earlier holds
+    still while the run goes on, and `held_row` says so and offers one click
+    back to following the run. A step later that reaches the run's own window
+    follows the run again (`chart_time_base.later_start_s`). So does "Fit
+    run", which shows the whole run, and a Reset or an agent change, which
+    takes the run back before the held window (`chart_time_base.held_window`).
+    The held edge is not saved, so a chart that is built again follows the
+    run, and a reopened layout never opens on a stale window.
+
     Args:
         context: What the chart View is built from.
 
     Attributes:
-        selector: The control that sets the window.
-        time_base: The window the chart draws next, or None for "Fit run".
+        selector: The control that sets the window's width.
+        control: The selector between the two arrows, as one item for a row.
+        held_row: The line that says what a held window shows and where the
+            run is now, with the button that follows the run again. It is
+            hidden while the window follows the run.
+        time_base: The width the chart draws next, or None for "Fit run".
+        held_start_s: The held window's left edge the chart draws next, or
+            None while it follows the run.
         notice_text: The notice to show because the saved state could not be
             read, or None.
     """
@@ -396,29 +434,67 @@ class _TimeWindow:
 
     def __init__(self, context: ViewContext) -> None:
         self.time_base, self.notice_text = _read_time_base(context.saved_state)
+        self.held_start_s: CaseInstant | None = None
         self._drawn: object = self._NOT_DRAWN
+        self._frame: ChartFrame | None = None
         self._request_frame = context.requests.frame
         self.selector = TimeBaseSelector()
         self.selector.show_time_base(self.time_base)
         self.selector.time_base_requested.connect(self._choose)
+        self.earlier_button = _step_button(EARLIER_WINDOW_TEXT, EARLIER_WINDOW_NAME)
+        self.earlier_button.clicked.connect(self._step_earlier)
+        self.later_button = _step_button(LATER_WINDOW_TEXT, LATER_WINDOW_NAME)
+        self.later_button.clicked.connect(self._step_later)
+        self.follow_button = _step_button(FOLLOW_RUN_TEXT, FOLLOW_RUN_TEXT)
+        self.follow_button.clicked.connect(self._follow)
+        self.control = QWidget()
+        steps = QHBoxLayout(self.control)
+        steps.setContentsMargins(0, 0, 0, 0)
+        steps.setSpacing(VIEW_HEADING_SPACING)
+        steps.addWidget(self.earlier_button)
+        steps.addWidget(self.selector)
+        steps.addWidget(self.later_button)
+        # The line is conditional text: it shows only while the reader holds
+        # the window, when the plot shows the past and every readout shows
+        # the present. It is the stale-state misreading that `CLAUDE.md`'s
+        # safety standard names, so it is drawn in the warning colour, as the
+        # line naming traces above the axis is.
+        self.held_text = styled_label(
+            "", color=WARNING, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
+        )
+        self.held_row = QWidget()
+        held = QHBoxLayout(self.held_row)
+        held.setContentsMargins(0, 0, 0, 0)
+        held.setSpacing(VIEW_HEADING_SPACING)
+        held.addWidget(self.held_text, 1)
+        held.addWidget(self.follow_button)
+        self.held_row.setHidden(True)
+        self._show_steps(None)
 
     def request(self, width_px: float) -> FrameRequest:
         """Return the frame that the chart asks for: this window, sampled for `width_px`."""
 
-        return FrameRequest(self.time_base, width_px)
+        return FrameRequest(self._window(), width_px)
 
     def drew(self, frame: ChartFrame) -> None:
-        """Note the window `frame` was drawn at, and show it in the control."""
+        """Note the window `frame` was drawn at, and show it in the controls.
 
-        drawn = None if frame.fitted else frame.time_base
+        A frame that follows the run ends a hold, so a held window that a
+        Reset or a step later brought up to the run is not held again later.
+        """
+
+        self.held_start_s = frame.held_start_s
+        drawn = ChartWindow(None if frame.fitted else frame.time_base, frame.held_start_s)
         self._drawn = drawn
-        self.selector.show_time_base(drawn)
+        self._frame = frame
+        self.selector.show_time_base(drawn.time_base)
+        self._show_steps(frame)
 
     @property
     def owes_a_frame(self) -> bool:
         """Whether the window was changed since the chart last drew."""
 
-        return self._drawn is self._NOT_DRAWN or self._drawn != self.time_base
+        return self._drawn is self._NOT_DRAWN or self._drawn != self._window()
 
     def saved_state(self) -> SavedState:
         return MappingProxyType(
@@ -428,14 +504,104 @@ class _TimeWindow:
             }
         )
 
+    def _window(self) -> ChartWindow:
+        return ChartWindow(self.time_base, None if self.time_base is None else self.held_start_s)
+
+    def withheld(self) -> None:
+        """Forget the drawn window when the chart's frame is withheld, and offer nothing.
+
+        A withheld chart shows no window, so a held line naming one, and an
+        arrow stepping from it, would describe a plot that is no longer on
+        screen.
+        """
+
+        self._frame = None
+        self._show_steps(None)
+
+    def _show_steps(self, frame: ChartFrame | None) -> None:
+        """Offer each step that the drawn window allows, and say whether it is held.
+
+        Neither arrow moves a fitted window, which already shows the whole
+        run, or a preview's, which is centred on the run's reach while a
+        drag is held. Nothing lies before a window that starts at zero, and
+        nothing after one that follows the run.
+
+        A control that stops being offered while it has the keyboard focus
+        hands the focus to the time-base selector. Otherwise Qt would move it
+        to the next control in the page, and a keyboard user pressing the
+        same key again would act on a control they did not choose.
+        """
+
+        movable = (
+            frame is not None
+            and not frame.fitted
+            and not any(run.preview is not None for run in frame.runs)
+        )
+        notice = None if frame is None else held_window_notice(frame)
+        offered = (
+            (self.earlier_button, movable and frame is not None and frame.start_s > 0.0),
+            (self.later_button, movable and frame is not None and frame.held),
+            (self.follow_button, notice is not None),
+        )
+
+        if any(button.hasFocus() and not shown for button, shown in offered):
+            self.selector.setFocus(Qt.FocusReason.OtherFocusReason)
+
+        self.earlier_button.setEnabled(offered[0][1])
+        self.later_button.setEnabled(offered[1][1])
+        self.held_text.setText(notice or "")
+        self.held_row.setHidden(notice is None)
+
     def _choose(self, time_base: ChartTimeBase | None) -> None:
         self.time_base = time_base
+
+        # A held window keeps its place at another width, moved back onto
+        # that width's gridlines so both edges stay on labelled times.
+        if time_base is not None and self.held_start_s is not None:
+            self.held_start_s = gridline_at_or_before(time_base, self.held_start_s)
+
         self._request_frame()
 
         # A frame that drew has already shown the pick. One that failed drew
         # nothing, so the control goes back to the window still on the plot.
         if self._drawn is not self._NOT_DRAWN:
-            self.selector.show_time_base(cast(ChartTimeBase | None, self._drawn))
+            self.selector.show_time_base(cast(ChartWindow, self._drawn).time_base)
+
+    def _step_earlier(self) -> None:
+        if self._frame is None or self._frame.start_s <= 0.0:
+            return
+
+        self.held_start_s = earlier_start_s(self._frame.time_base, self._frame.start_s)
+        self._request_frame()
+
+    def _step_later(self) -> None:
+        if self._frame is None or not self._frame.held:
+            return
+
+        frame = self._frame
+        self.held_start_s = later_start_s(frame.time_base, frame.start_s, frame.newest_instant_s)
+        self._request_frame()
+
+    def _follow(self) -> None:
+        self.held_start_s = None
+        self._request_frame()
+
+
+def _step_button(text: str, name: str) -> QPushButton:
+    """Return a button that moves or releases a chart's window, named for what it does.
+
+    It is drawn as the run controls are, so its label stays readable under
+    a dark host appearance and when it is unavailable (`PL-DHBX`), and it
+    shows a ring while it has the keyboard focus (`PL-63FQ`).
+    """
+
+    button = QPushButton(text)
+    button.setAccessibleName(name)
+    button.setToolTip(name)
+    button.setStyleSheet(transport_button_stylesheet())
+    FocusRing(button, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH)
+
+    return button
 
 
 def _state_notice_for(context: ViewContext) -> QLabel:
@@ -679,10 +845,11 @@ class ConcentrationView(QWidget):
         # the View would grow taller than the Induction Workspace has room for.
         controls = QHBoxLayout()
         controls.setSpacing(VIEW_HEADING_SPACING)
-        controls.addWidget(_labelled_control(TIME_BASE_LABEL, self.time_base_selector))
+        controls.addWidget(_labelled_control(TIME_BASE_LABEL, self._window.control))
         controls.addWidget(_labelled_control(CHART_CEILING_LABEL, self.ceiling_selector))
         controls.addStretch(1)
         column.addLayout(controls)
+        column.addWidget(self._window.held_row)
         column.addWidget(self.state_notice)
         column.addWidget(FittedScroll((self.legend,), CHART_KEY_LEAST_HEIGHT))
         column.addWidget(self.withheld_text)
@@ -756,6 +923,7 @@ class ConcentrationView(QWidget):
         """Empty the plot, the references and the lines, and say why."""
 
         self.chart.withhold()
+        self._window.withheld()
         self._source = None
         self.withheld_text.setHidden(False)
         self.legend.show_run_names(_shown_run_names(tick.runs))
@@ -840,8 +1008,9 @@ class WashInView(QWidget):
         heading.setSpacing(VIEW_HEADING_SPACING)
         heading.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True), 1)
         heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
-        heading.addWidget(self.time_base_selector)
+        heading.addWidget(self._window.control)
         column.addLayout(heading)
+        column.addWidget(self._window.held_row)
         column.addWidget(self.state_notice)
         # The safety standard requires the plot to say it is modelled
         # (`PL-F9TQ`). The View's Area keeps the row above the box that
@@ -874,6 +1043,7 @@ class WashInView(QWidget):
 
         if _withholds(shown, self.chart.frame, self.chart.plot_width_px()):
             self.chart.withhold()
+            self._window.withheld()
             self.withheld_text.setHidden(False)
 
             if tick.runs:
@@ -1226,14 +1396,16 @@ class _CasePanelView[W: QWidget, S](QWidget):
 
 
 class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
-    """The case's marked instants and marked heights, with the forms that add and remove them.
+    """The case's marked instants and marked heights, each with a Remove button, and the add forms.
 
     Every Area that shows this View lists the same marks, because the marks
     belong to the case (`PL-9YPR`). The marks are edited here rather than in a
     window, so no window opens over the readouts while a run plays (`PL-CHX0`).
     Every copy of the forms shows the same entry, because the dashboard keeps
-    it and hands it in every tick (`MarkEntry`). A press of a button sends the
-    copy's entry with the request, and the dashboard makes the edit.
+    it and hands it in every tick (`MarkEntry`). A press of an Add button
+    sends the copy's entry with the request, and a press of a row's Remove
+    button sends which list the row is in and its place in that list. The
+    dashboard makes the edit.
 
     Args:
         context: What the View is built from.
@@ -1252,20 +1424,19 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
     def _built(self) -> BookmarksPanel:
         panel = BookmarksPanel()
         editor = panel.editor
-
-        for button, pressed in (
-            (MarkButton.ADD_TIME, editor.add_time_button),
-            (MarkButton.REMOVE_TIME, editor.remove_time_button),
-            (MarkButton.ADD_TARGET, editor.add_target_button),
-            (MarkButton.REMOVE_TARGET, editor.remove_target_button),
-        ):
-            pressed.clicked.connect(partial(self._ask_for_edit, button))
-
+        editor.add_time_button.clicked.connect(partial(self._ask_to_add, MarkButton.ADD_TIME))
+        editor.add_target_button.clicked.connect(partial(self._ask_to_add, MarkButton.ADD_TARGET))
+        panel.times.remove_requested.connect(
+            partial(self._requests.mark_remove, MarkButton.REMOVE_TIME)
+        )
+        panel.targets.remove_requested.connect(
+            partial(self._requests.mark_remove, MarkButton.REMOVE_TARGET)
+        )
         editor.entry_edited.connect(self._report_entry)
 
         return panel
 
-    def _ask_for_edit(self, button: MarkButton) -> None:
+    def _ask_to_add(self, button: MarkButton) -> None:
         if self._panel is not None:
             self._requests.mark_edit(button, self._panel.editor.entry())
 
@@ -1279,14 +1450,12 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
         The editor's signals are blocked while the tick is written, so that
         a bound that holds the height control down is not mistaken for the
         reader editing it. The dashboard works out the same held entry itself
-        (`MarkEntry.kept_through`).
+        (`MarkEntry.held_within`).
 
         The forms are rewritten only when the dashboard's entry differs both
         from the entry last handed here and from what the forms hold. Writing a
         field moves its cursor, so the copy the reader is typing in is never
-        rewritten with its own entry. The selected rows are written on every
-        tick, because a refill of a list can leave a copy built while the
-        lists were hidden with no row selected.
+        rewritten with its own entry.
         """
 
         editor = panel.editor
@@ -1302,14 +1471,11 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
 
             entry = shown.entry
 
-            if entry is not None:
-                if entry != self._entry_written and entry != editor.entry():
-                    editor.set_entry(entry)
-                else:
-                    editor.select_rows(entry)
+            if entry is not None and entry != self._entry_written and entry != editor.entry():
+                editor.set_entry(entry)
 
             self._entry_written = entry
-            editor.show_refusal(shown.refusal)
+            panel.show_refusal(shown.refusal)
 
 
 class BranchView(_CasePanelView[ForkPanel, BranchPresentation]):
