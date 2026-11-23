@@ -1413,28 +1413,38 @@ class ParameterSlider(QWidget):
 class NoticeLabel(QLabel):
     """The banner above a run's values: a stopped run or a refused setting, or nothing.
 
-    The banner is word-wrapped, bold and drawn in `theme.WARNING`, which is
-    the one warning colour this interface has. It is hidden rather than blank
+    The banner is word-wrapped and bold. It is drawn in `theme.WARNING`, the
+    one warning colour this interface has, unless the caller names another
+    colour for a banner that reports no fault. It is hidden rather than blank
     when there is nothing to say, so an empty line never takes up the space a
     warning would.
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setStyleSheet(foreground_stylesheet(WARNING))
         self.setWordWrap(True)
         font = QFont(self.font())
         font.setBold(True)
         self.setFont(font)
         self._notice: str | None = None
+        self._color: str | None = None
         self.set_notice(None)
 
-    def set_notice(self, text: str | None) -> None:
-        """Show `text`, or hide the banner when there is none.
+    def set_notice(self, text: str | None, color: str = WARNING) -> None:
+        """Show `text` in `color`, or hide the banner when there is none.
 
         Args:
-            text: `dashboard_frame.notice`'s result this tick.
+            text: The banner this tick, such as `dashboard_frame.notice`'s
+                result.
+            color: A theme colour. `theme.WARNING` unless the banner reports
+                no fault, such as a stop at the supported run length.
         """
+
+        # A stylesheet write restyles the label, so it is made only when the
+        # colour changes rather than on every frame.
+        if color != self._color:
+            self.setStyleSheet(foreground_stylesheet(color))
+            self._color = color
 
         self._notice = text
         self.setText(text if text is not None else "")

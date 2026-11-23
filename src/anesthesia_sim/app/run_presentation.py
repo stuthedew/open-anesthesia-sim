@@ -63,6 +63,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_DELIVERED_LINE_TEXT,
     Accounting,
     NewCaseQuestion,
+    Notice,
     Readout,
     RunStatement,
     SettingReadout,
@@ -71,11 +72,11 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_run_notice,
     delivered_line,
     failure_details,
-    halt_notice,
+    halt_run_notice,
     new_case_question,
-    notice,
     readouts,
     rejected_step_accounting,
+    run_notice,
     run_statement,
     setting_readouts,
     withheld_readouts,
@@ -215,8 +216,8 @@ class RunPresentation:
             `RunView.owes_a_frame` compares it with the controller's record.
         statement: The run-state widgets: the agent, the status word, the
             transport and the control-change panel.
-        notice: The banner's text, naming the run while a second run is
-            drawn, or None for no banner.
+        notice: The banner, with its text naming the run while a second run
+            is drawn, and the emphasis it is drawn with. None for no banner.
         one_mac: The line stating 1 MAC of the running agent, or why it
             could not be built. 1 MAC is the divisor of every ×MAC number in
             `values` and `dials`.
@@ -245,7 +246,7 @@ class RunPresentation:
     case: int
     record: RunRecord
     statement: RunStatement
-    notice: str | None
+    notice: Notice | None
     failure_details: str | None
     one_mac: str | NotBuilt
     standing: ValuesStanding
@@ -329,9 +330,10 @@ def drawn_run(
         snapshot,
         adjustments,
         state,
-        banner=notice(
+        banner=run_notice(
             snapshot,
             state.rejected_setting_notice,
+            elapsed_s=snapshot.elapsed_s,
             refused_reset=state.refused_reset_notice,
             branch_offered=state.branch_offered,
         ),
@@ -402,7 +404,7 @@ def halted_run(
         record,
         adjustments,
         state,
-        banner=halt_notice(
+        banner=halt_run_notice(
             record,
             state.rejected_setting_notice,
             refused_reset=state.refused_reset_notice,
@@ -424,6 +426,19 @@ def halted_run(
     )
 
 
+def _compared_banner(banner: Notice | None, run_name: str | None) -> Notice | None:
+    """Return the banner with its text naming the run while a second run is drawn.
+
+    The emphasis is the banner's own, so naming the run never changes its
+    colour. A run with nothing to say keeps no banner, named or not.
+    """
+
+    if banner is None:
+        return None
+
+    return replace(banner, text=compared_run_notice(banner.text, run_name))
+
+
 def _at_playback_rate(
     kept: tuple[Readout, ...], playback_rate: PlaybackRate
 ) -> tuple[Readout, ...]:
@@ -442,7 +457,7 @@ def _presentation(
     adjustments: Sequence[ControlAdjustment],
     state: RunPanelState,
     *,
-    banner: str | None,
+    banner: Notice | None,
     stopped_on_mark: bool,
     standing: ValuesStanding,
     values: RunValues,
@@ -491,7 +506,7 @@ def _presentation(
         case=state.case,
         record=record.run_record(),
         statement=statement,
-        notice=compared_run_notice(statement.banner, state.name),
+        notice=_compared_banner(statement.banner, state.name),
         failure_details=failure_details(record.run_record(), failure_log_path()),
         one_mac=one_mac,
         standing=standing,

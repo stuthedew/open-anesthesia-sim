@@ -180,7 +180,7 @@ from anesthesia_sim.app.run_presentation import (
     drawn_run,
     halted_run,
 )
-from anesthesia_sim.app.run_surfaces import emphasised, panel_frame
+from anesthesia_sim.app.run_surfaces import emphasis_color, emphasised, panel_frame
 from anesthesia_sim.app.stylesheets import (
     agent_selector_stylesheet,
     agent_surface_stylesheet,
@@ -929,11 +929,15 @@ class RunView(QWidget):
         one_mac = presentation.one_mac
         self._one_mac_text.setText("" if isinstance(one_mac, NotBuilt) else one_mac)
         self._delivered_text.setText(presentation.delivered_line)
-        self._notice_text.set_notice(presentation.notice)
+        banner = presentation.notice
+
+        if banner is None:
+            self._notice_text.set_notice(None)
+        else:
+            self._notice_text.set_notice(banner.text, emphasis_color(banner.emphasis))
+
         self._failure_details.set_details(presentation.failure_details, APP_ISSUES_URL)
-        self._halt_banner.setHidden(
-            presentation.notice is None and presentation.failure_details is None
-        )
+        self._halt_banner.setHidden(banner is None and presentation.failure_details is None)
 
         values = presentation.values
         self._readout_row.set_readouts(values.readouts)

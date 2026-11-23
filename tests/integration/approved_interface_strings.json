@@ -803,6 +803,9 @@
   "Stopped — supported run length reached",
   "•"
  ],
+ "supported run length approaching": [
+  "This run stops in #h##m of simulated time, at the supported run length of ## hours."
+ ],
  "branched in a pinned Workspace": [
   "# MAC, reference adult (alveolar, wide dash)",
   "A run from an earlier session",

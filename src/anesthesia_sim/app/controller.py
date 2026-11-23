@@ -15,6 +15,7 @@ does not also depend on the controller.
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, fields, replace
+from itertools import pairwise
 from math import ceil, floor, isfinite
 from types import MappingProxyType
 
@@ -31,6 +32,7 @@ from anesthesia_sim.app.chart_time_base import (
     extreme_seconds,
     extreme_seconds_with_gaps,
     grid_spacing_s,
+    wash_in_crossing_seconds,
 )
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_UNITS,
@@ -57,7 +59,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
-from anesthesia_sim.app.wash_in import wash_in_ratio
+from anesthesia_sim.app.wash_in import is_wash_in, wash_in_ratio
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import (
     Fraction,
@@ -3125,6 +3127,9 @@ class SimulationController:
         `PREVIEW_EXACT_S`, it predicts only the grid seconds and the right
         edge** (`predicted_states_at`), because no compartment turns between
         two columns there, and its constant gives the measurement. The
+        F_A/F_I ratio can still cross equilibrium between two of those
+        columns, so the seconds of such a pair are predicted one by one and
+        the crossing second is drawn too (`_with_later_crossings`). The
         prediction ends at the axis's right edge, or at the end of the
         supported run length if that comes first, because the model is not
         claimed to represent a patient past it.
@@ -3188,8 +3193,14 @@ class SimulationController:
             for second in drawn_seconds(exact_s, horizon_s, grid_s, events_s=())
             if second > exact_s
         )
+        # One name for the state at the end of the exact hour, so that the
+        # later columns and the search for a crossing start from the same one.
+        exact_state = predicted[-1]
         later_states = predicted_states_at(
-            settings, predicted[-1], CaseInstant(exact_s), later_times_s
+            settings, exact_state, CaseInstant(exact_s), later_times_s
+        )
+        later_times_s, later_states = _with_later_crossings(
+            settings, CaseInstant(exact_s), exact_state, later_times_s, later_states
         )
 
         window = DrawnWindow(
@@ -3876,6 +3887,9 @@ _INSPIRED_SERIES = [index for index, _ in FRACTION_STATE_NAMES].index(
 _ALVEOLAR_SERIES = [index for index, _ in FRACTION_STATE_NAMES].index(
     COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
 )
+#: Where the inspired and the alveolar fraction stand in a whole state.
+_INSPIRED_INDEX = COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
+_ALVEOLAR_INDEX = COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
 
 
 def _with_extremes(
@@ -3901,6 +3915,11 @@ def _with_extremes(
     `DrawnWindow.wash_in_quotients` also forms it by, and it has no value at
     a second whose inspired fraction is too small to divide by
     (`chart_time_base.extreme_seconds_with_gaps`).
+
+    The second at which the ratio crosses equilibrium between two of the
+    chosen seconds is drawn as well, so a wash-in stretch ends on the line
+    however far apart the columns are (`PL-CJJ1`,
+    `chart_time_base.wash_in_crossing_seconds`).
 
     Args:
         first_s: The window's first second.
@@ -3929,8 +3948,70 @@ def _with_extremes(
         )
     ]
     extremes_s |= extreme_seconds_with_gaps(first_s, ratios, drawn_s)
+    chosen_s = sorted(extremes_s.union(drawn_s))
+    crossings_s = wash_in_crossing_seconds(first_s, ratios, chosen_s)
 
-    return tuple(CaseInstant(second) for second in sorted(extremes_s.union(drawn_s)))
+    return tuple(CaseInstant(second) for second in sorted(crossings_s.union(chosen_s)))
+
+
+def _with_later_crossings(
+    settings: UptakeEquationSettings,
+    exact_s: CaseInstant,
+    exact_state: tuple[float, ...],
+    later_s: tuple[CaseInstant, ...],
+    later_states: tuple[tuple[float, ...], ...],
+) -> tuple[tuple[CaseInstant, ...], tuple[tuple[float, ...], ...]]:
+    """Return a prediction's later columns with the second at which F_A/F_I crosses equilibrium.
+
+    Past its first hour, a preview predicts only the grid seconds
+    (`SimulationController.preview_window`). Where the ratio is inside the
+    wash-in domain at one of two neighbouring columns and outside it at the
+    other, the seconds between them are predicted one by one, and the second
+    that `chart_time_base.wash_in_crossing_seconds` chooses is added. So a
+    predicted wash-in stretch ends or starts on the line at every time base,
+    as a drawn one does (`PL-CJJ1`). The pair that joins the exact first hour
+    to the first later column is searched too.
+
+    Args:
+        settings: The settings the prediction runs under.
+        exact_s: The last second of the exact first hour.
+        exact_state: The predicted state at `exact_s`.
+        later_s: The later columns, ascending, each after `exact_s`.
+        later_states: The predicted state at each of `later_s`.
+
+    Returns:
+        The later columns and their states, with each crossing second and its
+        state added in order.
+    """
+
+    def ratio(state: tuple[float, ...]) -> float | None:
+        return wash_in_ratio(state[_ALVEOLAR_INDEX], state[_INSPIRED_INDEX])
+
+    def outside(state: tuple[float, ...]) -> bool:
+        value = ratio(state)
+
+        return value is None or not is_wash_in(value)
+
+    by_second = dict(zip(later_s, later_states, strict=True))
+    columns = ((exact_s, exact_state), *by_second.items())
+
+    for (left_s, left_state), (right_s, right_state) in pairwise(columns):
+        # The seconds between two columns are predicted only where the ratio
+        # is inside the domain at one column and outside it at the other.
+        if outside(left_state) == outside(right_state):
+            continue
+
+        between_s = tuple(CaseInstant(second) for second in range(left_s + 1, right_s))
+        between_states = predicted_states_at(settings, left_state, left_s, between_s)
+        states = (left_state, *between_states, right_state)
+        crossings_s = wash_in_crossing_seconds(
+            left_s, [ratio(state) for state in states], (left_s, right_s)
+        )
+        by_second.update((CaseInstant(second), states[second - left_s]) for second in crossings_s)
+
+    ordered_s = tuple(sorted(by_second))
+
+    return ordered_s, tuple(by_second[second] for second in ordered_s)
 
 
 class BranchedCase:

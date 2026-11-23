@@ -278,9 +278,12 @@ def test_a_stopped_run_s_banner_states_what_the_panel_refused_on_a_frame_and_on_
     }
 
     for banners in (
-        {name: drawn_run(snapshot, adjustments, state).notice for name, state in states.items()},
         {
-            name: halted_run(record, adjustments, state, kept).notice
+            name: _banner_text(drawn_run(snapshot, adjustments, state))
+            for name, state in states.items()
+        },
+        {
+            name: _banner_text(halted_run(record, adjustments, state, kept))
             for name, state in states.items()
         },
     ):
@@ -294,6 +297,24 @@ def test_a_stopped_run_s_banner_states_what_the_panel_refused_on_a_frame_and_on_
         assert "Reset was refused: no run can be built." in str(banners["reset"])
 
 
+def _banner_text(presentation: RunPresentation) -> str:
+    """The banner's text. A presentation that shows no banner fails the test here."""
+
+    if presentation.notice is None:
+        raise AssertionError("the presentation shows no banner")
+
+    return presentation.notice.text
+
+
+def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
+    """A hidden banner stays hidden: an attribution is not a reason to show one (`PL-TSZM`)."""
+
+    controller = _run_at(30)
+
+    assert _drawn(controller, _state()).notice is None
+    assert _drawn(controller, _state(name="Run 2")).notice is None
+
+
 def test_a_compared_run_s_banner_names_the_run() -> None:
     """While a second run is drawn, a run's banner says which run it speaks for (`PL-TSZM`)."""
 
@@ -305,11 +326,12 @@ def test_a_compared_run_s_banner_names_the_run() -> None:
     )
 
     assert lone.notice is not None
-    assert lone.notice.startswith("Setting refused: too high.")
-    assert "Run 2" not in lone.notice
+    assert lone.notice.text.startswith("Setting refused: too high.")
+    assert "Run 2" not in lone.notice.text
     assert compared.notice is not None
-    assert compared.notice != lone.notice
-    assert "Run 2" in compared.notice
+    assert compared.notice.text != lone.notice.text
+    assert "Run 2" in compared.notice.text
+    assert compared.notice.emphasis is lone.notice.emphasis
     assert compared.name == "Run 2"
 
 
@@ -328,8 +350,8 @@ def test_a_compared_run_s_halt_banner_names_the_run() -> None:
     compared = _halted(controller, replace(state, name="Run 2"), kept)
 
     assert lone.notice is not None
-    assert lone.notice.startswith("Simulation stopped")
-    assert compared.notice == f"Run 2: {lone.notice}"
+    assert _banner_text(lone).startswith("Simulation stopped")
+    assert _banner_text(compared) == f"Run 2: {_banner_text(lone)}"
 
 
 def test_a_halt_lists_the_control_changes_of_the_run_it_stopped() -> None:
@@ -492,9 +514,9 @@ def test_a_halt_s_banner_says_the_run_started_over_only_when_it_did() -> None:
 
     assert same_run.notice is not None
     assert started_over.notice is not None
-    assert same_run.notice != started_over.notice
-    assert "started over" in started_over.notice
-    assert "started over" not in same_run.notice
+    assert _banner_text(same_run) != _banner_text(started_over)
+    assert "started over" in _banner_text(started_over)
+    assert "started over" not in _banner_text(same_run)
 
 
 def test_a_halt_s_banner_says_the_charts_are_withheld_only_when_they_are() -> None:
@@ -522,13 +544,13 @@ def test_a_halt_s_banner_says_the_charts_are_withheld_only_when_they_are() -> No
     assert charts_withheld.notice is not None
     assert started_over.notice is not None
     assert "the readouts and every chart that still has a plot show the last frame" in (
-        charts_kept.notice
+        _banner_text(charts_kept)
     )
     assert (
         "the readouts show the last frame drawn before it stopped, the charts are withheld"
-        in charts_withheld.notice
+        in _banner_text(charts_withheld)
     )
-    assert "the readouts and the charts are withheld" in started_over.notice
+    assert "the readouts and the charts are withheld" in _banner_text(started_over)
     assert charts_withheld.standing is ValuesStanding.KEPT
     assert charts_withheld.values == charts_kept.values
 
@@ -731,7 +753,7 @@ def test_a_halt_is_stated_for_a_record_whose_dials_or_1_mac_line_cannot_be_built
         assert type(shown.one_mac.error) is one_mac
 
     assert shown.notice is not None
-    assert "a value was refused" not in shown.notice
+    assert "a value was refused" not in _banner_text(shown)
     assert shown.failure_details is not None
     assert "What stopped the run: a value was refused" in shown.failure_details
     assert shown.statement.transport.start_enabled is False

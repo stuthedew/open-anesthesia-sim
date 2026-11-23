@@ -3,13 +3,15 @@ id: PL-0889
 title: The banner shown when a run reaches the 24-hour supported run length is drawn in bold WARNING, the interface's one failure colour, though the status word above it is MUTED and app/theme.py says that boundary must not be coloured as a fault
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tools/contrast_check.py, tests/integration/simulation_view
 added: 2026-10-25
+closed: 2026-11-23
+pr: 2267
 payoff: a correct stop at the supported run length no longer looks like a fault, so the interface's one warning colour keeps meaning a real failure
-verify: grep -rq 'def test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour' tests/integration/simulation_view/
+tests: tests/integration/simulation_view/test_simulation_view_run_stops_itself.py::test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour
 ---
 
 **Problem.** `NoticeLabel` sets `foreground_stylesheet(WARNING)` once, in its
@@ -35,3 +37,7 @@ Checked against main on 2026-10-25 by reading the code.
 **Generator check.** A one-off. The banner's colour is fixed once in `NoticeLabel`'s constructor, and the item touches `tools/contrast_check.py` only to declare any colour pairing the fix adds.
 
 **Checked 2026-11-22** against `d4e8200`: still applies. `NoticeLabel.__init__` in `app/qt_widgets.py` still sets `foreground_stylesheet(WARNING)` once, and `set_notice` changes only the text. `status_word` in `app/dashboard_frame.py` still gives the supported-limit state `Emphasis.MUTED`. No test named `test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour` exists.
+
+**Closed 2026-11-23.** Documentation checked for statements this change made false: `docs/INTERFACE.md` (§§ "What happens when a run reaches the limit", "Color as a cue: agent colors and the alert color", "Minimum contrast for text and graphics", "Interface boundary"), `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md`, `.claude/rules/ui-color.md`, the colour notes in `src/anesthesia_sim/app/theme.py`, and the docstrings of `app/dashboard_frame.py`, `app/run_presentation.py`, `app/run_view.py`, `app/run_surfaces.py` and `app/qt_widgets.py`. Both blind review passes found that a refusal still on screen hid the countdown; the countdown now follows the refusal. Pass 1 also found a refusal on the stopped run drawn muted; any banner that states a refusal is now a warning.
+
+**Regression record.** On `main` before this change (771e1499), `test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour` fails with `assert 'color: #8A4B08;' == 'color: #59728A;'`: the stop's banner was drawn in WARNING. The countdown test needs `run_notice`, which this change adds; the variant without it is `dashboard_frame.notice(replace(SimulationController().snapshot(), elapsed_s=80400), None)`, which returns `None` on `main`, so no banner shows 1 h 40 min before the stop.

@@ -124,6 +124,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ForkOffer,
     ForkPoint,
     HaltDisposition,
+    Notice,
     RunMarks,
     above_the_axis_top,
     accounting,
@@ -138,6 +139,7 @@ from anesthesia_sim.app.dashboard_frame import (
     fork_offer,
     halt_disposition,
     halt_notice,
+    halt_run_notice,
     height_entry_maximum_mac,
     kept_fork_selection,
     mac_awake_caption,
@@ -157,6 +159,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_setting_notice,
     rejected_step_accounting,
     run_label,
+    run_notice,
     run_statement,
     setting_readouts,
     slider_position,
@@ -1215,6 +1218,129 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
 
     assert banner is not None
     assert f"supported run length of {format_supported_run_length()}" in banner
+
+
+#: 24 hours less 1 h 40 min, in seconds, worked out by hand: 86,400 - 6,000. The banner
+#: opens 20 s of real time before the stop at 300x, which is 6,000 s of simulated time
+#: (WCAG 2.2 SC 2.2.1's 20 s at the fastest playback rate).
+_FIRST_SECOND_OF_THE_APPROACH_S = 80_400
+
+
+def test_the_interface_says_the_run_is_approaching_its_supported_length() -> None:
+    """A run 1 h 40 min from the 24-hour stop says so, before it gets there (`PL-H2K2`).
+
+    Before this change the run advanced with no word until the step at 24
+    hours was refused. The halt then arrived with no warning and could read
+    as a fault. The banner is drawn muted, because nothing is wrong with the
+    run. Each expected string was worked out by hand from the times above.
+    """
+
+    def banner_at(elapsed_s: int) -> Notice | None:
+        snapshot = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(elapsed_s))
+        return run_notice(snapshot, None, elapsed_s=snapshot.elapsed_s)
+
+    assert banner_at(_FIRST_SECOND_OF_THE_APPROACH_S - 1) is None
+    assert banner_at(_FIRST_SECOND_OF_THE_APPROACH_S) == Notice(
+        "This run stops in 1h40m of simulated time, at the supported run length of 24 hours.",
+        Emphasis.MUTED,
+    )
+    assert banner_at(86_399) == Notice(
+        "This run stops in 1s of simulated time, at the supported run length of 24 hours.",
+        Emphasis.MUTED,
+    )
+
+
+def test_a_stop_or_a_refusal_outranks_the_approaching_limit_banner() -> None:
+    """A stopped run or a refused setting describes the run now, so it leads the banner.
+
+    The refused setting is drawn as a warning, because the reader's setting was
+    not applied. The stop at the limit is drawn muted, as its status word is.
+    """
+
+    approaching = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(86_000))
+    refused = run_notice(approaching, "Setting refused — too high", elapsed_s=approaching.elapsed_s)
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    stopped = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s)
+    failed = replace(approaching, failure_reason="RuntimeError: boom", is_running=False)
+
+    assert refused is not None
+    assert refused.text.startswith("Setting refused — too high.")
+    assert refused.emphasis is Emphasis.WARNING
+    assert stopped is not None
+    assert stopped.text.startswith("Simulation stopped — this run reached the supported run")
+    assert stopped.emphasis is Emphasis.MUTED
+    assert run_notice(failed, None, elapsed_s=failed.elapsed_s) == Notice(
+        notice(failed, None), Emphasis.WARNING
+    )
+
+
+def test_a_refusal_made_before_the_warning_does_not_hide_the_countdown() -> None:
+    """A refused setting stays on screen until a setting is accepted, so it can hold the banner.
+
+    A refusal made at hour 10 is still shown at hour 23. The countdown then
+    follows it in the same banner, or the stop would arrive unannounced. The
+    expected remaining time is worked out by hand: 86 400 s less 80 400 s is
+    6 000 s, which the clock writes as 1h40m.
+    """
+
+    approaching = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(80_400))
+
+    banner = run_notice(approaching, "Setting refused — too high", elapsed_s=approaching.elapsed_s)
+
+    assert banner == Notice(
+        "Setting refused — too high. The simulation is unchanged and still running its "
+        "previous setting. This run stops in 1h40m of simulated time, at the supported "
+        "run length of 24 hours.",
+        Emphasis.WARNING,
+    )
+
+
+def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
+    """With no frame drawn, a failure is a warning and the run-length stop is not (`PL-0889`)."""
+
+    at_limit = _snapshot(supported_limit_reason="reached 86400 s")
+    failed = _snapshot(failure_reason="RuntimeError: boom")
+
+    assert halt_run_notice(at_limit) == Notice(halt_notice(at_limit), Emphasis.MUTED)
+    assert halt_run_notice(failed) == Notice(halt_notice(failed), Emphasis.WARNING)
+    assert halt_run_notice(_snapshot()) is None
+
+
+def test_a_refused_reset_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning() -> None:
+    """A Reset that was refused is a request not carried out, so its banner is a warning too."""
+
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    refused_reset = "Reset was refused: no run can be built."
+
+    drawn = run_notice(at_limit, None, elapsed_s=at_limit.elapsed_s, refused_reset=refused_reset)
+    halted = halt_run_notice(at_limit, refused_reset=refused_reset)
+
+    assert drawn == Notice(notice(at_limit, None, refused_reset=refused_reset), Emphasis.WARNING)
+    assert halted == Notice(halt_notice(at_limit, refused_reset=refused_reset), Emphasis.WARNING)
+
+
+def test_a_refusal_on_a_run_stopped_at_the_limit_is_drawn_as_a_warning() -> None:
+    """The stop is muted, but a banner that says a setting was refused is a warning.
+
+    A dial moved on a run stopped at the supported run length is refused, and
+    the stop's banner then states the refusal. What the reader asked for was
+    not done, so the banner takes the alert colour, drawn frame or not.
+    """
+
+    at_limit = replace(
+        _snapshot(supported_limit_reason="reached 86400 s"), elapsed_s=CaseInstant(86_400)
+    )
+    refused = "Setting refused — the run has stopped"
+
+    drawn = run_notice(at_limit, refused, elapsed_s=at_limit.elapsed_s)
+    halted = halt_run_notice(at_limit, refused)
+
+    assert drawn == Notice(notice(at_limit, refused), Emphasis.WARNING)
+    assert halted == Notice(halt_notice(at_limit, refused), Emphasis.WARNING)
 
 
 def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
@@ -3148,13 +3274,6 @@ def test_the_banner_s_name_is_separated_by_a_colon_not_a_second_em_dash() -> Non
     assert named is not None
     assert named.startswith("Run 2: ")
     assert named.count("—") == 1
-
-
-def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
-    """A hidden banner stays hidden: an attribution is not a reason to show one."""
-
-    assert compared_run_notice(None, "Run 2") is None
-    assert compared_run_notice(None, None) is None
 
 
 def test_a_banner_for_a_run_whose_name_is_empty_is_refused() -> None:

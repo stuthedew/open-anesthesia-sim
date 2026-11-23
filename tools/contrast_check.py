@@ -662,7 +662,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "(`build_transport_row`), and the interpretation line beside the "
         "readout heading (`_interpretation_text`, PL-2K1R), and the agent's 1 "
         "MAC stated at the end of that heading (`_one_mac_text`, PL-NWTM). "
-        "Also the border of "
+        "Also the run's banner (`_notice_text`) when it reports no fault: a stop "
+        "at the supported run length, and the banner that announces that stop "
+        "before it arrives (PL-0889, PL-H2K2). Also the border of "
         "the playback-rate dropdown drawn beside them "
         "(`_playback_rate_dropdown`), which is a user-interface component "
         "and so needs only SC 1.4.11's 3:1 - met with room to spare by the text "
@@ -798,8 +800,9 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the halted-run notice (`_notice_text`, a `NoticeLabel` written by "
-        "`show_presentation`), the run-status word while stopped (`_status_text`), and "
+        "the run's banner when a run fails or a setting is refused (`_notice_text`, "
+        "a `NoticeLabel` written by `show_presentation`), the run-status word "
+        "after a failure (`_status_text`), and "
         "the educational-use disclaimer, which `SimulationView` places at the "
         "foot of the page. Also why a Workspace name typed into a tab was "
         "not taken, beside the tabs (`WorkspaceTabs`, PL-2KXB)",
