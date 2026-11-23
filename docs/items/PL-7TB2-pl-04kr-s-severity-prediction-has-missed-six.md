@@ -3,16 +3,19 @@ id: PL-7TB2
 title: PL-04KR's severity prediction has missed six weeks running, and none of the six readings found an unfound generator: decide whether release keeps printing it
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: infra, planning
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/cli.py, subprojects/docket/README.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus reading of release reports, with no effect on what a learner sees
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2301
 filed-pr: 2301
 payoff: the release cut stops filing a reading item each week for a signal that has not found a generator, or keeps it on the owner's word
+tests: subprojects/docket/tests/test_inflow.py::test_a_p1_workflow_filing_breaks_no_prediction
 root-cause-of: PL-P6KV, PL-7LMM, PL-40ZB, PL-Z1ZT, PL-NJ54
-generator: live - each release whose last complete week holds a workflow filing at P1 prints a miss, and each miss is read as its own item
+generator: spent - check: test_a_p1_workflow_filing_breaks_no_prediction in subprojects/docket/tests/test_inflow.py fails if a release cut again reads a filing's priority as a miss
 misread: whether a workflow filing's priority band records how severe an apparatus defect is
 ---
 
@@ -43,3 +46,5 @@ Five reading items so far (`PL-P6KV`, `PL-7LMM`, `PL-40ZB`, `PL-Z1ZT`, `PL-NJ54`
 **Recommendation.** Option 1. The signal has fired six weeks running and changed no decision about a generator, which is the test `.claude/rules/apparatus-standard.md` § "A check earns its place every run, or it is retired" sets. It is the owner's call because `PL-04KR` exists so the owner's expectation that workflow inflow falls can fail loudly, and this removes one of the ways it can fail.
 
 **Generator check.** One cause behind five reading items: the severity prediction reads a priority band, and the band records order as well as severity. The decision above is its fix.
+
+**Answer, 2026-11-23.** Option 1, stop the warning (project owner, 2026-11-23, ratified, over keeping it). `docket.inflow.missed` no longer reads a filing's priority, `subprojects/docket/README.md` names the two predictions left, and `PL-04KR` records the deviation, its reason and its consequence. `test_a_p1_workflow_filing_breaks_no_prediction` pins the change.

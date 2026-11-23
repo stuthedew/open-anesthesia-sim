@@ -480,10 +480,9 @@ def test_the_release_report_names_each_prediction_the_last_week_broke() -> None:
         "PL-2002", date(2026, 9, 9), priority="P1", root_cause_of=("PL-00B1", "PL-00B2", "PL-00B3")
     )
 
-    paths, band, reentry = missed(analyze([*items, head], CONFIG, today=today), today)
+    paths, reentry = missed(analyze([*items, head], CONFIG, today=today), today)
 
     assert "1 new apparatus paths over 3 filings, 0.33 a filing" in paths
-    assert "1 P1 apparatus filing" in band  # the head's P1 is a rank, not a severity
     assert "1 re-entries against 0" in reentry
 
 
@@ -512,66 +511,35 @@ def test_the_new_paths_ceiling_breaks_only_when_the_count_did_not_fall() -> None
 
 def test_a_cut_prints_the_broken_predictions_and_nothing_when_none_broke() -> None:
     today = date(2026, 9, 15)
-    broken = [_item("PL-1000", date(2026, 9, 1)), _item("PL-2000", date(2026, 9, 8), priority="P1")]
+    broken = [
+        FIXED,
+        _item("PL-1000", date(2026, 9, 1)),
+        _item("PL-2000", date(2026, 9, 8), reenters=("PL-FXD0",)),
+    ]
 
-    assert "1 P1 apparatus filing" in _missed_expectations(broken, CONFIG, today)
-    assert _missed_expectations(broken[:1], CONFIG, today) == ""
+    assert "1 re-entries against 0" in _missed_expectations(broken, CONFIG, today)
+    assert _missed_expectations(broken[:2], CONFIG, today) == ""
     assert _missed_expectations(broken, Config(items_dir="docs/items"), today) == ""
 
 
-def _severe(items: list[Item], week: date) -> dict[str, int]:
-    """The unexpected bands `analyze` counts for the week starting `week`."""
-    periods = analyze(items, CONFIG, today=week + timedelta(days=7)).periods
-    return dict(next(p for p in periods if p.start == week).severe)
+def test_a_p1_workflow_filing_breaks_no_prediction() -> None:
+    """No prediction reads a filing's priority any more (`PL-7TB2`).
 
-
-def test_a_crossing_item_s_p1_is_not_an_unexpected_band() -> None:
-    """A band on an item that also edits the product says nothing about the apparatus.
-
-    `PL-HQF5` and `PL-4RL2` declared a rule file beside simulator files
-    (`PL-00TR`). `PL-M85T`, `PL-RNYV` and `PL-S79P` declared a tool or an
-    apparatus test beside them, and the week to 2026-10-25 reported all three
-    as a broken prediction (`PL-P6KV`). A pinned or unpinned P1 in the
-    workflow lane still counts.
+    Every week from 2026-10-12 to 11-22 broke the old prediction that no
+    workflow filing reaches `P1`, and none of the six readings found a cause
+    triage had not already recorded. A week whose only change is a `P1`
+    workflow filing is now silent.
     """
-    week = date(2026, 9, 7)
-    on_a_rule = _item(
-        "PL-3000",
-        week,
-        touches=("src/core.py", ".claude/rules/core-domain.md"),
-        priority="P1",
-        classes=("defect", "safety"),
-    )
-    with_a_tool = _item(
-        "PL-3003",
-        week,
-        touches=("src/app.py", "tools/contrast_check.py"),
-        priority="P1",
-        classes=("safety", "anticipated"),
-    )
-    unpinned_crossing = _item("PL-3004", week, touches=("src/a.py", "tools/a.py"), priority="P1")
-    in_a_tool = _item(
-        "PL-3001", week, touches=("tools/a.py",), priority="P1", classes=("defect", "safety")
-    )
-    unpinned = _item("PL-3002", week, touches=(".claude/rules/x.md",), priority="P1")
+    week = [
+        _item(f"PL-1{n:03d}", date(2026, 9, 1), touches=("tools/a.py",)) for n in range(10)
+    ]
+    severe = [
+        _item(f"PL-2{n:03d}", date(2026, 9, 8), touches=("tools/a.py",), priority=band)
+        for n, band in enumerate(("P0", "P1", "P1"))
+    ]
+    today = date(2026, 9, 15)
 
-    assert _severe([on_a_rule, with_a_tool, unpinned_crossing], week) == {}
-    assert _severe([on_a_rule, in_a_tool], week) == {"P1": 1}
-    assert _severe([unpinned], week) == {"P1": 1}
-
-
-def test_an_owner_set_p1_is_not_an_unexpected_band() -> None:
-    """The owner placed `PL-JRVV` at P1, which records an order, not a severity (`PL-P6KV`).
-
-    A record naming another band describes a decision the item no longer
-    carries, so that item still counts.
-    """
-    week = date(2026, 9, 7)
-    placed = replace(_item("PL-3005", week, priority="P1"), owner_priority="P1, 2026-09-08")
-    stale = replace(placed, identifier="PL-3006", owner_priority="P2, 2026-09-08")
-
-    assert _severe([placed], week) == {}
-    assert _severe([stale], week) == {"P1": 1}
+    assert missed(analyze([*week, *severe], CONFIG, today=today), today) == ()
 
 
 def test_a_missed_prediction_says_where_to_file_its_investigation() -> None:
@@ -742,11 +710,11 @@ def test_a_miss_says_when_a_sweep_could_not_be_told_apart() -> None:
         analyze(items, CONFIG, today=date(2026, 9, 14), filing=_sweep_store()[1]), date(2026, 9, 14)
     )
 
-    assert any("3 P1 apparatus filing(s)" in line for line in lines)
+    assert len(lines) == 2
     assert lines[-1].endswith(
         "could not be told apart, so these counts include them: the checkout is a shallow clone"
     )
-    assert not any("P1" in line or "told apart" in line for line in attributed)
+    assert not any("told apart" in line for line in attributed)
 
 
 def test_the_command_counts_a_sweep_from_the_commit_that_filed_its_findings(
