@@ -904,8 +904,8 @@ class ChartFrame:
             preview, whose window replaces the held one only while the drag
             is held.
         newest_instant_s: The instant at which the furthest-advanced run on
-            the chart stands. A held window says how far the run has gone
-            past it.
+            the chart stands. A step later reaches the window that follows
+            the run against it (`chart_time_base.later_start_s`).
         start_s: Left edge of the window, in simulated seconds.
         stop_s: Right edge of the window, in simulated seconds.
         tick_times_s: Where the gridlines and axis labels fall, on both

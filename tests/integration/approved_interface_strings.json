@@ -77,6 +77,7 @@
   "Fat (dash-dot)",
   "Fill height is tension, on a scale of # to #.#% of # atm (# ×MAC).\nMarks stand every #.# ×MAC.\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
+  "Follow the run",
   "Fresh gas flow",
   "From",
   "Height",
@@ -115,6 +116,8 @@
   "Sevoflurane",
   "Sevoflurane delivered",
   "Share of the agent the run holds:\nnone yet, because the run holds no agent,\nso the bar is empty.",
+  "Show a later part of the run",
+  "Show an earlier part of the run",
   "Show as",
   "Show details",
   "Simulated time",
@@ -143,7 +146,9 @@
   "millilitres of liquid",
   "simulated time, whole run so far, # minute shown",
   " ",
-  "×MAC"
+  "×MAC",
+  "▶",
+  "◀"
  ],
  "2 min": [
   "",
@@ -229,6 +234,7 @@
   "Fat (dash-dot)",
   "Fill height is tension, on a scale of # to #.#% of # atm (# ×MAC).\nMarks stand every #.# ×MAC.\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
+  "Follow the run",
   "Fresh gas flow",
   "From",
   "Height",
@@ -267,6 +273,8 @@
   "Sevoflurane",
   "Sevoflurane delivered",
   "Share of the agent the run holds:\nCircuit ##%, Alveolar ##%, Mixed venous #%,\nVessel-rich group ##%, Muscle #%, Fat #%.",
+  "Show a later part of the run",
+  "Show an earlier part of the run",
   "Show as",
   "Show details",
   "Simulated time",
@@ -295,7 +303,9 @@
   "millilitres of liquid",
   "simulated time, whole run so far, # minutes shown",
   " ",
-  "×MAC"
+  "×MAC",
+  "▶",
+  "◀"
  ],
  "10 min": [
   "",
@@ -380,6 +390,7 @@
   "Fat (dash-dot)",
   "Fill height is tension, on a scale of # to #.#% of # atm (# ×MAC).\nMarks stand every #.# ×MAC.\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
+  "Follow the run",
   "Fresh gas flow",
   "From",
   "Height",
@@ -418,6 +429,8 @@
   "Sevoflurane",
   "Sevoflurane delivered",
   "Share of the agent the run holds:\nCircuit ##%, Alveolar ##%, Mixed venous #%,\nVessel-rich group ##%, Muscle ##%, Fat #%.",
+  "Show a later part of the run",
+  "Show an earlier part of the run",
   "Show as",
   "Show details",
   "Simulated time",
@@ -446,7 +459,9 @@
   "millilitres of liquid",
   "simulated time, whole run so far, ## minutes shown",
   " ",
-  "×MAC"
+  "×MAC",
+  "▶",
+  "◀"
  ],
  "desflurane, 2 min": [
   "",
@@ -533,6 +548,7 @@
   "Fat (dash-dot)",
   "Fill height is tension, on a scale of # to ##.#% of # atm (# ×MAC).\nMarks stand every #.# ×MAC.\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
+  "Follow the run",
   "Fresh gas flow",
   "From",
   "Height",
@@ -570,6 +586,8 @@
   "Set price",
   "Sevoflurane",
   "Share of the agent the run holds:\nCircuit ##%, Alveolar ##%, Mixed venous #%,\nVessel-rich group #%, Muscle #%, Fat #%.",
+  "Show a later part of the run",
+  "Show an earlier part of the run",
   "Show as",
   "Show details",
   "Simulated time",
@@ -598,7 +616,9 @@
   "millilitres of liquid",
   "simulated time, whole run so far, # minutes shown",
   " ",
-  "×MAC"
+  "×MAC",
+  "▶",
+  "◀"
  ],
  "isoflurane, 2 min": [
   "",
@@ -684,6 +704,7 @@
   "Fat (dash-dot)",
   "Fill height is tension, on a scale of # to #.##% of # atm (# ×MAC).\nMarks stand every #.# ×MAC.\nA container's height is its tension, not its amount of agent.\nAmounts are millilitres of vapour at ## °C and # atm.\nAmounts in the body read high,\nas they are gas at body temperature.",
   "Fit run",
+  "Follow the run",
   "Fresh gas flow",
   "From",
   "Height",
@@ -722,6 +743,8 @@
   "Set price",
   "Sevoflurane",
   "Share of the agent the run holds:\nCircuit ##%, Alveolar ##%, Mixed venous #%,\nVessel-rich group ##%, Muscle #%, Fat #%.",
+  "Show a later part of the run",
+  "Show an earlier part of the run",
   "Show as",
   "Show details",
   "Simulated time",
@@ -750,7 +773,9 @@
   "millilitres of liquid",
   "simulated time, whole run so far, # minutes shown",
   " ",
-  "×MAC"
+  "×MAC",
+  "▶",
+  "◀"
  ],
  "setting changed": [
   "#m##s",
@@ -837,6 +862,12 @@
   "Show details for Run #",
   "This Workspace is pinned to a run from an earlier session, so its Views show no run. Unpin it from the Workspace's tab to show the runs that are open.",
   "simulated time"
+ ],
+ "window held": [
+  "## mL of liquid",
+  "Share of the agent the run holds:\nCircuit ##%, Alveolar #%, Mixed venous #%,\nVessel-rich group ##%, Muscle ##%, Fat ##%.",
+  "Showing ##m to ##m. The run is now at ##m.",
+  "simulated time, ## minutes shown, held: not following the run"
  ],
  "halt after an agent change": [
   "Above the top of the plot: Circuit. The axis stops at #.##% (#.## ×MAC) and these traces are cut off there — their values are in the readouts above, which are not clipped.",

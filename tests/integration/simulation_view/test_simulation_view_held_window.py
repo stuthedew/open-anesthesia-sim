@@ -15,6 +15,7 @@ the chart.
 import pytest
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.chart_time_base import (
     CHART_LIVE_HEADROOM_FRACTION,
@@ -29,6 +30,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _branched_case,
     _case_view,
     _concentration,
+    _failing_assembly,
     _select_agent,
     _select_time_base,
     _settle,
@@ -239,6 +241,95 @@ def test_a_branch_taken_while_held_keeps_the_window_with_both_runs_on_it(
     assert len(frame.runs) == 2
     assert frame.held
     assert (frame.start_s, frame.stop_s) == (1800.0, 2700.0)
+    # Each run is at its own instant, so the line names each one (blind
+    # review, pass 1 F2). The branch starts at the trunk's first keyframe.
+    assert chart_view._window.held_text.text() == (
+        "Showing 30m to 45m. Now: Run 1 at 50m, Run 2 at 0s."
+    )
+
+
+def test_a_withheld_chart_offers_no_step_and_names_no_held_window(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A chart whose frame is withheld shows an empty plot, so nothing names or moves a window.
+
+    A branch taken while every frame fails withholds the held chart. The line
+    "Showing 30m to 45m" and the arrows stayed on screen above the empty plot
+    (blind review, pass 1 F1).
+    """
+
+    view = _case_view(application, _branched_case(3000))
+    _select_time_base(view, "900.0")
+    chart_view = _concentration(view)
+    chart_view._window.earlier_button.click()
+
+    assert not chart_view._window.held_row.isHidden()
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    _take_fork(view, 0.0)
+    _settle(application)
+
+    assert chart_view.chart.frame is None
+    assert not chart_view.withheld_text.isHidden()
+    assert chart_view._window.held_row.isHidden()
+    assert not chart_view._window.earlier_button.isEnabled()
+    assert not chart_view._window.later_button.isEnabled()
+
+
+def test_a_width_change_keeps_the_hold_on_the_new_width_s_gridlines(
+    application: QApplication,
+) -> None:
+    """A held window chosen at another width keeps its place, moved back onto a labelled time.
+
+    At two hours a fifteen-minute window following the run starts at 6318 s,
+    so the first step earlier holds at 6120 s and each later one moves back
+    180 s. Eleven steps hold at 4320 s, which is not on the thirty-minute
+    rung's 300 s gridlines. The next gridline back is 4200 s (blind review,
+    pass 1 F3).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 7200)
+    view = _shown_view(application, controller)
+    _select_time_base(view, "900.0")
+    chart_view = _concentration(view)
+
+    for _ in range(11):
+        chart_view._window.earlier_button.click()
+
+    assert _frame(chart_view).start_s == 4320.0
+
+    _select_time_base(view, "1800.0")
+    frame = _frame(chart_view)
+
+    assert frame.held
+    assert (frame.start_s, frame.stop_s) == (4200.0, 6000.0)
+
+
+def test_the_keyboard_focus_leaves_an_arrow_that_stops_being_offered(
+    application: QApplication,
+) -> None:
+    """A step that ends the hold disables the arrow it was taken with, and the focus moves on.
+
+    The focus goes to the time-base selector beside the arrows, so a second
+    key press does not act on whatever control Qt would have chosen (blind
+    review, pass 2 F4).
+    """
+
+    view = _held_view(application, SimulationController())
+    window = _concentration(view)._window
+    view.activateWindow()
+    window.follow_button.setFocus()
+    _settle(application)
+
+    assert application.focusWidget() is window.follow_button
+
+    window.follow_button.click()
+    _settle(application)
+
+    assert window.held_row.isHidden()
+    assert application.focusWidget() is window.selector
 
 
 def test_neither_arrow_moves_a_fitted_window_and_fit_run_ends_a_hold(

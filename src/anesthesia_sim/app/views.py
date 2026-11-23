@@ -79,6 +79,7 @@ from anesthesia_sim.app.chart_time_base import (
     ChartTimeBase,
     ChartWindow,
     earlier_start_s,
+    gridline_at_or_before,
     later_start_s,
     saved_time_base,
     saved_time_base_value,
@@ -516,6 +517,17 @@ class _TimeWindow:
     def _window(self) -> ChartWindow:
         return ChartWindow(self.time_base, None if self.time_base is None else self.held_start_s)
 
+    def withheld(self) -> None:
+        """Forget the drawn window when the chart's frame is withheld, and offer nothing.
+
+        A withheld chart shows no window, so a held line naming one, and an
+        arrow stepping from it, would describe a plot that is no longer on
+        screen.
+        """
+
+        self._frame = None
+        self._show_steps(None)
+
     def _show_steps(self, frame: ChartFrame | None) -> None:
         """Offer each step that the drawn window allows, and say whether it is held.
 
@@ -523,6 +535,11 @@ class _TimeWindow:
         run, or a preview's, which is centred on the run's reach while a
         drag is held. Nothing lies before a window that starts at zero, and
         nothing after one that follows the run.
+
+        A control that stops being offered while it has the keyboard focus
+        hands the focus to the time-base selector. Otherwise Qt would move it
+        to the next control in the page, and a keyboard user pressing the
+        same key again would act on a control they did not choose.
         """
 
         movable = (
@@ -530,14 +547,29 @@ class _TimeWindow:
             and not frame.fitted
             and not any(run.preview is not None for run in frame.runs)
         )
-        self.earlier_button.setEnabled(movable and frame is not None and frame.start_s > 0.0)
-        self.later_button.setEnabled(movable and frame is not None and frame.held)
         notice = None if frame is None else held_window_notice(frame)
+        offered = (
+            (self.earlier_button, movable and frame is not None and frame.start_s > 0.0),
+            (self.later_button, movable and frame is not None and frame.held),
+            (self.follow_button, notice is not None),
+        )
+
+        if any(button.hasFocus() and not shown for button, shown in offered):
+            self.selector.setFocus(Qt.FocusReason.OtherFocusReason)
+
+        self.earlier_button.setEnabled(offered[0][1])
+        self.later_button.setEnabled(offered[1][1])
         self.held_text.setText(notice or "")
         self.held_row.setHidden(notice is None)
 
     def _choose(self, time_base: ChartTimeBase | None) -> None:
         self.time_base = time_base
+
+        # A held window keeps its place at another width, moved back onto
+        # that width's gridlines so both edges stay on labelled times.
+        if time_base is not None and self.held_start_s is not None:
+            self.held_start_s = gridline_at_or_before(time_base, self.held_start_s)
+
         self._request_frame()
 
         # A frame that drew has already shown the pick. One that failed drew
@@ -967,6 +999,7 @@ class ConcentrationView(QWidget):
         """Empty the plot, the references and the lines, and say why."""
 
         self.chart.withhold()
+        self._window.withheld()
         self._source = None
         self.withheld_text.setHidden(False)
         self.legend.show_run_names(_shown_run_names(tick.runs))
@@ -1085,6 +1118,7 @@ class WashInView(QWidget):
 
         if _withholds(shown, self.chart.frame, self.chart.plot_width_px()):
             self.chart.withhold()
+            self._window.withheld()
             self.withheld_text.setHidden(False)
 
             if tick.runs:

@@ -75,6 +75,7 @@ from anesthesia_sim.app.preferences import AgentPrice, LoadedPreferences, Prefer
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
+from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
 from anesthesia_sim.core.concentration import MacMultiple, Percent
@@ -237,12 +238,14 @@ def _strings_shown(
     application: QApplication,
     controller: SimulationController,
     preferences: LoadedPreferences | None = None,
+    act: Callable[[SimulationView], None] | None = None,
 ) -> list[str]:
     """Every string a dashboard over `controller` holds once it has drawn, masked and sorted.
 
     The dashboard holds the run in a case, as the application's always does,
     so the Branch View shows its control and not the words for runs that
-    belong to no case.
+    belong to no case. Where `act` is given, it is done to the dashboard
+    after the first frame, before the strings are recorded.
     """
 
     view = SimulationView(
@@ -257,6 +260,10 @@ def _strings_shown(
         view.show()
         application.processEvents()
         view.present(False)
+
+        if act is not None:
+            act(view)
+
         return _strings_of(application, view)
     finally:
         view.stop_timers()
@@ -494,6 +501,27 @@ def _branched_in_a_pinned_workspace(
         application.processEvents()
 
 
+def _with_a_window_held(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane at 30 min, with the concentration chart at 15 minutes and moved one step back.
+
+    The held window's axis title and the line naming what it shows appear only
+    while a reader holds a chart's window back from the run (`PL-Z7LY`).
+    """
+
+    def hold(view: SimulationView) -> None:
+        chart_view = next(
+            widget for widget in view.findChildren(ConcentrationView) if widget.isVisible()
+        )
+        selector = chart_view.time_base_selector
+        selector.setCurrentIndex(selector.findData("900.0"))
+        chart_view._window.earlier_button.click()
+
+    controller = SimulationController()
+    _run_to(controller, 30 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller, act=hold)
+
+
 #: Each state that only an event brings up, and how the test brings it about.
 #: The run-state tests' "drawn frame" is a default run, which `RECORDED_POINTS`
 #: already covers.
@@ -508,6 +536,7 @@ EVENT_POINTS: Final[Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], li
     "supported run length reached": _at_the_supported_run_length,
     "supported run length approaching": _approaching_the_supported_run_length,
     "branched in a pinned Workspace": _branched_in_a_pinned_workspace,
+    "window held": _with_a_window_held,
     **{
         name: _in_the_run_state_scenario(name)
         for name in _ONE_STATE_SCENARIOS

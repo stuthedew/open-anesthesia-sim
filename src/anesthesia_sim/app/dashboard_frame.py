@@ -1090,7 +1090,13 @@ PREVIEW_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown, centred on now during
 # shows the present, so the axis title says it is not following the run, and
 # a line above the plot says how far the run has gone past it (`PL-Z7LY`).
 HELD_TIME_AXIS_CAPTION_TEMPLATE: Final = "{span} shown, held: not following the run"
-HELD_WINDOW_NOTICE_TEMPLATE: Final = "Showing {start} to {stop}. The run is now at {now}."
+# With one run on the chart, the line gives that run's time. With more, it
+# names each run's time, because the runs stand at different instants and
+# one time would be read as the run the reader is watching.
+HELD_WINDOW_NOTICE_TEMPLATE: Final = "Showing {start} to {stop}. {now}"
+HELD_ONE_RUN_NOW_TEMPLATE: Final = "The run is now at {now}."
+HELD_RUNS_NOW_TEMPLATE: Final = "Now: {runs}."
+HELD_RUN_NOW_TEMPLATE: Final = "{label} at {now}"
 # The controls that move a chart's window. The arrows sit either side of the
 # time-base selector, as a date picker's do, so a step reads as a step through
 # time. Each also carries a name that a screen reader speaks and a tooltip
@@ -3646,8 +3652,10 @@ def held_window_notice(frame: ChartFrame) -> str | None:
 
     The line appears only while the reader holds the window back from the
     run (`ChartFrame.held`). It names the window's edges as the axis labels
-    them, and the run's newest instant as the clock states it, so a reader
-    can see how far the readouts have moved past the plot. It is left out
+    them, and each run's instant as the clock states it, so a reader can see
+    how far the readouts have moved past the plot. With two runs on the
+    chart it names each run, because a branch and its trunk stand at
+    different instants. It is left out
     during a preview, whose window is centred on the run's reach rather than
     the held one.
 
@@ -3662,10 +3670,20 @@ def held_window_notice(frame: ChartFrame) -> str | None:
     if not frame.held or any(run.preview is not None for run in frame.runs):
         return None
 
+    if len(frame.runs) == 1:
+        now = HELD_ONE_RUN_NOW_TEMPLATE.format(now=format_elapsed(frame.runs[0].elapsed_s))
+    else:
+        now = HELD_RUNS_NOW_TEMPLATE.format(
+            runs=", ".join(
+                HELD_RUN_NOW_TEMPLATE.format(label=run.label, now=format_elapsed(run.elapsed_s))
+                for run in frame.runs
+            )
+        )
+
     return HELD_WINDOW_NOTICE_TEMPLATE.format(
         start=format_chart_time_label(frame.start_s),
         stop=format_chart_time_label(frame.stop_s),
-        now=format_elapsed(frame.newest_instant_s),
+        now=now,
     )
 
 

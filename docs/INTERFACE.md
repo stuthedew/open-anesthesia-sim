@@ -3684,7 +3684,9 @@ past, and a learner who took the plot for the present would read stale values
 as current. So while the window is held, the time axis's title ends "held: not
 following the run". A line under the controls, in the warning colour, names the
 window's edges and the run's current time, such as "Showing 30m to 45m. The run
-is now at 50m." Beside it, a "Follow the run" button returns the window to
+is now at 50m." With more than one run on the chart, it names each run's time,
+such as "Now: Run 1 at 50m, Run 2 at 2m.", because a branch and the run it came
+from stand at different times. Beside it, a "Follow the run" button returns the window to
 following the run in one click.
 
 **The window follows the run again only when the reader or the run's history
@@ -3693,7 +3695,9 @@ hold, as scrolling to the bottom of a live log does. So does "Follow the run",
 and so does choosing "Fit run". A Reset or an agent change starts the run again
 from zero, so the held part of the run no longer exists, and the chart follows
 the new run. Pausing, resuming and taking a branch leave a held window where it
-is. A preview centres the window on the run's reach while the drag lasts, and
+is. Choosing another width keeps the hold, with its left edge moved back to the
+new width's last gridline at or before it. A chart whose frame is withheld shows
+no window, so it shows no held line and offers no step. A preview centres the window on the run's reach while the drag lasts, and
 the held window returns when it ends. The held position is not saved, so a
 chart built again, by a Workspace switch or on reopening the layout, follows
 the run.

@@ -32,6 +32,7 @@ from anesthesia_sim.app.chart_time_base import (
     fit_to_run,
     fitted_window,
     following_window,
+    gridline_at_or_before,
     held_window,
     later_start_s,
     preview_window,
@@ -551,6 +552,23 @@ def test_a_step_later_follows_the_run_once_it_reaches_the_run_s_own_window() -> 
     assert later_start_s(base, 1700.0, newest) == 1980
     assert later_start_s(base, 1800.0, newest) == 1980
     assert later_start_s(base, 1980.0, newest) is None
+
+
+def test_a_held_edge_moves_back_onto_another_width_s_gridline() -> None:
+    """A width change keeps a held window's place, on the new width's gridlines.
+
+    The thirty-minute rung is ruled every 300 s, so an edge held at 4320 s
+    on the fifteen-minute rung moves back to 4200 s. An edge already on a
+    gridline stays where it is.
+    """
+
+    wider = time_base_for_span(1800.0)
+
+    assert wider.tick_interval_s == 300.0
+    assert gridline_at_or_before(wider, CaseInstant(4320)) == 4200
+    assert gridline_at_or_before(wider, CaseInstant(4200)) == 4200
+    assert gridline_at_or_before(wider, CaseInstant(299)) == 0
+    assert isinstance(gridline_at_or_before(wider, CaseInstant(4320)), CaseInstant)
 
 
 def test_a_held_window_keeps_its_width_and_gives_way_to_the_run_s_own() -> None:

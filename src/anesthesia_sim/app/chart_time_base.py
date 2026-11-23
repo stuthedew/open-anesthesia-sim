@@ -65,6 +65,7 @@ __all__ = [
     "fit_to_run",
     "fitted_window",
     "following_window",
+    "gridline_at_or_before",
     "held_window",
     "later_start_s",
     "preview_window",
@@ -426,6 +427,26 @@ def earlier_start_s(time_base: ChartTimeBase, start_s: float) -> CaseInstant:
     interval_s = int(time_base.tick_interval_s)
 
     return CaseInstant(max(0, (math.floor(start_s / interval_s) - 1) * interval_s))
+
+
+def gridline_at_or_before(time_base: ChartTimeBase, start_s: CaseInstant) -> CaseInstant:
+    """Return the last gridline of `time_base` at or before `start_s`.
+
+    A held window keeps its place when the reader chooses another width, and
+    this moves its left edge onto the new width's gridlines, so both edges
+    still fall on labelled times.
+
+    Args:
+        time_base: The width the window is to be drawn at.
+        start_s: The held left edge, on the case's axis.
+
+    Returns:
+        The gridline, as a whole second on the case's axis.
+    """
+
+    interval_s = int(time_base.tick_interval_s)
+
+    return CaseInstant(start_s // interval_s * interval_s)
 
 
 def later_start_s(
