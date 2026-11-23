@@ -55,3 +55,6 @@ know the ratio is derived. The `sources` note in
 `src/anesthesia_sim/data/agents/desflurane.json` still says the values were
 first read from the abstract, and later in the same note records the
 full-text reading of 2026-09-13, so it is left as it is. The extraction note `docs/references/yasuda-1989-tissue-solubility.md` now also lists these brain:blood means under where the repository uses the paper. Docs checked: `docs/VERIFICATION.md`, `docs/MODEL.md`, `docs/PARAMETERS.md`, `docs/references/yasuda-1989-tissue-solubility.md`.
+
+**Review, 2026-11-23.** Both blind review passes found that the table beside the citation compares the model's tissue:blood ratios, divided by the stored blood:gas coefficients, with the paper's brain:blood ratios, divided by age-adjusted published ones. The note this item added is what makes that visible. In tissue:gas, isoflurane's demanded value is −2.05 SD from the paper's mean rather than −1.2 SD, and desflurane's conclusion does not change. That is filed as `PL-DKQN`, with the worked numbers, together with the two older notes that still say the values were read from the abstract. The first pass also found that the extraction note listed three of the four quoted brain:blood means and still said halothane's values were not taken; it now lists all four.
+
