@@ -37,11 +37,15 @@ plausible-looking number is worse here than no number at all.
 2. *The quotient must not exceed one.* The condition $`F_A \le F_I`$ is
    exactly the uptake regime. Alveolar gas gives agent up to the blood, so the
    alveolar fraction stays below the inspired fraction and reaches it only at
-   equilibrium. Above one, the tissues are returning agent faster than it is
-   being delivered. That is elimination, not wash-in, and the number is no
-   longer a wash-in fraction. The curve claims to be the textbook wash-in
-   graph, so drawing such a number on it would teach a wash-in that went past
-   completion.
+   equilibrium. Above one, the alveolar fraction exceeds the inspired one,
+   and the number is no longer a wash-in fraction. With ventilation running,
+   the patient is then returning agent to the circuit. With alveolar
+   ventilation at zero, no agent moves between the lungs and the circuit. The
+   ratio can then pass one because fresh gas washes the circuit out, or
+   because blood returns agent to the alveoli, and neither is elimination. So
+   the caption beside the plot names the condition and not a cause
+   (`PL-7PBB`). The curve claims to be the textbook wash-in graph, so drawing
+   such a number on it would teach a wash-in that went past completion.
    The rule allows `WASH_IN_ROUNDING_ALLOWANCE` above one for rounding, and
    nothing more, because rounding alone can put an equilibrium's quotient a hair
    above one (`PL-N559`).
@@ -90,9 +94,10 @@ WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = fraction_from_percent(
     Percent(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT)
 )
 
-#: The ratio at which net uptake stops: $`F_A = F_I`$. It is the wash-in
-#: curve's asymptote and rule 2 of the module docstring. Above this ratio the
-#: run is eliminating agent rather than taking it up.
+#: The ratio at which $`F_A = F_I`$. With ventilation running, net uptake from
+#: the circuit stops there, so it is the wash-in curve's asymptote and rule 2
+#: of the module docstring. Above this ratio the alveolar fraction exceeds the
+#: inspired one, and the ratio is not a wash-in fraction (`PL-7PBB`).
 WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
 
 
@@ -113,7 +118,13 @@ class WashInDomain(StrEnum):
     """The denominator is below `WASH_IN_DENOMINATOR_FLOOR_FRACTION`."""
 
     ELIMINATION = "elimination"
-    """The alveolar fraction exceeds the inspired fraction: agent is coming back, not going in."""
+    """The alveolar fraction exceeds the inspired fraction, so the ratio is not a wash-in fraction.
+
+    The name is the usual case, a run with ventilation, in which agent comes
+    back to the circuit. With alveolar ventilation at zero, no agent moves
+    between the lungs and the circuit, so text written from this member names
+    the condition and not elimination (`PL-7PBB`).
+    """
 
 
 @dataclass(frozen=True, slots=True)
