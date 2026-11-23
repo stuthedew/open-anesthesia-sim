@@ -5694,15 +5694,23 @@ under its new setting. A key press, one notch of the scroll wheel or a click on
 the slider away from its handle is a single input, so it applies at once and
 draws no preview. Such an input also draws the whole screen at once, so the
 readouts, the compartment schematic and both charts show the same instant
-after it (`PL-2WVC`). An input that follows another before the next render
-tick, 0.2 s at most, is drawn by that tick instead, with the latest state.
-So a held key, a held button, a spinning wheel or a trackpad swipe draws at
-most one frame of its own in each render interval, besides the tick's, on
-every platform. Until that tick, the readouts can show a later step than the
-charts. A click that moves the handle to the pointer draws one frame, and
-its release draws no second one. A handle released at the setting already in
-force applies nothing, and the run records no setting change.
-<!-- provenance: app/dashboard_frame.py RENDER_INTERVAL_S = 0.2 -->
+after it (`PL-2WVC`). An input that comes soon after another input's frame
+waits, and the wait's end draws the latest state. The next frame starts
+100 ms after the last one started, or twice that frame's drawing time after
+it, whichever is later. So while a key or button is held, a wheel spins, a
+trackpad swipes or a handle is dragged, the charts follow the dial at
+Nielsen Norman Group's 0.1-second limit for a user to feel that they are
+directly moving what is on screen, on every platform, as long as a frame
+takes less than 50 ms to draw (`PL-NKFD`). A slower frame, such as one that
+draws a preview over an hour-long run, is followed by a pause as long as
+itself, so drawing never takes more than half of the time in which the run
+steps and the reader's inputs are handled. A render tick during a burst
+counts as one of its frames. Until that frame, the readouts can show
+a later step than the charts. A click that moves the handle to the pointer
+draws one frame, and its release draws no second one. A handle released at
+the setting already in force applies nothing, and the run records no setting
+change.
+<!-- provenance: app/dashboard_frame.py INPUT_FRAME_INTERVAL_MS = 100 -->
 
 **A click on the slider away from its handle follows the platform's own
 convention** (`PL-57LD`). The simulator sets no style of its own, so Qt's style
