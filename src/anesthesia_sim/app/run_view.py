@@ -76,10 +76,12 @@ frame (`PL-X7D5`, `PL-RF2S`).
 **Timers move the run and nothing else** (decision D7). Each run has one
 `QTimer`, which drives `step_tick`. `step_tick` advances the controller by the
 number of steps that the playback rate sets, and it never draws. The
-dashboard's own render timer does the drawing. No wall clock is read.
-Simulation time is a count of the steps taken. A tick takes no step while a
-question is open in the window, because the question blocks the Pause button
-(`hold_while`).
+dashboard's own render timer does the drawing. Simulation time is a count of
+the steps taken. Each tick reads a monotonic clock, but only to measure the
+rate the ticks deliver, which the clock line names when the computer falls
+behind (`PL-2NYN`). The reading never decides how many steps a tick takes. A
+tick takes no step while a question is open in the window, because the
+question blocks the Pause button (`hold_while`).
 """
 
 from __future__ import annotations
@@ -87,6 +89,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Mapping
 from dataclasses import replace
+from time import monotonic
 from typing import Final
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
@@ -157,6 +160,7 @@ from anesthesia_sim.app.playback import (
     SUPPORTED_PLAYBACK_RATES,
     OwedSimulatedTime,
     PlaybackRate,
+    TickPace,
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import (
@@ -416,6 +420,7 @@ class RunView(QWidget):
         self._preview_name: str | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
         self._owed_time = OwedSimulatedTime()
+        self._pace = TickPace(SIMULATION_TICK_INTERVAL_MS)
         self._adjustment_grouping = AdjustmentGrouping()
         # The agent that a reader has asked for and not yet confirmed, and the
         # dialog that asks them. Together they are the state "a destructive
@@ -805,6 +810,7 @@ class RunView(QWidget):
                 else self._reset_question()
             ),
             charts_withheld=self._charts_withheld(),
+            delivered_fraction=self._pace.disclosed_fraction,
         )
 
         if drawn is None:
@@ -1508,6 +1514,9 @@ class RunView(QWidget):
             return
 
         self._playback_rate = playback_rate_for(int(multiplier))
+        # A faster rate gives each tick more steps to take, so the ticks
+        # measured at the old rate say nothing about the new one.
+        self._pace.restart()
         self.presentation_requested.emit(False)
 
     # ---------------------------------------------------- the new-case flow
@@ -1627,6 +1636,7 @@ class RunView(QWidget):
 
         self._preview = None
         self._owed_time.clear()
+        self._pace.restart()
         self._case += 1
         self.case_restarted.emit()
 
@@ -1807,10 +1817,19 @@ class RunView(QWidget):
         fires late costs the run real time but never changes its trajectory, because
         no step is made up. A tick takes no step while `hold_while`'s
         predicate returns True, that is, while a question is open.
+
+        Each tick that plays the run records the monotonic clock in
+        `TickPace`, which measures the rate the ticks deliver for the clock
+        line (`PL-2NYN`). The reading never changes how many steps are taken.
+        A tick that does not play the run restarts the measurement, so a
+        pause is never counted as lost ticks.
         """
 
         if not self.controller.is_running or self._held():
+            self._pace.restart()
             return
+
+        self._pace.record(monotonic())
 
         steps = self._owed_time.steps_due(
             self._playback_rate, tick_interval_ms=SIMULATION_TICK_INTERVAL_MS

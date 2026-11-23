@@ -15,6 +15,7 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import run_presentation as run_presentation_module
+from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.chart_frame import ChartFrame
 from anesthesia_sim.app.compartment_schematic import SchematicShown
@@ -34,6 +35,7 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.run_presentation import RunPresentation
+from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.theme import WARNING
 from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING
 from anesthesia_sim.app.views import (
@@ -334,6 +336,84 @@ def test_the_run_loop_takes_the_playback_rates_steps_per_tick(
 
     assert steps_on_each_tick == _STEPS_ON_EACH_OF_TWENTY_TICKS[rate.multiplier]
     assert controller.snapshot().elapsed_s == 2 * rate.multiplier
+
+
+class _FakeMonotonicClock:
+    """A monotonic clock that a test moves by hand, in seconds."""
+
+    def __init__(self) -> None:
+        self.now_s = 0.0
+
+    def __call__(self) -> float:
+        return self.now_s
+
+
+def _ticks_apart(run: RunView, clock: _FakeMonotonicClock, ticks: int, period_s: float) -> None:
+    """Fire the run's tick slot `ticks` times, moving the clock `period_s` before each."""
+
+    for _ in range(ticks):
+        clock.now_s += period_s
+        run.step_tick()
+
+
+def test_a_computer_that_falls_behind_shows_the_delivered_rate_beside_the_set_one(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ticks 125 ms apart at 300x deliver 240x, and the clock line says so (`PL-2NYN`).
+
+    The expected line is worked out by hand: 0.1 s / 0.125 s is 80% of 300x,
+    which is 240x. The run's trajectory does not depend on the clock: 51
+    ticks at 300x take 30 steps each, so the run stands at 1 530 s whatever
+    the ticks' spacing. The line returns to the plain label once the ticks
+    come 100 ms apart again, and a pause starts the measurement over.
+    """
+
+    clock = _FakeMonotonicClock()
+    monkeypatch.setattr(run_view_module, "monotonic", clock)
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    _select_playback_rate(run, 300)
+    controller.start()
+
+    _ticks_apart(run, clock, 51, 0.125)
+    view.render_tick()
+
+    assert run._playback_rate_text.text() == "about 240\u00d7 of 300\u00d7"
+    assert controller.snapshot().elapsed_s == 51 * 30
+
+    _ticks_apart(run, clock, 51, 0.1)
+    view.render_tick()
+
+    assert run._playback_rate_text.text() == "300\u00d7 real time"
+
+    _ticks_apart(run, clock, 51, 0.125)
+    controller.pause()
+    run.step_tick()
+    view.render_tick()
+
+    assert run._playback_rate_text.text() == "300\u00d7 real time"
+
+
+def test_a_new_playback_rate_starts_the_measurement_over(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ticks measured at 300x say nothing about 60x, so the line names no delivered rate."""
+
+    clock = _FakeMonotonicClock()
+    monkeypatch.setattr(run_view_module, "monotonic", clock)
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    _select_playback_rate(run, 300)
+    controller.start()
+    _ticks_apart(run, clock, 51, 0.125)
+
+    _select_playback_rate(run, 60)
+    _ticks_apart(run, clock, 50, 0.125)
+    view.render_tick()
+
+    assert run._playback_rate_text.text() == "60\u00d7 real time"
 
 
 def test_a_failed_step_abandons_the_rest_of_its_tick(

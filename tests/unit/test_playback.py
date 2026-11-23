@@ -15,9 +15,13 @@ import pytest
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     MAXIMUM_STEPS_PER_TICK,
+    PACE_CLEARED_AT,
+    PACE_DISCLOSED_BELOW,
+    PACE_WINDOW_TICKS,
     SUPPORTED_PLAYBACK_RATES,
     OwedSimulatedTime,
     PlaybackRate,
+    TickPace,
     playback_rate_for,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -340,3 +344,154 @@ def test_a_rate_is_immutable() -> None:
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         DEFAULT_PLAYBACK_RATE.multiplier = 60  # type: ignore[misc]
+
+
+def _ticks(pace: TickPace, count: int, *, period_s: float, start_s: float = 0.0) -> float:
+    """Record `count` ticks `period_s` apart from `start_s`, and return the last tick's time."""
+
+    now_s = start_s
+
+    for index in range(count):
+        now_s = start_s + index * period_s
+        pace.record(now_s)
+
+    return now_s
+
+
+def test_the_pace_thresholds_are_the_ones_the_item_settled() -> None:
+    """The window is 5 s at the 100 ms tick, and the line shows below 95% and clears at 97%.
+
+    The values are transcribed from `PL-2NYN`'s brief and its close-out, not
+    read from the module, so a change to either constant fails here.
+    """
+
+    assert (PACE_WINDOW_TICKS, PACE_DISCLOSED_BELOW, PACE_CLEARED_AT) == (50, 0.95, 0.97)
+
+
+def test_a_host_that_keeps_every_tick_delivers_the_whole_rate() -> None:
+    """Fifty-one ticks 100 ms apart span the window in exactly the time they owe."""
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.1)
+
+    assert pace.delivered_fraction == 1.0
+    assert pace.disclosed_fraction is None
+
+
+def test_the_fraction_waits_for_a_whole_window() -> None:
+    """Fifty ticks hold only 49 intervals, which is less than the window."""
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    _ticks(pace, PACE_WINDOW_TICKS, period_s=0.2)
+
+    assert pace.delivered_fraction is None
+    assert pace.disclosed_fraction is None
+
+
+def test_ticks_that_fire_late_deliver_the_owed_time_over_the_time_taken() -> None:
+    """Ticks 125 ms apart owe 5 s over 6.25 s, so they deliver 80% of the set rate.
+
+    The expected fraction is worked out by hand: 50 intervals of 0.1 s owe 5 s
+    of real-time-equivalent play, and they took 50 x 0.125 s = 6.25 s.
+    """
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.125)
+
+    assert pace.delivered_fraction == pytest.approx(0.8)
+    assert pace.disclosed_fraction == pytest.approx(0.8)
+
+
+def test_lost_ticks_count_as_a_shortfall() -> None:
+    """Three ticks lost in the window make 50 intervals take 5.3 s: about 94.3%.
+
+    Qt emits one timeout for several that fell due while the loop was busy,
+    so a lost tick is a gap of two intervals between two recorded ticks.
+    """
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    times = [index * 0.1 for index in range(PACE_WINDOW_TICKS + 4)]
+
+    for lost in (10, 20, 30):
+        times.remove(lost * 0.1)
+
+    for now_s in times:
+        pace.record(now_s)
+
+    assert pace.delivered_fraction == pytest.approx(5.0 / 5.3)
+    assert pace.disclosed_fraction == pytest.approx(5.0 / 5.3)
+
+
+@pytest.mark.parametrize(
+    ("period_s", "disclosed"),
+    [
+        # 0.1 / 0.105 is about 95.2%, just above the threshold.
+        (0.105, False),
+        # 0.1 / 0.106 is about 94.3%, just below it.
+        (0.106, True),
+    ],
+)
+def test_the_line_names_the_delivered_rate_only_below_95_percent(
+    period_s: float, disclosed: bool
+) -> None:
+    """The threshold is held on both sides by a fraction worked out from the tick period."""
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=period_s)
+
+    assert (pace.disclosed_fraction is not None) is disclosed
+
+
+def test_a_disclosed_rate_clears_only_at_97_percent() -> None:
+    """Between 95% and 97% a disclosed rate stays named, and at 97% it clears.
+
+    A run first falls to about 94.3% (ticks 106 ms apart). It then recovers
+    to about 96.2% (104 ms), which would not have been named from a clear
+    line but stays named, and then to about 97.1% (103 ms), which clears it.
+    """
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    last_s = _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.106)
+    assert pace.disclosed_fraction is not None
+
+    last_s = _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.104, start_s=last_s + 0.104)
+    assert pace.delivered_fraction == pytest.approx(0.1 / 0.104)
+    assert pace.disclosed_fraction == pytest.approx(0.1 / 0.104)
+
+    _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.103, start_s=last_s + 0.103)
+    assert pace.delivered_fraction == pytest.approx(0.1 / 0.103)
+    assert pace.disclosed_fraction is None
+
+
+def test_a_restart_forgets_the_window_and_the_disclosure() -> None:
+    """A pause or a new rate starts the measurement again, with nothing named."""
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.2)
+    assert pace.disclosed_fraction is not None
+
+    pace.restart()
+
+    assert pace.delivered_fraction is None
+    assert pace.disclosed_fraction is None
+    pace.record(100.0)
+    assert pace.delivered_fraction is None
+
+
+def test_ticks_that_come_early_never_deliver_more_than_the_set_rate() -> None:
+    """A window that took less time than it owed reports 1, not more."""
+
+    pace = TickPace(TICK_INTERVAL_MS)
+    _ticks(pace, PACE_WINDOW_TICKS + 1, period_s=0.09)
+
+    assert pace.delivered_fraction == 1.0
+
+
+@pytest.mark.parametrize("interval", [0, -100, 100.0, True, "100"])
+def test_a_tick_pace_refuses_an_interval_that_is_not_a_whole_positive_number(
+    interval: object,
+) -> None:
+    """The interval divides the window, so it must be a whole number of milliseconds."""
+
+    with pytest.raises(SimulationConfigurationError, match="a tick interval must be"):
+        TickPace(interval)  # type: ignore[arg-type]
