@@ -44,9 +44,11 @@ caller rather than a refused value, so the error is not an
 **The `name` argument must say which value was refused.** Each guard raises a
 message of the form `f"{name} ..."`, and nothing else in it identifies the
 value. So `name` is all that a reader is told about *which* value was refused.
-That reader usually sees a banner rather than a traceback.
-`app/dashboard_frame.py` shows a refused setting's message verbatim, and
+That reader may see a banner rather than a traceback.
 `AgentUptakeSystem.advance()` wraps a refused step into the halted-run notice.
+A dial's setting refused against the vaporizer maximum is the exception. It
+raises a `SettingOutsideRange`, and the banner names the dial by its label from
+that error's fields (`app/dashboard_frame.py`, `PL-8QFW`).
 A bare parameter name identifies the value only where just one object can
 raise that message. Where several objects can, the caller puts the owner's
 name in front. It uses the instance's own `name` where the instance has one,
@@ -68,7 +70,11 @@ from math import isfinite
 
 from anesthesia_sim.core.checked_number import require_a_number, shown
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.exceptions import (
+    SettingLimit,
+    SettingOutsideRange,
+    SimulationConfigurationError,
+)
 
 
 def require_positive_finite(name: str, value: float) -> None:
@@ -212,8 +218,10 @@ def require_within_vaporizer_maximum(
     then worded for the dial.
 
     Raises:
-        SimulationConfigurationError: the dial is above the maximum. The
-            message quotes both values in percent, the unit the dial shows.
+        SimulationConfigurationError: the maximum written is below the dial.
+        SettingOutsideRange: the dial is above the maximum. The message quotes
+            both values in percent, the unit the dial shows, and the error
+            carries them as fields.
     """
 
     if delivered_concentration_percent <= max_delivered_concentration_percent:
@@ -226,10 +234,14 @@ def require_within_vaporizer_maximum(
             "must be at or above its dial"
         )
 
-    raise SimulationConfigurationError(
+    raise SettingOutsideRange(
         f"{name} exceeds the vaporizer maximum "
         f"({delivered_concentration_percent:g}% requested, "
-        f"{max_delivered_concentration_percent:g}% maximum)"
+        f"{max_delivered_concentration_percent:g}% maximum)",
+        requested=delivered_concentration_percent,
+        lowest=0.0,
+        highest=max_delivered_concentration_percent,
+        limit=SettingLimit.VAPORIZER_MAXIMUM,
     )
 
 

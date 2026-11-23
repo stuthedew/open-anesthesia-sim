@@ -62,7 +62,12 @@ from anesthesia_sim.app.control_record import (
     ControlInput,
     control_value,
 )
-from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
+from anesthesia_sim.app.control_timeline import (
+    CONTROL_INPUT_LABELS,
+    ControlAdjustment,
+    format_adjustment,
+    format_control_value,
+)
 from anesthesia_sim.app.controller import (
     HereForkPoint,
     MarkForkPoint,
@@ -112,8 +117,14 @@ from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, WashInReading
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
+from anesthesia_sim.core.checked_number import shown
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
+from anesthesia_sim.core.exceptions import (
+    SettingLimit,
+    SettingOutsideRange,
+    SimulationConfigurationError,
+    SimulationDomainLimitError,
+)
 from anesthesia_sim.core.mac import mac_for_patient
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
@@ -396,6 +407,27 @@ REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 # A refused branch changed no setting, so its notice does not say "Setting
 # refused" (`PL-3JTH`).
 REFUSED_BRANCH_TEMPLATE: Final = "Branch not opened — {error}"
+# A setting refused for lying outside a limit is named to the learner by its control's
+# label, with the value asked for and the limit, as the stopped run's refusal names
+# its control (`SimulationController._refuse_a_setting_on_a_stopped_run`). The core's
+# own message names the setting's field in the code, for a developer (`PL-8QFW`).
+REFUSED_SETTING_OUTSIDE_RANGE_TEMPLATE: Final = (
+    "the {setting} setting cannot be {requested}, because {reason}"
+)
+#: Why each limit refused the setting, in the learner's words. `lowest` and `highest`
+#: are the limit's two ends, written as the control's readout writes a value.
+SETTING_LIMIT_REASONS: Final[Mapping[SettingLimit, str]] = MappingProxyType(
+    {
+        SettingLimit.SUPPORTED_INPUT_RANGE: (
+            "the model is claimed to represent a patient only from {lowest} to {highest}"
+        ),
+        SettingLimit.PERCENT: "a concentration can only be from {lowest} to {highest}",
+        SettingLimit.VAPORIZER_MAXIMUM: "this agent's vaporizer delivers at most {highest}",
+        SettingLimit.MACHINE_RANGE: (
+            "this anesthesia machine sets a flow only from {lowest} to {highest}"
+        ),
+    }
+)
 REFUSED_SETTING_NOTICE_TEMPLATE: Final = (
     "{refused}. The simulation is unchanged and still running its previous setting."
 )
@@ -2231,6 +2263,70 @@ def refused_setting_notice(error: SimulationConfigurationError) -> str:
     """
 
     return REFUSED_SETTING_TEMPLATE.format(error=error)
+
+
+def setting_refusal_for_a_learner(
+    control: ControlInput, error: SimulationConfigurationError
+) -> SimulationConfigurationError:
+    """Return a refused setting's error, worded for the learner who moved the control.
+
+    A `SettingOutsideRange` is written for a developer, so it names the value
+    by its field name in the code, such as `delivered_concentration_percent`.
+    The error returned names the control by its label on screen, gives the value
+    asked for and the limit, and says which limit refused it
+    (`SETTING_LIMIT_REASONS`). Each value is written as the control's readout
+    writes it (`format_control_value`). The developer's message is kept whole,
+    as the returned error's note (Python's `add_note`, PEP 678) and as its
+    cause. The branch refusals keep a developer's detail the same way
+    (`SimulationController._branch_from`, `PL-72X2`).
+
+    Any other refusal is returned as it is. The controller words those for the
+    learner itself, as it does a setting on a stopped run.
+
+    Args:
+        control: The control that asked for the setting.
+        error: The refusal that the core or the controller raised.
+
+    Returns:
+        The refusal to show in the banner.
+    """
+
+    if not isinstance(error, SettingOutsideRange):
+        return error
+
+    refusal = SimulationConfigurationError(
+        REFUSED_SETTING_OUTSIDE_RANGE_TEMPLATE.format(
+            setting=CONTROL_INPUT_LABELS[control].lower(),
+            requested=_refused_value(control, error.requested),
+            reason=SETTING_LIMIT_REASONS[error.limit].format(
+                lowest=format_control_value(control, error.lowest),
+                highest=format_control_value(control, error.highest),
+            ),
+        )
+    )
+    refusal.add_note(str(error))
+    refusal.__cause__ = error
+
+    return refusal
+
+
+def _refused_value(control: ControlInput, value: float) -> str:
+    """Return a refused value as the control's readout would write it, or as the core shows it.
+
+    A refused value can lie where the readout's formatter cannot write it: a
+    concentration above 100% is not a `Percent`, and an `int` too large for a
+    `float` overflows a fixed-point format. Such a value is written as the
+    core's own message writes it (`shown`), followed by the unit that the
+    control's slider shows, with no space before a percent sign, as the
+    readout writes one.
+    """
+
+    try:
+        return format_control_value(control, value)
+    except SimulationConfigurationError, OverflowError:
+        unit = CONTROL_INPUT_DISPLAY_UNITS[control].label
+
+        return f"{shown(value)}{'' if unit == '%' else ' '}{unit}"
 
 
 def refused_branch_notice(error: SimulationConfigurationError) -> str:

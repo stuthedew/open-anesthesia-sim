@@ -850,7 +850,7 @@
   "Your price: USD ### for ### mL of liquid, as of ####-##-##."
  ],
  "setting refused": [
-  "Setting refused — delivered_concentration_percent exceeds the vaporizer maximum (##% requested, #% maximum). The simulation is unchanged and still running its previous setting."
+  "Setting refused — the vaporizer setting cannot be ##.##%, because this agent's vaporizer delivers at most #.##%. The simulation is unchanged and still running its previous setting."
  ],
  "supported run length reached": [
   "##m – late · not reached within the supported run length",

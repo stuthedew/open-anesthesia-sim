@@ -37,6 +37,8 @@ acts on the difference:
   reason, and the interface must say so in different words.
 """
 
+from enum import Enum
+
 
 class AnesthesiaSimulationError(Exception):
     """Base exception for errors raised by the simulation project."""
@@ -50,6 +52,58 @@ class SimulationConfigurationError(AnesthesiaSimulationError):
     detected before any state changes, so the caller can correct the value
     and carry on.
     """
+
+
+class SettingLimit(Enum):
+    """Which limit refused a setting, so that a reader of the refusal can be told in its own words.
+
+    Members:
+        SUPPORTED_INPUT_RANGE: The range of a flow over which the model is
+            claimed to represent a patient (`core/supported_ranges.py`).
+        PERCENT: The range that any percent of one atmosphere takes, 0 to 100
+            (`core/concentration.py`).
+        VAPORIZER_MAXIMUM: The highest concentration that the vaporizer of the
+            running agent delivers (`core/validation.py`).
+        MACHINE_RANGE: The fresh gas flows that the anesthesia machine in use
+            can set (`core/circuit.py`).
+    """
+
+    SUPPORTED_INPUT_RANGE = "the model's supported input range"
+    PERCENT = "the range of a percent"
+    VAPORIZER_MAXIMUM = "the vaporizer's maximum"
+    MACHINE_RANGE = "the machine's range"
+
+
+class SettingOutsideRange(SimulationConfigurationError):
+    """Raised when a setting lies outside the range that one limit allows.
+
+    The message is written for a developer. It names the value by its field
+    name in the code and says where the limit is documented. The interface
+    shows a learner a sentence of its own instead, which names the control by
+    its label on screen. So the value, the limit and which limit refused it
+    travel with the error as fields, and the interface builds that sentence
+    from them rather than from the message (`PL-8QFW`).
+    """
+
+    def __init__(
+        self, message: str, *, requested: float, lowest: float, highest: float, limit: SettingLimit
+    ) -> None:
+        """Build the error.
+
+        Args:
+            message: The refusal, for a developer.
+            requested: The value that was refused, in the unit of the field
+                that refused it.
+            lowest: The lowest value the limit allows, in the same unit.
+            highest: The highest value the limit allows, in the same unit.
+            limit: Which limit refused the value.
+        """
+
+        super().__init__(message)
+        self.requested = requested
+        self.lowest = lowest
+        self.highest = highest
+        self.limit = limit
 
 
 class SimulationExecutionError(AnesthesiaSimulationError):

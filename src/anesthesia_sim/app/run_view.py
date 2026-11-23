@@ -149,6 +149,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_reset_exit,
     refused_setting_notice,
     run_label,
+    setting_refusal_for_a_learner,
     status_word,
     substance_heading,
     timeline_panel,
@@ -1208,7 +1209,11 @@ class RunView(QWidget):
 
     @halt_gate
     def _apply_setting(
-        self, apply: Callable[[], None], *, dial_input: DialInput | None = None
+        self,
+        apply: Callable[[], None],
+        *,
+        dial_input: DialInput | None = None,
+        control: ControlInput | None = None,
     ) -> None:
         """Forward one setting to the run, and report how it was received.
 
@@ -1249,10 +1254,18 @@ class RunView(QWidget):
         halt first. Showing the halt then raises the same refusal again, and the
         exception escapes (`PL-M3M2`).
 
+        A refusal of a dial's setting names the dial by its label on screen
+        (`setting_refusal_for_a_learner`, `PL-8QFW`). The core's message for a
+        developer is logged at error level, so it reaches the failure log. The
+        dials offer only the values that the run accepts, so a refusal for a
+        value outside a limit means the dial and the limit disagree.
+
         Args:
             apply: The controller call that applies the setting.
             dial_input: The kind of dial input that set the value, or None
                 for a setting that no dial set.
+            control: The dial that set the value, or None for a setting that
+                no dial set.
         """
 
         settled_notice = self._rejected_setting_notice
@@ -1260,7 +1273,12 @@ class RunView(QWidget):
         try:
             apply()
         except SimulationConfigurationError as error:
-            self._rejected_setting_notice = refused_setting_notice(error)
+            refusal = error if control is None else setting_refusal_for_a_learner(control, error)
+
+            if refusal is not error:
+                _LOG.error("Setting refused: %s", error)
+
+            self._rejected_setting_notice = refused_setting_notice(refusal)
         else:
             self._rejected_setting_notice = None
             self._refused_reset_notice = None
@@ -1375,6 +1393,7 @@ class RunView(QWidget):
         self._apply_setting(
             lambda: self.controller.set_fresh_gas_flow(FreshGasFlow(flow_l_min)),
             dial_input=dial_input,
+            control=ControlInput.FRESH_GAS_FLOW,
         )
 
     def _handle_delivered_concentration_change(
@@ -1385,6 +1404,7 @@ class RunView(QWidget):
                 Percent(percent, name="delivered_concentration_percent")
             ),
             dial_input=dial_input,
+            control=ControlInput.DELIVERED,
         )
 
     def _handle_alveolar_ventilation_change(
@@ -1393,6 +1413,7 @@ class RunView(QWidget):
         self._apply_setting(
             lambda: self.controller.set_alveolar_ventilation(AlveolarVentilation(flow_l_min)),
             dial_input=dial_input,
+            control=ControlInput.ALVEOLAR_VENTILATION,
         )
 
     def _handle_cardiac_output_change(
@@ -1401,6 +1422,7 @@ class RunView(QWidget):
         self._apply_setting(
             lambda: self.controller.set_cardiac_output(CardiacOutput(flow_l_min)),
             dial_input=dial_input,
+            control=ControlInput.CARDIAC_OUTPUT,
         )
 
     # ----------------------------------------------------------- transport

@@ -859,7 +859,9 @@ The model supports each control over its range below, both ends included:
 **A setting outside its range is refused, not replaced by the nearest limit**, for the same reason
 as the vaporizer maximum. The limit would then be simulated, displayed and charted as a value that the user did not ask for. The refusal
 comes before anything changes, so the run in progress stays trustworthy, and the interface reports
-the refusal in that run's notice banner. The ranges belong to the model, so the model
+the refusal in that run's notice banner. The banner names the setting by its control's label,
+and gives the value asked for, the limit, and whether the limit is the model's range, the
+vaporizer's maximum or the machine's range. The ranges belong to the model, so the model
 refuses such a setting however it is run, not only from the interface.
 
 **Fresh gas flow has a second limit: the flow that the attached anesthesia machine can
@@ -937,6 +939,14 @@ the refusal names `set_cardiac_output`, so that cardiac output has one way in. T
 settings record (`UptakeEquationSettings` in `core/governing_equations.py`). The docstrings of
 `SimulationController.reset` and `SimulationController._record_control_change` say how the
 controller refuses or undoes a setting that the settings record refuses.
+A refusal outside a range is a `SettingOutsideRange`, whose message names the setting by its
+field in the code, for a developer. Its fields hold the value, the limit and which limit refused
+it, and `setting_refusal_for_a_learner` in `app/dashboard_frame.py` builds the banner's sentence
+from them. The run's view logs the developer's message at error level, so it reaches the failure
+log, because a slider offers only values its run accepts (`PL-8QFW`).
+`tests/unit/test_setting_refusal_wording.py` checks each limit's fields and sentence, and
+`tests/integration/simulation_view/test_simulation_view_refusals.py` checks the whole banner and
+the log record.
 
 The control timeline's fields are declared as plain `float` and are not checked, so a setting
 read back from it is rebuilt as its type. Nothing in `src/` loads a pickle yet. Every record in

@@ -220,7 +220,12 @@ from anesthesia_sim.core.concentration import (
     fraction_from_percent,
     percent_from_fraction,
 )
-from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
+from anesthesia_sim.core.exceptions import (
+    SettingLimit,
+    SettingOutsideRange,
+    SimulationConfigurationError,
+    SimulationDomainLimitError,
+)
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.units import SECONDS_PER_HOUR
 from anesthesia_sim.core.validation import require_positive_finite
@@ -415,18 +420,23 @@ def _require_supported(name: str, value: float, minimum: float, maximum: float) 
 
     Raises:
         TypeError: `value` is not an `int` or a `float`, or is a `bool`.
-        SimulationConfigurationError: `value` is not finite, or is outside
-            `minimum` to `maximum`.
+        SettingOutsideRange: `value` is not finite, or is outside `minimum`
+            to `maximum`. The error carries the value and both bounds as
+            fields.
     """
 
     require_a_number(name, value)
 
     if not minimum <= value <= maximum:
-        raise SimulationConfigurationError(
+        raise SettingOutsideRange(
             f"{name} of {shown(value)} is outside the supported input range of "
             f"{minimum} to {maximum} L/min, which is the domain this "
             f"compartment model is claimed to represent a patient over "
-            f'(docs/INTERFACE.md, "Supported input ranges")'
+            f'(docs/INTERFACE.md, "Supported input ranges")',
+            requested=value,
+            lowest=minimum,
+            highest=maximum,
+            limit=SettingLimit.SUPPORTED_INPUT_RANGE,
         )
 
 

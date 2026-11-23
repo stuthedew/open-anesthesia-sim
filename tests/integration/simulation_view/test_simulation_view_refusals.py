@@ -5,6 +5,8 @@ These tests cover refusals shown as notices, and the halt.
 `simulation_view_support.py` describes the whole suite.
 """
 
+import logging
+
 import pytest
 from PySide6.QtWidgets import QApplication
 
@@ -20,16 +22,39 @@ from tests.integration.simulation_view.simulation_view_support import _dials, _s
 # ---------------------------------------------- refusals, and the halt
 
 
+# The whole banner a learner reads for each refused vaporizer setting. Each is typed
+# by hand: isoflurane's vaporizer maximum is 5% (`data/agents/isoflurane.json`), and
+# the vaporizer's readout writes a percent to two decimals (docs/INTERFACE.md,
+# "Displayed precision"). The developer's message is the one the core raises, and it
+# reaches the failure log rather than the banner (`PL-8QFW`).
+_UNCHANGED = "The simulation is unchanged and still running its previous setting."
+
+
 @pytest.mark.parametrize(
-    ("dialled_percent", "refusal"),
+    ("dialled_percent", "banner", "logged"),
     [
-        (50.0, "vaporizer maximum"),
-        (150.0, "delivered_concentration_percent of 150.0 is outside 0 to 100"),
+        (
+            50.0,
+            "Setting refused — the vaporizer setting cannot be 50.00%, because this agent's "
+            f"vaporizer delivers at most 5.00%. {_UNCHANGED}",
+            "delivered_concentration_percent exceeds the vaporizer maximum "
+            "(50% requested, 5% maximum)",
+        ),
+        (
+            150.0,
+            "Setting refused — the vaporizer setting cannot be 150.0%, because a "
+            f"concentration can only be from 0.00% to 100.00%. {_UNCHANGED}",
+            "delivered_concentration_percent of 150.0 is outside 0 to 100",
+        ),
     ],
     ids=["above the vaporizer maximum", "outside any percent"],
 )
 def test_a_refused_setting_is_reported_without_stopping_the_run(
-    application: QApplication, dialled_percent: float, refusal: str
+    application: QApplication,
+    caplog: pytest.LogCaptureFixture,
+    dialled_percent: float,
+    banner: str,
+    logged: str,
 ) -> None:
     """Isoflurane's vaporizer stops at 5%, so 50% must be refused, and 150% is not a percent.
 
@@ -41,6 +66,11 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(
     builds the `Percent` inside the setting it applies, and names it. If the
     `Percent` were built before, its refusal would escape the handler, and no
     banner would say that the setting was refused (`PL-4R3W`).
+
+    The banner names the setting by the vaporizer's label, and the core's
+    message, which names it by its field in the code, goes to the log. Before
+    `PL-8QFW` the banner read "Setting refused — delivered_concentration_percent
+    exceeds the vaporizer maximum (50% requested, 5% maximum)".
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -48,16 +78,16 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(
     controller.start()
     delivered_before = controller.snapshot().delivered_concentration_percent
 
-    run._handle_delivered_concentration_change(dialled_percent)
+    with caplog.at_level(logging.ERROR, logger="anesthesia_sim"):
+        run._handle_delivered_concentration_change(dialled_percent)
 
     assert controller.is_running is True
     assert controller.has_failed is False
     assert run._status_text.text() == "Running"
     assert run._notice_text.isHidden() is False
-    notice = run._notice_text.notice()
-    assert notice is not None
-    assert "Setting refused" in notice
-    assert refusal in notice
+    assert run._notice_text.notice() == banner
+    assert [record.levelno for record in caplog.records] == [logging.ERROR]
+    assert logged in caplog.records[0].getMessage()
 
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
@@ -79,21 +109,41 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplic
 
 
 @pytest.mark.parametrize(
-    ("handler_name", "slider_name"),
+    ("handler_name", "slider_name", "refused"),
     [
-        ("_handle_fresh_gas_flow_change", "_fresh_gas_flow_slider"),
-        ("_handle_alveolar_ventilation_change", "_alveolar_ventilation_slider"),
-        ("_handle_cardiac_output_change", "_cardiac_output_slider"),
+        (
+            "_handle_fresh_gas_flow_change",
+            "_fresh_gas_flow_slider",
+            "the fresh gas flow setting cannot be -1.0 L/min, because the model is claimed "
+            "to represent a patient only from 0.0 L/min to 10.0 L/min",
+        ),
+        (
+            "_handle_alveolar_ventilation_change",
+            "_alveolar_ventilation_slider",
+            "the alveolar ventilation setting cannot be -1.0 L/min, because the model is "
+            "claimed to represent a patient only from 0.0 L/min to 12.0 L/min",
+        ),
+        (
+            "_handle_cardiac_output_change",
+            "_cardiac_output_slider",
+            "the cardiac output setting cannot be -1.0 L/min, because the model is claimed "
+            "to represent a patient only from 0.0 L/min to 10.0 L/min",
+        ),
     ],
 )
 def test_every_slider_handler_refuses_without_escaping_into_the_toolkit(
-    application: QApplication, handler_name: str, slider_name: str
+    application: QApplication, handler_name: str, slider_name: str, refused: str
 ) -> None:
     """No setting slot may let an exception raised by the core reach Qt's dispatcher.
 
     The sliders' own bounds make a negative flow unreachable in the running
     app. That is exactly why the guard needs its own test: under PySide6, an
     exception that escapes a slot is lost rather than shown.
+
+    The banner names each control by its label (`PL-8QFW`). Each interval is
+    copied by hand from `docs/INTERFACE.md` § "Supported input ranges": 0 to
+    10 L/min of fresh gas, 0 to 12 L/min of alveolar ventilation and 0 to
+    10 L/min of cardiac output.
     """
 
     controller = SimulationController()
@@ -105,9 +155,10 @@ def test_every_slider_handler_refuses_without_escaping_into_the_toolkit(
     assert controller.is_running is True
     assert controller.has_failed is False
     assert run._notice_text.isHidden() is False
-    notice = run._notice_text.notice()
-    assert notice is not None
-    assert "Setting refused" in notice
+    assert run._notice_text.notice() == (
+        f"Setting refused — {refused}. The simulation is unchanged and still running its "
+        "previous setting."
+    )
     control: ParameterSlider = getattr(_dials(run), slider_name)
     assert control.value() >= 0.0
 
