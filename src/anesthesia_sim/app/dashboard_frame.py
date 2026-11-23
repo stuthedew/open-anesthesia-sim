@@ -85,6 +85,7 @@ from anesthesia_sim.app.formatting import (
     format_branch_discard_warning,
     format_case_discard_warning,
     format_delivered_label,
+    format_delivered_playback_rate,
     format_elapsed,
     format_flow,
     format_mac_awake_reference,
@@ -1339,14 +1340,30 @@ COMPARTMENT_PANELS: Final[tuple[ReadoutPanel, ...]] = tuple(
 )
 
 
-def clock_playback_line(playback_rate: PlaybackRate) -> str:
+def clock_playback_line(
+    playback_rate: PlaybackRate, delivered_fraction: float | None = None
+) -> str:
     """Return the clock panel's second line, the rate at which the run is played.
 
     Every readout row builds the line here, live or withheld, so the two cannot
-    word it differently (`PL-J791`).
+    word it differently (`PL-J791`). The line states the set rate. While the
+    computer delivers less of it than `playback.PACE_DISCLOSED_BELOW`,
+    the line also names the rate delivered (`PL-2NYN`).
+
+    Args:
+        playback_rate: The set rate.
+        delivered_fraction: The fraction of the set rate that the run is
+            delivering, as `playback.TickPace.disclosed_fraction` returns it,
+            or None when the line states only the set rate.
+
+    Raises:
+        ValueError: As `formatting.format_delivered_playback_rate` raises it.
     """
 
-    return format_playback_rate(playback_rate.multiplier)
+    if delivered_fraction is None:
+        return format_playback_rate(playback_rate.multiplier)
+
+    return format_delivered_playback_rate(playback_rate.multiplier, delivered_fraction)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1438,14 +1455,21 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
 # The widest string that each readout column can show, so a panel can reserve
 # its width once instead of moving as a value changes length (`PL-3355`).
 # The value line is the clock's reading just before the supported run length,
-# which has every part of the compound form. The second
-# line is the longest playback rate. A percent readout and a MAC multiple are
-# both shorter than these at every value the dial can reach. The strings are
-# chosen by character count from the formatters' own extremes, and the widget
-# measures the chosen string in its font.
+# which has every part of the compound form. The second line is the longest
+# clock line at any set rate, counting the form that names a delivered rate at
+# every whole percent from 1 to 96 and the form for a rate below 1%
+# (`PL-2NYN`). A percent readout and a MAC multiple are both shorter than these
+# at every value the dial can reach. The strings are chosen by character count
+# from the formatters' own extremes, and the widget measures the chosen string
+# in its font.
 WIDEST_READOUT_VALUE: Final = format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
 WIDEST_READOUT_SECONDARY: Final = max(
-    (clock_playback_line(rate) for rate in SUPPORTED_PLAYBACK_RATES), key=len
+    (
+        clock_playback_line(rate, delivered_fraction)
+        for rate in SUPPORTED_PLAYBACK_RATES
+        for delivered_fraction in (None, *(percent / 100 for percent in range(1, 97)), 0.001)
+    ),
+    key=len,
 )
 #: The widest strings a compartment column can show: the percent at a whole
 #: atmosphere, and that fraction as a multiple of the smallest 1 MAC any

@@ -602,6 +602,27 @@ def test_kept_frames_match_only_the_runs_they_were_drawn_from(
     assert kept_frames_match(None, cases) is False
 
 
+def test_a_playing_run_that_falls_behind_names_the_delivered_rate_on_its_clock() -> None:
+    """At 80% of 300x the clock line reads "about 240x of 300x" (`PL-2NYN`).
+
+    The expected line is worked out by hand: 0.8 x 300 = 240. Only the clock's
+    second line changes, and with no fraction the line is the plain label.
+    """
+
+    controller = _run_at(90)
+    state = _state(playback_rate=PlaybackRate(300))
+
+    plain = _drawn(controller, state)
+    behind = _drawn(controller, replace(state, delivered_fraction=0.8))
+
+    assert plain.values.readouts[_CLOCK_INDEX].secondary == "300\u00d7 real time"
+    assert behind.values.readouts[_CLOCK_INDEX].secondary == "about 240\u00d7 of 300\u00d7"
+    assert behind.values.readouts[_CLOCK_INDEX].value == "1m30s"
+    assert [
+        readout for index, readout in enumerate(behind.values.readouts) if index != _CLOCK_INDEX
+    ] == [readout for index, readout in enumerate(plain.values.readouts) if index != _CLOCK_INDEX]
+
+
 def test_a_halt_restates_the_playback_rate_the_reader_chose_on_the_halted_run() -> None:
     """A rate chosen after the last frame reaches the clock's playback line (`PL-P58M`)."""
 
