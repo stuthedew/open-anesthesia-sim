@@ -144,3 +144,20 @@ def test_a_refused_branch_names_the_on_screen_control_and_a_formatted_instant() 
     for text in refusals:
         assert "resumed_" not in text
         assert "s" not in text.replace(",", " ").replace(";", " ").split()
+
+
+def test_a_branch_asked_for_a_branch_of_its_own_is_refused_whole() -> None:
+    """A branch of a branch is refused, with the first branch's fork as the panel writes it.
+
+    The trunk is branched at 60 s, which the panel writes "1m" (`PL-3JTH`).
+    """
+
+    branch = _trunk_with_two_changes().resumed_at(CaseInstant(60))
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        branch.resumed_at(CaseInstant(60))
+
+    assert str(refusal.value) == (
+        "this run is itself a branch opened at 1m, and a branch of a branch is refused "
+        "rather than silently flattened; branch from the trunk instead"
+    )

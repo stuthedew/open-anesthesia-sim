@@ -1291,3 +1291,15 @@ def test_unmarking_the_instant_a_run_is_halted_on_clears_the_halt() -> None:
     run.remove_time_bookmark(bookmark)
 
     assert run.snapshot().bookmark_halt is None
+
+
+def test_removing_a_mark_that_is_not_there_is_refused_in_the_panels_words() -> None:
+    """The refusal gives the instant as the marks panel writes it (`PL-3JTH`).
+
+    The expected text is written out by hand: 60 s is "1m" in the panel.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        BookmarkSet().without_time_bookmark(TimeBookmark(CaseInstant(60)))
+
+    assert str(refusal.value) == "no time bookmark stands at 1m, so there is none to remove"
