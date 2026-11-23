@@ -3,13 +3,16 @@ id: PL-FYQS
 title: docs/PARAMETERS.md § 'Intertissue diffusion: the missing fourth compartment' gives Yasuda 1991 and Hendrickx and De Wolf in full with reading records, while docs/VERIFICATION.md now points to their entries in docs/references/README.md; give each source one full citation
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: documentation-standard
 touches: docs/PARAMETERS.md, docs/references/README.md
 deferred-from: v0.7.0 - captured after the freeze; a repeated citation of sources that are the authority for no stored value, not safety or science
 added: 2026-11-22
+closed: 2026-11-23
+pr: 2295
 payoff: each of these three sources has one full citation, so a reader checking a limitation against its source never compares two copies to find the complete one
+verify: grep -qF 'and the chapter is tier 2. Their full citations are in' docs/PARAMETERS.md
 ---
 
 **Problem.** docs/PARAMETERS.md § 'Intertissue diffusion: the missing fourth compartment' gives Yasuda 1991 and Hendrickx and De Wolf in full with reading records, while docs/VERIFICATION.md now points to their entries in docs/references/README.md; give each source one full citation
@@ -54,3 +57,25 @@ hierarchy"), `PL-R3J6` pointed `docs/VERIFICATION.md` there, and the Workbook
 entry in `docs/PARAMETERS.md` § "Agent amount" names what was read and
 points to its README entry. So the README keeps the full citations, and the
 source list here keeps its own reading record beside a pointer.
+
+**Built 2026-11-23.** In `docs/PARAMETERS.md` § "Intertissue diffusion: the
+missing fourth compartment", the two Yasuda et al. 1991 entries now name each
+paper by authors, journal and year, keep every page read, the route and the
+depth, and point to `docs/references/README.md` § "Yasuda et al. 1991 — the two
+human kinetics papers". The Workbook and Hendrickx and De Wolf entry names the
+chapter in *Modern Anesthetics*, keeps its pages, and points to the two README
+entries that carry the full citations. The README's Hendrickx and De Wolf entry
+said `docs/MODEL.md` § "Known limitations" cites pp. 163 and 165-66. That was
+stale since `PL-48MX` moved the cautions to `docs/PARAMETERS.md`, so it now
+names `docs/MODEL.md` § "What the model represents" for p. 163 and
+`docs/PARAMETERS.md` for pp. 165-66. The PMIDs that `docs/VERIFICATION.md`
+keeps beside its published-data tables are locators that its required-tests
+check needs, as `PL-R3J6` decided, and stay.
+
+**Documents checked.** `docs/PARAMETERS.md` (every mention of the three
+sources, by PMID, DOI and name); `docs/references/README.md` § "Schüttler &
+Schwilden 2008 — *Modern Anesthetics*", § "Philip — *Workbook for Gas Man*" and
+§ "Yasuda et al. 1991 — the two human kinetics papers"; `docs/VERIFICATION.md`
+and `docs/MODEL.md` (the same search, and the sections the README entries name);
+`docs/INTERFACE.md` and `README.md` (none of the three sources).
+
