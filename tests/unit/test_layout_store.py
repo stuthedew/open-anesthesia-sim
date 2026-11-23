@@ -15,9 +15,9 @@ import json
 import os
 import shutil
 import stat
-import time
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone, tzinfo
 from pathlib import Path
+from typing import Self
 
 import pytest
 
@@ -900,35 +900,36 @@ def test_a_store_given_no_clock_names_a_set_aside_file_for_the_moment_it_was_set
     }
 
 
-@pytest.mark.skipif(not hasattr(time, "tzset"), reason="only POSIX lets a process change its zone")
+#: A zone five hours behind UTC, as New York's is in winter.
+FIVE_HOURS_BEHIND_UTC = timezone(timedelta(hours=-5))
+
+
+class MomentOnAMachineFiveHoursBehindUtc(datetime):
+    """A moment read on a machine whose own zone is five hours behind UTC.
+
+    A `datetime` converts to the machine's own zone when `astimezone` is
+    called with no zone. In that case this stand-in converts to five hours
+    behind UTC, as such a machine does. Changing the process's real zone needs
+    `time.tzset`, which Windows lacks, so the stand-in lets the test run on
+    every platform.
+    """
+
+    def astimezone(self, tz: tzinfo | None = None) -> Self:
+        return super().astimezone(FIVE_HOURS_BEHIND_UTC if tz is None else tz)
+
+
 def test_a_set_aside_name_is_written_in_utc_whatever_the_machines_own_zone_is() -> None:
     """A machine five hours behind UTC still names the file for the UTC time.
 
-    `EST5` writes a zone five hours west of UTC in the form that the `TZ`
-    variable takes, so no time zone file is needed. Python falls back to UTC
-    without a word for a zone it cannot read, so the test checks that the zone
-    took effect. The test sets the zone back itself. Monkeypatch would restore
-    the variable only after the test returns, and `time.tzset` must read it
-    again after that.
+    The test first checks that the stand-in moves the moment five hours
+    behind UTC where no zone is named, so a name written in the machine's own
+    zone would fail it.
     """
 
-    zone = os.environ.get("TZ")
-    os.environ["TZ"] = "EST5"
-    time.tzset()
+    moment = MomentOnAMachineFiveHoursBehindUtc.fromtimestamp(MOMENT.timestamp(), UTC)
 
-    try:
-        seconds_west_of_utc = time.timezone
-        name = set_aside_file_name(MOMENT)
-    finally:
-        if zone is None:
-            del os.environ["TZ"]
-        else:
-            os.environ["TZ"] = zone
-
-        time.tzset()
-
-    assert seconds_west_of_utc == 5 * 3600
-    assert name == f"workspaces.invalid-{STAMP}.json"
+    assert moment.astimezone().utcoffset() == timedelta(hours=-5)
+    assert set_aside_file_name(moment) == f"workspaces.invalid-{STAMP}.json"
 
 
 def test_three_files_set_aside_in_one_second_get_three_distinct_names(tmp_path: Path) -> None:

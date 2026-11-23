@@ -10,7 +10,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
-from test_user_files import run_where_the_platform_encoding_is_ascii
+from test_user_files import make_the_platform_encoding_ascii
 
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.preferences import (
@@ -657,29 +657,24 @@ def test_a_price_whose_agent_is_not_text_is_refused_alone_and_names_no_agent(
 
 
 def test_a_file_holding_text_beyond_ascii_is_read_whatever_the_platform_encoding_is(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A file holding "€" is read as UTF-8 where the platform's own encoding is ASCII.
 
     The store writes its file as UTF-8 and writes each character as itself,
     so a refused entry with a currency typed as "€" sits in the file as
     UTF-8. Read in the platform's own encoding, such a file would be refused
-    at the next launch and saving would be turned off. The load runs in a
-    child interpreter set up as a platform whose locale is not UTF-8.
+    at the next launch and saving would be turned off. The load runs with
+    `make_the_platform_encoding_ascii` standing for a platform whose locale is
+    ASCII.
     """
 
     refused = {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "currency": "€"}
     document = json.dumps(_document([refused]), ensure_ascii=False)
     (tmp_path / PREFERENCES_FILE_NAME).write_text(document, encoding="utf-8")
+    make_the_platform_encoding_ascii(monkeypatch)
 
-    printed = run_where_the_platform_encoding_is_ascii(
-        "import sys\n"
-        "from pathlib import Path\n"
-        "from anesthesia_sim.app.preferences import PreferencesStore\n"
-        "loaded = PreferencesStore(Path(sys.argv[1])).load()\n"
-        "print(loaded.writable)\n"
-        "print(ascii([entry.raw['currency'] for entry in loaded.preferences.refused_prices]))\n",
-        str(tmp_path),
-    )
+    loaded = PreferencesStore(tmp_path).load()
 
-    assert printed == ["True", ascii(["€"])]
+    assert loaded.writable
+    assert [entry.raw for entry in loaded.preferences.refused_prices] == [refused]

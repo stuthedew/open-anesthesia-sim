@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
-import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, NoReturn
@@ -154,37 +153,44 @@ def test_absent_package_metadata_makes_the_build_declare_itself_untraceable(
 def test_git_is_asked_about_the_checkout_that_holds_the_running_code(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Git answers for the running code's checkout, whatever directory the app was started from.
+    """Git is run in the running code's directory, whatever directory the app was started from.
 
     Git run in the process's working directory would describe whatever
     repository the reader launched the app from. The build identifier would
     then name code other than the code that is running, which is worse than
-    no identifier. The test starts from a fresh repository of its own, so a
-    git run there would answer with that repository. The expected answer
-    comes from git itself, asked with `-C` about the module's own directory.
+    no identifier. The stand-in for `subprocess.run` behaves as a git that
+    prints the directory it was run in. Like the real call, it captures the
+    output only when asked to, and returns it as text only when asked to. The
+    test starts from a directory of its own, so a git run there would print
+    that directory. The stand-in needs no git installed and no checkout, so
+    the test runs the same everywhere.
     """
 
-    if shutil.which("git") is None:
-        pytest.skip("git is not installed")
+    def git_that_prints_its_directory(
+        arguments: list[str],
+        *,
+        cwd: Path | None = None,
+        capture_output: bool = False,
+        text: bool = False,
+        **options: Any,
+    ) -> subprocess.CompletedProcess[Any]:
+        if arguments[:1] != ["git"]:
+            raise FileNotFoundError(f"no program named {arguments[0]!r}")
 
-    for name in ("GIT_DIR", "GIT_WORK_TREE"):
-        monkeypatch.delenv(name, raising=False)
+        if not capture_output:
+            return subprocess.CompletedProcess(arguments, 0)
+
+        printed = f"{Path.cwd() if cwd is None else cwd}\n"
+
+        return subprocess.CompletedProcess(
+            arguments, 0, stdout=printed if text else printed.encode()
+        )
 
     module_directory = Path(anesthesia_sim.app_metadata.__file__).resolve().parent
-    expected = subprocess.run(
-        ["git", "-C", str(module_directory), "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    if expected.returncode != 0:
-        pytest.skip("the running code is not in a git checkout")
-
-    subprocess.run(["git", "init", "--quiet", str(tmp_path)], check=True)
+    monkeypatch.setattr(subprocess, "run", git_that_prints_its_directory)
     monkeypatch.chdir(tmp_path)
 
-    assert _git("rev-parse", "--show-toplevel") == expected.stdout.strip()
+    assert _git("rev-parse", "--show-toplevel") == str(module_directory)
 
 
 def test_a_git_that_never_answers_is_given_up_on(monkeypatch: pytest.MonkeyPatch) -> None:
