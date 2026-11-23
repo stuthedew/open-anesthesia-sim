@@ -6,7 +6,7 @@ feature: interface-design-review
 added: 2026-11-22
 closed: 2026-11-23
 pr: 2285
-tests: tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_the_bookmarks_view_lists_each_mark_once, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_a_row_s_remove_button_removes_that_row_s_mark_and_no_other, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_each_remove_button_names_its_mark_to_a_screen_reader
+tests: tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_the_bookmarks_view_lists_each_mark_once, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_a_row_s_remove_button_removes_that_row_s_mark_and_no_other, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_each_remove_button_names_its_mark_to_a_screen_reader, tests/integration/simulation_view/test_simulation_view_bookmarks.py::test_a_double_click_on_a_remove_button_removes_one_mark
 ---
 
 **Problem.** At 1366 by 768 the editor inside the Bookmarks View makes the View about 660 px tall, so in Default and Induction most of the editor is below the Bookmarks Area's edge and the Area scrolls 504 and 517 px; consider a more compact editor or a larger share for the View (found in review of PL-D5J4, after PL-CHX0)
