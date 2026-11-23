@@ -425,8 +425,8 @@ def test_a_settings_mismatch_names_the_setting_that_differs(
     assert (
         f"blood_gas_partition_coefficient is {on_file.blood_gas_partition_coefficient!r} "
         f"in this run and {edited.blood_gas_partition_coefficient!r} on the branch"
-    ) in str(refusal.value)
-    assert "timeline" not in str(refusal.value)
+    ) in _developer_note(refusal.value)
+    assert "timeline" not in str(refusal.value) + _developer_note(refusal.value)
     assert trunk.snapshot() == before
 
 
@@ -448,7 +448,7 @@ def test_a_patient_mismatch_names_the_tissue_group_it_is_in(
     assert (
         f"muscle volume_l is {on_file.muscle_volume_l!r} in this run and "
         f"{edited.muscle_volume_l!r} on the branch"
-    ) in str(refusal.value)
+    ) in _developer_note(refusal.value)
 
 
 def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -478,7 +478,7 @@ def test_a_branch_rebuilt_under_another_mac_is_refused(monkeypatch: pytest.Monke
     assert (
         f"agent_mac is {mac_for_patient(on_file, patient)!r} in this run and "
         f"{mac_for_patient(edited, patient)!r} on the branch"
-    ) in str(refusal.value)
+    ) in _developer_note(refusal.value)
 
 
 def test_a_vaporizer_maximum_edited_before_a_branch_is_named_once(
@@ -515,7 +515,7 @@ def test_a_vaporizer_maximum_edited_before_a_branch_is_named_once(
         f"{edited.max_delivered_concentration_percent!r} on the branch"
     )
 
-    assert str(refusal.value).count(named) == 1
+    assert _developer_note(refusal.value).count(named) == 1
 
 
 def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
@@ -1020,3 +1020,9 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
     for change in trunk.snapshot().control_timeline:
         assert change.elapsed_s in case.fork_points_s
         assert case.fork_at(change.elapsed_s).run_segments[-1].opened_at_s == (change.elapsed_s)
+
+
+def _developer_note(refusal: BaseException) -> str:
+    """Return the notes that a refused branch carries for a developer (`PL-72X2`)."""
+
+    return "\n".join(getattr(refusal, "__notes__", ()))

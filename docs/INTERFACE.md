@@ -734,7 +734,11 @@ taken from the "From" selector's opening entry instead.
 changed, and then gives the reason. The reason gives each instant as the panel
 writes it, such as "2m" or "1m30s". Where another control would open the
 branch, the reason names it by its label, such as "From", "Branch" or "Branch
-here".
+here". A branch rebuilt with values its run did not hold has two possible
+causes: a data file changed while the simulator was open, or a fault in how
+the branch is rebuilt. Its notice names both, says to reopen the simulator and
+run the case again, and says that the same notice at the same point means a
+fault. It names no setting by its code name (`PL-72X2`).
 
 **For developers.** A run marked at 60 s after its clock reached 180 s is
 returned to, and the branch agrees with its trunk at each of the 61 seconds
@@ -745,6 +749,9 @@ controller, and
 `test_a_refused_branch_names_the_on_screen_control_and_a_formatted_instant` in
 `tests/integration/controller/test_controller_branch_refusals.py` checks a
 refusal's wording.
+`test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words` in
+`tests/integration/simulation_view/test_simulation_view_branch_refusals.py`
+checks the refusal for changed data, in the panel and in the failure log.
 
 #### How a branch is drawn
 

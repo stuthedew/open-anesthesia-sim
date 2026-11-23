@@ -5,6 +5,8 @@ These tests cover a branch the case refuses, and how the refusal is shown.
 `simulation_view_support.py` describes the whole suite.
 """
 
+import dataclasses
+import logging
 from typing import NoReturn
 
 import pytest
@@ -23,7 +25,8 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.core.concentration import MacMultiple
+from anesthesia_sim.core.concentration import MacMultiple, MacPercent
+from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from tests.integration.simulation_view.simulation_view_support import (
     _branched_case,
@@ -41,6 +44,47 @@ from tests.integration.simulation_view.simulation_view_support import (
     _shown_view,
     _take_fork,
 )
+
+
+def test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A branch whose rebuilt values differ from its trunk's tells the learner what to do.
+
+    The agent's MAC is read again from its file when a branch is built, so a
+    file edited after the trunk began gives the branch another MAC. The branch
+    panel used to show the code's field names and each value's `repr`, such as
+    "agent_mac is 1.8 in this run and 1.9 on the branch", and nothing a learner
+    could do (`PL-72X2`). The panel now shows a sentence for the learner, and
+    the field-by-field detail goes to the failure log.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    panel = _fork_panel(view)
+    on_file = load_agent_parameters(case.trunk.snapshot().agent_id)
+    edited = dataclasses.replace(
+        on_file, mac_at_age_40_percent=MacPercent(on_file.mac_at_age_40_percent + 0.1)
+    )
+    monkeypatch.setattr(
+        "anesthesia_sim.app.controller.load_agent_parameters", lambda agent_id: edited
+    )
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
+
+    with caplog.at_level(logging.ERROR, logger="anesthesia_sim"):
+        panel.take_button.click()
+
+    assert len(view.runs) == 1
+    assert case.branches == ()
+    assert panel.notice.notice() == (
+        "Branch not opened — a branch at 1m would not open on the values this run held "
+        "there, so it would be a different case rather than another way of managing this "
+        "one. The simulator's data may have changed since this run began, or the "
+        "simulator may have a fault. Reopen the simulator and run the case again to "
+        "branch it. If this notice comes back at the same point, the cause is a fault in "
+        "the simulator"
+    )
+    assert "agent_mac is " in caplog.text
 
 
 @pytest.mark.parametrize("door", ["take", "here"])
