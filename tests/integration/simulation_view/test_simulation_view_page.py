@@ -522,7 +522,7 @@ def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
     layout's margins and spacing, each read from its own widget rather than
     from the drawn height of the Areas. So height given to the middle outside
     the Areas also fails the test. Each Area's least height is the height its
-    View needs as the layout measures it, at the Area's least width (`PL-744F`).
+    View needs as the layout measures it, at the width the Area is drawn (`PL-744F`).
     """
 
     view = _shipped_view_at(application, workspace, 1366, 768, branched=branched)
@@ -549,6 +549,70 @@ def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
 
     assert areas.height() == max(least_px, room_px)
     assert page.verticalScrollBar().maximum() == max(0, least_px - room_px)
+
+
+@pytest.mark.parametrize("workspace", ["Induction", "Maintenance"])
+def test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn(
+    application: QApplication, workspace: str
+) -> None:
+    """`PL-744F`: the Parameters Area is as tall as its two rows of dials need at its drawn width.
+
+    In Induction and Maintenance at 1366 by 768 with a branch open, the page
+    scrolls, so the Parameters Area is held at its least height. Its View
+    never scrolls up and down, and its wrapped labels take fewer lines at
+    the width the Area is drawn than at the Area's least width. The Area was
+    held at the height measured at its least width, 30 px more than the View
+    needs, and the page scrolled 30 px further for nothing. The expected
+    height is the View's own layout's least height at the width it is drawn,
+    worked out here from Qt rather than read from the layout under test.
+    """
+
+    view = _shipped_view_at(application, workspace, 1366, 768, branched=True)
+    areas = view.layout_container
+    (area,) = [area for area in areas.model.areas() if area.view == PARAMETER_CONTROLS]
+    frame = areas.frame(area.id)
+    scroll = frame.view_scroll
+    assert scroll is not None
+    content = frame.content
+    layout = content.layout()
+    assert layout is not None and layout.hasHeightForWidth()
+    width_px = scroll.viewport().width()
+    content_px = max(
+        content.minimumSizeHint().height(),
+        layout.totalMinimumHeightForWidth(width_px),
+        REGISTERED[PARAMETER_CONTROLS].minimum.height_px,
+    )
+    header_px = frame.height() - scroll.height()
+
+    assert scroll.verticalScrollBar().maximum() == 0
+    assert frame.height() == header_px + content_px
+
+
+@pytest.mark.parametrize("height_px", range(1044, 1077, 4))
+def test_a_layout_drawn_again_keeps_its_sizes_where_the_page_scroll_bar_comes_and_goes(
+    application: QApplication, height_px: int
+) -> None:
+    """`PL-744F`: a second frame draws every Area where the first one did.
+
+    A whole View's need is measured at the width its Area is drawn. The page's
+    scroll bar takes width from the Areas when it appears, so a need that fed
+    back through it could give a different layout on each frame. Induction
+    with a branch open at 1366 px wide needs about 1,060 px of window height
+    for the page not to scroll, so these heights put the window on both sides
+    of the height at which the scroll bar comes and goes.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, height_px, branched=True)
+    areas = view.layout_container
+
+    def drawn() -> list[tuple[int, int, int, int]]:
+        return [areas.frame(area.id).geometry().getRect() for area in areas.model.areas()]
+
+    first = drawn()
+    view.present(False)
+    application.processEvents()
+
+    assert drawn() == first
 
 
 @pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
