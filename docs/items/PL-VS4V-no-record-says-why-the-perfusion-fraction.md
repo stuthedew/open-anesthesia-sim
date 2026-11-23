@@ -64,3 +64,5 @@ capacities in the code" and `docs/PARAMETERS.md`'s paragraph on the two
 perfusion checks name the constant and its value only, and stay true.
 `docs/MODEL.md` § "Blood flow to the tissue groups" gives the perfusion value
 in words, one part in a million million, and stays true.
+
+**Review, 2026-11-23.** Both blind review passes found nothing to report.
