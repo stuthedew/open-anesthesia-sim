@@ -56,8 +56,9 @@ range. Where the ratio is outside its domain, this module returns no number to
 draw and says which rule excluded it (`read_wash_in`). The interface can then
 state the cause instead of drawing a number it cannot stand behind. For the
 same reason, one call returns both the number and whether it is inside its
-domain. A caption saying "no agent in the circuit yet" beside a trace that is
-still drawing would be two displays disagreeing about the same instant.
+domain. A caption saying that the inspired concentration is too low to divide
+by, beside a trace that is still drawing, would be two displays disagreeing
+about the same instant.
 """
 
 from dataclasses import dataclass
@@ -100,8 +101,9 @@ class WashInDomain(StrEnum):
 
     There are three outcomes rather than a `None`, because the interface has
     to say *which* outcome a blank stretch of curve stands for: an inspired
-    concentration too low to divide by, or a patient returning agent. A reader
-    told only that the trace stopped would have no way to tell them apart.
+    concentration too low to divide by, or an alveolar concentration above the
+    inspired. A reader told only that the trace stopped would have no way to
+    tell them apart.
     """
 
     WASH_IN = "wash_in"

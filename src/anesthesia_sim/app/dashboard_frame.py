@@ -1231,8 +1231,8 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 )
 # What the wash-in plot is showing at this instant. A trace that stops has
 # to say at which of its two boundaries it stopped: an inspired concentration
-# too low to divide by, or a patient giving agent back. A reader shown only an
-# empty plot could not tell the two apart. The first sentence names the
+# too low to divide by, or an alveolar concentration above the inspired. A
+# reader shown only an empty plot could not tell the two apart. The first sentence names the
 # condition and not a cause, because the inspired concentration also falls
 # that low during a washout, while the patient still holds agent (`PL-P3ZL`).
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
