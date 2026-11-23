@@ -1793,21 +1793,22 @@ the answering item does not move that date. Like `trend`, it decides nothing and
 
 `docket release` prints the one verdict, and only when it is unwelcome: when
 the last complete week broke one of `PL-04KR`'s pre-registered predictions -
-more than 0.13 new apparatus paths a filing, a `P0` or `P1` apparatus filing,
-or more re-entries than the week before - the cut names it, and otherwise says
-nothing about inflow at all. The `P0` and `P1` count reads only workflow-lane
-filings, the population `PL-04KR`'s baseline of 0, 2, 1 and 0 a week was
-measured on. An item that also edits the product can take its band from the
-product half, as a `safety` class pins it to `P1` (`PL-00TR`, `PL-NHQ6`). Two
-more kinds of band are left out, because each records a rank rather than a
-severity: an item in the generator tier, and an item whose `owner-priority:`
-names the band it has. A cut that prints a miss also says to file an
-investigation under `convergence-visibility` unless one is already listed for
-that week. A week above 0.13 new paths
-a filing breaks that prediction only when it named at least as many new paths
-as the week before. The ratio rises whenever filings fall faster than new
-paths, and a falling count of new paths is the convergence the prediction
-expects (`PL-2T7X`).
+more than 0.13 new apparatus paths a filing, or more re-entries than the week
+before - the cut names it, and otherwise says nothing about inflow at all. A
+cut that prints a miss also says to file an investigation under
+`convergence-visibility` unless one is already listed for that week. A week
+above 0.13 new paths a filing breaks that prediction only when it named at
+least as many new paths as the week before. The ratio rises whenever filings
+fall faster than new paths, and a falling count of new paths is the
+convergence the prediction expects (`PL-2T7X`).
+
+No prediction reads a filing's priority. `PL-04KR` also predicted that no
+workflow filing would reach `P0` or `P1`. That prediction broke in every week
+from 2026-10-12 to 11-22, and none of the six readings found a cause that
+triage's generator check had not already recorded, because the band records
+an order as often as a severity. The owner chose on 2026-11-23 to stop
+checking it (`PL-7TB2`). The table still shows each week's filings by
+priority.
 
 ### The digest and the ranking cannot disagree
 

@@ -3,13 +3,14 @@ id: PL-K3QM
 title: Mark the earlier deliberate sweeps with sweep:, so docket inflow's history rows count their filings apart: only PL-K88Z carries it, and candidates include PL-BNYF's queue audit among the items whose work filed three or more apparatus items
 priority: P3
 effort: M
-status: ready
+status: done
 classes: housekeeping
 feature: convergence-visibility
-touches: docs/items
+touches: docs/items, docs/items/PL-MR85-sort-every-paragraph-of-the-instructions-loaded.md, docs/items/PL-LY24-count-for-each-of-the-13-checks-that-guard-the.md, docs/items/PL-8FT2-review-the-340-regular-expressions-in-tools.md, docs/items/PL-GTHP-check-the-214-findings-from-pl-tbqs-s-reviewer.md, docs/items/PL-ZWXD-check-the-other-correct-reviewer-findings-from.md
 added: 2026-11-03
+closed: 2026-11-23
+pr: 2301
 payoff: docket inflow's history rows count the filings of deliberate sweeps apart from ordinary inflow
-verify: grep -q '^\*\*Every candidate read, ' docs/items/PL-K3QM-*.md
 ---
 
 **Problem.** Mark the earlier deliberate sweeps with sweep:, so docket inflow's history rows count their filings apart: only PL-K88Z carries it, and candidates include PL-BNYF's queue audit among the items whose work filed three or more apparatus items
@@ -55,3 +56,13 @@ read, DATE.**", which the session that reads the remaining briefs writes. The
 old command passed as soon as `PL-BNYF` was marked.
 
 **Checked 2026-11-22** against `d4e8200`: partly done. The 2026-11-14 screen marked `PL-BNYF`, `PL-ZKT8` and `PL-R4Y2` with `sweep:`, and those marks are still in their front matter. What is left is to read the remaining 143 of the 163 candidate briefs in full. `bin/docket inflow` and the `sweep:` field both still exist.
+
+**Every candidate read, 2026-11-23.** The filing map now lists 176 items whose work filed three or more workflow-lane items and that carry neither `root-cause-of:` nor `sweep:`. `bin/docket inflow` credits a sweep with every filing of a commit whose subject leads with the sweep's id, so the filing commit is what decides whether a mark counts the right filings. Each candidate was read in that unit, in three groups.
+
+1. **35 candidates filed three or more items in commits that name them alone.** For each, the title, the brief's opening paragraph and the subject of each filing commit were read. `PL-DH17`, `PL-2D1S` and `PL-5MYR` keep the 2026-11-14 verdicts above. Two are deliberate searches and now carry `sweep:`: `PL-MR85` sorted every paragraph of the instructions loaded at launch and filed the moves the sort called for, and `PL-LY24` counted what the 13 workflow-record checks refused in CI and filed the three defects it found. The other 33 are fixes, builds or decisions. Four of them filed work that a decision called for rather than findings of a search, so `sweep:` would describe them wrongly: `PL-P3GZ` (the split of `docs/MODEL.md`), `PL-KGPR` (the four check removals), `PL-LFJZ` (the work of the chosen done-condition form) and `PL-YRLM` (the v0.7.0 scope). `PL-DZM1` recovered stranded work and captured the defects it met, which is ordinary capture.
+2. **115 candidates reach three only through commits that lead with several ids.** 29 such commits filed three or more workflow-lane items. Each was read by its subject and, where the subject left it open, its body. One is a search: `PL-GTHP` and `PL-ZWXD` each checked a reviewer replay's findings against `main` and filed what still held (#1830), and both now carry `sweep:`. The rest are the reader sweep that `PL-R417` already heads, triage and grooming passes, gate batches, milestone scoping, and fixes that captured findings as they went. None is a search that an item of its own ran.
+3. **26 candidates reach three only through commits that each filed one or two items.** Their titles and filing commits were read. One is a search: `PL-8FT2` reviewed every regular expression left standing without a reason and filed its findings, and now carries `sweep:`. The rest are fixes and triage passes.
+
+Adding the marks moved two history rows of `bin/docket inflow`: the week of 2026-11-02 now counts 2 filings under `+sweep`, and the week of 2026-11-16 counts 11, leaving 30 ordinary filings and no re-entries. No release verdict changes, because a cut reads only the last complete week and these weeks have been cut.
+
+**What no mark can reach.** Four reviews filed their findings in a commit led by the findings' own ids, with no item of their own: the guard hook review (#1980), the 2026-11-10 root-cause audit (#2090, whose leads `PL-VZ57` now carries), the test-suite review (#2128) and the review of the 2026-11-14 merges (#2160). `PL-40ZB` § "A gap this reading found" records it, and this branch adds the capture step that prevents the next one.

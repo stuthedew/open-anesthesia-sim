@@ -13,6 +13,7 @@ closed: 2026-10-25
 pr: 1830
 payoff: every defect the reviewer replay found that still holds on main is queued, instead of lost when the pull request's head can no longer be fetched
 verify: grep -qE '^Every finding above is checked against main\.$' docs/items/PL-GTHP-*.md
+sweep: checks the findings of PL-TBQS's reviewer replay against main, and files each one that still holds
 ---
 
 **Problem.** Check the 214 findings from PL-TBQS's reviewer replay that name no key defect, most of them marked correct at merge by a blind checker, against main, and file what still holds
