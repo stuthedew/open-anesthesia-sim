@@ -636,7 +636,11 @@ def _drawn_by(item: object) -> tuple[object, ...] | None:
                 )
             )
     elif isinstance(item, pg.InfiniteLine):
-        reading.extend((item.value(), item.angle % 180, _pen_reading(item.pen)))
+        # pyqtgraph keeps a line's position as an int 0 until the line is moved
+        # away from where it was built, because it skips a move to an equal
+        # position. So a line placed at 0.0 reads 0 on a new chart and 0.0 on
+        # one that drew another position first, at the same place on screen.
+        reading.extend((float(item.value()), item.angle % 180, _pen_reading(item.pen)))
     elif isinstance(item, pg.LinearRegionItem):
         reading.extend(
             (

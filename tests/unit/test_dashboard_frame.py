@@ -142,6 +142,7 @@ from anesthesia_sim.app.dashboard_frame import (
     halt_notice,
     halt_run_notice,
     height_entry_maximum_mac,
+    input_frame_wait_ms,
     kept_fork_selection,
     mac_awake_caption,
     mac_reference_caption,
@@ -667,6 +668,52 @@ def test_a_frame_is_two_ticks() -> None:
     """
 
     assert RENDER_INTERVAL_S * 1_000 == 2 * SIMULATION_TICK_INTERVAL_MS
+
+
+@pytest.mark.parametrize(
+    ("frame_cost_ms", "wait_ms"),
+    [(0.0, 100), (40.0, 60), (40.2, 60), (50.0, 50), (104.0, 104), (103.5, 104)],
+    ids=["free", "cheap", "cheap, rounded up", "half the interval", "slow", "slow, rounded up"],
+)
+def test_an_input_frame_waits_out_the_interval_or_its_own_cost(
+    frame_cost_ms: float, wait_ms: int
+) -> None:
+    """The wait after a dial input's frame keeps frames 100 ms apart, or idle as long as they drew.
+
+    Nielsen Norman Group gives 0.1 s as the limit for a user to feel that
+    they are directly manipulating what is on screen, so a frame that costs
+    less than half of it is followed by the rest of the 100 ms. A frame that
+    costs more is followed by a pause as long as itself, so drawing never
+    takes more than half of the thread (`PL-NKFD`). Each expected wait is
+    worked out by hand from that rule and rounded up to a whole millisecond.
+    """
+
+    assert input_frame_wait_ms(frame_cost_ms) == wait_ms
+
+
+def test_two_input_frames_start_the_interval_or_twice_the_cost_apart() -> None:
+    """From one frame's start to the next is 100 ms, or twice the frame's cost, whichever is longer.
+
+    The costs run across the 50 ms at which the two bounds meet. The
+    comparison allows the rounding up to a whole millisecond and nothing
+    more.
+    """
+
+    for tenths in range(0, 3001):
+        cost_ms = tenths / 10
+        start_to_start_ms = cost_ms + input_frame_wait_ms(cost_ms)
+        expected_ms = max(100.0, 2 * cost_ms)
+        # The wait is rounded up to a whole millisecond, so the start-to-start
+        # time can exceed the rule's by less than 1 ms and never fall short.
+        assert expected_ms <= start_to_start_ms < expected_ms + 1, cost_ms
+
+
+@pytest.mark.parametrize("frame_cost_ms", [-1.0, math.nan, math.inf])
+def test_an_input_frame_s_wait_refuses_a_cost_no_clock_can_measure(frame_cost_ms: float) -> None:
+    """A negative, missing or infinite cost is refused rather than turned into a wait."""
+
+    with pytest.raises(ValueError, match="frame's cost"):
+        input_frame_wait_ms(frame_cost_ms)
 
 
 def test_the_dashboard_displays_at_most_two_runs() -> None:
