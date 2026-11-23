@@ -483,7 +483,7 @@ def test_no_shipped_workspace_scrolls_the_page(
 
 
 def _stacked_least_px(view: SimulationView, node: Node) -> int:
-    """The least height of `node`'s Areas, added up from the least height each Area's frame is held to.
+    """The least height of `node`'s Areas, added up from each Area frame's least height.
 
     A column holds its children one above the next, with a border between
     each two, and a row holds them side by side, so it is as tall as its
@@ -506,7 +506,7 @@ def _stacked_least_px(view: SimulationView, node: Node) -> int:
 def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
     application: QApplication, workspace: str
 ) -> None:
-    """`PL-5J1X`: where the Areas need more height than the window has, the page grows by the difference.
+    """`PL-5J1X`: where the Areas need more height than the window has, the page grows by that much.
 
     At 1366 by 768 with a branch open, the region above the Areas shows two
     runs and the Parameters View shows two rows of dials, so the Areas'
