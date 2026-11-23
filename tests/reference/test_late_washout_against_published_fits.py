@@ -218,13 +218,13 @@ alveolar partial pressure.
 **What a learner sees of this.** The departures above are in $`F_A/F_{A0}`$.
 At the gate's 1% dial setting, $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an
 atmosphere for sevoflurane, isoflurane and desflurane. So the shipped alveolar
-trace falls below the readout's resolution of 0.01 percentage points
-(`docs/INTERFACE.md` § "Displayed precision") at 2.8, 4.2 and 1.9 hours. That is
-before the stretch over which the trace runs below the measured mean. On the
+readout changes from a number to `<0.01%` (`docs/INTERFACE.md` § "Displayed
+precision") at 4.9, 6.6 and 3.1 hours, once the value would round to 0.00%.
+That is before the stretch over which the trace runs below the measured mean. On the
 chart's linear axis, which is fixed at 3 MAC, the trace is only a few pixels
 high well before that. A higher dial setting raises $`F_{A0}`$ in proportion,
-and keeps the trace above the readout's resolution for longer. A 6%
-desflurane setting keeps it above until about 5.4 hours, which is inside
+and keeps a number on the readout for longer. A 6% desflurane setting keeps
+one there until about 7.8 hours, which is inside
 desflurane's stretch below the measured mean.
 
 **Sources.** None of them is the authority for a stored value. The first two
@@ -925,8 +925,8 @@ def _washout_curve(
     """Wash in as the gate does, then eliminate in one condition, by default to the run's end.
 
     The wash-in is the shipped one, rebreathing included, whatever the
-    condition. That limb is inside the published spread at every supported
-    flow, and F_A0 is defined at its end. The open circuit begins at
+    condition. That limb is inside the published spread at each of the six
+    flows the sweep runs, and F_A0 is defined at its end. The open circuit begins at
     discontinuation, exactly where `_eliminate_without_rebreathing()` begins
     it. With no sink, the sequence of `advance()` calls is the same as the
     gate's through the fifth minute, and

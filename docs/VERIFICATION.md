@@ -2592,7 +2592,7 @@ units of that point's SD:
 **The model's sevoflurane and isoflurane curves sit a little below the published
 ones in the first 3 minutes and a little above from 7.5 minutes on.** Their only
 point beyond one SD is isoflurane at 12.5 minutes, +1.06 SD, which is within a
-reading error of one SD (`test_early_wash_in_matches_published_human_measurement`).
+reading error of one SD (`test_the_early_wash_in_points_past_one_sd_and_at_12_5_and_15_minutes_are_as_printed`).
 
 **The desflurane gap likely comes from something that only desflurane has**,
 such as its blood:gas or a tissue:gas coefficient. The model's settings are an
@@ -2712,7 +2712,7 @@ run depends only on their product, the tissue's capacity.
 
 - **A narrow edge is not a narrow uncertainty.** Most of the narrowest edges
   come from the 12.5- and 15-minute points, where the shipped model already sits
-  at +0.75 to +0.95 SD (simulated 2026-11-22). The second study's isoflurane
+  at +0.75 to +0.95 SD (`test_the_early_wash_in_points_past_one_sd_and_at_12_5_and_15_minutes_are_as_printed`). The second study's isoflurane
   point at 12.5 minutes sits at +1.06 SD, under the looser band described above.
   There, a change that raises the curve by a few tenths of
   an SD takes it past the published-data gate's limit of +1 SD. So isoflurane's −1% edge for
@@ -2893,7 +2893,7 @@ curve, and how far from the curve the tail sits between crossings:
 
 In the open circuit, the tail falls below the fitted curve between the second
 and the sixth minute
-(`test_the_first_24_hours_of_elimination_against_the_published_mean_curves`). For sevoflurane and the first study's isoflurane, it
+(`test_the_open_circuit_tail_first_falls_below_the_fitted_curve_in_the_minutes_printed`). For sevoflurane and the first study's isoflurane, it
 stays below the curve for the whole run. Desflurane rises back above the
 curve at 19.18 h. The second study's isoflurane sits above the curve between
 2.45 and 4.57 h, by 5% at most. After the first hour, the open-circuit tail
@@ -3061,13 +3061,14 @@ that § "Mass-balance identity" remains true with the sink in place.
 number.** The departures above are in $`F_A/F_{A0}`$. At the 1% dial of these runs,
 $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an atmosphere for sevoflurane,
 isoflurane and desflurane
-(`test_the_alveolar_fraction_at_discontinuation_at_the_1_percent_dial_is_as_printed`). So the shipped alveolar trace falls below the
-readouts' 0.01 percentage points (`docs/INTERFACE.md` § "Displayed precision") at 2.8, 4.2 and 1.9
-hours (`test_the_shipped_trace_falls_below_the_readout_resolution_at_the_hours_printed`). That is before the stretch over which the trace runs below the measured
+(`test_the_alveolar_fraction_at_discontinuation_at_the_1_percent_dial_is_as_printed`). So the shipped alveolar readout shows a number,
+at least 0.01%, until the value would round to 0.00%. From then on it shows `<0.01%`
+(`docs/INTERFACE.md` § "Displayed precision") until 4.9, 6.6 and 3.1 hours
+(`test_the_shipped_readout_shows_below_its_resolution_from_the_hours_printed`). That is before the stretch over which the trace runs below the measured
 mean. On the chart's linear axis, which is fixed at 3 MAC, the trace is a few
 pixels high well before that. A higher dial scales $`F_{A0}`$ with it, and
-keeps the trace above the 0.01 percentage-point limit for longer. A 6%
-desflurane dial keeps it there until about 5.4 hours, which is inside
+keeps a number on the readout for longer. A 6%
+desflurane dial keeps a number on the readout until about 7.8 hours, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the
 shortfall.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->

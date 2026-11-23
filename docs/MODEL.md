@@ -1434,11 +1434,11 @@ Two limits apply to those figures:
    of the volunteers' own curves. The direction is settled, and the size is
    known to about a factor of two.
 
-**What a learner sees of this.** At a 1% dial, the alveolar trace falls below
-the readouts' 0.01 percentage points at 2.8, 4.2 and 1.9 hours for
-sevoflurane, isoflurane and desflurane, before the stretch over which it runs
-below the measured mean. A higher dial keeps the trace readable for longer. A
-6% desflurane dial keeps it there until about 5.4 hours, which is inside
+**What a learner sees of this.** At a 1% dial, the alveolar readout changes
+from a number to `<0.01%` at 4.9, 6.6 and 3.1 hours for sevoflurane,
+isoflurane and desflurane, before the stretch over which the trace runs below
+the measured mean. A higher dial keeps a number on the readout for longer. A
+6% desflurane dial keeps one there until about 7.8 hours, which is inside
 desflurane's stretch. So a learner who runs a case long can reach the
 shortfall.
 

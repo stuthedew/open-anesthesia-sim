@@ -27,6 +27,7 @@ from collections.abc import Callable, Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from functools import cache
 
+import pytest
 from test_late_washout_against_published_fits import (
     PUBLISHED_FITS,
     RECORDED_APPARENT_TERMS,
@@ -35,10 +36,23 @@ from test_late_washout_against_published_fits import (
     washout_curve,  # noqa: F401  # a fixture, which the tests below take by name
 )
 from test_parameter_source_figures import YASUDA_BRAIN_BLOOD
-from test_published_wash_in_and_elimination import AGENT_IDS, FRESH_GAS_FLOW_L_MIN, _eliminate
+from test_published_wash_in_and_elimination import (
+    AGENT_IDS,
+    AGREEMENT_TOLERANCE_SD,
+    FRESH_GAS_FLOW_L_MIN,
+    PUBLISHED_WASH_IN_TIME_COURSE,
+    SWEPT_FRESH_GAS_FLOWS_L_MIN,
+    WASH_IN_ORDER,
+    PublishedTimePoint,
+    _clamped_wash_in,
+    _eliminate,
+    _ordering_failure,
+    _wash_in_ratio,
+)
 from test_supported_input_range_figures import DOCS, _one, _section
 
-from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, format_percent
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
 
 #: Minutes in an hour, for the hours the late-washout paragraphs give.
@@ -152,17 +166,22 @@ def test_the_vessel_rich_group_s_time_constant_is_2_0_to_2_7_minutes() -> None:
 
 
 def test_the_stored_vessel_rich_coefficients_lie_within_3_percent_of_yasudas_brain_values() -> None:
-    """Each stored tissue:blood ratio is the figure printed, and within the percentage printed."""
+    """Each stored tissue:blood ratio and Yasuda's brain value are as printed, and close enough.
 
-    percent, *ratios = _printed(
-        r"within (\d+)%: (\d\.\d+) against \d\.\d+, (\d\.\d+) against \d\.\d+, and "
-        r"(\d\.\d+) against"
+    "Close enough" is within the percentage that the sentence prints.
+    """
+
+    percent, *pairs = _printed(
+        r"within (\d+)%: (\d\.\d+) against (\d\.\d+), (\d\.\d+) against (\d\.\d+), and "
+        r"(\d\.\d+) against (\d\.\d+)"
     )
+    ratios, published = pairs[0::2], pairs[1::2]
 
-    for agent_id, figure in zip(SECTION_ORDER, ratios, strict=True):
+    for agent_id, figure, brain in zip(SECTION_ORDER, ratios, published, strict=True):
         ratio = _vessel_rich_tissue_blood(agent_id)
 
         assert _as_printed(ratio, figure) == figure, agent_id
+        assert _as_printed(YASUDA_BRAIN_BLOOD[agent_id], brain) == brain, agent_id
         assert abs(ratio / YASUDA_BRAIN_BLOOD[agent_id] - 1) < int(percent) / 100, agent_id
 
 
@@ -320,35 +339,131 @@ def test_the_shipped_tail_s_first_dip_is_15_to_44_percent_below_the_fitted_curve
     _assert_span(widest, low, high)
 
 
-def test_the_shipped_trace_falls_below_the_readout_resolution_at_the_hours_printed(
+def test_the_shipped_readout_shows_below_its_resolution_from_the_hours_printed(
     washout_curve: Callable[..., WashoutCurve],  # noqa: F811  # the fixture imported above
 ) -> None:
-    """At the 1% dial, the alveolar trace falls below the readouts' resolution at the hours printed.
+    """At the 1% dial, the alveolar readout first shows `<0.01%` at the hours printed.
 
-    A higher desflurane dial keeps the trace above that resolution until the
-    hour printed for it. The model is linear in the delivered fraction, so the
-    trace at a higher dial is the trace at 1% times the dial.
+    The hour is the first minute at which `format_percent`, the function that
+    draws the readout, gives the below-resolution form. That happens once the
+    value would round to 0.00, not once it is below 0.01. A higher desflurane
+    dial keeps a number on the readout until the hour printed for it. The
+    model is linear in the delivered fraction, so the trace at a higher dial
+    is the trace at 1% times the dial.
     """
 
-    hours = _printed(r"Displayed precision\"\) at (\d\.\d), (\d\.\d) and (\d\.\d) hours")
+    hours = _printed(r"Displayed precision\"\) until (\d\.\d), (\d\.\d) and (\d\.\d) hours")
     dial, dial_hours = _printed(
-        r"A (\d+)% desflurane dial keeps it there until about (\d\.\d) hours"
+        r"A (\d+)% desflurane dial keeps a number on the readout until about (\d\.\d) hours"
     )
+    # The below-resolution form, as the readout draws it for any positive
+    # value too small to show.
+    below = format_percent(Fraction(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 1000))
 
-    def hours_below(curve: WashoutCurve, dial_percent: float) -> float:
-        start = 100 * curve.alveolar_fraction_at_discontinuation * dial_percent
+    def first_below(curve: WashoutCurve, dial_percent: int) -> float:
+        start = curve.alveolar_fraction_at_discontinuation * dial_percent
         minutes = next(
             minutes
             for minutes, ratio in enumerate(curve.ratios_by_minute)
-            if start * ratio < CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+            if format_percent(Fraction(start * ratio)) == below
         )
         return minutes / MINUTES_PER_HOUR
 
     for agent_id, figure in zip(SECTION_ORDER, hours, strict=True):
-        found = hours_below(washout_curve(agent_id, "shipped"), 1)
+        found = first_below(washout_curve(agent_id, "shipped"), 1)
 
         assert _as_printed(found, figure) == figure, agent_id
 
-    found = hours_below(washout_curve("desflurane", "shipped"), int(dial))
+    found = first_below(washout_curve("desflurane", "shipped"), int(dial))
 
     assert _as_printed(found, dial_hours) == dial_hours
+
+
+#: The ordinal words the section uses for a minute of the run.
+ORDINAL_MINUTES = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6}
+
+
+def test_the_open_circuit_tail_first_falls_below_the_fitted_curve_in_the_minutes_printed(
+    washout_curve: Callable[..., WashoutCurve],  # noqa: F811  # the fixture imported above
+) -> None:
+    """Each cohort's open-circuit tail first falls below its fitted curve in the minutes printed.
+
+    The minute is the first whole minute after discontinuation at which the
+    model's F_A/F_A0 is below the fitted curve's.
+    """
+
+    earliest, latest = _printed(
+        r"In the open circuit, the tail falls below the fitted curve between the (\w+) and "
+        r"the (\w+) minute"
+    )
+    first_minutes = []
+
+    for fit in PUBLISHED_FITS:
+        ratios = _model_over_fit(washout_curve(fit.agent_id, "open circuit"), fit)
+        first_minutes.append(next(m for m in range(1, len(ratios)) if ratios[m] < 1))
+
+    assert (min(first_minutes), max(first_minutes)) == (
+        ORDINAL_MINUTES[earliest],
+        ORDINAL_MINUTES[latest],
+    ), first_minutes
+
+
+def _early_distance(point: PublishedTimePoint) -> float:
+    """The model's distance from one published early wash-in mean, in that point's SD."""
+
+    return point.distance_in_standard_deviations(
+        _clamped_wash_in(point.agent_id).ratios[point.time_min]
+    )
+
+
+def test_the_early_wash_in_points_past_one_sd_and_at_12_5_and_15_minutes_are_as_printed() -> None:
+    """Only the second isoflurane study's 12.5-minute point passes one SD, at the distance printed.
+
+    Of the sevoflurane and isoflurane points, that one alone lies more than
+    one SD from its published mean. Every other point at 12.5 and 15 minutes,
+    desflurane's included, lies within the span printed.
+    """
+
+    (only,) = _printed(
+        r"Their only point beyond one SD is isoflurane at 12\.5 minutes, (\+\d\.\d\d) SD"
+    )
+    low, high, again = _printed(
+        r"sits at \+(\d\.\d\d) to \+(\d\.\d\d) SD \(`[a-z0-9_]+`\)\. The second study's "
+        r"isoflurane point at 12\.5 minutes sits at (\+\d\.\d\d) SD"
+    )
+    outlier = "isoflurane/Anesthesiology 1991;74:489-98/12.5min"
+    beyond = [
+        point.label
+        for point in PUBLISHED_WASH_IN_TIME_COURSE
+        if point.agent_id != "desflurane" and abs(_early_distance(point)) > AGREEMENT_TOLERANCE_SD
+    ]
+    late = [
+        _early_distance(point)
+        for point in PUBLISHED_WASH_IN_TIME_COURSE
+        if point.time_min in (12.5, 15) and point.label != outlier
+    ]
+    (outlier_point,) = [p for p in PUBLISHED_WASH_IN_TIME_COURSE if p.label == outlier]
+
+    assert beyond == [outlier]
+    assert only == again == f"{_early_distance(outlier_point):+.2f}"
+    _assert_span(late, low, high)
+
+
+@pytest.mark.parametrize("fresh_gas_flow_l_min", SWEPT_FRESH_GAS_FLOWS_L_MIN)
+def test_the_wash_in_keeps_the_published_order_at_each_swept_flow(
+    fresh_gas_flow_l_min: float,
+) -> None:
+    """Desflurane, then sevoflurane, then isoflurane, at every fresh gas flow the sweep runs.
+
+    `docs/MODEL.md` says the model reproduces this ordering at each of the six
+    flows at which the 30-minute comparison is run. The published-data gate
+    checks the order at the comparison's own flow only.
+    """
+
+    failure = _ordering_failure(
+        lambda agent_id: _wash_in_ratio(agent_id, fresh_gas_flow_l_min=fresh_gas_flow_l_min),
+        WASH_IN_ORDER,
+        f"30-minute wash-in at {fresh_gas_flow_l_min:g} L/min",
+    )
+
+    assert failure is None, failure

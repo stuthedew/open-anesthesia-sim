@@ -1342,7 +1342,7 @@ class OpenCircuitEliminationReading:
             the moment the vaporizer was closed. This is the papers' own
             definition of the denominator. The wash-in that produced it is the
             shipped one, rebreathing included. That wash-in is already inside
-            the published spread at every supported flow, and F_A0 is defined
+            the published spread at each of the six swept flows, and F_A0 is defined
             at its end.
         alveolar_fraction: F_A after `ELIMINATION_DURATION_S`.
         peak_inspired_to_starting_alveolar_ratio: the largest ratio, over the
@@ -2037,8 +2037,9 @@ def test_agreement_survives_every_fresh_gas_flow(
     Alveolar ventilation and cardiac output come from the data file, but
     `FRESH_GAS_FLOW_L_MIN` was picked to match the protocols' held inspired
     concentration. A reader may fairly ask how much of the agreement that
-    choice bought. The answer is none of it. Across the whole supported flow
-    range above zero, every agent stays inside its published spread. The
+    choice bought. The answer is none of it. At each of the six flows in
+    `SWEPT_FRESH_GAS_FLOWS_L_MIN`, from 1 to 10 L/min, every agent stays
+    inside its published spread. The
     endpoints differ by at most about one standard deviation (desflurane,
     -0.33 SD at 1 L/min to +0.79 SD at 10 L/min).
 
@@ -3140,10 +3141,10 @@ def test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow(
     published standard deviations between 1 and 10 L/min. It moves because F_I
     settles at `V_A/(V_A + fresh gas flow)` of F_A, and the published ratio has
     no term to divide that out. This test runs the same sweep with the circuit
-    enlarged and discarded each step, over the whole supported flow range
-    including zero. It found a spread of 1.0e-10 to 1.3e-10 published SD
-    (2026-11-21), against the 11.5 to 21.6 SD that the shipped condition moves
-    over the narrower range of 1 to 10 L/min. On 2026-09-07 the driver
+    enlarged and discarded each step, at seven flows from 0 to 10 L/min. It
+    found a spread of 1.0e-10 to 1.3e-10 published SD (2026-11-21), against
+    the 11.5 to 21.6 SD that the shipped condition moves over the narrower
+    range of 1 to 10 L/min. On 2026-09-07 the driver
     discarded the shipped 6 L circuit every 0.1 s, and the spread was 4e-6 SD.
 
     That is the strongest single piece of evidence that the driver removes the
