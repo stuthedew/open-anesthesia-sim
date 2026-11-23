@@ -754,7 +754,6 @@ class BookmarkSet:
     def standings(
         self,
         *,
-        reached_instants_s: frozenset[CaseInstant],
         reached_crossings: frozenset[tuple[RecordedQuantity, float]],
         opened_at_s: CaseInstant,
         elapsed_s: CaseInstant,
@@ -769,15 +768,14 @@ class BookmarkSet:
         at the cap" that this mechanism was built to replace.
 
         Args:
-            reached_instants_s: The instants this run has already halted on
-                or stood on. Those are the instants inside the step the run
-                opened on, if it is a branch, or inside the step it stands on
-                while stopped.
-            reached_crossings: The `MacTarget.crossing_key`s that the run has
-                already halted on or stood on, in the same sense. Both sets are
-                matched the way `without_time_bookmark` and
-                `without_mac_target` match, so relabelling a mark does not
-                reset what the run did.
+            reached_crossings: The `MacTarget.crossing_key`s of the heights
+                that this run has halted on or stood on. They include the
+                heights crossed by the step the run opened on, if it is a
+                branch, and by the step it stands on while stopped. The set is
+                matched the way `without_mac_target` matches, so relabelling a
+                target does not reset what the run did. A time bookmark needs
+                no such record, because the two instants below decide its
+                standing.
             opened_at_s: Where this run began, in the case's own time: zero on
                 a trunk, and `ResumePoint.fork.instant_s` on a branch. A time
                 bookmark before this instant is `BEFORE_THIS_BRANCH`, because
@@ -830,7 +828,6 @@ class BookmarkSet:
                 {
                     bookmark: _time_bookmark_standing(
                         bookmark,
-                        reached_instants_s=reached_instants_s,
                         opened_at_s=opened_at_s,
                         elapsed_s=elapsed_s,
                         stopped_at_cap=stopped_at_cap,
@@ -856,44 +853,42 @@ class BookmarkSet:
 def _time_bookmark_standing(
     bookmark: TimeBookmark,
     *,
-    reached_instants_s: frozenset[CaseInstant],
     opened_at_s: CaseInstant,
     elapsed_s: CaseInstant,
     stopped_at_cap: bool,
     run_failed: bool,
 ) -> MarkStanding:
-    """One marked instant's standing, testing the six cases in an order that keeps them exclusive.
+    """One marked instant's standing, testing the five cases in an order that keeps them exclusive.
 
     **For a clock that only moves forward, the question is where the instant
     is, not what the run did** (`PL-3K9B`, project owner 2026-09-20,
     ratified). A run's clock only increases and never goes below
     `opened_at_s`. So a marked instant is either still ahead of the run or it
-    is not. The halt set cannot settle this. The set records the instants at
-    which this run *stopped*, and an instant can be behind the clock without
-    the run ever having stopped there. Every case the item measured falls in
-    that gap: a branch opening on the mark it forked at, a branch opening at a
-    control event the mark sits on, a mark typed in behind a running clock, and
-    a mark removed and added again. Each of them showed `STILL_RUNNING`, which
-    says the run can still reach the mark, and in none of them could any step
-    ever make that true.
+    is not. A record of the instants at which the run *stopped* cannot settle
+    this, because an instant can be behind the clock without the run ever
+    having stopped there. Every case that `PL-3K9B` measured falls in that
+    gap: a branch opening on the mark it forked at, a branch opening at a
+    control event the mark sits on, a mark typed in behind a running clock,
+    and a mark removed and added again. Each of them showed `STILL_RUNNING`,
+    which says the run can still reach the mark, and in none of them could
+    any step ever make that true.
 
     So the clock decides, in this order:
 
-    1. **The halt set** comes first, because it covers the one case that the
-       comparison below cannot see. A halt lands on the step that *crossed*
-       the mark, so a fork taken there opens at the crossing step's own
-       instant. A mark and a step's instant are both whole seconds since
-       `PL-SZ6G`, so that instant is the marked instant itself, and case 2
-       below gives the same result. Before `PL-SZ6G` a step of 0.1 s could
-       land a few parts in 1e16 past a mark such as 45.3 s, and the branch
-       then opened after its own mark. The halt set is still asked first.
-    2. **`opened_at_s <= instant_s <= elapsed_s`**: the run has been at that
-       instant, whatever put it there.
-    3. **`BEFORE_THIS_BRANCH`**, tested with a strict `<`, for an instant
-       behind the run's own beginning. Its meaning and its wording are
-       unchanged. Any instant that gets this far has not been claimed by 1 or
-       2, so this case still only ever applies to a mark a branch inherited.
-    4. **The cap**, then **the failure**, then **still running**.
+    1. **`opened_at_s <= instant_s <= elapsed_s`**: the run has been at that
+       instant, whatever put it there. That includes a branch taken at a halt
+       or at a mark. Such a branch opens at the end of the step that crossed
+       the mark. A mark is a whole number of seconds, and a step is one second
+       (`SIMULATION_STEP_S`), so that end is the marked instant itself. So the
+       clock needs no record of where the run halted to call the mark passed
+       (`PL-Z4MP`). A longer step would open such a branch after its own mark,
+       and `test_a_branch_returned_to_a_mark_opens_on_it_and_reads_it_as_passed`
+       in `tests/integration/controller/test_controller_marks.py` would fail.
+    2. **`BEFORE_THIS_BRANCH`**, tested with a strict `<`, for an instant
+       behind the run's own beginning. Any instant that gets this far has not
+       been claimed by 1, so this case only ever applies to a mark a branch
+       inherited.
+    3. **The cap**, then **the failure**, then **still running**.
 
     The cap outranks the failure when a run has both, because the cap came
     first. `SimulationController.advance` takes no step on a stopped run, and a
@@ -911,9 +906,6 @@ def _time_bookmark_standing(
     answer that `_mac_target_standing` gives, and `MarkStanding` gives the
     argument for keeping the two vocabularies apart.
     """
-
-    if bookmark.instant_s in reached_instants_s:
-        return MarkStanding.PASSED
 
     if opened_at_s <= bookmark.instant_s <= elapsed_s:
         return MarkStanding.PASSED

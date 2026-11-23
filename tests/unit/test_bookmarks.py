@@ -664,7 +664,6 @@ def test_a_crossing_refuses_an_instant_not_built_as_a_case_instant() -> None:
 def _standings(
     marks: BookmarkSet,
     *,
-    reached_instants_s: frozenset[int] = frozenset(),
     reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset(),
     opened_at_s: int = 0,
     elapsed_s: int | None = None,
@@ -681,7 +680,6 @@ def _standings(
     """
 
     return marks.standings(
-        reached_instants_s=frozenset(CaseInstant(instant_s) for instant_s in reached_instants_s),
         reached_crossings=reached_crossings,
         opened_at_s=CaseInstant(opened_at_s),
         elapsed_s=CaseInstant(opened_at_s if elapsed_s is None else elapsed_s),
@@ -720,16 +718,16 @@ def test_a_height_the_run_halted_on_stands_as_reached() -> None:
 def test_an_instant_the_run_halted_on_stands_as_passed_rather_than_reached() -> None:
     """The two kinds of mark use different standings, and this is where they could be confused.
 
-    The run halted on this instant, which is the historical claim that `REACHED`
-    makes. But the standing is still the positional one. A clock taken backwards
-    would revoke the history, while the mark stayed perfectly reachable
-    (`PL-3K9B`).
+    The run halted on this instant and stands on it, which is the historical
+    claim that `REACHED` makes. But the standing is still the positional one.
+    A clock taken backwards would revoke the history, while the mark stayed
+    perfectly reachable (`PL-3K9B`).
     """
 
     bookmark = TimeBookmark(CaseInstant(600))
     marks = BookmarkSet().with_time_bookmark(bookmark)
 
-    standings = _standings(marks, reached_instants_s=frozenset({600}))
+    standings = _standings(marks, elapsed_s=600)
 
     assert standings.of_time_bookmark(bookmark) is MarkStanding.PASSED
     assert standings.of_time_bookmark(bookmark) is not MarkStanding.REACHED
