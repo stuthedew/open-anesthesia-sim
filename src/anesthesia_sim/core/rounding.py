@@ -293,11 +293,25 @@ FLOW_FRACTION_TOLERANCE: Final = 1e-12
 
 The fractions are decimal numbers such as 0.76, 0.18 and 0.06. None is exact
 in binary, and their sum takes two rounded additions, so a correct set can sum
-to 1 with an error of a few times `MACHINE_EPSILON`. This allowance is about
-4 500 times `MACHINE_EPSILON`. It must stay far below a transcription error:
-the fractions that De Wolf et al. print sum to 0.998, and the loader refuses
-them (`docs/MODEL.md` § "Blood flow to the tissue groups"). The value dates from v0.1.0, and no
-record says why it is 1e-12 and not another number between those two.
+to 1 with an error of a few times `MACHINE_EPSILON`. The allowance must stay
+above that.
+
+It must also stay below `CARDIAC_OUTPUT_RELATIVE_TOLERANCE`, less a few
+roundings. Each tissue flow is its fraction times the cardiac output, so the
+flows sum to cardiac output within this allowance and a few roundings, as a
+share of cardiac output. `UptakeEquationSettings` accepts flows within
+`CARDIAC_OUTPUT_RELATIVE_TOLERANCE` of cardiac output, as a share of it. So
+below that edge, every set of fractions that the loader accepts gives flows
+that the settings accept, at every cardiac output. That edge is far below a
+transcription error: the fractions that De Wolf et al. print sum to
+0.998, and the loader refuses them (`docs/MODEL.md` § "Blood flow to the
+tissue groups").
+
+Any value between the two edges accepts every correct set and refuses every
+set that the settings would refuse. 1e-12 is about 4 500 times
+`MACHINE_EPSILON` and a thousandth of `CARDIAC_OUTPUT_RELATIVE_TOLERANCE`. It
+dates from v0.1.0 (commit `875ba085`), which gives no reason for that number
+within the edges. `tests/unit/test_rounding.py` holds it between them.
 """
 
 CARDIAC_OUTPUT_TOLERANCE_L_S: Final = 1e-12
@@ -312,12 +326,28 @@ requires.
 CARDIAC_OUTPUT_RELATIVE_TOLERANCE: Final = 1e-9
 """How far the tissue blood flows may sum from cardiac output, as a share of cardiac output.
 
-Each tissue flow is a perfusion fraction times cardiac output, and the
-fractions sum to 1 within `FLOW_FRACTION_TOLERANCE`. So a correct set of flows
-sums to cardiac output within about 1e-12 of it, and this allowance is a
-thousand times that. `CARDIAC_OUTPUT_TOLERANCE_L_S` is added to it. The value
-dates from the change to the matrix exponential on 2026-09-05, and no record
-says why it is 1e-9.
+`CARDIAC_OUTPUT_TOLERANCE_L_S` is added to it. Each tissue flow is a
+perfusion fraction times cardiac output, and the fractions sum to 1 within
+`FLOW_FRACTION_TOLERANCE`. So a correct set of flows sums to cardiac output
+within that allowance and a few roundings, about 1e-12 of it. This allowance
+must stay above that, so that it admits every correct set of flows at every
+cardiac output on its own. `CARDIAC_OUTPUT_TOLERANCE_L_S` is there for a
+cardiac output of zero. Within the supported range it would also admit a
+correct set alone, because 1e-12 of 10 L/min is less than 2e-13 L/s.
+
+It must also stay small enough for the third condition that
+`PROPAGATOR_ROUNDING_UNITS` rests on. Tissue flows that exceed cardiac output
+create agent in the venous pool, and over one propagator's interval the
+agent created must stay below 2**-9 of the state. The worst case is the
+highest supported cardiac output, 10 L/min, returning to the smallest volume
+that the numerical envelope allows, 0.01 L, over the longest interval, the
+24 h of the longest run. With `CARDIAC_OUTPUT_TOLERANCE_L_S` added, this
+allowance must then be at most 1.35e-9 of cardiac output.
+
+1e-9 is a thousand times the first edge and three quarters of the second, and
+any value between them serves. It dates from the change to the matrix
+exponential on 2026-09-05 (commit `d8deea50`), which gives no reason for that
+number within the edges. `tests/unit/test_rounding.py` holds it between them.
 """
 
 WASH_IN_ROUNDING_ALLOWANCE: Final = 1e-6

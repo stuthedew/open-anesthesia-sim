@@ -30,8 +30,11 @@ from anesthesia_sim.core.matrix_exponential import (
     matrix_exponential,
     propagate,
 )
+from anesthesia_sim.core.numerical_envelope import MINIMUM_VOLUME_L
 from anesthesia_sim.core.rounding import (
     AGENT_ACCOUNTING_RELATIVE_TOLERANCE,
+    CARDIAC_OUTPUT_RELATIVE_TOLERANCE,
+    CARDIAC_OUTPUT_TOLERANCE_L_S,
     FLOW_FRACTION_TOLERANCE,
     MACHINE_EPSILON,
     PROPAGATOR_ROUNDING_UNITS,
@@ -43,10 +46,13 @@ from anesthesia_sim.core.rounding import (
 )
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_STEP_COUNT,
     MINIMUM_COMPARTMENT_STEP_S,
     StepCount,
 )
+from anesthesia_sim.core.units import SECONDS_PER_MINUTE
 
 SOURCE_ROOT = Path(__file__).resolve().parents[2] / "src" / "anesthesia_sim"
 
@@ -58,6 +64,14 @@ MOST_SQUARINGS_IN_A_SHIPPED_STEP = 3
 
 `tests/unit/test_numerical_envelope_sweep.py` counts them at every corner of
 the supported flows and fails when a shipped agent needs more.
+"""
+
+AGENT_CREATED_IN_ONE_INTERVAL = 2.0**-9
+"""The most agent that the fraction rows may create in one propagator's interval, as a share.
+
+The derivation of `PROPAGATOR_ROUNDING_UNITS` assumes this as its third
+condition. Tissue flows that exceed cardiac output are what could create
+agent, so the cardiac-output allowance is held to it below.
 """
 
 _INTERVALS_S = st.sampled_from(
@@ -129,10 +143,12 @@ def _derived_step_error_in_leading_terms(squarings: int) -> Decimal:
         # add up to 2**-9 of agent over the step, and the squarings' rounding
         # adds a few parts in 10**15 to the norm. 0.065 is above all three.
         theta = Decimal("0.065")
-        assert Decimal(MAXIMUM_SERIES_ARGUMENT_NORM) + Decimal(2) ** -9 < Decimal("0.0646")
+        assert Decimal(MAXIMUM_SERIES_ARGUMENT_NORM) + Decimal(
+            AGENT_CREATED_IN_ONE_INTERVAL
+        ) < Decimal("0.0646")
         # Agent created at a rate r with r * dt <= 2**-9 lets the exact
         # propagator's rows sum to e**(r * dt) over the step.
-        creation = Decimal(2) ** -9
+        creation = Decimal(AGENT_CREATED_IN_ONE_INTERVAL)
 
         # One compensated sum of n nonnegative terms lies within
         # u + gamma_(n-1)**2 of the exact sum (Ogita, Rump and Oishi,
@@ -482,6 +498,59 @@ def test_the_perfusion_allowance_admits_rounding_and_refuses_a_transcription_err
     assert abs((0.76 + 0.18 + 0.06) - 1.0) <= 4.0 * MACHINE_EPSILON
     assert 4.0 * MACHINE_EPSILON < FLOW_FRACTION_TOLERANCE
     assert abs((0.758 + 0.18 + 0.06) - 1.0) > FLOW_FRACTION_TOLERANCE
+
+
+def test_the_perfusion_allowance_is_below_the_cardiac_output_allowance_by_more_than_rounding() -> (
+    None
+):
+    """Fractions that the loader accepts give tissue flows that the settings accept.
+
+    Each flow is its fraction times the cardiac output, in L/min, divided by
+    60 for L/s. The flows are then summed and compared with the cardiac output
+    in L/s. That is one rounding in each product, one in each division, one in
+    the compensated sum and one in the cardiac output's own division, so four
+    times `MACHINE_EPSILON` covers the rounding with room to spare. The
+    perfusion allowance plus that rounding must stay inside the cardiac-output
+    allowance. Then the flows of every fraction set that the loader accepts
+    pass the settings at every cardiac output, without the fixed part of the
+    settings' allowance. `test_governing_equations.py` builds the settings of
+    such a patient at the edge of the perfusion allowance.
+    """
+
+    assert FLOW_FRACTION_TOLERANCE + 4.0 * MACHINE_EPSILON < CARDIAC_OUTPUT_RELATIVE_TOLERANCE
+
+
+def test_the_cardiac_output_allowance_creates_less_agent_than_the_propagator_bound_assumes() -> (
+    None
+):
+    """Tissue flows at the edge of the allowance create at most 2**-9 of the state in one interval.
+
+    Flows that exceed cardiac output return more blood to the venous pool than
+    leaves it, which creates agent there at a rate of the excess flow over the
+    pool's volume. The worst case is the highest supported cardiac output, the
+    smallest volume that the numerical envelope allows and the longest
+    interval, 24 h. The docstring of `CARDIAC_OUTPUT_RELATIVE_TOLERANCE` gives
+    the largest allowance that meets the condition as 1.35e-9, and that figure
+    is checked here too.
+    """
+
+    longest_interval_s = float(MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+    highest_cardiac_output_l_s = MAXIMUM_CARDIAC_OUTPUT_L_MIN / SECONDS_PER_MINUTE
+    excess_flow_l_s = (
+        CARDIAC_OUTPUT_TOLERANCE_L_S
+        + CARDIAC_OUTPUT_RELATIVE_TOLERANCE * highest_cardiac_output_l_s
+    )
+
+    created = excess_flow_l_s / MINIMUM_VOLUME_L * longest_interval_s
+
+    assert created <= AGENT_CREATED_IN_ONE_INTERVAL
+
+    largest_allowance = (
+        AGENT_CREATED_IN_ONE_INTERVAL * MINIMUM_VOLUME_L / longest_interval_s
+        - CARDIAC_OUTPUT_TOLERANCE_L_S
+    ) / highest_cardiac_output_l_s
+
+    assert 1.35e-9 < largest_allowance < 1.36e-9
 
 
 def test_the_whole_count_allowance_separates_rounding_from_a_fractional_count() -> None:
