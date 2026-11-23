@@ -314,9 +314,7 @@ def test_format_subtitle_names_the_running_model_and_its_version() -> None:
 
     expected = f"Version {APP_BUILD_VERSION} — Sevoflurane model"
     assert format_subtitle("Sevoflurane") == expected
-    assert (
-        format_subtitle("Desflurane") == f"Version {APP_BUILD_VERSION} — Desflurane model"
-    )
+    assert format_subtitle("Desflurane") == f"Version {APP_BUILD_VERSION} — Desflurane model"
 
 
 def test_the_subtitle_carries_the_build_identifier_when_there_is_one() -> None:
@@ -1587,9 +1585,7 @@ def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one(
 
     subtitle = format_subtitle("Sevoflurane")
 
-    assert subtitle == (
-        "Version unavailable (this build is not traceable) — Sevoflurane model"
-    )
+    assert subtitle == ("Version unavailable (this build is not traceable) — Sevoflurane model")
     assert "unknown" not in subtitle
     assert subtitle.endswith("Sevoflurane model")
 
@@ -1597,9 +1593,7 @@ def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one(
 def test_an_identified_build_still_names_its_version() -> None:
     """The other half of `PL-KCWD`: the ordinary path is unchanged."""
 
-    assert format_subtitle("Sevoflurane") == (
-        f"Version {APP_BUILD_VERSION} — Sevoflurane model"
-    )
+    assert format_subtitle("Sevoflurane") == (f"Version {APP_BUILD_VERSION} — Sevoflurane model")
 
 
 @pytest.mark.parametrize(
