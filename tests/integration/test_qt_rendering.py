@@ -843,7 +843,12 @@ def test_a_box_wider_than_the_room_at_the_far_edge_stays_beside_its_point(
     it would then reach past the hovered point and hide it, so it stays beside
     the point, where it ends at the point's time (`PL-YJ7N`). The test makes
     the box count as one pixel taller than the plot, as the far-edge test does,
-    and as wide as the plot, so no room at the far edge is wide enough.
+    and three quarters as wide as the plot.
+
+    The test checks the points at which such a box is wider than the room at
+    the far edge and still fits beside the point inside the chart. Where it
+    fits on neither side, it is moved across so that all of it is inside the
+    chart, and it then covers the point by design (`PL-HXSD`).
     """
 
     frame = _concentration(induction_dashboard).chart.frame
@@ -857,7 +862,8 @@ def test_a_box_wider_than_the_room_at_the_far_edge_stays_beside_its_point(
     application.processEvents()
     area = chart.plot_area()
     monkeypatch.setattr(qt_chart._HoverReadout, "_box_height_px", lambda self: area.height() + 1)
-    monkeypatch.setattr(qt_chart._HoverReadout, "_box_width_px", lambda self: area.width())
+    box_width = 0.75 * area.width()
+    monkeypatch.setattr(qt_chart._HoverReadout, "_box_width_px", lambda self: box_width)
     points = [
         (time_s, percent)
         for quantity in frame.visible
@@ -876,6 +882,15 @@ def test_a_box_wider_than_the_room_at_the_far_edge_stays_beside_its_point(
         assert box is not None, f"no hover answered at {time_s} s"
         x, _ = chart.plot_pixel(time_s, percent)
         right_half = x > area.center().x()
+
+        if right_half:
+            checked = x - area.left() < box_width <= x
+        else:
+            checked = area.right() - x < box_width <= chart.width() - x
+
+        if not checked:
+            continue
+
         sides.add(right_half)
         edge = box.right() if right_half else box.left()
         if abs(edge - x) > _BOX_EDGE_TOLERANCE_PX:
