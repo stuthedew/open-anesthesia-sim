@@ -65,6 +65,12 @@ def test_pixel_sizes_round_down_and_give_the_left_over_pixels_to_the_largest_los
     assert pixel_sizes((0.5, 0.3, 0.2), 984) == (492, 295, 197)
 
 
+def test_pixel_sizes_give_a_left_over_pixel_to_the_earlier_of_two_equal_losses() -> None:
+    # A quarter of 6 is 1.5, exactly, in floating point. Rounded down, the four
+    # sizes sum to 4, and each lost 0.5. The two pixels left go to the first two.
+    assert pixel_sizes((0.25, 0.25, 0.25, 0.25), 6) == (2, 2, 1, 1)
+
+
 def test_a_split_no_bound_holds_is_laid_out_exactly_by_its_fractions() -> None:
     tree = _row((0.5, 0.3, 0.2), _area(1), _area(2), _area(3))
     laid_out = apportion(tree, PixelSize(1000, 600), _HANDLE_PX, _each(tree, PixelSize(10, 10)))
@@ -577,6 +583,27 @@ def test_a_border_cannot_move_where_its_childrens_bounds_need_more_than_the_spli
     assert border_range(fractions, 1, bounds, 284) is None
     assert border_share(fractions, 1, bounds, 284, 150) is None
     assert border_share(fractions, 1, bounds, 284, 0) is None
+
+
+@pytest.mark.parametrize("bounds", [(300, 0, 0), (300,)])
+def test_a_split_refuses_bounds_that_are_not_one_for_each_child(bounds: tuple[int, ...]) -> None:
+    """A split of two children given three bounds, or one, is refused rather than sized.
+
+    Three bounds for two children once gave three sizes:
+    `split_sizes((0.5, 0.5), (300, 0, 0), 400)` returned `(300, 100, 0)` (`PL-Y6XR`).
+    The message gives both counts, so a caller can find which list is wrong.
+    """
+
+    message = f"a split of 2 children was given {len(bounds)} bounds"
+
+    with pytest.raises(ValueError, match=message):
+        split_sizes((0.5, 0.5), bounds, 400)
+
+    with pytest.raises(ValueError, match=message):
+        border_range((0.5, 0.5), 0, bounds, 400)
+
+    with pytest.raises(ValueError, match=message):
+        border_share((0.5, 0.5), 0, bounds, 400, 200)
 
 
 def test_border_range_refuses_a_border_the_split_does_not_have() -> None:
