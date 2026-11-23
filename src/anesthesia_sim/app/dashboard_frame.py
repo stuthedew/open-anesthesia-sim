@@ -418,9 +418,7 @@ REFUSED_SETTING_OUTSIDE_RANGE_TEMPLATE: Final = (
 #: are the limit's two ends, written exactly (`_exact_setting`).
 SETTING_LIMIT_REASONS: Final[Mapping[SettingLimit, str]] = MappingProxyType(
     {
-        SettingLimit.SUPPORTED_INPUT_RANGE: (
-            "the model is claimed to represent a patient only from {lowest} to {highest}"
-        ),
+        SettingLimit.SUPPORTED_INPUT_RANGE: "the model covers only {lowest} to {highest}",
         SettingLimit.PERCENT: "a concentration can only be from {lowest} to {highest}",
         SettingLimit.VAPORIZER_MAXIMUM: "this agent's vaporizer delivers at most {highest}",
         SettingLimit.MACHINE_RANGE: (

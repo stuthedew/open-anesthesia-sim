@@ -144,8 +144,8 @@ def test_each_limit_refuses_with_the_value_and_the_limit_as_fields(
         (
             ControlInput.FRESH_GAS_FLOW,
             lambda: FreshGasFlow(10.04),
-            "the fresh gas flow setting cannot be 10.04 L/min, because the model is claimed to "
-            "represent a patient only from 0.0 L/min to 10.0 L/min",
+            "the fresh gas flow setting cannot be 10.04 L/min, because the model covers only "
+            "0.0 L/min to 10.0 L/min",
         ),
         (
             ControlInput.DELIVERED,
@@ -158,8 +158,8 @@ def test_each_limit_refuses_with_the_value_and_the_limit_as_fields(
         (
             ControlInput.FRESH_GAS_FLOW,
             lambda: FreshGasFlow(12.0),
-            "the fresh gas flow setting cannot be 12.0 L/min, because the model is claimed to "
-            "represent a patient only from 0.0 L/min to 10.0 L/min",
+            "the fresh gas flow setting cannot be 12.0 L/min, because the model covers only "
+            "0.0 L/min to 10.0 L/min",
         ),
         (
             ControlInput.FRESH_GAS_FLOW,
@@ -170,14 +170,14 @@ def test_each_limit_refuses_with_the_value_and_the_limit_as_fields(
         (
             ControlInput.ALVEOLAR_VENTILATION,
             lambda: AlveolarVentilation(13.0),
-            "the alveolar ventilation setting cannot be 13.0 L/min, because the model is "
-            "claimed to represent a patient only from 0.0 L/min to 12.0 L/min",
+            "the alveolar ventilation setting cannot be 13.0 L/min, because the model covers "
+            "only 0.0 L/min to 12.0 L/min",
         ),
         (
             ControlInput.CARDIAC_OUTPUT,
             lambda: CardiacOutput(10**400),
-            f"the cardiac output setting cannot be {10**400} L/min, because the model is "
-            "claimed to represent a patient only from 0.0 L/min to 10.0 L/min",
+            f"the cardiac output setting cannot be {10**400} L/min, because the model covers "
+            "only 0.0 L/min to 10.0 L/min",
         ),
     ],
     ids=[

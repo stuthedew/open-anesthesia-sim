@@ -115,20 +115,20 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplic
         (
             "_handle_fresh_gas_flow_change",
             "_fresh_gas_flow_slider",
-            "the fresh gas flow setting cannot be -1.0 L/min, because the model is claimed "
-            "to represent a patient only from 0.0 L/min to 10.0 L/min",
+            "the fresh gas flow setting cannot be -1.0 L/min, because the model covers only "
+            "0.0 L/min to 10.0 L/min",
         ),
         (
             "_handle_alveolar_ventilation_change",
             "_alveolar_ventilation_slider",
-            "the alveolar ventilation setting cannot be -1.0 L/min, because the model is "
-            "claimed to represent a patient only from 0.0 L/min to 12.0 L/min",
+            "the alveolar ventilation setting cannot be -1.0 L/min, because the model covers "
+            "only 0.0 L/min to 12.0 L/min",
         ),
         (
             "_handle_cardiac_output_change",
             "_cardiac_output_slider",
-            "the cardiac output setting cannot be -1.0 L/min, because the model is claimed "
-            "to represent a patient only from 0.0 L/min to 10.0 L/min",
+            "the cardiac output setting cannot be -1.0 L/min, because the model covers only "
+            "0.0 L/min to 10.0 L/min",
         ),
     ],
 )
