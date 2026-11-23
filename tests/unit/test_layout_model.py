@@ -1962,6 +1962,149 @@ def test_a_join_cuts_through_an_area_that_reaches_past_the_cut_by_less_than_the_
     )
 
 
+def test_a_join_cuts_down_a_border_just_more_than_the_tolerance_inside_its_region() -> None:
+    """A border more than the tolerance from its region's edge is a cut, even where a sum rounds.
+
+    The right-hand column starts at 0.3, and its two rows put their border
+    1.0000000272e-9 to the right of that, just more than the tolerance. Area 3
+    and Area 5 share the whole right side of that border, so joining them
+    leaves one straight cut down it. Between 0.25 and 0.5, 0.3 plus the
+    tolerance rounds up to the border itself. So a check that added the
+    tolerance before it compared took the border for the column's own edge,
+    and refused the join (`PL-6YDJ`). The joined Area spans the window's
+    height from the border to the right edge, and Areas 1, 2 and 4 stay where
+    they were.
+    """
+
+    # The rows' first fraction, chosen so that 0.3 + 0.7 times it is the
+    # border described above.
+    inner = 1.4285714674702727e-09
+    model = layout(
+        row(
+            (0.3, 0.7),
+            area(1),
+            column(
+                (0.5, 0.5),
+                row((inner, 1 - inner), area(2), area(3)),
+                row((inner, 1 - inner), area(4), area(5)),
+            ),
+        )
+    )
+    border = rectangles(model)[3][0]
+
+    # The premises: the border lies more than the tolerance right of 0.3, and
+    # 0.3 plus the tolerance does not lie left of it.
+    assert border - 0.3 > BORDER_ALIGNMENT_TOLERANCE
+    assert 0.3 + BORDER_ALIGNMENT_TOLERANCE >= border
+
+    places = rectangles(model.join(AreaId(3), AreaId(5)))
+
+    # The layout counts two edges within the tolerance as one edge, so a join
+    # may move an edge by up to that much. That is the model's definition of
+    # one edge, not an allowance for rounding.
+    def at(left: float, top: float, right: float, bottom: float) -> object:
+        return pytest.approx((left, top, right, bottom), abs=BORDER_ALIGNMENT_TOLERANCE)
+
+    assert set(places) == {1, 2, 3, 4}
+    assert places[1] == at(0.0, 0.0, 0.3, 1.0)
+    assert places[2] == at(0.3, 0.0, border, 0.5)
+    assert places[3] == at(border, 0.0, 1.0, 1.0)
+    assert places[4] == at(0.3, 0.5, border, 1.0)
+
+
+def test_a_join_that_would_round_an_area_down_to_the_tolerance_is_refused() -> None:
+    """A join is refused where its rebuilt splits would leave an Area no wider than the tolerance.
+
+    This is the layout of the test above, nested two levels down. Area 2 is
+    just more than the tolerance wide, so the join may cut down its right
+    edge. The rebuilt splits store fractions, and placing Area 2's edges
+    again from them makes it 9.999999717180685e-10 of the window wide. The
+    layout holds no Area that narrow, so the join is refused, as `split`
+    refuses a cut that leaves one. Before the refusal, the result raised
+    `InvalidLayout` out of `join`, which an Area's menu does not catch.
+    """
+
+    inner = 1.6666666666666667e-09
+    model = layout(
+        row(
+            (0.25, 0.75),
+            area(9),
+            column(
+                (0.4, 0.6),
+                area(10),
+                row(
+                    (0.2, 0.8),
+                    area(1),
+                    column(
+                        (0.5, 0.5),
+                        row((inner, 1 - inner), area(2), area(3)),
+                        row((inner, 1 - inner), area(4), area(5)),
+                    ),
+                ),
+            ),
+        )
+    )
+    places = rectangles(model)
+
+    # The premise: Area 2 is more than the tolerance wide before the join.
+    assert places[2][2] - places[2][0] > BORDER_ALIGNMENT_TOLERANCE
+
+    expected = (
+        "Area {} and Area {} cannot be joined: Area 2 would be 9.999999717180685e-10 of the "
+        "window wide, and an Area is more than 1e-09 of its window wide, so that its two edges "
+        "are never read as one line"
+    )
+
+    for keep, remove in ((3, 5), (2, 4)):
+        with pytest.raises(LayoutRefused) as refused:
+            model.join(AreaId(keep), AreaId(remove))
+
+        assert str(refused.value) == expected.format(keep, remove)
+
+
+def test_a_join_cuts_no_area_that_begins_just_more_than_the_tolerance_before_the_cut() -> None:
+    """A cut enters an Area that begins more than the tolerance before it, even where a sum rounds.
+
+    Area 2 begins at 0.300000001, and Area 5 begins 1.00000004e-9 later, just
+    more than the tolerance. Between them lies Area 4, 1.5e-9 wide, in the
+    lower half. Joining Area 1 and Area 3, which share their whole left side,
+    needs a straight cut to the right of both. A cut down Area 5's left edge
+    would enter Area 2. Between 0.25 and 0.5, that edge less the tolerance
+    rounds to no more than Area 2's edge. So a check that took the tolerance
+    away before it compared drew the cut there. It moved Area 2's edge by more
+    than the tolerance, and stretched Area 4 from the lower half to the
+    window's whole height (`PL-6YDJ`). The cut is drawn down Area 4's left
+    edge instead, and Areas 2, 4 and 5 stay where they were.
+    """
+
+    model = layout(
+        column(
+            (0.5, 0.5),
+            row((0.300000001, 0.699999999), area(1), area(2)),
+            row((0.3000000005, 1.5000000685994053e-09, 0.699999998), area(3), area(4), area(5)),
+        )
+    )
+    before = rectangles(model)
+    area_2_starts, area_5_starts = before[2][0], before[5][0]
+
+    # The premises: Area 5 begins more than the tolerance after Area 2, and its
+    # edge less the tolerance is not after Area 2's edge.
+    assert area_5_starts - area_2_starts > BORDER_ALIGNMENT_TOLERANCE
+    assert area_5_starts - BORDER_ALIGNMENT_TOLERANCE <= area_2_starts
+
+    places = rectangles(model.join(AreaId(1), AreaId(3)))
+
+    # The model's definition of one edge, as in the test above.
+    def at(left: float, top: float, right: float, bottom: float) -> object:
+        return pytest.approx((left, top, right, bottom), abs=BORDER_ALIGNMENT_TOLERANCE)
+
+    assert set(places) == {1, 2, 4, 5}
+    assert places[1] == at(0.0, 0.0, 0.3000000005, 1.0)
+    assert places[2] == at(area_2_starts, 0.0, 1.0, 0.5)
+    assert places[4] == at(0.3000000005, 0.5, area_5_starts, 1.0)
+    assert places[5] == at(area_5_starts, 0.5, 1.0, 1.0)
+
+
 def test_a_drag_is_refused_where_the_border_as_placed_or_as_stored_leaves_no_room() -> None:
     """A drag is checked twice: where it places the border, and where the stored sizes place it.
 
