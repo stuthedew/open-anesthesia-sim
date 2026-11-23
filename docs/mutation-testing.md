@@ -220,9 +220,16 @@ first four, and the 1,037 of the 2026-11-23 run for the last two.
    test module is being imported, for example as a decorator. mutmut records
    which tests call a function only while a test runs, so it never runs the
    test that checks the function's effect against the mutant, and reports a
-   survivor that an existing test kills (`PL-1QX0`). Run the test files that
-   use the function whole, with `MUTANT_UNDER_TEST` set, before you call it a
-   gap. 6 of the 1,037 were this kind, all in `app/halt_gate.py`.
+   survivor that an existing test kills (`PL-1QX0`). 6 of the 1,037 were this
+   kind, all in `app/halt_gate.py`. Plain `make mutate` therefore runs each
+   survivor's test files again, whole, and counts a failure as a kill once the
+   same files pass with no mutant applied. `make mutate ARGS=--all` does not,
+   because it would take about half as long again. After a whole run, run the
+   test files that use the function whole, with `MUTANT_UNDER_TEST` set,
+   before you call a survivor a gap. A function that runs only while test
+   modules are imported is tied to no test at all, so mutmut reports its
+   mutants as having no tests, and neither run tries them again. None of the
+   1,037 was of that kind.
 
 Before you call a survivor a real gap, run it against the whole suite, as the
 next section says.
