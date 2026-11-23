@@ -54,6 +54,7 @@ from anesthesia_sim.app.formatting import (
     format_compartment_amount,
     format_compartment_share,
     format_delivered_label,
+    format_delivered_playback_rate,
     format_elapsed,
     format_entered_figure,
     format_mac_awake_reference,
@@ -489,7 +490,7 @@ def test_format_mac_multiple_marks_a_value_below_the_resolution() -> None:
 
     # 0.015% of desflurane: above the percent resolution, below the MAC one.
     assert format_percent(Fraction(0.00015)) == "0.01%"
-    assert format_mac_multiple(Fraction(0.00015), MacPercent(6.0)) == expected
+    assert format_mac_multiple(Fraction(0.00015), MacPercent(6.6)) == expected
     assert format_mac_multiple(Fraction(1e-9), MacPercent(2.0)) == expected
 
 
@@ -1027,10 +1028,10 @@ def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy
     A fraction of an atmosphere and a ratio to MAC are both small
     dimensionless numbers of the same magnitude. Neither looks wrong in place
     of the other. Sevoflurane's band is 0.34 +/- 0.05 MAC against a MAC of
-    2.0%, which is 0.58-0.78%. That is the range a falling alveolar trace has
+    1.8%, which is 0.52-0.70%. That is the range a falling alveolar trace has
     to cross for arousal. A circuit fraction at the vaporizer's own 8% maximum,
     passed instead, clears every runtime guard, because 0.08 - 0.05 is still
-    positive. It draws the same band at 0.06-0.26%. That
+    positive. It draws the same band at 0.05-0.23%. That
     band is *below* the awakening concentration, so a trace crosses it late
     or not at all, and nothing on the screen says so.
 
@@ -1041,16 +1042,16 @@ def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy
     correct = mac_awake_band_percent(
         fraction_of_mac=MacMultiple(0.34),
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=MacPercent(2.0),
+        mac_percent=MacPercent(1.8),
     )
     swapped = mac_awake_band_percent(
         fraction_of_mac=Fraction(0.08),  # type: ignore[arg-type]
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=MacPercent(2.0),
+        mac_percent=MacPercent(1.8),
     )
 
-    assert correct == pytest.approx((0.58, 0.78))
-    assert swapped == pytest.approx((0.06, 0.26))
+    assert correct == pytest.approx((0.522, 0.702))
+    assert swapped == pytest.approx((0.054, 0.234))
 
 
 def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> None:
@@ -1058,10 +1059,10 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
 
     `mac_multiple()` returns a ratio to MAC. The two readouts beside each
     other show the same compartment in the two units. Sevoflurane at 0.34 MAC
-    is an alveolar fraction of 0.0068. Rendering the multiple as though it
+    is an alveolar fraction of 0.00612. Rendering the multiple as though it
     were the fraction prints the percent of 0.34 next to "0.34" of MAC. The
-    two readouts of one compartment would then disagree by the factor of 50
-    between them.
+    two readouts of one compartment would then disagree by the factor of about
+    56 between them.
 
     `mypy` rejects the call, which the directive asserts. Since `PL-1DP1`, the
     formatter also rejects it at run time. There a `MacMultiple` is a bare
@@ -1069,10 +1070,10 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
     as the fraction it is not.
     """
 
-    fraction = Fraction(0.0068)
-    multiple = mac_multiple(fraction, MacPercent(2.0))
+    fraction = Fraction(0.00612)
+    multiple = mac_multiple(fraction, MacPercent(1.8))
 
-    assert format_percent(fraction) == f"{0.68:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
+    assert format_percent(fraction) == f"{0.61:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
     assert multiple == pytest.approx(0.34)
 
     with pytest.raises(
@@ -1084,10 +1085,10 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
 def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
     """Every `mac_percent` this module takes is a `MacPercent`, never a bare `float`.
 
-    Sevoflurane's 1 MAC is 2.0% of an atmosphere, and 0.02 as a fraction.
+    Sevoflurane's 1 MAC is 1.8% of an atmosphere, and 0.018 as a fraction.
     Given the fraction, every function named below runs without complaint,
-    because the divisor is still positive. The chart's ceiling lands at 0.06%
-    instead of 6%, and 1 MAC displays as 100.00 ×MAC. A `Fraction` is a
+    because the divisor is still positive. The chart's ceiling lands at 0.054%
+    instead of 5.4%, and 1 MAC displays as 100.00 ×MAC. A `Fraction` is a
     `float`, so only a parameter typed `Percent` rejects one. A parameter
     typed `float` breaks no caller, so `mypy` never asks for it to change.
     Six of these eight were `float` until `PL-W3Q5`. The test reads the types
@@ -1128,10 +1129,10 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
         "Sevoflurane",
         fraction_of_mac=0.34,
         standard_deviation_fraction_of_mac=0.05,
-        mac_percent=MacPercent(2.0),
+        mac_percent=MacPercent(1.8),
     )
 
-    assert reference == "MAC-awake sevoflurane = 0.34 \u00d7MAC (0.68%), band ±1 SD 0.58–0.78%"
+    assert reference == "MAC-awake sevoflurane = 0.34 \u00d7MAC (0.61%), band ±1 SD 0.52–0.70%"
 
     for agent_id in AGENT_DATA_FILENAMES:
         agent = load_agent_parameters(agent_id)
@@ -2387,3 +2388,72 @@ def test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_perc
     largest_relative_rounding = 0.5 / 10 ** (PRICE_PER_LIQUID_ML_SIGNIFICANT_FIGURES - 1)
 
     assert largest_relative_rounding == pytest.approx(0.0005)
+
+
+@pytest.mark.parametrize(
+    ("multiplier", "delivered_fraction", "line"),
+    [
+        # 300 x 0.91 = 273, which two significant figures give as 270.
+        (300, 0.91, "about 270\u00d7 of 300\u00d7"),
+        # 60 x 0.5 = 30.
+        (60, 0.5, "about 30\u00d7 of 60\u00d7"),
+        # 5 x 0.9 = 4.5, kept to one decimal.
+        (5, 0.9, "about 4.5\u00d7 of 5\u00d7"),
+        # 1 x 0.9 = 0.90, whose trailing zero is a significant figure.
+        (1, 0.9, "about 0.90\u00d7 of 1\u00d7"),
+        # 20 x 0.499 = 9.98, which rounds up to 10 and is shown with two figures.
+        (20, 0.499, "about 10\u00d7 of 20\u00d7"),
+        # 1% of 1x is 0.010x, still a measurement.
+        (1, 0.01, "about 0.010\u00d7 of 1\u00d7"),
+        # Below 1% the line states the bound: 1% of 1x is 0.010x, of 300x 3.0x.
+        (1, 0.0099, "below 0.010\u00d7 of 1\u00d7"),
+        (300, 0.0033, "below 3.0\u00d7 of 300\u00d7"),
+        (300, 1e-9, "below 3.0\u00d7 of 300\u00d7"),
+    ],
+)
+def test_the_delivered_rate_line_names_both_rates_to_two_figures(
+    multiplier: int, delivered_fraction: float, line: str
+) -> None:
+    """Each expected line is worked out by hand from the set rate and the fraction."""
+
+    assert format_delivered_playback_rate(multiplier, delivered_fraction) == line
+
+
+@pytest.mark.parametrize("multiplier", [1, 5, 20, 60, 300])
+def test_a_named_delivered_rate_never_rounds_up_to_the_set_rate(multiplier: int) -> None:
+    """Just below the 97% at which the line clears, the delivered figure is still smaller.
+
+    Otherwise the line would read "about 300x of 300x", a shortfall that
+    states no shortfall.
+    """
+
+    line = format_delivered_playback_rate(multiplier, 0.9699)
+    delivered = float(line.removeprefix("about ").split("\u00d7")[0])
+
+    assert delivered < multiplier
+
+
+@pytest.mark.parametrize(
+    ("multiplier", "delivered_fraction", "error", "named"),
+    [
+        (300, 1.0, ValueError, "1.0"),
+        (300, 0.0, ValueError, "0.0"),
+        (300, -0.5, ValueError, "-0.5"),
+        (300, float("nan"), ValueError, "nan"),
+        (0, 0.5, ValueError, "0"),
+        (300.0, 0.5, TypeError, "300.0"),
+        (True, 0.5, TypeError, "True"),
+        (300, True, TypeError, "True"),
+        (300, "0.5", TypeError, "'0.5'"),
+    ],
+)
+def test_the_delivered_rate_line_refuses_a_rate_or_fraction_it_cannot_state(
+    multiplier: object, delivered_fraction: object, error: type[Exception], named: str
+) -> None:
+    """A fraction of 1 or more is no shortfall, and a non-number is a defect upstream.
+
+    Each refusal names the value that failed, so the input behind it can be found.
+    """
+
+    with pytest.raises(error, match=f"not {re.escape(named)}$"):
+        format_delivered_playback_rate(multiplier, delivered_fraction)  # type: ignore[arg-type]

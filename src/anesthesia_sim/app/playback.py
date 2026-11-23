@@ -87,17 +87,17 @@ is the host, not the loop. A tick adds a fixed amount of owed time, and
 `step_tick` never adds more to catch up. Qt coalesces a timeout that fell due while the loop
 was busy, rather than queueing it. So a host that holds the loop past one
 interval loses that tick, and the run delivers the nominal rate times the
-fraction of ticks that fired. Nothing on screen says so today. The label
-is left as it is, and this paragraph records why (project owner,
-2026-09-27, ratified, over qualifying the label and over building the
-disclosure now). `PL-2NYN` is the guard that would name the delivered rate
-beside the set one when fewer than 95% of ticks fire.
+fraction of ticks that fired. The label states the set rate (project
+owner, 2026-09-27, ratified, over qualifying the label). When the
+computer falls behind, `TickPace` below measures the delivered rate, and
+the clock line names it beside the set one (`PL-2NYN`).
 
 That measurement was made when a tick took a fixed number of 0.1 s steps.
 The timer and the loss of a late tick are unchanged since `PL-SZ6G`, which
 changed only what each tick does.
 """
 
+from collections import deque
 from dataclasses import dataclass
 from typing import Final
 
@@ -258,6 +258,123 @@ class OwedSimulatedTime:
         """Owe nothing, as at the start of a run."""
 
         self.owed_ms = 0
+
+
+#: How many tick intervals the delivered-rate disclosure looks back over. At
+#: the shipped 100 ms tick that is 5 s of real time. One lost tick in the
+#: window moves the measured fraction by 2% (`PL-2NYN`).
+PACE_WINDOW_TICKS: Final = 50
+
+#: The clock line names the delivered rate when the ticks that ran over the
+#: window deliver less than this fraction of the set rate. A reader timing a
+#: wash-in against a watch could notice a shortfall of 5% at any rate. The
+#: 2026-09-27 measurement could not tell a shortfall of 1% from its own edges,
+#: so the threshold sits well above that (`PL-SQJ1`, `PL-2NYN`).
+PACE_DISCLOSED_BELOW: Final = 0.95
+
+#: A disclosed rate returns to the plain label only when the delivered rate
+#: reaches this fraction of the set rate. The gap of two percentage points
+#: is one lost tick in the window, so a host that loses ticks near the
+#: threshold does not make the label flicker between its two forms. Alarm practice gives an alarm a
+#: deadband for the same reason, and sizes it just above the signal's noise
+#: (ISA, "AutoQuiz: Alarm deadband setting",
+#: https://blog.isa.org/autoquiz-alarm-deadband-setting). ISA-18.2 clause
+#: 10.5.5.2 requires an alarm system to offer one (as quoted by exida, "Why
+#: should I use an alarm deadband?",
+#: https://www.exida.com/Blog/why-should-i-use-an-alarm-deadband).
+PACE_CLEARED_AT: Final = 0.97
+
+
+class TickPace:
+    """Measure the fraction of the set playback rate that the ticks deliver.
+
+    `RunView.step_tick` records the time of each tick that plays the run.
+    The measurement only decides what the clock line says. It never changes
+    how many steps a tick takes, so a run's trajectory does not depend on it
+    (decision D7).
+
+    Each tick adds one tick interval of real time's worth of simulated time,
+    so over a window of ticks the run advances at the set rate times the
+    window's ticks times the interval, divided by the real time the window
+    took. That ratio is the fraction this class returns. It is less than 1
+    when the host loses ticks, because Qt emits one timeout for several that
+    fell due while the event loop was busy (Qt 6 documentation, `QTimer`,
+    "Accuracy and Timer Resolution"). It is also less than 1 when ticks fire
+    late.
+
+    Args:
+        tick_interval_ms: The real time between two ticks, in milliseconds.
+
+    Raises:
+        SimulationConfigurationError: If `tick_interval_ms` is not a whole
+            number of at least 1.
+    """
+
+    __slots__ = ("_disclosed", "_interval_s", "_tick_times_s")
+
+    _disclosed: bool
+
+    def __init__(self, tick_interval_ms: int) -> None:
+        if (
+            isinstance(tick_interval_ms, bool)
+            or not isinstance(tick_interval_ms, int)
+            or tick_interval_ms < 1
+        ):
+            raise SimulationConfigurationError(
+                f"a tick interval must be a whole number of at least 1 ms, not {tick_interval_ms!r}"
+            )
+
+        self._interval_s = tick_interval_ms / MILLISECONDS_PER_SECOND
+        self._tick_times_s: deque[float] = deque(maxlen=PACE_WINDOW_TICKS + 1)
+        self.restart()
+
+    def record(self, now_s: float) -> None:
+        """Record a tick that played the run, at `now_s` on a monotonic clock in seconds."""
+
+        self._tick_times_s.append(now_s)
+        fraction = self.delivered_fraction
+
+        if fraction is None:
+            return
+
+        threshold = PACE_CLEARED_AT if self._disclosed else PACE_DISCLOSED_BELOW
+        self._disclosed = fraction < threshold
+
+    def restart(self) -> None:
+        """Forget every recorded tick, as when the run pauses or its rate changes."""
+
+        self._tick_times_s.clear()
+        self._disclosed = False
+
+    @property
+    def delivered_fraction(self) -> float | None:
+        """Return the fraction of the set rate that the last window delivered, at most 1.
+
+        It is None until a whole window of `PACE_WINDOW_TICKS` intervals has
+        been recorded since the last `restart`.
+        """
+
+        if len(self._tick_times_s) <= PACE_WINDOW_TICKS:
+            return None
+
+        took_s = self._tick_times_s[-1] - self._tick_times_s[0]
+        owed_s = PACE_WINDOW_TICKS * self._interval_s
+
+        if took_s <= owed_s:
+            return 1.0
+
+        return owed_s / took_s
+
+    @property
+    def disclosed_fraction(self) -> float | None:
+        """Return the delivered fraction while the clock line should name it, else None.
+
+        The line names it once the fraction falls below
+        `PACE_DISCLOSED_BELOW`, and goes on naming it until the fraction
+        reaches `PACE_CLEARED_AT`.
+        """
+
+        return self.delivered_fraction if self._disclosed else None
 
 
 #: The rates the interface offers, slowest first.

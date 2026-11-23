@@ -10,6 +10,7 @@ from anesthesia_sim.app.control_timeline import (
     format_adjustment,
     format_control_value,
     group_adjustments,
+    longest_unbroken_parts,
     wrapping_between_parts,
 )
 from anesthesia_sim.app.dashboard_frame import NO_CONTROL_CHANGES_TEXT
@@ -367,3 +368,69 @@ def test_a_line_that_records_no_change_is_left_as_it_is() -> None:
     """The text shown before any setting has changed is a sentence, so it may wrap freely."""
 
     assert wrapping_between_parts(NO_CONTROL_CHANGES_TEXT) == NO_CONTROL_CHANGES_TEXT
+
+
+def test_the_longest_parts_include_the_widest_line_a_learner_can_record() -> None:
+    """The alveolar ventilation line at its 12.0 L/min ceiling is the widest middle part.
+
+    `PL-92XM` found this part clipped at its arrow. The expected strings are
+    written out here, so a change to the bounds or the formatter shows.
+    """
+
+    parts = longest_unbroken_parts()
+
+    assert f"Alveolar{_NBSP}ventilation{_NBSP}12.0{_NBSP}L/min{_NBSP}->" in parts
+    assert f"23h59m58s–23h59m59s{_NBSP}·" in parts
+    assert f"12.0{_NBSP}L/min{_NBSP}(86400{_NBSP}settings)" in parts
+    assert all(" " not in part for part in parts)
+
+
+#: Each control's largest recordable value, in its stored unit, written out
+#: from `core/supported_ranges.py` rather than read from the module under test.
+_CEILINGS = {
+    ControlInput.FRESH_GAS_FLOW: 10.0,
+    ControlInput.DELIVERED: 99.0,
+    ControlInput.ALVEOLAR_VENTILATION: 12.0,
+    ControlInput.CARDIAC_OUTPUT: 10.0,
+}
+
+
+def _parts(control: ControlInput, value: float, start_s: int, count: int) -> list[str]:
+    adjustment = ControlAdjustment(
+        control=control,
+        started_at_s=CaseInstant(start_s),
+        ended_at_s=CaseInstant(start_s + 1),
+        from_value=value,
+        to_value=value,
+        unit=CONTROL_INPUT_UNITS[control],
+        change_count=count,
+    )
+
+    return wrapping_between_parts(format_adjustment(adjustment)).split(" ")
+
+
+@pytest.mark.parametrize("control", list(ControlInput))
+def test_no_recordable_line_has_a_part_longer_than_the_longest_parts(control: ControlInput) -> None:
+    """Each part of a line at any value has no more characters than the bound at its place.
+
+    The values run over the control's supported range in tenths, and the
+    time and the count of settings take their shortest and longest forms. A
+    caller that measures the bound in a font, counting each digit at the
+    font's widest, then measures every line the record can show.
+    """
+
+    value = format_control_value(control, _CEILINGS[control]).replace(" ", _NBSP)
+    bound = (
+        f"23h59m58s–23h59m59s{_NBSP}·",
+        f"{CONTROL_INPUT_LABELS[control]} {value} ->".replace(" ", _NBSP),
+        f"{value}{_NBSP}(86400{_NBSP}settings)",
+    )
+    lines = [
+        _parts(control, tenths / 10, start_s, count)
+        for tenths in range(round(_CEILINGS[control] * 10) + 1)
+        for start_s, count in ((0, 2), (86_398, 86_400))
+    ]
+
+    assert set(bound) <= set(longest_unbroken_parts())
+    for parts in lines:
+        assert all(len(part) <= len(limit) for part, limit in zip(parts, bound, strict=True)), parts
