@@ -3,14 +3,17 @@ id: PL-DKQN
 title: docs/VERIFICATION.md § "Desflurane's residual" compares the model's tissue:blood ratios, which divide by the stored blood:gas coefficients, with Yasuda 1989's brain:blood ratios, which divide by age-adjusted published ones, so its SD distances and its 3% agreement mix two denominators (blind review of PL-XGLH, 2026-11-23)
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, science
 feature: provenance
 touches: docs/VERIFICATION.md, tests/reference/test_published_wash_in_figures.py, tests/reference/test_published_wash_in_and_elimination.py, src/anesthesia_sim/data/agents/desflurane.json
 deferred-from: v0.7.0 - not live: no stored or displayed value is computed from the comparison, and desflurane's conclusion holds on either denominator
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2315
 filed-pr: 2313
 payoff: a developer checking why desflurane's vessel-rich coefficient was not raised finds distances that reproduce from the paper's measured values
+tests: tests/reference/test_published_wash_in_figures.py::test_the_stored_vessel_rich_coefficients_lie_within_1_sd_of_yasudas_brain_values, tests/reference/test_published_wash_in_figures.py::test_the_demanded_vessel_rich_coefficients_lie_from_yasudas_brain_values_as_printed
 ---
 
 **Problem.** The table in `docs/VERIFICATION.md` § "Desflurane's residual, and why the parameter file was not changed" puts the model's demanded tissue:blood ratio beside Yasuda, Targ and Eger 1989's brain:blood ratio and gives the distance in the paper's SDs. The model's ratio divides a tissue:gas coefficient by the stored blood:gas coefficient (0.65, 1.30 and 0.42 for sevoflurane, isoflurane and desflurane). The paper's ratio divides its measured brain:gas coefficient (Table 1, p. 371) by an age-adjusted published blood:gas coefficient (p. 372), which Table 1 over Table 2 recovers as 0.676, 1.331 and 0.419. So the two columns have different denominators, and the column is headed "Measured" though the paper derived it.
@@ -44,3 +47,5 @@ Two tests in `tests/reference/test_published_wash_in_figures.py` hold the number
 Left as they were. The two ceilings in `DESFLURANE_TISSUE_SOLUBILITY_CEILINGS` are still tissue:blood ratios times the stored blood:gas coefficient. On one denominator desflurane's mean + 2 SD is 0.58 tissue:gas, against the 0.584 the test runs, so the ceiling moves by less than 1% and the test's conclusion does not depend on it. `docs/WORKING_NOTES.md`'s dated entry still says "nineteen standard deviations above ... brain:blood", which was true of the comparison it records.
 
 Docs checked: `docs/VERIFICATION.md` § "Desflurane's residual" and § "Published wash-in and elimination validation test"; `docs/PARAMETERS.md` § "Where the tissue:gas coefficients come from" (unchanged, and now read by the tests); `docs/MODEL.md`'s derived tissue:blood row (unchanged, still true); `docs/references/yasuda-1989-tissue-solubility.md` (unchanged, still true); the source notes in `data/agents/sevoflurane.json` and `isoflurane.json` (dated history, unchanged).
+
+Both new tests fail on `main`'s `docs/VERIFICATION.md`, checked 2026-11-23 by running them with that file restored: the 1 SD sentence is not there, and the table has no tissue:gas column, so no row matches.
