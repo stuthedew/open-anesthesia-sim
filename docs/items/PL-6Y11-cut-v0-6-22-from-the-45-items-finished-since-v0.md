@@ -64,3 +64,7 @@ merged. The cut completes four features: `decision-ownership`,
 `every-view-in-run-state-tests`, `model-claims-held-by-tests` and
 `review-hold`.
 
+
+**Auto-merge.** This session switched auto-merge off at 03:19 UTC on
+2026-11-23, after the armed-branch workflow merged `#2276` into the branch,
+and armed it again once the cut was redone over it.
