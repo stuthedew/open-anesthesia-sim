@@ -1617,7 +1617,13 @@ class AreaLayout(QWidget):
 
         if entry.whole:
             least_width = max(declared.width_px, content_width)
-            measured_width = max(least_width, drawn_width_px or 0)
+            # The room a scroll bar would take is left out of the drawn width.
+            # Measured at the full width, a View one line taller than the
+            # measure, as when Qt shows the bar before the View is fitted,
+            # loses that room to the bar, wraps one line more and stays
+            # scrolled (`PL-744F`).
+            room_width = 0 if drawn_width_px is None else drawn_width_px - scroll.bar_width()
+            measured_width = max(least_width, room_width)
             height = max(height, _least_height_at(widget, measured_width))
 
         return PixelSize(max(declared.width_px, content_width + scroll.bar_width()), height)

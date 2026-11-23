@@ -54,14 +54,23 @@ the ones the settle measured there, so a View whose wrapped text changes at
 its drawn width settles the Areas again, and a frame that changes nothing
 does not.
 
+Each need is measured at the Area's drawn width less the room a vertical
+scroll bar takes. Measured at the full width, a View that Qt had already
+given a scroll bar wrapped one line more in the narrower room and stayed
+scrolled. CI found this in Default at 1920 by 1080 under DejaVu Sans, where
+the Parameters View scrolled 14 px. With the bar's room left out, the View
+fits whether or not the bar is up, so the bar is never needed.
+
 Measured offscreen under Inter at 1366 by 768 with a branch open: the
-Parameters Area in Induction and Maintenance is held at 293 px rather than
-323 px, so those pages scroll 30 px less. Default is unchanged.
+Parameters Area in Induction is held at 293 px rather than 323 px, so that
+page scrolls 30 px less. In Maintenance the Area is drawn 592 px wide, and
+at 578 px, its width less the bar's room, its labels wrap as at its least
+width, so it stays at 323 px. Default is unchanged.
 
 1. `test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn`
    works the Parameters View's least height out from its own Qt layout at
-   its drawn width. It fails on the code before the fix with
-   "assert 323 == (27 + 266)" in both Workspaces.
+   its drawn width less the bar's room. It fails on the code before the fix
+   with "assert 323 == (27 + 266)" in Induction.
 2. `test_a_layout_drawn_again_keeps_its_sizes_where_the_page_scroll_bar_comes_and_goes`
    draws Induction at nine window heights from 1,044 to 1,076 px, either side
    of 1,060 px, where the page's scroll bar disappears, and checks that a

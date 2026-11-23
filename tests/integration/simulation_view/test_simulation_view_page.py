@@ -555,15 +555,18 @@ def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
 def test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn(
     application: QApplication, workspace: str
 ) -> None:
-    """`PL-744F`: the Parameters Area is as tall as its two rows of dials need at its drawn width.
+    """`PL-744F`: the Parameters Area is as tall as its dials need at its drawn width.
 
     In Induction and Maintenance at 1366 by 768 with a branch open, the page
     scrolls, so the Parameters Area is held at its least height. Its View
-    never scrolls up and down, and its wrapped labels take fewer lines at
-    the width the Area is drawn than at the Area's least width. The Area was
-    held at the height measured at its least width, 30 px more than the View
-    needs, and the page scrolled 30 px further for nothing. The expected
-    height is the View's own layout's least height at the width it is drawn,
+    never scrolls up and down, and its wrapped labels take fewer lines at a
+    wider width. The height is measured at the Area's drawn width less the
+    room a scroll bar takes, so that the View fits whether or not Qt has
+    shown the bar, and the bar is then never needed. In Induction the Area
+    was held at the height measured at its least width, 30 px more than this,
+    and the page scrolled 30 px further for nothing. In Maintenance the
+    labels wrap the same at both widths, so the height is unchanged. The
+    expected height is the View's own layout's least height at that width,
     worked out here from Qt rather than read from the layout under test.
     """
 
@@ -576,10 +579,10 @@ def test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn(
     content = frame.content
     layout = content.layout()
     assert layout is not None and layout.hasHeightForWidth()
-    width_px = scroll.viewport().width()
+    width_px = scroll.viewport().width() - scroll.verticalScrollBar().sizeHint().width()
     content_px = max(
         content.minimumSizeHint().height(),
-        layout.totalMinimumHeightForWidth(width_px),
+        layout.totalMinimumHeightForWidth(max(width_px, content.minimumSizeHint().width())),
         REGISTERED[PARAMETER_CONTROLS].minimum.height_px,
     )
     header_px = frame.height() - scroll.height()
