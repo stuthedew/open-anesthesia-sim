@@ -31,7 +31,7 @@ enforces each of them.
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
-from math import floor
+from math import ceil, floor, isfinite
 from types import MappingProxyType
 from typing import Final
 
@@ -141,6 +141,14 @@ SIMULATION_TICK_INTERVAL_MS: Final = 100
 # and 5x a step takes longer than a frame, so some frames redraw unchanged
 # values. `test_a_frame_is_two_ticks` checks the relation with the tick.
 RENDER_INTERVAL_S: Final = 0.2
+# The shortest time, in milliseconds of real time, between the starts of two
+# frames drawn for a dial that the reader is moving. Nielsen Norman Group gives
+# 0.1 s as the limit for a user to feel that they are directly manipulating
+# what is on screen ("Response Times: The 3 Important Limits", nngroup.com).
+# The render tick stays slower, because a chart that follows a playing run
+# with no hand on a dial is not being manipulated, and drawing every 0.1 s
+# would double the drawing load for the whole run (`PL-NKFD`).
+INPUT_FRAME_INTERVAL_MS: Final = 100
 # How wide the chart is before the first frame is drawn. It is the narrowest
 # rung, which is the width "Fit run" chooses for a run that has recorded
 # nothing.
@@ -4228,3 +4236,30 @@ def readout_columns(width_px: float, panel_widths_px: Sequence[float], spacing_p
             return columns
 
     return READOUT_ROW_LADDER[-1]
+
+
+def input_frame_wait_ms(frame_cost_ms: float) -> int:
+    """Return how long to wait after a dial input's frame before the next one may draw, in ms.
+
+    The next frame starts `INPUT_FRAME_INTERVAL_MS` after this one started,
+    or twice this frame's cost after it started, whichever is later. A cheap
+    frame therefore lets the charts follow a moving dial at Nielsen Norman
+    Group's 0.1 s limit. A frame that takes longer than half the interval,
+    such as one that draws a preview over a long run, leaves the thread free
+    for at least as long as it drew, so a moving dial never takes more than
+    half of the time in which the run's steps and the reader's inputs are
+    handled (`PL-NKFD`). The result is rounded up to a whole millisecond,
+    because that is what a timer takes.
+
+    Raises:
+        ValueError: `frame_cost_ms` is negative or not finite. A wall-clock
+            difference can be neither, so either means the caller measured
+            the wrong thing.
+    """
+
+    if not isfinite(frame_cost_ms) or frame_cost_ms < 0.0:
+        raise ValueError(
+            f"a frame's cost must be a finite number of ms >= 0, got {frame_cost_ms!r}"
+        )
+
+    return ceil(max(INPUT_FRAME_INTERVAL_MS - frame_cost_ms, frame_cost_ms))
