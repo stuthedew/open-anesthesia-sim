@@ -252,6 +252,23 @@ date.
   `[tool.mutmut]` avoid this. mutmut's default warm-up, `collect`, imports the
   test modules before any mutant is applied and brings the problem back, so
   the warm-up is set to `none`.
+- **mutmut's forkserver mode runs a mutant's tests in no fixed order.**
+  mutmut runs a mutant's tests with pytest's `-x`, so the run stops at the
+  first test that fails. In fork mode, mutmut 3.8.0 orders the tests fastest
+  first, so a slow test runs only on a mutant that every faster test misses.
+  In forkserver mode it passes them to pytest in the order of a Python set,
+  and pytest runs them in the order it is given. The 20-second test in
+  `tests/unit/test_generated_runs.py` therefore often ran before a faster test
+  that would have caught the mutant. mutmut 3.8.1 and mutmut's main branch
+  did the same on 2026-11-23. `make mutate` orders each mutant's tests fastest
+  first itself, as fork mode does (`RUN_SCRIPT` in `tools/diff_mutation.py`).
+  On the 253 mutants of `core/governing_equations.py` and
+  `core/prediction.py`, the run took 1,037 seconds before this change and 581
+  seconds after it, with the same verdict for every mutant (`PL-33CG`).
+  Running the long tests last is the test prioritization of Just, Kapfhammer
+  and Schweiggert, "Using non-redundant mutation operators and test suite
+  prioritization to achieve efficient and scalable mutation analysis", ISSRE
+  2012, § IV.B.
 - **Every call into a file that mutmut mutates is slow.** mutmut replaces each
   function of such a file with a wrapper. The wrapper looks up the mutant
   under test and then calls the original function or the mutant. Before its

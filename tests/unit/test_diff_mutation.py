@@ -16,9 +16,11 @@ from __future__ import annotations
 import fnmatch
 import json
 import subprocess
+import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
 
 import diff_mutation
 import pytest
@@ -1032,6 +1034,49 @@ def test_run_starts_mutmut_with_the_files_it_may_mutate(
         # (`only_mutate`) stay as `pyproject.toml` gives them.
         ("-c", script, "null"),
     ]
+
+
+def test_the_run_script_hands_the_fork_server_each_mutant_s_tests_fastest_first(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """mutmut 3.8.0's fork server ran a mutant's tests in a set's order (`PL-33CG`).
+
+    The fake modules stand in for the mutmut internals that the script reads.
+    Two tests take the same time, so the test also shows how a tie is ordered.
+    """
+    handed: list[object] = []
+
+    class ForkServerRunner:
+        def submit(
+            self, mutant_name: str, tests: object, cpu_time_limit: int, estimated_time: float
+        ) -> None:
+            handed.append(tests)
+
+    durations = {"tests/b.py::slow": 20.0, "tests/b.py::fast": 0.1, "tests/a.py::tied": 0.1}
+
+    def cli(args: list[str]) -> None:
+        ForkServerRunner().submit("pkg.b.x_f__mutmut_1", set(durations), 60, 20.2)
+
+    fakes = {
+        "mutmut": ModuleType("mutmut"),
+        "mutmut.__main__": ModuleType("mutmut.__main__"),
+        "mutmut.configuration": ModuleType("mutmut.configuration"),
+        "mutmut.state": ModuleType("mutmut.state"),
+        "mutmut.workers": ModuleType("mutmut.workers"),
+        "mutmut.workers.isolation": ModuleType("mutmut.workers.isolation"),
+    }
+    fakes["mutmut.__main__"].cli = cli  # type: ignore[attr-defined]
+    fakes["mutmut.configuration"].config = object  # type: ignore[attr-defined]
+    recorded = SimpleNamespace(duration_by_test=durations)
+    fakes["mutmut.state"].state = lambda: recorded  # type: ignore[attr-defined]
+    fakes["mutmut.workers.isolation"].ForkServerRunner = ForkServerRunner  # type: ignore[attr-defined]
+    for name, module in fakes.items():
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(sys, "argv", ["-c", "null"])
+
+    exec(compile(diff_mutation.RUN_SCRIPT, "RUN_SCRIPT", "exec"), {})
+
+    assert handed == [["tests/a.py::tied", "tests/b.py::fast", "tests/b.py::slow"]]
 
 
 def test_a_compare_run_mutates_the_compared_files_alone(

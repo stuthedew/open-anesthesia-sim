@@ -273,15 +273,35 @@ print(json.dumps(shown))
 #: `only_mutate` from `pyproject.toml` alone, so the script replaces the list
 #: in mutmut's loaded settings and then calls the command line's entry point.
 #: mutmut starts its helper processes with `fork`, so they keep the replaced
-#: list. `Config.only_mutate` is one of mutmut's internals, so the pinned
-#: version in `pyproject.toml` is what keeps it.
+#: list.
+#:
+#: The script also hands each mutant's tests to the fork server fastest first.
+#: mutmut runs them with pytest's `-x`, so the run then stops at the cheapest
+#: test that catches the mutant, and a slow test runs only on a mutant that
+#: every faster test misses. mutmut 3.8.0 orders the tests this way in its
+#: `fork` mode alone (`ForkRunner.submit`). In the `forkserver` mode that
+#: `pyproject.toml` chooses, it hands them on in the order of a set, so a
+#: 20-second test ran first on a share of the mutants that a faster test
+#: catches (`PL-33CG`). Equal times are ordered by test id, so two runs of
+#: one mutant run its tests in the same order.
+#:
+#: `Config.only_mutate`, `ForkServerRunner.submit` and `state` are mutmut's
+#: internals, so the pinned version in `pyproject.toml` is what keeps them.
 RUN_SCRIPT = """
 import json, sys
 from mutmut.__main__ import cli
 from mutmut.configuration import config
+from mutmut.state import state
+from mutmut.workers.isolation import ForkServerRunner
 only = json.loads(sys.argv[1])
 if only is not None:
     config().only_mutate = only
+submit = ForkServerRunner.submit
+def fastest_first(self, mutant_name, tests, cpu_time_limit, estimated_time):
+    durations = state().duration_by_test
+    ordered = sorted(tests, key=lambda test: (durations[test], test))
+    submit(self, mutant_name, ordered, cpu_time_limit, estimated_time)
+ForkServerRunner.submit = fastest_first
 cli(["run", *sys.argv[2:]])
 """
 #: One hunk header of the diff `mutmut show` prints. Its old side numbers the
