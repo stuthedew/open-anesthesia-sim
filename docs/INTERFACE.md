@@ -1990,6 +1990,31 @@ when raised to 8% between 600 s and 672 s. Measured on 2026-11-22.
 
 <!-- not-restated: 8 % -->
 
+**The F_A/F_I plot also draws the second at which the ratio crosses
+equilibrium between two columns** (`PL-CJJ1`). A wash-in stretch ends on the
+first drawn point past equilibrium, so that the curve meets the equilibrium line
+and ends there with a dot. After the dial is closed, one step carries the ratio
+at most 3% past equilibrium, but the next column can be minutes later, and the
+ratio there is far above the plot's top. Before this rule the curve
+then stopped below the line with no dot, which looks like a cut-off trace rather
+than a finished wash-in. With the run of 60 minutes at the default dial
+followed by 20 minutes with the dial closed, this happened at 17 of 66 pairs
+of time base and plot width tried, from 300 px to 1 600 px, and it happens at
+none of them now. The crossing second is a stored state, as every drawn point
+is. Where the first second outside the domain has no ratio, because the
+inspired fraction is too small to divide by, the stretch ends without a
+crossing, as before. A stretch that starts after the dial is raised starts on
+the line only when the ratio's last second outside the domain is drawn. A large
+step of the dial can carry the ratio in one second from above the plot's top to
+well below the line, and the stretch then starts below the line, because the
+ratio never took a value in between.
+
+**For developers.** `chart_time_base.wash_in_crossing_seconds` chooses the
+crossing seconds. `controller._with_extremes` adds them to every drawn window
+and to a preview's first hour, and `controller._with_later_crossings` to the
+rest of a preview. `test_a_wash_in_stretch_at_a_wide_time_base_ends_at_equilibrium`
+in `tests/unit/test_chart_frame.py` reproduces the run above.
+
 ### What the reader chooses: traces, window and playback rate
 
 **The user chooses which compartment traces are drawn and how wide a window
@@ -5740,7 +5765,10 @@ reach, `predicted_states` takes one-second steps from the state stored for the
 second the run has reached, and the window is drawn on the run's time grid with
 the second of each peak and trough between two columns. After that,
 `predicted_states_at` predicts each grid second and the right edge from the one
-before. The controller keeps the last predicted window and draws it again while
+before. Where F_A/F_I is inside the wash-in domain at one of two such columns
+and outside it at the other, the seconds between them are predicted too, and the
+crossing second is drawn (`controller._with_later_crossings`,
+`test_a_preview_past_its_first_hour_draws_the_second_its_ratio_crosses_equilibrium`). The controller keeps the last predicted window and draws it again while
 none of its inputs change. `test_a_preview_past_its_first_hour_draws_the_grid_seconds_and_its_right_edge_only`
 in `tests/unit/test_chart_frame.py` checks the split. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial
