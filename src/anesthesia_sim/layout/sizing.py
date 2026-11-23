@@ -245,8 +245,12 @@ def pixel_sizes(fractions: tuple[float, ...], available: int) -> tuple[int, ...]
 
     Each size is rounded down. The pixels left over then go, one each, to the
     sizes that lost the most in rounding. So the sizes sum to `available`
-    exactly, and no size is more than a pixel from its share. Ties go to the
-    earlier size.
+    exactly, and no size is more than a pixel from its share. Where two sizes
+    lost exactly the same amount in floating point, the earlier one gets the
+    pixel. Two shares that would tie in exact arithmetic can differ by a
+    rounding error, and the pixel then goes to the one that lost more in
+    floating point, which may be the later one. Either way the result is the
+    same for the same arguments, so the adapter draws what this module gives.
     """
 
     exact = [fraction * available for fraction in fractions]
@@ -271,8 +275,12 @@ def split_sizes(
     share the rest by their fractions (`_held_sizes`). Where the bounds need
     more than `available`, the sizes are the ones that `pixel_sizes` gives for
     the fractions alone.
+
+    Raises:
+        ValueError: `bounds` does not hold one bound for each fraction.
     """
 
+    _require_one_bound_each(fractions, bounds)
     held = _held_sizes(fractions, bounds, available)
 
     return held if held is not None else pixel_sizes(fractions, available)
@@ -321,10 +329,13 @@ def border_range(
 
     Raises:
         IndexError: `index` is not a border of the split.
+        ValueError: `bounds` does not hold one bound for each fraction.
     """
 
     if not 0 <= index < len(fractions) - 1:
         raise IndexError(f"a split of {len(fractions)} children has no border {index}")
+
+    _require_one_bound_each(fractions, bounds)
 
     if sum(bounds) > available:
         return None
@@ -334,6 +345,24 @@ def border_range(
     return _drawn_at(fractions, index, bounds, available, first), _drawn_at(
         fractions, index, bounds, available, last
     )
+
+
+def _require_one_bound_each(fractions: tuple[float, ...], bounds: tuple[int, ...]) -> None:
+    """Refuse `bounds` unless it holds one bound for each child that `fractions` sizes.
+
+    Without this check, a longer `bounds` can give a split more sizes than it
+    has children: `split_sizes((0.5, 0.5), (300, 0, 0), 400)` returned
+    `(300, 100, 0)` (`PL-Y6XR`).
+
+    Raises:
+        ValueError: the two counts differ.
+    """
+
+    if len(bounds) != len(fractions):
+        raise ValueError(
+            f"a split of {len(fractions)} children was given {len(bounds)} bounds, "
+            "and it needs one bound for each child"
+        )
 
 
 def _border_ends(fractions: tuple[float, ...], index: int) -> tuple[float, float]:
@@ -402,6 +431,7 @@ def border_share(
 
     Raises:
         IndexError: `index` is not a border of the split.
+        ValueError: `bounds` does not hold one bound for each fraction.
     """
 
     limits = border_range(fractions, index, bounds, available)
@@ -786,17 +816,18 @@ def _held_sizes(
     loose = [index for index in range(len(fractions)) if index not in held]
     free = available - sum(bounds[index] for index in held)
 
+    # Where every child is held, `sizes` is `bounds`, and the bounds fill the
+    # split exactly. The last children to be held each had a share less than
+    # their bound, so in exact arithmetic the pixels left for them were less
+    # than their bounds, or equal and divided with a rounding error. The
+    # first return above rules out less, because the bounds would then need
+    # more than `available`. So no pixels are left over (`PL-Y6XR`).
     if loose:
         weight = math.fsum(fractions[index] for index in loose)
         shares = pixel_sizes(tuple(fractions[index] / weight for index in loose), free)
 
         for index, share in zip(loose, shares, strict=True):
             sizes[index] = share
-    else:
-        # Every child is held, so the pixels left over beyond the bounds go
-        # to the children in proportion to their fractions.
-        for index, extra in enumerate(pixel_sizes(fractions, free)):
-            sizes[index] += extra
 
     return tuple(sizes)
 
