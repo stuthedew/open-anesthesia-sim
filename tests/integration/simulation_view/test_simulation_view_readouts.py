@@ -9,7 +9,8 @@ from collections.abc import Callable, Sequence
 
 import pytest
 from PySide6.QtCore import QPoint
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtGui import QAccessible, QAccessibleInterface
+from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -18,6 +19,7 @@ from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    EMPTY_METRIC_QUALIFIER,
     INTERPRETATION_DISCLAIMER_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
@@ -27,7 +29,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_elapsed, format_mac_multiple, format_percent
 from anesthesia_sim.app.qt_chart import TraceLegend
-from anesthesia_sim.app.qt_widgets import ReadoutRow
+from anesthesia_sim.app.qt_widgets import MetricPanel, ReadoutRow
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH, CHART_HEIGHT
 from anesthesia_sim.app.unconditional_set import (
@@ -63,6 +65,83 @@ from tests.integration.simulation_view.simulation_view_support import (
 )
 
 # ------------------------------------------------------- the readouts
+
+
+def _accessible_names(view: QWidget) -> dict[int, str]:
+    """The accessible name of every node under the window, keyed by the widget it describes.
+
+    The walk reads the tree that Qt hands to the platform's accessibility
+    interface, as `PL-QR6Q` did when it found each readout value nameless.
+    """
+
+    nodes: list[QAccessibleInterface] = [QAccessible.queryAccessibleInterface(view.window())]
+
+    for node in nodes:
+        nodes.extend(node.child(index) for index in range(node.childCount()))
+
+    return {id(node.object()): node.text(QAccessible.Text.Name) for node in nodes}
+
+
+def _named_with_gloss(panel: MetricPanel) -> str:
+    """The panel's name as drawn, followed by its gloss where it draws one."""
+
+    gloss = panel.qualifier_label.text()
+
+    if gloss == EMPTY_METRIC_QUALIFIER:
+        return panel.name_label.text()
+
+    return f"{panel.name_label.text()}, {gloss}"
+
+
+def test_a_screen_reader_hears_each_reading_with_its_compartment_and_that_it_is_modelled(
+    application: QApplication,
+) -> None:
+    """`PL-N5JB`: each readout line reached alone still names its compartment, or the clock.
+
+    The expected names are built from the text each panel draws, so they
+    cannot drift from it. They are checked again after the run moves on, so
+    a name that kept the first frame's value fails.
+    """
+
+    controller = SimulationController()
+    controller.set_delivered_concentration_percent(Percent(2.0))
+    controller.start()
+    view = _shown_view(application, controller)
+    panels = view.runs[0]._readout_row.panels
+
+    for _ in range(2):
+        names = _accessible_names(view)
+
+        for panel in panels:
+            name = _named_with_gloss(panel)
+            joiner = ": " if name == "Simulated time" else ", modelled: "
+
+            for label in (panel.value_label, panel.secondary_label):
+                assert names[id(label)] == f"{name}{joiner}{label.text()}"
+
+        before = [panel.value_label.text() for panel in panels]
+        _advance(controller, 60)
+        view.present(False)
+
+    assert [panel.value_label.text() for panel in panels] != before
+
+
+def test_a_compared_run_s_readings_are_named_with_their_run(application: QApplication) -> None:
+    """`PL-N5JB`: while runs are compared, each reading also says which run it is."""
+
+    view = _shown_view(application, SimulationController(), SimulationController())
+    names = _accessible_names(view)
+
+    for run in view.runs:
+        for panel in run._readout_row.panels:
+            run_name = panel.run_name_label.text()
+            name = _named_with_gloss(panel)
+            joiner = ": " if name == "Simulated time" else ", modelled: "
+
+            assert run_name
+            assert names[id(panel.value_label)] == (
+                f"{run_name}, {name}{joiner}{panel.value_label.text()}"
+            )
 
 
 def test_every_minimum_displayed_output_reads_its_value_from_its_widget(

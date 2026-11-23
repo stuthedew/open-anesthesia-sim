@@ -54,6 +54,7 @@ from anesthesia_sim.app.dashboard_frame import (
     HEIGHT_FIELD_LABEL,
     INSTANT_FIELD_LABEL,
     MARK_NAME_FIELD_LABEL,
+    READOUT_PANELS,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
     TARGET_FORM_HEADING,
@@ -117,7 +118,9 @@ def application() -> Iterator[QApplication]:
 
 
 def _clock_readout(value: str) -> Readout:
-    return Readout("Simulated time", EMPTY_METRIC_QUALIFIER, value, WIDEST_READOUT_SECONDARY)
+    return Readout(
+        "Simulated time", EMPTY_METRIC_QUALIFIER, value, WIDEST_READOUT_SECONDARY, READOUT_PANELS[0]
+    )
 
 
 def _panel(readout: Readout) -> MetricPanel:
@@ -281,7 +284,13 @@ def test_an_empty_gloss_line_is_as_tall_as_a_filled_one(application: QApplicatio
         if panel.qualifier_label.text() and panel.secondary_label.text()
     )
     empty = _panel(
-        Readout("Simulated time", EMPTY_METRIC_QUALIFIER, "0s", EMPTY_METRIC_SECONDARY_VALUE)
+        Readout(
+            "Simulated time",
+            EMPTY_METRIC_QUALIFIER,
+            "0s",
+            EMPTY_METRIC_SECONDARY_VALUE,
+            READOUT_PANELS[0],
+        )
     )
 
     assert empty.qualifier_label.text() == EMPTY_METRIC_QUALIFIER
