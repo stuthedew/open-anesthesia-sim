@@ -74,7 +74,9 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     the declaration *contains*. The ordering is the half that belongs to
     `main()`. The order is recorded as a timeline rather than as two separate
     assertions, because either assertion alone passes with the call in the
-    wrong place.
+    wrong place. The light colour scheme is asked for before the palette is
+    set, because Qt rereads the platform's palette when the scheme changes
+    (`PL-YZ9L`).
 
     **And it opens maximized over a sized normal geometry** (`PL-Z4K6`,
     `PL-005`). The offscreen platform records the requested state at once, but
@@ -98,6 +100,12 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     timeline: list[str] = []
     names: list[tuple[str, str]] = []
 
+    class _RecordingStyleHints:
+        """Record the colour scheme asked for, so no test changes the shared application's."""
+
+        def setColorScheme(self, scheme: Qt.ColorScheme) -> None:  # Qt spells this in camelCase.
+            timeline.append(f"asked for {scheme.name}")
+
     class _RecordingApplication:
         def __init__(self, argv: list[str]) -> None:
             del argv
@@ -115,6 +123,9 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
         def setPalette(self, palette: QPalette) -> None:  # Qt spells this in camelCase.
             timeline.append("declared")
             declared.append(palette)
+
+        def styleHints(self) -> _RecordingStyleHints:  # Qt spells this in camelCase.
+            return _RecordingStyleHints()
 
         def primaryScreen(self) -> Any:  # Qt spells this in camelCase.
             return QApplication.primaryScreen()
@@ -163,7 +174,7 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
             available, window.minimumSizeHint(), WINDOW_SCREEN_FRACTION
         )
 
-        assert timeline == ["named", "declared", "built the first widget"]
+        assert timeline == ["named", "asked for Light", "declared", "built the first widget"]
         assert names == [("organization", APP_ORGANIZATION_NAME), ("application", APP_DISPLAY_NAME)]
         entry = view.tab_strip.save_entry()
         assert entry.question is not None
@@ -199,6 +210,10 @@ def test_application_launcher_refuses_to_open_with_no_primary_screen(
     exec_calls: list[int] = []
     windows: list[QMainWindow] = []
 
+    class _ScreenlessStyleHints:
+        def setColorScheme(self, scheme: Qt.ColorScheme) -> None:  # Qt spells this in camelCase.
+            del scheme
+
     class _ScreenlessApplication:
         def __init__(self, argv: list[str]) -> None:
             del argv
@@ -214,6 +229,9 @@ def test_application_launcher_refuses_to_open_with_no_primary_screen(
 
         def setPalette(self, palette: QPalette) -> None:  # Qt spells this in camelCase.
             del palette
+
+        def styleHints(self) -> _ScreenlessStyleHints:  # Qt spells this in camelCase.
+            return _ScreenlessStyleHints()
 
         def primaryScreen(self) -> None:  # Qt spells this in camelCase.
             return None
