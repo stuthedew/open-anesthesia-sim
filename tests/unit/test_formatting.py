@@ -2362,6 +2362,12 @@ def test_four_figures_keep_the_price_per_millilitre_within_a_twentieth_of_a_perc
         (1, 0.9, "about 0.90\u00d7 of 1\u00d7"),
         # 20 x 0.499 = 9.98, which rounds up to 10 and is shown with two figures.
         (20, 0.499, "about 10\u00d7 of 20\u00d7"),
+        # 1% of 1x is 0.010x, still a measurement.
+        (1, 0.01, "about 0.010\u00d7 of 1\u00d7"),
+        # Below 1% the line states the bound: 1% of 1x is 0.010x, of 300x 3.0x.
+        (1, 0.0099, "below 0.010\u00d7 of 1\u00d7"),
+        (300, 0.0033, "below 3.0\u00d7 of 300\u00d7"),
+        (300, 1e-9, "below 3.0\u00d7 of 300\u00d7"),
     ],
 )
 def test_the_delivered_rate_line_names_both_rates_to_two_figures(

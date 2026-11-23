@@ -365,7 +365,9 @@ def test_a_computer_that_falls_behind_shows_the_delivered_rate_beside_the_set_on
     which is 240x. The run's trajectory does not depend on the clock: 51
     ticks at 300x take 30 steps each, so the run stands at 1 530 s whatever
     the ticks' spacing. The line returns to the plain label once the ticks
-    come 100 ms apart again, and a pause starts the measurement over.
+    come 100 ms apart again. A press of Pause draws its frame at once, before
+    another tick, and that frame shows the plain label, because a run that
+    is not playing delivers no rate.
     """
 
     clock = _FakeMonotonicClock()
@@ -388,9 +390,11 @@ def test_a_computer_that_falls_behind_shows_the_delivered_rate_beside_the_set_on
     assert run._playback_rate_text.text() == "300\u00d7 real time"
 
     _ticks_apart(run, clock, 51, 0.125)
-    controller.pause()
-    run.step_tick()
     view.render_tick()
+
+    assert run._playback_rate_text.text() == "about 240\u00d7 of 300\u00d7"
+
+    run._pause_button.click()
 
     assert run._playback_rate_text.text() == "300\u00d7 real time"
 

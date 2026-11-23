@@ -1124,6 +1124,11 @@ def format_playback_rate(multiplier: int) -> str:
 # measured over a window of 50 ticks, and one lost tick moves it by 2%, so a
 # third figure would claim more than the measurement holds (`PL-2NYN`).
 DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES: Final = 2
+# Below 1% of the set rate the line states the bound, not the measurement.
+# Only a stall of minutes inside the 5 s window reaches it, and a smaller
+# fraction printed to two figures would need more room than the clock panel
+# reserves for the line (`PL-2NYN`).
+DELIVERED_PLAYBACK_RATE_FLOOR: Final = 0.01
 
 
 def format_delivered_playback_rate(multiplier: int, delivered_fraction: float) -> str:
@@ -1137,7 +1142,8 @@ def format_delivered_playback_rate(multiplier: int, delivered_fraction: float) -
     form. The delivered rate is rounded to
     `DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES` significant figures, with
     halves rounded to even. A fraction below `playback.PACE_CLEARED_AT`
-    never rounds up to the set rate.
+    never rounds up to the set rate. Below `DELIVERED_PLAYBACK_RATE_FLOOR`
+    the line names that bound instead, as `below 3.0× of 300×`.
 
     Args:
         multiplier: The set rate, as `format_playback_rate` takes it.
@@ -1167,13 +1173,16 @@ def format_delivered_playback_rate(multiplier: int, delivered_fraction: float) -
             f"a delivered fraction is more than 0 and less than 1, not {delivered_fraction!r}"
         )
 
+    below_floor = delivered_fraction < DELIVERED_PLAYBACK_RATE_FLOOR
     rounded, decimals = _round_to_figures(
-        Decimal(multiplier) * Decimal(delivered_fraction),
+        Decimal(multiplier)
+        * Decimal(DELIVERED_PLAYBACK_RATE_FLOOR if below_floor else delivered_fraction),
         DELIVERED_PLAYBACK_RATE_SIGNIFICANT_FIGURES,
         None,
     )
+    qualifier = "below" if below_floor else "about"
 
-    return f"about {rounded:.{max(decimals, 0)}f}\u00d7 of {multiplier}\u00d7"
+    return f"{qualifier} {rounded:.{max(decimals, 0)}f}\u00d7 of {multiplier}\u00d7"
 
 
 def _duration_components(duration_s: float) -> tuple[int, int, float]:

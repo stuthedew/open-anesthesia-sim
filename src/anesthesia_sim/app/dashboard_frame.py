@@ -1446,16 +1446,17 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
 # The value line is the clock's reading just before the supported run length,
 # which has every part of the compound form. The second line is the longest
 # clock line at any set rate, counting the form that names a delivered rate at
-# every whole percent from 1 to 96 (`PL-2NYN`). A percent readout and a MAC
-# multiple are both shorter than these at every value the dial can reach. The strings are
-# chosen by character count from the formatters' own extremes, and the widget
-# measures the chosen string in its font.
+# every whole percent from 1 to 96 and the form for a rate below 1%
+# (`PL-2NYN`). A percent readout and a MAC multiple are both shorter than these
+# at every value the dial can reach. The strings are chosen by character count
+# from the formatters' own extremes, and the widget measures the chosen string
+# in its font.
 WIDEST_READOUT_VALUE: Final = format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
 WIDEST_READOUT_SECONDARY: Final = max(
     (
         clock_playback_line(rate, delivered_fraction)
         for rate in SUPPORTED_PLAYBACK_RATES
-        for delivered_fraction in (None, *(percent / 100 for percent in range(1, 97)))
+        for delivered_fraction in (None, *(percent / 100 for percent in range(1, 97)), 0.001)
     ),
     key=len,
 )

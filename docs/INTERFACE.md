@@ -2206,7 +2206,11 @@ gap keeps a computer that hovers near 95% from making the line flicker between
 its two forms, which is the reason alarm systems give an alarm a deadband
 wider than its signal's noise. The measurement starts again whenever the run
 pauses, is held by a question, starts over or changes rate, so a pause is never
-counted as lost ticks. The line stays in the muted colour of the rate label,
+counted as lost ticks. A run that is not playing shows the plain label, from the
+frame that Pause draws onward. Below 1% of the set rate, which only a stall of
+minutes inside the window reaches, the line states that bound instead, as
+"below 3.0× of 300×", so the line never needs more room than its panel keeps
+for it. The line stays in the muted colour of the rate label,
 because nothing is wrong with the model. The measurement never changes how
 many steps the run takes, so the run's values are the same whether or not the
 line names a delivered rate.

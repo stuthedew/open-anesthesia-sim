@@ -810,7 +810,14 @@ class RunView(QWidget):
                 else self._reset_question()
             ),
             charts_withheld=self._charts_withheld(),
-            delivered_fraction=self._pace.disclosed_fraction,
+            # Only a run that is playing delivers a rate. A paused, held or
+            # stopped run draws its frame before the next tick restarts the
+            # measurement, so the fraction is withheld here.
+            delivered_fraction=(
+                self._pace.disclosed_fraction
+                if self.controller.is_running and not self._held()
+                else None
+            ),
         )
 
         if drawn is None:

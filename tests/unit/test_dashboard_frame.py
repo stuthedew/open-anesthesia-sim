@@ -1827,13 +1827,19 @@ def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
     widest second line is a delivered rate (`PL-2NYN`). At 1% of 1x it is
     0.010x, which keeps a trailing zero as its second significant figure, so
     the line has 18 characters. "about 3.0x of 300x" ties with it, and the
-    slowest rate is counted first. Each line is longer than every plain
-    label, whose longest is "300x real time".
+    slowest rate is counted first. A rate below 1% names the bound, as
+    "below 0.010x of 1x", and no fraction gives a longer line. Each line is
+    longer than every plain label, whose longest is "300x real time".
     """
 
     assert WIDEST_READOUT_VALUE == format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
     assert len(WIDEST_READOUT_VALUE) >= len(format_percent(Fraction(1.0)))
     assert WIDEST_READOUT_SECONDARY == "about 0.010\u00d7 of 1\u00d7"
+    assert all(
+        len(clock_playback_line(rate, fraction)) <= len(WIDEST_READOUT_SECONDARY)
+        for rate in SUPPORTED_PLAYBACK_RATES
+        for fraction in (1e-12, 1e-6, 0.0033, 0.0099)
+    )
     assert len(WIDEST_READOUT_SECONDARY) > max(
         len(format_playback_rate(rate.multiplier)) for rate in SUPPORTED_PLAYBACK_RATES
     )
