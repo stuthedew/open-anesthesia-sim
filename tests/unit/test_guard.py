@@ -13,7 +13,9 @@ call through unchecked and said nothing (`PL-9KSJ`). These tests check that:
   because GitHub refuses a merge that bypasses `main`'s checks and no guard
   here judges one (`PL-39Y1`);
 - each wiring's `timeout` covers the deadlines of its guards, and each
-  guard's deadline covers the waits the guard sets for itself.
+  guard's deadline covers the waits the guard sets for itself;
+- the alarm that stops a slow guard leaves an alarm already set, such as a
+  test's time limit, in place.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 from importlib import import_module
@@ -248,6 +251,28 @@ def test_a_guard_past_its_deadline_is_stopped_and_said(
     refusals, notes, _ = entry_point.judged((slow,), QUIET_CALL)
     assert refusals == []
     assert notes == [entry_point.unchecked("slow-guard", "it did not finish within 1 second")]
+
+
+def test_a_guard_puts_back_the_alarm_it_replaced() -> None:
+    """A test's time limit is an alarm, and it outlives a guard run inside the test (`PL-FKVR`)."""
+
+    def outer(_signum: int, _frame: object) -> None:
+        raise AssertionError("the outer alarm fired during the test")
+
+    previous_handler = signal.signal(signal.SIGALRM, outer)
+    previous_left_s, _ = signal.setitimer(signal.ITIMER_REAL, 60)
+    try:
+        (guard,) = entry_point.selected("regex-guard") or ()
+        entry_point.judged((guard,), QUIET_CALL)
+        handler_after = signal.getsignal(signal.SIGALRM)
+        left_after_s, _ = signal.getitimer(signal.ITIMER_REAL)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_left_s > 0:
+            signal.setitimer(signal.ITIMER_REAL, previous_left_s)
+    assert handler_after is outer
+    assert 0 < left_after_s <= 60
 
 
 def test_one_guard_crashing_leaves_the_others_judging(monkeypatch: pytest.MonkeyPatch) -> None:
