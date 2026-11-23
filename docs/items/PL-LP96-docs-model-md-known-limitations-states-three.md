@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, science
 feature: model-claims-held-by-tests
+milestone: v0.6.22
 touches: docs/MODEL.md, tests/reference
 deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: the figures are docs/MODEL.md prose in Known limitations, and no displayed string carries them, so no learner can see a wrong value through this item
 added: 2026-11-14
