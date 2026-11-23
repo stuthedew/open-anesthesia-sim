@@ -1641,8 +1641,6 @@ baseline:
   prolonged administration, and with spontaneous rather than controlled
   ventilation.
 
-<!-- not-restated: 0.5 MAC -->
-
 Together these studies show that the *sign* of the cardiac-output change
 depends on the carrier gas, that the dose-response **changes direction**, and
 that the effect changes with time at a fixed dose and with the mode of

@@ -30,7 +30,6 @@ from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
     AGENT_AMOUNT_DISPLAY_PRECISION,
     CHART_AXIS_TOP_MAC,
-    CHART_GRID_INTERVAL_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     MAC_AXIS_STEP_LADDER_MAC,
@@ -42,9 +41,9 @@ from anesthesia_sim.app.formatting import (
     AgentAmount,
     AgentAmountPrecision,
     AgentAmountUnit,
+    ChartCeiling,
     agent_amount_display_precision,
     chart_axis_top_percent,
-    chart_grid_interval_percent,
     cost_is_exact_to_its_minor_unit,
     format_agent_cost,
     format_agent_residual,
@@ -533,10 +532,7 @@ def test_a_mac_not_built_as_one_refuses_to_produce_a_number(bad_mac: float) -> N
         mac_axis_ticks(8.0, bad_mac)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match=refusal):
-        chart_axis_top_percent(bad_mac)  # type: ignore[arg-type]
-
-    with pytest.raises(TypeError, match=refusal):
-        chart_grid_interval_percent(bad_mac)  # type: ignore[arg-type]
+        chart_axis_top_percent(bad_mac, ChartCeiling.STANDARD)  # type: ignore[arg-type]
 
     with pytest.raises(TypeError, match=refusal):
         format_mac_reference("Sevoflurane", bad_mac, age_years=40)  # type: ignore[arg-type]
@@ -641,7 +637,7 @@ def test_the_mac_axis_labels_its_top_at_3_mac_for_each_shipped_mac(mac_percent: 
     """
 
     mac = MacPercent(mac_percent)
-    ticks = mac_axis_ticks(chart_axis_top_percent(mac), mac)
+    ticks = mac_axis_ticks(chart_axis_top_percent(mac, ChartCeiling.STANDARD), mac)
 
     assert [label for _, label in ticks] == ["0.0", "0.5", "1.0", "1.5", "2.0", "2.5", "3.0"]
     assert [position for position, _ in ticks] == pytest.approx(
@@ -1109,7 +1105,6 @@ def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
 
     assert set(divisors) >= {
         "chart_axis_top_percent",
-        "chart_grid_interval_percent",
         "format_mac_awake_reference",
         "format_mac_multiple",
         "format_mac_reference",
@@ -1164,50 +1159,53 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
 
 
 @pytest.mark.parametrize(
-    ("mac_percent", "expected_top", "expected_interval"),
+    ("mac_percent", "ceiling", "expected_top"),
     [
-        (2.0, 6.0, 1.0),  # sevoflurane
-        (1.2, 3.6, 0.6),  # isoflurane
-        (6.0, 18.0, 3.0),  # desflurane
+        (1.8, ChartCeiling.LOW, 2.7),  # sevoflurane
+        (1.8, ChartCeiling.STANDARD, 5.4),
+        (1.8, ChartCeiling.HIGH, 8.1),
+        (1.17, ChartCeiling.LOW, 1.755),  # isoflurane
+        (1.17, ChartCeiling.STANDARD, 3.51),
+        (1.17, ChartCeiling.HIGH, 5.265),
+        (6.6, ChartCeiling.LOW, 9.9),  # desflurane
+        (6.6, ChartCeiling.STANDARD, 19.8),
+        (6.6, ChartCeiling.HIGH, 29.7),
     ],
 )
-def test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled(
-    mac_percent: float, expected_top: float, expected_interval: float
+def test_the_chart_ceiling_is_the_chosen_top_times_the_agent_s_mac(
+    mac_percent: float, ceiling: ChartCeiling, expected_top: float
 ) -> None:
-    """Each expected value is calculated independently as the constant times the agent's 1 MAC.
+    """Each expected top is worked by hand as the chosen MAC multiple times the agent's 1 MAC.
 
-    Desflurane's 18.0 deserves a second look. It is also that agent's
-    vaporizer dial maximum. The number is therefore unchanged from the rule
-    that PL-CC23 replaced, but the reason for it is entirely different. The
-    match is a coincidence of 18 % / 6 % = 3.00, not agreement between the
-    two rules.
+    The MACs are Mapleson 1996's at age 40 (PMID 8777094, abstract), and the
+    three tops are 1.5, 3 and 4.5 MAC (`PL-K1VH`).
     """
 
-    assert chart_axis_top_percent(MacPercent(mac_percent)) == pytest.approx(expected_top)
-    assert chart_grid_interval_percent(MacPercent(mac_percent)) == pytest.approx(expected_interval)
+    assert chart_axis_top_percent(MacPercent(mac_percent), ceiling) == pytest.approx(expected_top)
 
 
 def test_the_chart_axis_spans_the_same_mac_range_whatever_the_agent() -> None:
     """Check, in MAC, the invariant that the axis exists to keep.
 
-    Measured in MAC, the ceiling is one number for every agent. That is what
+    Measured in MAC, each top is one number for every agent. That is what
     gives two agents' wash-in curves the same shape for the same case. The
     test states this as a property over a range of 1 MAC values rather than
     over the three shipped agents. It therefore constrains the *rule* rather
     than today's data files.
     """
 
-    for mac_percent in (0.5, 1.2, 2.0, 6.0, 12.0):
-        assert chart_axis_top_percent(MacPercent(mac_percent)) / mac_percent == pytest.approx(
-            CHART_AXIS_TOP_MAC
-        )
-        assert chart_grid_interval_percent(MacPercent(mac_percent)) / mac_percent == pytest.approx(
-            CHART_GRID_INTERVAL_MAC
-        )
+    for ceiling, expected_mac in (
+        (ChartCeiling.LOW, 1.5),
+        (ChartCeiling.STANDARD, 3.0),
+        (ChartCeiling.HIGH, 4.5),
+    ):
+        for mac_percent in (0.5, 1.2, 2.0, 6.0, 12.0):
+            top = chart_axis_top_percent(MacPercent(mac_percent), ceiling)
+            assert top / mac_percent == pytest.approx(expected_mac)
 
 
 def test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpressure() -> None:
-    """Check the two constraints that chose 3 rather than 2 or 4.
+    """Check the two constraints that chose 3 rather than 2 or 4 as the standard top.
 
     1 MAC must sit inside the plot rather than on its frame. The 2-3x MAC
     range in which overpressure induction works must also be on the plot. A
@@ -1218,9 +1216,52 @@ def test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpress
 
     assert CHART_AXIS_TOP_MAC >= 3.0, "overpressure at 2-3x MAC must stay on the plot"
     assert 1.0 / CHART_AXIS_TOP_MAC <= 0.34, "1 MAC must not sit near the top of the frame"
-    # The gridlines have to divide the ceiling exactly. Otherwise the topmost
-    # gap is a different size from the rest and looks like a scale change.
-    assert (CHART_AXIS_TOP_MAC / CHART_GRID_INTERVAL_MAC) % 1 == pytest.approx(0.0)
+    assert ChartCeiling.STANDARD.value == CHART_AXIS_TOP_MAC
+
+
+@pytest.mark.parametrize(
+    ("max_delivered_percent", "mac_percent"),
+    [(8.0, 1.8), (5.0, 1.17), (18.0, 6.6)],
+    ids=["sevoflurane", "isoflurane", "desflurane"],
+)
+def test_the_high_ceiling_is_above_every_agent_s_vaporizer_maximum(
+    max_delivered_percent: float, mac_percent: float
+) -> None:
+    """At the high top, no dial setting can take a trace off the plot.
+
+    The vaporizer maxima are the agents' data files' (8%, 5% and 18%), and
+    the MACs are Mapleson 1996's at age 40. The highest, sevoflurane's 8%, is
+    4.44 MAC, below 4.5. The low top puts 1 MAC at two thirds of the plot's
+    height, as `ChartCeiling` says.
+    """
+
+    top = chart_axis_top_percent(MacPercent(mac_percent), ChartCeiling.HIGH)
+
+    assert max_delivered_percent < top
+    assert 1.0 / ChartCeiling.LOW.value == pytest.approx(2.0 / 3.0)
+
+
+@pytest.mark.parametrize("agent_id", sorted(AGENT_DATA_FILENAMES))
+def test_the_high_ceiling_holds_every_shipped_agent_s_vaporizer_maximum(agent_id: str) -> None:
+    """The high top's promise holds for each agent's stored values, not only the transcribed ones.
+
+    The test above transcribes the values from their sources. This one reads
+    the data files, so a changed MAC or vaporizer maximum, or a new agent,
+    fails here before `docs/INTERFACE.md` § "The chart's fixed MAC axis"
+    promises a top that its trace can pass.
+    """
+
+    agent = load_agent_parameters(agent_id)
+    top = chart_axis_top_percent(MacPercent(agent.mac_at_age_40_percent), ChartCeiling.HIGH)
+
+    assert agent.max_delivered_concentration_percent < top
+
+
+def test_the_chart_axis_refuses_a_top_off_the_ladder() -> None:
+    """A top that is not one of `ChartCeiling`'s is one no reader chose, so it is refused."""
+
+    with pytest.raises(TypeError, match="ceiling must be a ChartCeiling, got 3.0"):
+        chart_axis_top_percent(MacPercent(1.8), 3.0)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("bad_mac_percent", [0.0, -1.0, -0.001])
@@ -1236,7 +1277,7 @@ def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> No
     """
 
     with pytest.raises(SimulationConfigurationError, match="mac_percent of"):
-        chart_axis_top_percent(MacPercent(bad_mac_percent))
+        chart_axis_top_percent(MacPercent(bad_mac_percent), ChartCeiling.STANDARD)
 
 
 def test_the_discard_warning_states_the_time_at_the_clock_s_own_resolution() -> None:

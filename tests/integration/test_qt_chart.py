@@ -55,7 +55,6 @@ from anesthesia_sim.app.dashboard_frame import (
     trace_legend_label,
 )
 from anesthesia_sim.app.formatting import (
-    chart_grid_interval_percent,
     format_chart_time_label,
     mac_awake_band_percent,
     mac_axis_ticks,
@@ -284,18 +283,24 @@ def test_two_runs_draw_on_one_axis_that_fits_the_longer(application: QApplicatio
 # ---------------------------------------------------------- the axes, ruled
 
 
-def test_both_axes_are_labelled_where_they_are_ruled(application: QApplication) -> None:
+def test_the_mac_axis_labels_every_gridline_and_the_percent_axis_is_round(
+    application: QApplication,
+) -> None:
+    """Every gridline stands at a MAC label, and the percent axis is labelled in whole percent.
+
+    Isoflurane's MAC at age 40 is 1.17% (Mapleson 1996, PMID 8777094,
+    abstract), so its standard top is 3.51%. The gridlines stand at each half
+    MAC, worked here by hand, and the percent labels at 0, 1, 2 and 3%, not
+    at the half-MAC values 0.585, 1.17 and 1.755 (`PL-BNMZ`).
+    """
+
     controller = _run_with_a_dial_change("isoflurane")
     frame = _frame(controller)
     chart = _shown(application, ConcentrationChart(), 480)
     chart.draw(frame)
-    interval = chart_grid_interval_percent(frame.mac_percent)
 
-    left = chart.axis_ticks("left")
-    assert left == frame.percent_ticks
-    assert [position for position, _ in left] == pytest.approx(
-        [index * interval for index in range(len(left))]
-    )
+    assert chart.horizontal_gridlines() == pytest.approx([index * 0.5 * 1.17 for index in range(7)])
+    assert chart.axis_ticks("left") == ((0.0, "0"), (1.0, "1"), (2.0, "2"), (3.0, "3"))
     assert chart.axis_ticks("right") == mac_axis_ticks(frame.axis_top_percent, frame.mac_percent)
     assert chart.axis_ticks("bottom") == tuple(
         (tick, format_chart_time_label(tick)) for tick in frame.tick_times_s
@@ -415,7 +420,7 @@ def test_the_references_and_the_ruling_are_painted_and_the_ruling_sits_underneat
     along_one_mac = _pixels_along(chart, frame.one_mac_percent, frame)
     assert along_one_mac[MUTED.lower()] > 100, along_one_mac
 
-    bare_gridline = frame.percent_ticks[-2][0]
+    bare_gridline = frame.mac_ticks[-2][0]
     along_gridline = _pixels_along(chart, bare_gridline, frame)
     assert along_gridline[GRIDLINE.lower()] > 100, along_gridline
     assert set(along_gridline) <= {GRIDLINE.lower(), PANEL.lower()} | _antialiased(along_gridline)

@@ -183,6 +183,7 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     FLOW_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
+    ChartCeiling,
     format_case_discard_warning,
     format_chart_time_label,
     format_elapsed,
@@ -214,13 +215,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
     AgentSimulationValidator,
 )
-from anesthesia_sim.core.concentration import (
-    Fraction,
-    MacMultiple,
-    MacPercent,
-    Percent,
-    fraction_from_percent,
-)
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, MacPercent, Percent
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
@@ -2968,7 +2963,7 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     trace is clipped, rather than relying on the reader to notice.
     """
 
-    # 8% circuit is 4 MAC of sevoflurane, against a 6% (3 MAC) ceiling.
+    # 8% circuit is 4.44 MAC of sevoflurane, against a 5.4% (3 MAC) ceiling.
     # Alveolar at 5% stays below the ceiling. That makes this a test of
     # *which* compartments are named, not only of whether any is named.
     history = (
@@ -2983,12 +2978,38 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     # The notice must say where the unclipped number is. Otherwise it reports
     # a problem and leaves the reader without the value.
     assert "readouts above" in text
-    assert "3.00 ×MAC" in text
+    # The top is named in percent and in MAC, the two units the axes are
+    # labelled in (`PL-DVDY`): 3 x 1.8% is 5.40%, worked by hand.
+    assert "5.40% (3.00 ×MAC)" in text
     assert text == (
-        "Above the top of the plot: Circuit. The axis stops at 3.00 ×MAC and these "
+        "Above the top of the plot: Circuit. The axis stops at 5.40% (3.00 ×MAC) and these "
         "traces are cut off there — their values are in the readouts above, which are "
         "not clipped."
     )
+
+
+def test_a_trace_above_the_standard_top_is_inside_the_high_top_and_above_the_low_one() -> None:
+    """The notice reads the top the chart draws at, not the standard one (`PL-K1VH`).
+
+    8% circuit is 4.44 MAC of sevoflurane (1.8% at age 40): above the 3 MAC
+    top, inside the 4.5 MAC top. Alveolar at 3% is 1.67 MAC, inside the
+    standard top and above the 1.5 MAC top, 2.7%. Each figure is worked by
+    hand.
+    """
+
+    history = (
+        _sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1, 0.08, 0.03, 0.01, 0.01, 0.0, 0.0),
+    )
+    frame = _frame(_fake_controller(history=history))
+    low = off_scale_notice(replace(frame, ceiling=ChartCeiling.LOW), 0)
+
+    assert off_scale_notice(replace(frame, ceiling=ChartCeiling.HIGH), 0) is None
+    assert low is not None
+    assert low.startswith(
+        "Above the top of the plot: Circuit, Alveolar. The axis stops at 2.70% (1.50 ×MAC)"
+    )
+    assert "Alveolar" not in (off_scale_notice(frame, 0) or "")
 
 
 def test_the_off_scale_notice_stays_silent_for_a_run_inside_the_axis() -> None:
@@ -4664,7 +4685,8 @@ def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() 
     ]
     assert len(clipped) >= 2
     assert len(peaks) >= 2
-    top = format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent)
+    # Sevoflurane's standard top is 3 x 1.8% = 5.40%, worked by hand (`PL-DVDY`).
+    top = "5.40% (3.00 ×MAC)"
 
     assert off_scale_notice(frame, 0) == (
         OFF_SCALE_NOTICE_TEMPLATE.format(compartments=", ".join(clipped), top=top)

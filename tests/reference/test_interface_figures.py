@@ -29,6 +29,7 @@ from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     MAC_DISPLAY_RESOLUTION_MAC,
+    ChartCeiling,
     chart_axis_top_percent,
     format_mac_multiple,
     format_percent,
@@ -246,7 +247,7 @@ def test_the_dial_maxima_are_the_mac_multiples_printed() -> None:
     assert (lowest, highest) == (desflurane_mac, sevoflurane_mac)
     assert min(multiples, key=multiples.__getitem__) == "desflurane"
     assert max(multiples, key=multiples.__getitem__) == "sevoflurane"
-    top = chart_axis_top_percent(_mac_percent("desflurane"))
+    top = chart_axis_top_percent(_mac_percent("desflurane"), ChartCeiling.STANDARD)
     assert _as_printed(top, desflurane_top) == desflurane_top
 
     (fraction,) = _one(
@@ -370,7 +371,7 @@ def test_fat_holds_the_share_printed_while_its_container_stays_nearly_empty() ->
                     assert _nearest_unit_fraction(share) == FRACTION_WORDS[fifth]
                     percent = fat.partial_pressure_fraction * 100.0
                     assert _as_printed(percent, tension) == tension
-                    top = chart_axis_top_percent(_mac_percent(agent_id))
+                    top = chart_axis_top_percent(_mac_percent(agent_id), ChartCeiling.STANDARD)
                     assert percent / top * 100.0 < float(fill_bound)
         assert _nearest_unit_fraction(share) == FRACTION_WORDS[at_three_hours], agent_id
 
