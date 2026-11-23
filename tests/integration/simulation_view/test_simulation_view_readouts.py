@@ -19,6 +19,7 @@ from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    EMPTY_METRIC_QUALIFIER,
     INTERPRETATION_DISCLAIMER_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
@@ -28,7 +29,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_elapsed, format_mac_multiple, format_percent
 from anesthesia_sim.app.qt_chart import TraceLegend
-from anesthesia_sim.app.qt_widgets import ReadoutRow
+from anesthesia_sim.app.qt_widgets import MetricPanel, ReadoutRow
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH, CHART_HEIGHT
 from anesthesia_sim.app.unconditional_set import (
@@ -81,6 +82,17 @@ def _accessible_names(view: QWidget) -> dict[int, str]:
     return {id(node.object()): node.text(QAccessible.Text.Name) for node in nodes}
 
 
+def _named_with_gloss(panel: MetricPanel) -> str:
+    """The panel's name as drawn, followed by its gloss where it draws one."""
+
+    gloss = panel.qualifier_label.text()
+
+    if gloss == EMPTY_METRIC_QUALIFIER:
+        return panel.name_label.text()
+
+    return f"{panel.name_label.text()}, {gloss}"
+
+
 def test_a_screen_reader_hears_each_reading_with_its_compartment_and_that_it_is_modelled(
     application: QApplication,
 ) -> None:
@@ -101,7 +113,7 @@ def test_a_screen_reader_hears_each_reading_with_its_compartment_and_that_it_is_
         names = _accessible_names(view)
 
         for panel in panels:
-            name = panel.name_label.text()
+            name = _named_with_gloss(panel)
             joiner = ": " if name == "Simulated time" else ", modelled: "
 
             for label in (panel.value_label, panel.secondary_label):
@@ -123,7 +135,7 @@ def test_a_compared_run_s_readings_are_named_with_their_run(application: QApplic
     for run in view.runs:
         for panel in run._readout_row.panels:
             run_name = panel.run_name_label.text()
-            name = panel.name_label.text()
+            name = _named_with_gloss(panel)
             joiner = ": " if name == "Simulated time" else ", modelled: "
 
             assert run_name

@@ -1487,20 +1487,28 @@ class Readout:
             make the unit a mode. The rate is drawn at every rate, including
             1x, so a reader never has to take a blank line to mean real time
             (`PL-SN2C`).
-        modelled: True for a compartment, whose two readings are model
-            outputs and never measurements, and False for the clock.
+        panel: The panel these lines are drawn on, which says whether they
+            are modelled.
     """
 
     name: str
     qualifier: str
     value: str
     secondary: str
-    modelled: bool
+    panel: ReadoutPanel
+
+    @property
+    def modelled(self) -> bool:
+        """Whether the readings are model outputs: true for a compartment, false for the clock."""
+
+        return not self.panel.is_clock
 
 
 #: How a compartment's reading is named for assistive technology. A screen
 #: reader that reads one line of a panel on its own then still says which
-#: compartment it belongs to and that it is modelled (`PL-N5JB`).
+#: compartment it belongs to and that it is modelled (`PL-N5JB`). A panel's
+#: gloss, such as "inspired" for the circuit, follows its name, because it says
+#: which measured value the reading corresponds to.
 SPOKEN_MODELLED_READING_TEMPLATE: Final = "{name}, modelled: {reading}"
 #: How the clock's reading is named for assistive technology.
 SPOKEN_READING_TEMPLATE: Final = "{name}: {reading}"
@@ -1513,8 +1521,10 @@ def spoken_reading(readout: Readout, reading: str, run_name: str | None) -> str:
 
     A screen reader can reach a panel's value or its second line on its own,
     away from the panel's name above it. So each line is named with the
-    panel's name, whether it is modelled and, while runs are compared, the
-    run, all taken from the strings the panel shows (`PL-N5JB`).
+    panel's name and gloss, whether it is modelled and, while runs are
+    compared, the run, all taken from the strings the panel shows
+    (`PL-N5JB`). A withheld reading, which the screen shows as a dash, is
+    said in words (`SPOKEN_WITHHELD_READINGS`).
 
     Args:
         readout: The panel's four lines as drawn this tick.
@@ -1523,11 +1533,13 @@ def spoken_reading(readout: Readout, reading: str, run_name: str | None) -> str:
             run (`dashboard_frame.run_label`).
 
     Returns:
-        The name, such as "Alveolar, modelled: 1.20%".
+        The name, such as "Alveolar, end-tidal-equivalent, modelled: 1.20%".
     """
 
     template = SPOKEN_MODELLED_READING_TEMPLATE if readout.modelled else SPOKEN_READING_TEMPLATE
-    spoken = template.format(name=readout.name, reading=reading)
+    gloss = readout.panel.qualifier
+    name = readout.name if gloss is None else f"{readout.name}, {gloss}"
+    spoken = template.format(name=name, reading=SPOKEN_WITHHELD_READINGS.get(reading, reading))
 
     if run_name is None:
         return spoken
@@ -1591,7 +1603,7 @@ def readouts(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> tuple
             value = format_percent(fraction)
             secondary = format_mac_multiple(fraction, mac_percent)
 
-        panels.append(Readout(panel.name, qualifier, value, secondary, modelled=not panel.is_clock))
+        panels.append(Readout(panel.name, qualifier, value, secondary, panel))
 
     return tuple(panels)
 
@@ -1669,6 +1681,17 @@ WITHHELD_FRAME_TEXT: Final = "Nothing is plotted, because no frame could be draw
 #: withheld. Both values are the agent's, and after an agent change the last
 #: frame's are the old agent's.
 WITHHELD_REFERENCE_TEXT: Final = WITHHELD_ELAPSED_TIME_TEXT
+#: What assistive technology is told in place of each withheld readout line
+#: (`spoken_reading`). On screen the dash says that the value is withheld by
+#: how it looks, so a screen reader is told in words. The wording is a
+#: placeholder.
+SPOKEN_WITHHELD_READINGS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        WITHHELD_CONCENTRATION_TEXT: "percent not shown",
+        WITHHELD_MAC_MULTIPLE_TEXT: "multiple of MAC not shown",
+        WITHHELD_ELAPSED_TIME_TEXT: "not shown",
+    }
+)
 #: The strings whose width each readout column reserves, in `READOUT_PANELS`
 #: order. The clock column reserves its widest elapsed form and its playback
 #: line. Every compartment column reserves the two strings above. Each column
@@ -1706,7 +1729,7 @@ def withheld_readouts(playback_rate: PlaybackRate) -> tuple[Readout, ...]:
             panel.qualifier if panel.qualifier is not None else EMPTY_METRIC_QUALIFIER,
             WITHHELD_ELAPSED_TIME_TEXT if panel.is_clock else WITHHELD_CONCENTRATION_TEXT,
             clock_playback_line(playback_rate) if panel.is_clock else WITHHELD_MAC_MULTIPLE_TEXT,
-            modelled=not panel.is_clock,
+            panel,
         )
         for panel in READOUT_PANELS
     )

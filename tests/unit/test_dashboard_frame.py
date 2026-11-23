@@ -3819,19 +3819,58 @@ def test_each_reading_is_named_with_its_compartment_and_that_it_is_modelled() ->
     """`PL-N5JB`: a line of a readout panel, heard on its own, still says what it is.
 
     The expected names are written out here, from the strings each panel
-    shows, and not read from `spoken_reading`'s templates.
+    shows, and not read from `spoken_reading`'s templates. The gloss follows
+    the name, because "Circuit" alone could be taken for the vaporizer setting.
     """
 
-    alveolar = Readout("Alveolar", "end-tidal-equivalent", "1.20%", "0.67 ×MAC", modelled=True)
-    clock = Readout(
-        "Simulated time", EMPTY_METRIC_QUALIFIER, "1m30s", "1× real time", modelled=False
+    clock_panel, circuit_panel, alveolar_panel, mixed_venous_panel = READOUT_PANELS[:4]
+    circuit = Readout("Circuit", "inspired", "2.00%", "1.11 ×MAC", circuit_panel)
+    alveolar = Readout("Alveolar", "end-tidal-equivalent", "1.20%", "0.67 ×MAC", alveolar_panel)
+    mixed_venous = Readout(
+        "Mixed venous", EMPTY_METRIC_QUALIFIER, "0.80%", "0.44 ×MAC", mixed_venous_panel
     )
+    clock = Readout("Simulated time", EMPTY_METRIC_QUALIFIER, "1m30s", "1× real time", clock_panel)
 
-    assert spoken_reading(alveolar, alveolar.value, None) == "Alveolar, modelled: 1.20%"
-    assert spoken_reading(alveolar, alveolar.secondary, None) == "Alveolar, modelled: 0.67 ×MAC"
-    assert spoken_reading(alveolar, alveolar.value, "Run 2") == "Run 2, Alveolar, modelled: 1.20%"
+    assert spoken_reading(circuit, circuit.value, None) == "Circuit, inspired, modelled: 2.00%"
+    assert (
+        spoken_reading(alveolar, alveolar.value, None)
+        == "Alveolar, end-tidal-equivalent, modelled: 1.20%"
+    )
+    assert (
+        spoken_reading(alveolar, alveolar.secondary, None)
+        == "Alveolar, end-tidal-equivalent, modelled: 0.67 ×MAC"
+    )
+    assert (
+        spoken_reading(alveolar, alveolar.value, "Run 2")
+        == "Run 2, Alveolar, end-tidal-equivalent, modelled: 1.20%"
+    )
+    assert spoken_reading(mixed_venous, mixed_venous.value, None) == "Mixed venous, modelled: 0.80%"
     assert spoken_reading(clock, clock.value, None) == "Simulated time: 1m30s"
     assert spoken_reading(clock, clock.secondary, "Run 1") == "Run 1, Simulated time: 1× real time"
+
+
+def test_a_withheld_reading_is_named_in_words_not_by_its_dash() -> None:
+    """`PL-N5JB`: a withheld value is shown as a dash, and a screen reader is told it in words.
+
+    The expected words are written out here. Each withheld line must say that
+    the value is not shown, and the readings of the other panels stay as drawn.
+    """
+
+    clock, circuit, alveolar, *_ = withheld_readouts(DEFAULT_PLAYBACK_RATE)
+
+    assert spoken_reading(circuit, circuit.value, None) == (
+        "Circuit, inspired, modelled: percent not shown"
+    )
+    assert spoken_reading(alveolar, alveolar.secondary, None) == (
+        "Alveolar, end-tidal-equivalent, modelled: multiple of MAC not shown"
+    )
+    assert spoken_reading(clock, clock.value, "Run 2") == "Run 2, Simulated time: not shown"
+    assert spoken_reading(clock, clock.secondary, None) == (
+        f"Simulated time: {clock_playback_line(DEFAULT_PLAYBACK_RATE)}"
+    )
+    for readout in (clock, circuit, alveolar):
+        for reading in (readout.value, readout.secondary):
+            assert "\u2014" not in spoken_reading(readout, reading, None)
 
 
 def test_every_compartment_readout_is_marked_modelled_and_the_clock_is_not() -> None:

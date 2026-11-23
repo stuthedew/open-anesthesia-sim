@@ -54,6 +54,7 @@ from anesthesia_sim.app.dashboard_frame import (
     HEIGHT_FIELD_LABEL,
     INSTANT_FIELD_LABEL,
     MARK_NAME_FIELD_LABEL,
+    READOUT_PANELS,
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
     TARGET_FORM_HEADING,
@@ -118,7 +119,7 @@ def application() -> Iterator[QApplication]:
 
 def _clock_readout(value: str) -> Readout:
     return Readout(
-        "Simulated time", EMPTY_METRIC_QUALIFIER, value, WIDEST_READOUT_SECONDARY, modelled=False
+        "Simulated time", EMPTY_METRIC_QUALIFIER, value, WIDEST_READOUT_SECONDARY, READOUT_PANELS[0]
     )
 
 
@@ -288,7 +289,7 @@ def test_an_empty_gloss_line_is_as_tall_as_a_filled_one(application: QApplicatio
             EMPTY_METRIC_QUALIFIER,
             "0s",
             EMPTY_METRIC_SECONDARY_VALUE,
-            modelled=False,
+            READOUT_PANELS[0],
         )
     )
 
