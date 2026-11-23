@@ -48,7 +48,7 @@ SECONDS_PER_HOUR = 3600
 MINUTES_PER_HOUR = 60.0
 
 #: The words the document uses for small whole numbers and simple fractions.
-NUMBER_WORDS = {"three": 3, "five": 5, "twelve": 12}
+NUMBER_WORDS = {"three": 3, "five": 5, "eleven": 11, "twelve": 12, "fifteen": 15}
 FRACTION_WORDS = {"third": 3, "quarter": 4, "fifth": 5}
 
 
@@ -600,18 +600,17 @@ def test_the_trace_colour_tables_are_what_the_palette_gives() -> None:
         computed.append(min(computed))
         assert printed_as(computed, printed) == printed, f"{first} / {second}"
 
-    muscle, mixed_venous_pair = _one(
+    muscle_and_mixed_venous, exceeded, of = _one(
         "### The six compartment traces: what separates them",
-        r"second most widely separated pair among these six \((\d\.\d\d) in the table below, "
-        r"after circuit and alveolar at (\d\.\d\d)\)",
+        r"whose colors are (\d\.\d\d) apart at worst, more than (\w+) of the (\w+) pairs "
+        r"in the table below",
     )
     worst = {f"{first} / {second}": float(printed[-1]) for first, second, *printed in pairs}
-    ranked = sorted(worst.values(), reverse=True)
-    assert (worst["Mixed venous / Muscle"], worst["Circuit / Alveolar"]) == (
-        float(muscle),
-        float(mixed_venous_pair),
+    assert worst["Mixed venous / Muscle"] == float(muscle_and_mixed_venous)
+    assert NUMBER_WORDS[of] == len(worst)
+    assert NUMBER_WORDS[exceeded] == sum(
+        value < float(muscle_and_mixed_venous) for value in worst.values()
     )
-    assert ranked[:2] == [float(mixed_venous_pair), float(muscle)]
 
     share, lightest = _one(
         "#### The exempt gridline grey",
