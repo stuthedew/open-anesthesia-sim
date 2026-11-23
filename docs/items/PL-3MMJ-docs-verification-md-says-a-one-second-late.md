@@ -1,10 +1,14 @@
 ---
 id: PL-3MMJ
 title: docs/VERIFICATION.md says a one-second-late control change moves a reading less than one standard deviation of any partition coefficient, and that blood:gas gives the smallest shift; its own uncertainty table shows the vessel-rich and fat shifts are smaller than both
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: defect, science
 feature: model-spec-accuracy
 touches: docs/VERIFICATION.md
 added: 2026-11-22
+payoff: a developer reading the verification document learns correctly which coefficient uncertainties the one-second timing error is smaller than
 ---
 
 **Problem.** docs/VERIFICATION.md says a one-second-late control change moves a reading less than one standard deviation of any partition coefficient, and that blood:gas gives the smallest shift; its own uncertainty table shows the vessel-rich and fat shifts are smaller than both
@@ -38,3 +42,11 @@ check whether the step's adequacy argument still holds as worded.
 
 **Found by** the second blind review of `PL-48MX` (pass 1, finding 1),
 2026-11-22, and checked against the table.
+
+**Why it matters.** `docs/VERIFICATION.md` is where a developer learns whether the one-second step is good enough. A false comparison there could let a later change argue that the step's timing error is negligible against every coefficient, when for two of the four it is not.
+
+**Done when.** Both sentences in `docs/VERIFICATION.md` state the comparison as the table's numbers give it, as `docs/MODEL.md` § "When a control change takes effect" already does, and the step's adequacy argument still holds as worded or is corrected.
+
+**Generator check.** A one-off: the second copy of a claim whose first copy `PL-48MX` corrected; that item's review found this one.
+
+**Reproduced 2026-11-23.** `docs/VERIFICATION.md` on `main` at `d219e317` still says "less than one standard deviation of any" and "The blood:gas shift is the smallest".

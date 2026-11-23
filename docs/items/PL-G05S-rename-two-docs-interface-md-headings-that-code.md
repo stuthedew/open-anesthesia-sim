@@ -1,10 +1,14 @@
 ---
 id: PL-G05S
 title: Rename two docs/INTERFACE.md headings that code comments and a test cite: § "What is not bounded this way" covers only the two volumes, and § "MAC-awake as a chart reference" also holds the 1 MAC line
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
 feature: prose-quality
 touches: docs/INTERFACE.md, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/theme.py, tests/reference/test_mac_awake_washout_figures.py, docs/PARAMETERS.md, docs/VERIFICATION.md, .claude/rules/ui-reader.md
 added: 2026-11-22
+payoff: a contributor looking for the 1 MAC line or the volumes with no supported range finds each under a heading that names it
 ---
 
 **Problem.** Rename two docs/INTERFACE.md headings that code comments and a test cite: § "What is not bounded this way" covers only the two volumes, and § "MAC-awake as a chart reference" also holds the 1 MAC line
@@ -37,3 +41,7 @@ the wrong place.
 
 **Done when.** Both headings are renamed and a search of the tree finds no
 live citation of either old name.
+
+**Reproduced 2026-11-23.** `docs/INTERFACE.md` still has both old headings.
+
+**Generator check.** A one-off: two headings left unrenamed by `PL-1VXY` because another branch was editing the comments that cite them.

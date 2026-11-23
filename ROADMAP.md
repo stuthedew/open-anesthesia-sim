@@ -1091,7 +1091,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a learner cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 189 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 194 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1282,6 +1282,11 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-TLKY (S) At the one-second step the agent balance's fixed limit of one part in 10**9 is below one propagator's derived rounding bound at the stiffest envelope corners (9.3e-9 at 22 squarings), so the check refuses the first step at 8 of the 96 corners, and it is two thirds of the derived bound for a shipped agent's longest run (1.5e-9); decide whether the limit should widen by what squarings add, which PL-D88N recorded as the shape for the day a shipped step first needed a squaring
 - PL-VS4V (S) No record says why the perfusion-fraction allowance is 1e-12 or the cardiac-output allowance is one part in 10**9: core/rounding.py states both values, what each is measured against and how far above rounding each sits, but git log -S traces them only to v0.1.0 (875ba085) and to the matrix-exponential change (d8deea50), neither of which gives a reason
 - PL-XGLH (S) docs/MODEL.md's citation of Yasuda, Targ and Eger 1989 in § "Desflurane's residual, and why the parameter file was not changed" says its brain:blood values were read from the abstract on 2026-09-08, while § "Known limitations" and § "Parameter provenance" rely on the paper's p. 373 and Tables 1 and 2 in full text; check those values against the full text and record that reading beside the citation (first blind review pass on PL-52KB, 2026-11-11)
+- PL-3MMJ (S) docs/VERIFICATION.md says a one-second-late control change moves a reading less than one standard deviation of any partition coefficient, and that blood:gas gives the smallest shift; its own uncertainty table shows the vessel-rich and fat shifts are smaller than both
+- PL-7PBB (S) The F_A/F_I elimination caption says the patient is returning agent while ventilation is stopped, when no agent moves between the lungs and the circuit
+- PL-9QY5 (M) A screen reader hears each setting slider as an unnamed whole number in the slider's internal steps, such as 180 for 1.80% sevoflurane, with no name and no unit
+- PL-M3H5 (S) A key press while a slider's handle is held applies the value at once, while the chart still says 'Preview: ... not applied' until release
+- PL-N5JB (M) A screen reader reaches each readout value as a bare number with its unit, without the compartment it belongs to or that it is a modelled value
 
 ### Captures after the cut
 
@@ -1458,6 +1463,19 @@ written on the list. They are `PL-4G79`, `PL-64NJ`, `PL-8F9D`, `PL-FV44`,
 `PL-LP96`, `PL-SD5V`, `PL-TLKY`, `PL-VS4V` and `PL-XGLH`. Each item's
 `deferred-from` records the check, made against `d4e8200`, that no learner can
 see a wrong value from it now.
+
+**Five items joined the frozen list on 2026-11-23, after the freeze.** The
+triage pass of that day placed them. Each is classed `safety` or `science`, and
+each shows a reader something wrong on `main` at `d219e317`, so none can be
+deferred. `PL-7PBB` stops the F_A/F_I caption telling a learner who has stopped
+ventilation that the patient is eliminating agent. `PL-M3H5` stops the chart
+labelling an applied slider value "not applied". `PL-9QY5` gives each setting
+slider a name and a value with its unit for a screen reader, and `PL-N5JB` gives
+each readout value its compartment and says it is modelled. `PL-3MMJ` corrects
+`docs/VERIFICATION.md`'s comparison of the one-second timing error with the
+coefficients' uncertainty, as `PL-48MX` corrected `docs/MODEL.md`. The same pass
+deferred the other debt it triaged to the next gate, each with its reason in
+`deferred-from`.
 
 ### Required scope
 

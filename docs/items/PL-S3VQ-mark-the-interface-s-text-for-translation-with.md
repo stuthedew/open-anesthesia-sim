@@ -1,10 +1,14 @@
 ---
 id: PL-S3VQ
 title: Mark the interface's text for translation with gettext, and write each learner-facing message as one whole-sentence template
-status: untriaged
+priority: P3
+effort: L
+status: ready
+classes: feature
 feature: localization
 touches: src/anesthesia_sim/app, src/anesthesia_sim/layout, src/anesthesia_sim/core
 added: 2026-11-22
+payoff: translating the interface later needs a catalogue, not a rewrite of every message
 ---
 
 **Problem.** Mark the interface's text for translation with gettext, and write each learner-facing message as one whole-sentence template
@@ -20,3 +24,7 @@ added: 2026-11-22
 **Not in v0.7.0.** The owner said on 2026-11-22 that localization need not be built now (project owner, 2026-11-22).
 
 **Generator check.** A one-off: planned work that the localization research (`PL-SRP7`) recommends, not a cause of other items.
+
+**Why it matters.** Every learner-facing message written as an f-string or from joined fragments today must be rewritten before any translation, and the count grows with each new message.
+
+**Done when.** Each scope point above is met: one module gives the translation functions, learner-facing text in `app/`, `layout/` and core's refusals is marked, f-strings are whole-sentence templates, count-dependent messages use `ngettext`, and a test shows the collected catalogue is current. The approved interface strings are unchanged.
