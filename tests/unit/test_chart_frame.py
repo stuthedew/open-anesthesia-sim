@@ -7,7 +7,8 @@ runs with no display and no plotting library, which is the purpose of that
 module.
 """
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
+from functools import cache
 from math import hypot, inf, nextafter
 from pathlib import Path
 from types import MappingProxyType
@@ -145,6 +146,70 @@ def _hover_worked_examples() -> list[list[str]]:
     # The text alternates between prose and fenced blocks, so every second
     # piece after the first is an example.
     return [block.splitlines() for block in blocks[1::2]]
+
+
+#: The second at which the hover examples' alveolar values are taken, and the
+#: second at which the trunk is branched, both in simulated seconds.
+_HOVER_EXAMPLE_S = 1208
+_FORK_S = 600
+
+#: The instants of the contended muscle and fat columns: twenty columns 4 s
+#: apart around 20 min, as a 60-minute axis 900 px wide draws them.
+_CONTENDED_TIMES_S = tuple(1160 + 4 * column for column in range(20))
+
+
+@dataclass(frozen=True)
+class _CaseAtTwentyMinutes:
+    """The fractions that the hover examples print, from runs of the model.
+
+    The trunk is the default sevoflurane case, opened at the stored 1 MAC with
+    the default flows. At 10 min it is branched twice. One branch turns the
+    vaporizer off, as in a case's emergence. The other raises the dial to
+    1.9%, which keeps its alveolar point inside the hover radius of the
+    trunk's. The examples in `docs/INTERFACE.md` were once typed from a run at
+    a 2.0% dial labelled as 1 MAC, and these runs replace them (`PL-JP7P`).
+    """
+
+    trunk_alveolar: float
+    raised_alveolar: float
+    trunk_muscle: tuple[float, ...]
+    trunk_fat: tuple[float, ...]
+    emerging_muscle: tuple[float, ...]
+    emerging_fat: tuple[float, ...]
+
+
+@cache
+def _case_at_twenty_minutes() -> _CaseAtTwentyMinutes:
+    trunk = AgentUptakeSystem.for_agent("sevoflurane")
+    for _ in range(_FORK_S):
+        trunk.advance()
+    emerging = AgentUptakeSystem.for_agent("sevoflurane")
+    raised = AgentUptakeSystem.for_agent("sevoflurane")
+    for branch, dial_percent in ((emerging, 0.0), (raised, 1.9)):
+        branch.restore_state(trunk.capture_state())
+        branch.set_delivered_concentration_percent(Percent(dial_percent))
+    alveolar: dict[str, float] = {}
+    columns: dict[str, list[float]] = {"tm": [], "tf": [], "em": [], "ef": []}
+    for second in range(_FORK_S + 1, _CONTENDED_TIMES_S[-1] + 1):
+        for system in (trunk, emerging, raised):
+            system.advance()
+        if second == _HOVER_EXAMPLE_S:
+            alveolar["trunk"] = trunk.alveoli.partial_pressure_fraction
+            alveolar["raised"] = raised.alveoli.partial_pressure_fraction
+        if second in _CONTENDED_TIMES_S:
+            columns["tm"].append(trunk.patient.muscle.partial_pressure_fraction)
+            columns["tf"].append(trunk.patient.fat.partial_pressure_fraction)
+            columns["em"].append(emerging.patient.muscle.partial_pressure_fraction)
+            columns["ef"].append(emerging.patient.fat.partial_pressure_fraction)
+
+    return _CaseAtTwentyMinutes(
+        trunk_alveolar=alveolar["trunk"],
+        raised_alveolar=alveolar["raised"],
+        trunk_muscle=tuple(columns["tm"]),
+        trunk_fat=tuple(columns["tf"]),
+        emerging_muscle=tuple(columns["em"]),
+        emerging_fat=tuple(columns["ef"]),
+    )
 
 
 def _advance(controller: SimulationController, seconds: int) -> None:
@@ -692,7 +757,9 @@ def _frame(
 def test_the_hover_reads_as_the_specification_shows() -> None:
     """The hover matches the worked example in `docs/INTERFACE.md` § "The chart's hover readout"."""
 
-    run = _run_frame((1208.0,), alveolar=(0.0143,))
+    run = _run_frame(
+        (float(_HOVER_EXAMPLE_S),), alveolar=(_case_at_twenty_minutes().trunk_alveolar,)
+    )
     examples = _hover_worked_examples()
     one_run, named_run, wash_in = examples[0], examples[1], examples[-1]
     second = replace(run, label=run_label(SECOND_RUN))
@@ -916,17 +983,23 @@ def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None
     wrong run, and so to the wrong management.
     """
 
-    first = _run_frame((1208.0,), alveolar=(0.0143,))
-    second = replace(_run_frame((1208.0,), alveolar=(0.0145,)), label=run_label(SECOND_RUN))
+    case = _case_at_twenty_minutes()
+    at_s = float(_HOVER_EXAMPLE_S)
+    first = _run_frame((at_s,), alveolar=(case.trunk_alveolar,))
+    second = replace(
+        _run_frame((at_s,), alveolar=(case.raised_alveolar,)), label=run_label(SECOND_RUN)
+    )
     frame = replace(_frame(first), runs=(first, second))
+    first_percent = case.trunk_alveolar * 100.0
+    second_percent = case.raised_alveolar * 100.0
 
     # Both runs' alveolar points are well inside the radius of this pointer.
-    nearer_second = nearest_trace_point(frame, 1208.0, 1.45, 4.0, _PERCENT_PER_PIXEL, 12.0)
-    nearer_first = nearest_trace_point(frame, 1208.0, 1.43, 4.0, _PERCENT_PER_PIXEL, 12.0)
+    nearer_second = nearest_trace_point(frame, at_s, second_percent, 4.0, _PERCENT_PER_PIXEL, 12.0)
+    nearer_first = nearest_trace_point(frame, at_s, first_percent, 4.0, _PERCENT_PER_PIXEL, 12.0)
 
     assert nearer_second is not None
     assert nearer_first is not None
-    assert abs(1.45 - 1.43) / _PERCENT_PER_PIXEL < 12.0, (
+    assert abs(second_percent - first_percent) / _PERCENT_PER_PIXEL < 12.0, (
         "the two points must contend for this to test anything"
     )
 
@@ -1032,23 +1105,21 @@ def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
 
     The case is the reference adult on sevoflurane, on a 60-minute axis
     900 px wide and `theme.CHART_HEIGHT` tall. That gives 4.00 s/px and
-    0.015 %/px. At 20 minutes on the branched case, the trunk's muscle shows
-    0.19% and its fat shows 0.01%. The percent axis is fixed at 3 MAC
-    (`CHART_AXIS_TOP_MAC`), so these points are 11.9 px apart, inside the
-    12 px radius. Muscle and fat are the pair that a reader comparing two runs
+    0.015 %/px. The values come from the runs in `_case_at_twenty_minutes`:
+    the trunk held at 1 MAC, and a branch of it with the vaporizer turned off
+    at 10 min. At 20 minutes the trunk's muscle shows 0.14% and its fat 0.01%.
+    The percent axis is fixed at 3 MAC (`CHART_AXIS_TOP_MAC`), so these points
+    are about 9 px apart, inside the 12 px radius. Muscle and fat are the pair that a reader comparing two runs
     picks most often. They are also the pair whose values differ most: by a
     median of 17.1-17.9x across the measured cases, and by twofold or more at
     every switch.
     """
 
-    times_s = tuple(1160.0 + 4.0 * column for column in range(20))
-    still_carrying = _run_frame(
-        times_s, muscle=tuple(0.0019 for _ in times_s), fat=tuple(0.00012 for _ in times_s)
-    )
+    case = _case_at_twenty_minutes()
+    times_s = tuple(float(second) for second in _CONTENDED_TIMES_S)
+    still_carrying = _run_frame(times_s, muscle=case.trunk_muscle, fat=case.trunk_fat)
     emerging = replace(
-        _run_frame(
-            times_s, muscle=tuple(0.0009 for _ in times_s), fat=tuple(0.00008 for _ in times_s)
-        ),
+        _run_frame(times_s, muscle=case.emerging_muscle, fat=case.emerging_fat),
         label=run_label(SECOND_RUN),
     )
     frame = replace(
@@ -1227,8 +1298,8 @@ def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:
     assert target is not None
     assert target.readout.splitlines() == [
         "Modelled sevoflurane",
-        "Muscle · 20m   0.19%   0.11 ×MAC",
-        "Fat · 20m   0.01%   0.01 ×MAC",
+        "Muscle · 20m   0.14%   0.08 ×MAC",
+        "Fat · 20m   0.01%   <0.01 ×MAC",
     ]
 
 
@@ -1528,12 +1599,22 @@ def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosse
 
 
 def test_every_hover_number_is_the_formatter_s_at_the_snapshot_s_own_divisor() -> None:
-    run = _run_frame((300.0,), vessel_rich=(0.0123,))
+    """The hover divides by the run's own 1 MAC, not by the agent's stored MAC at age 40.
+
+    The run's 1.5% stands for a MAC adjusted for an older patient, so it
+    differs from sevoflurane's stored 1.8%. A hover that read the stored value
+    would print 0.68 ×MAC here instead of 0.82 ×MAC.
+    """
+
+    own_mac = MacPercent(1.5)
+    run = replace(_run_frame((300.0,), vessel_rich=(0.0123,)), mac_percent=own_mac)
     fraction = Fraction(0.0123)
 
+    assert own_mac != _SEVOFLURANE_MAC
     assert format_trace_hover(run, RecordedQuantity.VESSEL_RICH, 0, 1).splitlines()[2] == (
-        f"{format_percent(fraction)}   {format_mac_multiple(fraction, _SEVOFLURANE_MAC)}"
+        f"{format_percent(fraction)}   {format_mac_multiple(fraction, own_mac)}"
     )
+    assert format_mac_multiple(fraction, own_mac) == "0.82 ×MAC"
 
 
 def test_the_hover_states_the_instant_at_the_clock_s_own_resolution() -> None:

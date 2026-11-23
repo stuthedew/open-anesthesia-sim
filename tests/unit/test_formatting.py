@@ -1031,10 +1031,10 @@ def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy
     A fraction of an atmosphere and a ratio to MAC are both small
     dimensionless numbers of the same magnitude. Neither looks wrong in place
     of the other. Sevoflurane's band is 0.34 +/- 0.05 MAC against a MAC of
-    2.0%, which is 0.58-0.78%. That is the range a falling alveolar trace has
+    1.8%, which is 0.52-0.70%. That is the range a falling alveolar trace has
     to cross for arousal. A circuit fraction at the vaporizer's own 8% maximum,
     passed instead, clears every runtime guard, because 0.08 - 0.05 is still
-    positive. It draws the same band at 0.06-0.26%. That
+    positive. It draws the same band at 0.05-0.23%. That
     band is *below* the awakening concentration, so a trace crosses it late
     or not at all, and nothing on the screen says so.
 
@@ -1045,16 +1045,16 @@ def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy
     correct = mac_awake_band_percent(
         fraction_of_mac=MacMultiple(0.34),
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=MacPercent(2.0),
+        mac_percent=MacPercent(1.8),
     )
     swapped = mac_awake_band_percent(
         fraction_of_mac=Fraction(0.08),  # type: ignore[arg-type]
         standard_deviation_fraction_of_mac=MacMultiple(0.05),
-        mac_percent=MacPercent(2.0),
+        mac_percent=MacPercent(1.8),
     )
 
-    assert correct == pytest.approx((0.58, 0.78))
-    assert swapped == pytest.approx((0.06, 0.26))
+    assert correct == pytest.approx((0.522, 0.702))
+    assert swapped == pytest.approx((0.054, 0.234))
 
 
 def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> None:
@@ -1062,10 +1062,10 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
 
     `mac_multiple()` returns a ratio to MAC. The two readouts beside each
     other show the same compartment in the two units. Sevoflurane at 0.34 MAC
-    is an alveolar fraction of 0.0068. Rendering the multiple as though it
+    is an alveolar fraction of 0.00612. Rendering the multiple as though it
     were the fraction prints the percent of 0.34 next to "0.34" of MAC. The
-    two readouts of one compartment would then disagree by the factor of 50
-    between them.
+    two readouts of one compartment would then disagree by the factor of about
+    56 between them.
 
     `mypy` rejects the call, which the directive asserts. Since `PL-1DP1`, the
     formatter also rejects it at run time. There a `MacMultiple` is a bare
@@ -1073,10 +1073,10 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
     as the fraction it is not.
     """
 
-    fraction = Fraction(0.0068)
-    multiple = mac_multiple(fraction, MacPercent(2.0))
+    fraction = Fraction(0.00612)
+    multiple = mac_multiple(fraction, MacPercent(1.8))
 
-    assert format_percent(fraction) == f"{0.68:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
+    assert format_percent(fraction) == f"{0.61:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
     assert multiple == pytest.approx(0.34)
 
     with pytest.raises(
@@ -1088,10 +1088,10 @@ def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> N
 def test_every_mac_divisor_here_is_typed_as_a_percent() -> None:
     """Every `mac_percent` this module takes is a `MacPercent`, never a bare `float`.
 
-    Sevoflurane's 1 MAC is 2.0% of an atmosphere, and 0.02 as a fraction.
+    Sevoflurane's 1 MAC is 1.8% of an atmosphere, and 0.018 as a fraction.
     Given the fraction, every function named below runs without complaint,
-    because the divisor is still positive. The chart's ceiling lands at 0.06%
-    instead of 6%, and 1 MAC displays as 100.00 ×MAC. A `Fraction` is a
+    because the divisor is still positive. The chart's ceiling lands at 0.054%
+    instead of 5.4%, and 1 MAC displays as 100.00 ×MAC. A `Fraction` is a
     `float`, so only a parameter typed `Percent` rejects one. A parameter
     typed `float` breaks no caller, so `mypy` never asks for it to change.
     Six of these eight were `float` until `PL-W3Q5`. The test reads the types

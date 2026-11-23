@@ -1977,12 +1977,15 @@ plot smaller ones. They bound the error in a trace's *shape* inside one pixel
 column, never in a displayed value.
 
 **For developers.** No segment between drawn instants spans more than one pixel
-of time at any time base (`test_no_chord_is_wider_than_one_pixel_of_time` in
+of time or one second, whichever is longer
+(`test_no_chord_is_wider_than_one_pixel_of_time` in
 `tests/unit/test_chart_frame.py`), and a window whose columns are one second
 apart draws every second
 (`test_a_window_whose_columns_are_one_second_apart_draws_every_second` in
-`tests/unit/test_chart_time_base.py`). The spacing is the window over 1 000,
-rounded down to whole seconds and never less than one
+`tests/unit/test_chart_time_base.py`). The spacing is the window divided by
+one less than the number of columns the plot draws, which follows its width,
+rounded down to whole seconds and never less than one (`chart_columns` and
+`grid_spacing_s`)
 (`test_the_column_spacing_is_whole_seconds_and_widens_only_up_to_one_second`
 in `tests/unit/test_chart_frame.py`). No test computes the table's gaps, which
 were measured on 2026-11-21 (`PL-SZ6G`).
@@ -5288,18 +5291,18 @@ The box has three lines: the run context, what the value is, and the value.
 ```
 Modelled sevoflurane · 20m8s
 Alveolar (end-tidal-equivalent)
-1.43%   0.79 ×MAC
+1.28%   0.71 ×MAC
 ```
 
-The lines that qualify the value come first, so a reader reaches `1.43%` only after
+The lines that qualify the value come first, so a reader reaches `1.28%` only after
 passing "Modelled" and the compartment. A qualifier below the number would come too
 late, because the number has already been read.
 
 1. **Run context: "Modelled", the agent, the run when more than one is drawn, and
    the instant.** "Modelled" appears in every box, not only for the compartments
    that a monitor also measures. The agent is there because one percentage means
-   different things under different agents: 1.43% is 0.79 MAC of sevoflurane and
-   0.22 MAC of desflurane (`test_the_hover_s_percent_is_the_mac_multiples_printed`
+   different things under different agents: 1.28% is 0.71 MAC of sevoflurane and
+   0.19 MAC of desflurane (`test_the_hover_s_percent_is_the_mac_multiples_printed`
    in `tests/reference/test_interface_figures.py`). The instant is printed in whole seconds, in
    the form that the clock, the time axis and the time stamp of each control change
    also use, such as `20m8s`. It is the exact instant of the value in the box, not a
@@ -5355,7 +5358,7 @@ width and the legend to be sufficient).
 ```
 Modelled sevoflurane · Run 2 · 20m8s
 Alveolar (end-tidal-equivalent)
-1.43%   0.79 ×MAC
+1.28%   0.71 ×MAC
 ```
 
 The box follows the rule for naming the run (§ "Naming the run in a comparison"),
@@ -5423,8 +5426,8 @@ the axis compression is fixed).
 ```
 Modelled sevoflurane
 Alveolar (end-tidal-equivalent)
-Run 1 · 20m8s   1.43%   0.79 ×MAC
-Run 2 · 20m8s   1.45%   0.81 ×MAC
+Run 1 · 20m8s   1.28%   0.71 ×MAC
+Run 2 · 20m8s   1.35%   0.75 ×MAC
 ```
 
 **Every compartment whose drawn point is inside the hover radius is also reported**
@@ -5438,10 +5441,10 @@ with its compartment, and its gloss where it has one, such as "Alveolar
 
 ```
 Modelled sevoflurane
-Muscle · Run 1 · 20m   0.19%   0.11 ×MAC
-Muscle · Run 2 · 20m   0.09%   0.05 ×MAC
-Fat · Run 1 · 20m   0.01%   0.01 ×MAC
-Fat · Run 2 · 20m   0.01%   <0.01 ×MAC
+Muscle · Run 1 · 20m   0.14%   0.08 ×MAC
+Muscle · Run 2 · 20m   0.08%   0.05 ×MAC
+Fat · Run 1 · 20m   0.01%   <0.01 ×MAC
+Fat · Run 2 · 20m   <0.01%   <0.01 ×MAC
 ```
 
 The box reports every trace in reach because, where traces crowd together, no

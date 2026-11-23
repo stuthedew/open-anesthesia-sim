@@ -419,7 +419,6 @@ def _this_repository() -> doc_check.Report:
         doc_check.PARAMETERS = fixture_parameters
 
 
-@pytest.mark.reads_item_store
 def test_the_interface_document_is_one_numeric_family_from_its_first_heading() -> None:
     """Every section of `docs/INTERFACE.md` is read for unheld figures, not two of them.
 
@@ -441,6 +440,7 @@ def test_the_interface_document_is_one_numeric_family_from_its_first_heading() -
     assert (first.title, first.level) == numeric[0]
 
 
+@pytest.mark.reads_item_store
 def test_this_repository_is_clean() -> None:
     """The real tree must satisfy its own checker, not only a fixture."""
     assert _this_repository().errors == []

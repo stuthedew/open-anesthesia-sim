@@ -73,13 +73,18 @@ The pass found six computed claims wrong or stale, and fixed each:
 
 1. The hover readout's 1.43% was printed as 0.71 MAC of sevoflurane and
    0.24 MAC of desflurane. It is 0.79 and 0.22.
-2. The hover worked examples printed 0.71 and 0.73 ×MAC for 1.43% and 1.45%
-   sevoflurane, and 0.10 and 0.04 ×MAC for muscle. They are 0.79, 0.81, 0.11
-   and 0.05. The cause was the unit-test fixtures in
-   `tests/unit/test_chart_frame.py`, which labelled a 1 MAC of 2.0% as
-   sevoflurane; the document's examples were copied from their output. The
-   fixtures now use the stored MAC, axis and band, and the tests read the
-   examples from the document rather than a typed copy.
+2. The hover worked examples printed values from a run at a 2.0% dial
+   labelled as sevoflurane at 1 MAC: an alveolar 1.43% at 0.71 ×MAC, and
+   muscle at 0.19% and 0.10 ×MAC at 20 min. The default case at its stored
+   1 MAC gives 1.28% at 0.71 ×MAC, and muscle at 0.14% and 0.08 ×MAC. The
+   cause was the unit-test fixtures in `tests/unit/test_chart_frame.py`,
+   which labelled a 1 MAC of 2.0% as sevoflurane and typed the fractions by
+   hand; the document's examples were copied from their output. The fixtures
+   now take their fractions from runs of the model (`_case_at_twenty_minutes`)
+   and use the stored MAC, axis and band, and the tests read the examples
+   from the document rather than a typed copy. The first pass of this item
+   changed only the ×MAC figures; both blind review passes found that the
+   percents were still the 2.0% run's.
 3. The modelled fat values after the fork at 3492 s were printed as 0.031%
    and 0.006%. A run gives 0.028% and 0.005%.
 4. § "How a branch is drawn" said all 8 of the branch's columns are the
@@ -88,9 +93,13 @@ The pass found six computed claims wrong or stale, and fixed each:
    without them.
 5. The schematic said the circuit rises "towards 4 MAC" at sevoflurane's 8%
    maximum. It is 4.44 ×MAC.
-6. Two formatting tests in `tests/unit/test_formatting.py` named an agent and
-   used another MAC: sevoflurane at 2.0% and desflurane at 6.0%. They now use
-   1.8% and 6.6%.
+6. Tests in `tests/unit/test_formatting.py` and
+   `tests/integration/test_qt_chart.py` named sevoflurane or desflurane and
+   used another MAC (2.0% and 6.0%), so they printed a MAC-awake band of
+   0.58-0.78% for sevoflurane. They now use 1.8% and 6.6%, which give
+   0.52-0.70%. The `HEIGHT_BAND` docstring in `core/rounding.py` has the same
+   stale 2.0% and is filed as `PL-SLFT`, because a defect in `core/` is filed
+   rather than fixed in place.
 
 New tests: `tests/reference/test_interface_figures.py` computes each figure
 that no existing test computed (15 tests), and

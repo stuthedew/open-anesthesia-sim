@@ -259,7 +259,7 @@ def test_the_dial_maxima_are_the_mac_multiples_printed() -> None:
 
 
 def test_the_hover_s_percent_is_the_mac_multiples_printed() -> None:
-    """1.43% is 0.79 MAC of sevoflurane and 0.22 MAC of desflurane, as the readout rounds them."""
+    """1.28% is 0.71 MAC of sevoflurane and 0.19 MAC of desflurane, as the readout rounds them."""
 
     percent, sevoflurane, desflurane = _one(
         "#### What it shows",

@@ -1235,8 +1235,8 @@ def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wra
     """
 
     legend = TraceLegend()
-    one_mac = "1 MAC sevoflurane = 2.0%"
-    mac_awake = "MAC-awake sevoflurane = 0.34 ×MAC (0.68%), band ±1 SD 0.58–0.78%"
+    one_mac = "1 MAC sevoflurane = 1.8%"
+    mac_awake = "MAC-awake sevoflurane = 0.34 ×MAC (0.61%), band ±1 SD 0.52–0.70%"
     legend.show_references(one_mac, mac_awake)
     legend.resize(2000, legend.heightForWidth(2000))
     legend.show()
@@ -1265,8 +1265,8 @@ def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wra
 
     assert len(lines) > 1
     assert all(line.endswith((",", ";")) for line in lines[:-1])
-    assert "MAC-awake sevoflurane = 0.34 ×MAC (0.68%)," in lines
-    assert any(line.startswith("band ±1 SD 0.58–0.78%;") for line in lines)
+    assert "MAC-awake sevoflurane = 0.34 ×MAC (0.61%)," in lines
+    assert any(line.startswith("band ±1 SD 0.52–0.70%;") for line in lines)
     assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
     legend.close()
 
