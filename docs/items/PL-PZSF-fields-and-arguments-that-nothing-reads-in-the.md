@@ -1,0 +1,18 @@
+---
+id: PL-PZSF
+title: Fields and arguments that nothing reads in the display modules, and three docstrings that misstate what their functions raise or print, found by sorting the mutation survivors of PL-00Y5
+status: untriaged
+added: 2026-11-23
+filed-pr: 2281
+---
+
+**Problem.** Fields and arguments that nothing reads in the display modules, and three docstrings that misstate what their functions raise or print, found by sorting the mutation survivors of PL-00Y5
+
+**What happens.** Sorting the survivors of the 2026-11-23 whole mutation run (`PL-00Y5`) found these in modules a learner's display is built from. None changes a displayed value today.
+
+1. Fields and state that nothing reads: `RunFrame.agent_id` and `RunFrame.elapsed_s` in `app/chart_frame.py` (`_run_frame` mutants 43 and 46), `HoverReading.quantity` in the same module (`nearest_wash_in_point` 38), and the saved `Preferences` that `PreferencesStore.save` keeps in `_loaded.preferences` in `app/preferences.py` (`save` 40).
+2. Arguments that do nothing: `_captions` in `app/agent_cost.py` calls `.format(unit=..., agent=...)` on two captions that hold no field since `PL-RJN9`, so its `agent` argument is unused (`_captions` 3 to 6, `delivered_shown` 34). `_read_node` in `layout/serialization.py` passes the nouns "an Area" and "a split" to `_fields`, which shows a noun only for a value that is not an object, and `_read_node` has already refused one (7 mutants).
+3. Code that no input reaches: the guard for an empty time axis in `chart_frame._run_preview` (39), the `continue` for an empty stretch in `chart_frame._nearest_wash_in_point` (8), and the joined list of several branch names in `dashboard_frame.trunk_reset_question`, since `MAX_DISPLAYED_RUNS` allows one branch (8, 9 and 29).
+4. Docstrings that misstate their function: `chart_frame.percent_axis_ticks` says a 0.5% step prints "0.5, 1 and 1.5", where the code and its test print "1.0". `WashInStretch.__post_init__` raises `ValueError` when its instants and ratios differ in length, and its Raises section names only `SimulationConfigurationError`. `PreferencesStore.save` raises a plain `ValueError` from `_to_json`'s `allow_nan=False` for a hand-built `RefusedEntry` holding NaN, and its docstring does not list it.
+
+**What to do.** Remove each field, argument and branch that nothing reads or reaches, or say in a comment why it stays. Correct the three docstrings.
