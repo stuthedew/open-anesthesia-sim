@@ -55,6 +55,7 @@ one of the tick's presentations.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from functools import partial
 from types import MappingProxyType
 from typing import Final, cast
@@ -77,6 +78,7 @@ from anesthesia_sim.app.chart_time_base import ChartTimeBase, saved_time_base, s
 from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
+    CHART_CEILING_LABEL,
     CHART_HEADING,
     INTERPRETATION_DISCLAIMER_TEXT,
     NO_CASE_TO_BRANCH_TEXT,
@@ -99,11 +101,12 @@ from anesthesia_sim.app.dashboard_frame import (
     unmarked_changes_lines,
     wash_in_state_lines,
 )
-from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_agent_price import PriceEntry, RefusedEntriesDiscard
 from anesthesia_sim.app.qt_chart import (
+    ChartCeilingSelector,
     ConcentrationChart,
     TimeBaseSelector,
     TraceLegend,
@@ -187,6 +190,12 @@ _SETTINGLESS_CHART_STATE_VERSION: Final = 1
 #: The key under which a chart saves its window, in the form
 #: `chart_time_base.saved_time_base_value` writes.
 _TIME_BASE_KEY: Final = "time_base_s"
+
+#: The key under which the concentration chart saves the top of its axis, as
+#: its value in MAC (`PL-K1VH`). It sits in the chart's version 2 state beside
+#: the window. A state saved before the key existed has none, and the chart
+#: then opens at the standard top, which is the top it always had.
+_CEILING_KEY: Final = "ceiling_mac"
 
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
@@ -348,6 +357,35 @@ def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
         return None, UNREADABLE_STATE_TEXT
 
 
+def _read_ceiling(saved: object) -> tuple[ChartCeiling, str | None]:
+    """Return the axis top a concentration chart saved, and a notice if it could not be read.
+
+    A state with no `_CEILING_KEY` gives the standard top. A value that is not
+    one of `ChartCeiling`'s tops gives the standard top with
+    `UNREADABLE_STATE_TEXT`, so the chart says that it is not showing what was
+    saved (Q4). A state that `_read_time_base` cannot read is that function's
+    to report, so it gives the standard top and no second notice.
+    """
+
+    if (
+        not isinstance(saved, Mapping)
+        or _CEILING_KEY not in saved
+        or unreadable_state_text(saved, _CHART_STATE_VERSION) is not None
+    ):
+        return ChartCeiling.STANDARD, None
+
+    value = saved[_CEILING_KEY]
+
+    # `type` rather than `isinstance`, so that True does not pass for 1.
+    if type(value) not in (int, float):
+        return ChartCeiling.STANDARD, UNREADABLE_STATE_TEXT
+
+    try:
+        return ChartCeiling(value), None
+    except ValueError:
+        return ChartCeiling.STANDARD, UNREADABLE_STATE_TEXT
+
+
 class _TimeWindow:
     """A chart View's own time window, with the control that sets it and its saved form.
 
@@ -449,6 +487,19 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
     column.setSpacing(VIEW_ROW_SPACING)
 
     return column
+
+
+def _labelled_control(label: str, control: QWidget) -> QWidget:
+    """Return `control` with its muted label before it, as one item that a row wraps whole."""
+
+    item = QWidget()
+    pair = QHBoxLayout(item)
+    pair.setContentsMargins(0, 0, 0, 0)
+    pair.setSpacing(VIEW_HEADING_SPACING)
+    pair.addWidget(styled_label(label, color=MUTED))
+    pair.addWidget(control)
+
+    return item
 
 
 def _panel_row(label: QLabel, object_name: str) -> QWidget:
@@ -567,7 +618,8 @@ def _withholds(shown: ShownFrame | None, drawn: ChartFrame | None, width_px: flo
 
     Args:
         shown: The tick's frame for the chart's window, or None.
-        drawn: The frame the chart shows now, or None.
+        drawn: The frame the chart's plot was drawn from, or None. A chart
+            at a top other than the standard one draws a copy of that frame.
         width_px: The width of the chart's plot, in logical pixels.
     """
 
@@ -626,7 +678,8 @@ def _shown_run_names(runs: tuple[RunPresentation, ...]) -> tuple[str, ...]:
 class ConcentrationView(QWidget):
     """The concentration chart, with everything a reader needs to read it.
 
-    The View holds the heading and the time-base control, and the legend.
+    The View holds the heading, the time-base and axis-top controls, and the
+    legend.
     The legend's entries for the 1 MAC line and the MAC-awake band state
     their values, and the time axis's title states the window shown
     (`PL-K4CZ`). It also
@@ -644,7 +697,10 @@ class ConcentrationView(QWidget):
     as soon as it applies (`PL-CBYS`).
 
     The time window is the View's own, set from its control and saved in its
-    state (`PL-L59K`). The legend shows the dashboard's compartment selection
+    state (`PL-L59K`). So is the top of the axis, which the reader chooses
+    from `ChartCeiling` (`PL-K1VH`). The dashboard assembles each frame at the
+    standard top, so that every chart showing one window shares its frame,
+    and this View draws it at its own top. The legend shows the dashboard's compartment selection
     and asks for a change through the context's requests, so two of these
     Views show the same compartments (`PL-VN6M`).
 
@@ -655,6 +711,7 @@ class ConcentrationView(QWidget):
         chart: The plot.
         legend: The compartment legend.
         time_base_selector: The control that sets the window's width.
+        ceiling_selector: The control that sets the top of the axis.
     """
 
     scope = ViewScope.RUNS
@@ -663,6 +720,16 @@ class ConcentrationView(QWidget):
         super().__init__()
         self._drawn = False
         self._window = _TimeWindow(context)
+        self._ceiling, ceiling_notice = _read_ceiling(context.saved_state)
+        # The top that the plot shows now, and the frame it was drawn from
+        # before this View set its top. A kept frame is drawn again only when
+        # it is not that frame, or when the reader has chosen another top.
+        self._drawn_ceiling: ChartCeiling | None = None
+        self._source: ChartFrame | None = None
+        self._request_frame = context.requests.frame
+        self.ceiling_selector = ChartCeilingSelector()
+        self.ceiling_selector.show_ceiling(self._ceiling)
+        self.ceiling_selector.ceiling_requested.connect(self._choose_ceiling)
         self.chart = ConcentrationChart()
         self.legend = TraceLegend()
         self.legend.compartment_requested.connect(context.requests.compartment)
@@ -679,18 +746,22 @@ class ConcentrationView(QWidget):
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
         self.capped_traces_text.setHidden(True)
-        self.state_notice = _state_notice(self._window.notice_text)
+        self.state_notice = _state_notice(self._window.notice_text or ceiling_notice)
         self.withheld_text = _withheld_frame_notice()
         self.off_scale = _RunLines(WARNING, italic=True)
         self.unmarked_changes = _RunLines(MUTED, italic=True)
 
         column = _panel_column(self, _CONCENTRATION_VIEW_NAME)
-        heading = QHBoxLayout()
-        heading.setSpacing(VIEW_HEADING_SPACING)
-        heading.addWidget(styled_label(CHART_HEADING, color=INK, bold=True, wrap=True), 1)
-        heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
-        heading.addWidget(self.time_base_selector)
-        column.addLayout(heading)
+        column.addWidget(styled_label(CHART_HEADING, color=INK, bold=True, wrap=True))
+        # The controls take a row of their own under the heading. Beside the
+        # heading they would wrap it onto a second line at 1366 by 768, and
+        # the View would grow taller than the Induction Workspace has room for.
+        controls = QHBoxLayout()
+        controls.setSpacing(VIEW_HEADING_SPACING)
+        controls.addWidget(_labelled_control(TIME_BASE_LABEL, self.time_base_selector))
+        controls.addWidget(_labelled_control(CHART_CEILING_LABEL, self.ceiling_selector))
+        controls.addStretch(1)
+        column.addLayout(controls)
         column.addWidget(self.state_notice)
         column.addWidget(_KeyScroll((self.legend,)))
         column.addWidget(self.withheld_text)
@@ -718,19 +789,32 @@ class ConcentrationView(QWidget):
 
         shown = tick.frame
 
-        if _withholds(shown, self.chart.frame, self.chart.plot_width_px()):
+        # At a top other than the standard one the plot holds a copy of the
+        # shared frame, so whether the plot already shows the kept frame is
+        # read from the frame the copy was made from.
+        if _withholds(shown, self._source, self.chart.plot_width_px()):
             self._withhold(tick)
             return
 
-        frame = _frame_to_draw(shown, self.chart.frame)
+        source = _frame_to_draw(
+            shown, self._source if self._drawn_ceiling is self._ceiling else None
+        )
 
-        if frame is None or shown is None:
+        if source is None or shown is None:
             self.off_scale.drop_absent(tick.runs)
             self.unmarked_changes.drop_absent(tick.runs)
             return
 
+        # A frame at this View's top already is drawn as it is, so Views at the
+        # standard top still share one frame object with the other charts.
+        frame = (
+            source if source.ceiling is self._ceiling else replace(source, ceiling=self._ceiling)
+        )
         self.chart.draw(frame)
         self._drawn = True
+        self._source = source
+        self._drawn_ceiling = self._ceiling
+        self.ceiling_selector.show_ceiling(self._ceiling)
         self._window.drew(frame)
         self.withheld_text.setHidden(True)
         # Show the run names before the selection. Then, when the legend is told
@@ -751,6 +835,7 @@ class ConcentrationView(QWidget):
         """Empty the plot, the references and the lines, and say why."""
 
         self.chart.withhold()
+        self._source = None
         self.withheld_text.setHidden(False)
         self.legend.show_run_names(_shown_run_names(tick.runs))
         self.legend.show_selection(tick.selection)
@@ -760,15 +845,29 @@ class ConcentrationView(QWidget):
         self.off_scale.drop_absent(())
         self.unmarked_changes.drop_absent(())
 
+    def _choose_ceiling(self, ceiling: ChartCeiling) -> None:
+        self._ceiling = ceiling
+        self._request_frame()
+
+        # A frame that drew has already shown the pick. One that failed drew
+        # nothing, so the control goes back to the top still on the plot.
+        if self._drawn_ceiling is not None:
+            self.ceiling_selector.show_ceiling(self._drawn_ceiling)
+
     @property
     def owes_a_frame(self) -> bool:
-        return not self._drawn or self.chart.owes_a_frame or self._window.owes_a_frame
+        return (
+            not self._drawn
+            or self.chart.owes_a_frame
+            or self._window.owes_a_frame
+            or self._drawn_ceiling is not self._ceiling
+        )
 
     def frame_request(self) -> FrameRequest | None:
         return self._window.request(self.chart.plot_width_px())
 
     def save_state(self) -> SavedState:
-        return self._window.saved_state()
+        return MappingProxyType({**self._window.saved_state(), _CEILING_KEY: self._ceiling.value})
 
     def painted_strings(self) -> tuple[str, ...]:
         return self.chart.axis_titles()

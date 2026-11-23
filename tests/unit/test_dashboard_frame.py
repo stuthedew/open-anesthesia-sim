@@ -141,6 +141,7 @@ from anesthesia_sim.app.dashboard_frame import (
     halt_notice,
     halt_run_notice,
     height_entry_maximum_mac,
+    input_frame_wait_ms,
     kept_fork_selection,
     mac_awake_caption,
     mac_reference_caption,
@@ -182,6 +183,7 @@ from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
     FLOW_DISPLAY_DECIMALS,
     MAC_UNIT_SUFFIX,
+    ChartCeiling,
     format_case_discard_warning,
     format_chart_time_label,
     format_elapsed,
@@ -213,13 +215,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
     AgentSimulationValidator,
 )
-from anesthesia_sim.core.concentration import (
-    Fraction,
-    MacMultiple,
-    MacPercent,
-    Percent,
-    fraction_from_percent,
-)
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, MacPercent, Percent
 from anesthesia_sim.core.exceptions import (
     AgentSimulationValidationError,
     SimulationConfigurationError,
@@ -680,6 +676,52 @@ def test_a_frame_is_two_ticks() -> None:
     """
 
     assert RENDER_INTERVAL_S * 1_000 == 2 * SIMULATION_TICK_INTERVAL_MS
+
+
+@pytest.mark.parametrize(
+    ("frame_cost_ms", "wait_ms"),
+    [(0.0, 100), (40.0, 60), (40.2, 60), (50.0, 50), (104.0, 104), (103.5, 104)],
+    ids=["free", "cheap", "cheap, rounded up", "half the interval", "slow", "slow, rounded up"],
+)
+def test_an_input_frame_waits_out_the_interval_or_its_own_cost(
+    frame_cost_ms: float, wait_ms: int
+) -> None:
+    """The wait after a dial input's frame keeps frames 100 ms apart, or idle as long as they drew.
+
+    Nielsen Norman Group gives 0.1 s as the limit for a user to feel that
+    they are directly manipulating what is on screen, so a frame that costs
+    less than half of it is followed by the rest of the 100 ms. A frame that
+    costs more is followed by a pause as long as itself, so drawing never
+    takes more than half of the thread (`PL-NKFD`). Each expected wait is
+    worked out by hand from that rule and rounded up to a whole millisecond.
+    """
+
+    assert input_frame_wait_ms(frame_cost_ms) == wait_ms
+
+
+def test_two_input_frames_start_the_interval_or_twice_the_cost_apart() -> None:
+    """From one frame's start to the next is 100 ms, or twice the frame's cost, whichever is longer.
+
+    The costs run across the 50 ms at which the two bounds meet. The
+    comparison allows the rounding up to a whole millisecond and nothing
+    more.
+    """
+
+    for tenths in range(0, 3001):
+        cost_ms = tenths / 10
+        start_to_start_ms = cost_ms + input_frame_wait_ms(cost_ms)
+        expected_ms = max(100.0, 2 * cost_ms)
+        # The wait is rounded up to a whole millisecond, so the start-to-start
+        # time can exceed the rule's by less than 1 ms and never fall short.
+        assert expected_ms <= start_to_start_ms < expected_ms + 1, cost_ms
+
+
+@pytest.mark.parametrize("frame_cost_ms", [-1.0, math.nan, math.inf])
+def test_an_input_frame_s_wait_refuses_a_cost_no_clock_can_measure(frame_cost_ms: float) -> None:
+    """A negative, missing or infinite cost is refused rather than turned into a wait."""
+
+    with pytest.raises(ValueError, match="frame's cost"):
+        input_frame_wait_ms(frame_cost_ms)
 
 
 def test_the_dashboard_displays_at_most_two_runs() -> None:
@@ -3000,7 +3042,7 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     trace is clipped, rather than relying on the reader to notice.
     """
 
-    # 8% circuit is 4 MAC of sevoflurane, against a 6% (3 MAC) ceiling.
+    # 8% circuit is 4.44 MAC of sevoflurane, against a 5.4% (3 MAC) ceiling.
     # Alveolar at 5% stays below the ceiling. That makes this a test of
     # *which* compartments are named, not only of whether any is named.
     history = (
@@ -3015,12 +3057,38 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     # The notice must say where the unclipped number is. Otherwise it reports
     # a problem and leaves the reader without the value.
     assert "readouts above" in text
-    assert "3.00 ×MAC" in text
+    # The top is named in percent and in MAC, the two units the axes are
+    # labelled in (`PL-DVDY`): 3 x 1.8% is 5.40%, worked by hand.
+    assert "5.40% (3.00 ×MAC)" in text
     assert text == (
-        "Above the top of the plot: Circuit. The axis stops at 3.00 ×MAC and these "
+        "Above the top of the plot: Circuit. The axis stops at 5.40% (3.00 ×MAC) and these "
         "traces are cut off there — their values are in the readouts above, which are "
         "not clipped."
     )
+
+
+def test_a_trace_above_the_standard_top_is_inside_the_high_top_and_above_the_low_one() -> None:
+    """The notice reads the top the chart draws at, not the standard one (`PL-K1VH`).
+
+    8% circuit is 4.44 MAC of sevoflurane (1.8% at age 40): above the 3 MAC
+    top, inside the 4.5 MAC top. Alveolar at 3% is 1.67 MAC, inside the
+    standard top and above the 1.5 MAC top, 2.7%. Each figure is worked by
+    hand.
+    """
+
+    history = (
+        _sample(0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        _sample(1, 0.08, 0.03, 0.01, 0.01, 0.0, 0.0),
+    )
+    frame = _frame(_fake_controller(history=history))
+    low = off_scale_notice(replace(frame, ceiling=ChartCeiling.LOW), 0)
+
+    assert off_scale_notice(replace(frame, ceiling=ChartCeiling.HIGH), 0) is None
+    assert low is not None
+    assert low.startswith(
+        "Above the top of the plot: Circuit, Alveolar. The axis stops at 2.70% (1.50 ×MAC)"
+    )
+    assert "Alveolar" not in (off_scale_notice(frame, 0) or "")
 
 
 def test_the_off_scale_notice_stays_silent_for_a_run_inside_the_axis() -> None:
@@ -4696,7 +4764,8 @@ def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() 
     ]
     assert len(clipped) >= 2
     assert len(peaks) >= 2
-    top = format_mac_multiple(fraction_from_percent(frame.axis_top_percent), frame.mac_percent)
+    # Sevoflurane's standard top is 3 x 1.8% = 5.40%, worked by hand (`PL-DVDY`).
+    top = "5.40% (3.00 ×MAC)"
 
     assert off_scale_notice(frame, 0) == (
         OFF_SCALE_NOTICE_TEMPLATE.format(compartments=", ".join(clipped), top=top)

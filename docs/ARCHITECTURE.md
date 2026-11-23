@@ -956,7 +956,7 @@ is handed the last frame drawn for its window, as `run_presentation.ShownFrame`.
 The frame is kept while every displayed run is the one it was drawn from, with
 the same runs in the same order and none started over since
 (`shown_without_a_frame`). A chart that already shows the kept frame draws
-nothing, so a dragged dial still leaves the charts to the render tick
+nothing, so a dragged dial still leaves the charts to the next frame
 (`PL-018`, `PL-R2YM`). Otherwise the frame is withheld: the chart shows an
 empty plot with no trace, no 1 MAC line, no MAC-awake band and no axis labels,
 and says why. A run's banner on a halt says whether the charts are withheld,
