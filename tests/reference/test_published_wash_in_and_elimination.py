@@ -219,9 +219,9 @@ fourth apply to the elimination alone.
    compartment's term is the largest in the measured curve from about 1.8 to
    3.1 hours after the 30-minute administration until about 20.7 to 29.4
    hours (`docs/MODEL.md` § "Intertissue diffusion: the missing fourth
-   compartment"). At five minutes the term is about one part in twenty of
-   what remains. So the gap over those hours is measured beside this gate
-   rather than enforced by it. test_late_washout_against_published_fits.py,
+   compartment"). At five minutes the term is 4 to 5% of what remains. So
+   the gap over those hours is measured beside this gate rather than
+   enforced by it. test_late_washout_against_published_fits.py,
    in this directory, records the gap's size and direction over the first 24
    hours (docs/VERIFICATION.md, "The first 24 hours of elimination against the
    published mean curves"). It asserts no agreement.
@@ -269,7 +269,10 @@ the measured table, and these are its main points:
   mis-parameterized one.
 - **A narrow edge is not a narrow uncertainty.** Most lower edges come from
   the 12.5- and 15-minute points, where the shipped model already sits at
-  +0.75 to +0.95 SD. A small change crosses +1 SD there, so a -1% edge says
+  +0.75 to +0.95 SD. The second study's isoflurane point at 12.5 minutes is
+  already at +1.06 SD, under the regression band that
+  `EARLY_WASH_IN_DISAGREEMENTS` names. A small change crosses +1 SD at the
+  others, so a -1% edge says
   the model has used most of the band, not that the coefficient is known to
   1%. The figure's reading error is about 0.3 SD.
 - **The early points detect too large an alveolar gas volume.** The volume
@@ -1339,7 +1342,7 @@ class OpenCircuitEliminationReading:
             the moment the vaporizer was closed. This is the papers' own
             definition of the denominator. The wash-in that produced it is the
             shipped one, rebreathing included. That wash-in is already inside
-            the published spread at every supported flow, and F_A0 is defined
+            the published spread at each of the six swept flows, and F_A0 is defined
             at its end.
         alveolar_fraction: F_A after `ELIMINATION_DURATION_S`.
         peak_inspired_to_starting_alveolar_ratio: the largest ratio, over the
@@ -2034,8 +2037,9 @@ def test_agreement_survives_every_fresh_gas_flow(
     Alveolar ventilation and cardiac output come from the data file, but
     `FRESH_GAS_FLOW_L_MIN` was picked to match the protocols' held inspired
     concentration. A reader may fairly ask how much of the agreement that
-    choice bought. The answer is none of it. Across the whole supported flow
-    range above zero, every agent stays inside its published spread. The
+    choice bought. The answer is none of it. At each of the six flows in
+    `SWEPT_FRESH_GAS_FLOWS_L_MIN`, from 1 to 10 L/min, every agent stays
+    inside its published spread. The
     endpoints differ by at most about one standard deviation (desflurane,
     -0.33 SD at 1 L/min to +0.79 SD at 10 L/min).
 
@@ -3137,10 +3141,10 @@ def test_the_open_circuit_elimination_does_not_depend_on_fresh_gas_flow(
     published standard deviations between 1 and 10 L/min. It moves because F_I
     settles at `V_A/(V_A + fresh gas flow)` of F_A, and the published ratio has
     no term to divide that out. This test runs the same sweep with the circuit
-    enlarged and discarded each step, over the whole supported flow range
-    including zero. It found a spread of 1.0e-10 to 1.3e-10 published SD
-    (2026-11-21), against the 11.5 to 21.6 SD that the shipped condition moves
-    over the narrower range of 1 to 10 L/min. On 2026-09-07 the driver
+    enlarged and discarded each step, at seven flows from 0 to 10 L/min. It
+    found a spread of 1.0e-10 to 1.3e-10 published SD (2026-11-21), against
+    the 11.5 to 21.6 SD that the shipped condition moves over the narrower
+    range of 1 to 10 L/min. On 2026-09-07 the driver
     discarded the shipped 6 L circuit every 0.1 s, and the spread was 4e-6 SD.
 
     That is the strongest single piece of evidence that the driver removes the
