@@ -3252,22 +3252,47 @@ and the references follow the agent
 
 #### The chart's fixed MAC axis
 
-**The chart's vertical range is set in MAC, and fixed.** For every agent, the
-axis runs from 0 to a ceiling of **3 ×MAC** of the agent in use, with a gridline
-every half MAC. A given MAC multiple is therefore drawn at the same height under
-any agent. The axis never grows to fit a trace. It stays the same for the whole
-session, not only within a run, so two consecutive runs are comparable too.
+**The chart's vertical range is set in MAC, and fixed until the reader changes
+it.** For every agent, the axis runs from 0 to a top that the reader chooses
+from three: **1.5, 3 or 4.5 ×MAC** of the agent in use. The chart opens at
+3 ×MAC. A given MAC multiple is therefore drawn at the same height under any
+agent. The "Axis top" control sits beside the time base, under the chart's
+heading, and names the top in force in words. The axis never grows or shrinks to fit a trace. The top stays where the
+reader put it across runs and across both runs of a comparison, so runs drawn
+one after another are comparable too. Each chart View keeps its own top and
+saves it with its layout.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-**The chart names each compartment whose trace is above 3 ×MAC.** Such a trace
-is cut off at the top of the frame, where it runs flat as a plateau would.
-Without the name, a reader would conclude that the concentration stopped rising
-at 3 ×MAC, when in the model it did not. The chart also says that the readouts
-are not cut off and keep showing their values. Inhalational induction commonly
-uses sevoflurane's 8% dial setting, which is 4.44 ×MAC, above the ceiling.
+**Every gridline stands at a MAC multiple that the right axis labels.** The
+right axis is labelled every half MAC at a top of 3 or 4.5 ×MAC, and every
+quarter MAC at 1.5 ×MAC, so it never has more than ten intervals.
+
+**The left axis is labelled at round percentages, each at its own tick mark.**
+A MAC multiple is rarely a round percentage. At isoflurane's MAC of 1.17%, half
+a MAC is 0.585%, so labels at the gridlines would read 0.585, 1.755 and 2.925,
+with three decimals where the readouts show two, and no mark at 1% or 2%. So
+the left axis takes its own steps, of 1, 2 or 5 times a power of ten, and never
+more labels than the right axis has. At 3 ×MAC isoflurane is labelled 0, 1, 2
+and 3%, sevoflurane 0 to 5%, and desflurane 0, 5, 10 and 15%. The gridlines
+stay on the MAC multiples, so a percent label and a gridline near it can be
+different values: desflurane's 1.5 ×MAC gridline is 9.9%, beside the 10%
+label.
+<!-- provenance: data/agents/isoflurane.json mac_at_age_40_percent = 1.17 -->
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- not-restated: 5 % -->
+
+**The chart names each compartment whose trace is above the top of the axis.**
+Such a trace is cut off at the top of the frame, where it runs flat as a
+plateau would. Without the name, a reader would conclude that the
+concentration stopped rising at the top, when in the model it did not. The
+chart names the top in percent and in MAC, the two units its axes are
+labelled in, and says that the readouts are not cut off and keep showing their
+values. Inhalational induction commonly uses sevoflurane's 8% dial setting,
+which is 4.44 ×MAC, above the standard top. At the 4.5 ×MAC top, no agent's
+vaporizer can take a trace off the plot at the MAC for age 40. At a lower MAC,
+such as an older patient's, the off-scale notice can still appear at that top.
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 <!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
-<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **The chart's percent axis is linear, which crowds the slow compartments
 together** (project owner, 2026-09-23, ratified, over a reader-selected logarithmic scale,
@@ -3289,7 +3314,35 @@ heights, amounts and share bar assert").
 redraw a rising curve smaller partway through a lesson, and a reader would take
 that change of shape for something the model did.
 
-The 3 ×MAC ceiling (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) puts the
+A top that the chart chose for itself is refused, not merely left off. Height
+on a chart is read as size, and an axis fitted to the data changes how large
+the same difference looks. In crowd-sourced experiments the effect of a
+truncated axis on judged effect size persisted even when the design marked the
+truncation explicitly (Correll, Bertini and Franconeri, CHI 2020,
+doi:10.1145/3313831.3376222, abstract read on arXiv 1907.02035). The same paper
+advises choosing an axis for the size of difference the chart is meant to show.
+A reader-chosen top does that for the lesson in hand, a low top for a lesson
+held near 1 MAC and a high one for an overpressure induction, and it changes
+only when the reader changes it (`PL-V67Q`'s design round, project owner,
+2026-10-03, ratified, `PL-K1VH`).
+
+The three tops are `ChartCeiling` in `app/formatting.py`. The low top puts
+1 MAC at two thirds of the plot's height. The high top is above every agent's
+vaporizer maximum, the highest being sevoflurane's 8%, at 4.44 ×MAC.
+<!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
+
+A second axis that shows the same quantity in another unit, as Celsius beside
+Fahrenheit does, is the accepted use of a dual-axis chart, and such charts
+give each axis its own tick interval by default (Datawrapper, "Dual-axis
+charts: a guide" and "Dual-axis charts", both read 2026-11-22). Round labels
+make a value easier to read off an axis: Talbot, Lin and Hanrahan
+(IEEE InfoVis 2010, section 2) cite evidence that round numbers are much easier
+to work with in mental estimation. So each axis is labelled at round values of
+its own unit (`PL-BNMZ`). The percent steps are `PERCENT_AXIS_STEP_LADDER` in
+`app/chart_frame.py`, the 1-2-5 steps of Heckbert's labelling algorithm that
+the same paper describes.
+
+The standard 3 ×MAC top (`CHART_AXIS_TOP_MAC` in `app/formatting.py`) puts the
 1 MAC line at a third of the plot height, inside the plot rather than on its
 frame. Unlike a ceiling of 2, it also keeps on the plot the 2-3 ×MAC range that
 overpressure induction works in. Desflurane's vaporizer is the most limited. Its
@@ -3302,8 +3355,8 @@ from 2.73 ×MAC for desflurane to 4.44 ×MAC for sevoflurane (`PL-CC23`).
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- derived: 4.44 from data/agents/sevoflurane.json max_delivered_concentration_percent = 8, mac_at_age_40_percent = 1.8 -->
 
-A gridline every half MAC (`CHART_GRID_INTERVAL_MAC`) falls on the values that
-the MAC axis labels, so the axis names every gridline on the plot.
+The gridlines stand at the positions of the MAC axis's labels, which
+`mac_axis_ticks` places, so the axis names every gridline on the plot.
 
 The chart compares a trace's excess over the ceiling with the displayed
 resolution rather than with zero, so it does not name a compartment whose trace
@@ -3312,10 +3365,16 @@ sits exactly at the ceiling. This matters for desflurane, whose ceiling,
 <!-- provenance: data/agents/desflurane.json mac_at_age_40_percent = 6.6 -->
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
-The ceiling is scaled by the agent's MAC and leaves room above 1 MAC
-(`test_the_chart_ceiling_and_rules_are_the_agent_s_mac_scaled` and
+Each top is scaled by the agent's MAC, the standard top leaves room above
+1 MAC, and the high top is above every vaporizer maximum
+(`test_the_chart_ceiling_is_the_chosen_top_times_the_agent_s_mac`,
 `test_the_chart_ceiling_leaves_one_mac_inside_the_plot_with_room_to_overpressure`
-in `tests/unit/test_formatting.py`). A trace above the axis is reported on the
+and `test_the_high_ceiling_is_above_every_agent_s_vaporizer_maximum` in
+`tests/unit/test_formatting.py`). Both axes' labels at every top and agent are
+in `test_each_axis_is_labelled_at_round_values_of_its_own_unit`
+(`tests/unit/test_chart_frame.py`), and the drawn gridlines in
+`test_the_mac_axis_labels_every_gridline_and_the_percent_axis_is_round`
+(`tests/integration/test_qt_chart.py`). A trace above the axis is reported on the
 run that drew it
 (`test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it` in
 `tests/integration/simulation_view/test_simulation_view_readouts.py`), and a
@@ -3355,7 +3414,7 @@ on the plot is therefore a fixed multiple of its rate of change. A window that
 widened continuously with the run would rescale every slope while the rates
 stayed the same. That would misrepresent rate of rise, the one quantity by which
 uptake and distribution are taught. The vertical axis has a fixed range for the
-same reason (§ "The chart's vertical range is set in MAC, and fixed").
+same reason (§ "The chart's fixed MAC axis").
 
 **The gridlines follow from the width.** Each width on the ladder sets the
 interval at which gridlines and labels fall, so that the axis holds four to six
@@ -4841,16 +4900,17 @@ rounds away, a reader could not tell which value is the setting in force.
 
 **The chart is read for shape, so its resolution is coarser than the
 readouts'.** It plots the same percentages on a shared linear axis that runs
-from 0 to 3 ×MAC of the agent in use, and a second axis on the right shows the
+from 0 to the top the reader chose, 3 ×MAC of the agent in use unless the
+reader changes it, and a second axis on the right shows the
 same position in MAC multiples. Its resolution is set by pixels rather than by
 decimals. Every number that the chart offers is shown at the resolutions that § "Why the readouts show two decimals" and
 § "The MAC multiple's resolution" set,
 in the readout row and in the hover readout
-(§ "The chart's hover readout: what the tooltip may show", below). The fixed
-3 ×MAC range gives the MAC axis round labels in half-MAC steps for every agent,
-so a gridline that a reader learns under one agent means the same thing under
-the next. § "The chart's vertical range is set in MAC, and fixed" above
-explains the range. The reader selects the time span that the chart's width
+(§ "The chart's hover readout: what the tooltip may show", below). Because
+the range is set in MAC, the MAC axis has the same round labels for every agent
+at a given top, so a gridline that a reader learns under one agent means the
+same thing under the next. § "The chart's fixed MAC axis" above explains the
+range. The reader selects the time span that the chart's width
 covers, and so chooses the seconds per pixel (§ "The chart's time base").
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
@@ -6030,13 +6090,14 @@ the readouts.
 
 **A container's fill height is the compartment's modelled tension, not an
 amount.** All containers of one run fill against one scale: the concentration
-chart's percent axis, from zero at the bottom to 3 MAC of the running agent at
-the top. So a container filled to some share of its height shows the same
-tension as a trace standing at that share of the chart's axis. A container is
-much shorter than the chart's plot, so its fill level does not line up with the
-chart's gridlines on screen. Each container therefore carries short marks at the
-chart's gridlines, every 0.5 MAC, and the caption names that spacing
-(`PL-8W1B`). A container that holds more agent can stand lower than one that
+chart's standard scale, from zero at the bottom to 3 MAC of the running agent
+at the top. The schematic keeps that scale when a reader gives the chart
+another top. So a container filled to some share of its height shows the same
+tension as a trace standing at that share of the chart's axis at its standard
+top. A container is much shorter than the chart's plot, so its fill level does
+not line up with the chart's gridlines on screen. Each container therefore
+carries short marks every 0.5 MAC, and the caption names the top in percent
+and in MAC, and the spacing in MAC (`PL-8W1B`). A container that holds more agent can stand lower than one that
 holds less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
 its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC
@@ -6045,7 +6106,6 @@ at one hour and a third at three hours, which the chart's fat trace cannot show.
 Every container is drawn at one width, so its filled area is not an amount
 either.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
-<!-- provenance: app/formatting.py CHART_GRID_INTERVAL_MAC = 0.5 -->
 
 A tension above the top of the scale fills its container to the top. The
 schematic marks the container as off the scale when the tension is above the
@@ -6126,9 +6186,11 @@ frame of that run has been drawn. If the run's first frame fails, the readouts
 show the state in which the run was opened, and the schematic shows no values.
 
 **For developers.** The schematic takes the top of its scale from the function
-that sets the concentration chart's top (`chart_axis_top_percent`) and sets no
-top of its own. The top's MAC multiple is a constant (`CHART_AXIS_TOP_MAC`), and
-§ "MAC multiples as a display unit" gives the reason for 3 MAC.
+that sets the concentration chart's top (`chart_axis_top_percent`), at the
+standard top (`ChartCeiling.STANDARD`), and sets no top of its own. Its marks
+are the chart's MAC labels at that top (`mac_axis_ticks`). The top's MAC
+multiple is a constant (`CHART_AXIS_TOP_MAC`), and § "MAC multiples as a
+display unit" gives the reason for 3 MAC.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 The containers' common width is there because, for sevoflurane, fat's container
