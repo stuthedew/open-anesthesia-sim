@@ -28,6 +28,7 @@ from anesthesia_sim.app.views import (
     WashInView,
 )
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation
+from anesthesia_sim.app.workspace_tabs import WorkspaceTabs
 from anesthesia_sim.layout.model import MAIN_WINDOW
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation
 from anesthesia_sim.layout.workspace import WorkspaceName
@@ -502,28 +503,49 @@ def _stacked_least_px(view: SimulationView, node: Node) -> int:
     return max(heights)
 
 
+@pytest.mark.parametrize("branched", [True, False], ids=["two runs", "one run"])
 @pytest.mark.parametrize("workspace", _shipped_workspace_names())
 def test_a_page_that_scrolls_grows_only_by_what_the_areas_lack(
-    application: QApplication, workspace: str
+    application: QApplication, workspace: str, branched: bool
 ) -> None:
     """`PL-5J1X`: where the Areas need more height than the window has, the page grows by that much.
 
     At 1366 by 768 with a branch open, the region above the Areas shows two
     runs and the Parameters View shows two rows of dials, so the Areas'
     least height is more than the room the window leaves them, and the page
-    scrolls. The Areas must then be exactly their least height, and the page
-    must scroll by exactly what that height lacks. A page that grew further
-    would put more of the plot below the window's edge for nothing. Where
-    the Areas fit, the page must not scroll at all.
+    scrolls. The Areas must then be held at their least height, and the page
+    must scroll by what that height lacks. A page that grew further would put
+    more of the plot below the window's edge for nothing. With one run, the
+    Areas fit, and the page must not scroll at all.
+
+    The room is the page's height less the Workspace tab strip and the middle
+    layout's margins and spacing, each read from its own widget rather than
+    from the drawn height of the Areas. So height given to the middle outside
+    the Areas also fails the test. Each Area's least height is the height its
+    View needs as the layout measures it, at the Area's least width (`PL-744F`).
     """
 
-    view = _shipped_view_at(application, workspace, 1366, 768, branched=True)
+    view = _shipped_view_at(application, workspace, 1366, 768, branched=branched)
     page, middle = _middle_of(view)
     areas = view.layout_container
     least_px = _stacked_least_px(view, areas.model.windows[MAIN_WINDOW].tree)
-    # The tab strip and the margins that the middle holds besides the Areas.
-    around_px = middle.height() - areas.height()
+    column = middle.layout()
+    assert column is not None
+    tabs = view.findChild(WorkspaceTabs)
+    assert tabs is not None
+    margins = column.contentsMargins()
+    around_px = (
+        tabs.sizeHint().height()
+        + margins.top()
+        + margins.bottom()
+        + column.spacing() * (column.count() - 1)
+    )
     room_px = page.viewport().height() - around_px
+
+    if branched:
+        assert least_px > room_px, "the case under test does not scroll"
+    else:
+        assert least_px <= room_px, "the case under test does not fit"
 
     assert areas.height() == max(least_px, room_px)
     assert page.verticalScrollBar().maximum() == max(0, least_px - room_px)

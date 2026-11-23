@@ -16,7 +16,7 @@ tests: tests/integration/simulation_view/test_simulation_view_page.py::test_a_pa
 **Answered, 2026-11-23.** Both questions were measured offscreen at 1366 by 768,
 one run at 300 s with a branch taken at 60 s, on `main` at `83359d86`.
 
-1. **The page grows by exactly what the Areas lack, and no more.** With a
+1. **The page grows by what the Areas' held heights lack, and no more.** With a
    branch the region above the Areas grows 97 px (a second transport row, a
    second value in each readout card, a second control-changes card), so the
    Areas get 391 px below the Workspace tabs instead of 488. Default's right
@@ -28,7 +28,14 @@ one run at 300 s with a branch taken at 60 s, on `main` at `83359d86`.
    Area frame's least height along the layout tree, without reading the height
    the Areas report to the page, and holds the page's scroll range to the
    difference. Made to report 40 px more than the frames need, the Areas fail
-   it in all three Workspaces ("assert 653 == 613" in Default).
+   it in all three Workspaces ("assert 653 == 613" in Default). The room the
+   window leaves is read from the Workspace tab strip and the middle layout's
+   margins, not from the drawn Areas, and a one-run case checks that the page
+   does not scroll where the Areas fit. The blind review found that a whole
+   View's held height is itself measured at its Area's least width, which
+   holds Default's Branch Area 37 px and the Parameters Area in Induction and
+   Maintenance 30 px taller than the Views need at the widths they are drawn.
+   `PL-744F` (measure a whole View's need at its drawn width) records it.
 2. **No two-run arrangement of the Areas avoids the page scroll at this
    size.** Induction's and Maintenance's concentration chart needs 344 px
    whole with two runs, which leaves 47 px of the 391 for the Parameters
