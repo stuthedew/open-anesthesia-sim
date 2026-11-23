@@ -93,7 +93,7 @@ from time import monotonic
 from typing import Final
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics
+from PySide6.QtGui import QColor, QFontMetrics
 from PySide6.QtWidgets import (
     QBoxLayout,
     QDialog,
@@ -112,6 +112,7 @@ from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import (
     AdjustmentGrouping,
     ControlAdjustment,
+    longest_unbroken_parts,
     wrapping_between_parts,
 )
 from anesthesia_sim.app.controller import (
@@ -168,8 +169,10 @@ from anesthesia_sim.app.qt_widgets import (
     FocusRing,
     NewCaseDialog,
     NoticeLabel,
+    OneLineWhereRoomLabel,
     ReadoutRow,
     SelectorComboBox,
+    style_label,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -480,8 +483,15 @@ class RunView(QWidget):
         )
         self._notice_text = NoticeLabel(self)
 
-        self._subtitle_text = styled_label(format_subtitle(snapshot.agent_display_name), color=INK)
-        self._subtitle_text.setFont(_bold(self._subtitle_text.font()))
+        # The badge's text wraps between words rather than holding the
+        # transport row at its full length. A development build's version
+        # string, or the longer text of a build without package metadata,
+        # would otherwise set how narrow the run rows can get. The record
+        # column would then lose that width at a narrow window (`PL-92XM`).
+        # The label asks for its one-line width, so the text keeps one line
+        # wherever the row has room for it.
+        self._subtitle_text = OneLineWhereRoomLabel(format_subtitle(snapshot.agent_display_name))
+        style_label(self._subtitle_text, color=INK, bold=True, wrap=True)
         self._agent_header_badge = QFrame()
         self._agent_header_badge.setObjectName(_HEADER_BADGE_NAME)
         badge = QHBoxLayout(self._agent_header_badge)
@@ -627,6 +637,13 @@ class RunView(QWidget):
             color=MUTED,
             size_px=METRIC_QUALIFIER_SIZE,
             wrap=True,
+        )
+        # The record column narrows with the window, and a part of a line
+        # cannot break. So the label claims the width of the widest part any
+        # line can have, and the region holds the column at least that wide
+        # (`PL-6XPZ`, `PL-92XM`).
+        self._control_timeline_text.setMinimumWidth(
+            _widest_rendering_px(self._control_timeline_text, longest_unbroken_parts())
         )
         self._control_timeline_overflow_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
@@ -2037,8 +2054,21 @@ class RunView(QWidget):
         return timeline_panel_frame
 
 
-def _bold(font: QFont) -> QFont:
-    bold = QFont(font)
-    bold.setBold(True)
+def _widest_rendering_px(label: QLabel, parts: tuple[str, ...]) -> int:
+    """Return the width, in pixels, of the widest of `parts` in `label`'s font.
 
-    return bold
+    Each digit is measured as the font's widest digit. In a font whose
+    digits differ in width, "10.0" can be wider than "12.0", so measuring
+    the largest value alone would not bound every value below it.
+    """
+
+    label.ensurePolished()
+    metrics = label.fontMetrics()
+    widest_digit = max("0123456789", key=metrics.horizontalAdvance)
+
+    return max(
+        metrics.horizontalAdvance(
+            "".join(widest_digit if character in "0123456789" else character for character in part)
+        )
+        for part in parts
+    )

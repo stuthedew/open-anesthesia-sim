@@ -38,10 +38,24 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from anesthesia_sim.app.control_record import ControlChange, ControlInput
+from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_percent
-from anesthesia_sim.core.concentration import Percent, fraction_from_percent
-from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    Percent,
+    fraction_from_percent,
+    percent_from_fraction,
+)
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+    MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MAXIMUM_INPUT_FRACTION,
+    MAXIMUM_STEP_COUNT,
+    CaseInstant,
+    require_case_instant,
+)
 
 __all__ = [
     "CONTROL_INPUT_LABELS",
@@ -50,6 +64,7 @@ __all__ = [
     "format_adjustment",
     "format_control_value",
     "group_adjustments",
+    "longest_unbroken_parts",
     "wrapping_between_parts",
 ]
 
@@ -360,3 +375,53 @@ def _wrapping_between_parts(line: str) -> str:
         unbroken = unbroken.replace(held + _NO_BREAK_SPACE, held + " ")
 
     return unbroken
+
+
+# The largest value each control can record, in its stored unit. Each bound
+# is the one `core/supported_ranges.py` refuses a setting above, so no
+# recorded value has more digits than the bound has.
+_RECORDABLE_MAXIMUM: Final[Mapping[ControlInput, float]] = {
+    ControlInput.FRESH_GAS_FLOW: MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    ControlInput.DELIVERED: float(percent_from_fraction(Fraction(MAXIMUM_INPUT_FRACTION))),
+    ControlInput.ALVEOLAR_VENTILATION: MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
+    ControlInput.CARDIAC_OUTPUT: MAXIMUM_CARDIAC_OUTPUT_L_MIN,
+}
+
+
+def longest_unbroken_parts() -> tuple[str, ...]:
+    """Return, for each control, the parts of the longest line the record can show.
+
+    `wrapping_between_parts` lets a record line break only after the time
+    and after the arrow. So the record column can be no narrower than the
+    widest part between those breaks, or a part is cut off at its end and a
+    learner loses the arrow or the value after it (`PL-6XPZ`, `PL-92XM`).
+    Each line here is rendered by `format_adjustment`, as a real entry is.
+    It has every value at the control's largest recordable value, the
+    interval at the end of the longest supported run, and the most settings
+    a run can step under. So no recorded line has a part with more
+    characters than the part here at the same place.
+
+    Fewer characters do not mean a narrower part in a font whose digits
+    differ in width, so a caller that measures a part must measure it with
+    each digit at the font's widest one.
+
+    Returns:
+        The parts, with the no-break spaces `wrapping_between_parts` gives them.
+    """
+
+    last_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1
+    parts: list[str] = []
+
+    for control, maximum in _RECORDABLE_MAXIMUM.items():
+        adjustment = ControlAdjustment(
+            control=control,
+            started_at_s=CaseInstant(last_s - 1),
+            ended_at_s=CaseInstant(last_s),
+            from_value=maximum,
+            to_value=maximum,
+            unit=CONTROL_INPUT_UNITS[control],
+            change_count=MAXIMUM_STEP_COUNT,
+        )
+        parts.extend(wrapping_between_parts(format_adjustment(adjustment)).split(" "))
+
+    return tuple(dict.fromkeys(parts))
