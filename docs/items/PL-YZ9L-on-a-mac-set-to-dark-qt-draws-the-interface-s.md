@@ -3,12 +3,14 @@ id: PL-YZ9L
 title: On a Mac set to Dark, Qt draws the interface's lettering heavier than under Light, though the interface declares light colours
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux, defect
 feature: chrome-colour-audit
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/main.py
 deferred-from: v0.7.0 - present at the freeze, with no real connection to the frozen list or to v0.7.0's Required scope: a lettering weight under the Mac's Dark appearance changes no value and no layout the milestone builds, and its fix needs a Mac
 added: 2026-11-11
+closed: 2026-11-23
+pr: 2298
 filed-pr: 2118
 payoff: The interface's lettering reads the same on a Mac set to Dark as under Light, as the declared appearance promises.
 reenters: PL-KRZW
@@ -57,3 +59,10 @@ Nobody has tried it on a Mac.
 **Review fixes, 2026-11-23.** Both blind review passes found that the button-drawing trial (`tests/benchmarks/style_trial.py`, from `PL-BVC5`) filed each recording under `styleHints().colorScheme()`, which now reports Light whatever the Mac is set to (QStyleHints: an explicit scheme "will override the system setting and ignore any changes to the system's color scheme", https://doc.qt.io/qt-6/qstylehints.html, read 2026-11-23). A recording under Dark would have replaced the one under Light. The window now has two buttons, "Record as Light" and "Record as Dark", and the reader names the appearance set in System Settings. One pass also found that `docs/INTERFACE.md` and the `declare_application_colours` docstring still said disabled controls and tooltips follow the host. On a platform that honours the request they now take the platform's light palette, and both texts say so.
 
 **What remains.** The owner opens the trial window on his Mac with `uv run python tests/benchmarks/style_trial.py`, sets System Settings to Light (Appearance in the sidebar, then Light or Dark, from https://support.apple.com/guide/mac-help/use-a-light-or-dark-appearance-mchl52e1c2d2/mac, read 2026-11-23), presses "Record as Light", sets it to Dark and presses "Record as Dark". If both rows say THE SAME PIXELS, the item closes as done. If they still differ, the request did not reach the text drawing, and the item records what the window showed before another route is chosen.
+
+**Confirmed on the owner's Mac, 2026-11-23.** The owner ran the button comparison window after #2273 merged, recorded it with System Settings set to Light and again set to Dark, and both rows read THE SAME PIXELS. Before the fix, the same comparison on 2026-11-11 found 960 differing pixels, all in the lettering. So the light request reaches the text drawing, and the item is done.
+
+**Docs checked at close.** `docs/INTERFACE.md` (the Light request paragraph now records the Mac result), `src/anesthesia_sim/app/qt_widgets.py` (`declare_application_colours` docstring, still true), `tests/benchmarks/style_trial.py` (window and `Recording` docstrings, still true), `.claude/rules/ui-color.md` (says nothing about the scheme request; still true).
+
+**A fault the fix's trial window brought, fixed 2026-11-23.** After the comparison, the owner's Mac printed "QObject: shared QObject was deleted directly. The program is malformed and may crash." The window's two record buttons from #2273 were connected to lambdas that held the window. Run through its real entry point and quit after two recordings, the window failed on exit in 11 of 15 runs in the cloud container at #2273's merge and in 0 of 15 at its parent. With the old trial file and the new `qt_widgets.py` it failed in 0 of 15, and with the new trial file alone in 12 of 15, so the buttons were the cause. Connected to bound methods (`record_light`, `record_dark`), it failed in 0 of 15. The container's failure was a heap abort, `malloc_consolidate(): unaligned fastbin chunk detected`, so the Mac warning is taken to be the same fault, and the owner is asked to confirm it is gone.
+

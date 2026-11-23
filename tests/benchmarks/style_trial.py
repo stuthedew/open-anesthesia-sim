@@ -688,11 +688,16 @@ class ComparisonWindow(QWidget):
         )
         buttons = QHBoxLayout()
 
-        for appearance in APPEARANCES:
+        # Each button is connected to a bound method rather than a lambda
+        # that holds the window. With lambdas, the process failed on exit in
+        # 11 of 15 runs in the cloud container, and the owner's Mac printed
+        # "shared QObject was deleted directly". With bound methods it failed
+        # in none of 15 (`PL-YZ9L`).
+        for appearance, record_it in zip(
+            APPEARANCES, (self.record_light, self.record_dark), strict=True
+        ):
             record = QPushButton(f"Record as {appearance}")
-            record.clicked.connect(
-                lambda _checked=False, named=appearance: self.record_appearance(named)
-            )
+            record.clicked.connect(record_it)
             buttons.addWidget(record)
 
         buttons.addStretch(1)
@@ -715,6 +720,16 @@ class ComparisonWindow(QWidget):
         """One arm's row of five held buttons, in the order of `ButtonState`."""
 
         return tuple(self._rows[arm])
+
+    def record_light(self) -> None:
+        """Record both rows as drawn with the Mac set to Light."""
+
+        self.record_appearance("Light")
+
+    def record_dark(self) -> None:
+        """Record both rows as drawn with the Mac set to Dark."""
+
+        self.record_appearance("Dark")
 
     def record_appearance(self, scheme: str) -> None:
         """Record both rows under the host appearance the reader names, and say what has matched.
