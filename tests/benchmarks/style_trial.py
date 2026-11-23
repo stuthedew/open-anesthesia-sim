@@ -30,8 +30,8 @@ states are this file's own, and nothing ships them.
    runs `frame_cost.measure` in fresh processes, rotating through its arms.
 2. The same look under the light and the dark host appearance:
    `style_trial_checks.py` checks it against a simulated dark host, and the
-   comparison window's "Record this appearance" button checks it on a real
-   one. Where the pixels differ, the window says whether the difference is
+   comparison window's "Record as Light" and "Record as Dark" buttons check
+   it on a real one. Where the pixels differ, the window says whether the difference is
    in the lettering alone, because on macOS Qt draws lettering by the host
    appearance whatever draws the button (see `Recording`).
 3. No image files: neither arm of the button needs one. The check box row
@@ -582,13 +582,15 @@ class Recording:
 
     The buttons are recorded twice because lettering and the button around it
     are drawn by different code. On macOS, Qt draws each letter with a black
-    or a white fill according to the host appearance, and macOS thickens a
-    letter's strokes by an amount that depends on that fill
+    or a white fill according to the colour scheme it is using, and macOS
+    thickens a letter's strokes by an amount that depends on that fill
     (`QCoreTextFontEngine::imageForGlyph`, `qfontengine_coretext.mm`, Qt
-    6.11.0). So the same dark lettering on the same light surface can come out
-    a little heavier or lighter under Dark than under Light, whichever arm
-    drew the button. The recording without lettering shows whether anything
-    else changed.
+    6.11.0). Before `PL-YZ9L` that scheme was the host appearance, so the
+    same dark lettering on the same light surface came out heavier under Dark
+    than under Light, whichever arm drew the button. The interface now asks
+    for the light scheme, so the two recordings show whether that request
+    reached the lettering. The recording without lettering shows whether
+    anything else changed.
 
     Attributes:
         lettered: The five buttons as the window shows them.
@@ -599,17 +601,14 @@ class Recording:
     bare: tuple[QImage, ...]
 
 
+#: The two host appearances the reader records under, in the order of the buttons.
+APPEARANCES: Final = ("Light", "Dark")
+
 #: How many times larger than life the difference picture draws each button.
 DIFFERENCE_PICTURE_SCALE: Final = 4
 
 
 # ------------------------------------------------- the comparison window
-
-
-def colour_scheme_name(application: QApplication) -> str:
-    """The host appearance as Qt reports it: `Light`, `Dark` or `Unknown`."""
-
-    return application.styleHints().colorScheme().name
 
 
 class ComparisonWindow(QWidget):
@@ -680,14 +679,28 @@ class ComparisonWindow(QWidget):
         live.addStretch(1)
         column.addLayout(live)
 
-        record = QPushButton("Record this appearance")
-        record.clicked.connect(self.record_appearance)
+        # The reader names the appearance set in System Settings. Qt cannot
+        # report it, because `declare_application_colours` asks for the light
+        # scheme, and Qt then reports Light whatever the host is set to
+        # (`PL-YZ9L`).
+        column.addWidget(
+            self._caption("Record once with the Mac set to Light and once with it set to Dark.")
+        )
+        buttons = QHBoxLayout()
+
+        for appearance in APPEARANCES:
+            record = QPushButton(f"Record as {appearance}")
+            record.clicked.connect(
+                lambda _checked=False, named=appearance: self.record_appearance(named)
+            )
+            buttons.addWidget(record)
+
+        buttons.addStretch(1)
         self._verdict = self._caption("")
         self._verdict.setWordWrap(True)
         self._verdict.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        column.addWidget(record, 0, Qt.AlignmentFlag.AlignLeft)
+        column.addLayout(buttons)
         column.addWidget(self._verdict)
-        record.setFocus()
         self._write_verdict()
 
     def _caption(self, text: str) -> QLabel:
@@ -703,16 +716,16 @@ class ComparisonWindow(QWidget):
 
         return tuple(self._rows[arm])
 
-    def record_appearance(self) -> None:
-        """Record both rows under the host appearance in force, and say what has matched.
+    def record_appearance(self, scheme: str) -> None:
+        """Record both rows under the host appearance the reader names, and say what has matched.
+
+        A second recording under the same name replaces the first.
 
         It also saves a picture of the window, named for the appearance, in
         `SCREENSHOT_DIRECTORY`. Once two appearances are recorded it saves
         `style-trial-difference.png` there too: each row under each
         appearance, and the pixels that differ.
         """
-
-        scheme = colour_scheme_name(self._application)
 
         for arm in Arm:
             self._recorded[arm][scheme] = Recording(
@@ -766,7 +779,7 @@ class ComparisonWindow(QWidget):
     def _write_verdict(self) -> None:
         """Write, for each arm, the appearances recorded and whether their pixels are the same."""
 
-        lines = [f"Host appearance now: {colour_scheme_name(self._application)}."]
+        lines = []
 
         for arm in Arm:
             recorded = self._recorded[arm]
