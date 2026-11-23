@@ -512,9 +512,11 @@ class AreaLayout(QWidget):
         # Each Area's need as of the last settle, measured at its least width. When
         # a frame's need changes, the Areas settle again.
         self._needs: dict[AreaId, PixelSize] = {}
-        # Each Area's need at the width the last settle drew it (`_narrowed`). The
-        # Areas are held at these needs.
-        self._drawn_needs: dict[AreaId, PixelSize] = {}
+        # The layout from which the last settle read each Area's width, and each
+        # Area's need measured at that width (`_narrowed`). A frame whose needs at
+        # those widths differ from these makes the Areas settle again.
+        self._width_fit: Fit | None = None
+        self._narrowed_needs: dict[AreaId, PixelSize] = {}
         # Each Area's floor as of the last settle, which `_fits` measures at a dragged width.
         self._floors: dict[AreaId, Floor] = {}
         self._build(frozenset())
@@ -659,7 +661,8 @@ class AreaLayout(QWidget):
         needs = {area_id: self._need(area_id) for area_id in self._frames}
 
         if needs == self._needs and (
-            self._fit is None or self._narrowed(self._fit, needs) == self._drawn_needs
+            self._width_fit is None
+            or self._narrowed(self._width_fit, needs) == self._narrowed_needs
         ):
             return
 
@@ -1409,28 +1412,47 @@ class AreaLayout(QWidget):
             self._needs = needs
             floors = {area_id: self._floor(area_id) for area_id in self._frames}
             extent = PixelSize(max(self.width(), 0), max(self.height(), 0))
-            fit = self._laid_out(tree, extent, needs, floors, kept)
 
             # A whole View needs fewer lines of wrapped text at the width it is
-            # drawn than at its least width. So the Areas are laid out once more,
-            # with each need measured at the width the first layout drew its Area.
+            # drawn than at its least width (`PL-744F`). So the widths are read
+            # first, from a layout at this widget's width that is tall enough
+            # for every need, so that no Area gives up its View for want of
+            # height. Each need is then measured at its Area's width there, and
+            # the Areas are laid out at this widget's size with those needs.
             # A need's width does not depend on the width it is measured at, so
-            # the second layout keeps the first one's widths, and the needs
-            # measured at those widths are the needs it draws. Where it does not
-            # keep them, the first layout stands (`PL-744F`).
-            narrowed = self._narrowed(fit, needs)
+            # that layout keeps the same widths wherever the height is enough.
+            # Where it does not keep them, the needs at the least width stand,
+            # as they did before the narrowed needs were measured.
+            tall = PixelSize(
+                extent.width_px,
+                max(
+                    extent.height_px,
+                    minimum_extent(tree, AREA_HANDLE_WIDTH, drawn_bounds(needs, floors)).height_px,
+                ),
+            )
+            width_fit = self._laid_out(tree, tall, needs, floors, kept)
+            narrowed = self._narrowed(width_fit, needs)
+            self._width_fit = width_fit
+            self._narrowed_needs = narrowed
+            fit: Fit | None = None
 
             if narrowed != needs:
                 narrowed_floors = {
-                    area_id: self._floor(area_id, fit.apportionment.areas[area_id].width_px)
+                    area_id: self._floor(area_id, width_fit.apportionment.areas[area_id].width_px)
                     for area_id in self._frames
                 }
                 refit = self._laid_out(tree, extent, narrowed, narrowed_floors, kept)
 
-                if _widths(refit) == _widths(fit):
+                if _widths(refit) == _widths(width_fit):
                     needs, floors, fit = narrowed, narrowed_floors, refit
 
-            self._drawn_needs = needs
+            if fit is None:
+                fit = (
+                    width_fit
+                    if tall == extent
+                    else self._laid_out(tree, extent, needs, floors, kept)
+                )
+
             self._floors = floors
             least = minimum_extent(tree, AREA_HANDLE_WIDTH, drawn_bounds(needs, floors))
             self._fit = fit

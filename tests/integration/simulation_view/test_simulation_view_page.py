@@ -9,7 +9,7 @@ import pytest
 from PySide6.QtCore import QEvent, QObject, QPoint
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QSlider, QWidget
 
-from anesthesia_sim.app import formatting
+from anesthesia_sim.app import area_layout, formatting
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -586,6 +586,45 @@ def test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn(
 
     assert scroll.verticalScrollBar().maximum() == 0
     assert frame.height() == header_px + content_px
+
+
+def test_a_frame_that_changes_no_need_does_not_lay_the_areas_out_again(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-744F`: where the narrowed needs were refused, a later frame leaves the Areas alone.
+
+    The layout keeps the needs measured at each Area's drawn width only when
+    laying the Areas out with them keeps every width. The test makes it refuse
+    them every time, by having the width comparison never match. A frame that
+    changes nothing must then not lay the Areas out again. A check that
+    compared the needs at the drawn widths with the needs the refused layout
+    kept found them unequal on every frame, so every tick of the run laid out
+    the whole page again.
+    """
+
+    view = _shipped_view_at(application, "Induction", 1366, 768, branched=True)
+    areas = view.layout_container
+    monkeypatch.setattr(area_layout, "_widths", lambda fit: {AreaId(1): id(fit)})
+    # A resize lays the Areas out again, now with the narrowed needs refused.
+    view.resize(1370, 768)
+    _settle(application)
+    view.present(False)
+    _settle(application)
+    settles: list[object] = []
+    original = area_layout.AreaLayout._settle
+
+    def counted(self: area_layout.AreaLayout, kept: object) -> None:
+        settles.append(kept)
+        original(self, kept)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(area_layout.AreaLayout, "_settle", counted)
+
+    for _ in range(3):
+        view.present(False)
+        _settle(application)
+
+    assert areas.isVisible()
+    assert settles == []
 
 
 @pytest.mark.parametrize("height_px", range(1044, 1077, 4))

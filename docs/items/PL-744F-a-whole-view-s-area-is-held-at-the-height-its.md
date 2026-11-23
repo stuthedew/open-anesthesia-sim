@@ -7,7 +7,7 @@ added: 2026-11-23
 closed: 2026-11-23
 pr: 2286
 filed-pr: 2282
-tests: tests/integration/simulation_view/test_simulation_view_page.py::test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn, tests/integration/simulation_view/test_simulation_view_page.py::test_a_layout_drawn_again_keeps_its_sizes_where_the_page_scroll_bar_comes_and_goes
+tests: tests/integration/simulation_view/test_simulation_view_page.py::test_a_whole_view_is_held_at_the_height_it_needs_at_the_width_it_is_drawn, tests/integration/simulation_view/test_simulation_view_page.py::test_a_layout_drawn_again_keeps_its_sizes_where_the_page_scroll_bar_comes_and_goes, tests/integration/simulation_view/test_simulation_view_page.py::test_a_frame_that_changes_no_need_does_not_lay_the_areas_out_again
 ---
 
 **Problem.** `AreaLayout._view_need` in `src/anesthesia_sim/app/area_layout.py`
@@ -40,17 +40,19 @@ that re-measures each whole View at the width the first pass drew it should
 settle. The fix must show that it does, including at a page height where the
 scroll bar just appears or disappears.
 
-**Fixed, 2026-11-23.** `AreaLayout._settle` lays the Areas out once with
-each need measured at its least width, as before. It then measures each
-need again at the width that layout drew its Area, and lays the Areas out a
-second time with those needs (`AreaLayout._narrowed`). A need's width does
-not change with the width it is measured at, so the second layout keeps the
-first one's widths, and the heights it holds are the heights the Views need
-at those widths. Where the second layout would change a width, the first
-one stands. The need depends only on the widget's size, so a frame drawn
-again gives the same layout. `follow_needs` compares the needs at the drawn
-widths too, so a View whose wrapped text changes at its drawn width settles
-the Areas again.
+**Fixed, 2026-11-23.** `AreaLayout._settle` first lays the Areas out at
+the widget's width and at a height tall enough for every need measured at
+its least width, so no Area gives up its View for want of height. It then
+measures each need again at the width that layout drew its Area
+(`AreaLayout._narrowed`), and lays the Areas out at the widget's real size
+with those needs. A need's width does not change with the width it is
+measured at, so that layout keeps the same widths, and the heights it holds
+are the heights the Views need at those widths. Where it would change a
+width, the Areas are laid out with the needs at the least width, as before.
+`follow_needs` compares the needs at the widths of the first layout with
+the ones the settle measured there, so a View whose wrapped text changes at
+its drawn width settles the Areas again, and a frame that changes nothing
+does not.
 
 Measured offscreen under Inter at 1366 by 768 with a branch open: the
 Parameters Area in Induction and Maintenance is held at 293 px rather than
@@ -66,6 +68,26 @@ Parameters Area in Induction and Maintenance is held at 293 px rather than
    second frame draws every Area where the first did. A shorter need cannot
    feed back through the scroll bar into a different layout, because a View's
    height does not grow as its width grows.
+3. `test_a_frame_that_changes_no_need_does_not_lay_the_areas_out_again`
+   makes the layout refuse the narrowed needs every time, and checks that
+   three frames that change nothing lay the Areas out no more. It fails on
+   the code before the review fix below, with six settles in three frames.
+
+**Blind review, 2026-11-23**, one pass. Both findings were fixed.
+
+1. The first version read the widths from a layout at the widget's own
+   height. Once the page had shrunk to the narrowed needs, that layout had
+   too little height for the needs at the least width, so it could give an
+   Area's View up as too small, change a width, and make the settle keep the
+   taller needs. The page could then grow and shrink on alternate settles.
+   The widths are now read from a layout tall enough for every need. A probe
+   that put the Compartment schematic, Agent cost, Wash-in and Bookmarks Views
+   into each Area of every shipped Workspace at 1366 by 768 with a branch
+   found no layout that moved between frames, before or after the fix, so no
+   test reproduces the reported sequence.
+2. Where the narrowed needs were refused, `follow_needs` compared them with
+   the needs the settle kept, found them unequal on every frame, and laid
+   the whole page out again on every tick. Test 3 above holds it.
 
 Files checked: `docs/INTERFACE.md` § "Values that must stay reachable" and
 the layout sections (they state the page scroll as the fallback and give no
