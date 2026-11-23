@@ -659,8 +659,10 @@ The vessel-rich coefficient is Yasuda's *brain* value (isoflurane's stored 2.1
 against 2.09, desflurane's 0.54 against 0.54). A learner reading the
 vessel-rich trace is reading a brain trace. Yasuda's paper measured no
 blood:gas coefficient. Its tissue:blood figures divide the tissue:gas values
-by published blood:gas values adjusted for the cohort's age, and those
-blood:gas values are 4.9 to 9.4% above the three stored here.
+by published blood:gas values adjusted for the cohort's age.
+`docs/PARAMETERS.md` § "v0.2.0: isoflurane and desflurane" gives how far the
+blood:gas values that each tissue's figures imply lie from the three stored
+here.
 <!-- provenance: data/agents/isoflurane.json tissue_gas_partition_coefficients.vessel_rich = 2.1 -->
 <!-- provenance: data/agents/desflurane.json tissue_gas_partition_coefficients.vessel_rich = 0.54 -->
 
