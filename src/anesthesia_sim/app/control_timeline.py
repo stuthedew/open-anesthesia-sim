@@ -38,7 +38,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
+from anesthesia_sim.app.control_record import (
+    CONTROL_INPUT_DISPLAY_UNITS,
+    ControlChange,
+    ControlInput,
+)
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import (
     VAPORIZER_LABEL,
     format_elapsed,
@@ -121,7 +126,6 @@ class ControlAdjustment:
     """The value in place before the adjustment, in the control's own unit."""
     to_value: float
     """The value in place after the adjustment, in the same unit."""
-    unit: str
     change_count: int
     """How many settings the model was stepped under during the adjustment.
 
@@ -164,7 +168,6 @@ def group_adjustments(timeline: Sequence[ControlChange]) -> tuple[ControlAdjustm
                 ended_at_s=change.elapsed_s,
                 from_value=latest.from_value,
                 to_value=change.new_value,
-                unit=latest.unit,
                 change_count=latest.change_count + 1,
             )
             continue
@@ -177,7 +180,6 @@ def group_adjustments(timeline: Sequence[ControlChange]) -> tuple[ControlAdjustm
                 ended_at_s=change.elapsed_s,
                 from_value=change.previous_value,
                 to_value=change.new_value,
-                unit=change.unit,
                 change_count=1,
             )
         )
@@ -280,22 +282,30 @@ def format_control_value(control: ControlInput, value: float) -> str:
 
     Returns:
         The value with its displayed unit.
+
+    Raises:
+        ValueError: `control_record.CONTROL_INPUT_DISPLAY_UNITS` gives the
+            control a unit that neither formatter here writes.
     """
 
-    # Every remaining control is a flow in L/min, so `format_flow` covers
-    # all three. A `CIRCUIT_VOLUME` branch that rendered litres was here until
-    # `PL-GYH2` retired that control. Nothing recorded under it can reach
-    # this function any more, and a formatter for a control that cannot be
-    # changed would be a unit rule with no value to apply it to.
-    if control is ControlInput.DELIVERED:
-        # This is the only control whose recorded value is a concentration
-        # rather than a flow, and naming the type here asserts that.
+    # The unit comes from the control's entry in the one table that names it,
+    # so the line cannot state a different unit from the slider's label and
+    # the recorded change (`PL-8LZS`).
+    unit = CONTROL_INPUT_DISPLAY_UNITS[control]
+
+    if unit is DisplayUnit.CONCENTRATION:
         # `ControlChange.previous_value` and `ControlChange.new_value` are
         # the same two fields for all four controls, so the fields cannot
-        # carry the distinction themselves.
+        # say which value is a concentration. Naming the type here does.
         return format_percent(fraction_from_percent(Percent(value)))
 
-    return format_flow(value)
+    if unit is DisplayUnit.FLOW:
+        return format_flow(value)
+
+    raise ValueError(
+        f"{control.name} is recorded in {unit.recorded}, and no formatter writes a recorded "
+        "control value in that unit"
+    )
 
 
 def format_adjustment(adjustment: ControlAdjustment) -> str:
@@ -424,7 +434,6 @@ def longest_unbroken_parts() -> tuple[str, ...]:
             ended_at_s=CaseInstant(last_s),
             from_value=maximum,
             to_value=maximum,
-            unit=CONTROL_INPUT_UNITS[control],
             change_count=MAXIMUM_STEP_COUNT,
         )
         parts.extend(wrapping_between_parts(format_adjustment(adjustment)).split(" "))

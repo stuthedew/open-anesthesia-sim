@@ -212,7 +212,7 @@ RECEIVERS: Mapping[type, Callable[[], object]] = {
     BranchedCase: lambda: BranchedCase(SimulationController()),
     BreathingCircuit: lambda: AgentUptakeSystem.default().circuit,
     ControlAdjustment: lambda: ControlAdjustment(
-        ControlInput.FRESH_GAS_FLOW, CaseInstant(0), CaseInstant(0), 6.0, 2.0, "L/min", 1
+        ControlInput.FRESH_GAS_FLOW, CaseInstant(0), CaseInstant(0), 6.0, 2.0, 1
     ),
     ControlChange: lambda: ControlChange(
         CaseInstant(0), 1, ControlInput.FRESH_GAS_FLOW, 6.0, 2.0, "L/min"

@@ -479,7 +479,7 @@ def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplic
     snapshot = controller.snapshot()
     crowded = tuple(
         ControlAdjustment(
-            ControlInput.FRESH_GAS_FLOW, CaseInstant(at_s), CaseInstant(at_s), 6.0, 2.0, "L/min", 1
+            ControlInput.FRESH_GAS_FLOW, CaseInstant(at_s), CaseInstant(at_s), 6.0, 2.0, 1
         )
         for at_s in range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 3), 5)
     )
