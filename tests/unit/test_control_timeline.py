@@ -340,7 +340,7 @@ def test_a_multi_setting_line_keeps_its_count_with_the_new_value() -> None:
 
     assert wrapping_between_parts(line).split(" ") == [
         f"10s–12s{_NBSP}·",
-        f"Delivered{_NBSP}agent{_NBSP}2.00%{_NBSP}->",
+        f"Vaporizer{_NBSP}2.00%{_NBSP}->",
         f"4.00%{_NBSP}(2{_NBSP}settings)",
     ]
 
