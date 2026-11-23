@@ -132,6 +132,7 @@ from anesthesia_sim.app.dashboard_frame import (
     bookmark_panel,
     branch_at_stake,
     case_marks,
+    clock_playback_line,
     compared_panel_heading,
     compared_run_line,
     compared_run_notice,
@@ -202,6 +203,7 @@ from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     SUPPORTED_PLAYBACK_RATES,
     PlaybackRate,
+    playback_rate_for,
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
@@ -1741,6 +1743,16 @@ def test_the_playback_rate_is_drawn_under_the_clock_it_governs(rate: PlaybackRat
     assert clock.secondary == format_playback_rate(rate.multiplier)
 
 
+def test_the_clock_line_names_a_delivered_rate_beside_the_set_one() -> None:
+    """While the computer falls behind, the clock line keeps the set rate and adds the delivered.
+
+    The expected line is worked out by hand: 80% of 300x is 240x (`PL-2NYN`).
+    """
+
+    assert clock_playback_line(playback_rate_for(300), 0.8) == "about 240\u00d7 of 300\u00d7"
+    assert clock_playback_line(playback_rate_for(300)) == "300\u00d7 real time"
+
+
 @pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES)
 def test_a_withheld_row_keeps_the_clock_s_playback_line(rate: PlaybackRate) -> None:
     """The withheld row and the live row word the clock's second line alike (`PL-J791`)."""
@@ -1854,15 +1866,24 @@ def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
 
     The clock one second before the supported run length gives the widest
     value line, because every component of the compound form is present. The
-    longest playback rate gives the widest second line. Both are derived
-    from the formatters rather than measured, so a change to either form
-    moves the reservation with it.
+    widest second line is a delivered rate (`PL-2NYN`). At 1% of 1x it is
+    0.010x, which keeps a trailing zero as its second significant figure, so
+    the line has 18 characters. "about 3.0x of 300x" ties with it, and the
+    slowest rate is counted first. A rate below 1% names the bound, as
+    "below 0.010x of 1x", and no fraction gives a longer line. Each line is
+    longer than every plain label, whose longest is "300x real time".
     """
 
     assert WIDEST_READOUT_VALUE == format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - 1)
     assert len(WIDEST_READOUT_VALUE) >= len(format_percent(Fraction(1.0)))
-    assert WIDEST_READOUT_SECONDARY == max(
-        (format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES), key=len
+    assert WIDEST_READOUT_SECONDARY == "about 0.010\u00d7 of 1\u00d7"
+    assert all(
+        len(clock_playback_line(rate, fraction)) <= len(WIDEST_READOUT_SECONDARY)
+        for rate in SUPPORTED_PLAYBACK_RATES
+        for fraction in (1e-12, 1e-6, 0.0033, 0.0099)
+    )
+    assert len(WIDEST_READOUT_SECONDARY) > max(
+        len(format_playback_rate(rate.multiplier)) for rate in SUPPORTED_PLAYBACK_RATES
     )
     assert len(WIDEST_READOUT_SECONDARY) >= len(
         format_mac_multiple(Fraction(1e-9), MacPercent(2.0))
