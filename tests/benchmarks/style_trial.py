@@ -59,6 +59,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Final
 
+import shiboken6
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPaintEvent, QPalette, QPen, QRegion
 from PySide6.QtWidgets import (
@@ -601,9 +602,6 @@ class Recording:
     bare: tuple[QImage, ...]
 
 
-#: The two host appearances the reader records under, in the order of the buttons.
-APPEARANCES: Final = ("Light", "Dark")
-
 #: How many times larger than life the difference picture draws each button.
 DIFFERENCE_PICTURE_SCALE: Final = 4
 
@@ -692,11 +690,13 @@ class ComparisonWindow(QWidget):
         # that holds the window. With lambdas, the process failed on exit in
         # 11 of 15 runs in the cloud container, and the owner's Mac printed
         # "shared QObject was deleted directly". With bound methods it failed
-        # in none of 15 (`PL-YZ9L`).
-        for appearance, record_it in zip(
-            APPEARANCES, (self.record_light, self.record_dark), strict=True
+        # in none of 15 (`PL-YZ9L`). Each label is written beside its method,
+        # so a button cannot record under another appearance's name.
+        for label, record_it in (
+            ("Record as Light", self.record_light),
+            ("Record as Dark", self.record_dark),
         ):
-            record = QPushButton(f"Record as {appearance}")
+            record = QPushButton(label)
             record.clicked.connect(record_it)
             buttons.addWidget(record)
 
@@ -1158,7 +1158,14 @@ def _show_comparison(save: Path | None) -> int:
         print(window.grab().save(str(save)))
         return 0
 
-    return application.exec()
+    status = application.exec()
+    # Delete the window, and the buttons that use its style, while the
+    # application still exists. Left to the interpreter's shutdown, the
+    # window can outlive the application if anything still holds it
+    # (`PL-YZ9L`).
+    shiboken6.delete(window)
+
+    return status
 
 
 def _show_dashboard(save: Path | None) -> int:
