@@ -10,6 +10,9 @@ axis top is 3 MAC of the running agent, and sevoflurane's MAC is read from its
 data file, apart from the code under test.
 """
 
+import math
+import re
+from dataclasses import replace
 from math import exp
 
 import pytest
@@ -18,6 +21,7 @@ from anesthesia_sim.app.compartment_schematic import (
     NO_AGENT_SHARE_LINE,
     WITHHELD_SCHEMATIC,
     container_readings,
+    instant_line,
     scale_caption,
     scale_marks,
     schematic_shown,
@@ -308,3 +312,94 @@ def test_withheld_values_draw_no_marks() -> None:
 def test_withheld_values_draw_an_empty_bar_with_no_lines() -> None:
     assert WITHHELD_SCHEMATIC.shares is None
     assert WITHHELD_SCHEMATIC.share_line is None
+
+
+#: The two lines under the share bar's heading when the circuit holds all of the
+#: agent, as it does with no ventilation. Each line names three compartments in
+#: the containers' order, with the circuit at 100% and the rest at 0%.
+_WHOLE_SHARE_IN_THE_CIRCUIT_LINES = [
+    "Circuit 100%, Alveolar 0%, Mixed venous 0%,",
+    "Vessel-rich group 0%, Muscle 0%, Fat 0%.",
+]
+
+#: The containers' names, as the readout panels name them.
+_CONTAINER_NAMES = ["Circuit", "Alveolar", "Mixed venous", "Vessel-rich group", "Muscle", "Fat"]
+
+
+def test_the_share_lines_name_the_first_three_segments_and_then_the_last_three() -> None:
+    """Each of the two lines under the heading names three compartments, in the containers' order.
+
+    The number of lines is fixed, so that the View's minimum size has room for
+    every line (the comment on `SHARE_LINE_TEMPLATE` says why). With no ventilation,
+    the circuit holds the whole share, so every share is known exactly.
+    """
+
+    segments = share_segments(_run_with_no_ventilation(8.0, 90).snapshot())
+
+    assert share_line(segments).splitlines()[1:] == _WHOLE_SHARE_IN_THE_CIRCUIT_LINES
+
+
+def test_the_schematic_shows_every_part_from_one_snapshot() -> None:
+    """At an 8% sevoflurane dial with no ventilation for 10 min, every part of the schematic shows.
+
+    Each part is checked against a value worked out here. The circuit is
+    above the 3 MAC top, so it is drawn full and named in words as above the
+    scale, and no other container is named. The marks stand at each sixth of
+    the height below the top, and the caption names that top. No agent leaves
+    the circuit, so the share bar gives the circuit the whole share. A
+    schematic that left out a part would hide that a container is off the
+    scale, or show a run that holds agent as if it held none.
+    """
+
+    seconds = 10 * SECONDS_PER_MINUTE
+    snapshot = _run_with_no_ventilation(8.0, seconds).snapshot()
+    shown = schematic_shown(snapshot)
+    circuit = shown.readings[0]
+
+    assert _circuit_percent(8.0, seconds, float(snapshot.circuit_volume_l)) > AXIS_TOP_PERCENT
+    assert (circuit.quantity, circuit.fill, circuit.off_scale) == (
+        RecordedQuantity.CIRCUIT,
+        1.0,
+        True,
+    )
+    assert shown.off_scale_line is not None
+    assert [name for name in _CONTAINER_NAMES if name in shown.off_scale_line] == ["Circuit"]
+    assert shown.marks == pytest.approx([sixth / 6 for sixth in range(1, 6)])
+    assert shown.scale_caption is not None
+    assert f"0 to {AXIS_TOP_PERCENT:g}% of 1 atm (3 ×MAC)" in shown.scale_caption
+    assert shown.shares is not None
+    assert [(segment.share, segment.text) for segment in shown.shares] == [(1.0, "100%")] + [
+        (0.0, "0%")
+    ] * 5
+    assert shown.share_line is not None
+    assert shown.share_line.splitlines()[1:] == _WHOLE_SHARE_IN_THE_CIRCUIT_LINES
+
+
+@pytest.mark.parametrize("total_l", [-1.0, math.inf, math.nan])
+def test_a_stored_total_that_is_negative_or_not_finite_is_refused_by_name(total_l: float) -> None:
+    """The share bar is refused, with the total named, rather than drawn from such a total.
+
+    A run that has not started holds no agent in any compartment. Divided by
+    an infinite or a negative total, its six amounts would give six shares of
+    0%. That bar looks like a real one, so the total is refused before any
+    share is formed.
+    """
+
+    snapshot = replace(
+        SimulationController(agent_id="sevoflurane").snapshot(), stored_agent_l=total_l
+    )
+    message = f"the run's stored agent must be finite and not negative, not {total_l!r} L"
+
+    with pytest.raises(ValueError, match=re.escape(message)):
+        share_segments(snapshot)
+
+
+def test_the_line_over_a_schematic_names_the_run_only_while_runs_are_compared() -> None:
+    """A lone run's line gives the instant alone, and a compared run's line also names the run.
+
+    The order in which compared schematics are stacked cannot say which run a
+    tension belongs to, so the name in this line is what says it.
+    """
+
+    assert instant_line("10m", None) == "At 10m of simulated time"
+    assert instant_line("10m", "Run 2") == "Run 2, at 10m of simulated time"

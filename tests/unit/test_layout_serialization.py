@@ -39,6 +39,7 @@ from anesthesia_sim.layout.serialization import (
     workspace_to_dict,
 )
 from anesthesia_sim.layout.tree import (
+    AREA_ID_MAXIMUM,
     TREE_DEPTH_MAXIMUM,
     Area,
     AreaId,
@@ -869,3 +870,30 @@ class TestVersionPlumbing:
             f"schema_version: a document holding one layout on its own is read at version "
             f"{LAYOUT_SCHEMA_VERSION + 1} only, and this one was written at {LAYOUT_SCHEMA_VERSION}"
         ) in refused(json.dumps(document()))
+
+
+def test_saved_state_keyed_by_an_area_id_as_long_as_the_largest_is_read_back() -> None:
+    """An Area id with as many digits as `AREA_ID_MAXIMUM` is a valid key, and its state is kept.
+
+    The reader refuses a `view_state` key that is longer than the largest id
+    before it converts the key to a number. A key exactly that long names a
+    valid id, and refusing it would lose the reader's saved file. The largest id
+    that a layout can hold is one less than the maximum, because the layout's
+    next id must be greater than every id in use and is itself an Area id.
+    """
+
+    chart = ViewKind("concentration_chart")
+    longest = AreaId(AREA_ID_MAXIMUM - 1)
+    workspace = Workspace(
+        WorkspaceName("Default"),
+        Origin.mine(),
+        LayoutModel((Window(Area(longest, chart)),), AreaId(AREA_ID_MAXIMUM)),
+        {longest: {chart: {"zoom_s": [0.0, 900.0]}}},
+    )
+    workspaces = WorkspaceSet((workspace,), 0)
+
+    written = workspace_set_to_json(workspaces)
+
+    assert len(str(AREA_ID_MAXIMUM - 1)) == len(str(AREA_ID_MAXIMUM))
+    assert list(json.loads(written)["workspaces"][0]["view_state"]) == [str(AREA_ID_MAXIMUM - 1)]
+    assert workspace_set_from_json(written).workspaces == workspaces

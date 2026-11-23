@@ -15,6 +15,7 @@ import json
 import os
 import shutil
 import stat
+import time
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -22,7 +23,12 @@ import pytest
 
 from anesthesia_sim.layout import serialization as serialization_module
 from anesthesia_sim.layout import store as store_module
-from anesthesia_sim.layout.exceptions import InvalidLayout, LayoutRefused, WorkspaceFileError
+from anesthesia_sim.layout.exceptions import (
+    InvalidLayout,
+    LayoutFormatError,
+    LayoutRefused,
+    WorkspaceFileError,
+)
 from anesthesia_sim.layout.migrations import LAYOUT_SCHEMA_VERSION, Migrated, SchemaVersion
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.serialization import workspace_set_from_json, workspace_set_to_json
@@ -646,3 +652,350 @@ def test_a_set_aside_name_is_written_in_utc_whatever_zone_the_clock_gives() -> N
     central = datetime(2026, 10, 17, 0, 0, tzinfo=timezone(timedelta(hours=-5)))
 
     assert set_aside_file_name(central) == f"workspaces.invalid-{STAMP}.json"
+
+
+def decided(loaded: store_module.Loaded) -> tuple[object, ...]:
+    """Return every field of a launch's result except its notice, in the order `Loaded` has them."""
+
+    return (loaded.workspaces, loaded.source, loaded.writable, loaded.set_aside, loaded.written_at)
+
+
+def test_an_invalid_file_that_cannot_be_set_aside_turns_saving_off_and_is_left_as_it_is(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An invalid file that stays in place would be overwritten by a save, so saving is off.
+
+    The shipped set is shown, and the file is not touched. The notice gives the
+    reason the file was refused and the reason it could not be moved. The test
+    makes the rename fail itself, instead of setting mode bits, which root
+    ignores.
+    """
+
+    path = tmp_path / WORKSPACES_FILE_NAME
+    path.write_text("not json", encoding="utf-8")
+    refusal = PermissionError(13, "Permission denied", str(path))
+
+    def refuse(source: object, target: object) -> None:
+        raise refusal
+
+    monkeypatch.setattr(os, "rename", refuse)
+
+    with pytest.raises(LayoutFormatError) as invalid:
+        workspace_set_from_json("not json")
+
+    store = a_store(tmp_path)
+    loaded = store.load(SHIPPED)
+
+    assert loaded == store_module.Loaded(
+        SHIPPED,
+        Source.SHIPPED,
+        False,
+        f"{path} is not a Workspace file this build reads ({invalid.value}), and could not be "
+        f"set aside ({refusal}), so the shipped Workspaces are shown and nothing will be saved "
+        "this session; the file is left as it is",
+        None,
+        None,
+    )
+
+    with pytest.raises(LayoutRefused, match="saving is off for this session"):
+        store.save(MINE)
+
+    assert entries(tmp_path) == [WORKSPACES_FILE_NAME]
+    assert path.read_text(encoding="utf-8") == "not json"
+
+
+def test_a_file_that_is_not_utf8_text_shows_the_shipped_set_and_says_why(tmp_path: Path) -> None:
+    """A file that is not UTF-8 text is set aside, and the notice says why the shipped set is shown.
+
+    The reason in the notice is the one that Python's own UTF-8 decoder gives
+    for the same bytes.
+    """
+
+    written = b"\xff\xfe not text"
+    path = tmp_path / WORKSPACES_FILE_NAME
+    path.write_bytes(written)
+
+    with pytest.raises(UnicodeDecodeError) as undecodable:
+        written.decode("utf-8")
+
+    loaded = a_store(tmp_path).load(SHIPPED)
+
+    set_aside = tmp_path / f"workspaces.invalid-{STAMP}.json"
+    assert loaded == store_module.Loaded(
+        SHIPPED,
+        Source.SHIPPED,
+        True,
+        f"{path} is not a Workspace file this build reads (the file is not UTF-8 text: "
+        f"{undecodable.value}); it was set aside unchanged as {set_aside}, and the shipped "
+        "Workspaces are shown",
+        set_aside,
+        None,
+    )
+
+
+def test_the_notice_for_a_rescued_previous_generation_says_only_what_happened(
+    tmp_path: Path,
+) -> None:
+    """When no migration step lost anything, the notice says which file is shown and no more.
+
+    The previous generation is rescued in two cases: when there is no current
+    file, and when the current file was set aside. Each result also gives the
+    version that the previous generation was written at. A save needs that
+    version to keep a pre-migration copy of a file that an older build wrote.
+    """
+
+    missing = tmp_path / "missing"
+    saved(missing, MINE).save(LATER)
+    (missing / WORKSPACES_FILE_NAME).unlink()
+    invalid = tmp_path / "invalid"
+    saved(invalid, MINE).save(LATER)
+    (invalid / WORKSPACES_FILE_NAME).write_text("not json", encoding="utf-8")
+
+    with pytest.raises(LayoutFormatError) as refused:
+        workspace_set_from_json("not json")
+
+    without_current = a_store(missing).load(SHIPPED)
+    with_invalid_current = a_store(invalid).load(SHIPPED)
+
+    set_aside = invalid / f"workspaces.invalid-{STAMP}.json"
+    assert without_current == store_module.Loaded(
+        MINE,
+        Source.PREVIOUS,
+        True,
+        f"there is no {missing / WORKSPACES_FILE_NAME}, so the previous default, "
+        f'{missing / PREVIOUS_FILE_NAME}, is shown; "Save as default" keeps it',
+        None,
+        LAYOUT_SCHEMA_VERSION,
+    )
+    assert with_invalid_current == store_module.Loaded(
+        MINE,
+        Source.PREVIOUS,
+        True,
+        f"{invalid / WORKSPACES_FILE_NAME} is not a Workspace file this build reads "
+        f"({refused.value}); it was set aside unchanged as {set_aside}, and the previous "
+        f"default, {invalid / PREVIOUS_FILE_NAME}, is shown",
+        set_aside,
+        LAYOUT_SCHEMA_VERSION,
+    )
+
+
+def test_a_lossy_migration_is_told_to_the_reader_whichever_file_is_shown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every notice about a migrated file ends with what each lossy step could not keep.
+
+    The test covers the three launches that show a migrated file with a notice
+    of their own: a previous generation rescued because there is no current
+    file, one rescued because the current file was set aside, and a current
+    file shown beside a previous generation that a newer build wrote. Two lossy
+    steps show that their sentences are joined in order, separated by a space.
+    """
+
+    missing = tmp_path / "missing"
+    saved(missing, MINE).save(LATER)
+    (missing / WORKSPACES_FILE_NAME).unlink()
+    invalid = tmp_path / "invalid"
+    saved(invalid, MINE).save(LATER)
+    (invalid / WORKSPACES_FILE_NAME).write_text("not json", encoding="utf-8")
+    beside_newer = tmp_path / "beside_newer"
+    saved(beside_newer, MINE)
+    (beside_newer / PREVIOUS_FILE_NAME).write_text(
+        json.dumps({"schema_version": LAYOUT_SCHEMA_VERSION + 1}), encoding="utf-8"
+    )
+
+    def fake_migrate(body: dict[str, object], written_at: int) -> Migrated:
+        return Migrated(body, ("Which tab was open was not kept.", "Each chart's zoom was reset."))
+
+    monkeypatch.setattr(serialization_module, "migrate", fake_migrate)
+
+    told = (
+        f"; the saved Workspaces were written at schema version {LAYOUT_SCHEMA_VERSION} and were "
+        f"brought to version {LAYOUT_SCHEMA_VERSION}: Which tab was open was not kept. Each "
+        "chart's zoom was reset."
+    )
+
+    for directory in (missing, invalid, beside_newer):
+        notice = a_store(directory).load(SHIPPED).notice
+
+        assert notice is not None and notice.endswith(told), directory.name
+
+
+def test_each_launch_that_finds_a_newer_builds_file_names_it_and_turns_saving_off(
+    tmp_path: Path,
+) -> None:
+    """A newer build's file, current or previous, turns saving off and is named in the notice.
+
+    A save from this build would overwrite that file, which is the reader's work.
+    The shipped set is shown in every case but one. A valid current file beside a
+    newer previous generation is shown as written, with the version it was
+    written at.
+    """
+
+    newer = json.dumps({"schema_version": LAYOUT_SCHEMA_VERSION + 1})
+    current_newer = tmp_path / "current_newer"
+    current_newer.mkdir()
+    (current_newer / WORKSPACES_FILE_NAME).write_text(newer, encoding="utf-8")
+    previous_newer = tmp_path / "previous_newer"
+    previous_newer.mkdir()
+    (previous_newer / PREVIOUS_FILE_NAME).write_text(newer, encoding="utf-8")
+    invalid_current = tmp_path / "invalid_current"
+    invalid_current.mkdir()
+    (invalid_current / PREVIOUS_FILE_NAME).write_text(newer, encoding="utf-8")
+    (invalid_current / WORKSPACES_FILE_NAME).write_text("not json", encoding="utf-8")
+    valid_current = tmp_path / "valid_current"
+    saved(valid_current, MINE)
+    (valid_current / PREVIOUS_FILE_NAME).write_text(newer, encoding="utf-8")
+    cases = (
+        (current_newer, WORKSPACES_FILE_NAME, (SHIPPED, Source.SHIPPED, False, None, None)),
+        (previous_newer, PREVIOUS_FILE_NAME, (SHIPPED, Source.SHIPPED, False, None, None)),
+        (
+            invalid_current,
+            PREVIOUS_FILE_NAME,
+            (
+                SHIPPED,
+                Source.SHIPPED,
+                False,
+                invalid_current / f"workspaces.invalid-{STAMP}.json",
+                None,
+            ),
+        ),
+        (
+            valid_current,
+            PREVIOUS_FILE_NAME,
+            (MINE, Source.FILE, False, None, LAYOUT_SCHEMA_VERSION),
+        ),
+    )
+
+    for directory, newer_file, expected in cases:
+        loaded = a_store(directory).load(SHIPPED)
+
+        assert decided(loaded) == expected, directory.name
+        assert loaded.notice is not None, directory.name
+        assert (
+            f"{directory / newer_file} was written at schema version {LAYOUT_SCHEMA_VERSION + 1} "
+            "by a newer build"
+        ) in loaded.notice, directory.name
+
+
+def test_a_store_given_no_clock_names_a_set_aside_file_for_the_moment_it_was_set_aside(
+    tmp_path: Path,
+) -> None:
+    """The application builds its store without a clock, so the store reads the time itself.
+
+    The set-aside file's name must give one of the UTC seconds that passed
+    while the file was loaded.
+    """
+
+    (tmp_path / WORKSPACES_FILE_NAME).write_text("not json", encoding="utf-8")
+    before = datetime.now(UTC).replace(microsecond=0)
+
+    loaded = WorkspaceStore(tmp_path).load(SHIPPED)
+
+    after = datetime.now(UTC)
+    seconds = range(int((after - before).total_seconds()) + 1)
+    assert loaded.set_aside is not None
+    assert loaded.set_aside.name in {
+        f"workspaces.invalid-{before + timedelta(seconds=second):%Y%m%dT%H%M%SZ}.json"
+        for second in seconds
+    }
+
+
+@pytest.mark.skipif(not hasattr(time, "tzset"), reason="only POSIX lets a process change its zone")
+def test_a_set_aside_name_is_written_in_utc_whatever_the_machines_own_zone_is() -> None:
+    """A machine five hours behind UTC still names the file for the UTC time.
+
+    `EST5` writes a zone five hours west of UTC in the form that the `TZ`
+    variable takes, so no time zone file is needed. Python falls back to UTC
+    without a word for a zone it cannot read, so the test checks that the zone
+    took effect. The test sets the zone back itself. Monkeypatch would restore
+    the variable only after the test returns, and `time.tzset` must read it
+    again after that.
+    """
+
+    zone = os.environ.get("TZ")
+    os.environ["TZ"] = "EST5"
+    time.tzset()
+
+    try:
+        seconds_west_of_utc = time.timezone
+        name = set_aside_file_name(MOMENT)
+    finally:
+        if zone is None:
+            del os.environ["TZ"]
+        else:
+            os.environ["TZ"] = zone
+
+        time.tzset()
+
+    assert seconds_west_of_utc == 5 * 3600
+    assert name == f"workspaces.invalid-{STAMP}.json"
+
+
+def test_three_files_set_aside_in_one_second_get_three_distinct_names(tmp_path: Path) -> None:
+    """With two names in that second already taken, the third file is numbered 2.
+
+    With only one earlier file, a store that always tried the number 1 next
+    would pass too.
+    """
+
+    first = tmp_path / f"workspaces.invalid-{STAMP}.json"
+    second = tmp_path / f"workspaces.invalid-{STAMP}-1.json"
+    first.write_text("first", encoding="utf-8")
+    second.write_text("second", encoding="utf-8")
+    (tmp_path / WORKSPACES_FILE_NAME).write_text("third", encoding="utf-8")
+
+    loaded = a_store(tmp_path).load(SHIPPED)
+
+    assert loaded.set_aside == tmp_path / f"workspaces.invalid-{STAMP}-2.json"
+    assert loaded.set_aside.read_text(encoding="utf-8") == "third"
+    assert (first.read_text(encoding="utf-8"), second.read_text(encoding="utf-8")) == (
+        "first",
+        "second",
+    )
+
+
+def test_a_pre_migration_copy_that_already_exists_is_never_overwritten(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pre-migration file is kept once, so a copy already in place is left as it is.
+
+    The current file can be at the older version while its copy exists. That
+    happens, for example, when the reader puts back an older file by hand.
+    """
+
+    saved(tmp_path, MINE)
+    monkeypatch.setattr(store_module, "LAYOUT_SCHEMA_VERSION", LAYOUT_SCHEMA_VERSION + 1)
+    kept = tmp_path / kept_file_name(LAYOUT_SCHEMA_VERSION)
+    kept.write_text("the copy an earlier save kept", encoding="utf-8")
+    store = a_store(tmp_path)
+    store.load(SHIPPED)
+
+    store.save(LATER)
+
+    assert kept.read_text(encoding="utf-8") == "the copy an earlier save kept"
+    assert (tmp_path / WORKSPACES_FILE_NAME).read_text(encoding="utf-8") == workspace_set_to_json(
+        LATER
+    )
+
+
+def test_after_a_save_the_store_reports_the_saved_set_as_the_file_it_shows(tmp_path: Path) -> None:
+    """`loaded` after a save describes the file just written, at this build's version.
+
+    Nothing is left to tell the reader, and saving stays on. The path that an
+    invalid file was set aside to at launch is still given.
+    """
+
+    (tmp_path / WORKSPACES_FILE_NAME).write_text("not json", encoding="utf-8")
+    store = a_store(tmp_path)
+    store.load(SHIPPED)
+
+    store.save(MINE)
+
+    assert store.loaded == store_module.Loaded(
+        MINE,
+        Source.FILE,
+        True,
+        None,
+        tmp_path / f"workspaces.invalid-{STAMP}.json",
+        LAYOUT_SCHEMA_VERSION,
+    )

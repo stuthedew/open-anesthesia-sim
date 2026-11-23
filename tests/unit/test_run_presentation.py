@@ -650,6 +650,26 @@ def test_a_halt_restates_the_playback_rate_the_reader_chose_on_the_halted_run() 
     ] == [readout for index, readout in enumerate(frame.values.readouts) if index != _CLOCK_INDEX]
 
 
+def test_a_run_shown_with_no_frame_is_never_said_to_be_stopped_on_a_mark() -> None:
+    """A run that the learner paused, and that holds no mark, is stated as paused with no frame.
+
+    `halted_run` builds no compartment state, so it cannot tell whether a mark
+    stopped the run, and its docstring says that its status word never claims
+    one did. It is given runs that have not stopped as well as halted ones:
+    just after a dial is dragged, the dashboard hands every View the runs that
+    have no frame. Saying "stopped on your mark" for this run would name a mark
+    that does not exist.
+    """
+
+    controller = _run_at(90)
+    state = _state()
+    kept = KeptValues(state.case, _drawn(controller, state).values)
+
+    shown = _halted(controller, state, kept)
+
+    assert shown.statement.status.text == "Paused"
+
+
 @pytest.mark.parametrize("started_over", [False, True])
 def test_a_halt_after_a_rejected_accounting_step_shows_that_step_s_check(
     started_over: bool,

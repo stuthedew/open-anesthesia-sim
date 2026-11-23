@@ -624,3 +624,275 @@ def test_apportion_refuses_a_negative_or_non_integer_handle(
 
     with pytest.raises(error):
         apportion(tree, PixelSize(100, 100), handle, _each(tree, PixelSize(1, 1)))  # type: ignore[arg-type]
+
+
+def test_a_split_exactly_as_long_as_its_childrens_bounds_gives_each_child_its_bound() -> None:
+    """A split whose children's bounds add up to its length draws each child at its bound.
+
+    Those bounds are then the only sizes that give every child at least its bound, so
+    they are the expected sizes, and the split is held. This checks the edge between a
+    split that can hold its children and one that cannot. A fault there would draw an
+    Area below its bound by its fraction alone, or report a split as unheld when it fits.
+
+    The second case is the one in which every child ends up held. The fractions 4/9, 1/9
+    and 4/9 of 13 px give the first child 5.78 px, less than its 8 px bound, so it is
+    held. The other two share the 5 px left in the ratio 1 to 4, which is exactly their
+    bounds of 1 and 4 px. In floating point those two shares come out a rounding error
+    below 1 and 4, so both children are held as well.
+    """
+
+    assert split_sizes((0.5, 0.5), (300, 100), 400) == (300, 100)
+    assert split_sizes((4 / 9, 1 / 9, 4 / 9), (8, 1, 4), 13) == (8, 1, 4)
+
+    # 408 px less one 8 px handle leaves 400 px, the sum of the two 300 px and 100 px
+    # bounds. Each Area is 100 px tall, exactly as tall as the row.
+    tree = _row((0.5, 0.5), _area(1), _area(2))
+    bounds = {AreaId(1): PixelSize(300, 100), AreaId(2): PixelSize(100, 100)}
+    laid_out = apportion(tree, PixelSize(408, 100), _HANDLE_PX, bounds)
+
+    assert laid_out.splits[()] == (300, 100)
+    assert laid_out.unheld == ()
+
+    # Both children are held at their bounds whatever the fractions are, so the border
+    # is drawn at 300 px and cannot move from there.
+    assert border_range((0.5, 0.5), 0, (300, 100), 400) == (300, 300)
+
+
+def test_the_first_border_of_a_three_way_split_ranges_between_its_two_neighbours_bounds() -> None:
+    """Moving border 0 of a three-way split changes only the first two children.
+
+    A row of 800 px is split 0.25, 0.25 and 0.5, and its children need 10, 20 and 30 px.
+    Border 0 lies between the first and the second child. Its range starts where the
+    first child is held at its 10 px bound, so the border is drawn at 10 px. It ends
+    where the second child is held at its 20 px bound. The second child's 0.25 has then
+    passed to the first, so the first and third children have 0.5 each. They share the
+    other 780 px equally, 390 px each, so the border is drawn at 390 px.
+
+    The range test above moves the last border of a split. This test moves a border
+    that has a third child after it, and that child's fraction must not change.
+    """
+
+    assert border_range((0.25, 0.25, 0.5), 0, (10, 20, 30), 800) == (10, 390)
+
+
+def test_a_border_the_split_does_not_have_is_refused_by_name() -> None:
+    """A split of three children has borders 0 and 1, and a request for border 2 is refused.
+
+    The message names the split's size and the border asked for. So the refusal comes
+    from the check of the border, and not from an index error deeper in the code that
+    lays the split out.
+    """
+
+    with pytest.raises(IndexError, match="a split of 3 children has no border 2"):
+        border_range((0.25, 0.25, 0.5), 2, (10, 20, 30), 800)
+
+
+def test_a_border_moved_past_a_held_child_is_drawn_at_the_pointer() -> None:
+    """`PL-97WX`: a border moved beside a held child is drawn where the pointer is.
+
+    A row of 800 px is split 0.1, 0.45 and 0.45, and its first child needs 300 px. That
+    child's share, 80 px, is less than its need, so it is held at 300 px. The other two
+    children share the other 500 px equally, so border 1 is drawn at 300 + 250 = 550 px.
+
+    The pointer moves border 1 to 560 px. The fractions alone would give a share of
+    560 / 800 = 0.7 before the border. But the first child is held, so a share of 0.7
+    draws the border at 300 + 500 * 0.6 / 0.9 = 633 px, past the pointer. The share
+    returned must draw the border at 560 px. That means the second child is drawn
+    560 - 300 = 260 px wide.
+    """
+
+    fractions, bounds = (0.1, 0.45, 0.45), (300, 10, 10)
+    share = border_share(fractions, 1, bounds, 800, 560)
+
+    assert share is not None
+    assert split_sizes((0.1, share - 0.1, 1 - share), bounds, 800)[:2] == (300, 260)
+
+
+def test_a_border_dragged_past_its_neighbours_bound_stops_where_the_neighbour_reaches_it() -> None:
+    """A border dragged right, past where the child on its right reaches its bound, stops there.
+
+    A row of 800 px is split 0.5 and 0.5, so its border is drawn at 400 px. The right
+    child needs 300 px, so the border can be drawn no further right than
+    800 - 300 = 500 px. A drag to 700 px stops at 500 px, which is a share of
+    500 / 800 = 0.625. The test above of a border beside a held child stops a border at
+    the left end of its range. This one stops it at the right end, where no share draws
+    the border any further.
+    """
+
+    share = border_share((0.5, 0.5), 0, (10, 300), 800, 700)
+
+    assert share == 500 / 800
+    assert split_sizes((share, 1 - share), (10, 300), 800) == (500, 300)
+
+
+def test_a_zero_width_handle_is_allowed_and_takes_no_room() -> None:
+    """A handle may be zero pixels wide, so a split with no handle shares its whole length.
+
+    `apportion` and `minimum_extent` refuse only a negative handle width.
+    """
+
+    tree = _row((0.5, 0.5), _area(1), _area(2))
+    bounds = {AreaId(1): PixelSize(10, 20), AreaId(2): PixelSize(30, 40)}
+
+    # With no handle, the row's 100 px are shared 50 and 50, and the least extent is
+    # 10 + 30 = 40 px wide and max(20, 40) = 40 px tall.
+    assert apportion(tree, PixelSize(100, 50), 0, bounds).splits[()] == (50, 50)
+    assert minimum_extent(tree, 0, bounds) == PixelSize(40, 40)
+
+
+def test_each_nested_split_is_laid_out_under_its_path_from_the_root() -> None:
+    """Each split's sizes are kept under the path of child indices from the root to it.
+
+    The adapter finds the sizes for each of its splitters by that path. So a nested
+    split laid out under the wrong path would be drawn by its fractions alone, and an
+    Area in it would not be held at its bound.
+
+    The tree is a row of Area 1 and a column. The column holds a row of Areas 2 and 3,
+    and below it Area 4. Area 4 needs 250 px of height, more than the column has.
+    """
+
+    inner_row = _row((0.5, 0.5), _area(2), _area(3))
+    tree = _row((0.5, 0.5), _area(1), _column((0.75, 0.25), inner_row, _area(4)))
+    bounds = {**_each(tree, PixelSize(10, 10)), AreaId(4): PixelSize(10, 250)}
+    laid_out = apportion(tree, PixelSize(408, 208), _HANDLE_PX, bounds)
+
+    # The outer row shares 408 - 8 = 400 px as 200 and 200. The column at path (1,) shares
+    # 208 - 8 = 200 px as 150 and 50, by its fractions, because Area 4's 250 px need is
+    # more than it has. The inner row at path (1, 0) shares 200 - 8 = 192 px as 96 and 96.
+    assert laid_out.splits == {(): (200, 200), (1,): (150, 50), (1, 0): (96, 96)}
+    # The column cannot hold Area 4. Nor can the outer row hold the column, which needs
+    # 10 + 8 + 250 = 268 px of height out of 208.
+    assert laid_out.unheld == ((), (1,))
+
+
+def test_a_lone_area_smaller_than_its_bound_is_reported_unheld() -> None:
+    """A tree that is one Area is listed in `unheld` when its extent is less than its bound.
+
+    The tree's root is the Area itself, so its path is the empty one.
+    """
+
+    tree = _area(1)
+    bounds = {AreaId(1): PixelSize(60, 40)}
+
+    assert apportion(tree, PixelSize(50, 50), _HANDLE_PX, bounds).unheld == ((),)
+    assert apportion(tree, PixelSize(60, 40), _HANDLE_PX, bounds).unheld == ()
+
+
+def test_a_window_one_pixel_short_of_two_views_keeps_one_view_rather_than_none() -> None:
+    """`PL-QZ7Z`: in a window one pixel short, only the Areas that must give way drop.
+
+    Three Areas share a row 655 px wide, split 0.4, 0.3 and 0.3. Each needs 300 px of
+    width, and each floor is 40 px wide. Two Areas at their need and one at its floor
+    need 300 + 300 + 40 + 2 * 8 = 656 px, one pixel more than the row has. So two Areas
+    drop, which leaves 300 + 40 + 40 + 16 = 396 px. The two that drop are the pair with
+    the least share of the window, Areas 2 and 3, and Area 1 keeps its View.
+
+    Area 1's share of the 639 px is 255.6, less than its 300 px need, so it is held at
+    300 px. Areas 2 and 3 share the other 339 px equally. Each gets 169.5 px, and the
+    pixel left over goes to the earlier of them. A column with the axes exchanged gives
+    the same sizes down its height.
+    """
+
+    shapes = (
+        (_row, PixelSize(655, 300), PixelSize(300, 100), PixelSize(40, 30)),
+        (_column, PixelSize(300, 655), PixelSize(100, 300), PixelSize(30, 40)),
+    )
+
+    for split, extent, need, floor in shapes:
+        tree = split((0.4, 0.3, 0.3), _area(1), _area(2), _area(3))
+        fit = settle(
+            tree,
+            extent,
+            _HANDLE_PX,
+            _each(tree, need),
+            _fixed(_each(tree, floor)),
+            kept=frozenset(),
+        )
+
+        assert fit.apportionment.splits[()] == (300, 170, 169)
+        assert fit.drawn == {AreaId(1)}
+        assert [entry.area_id for entry in fit.too_small] == [AreaId(2), AreaId(3)]
+
+
+def test_in_a_tree_of_ten_areas_a_new_area_whose_drop_gains_nothing_keeps_its_view() -> None:
+    """`settle` weighs every subset of a tree of ten Areas, the most for which it does so.
+
+    A row of nine Areas sits above Area 10, and each Area needs 300 px of height. The
+    column has 590 px, and the needs take 300 + 8 + 300 = 608. Area 1 is new, and the
+    other nine are kept. Dropping Area 1 gains nothing, because the row's other Areas
+    still hold it 300 px tall. Dropping Area 10 alone leaves 300 + 8 + 60 = 368, so Area
+    10 is the one Area that gives way. The column's 582 px would give 291 each, so the
+    row is held at 300 px, and Area 10 takes the other 282.
+
+    Area 1's View needs 100 px of width, more than its 1/9 share of the row's
+    600 - 8 * 8 = 536 px. Held at its need, it is drawn 100 px wide and keeps its View.
+    Dropping one Area at a time, as `settle` does for a larger tree, would drop Area 1
+    first, because a new Area gives way before a kept one. Area 1 would then be held only
+    at its 40 px floor, drawn at its 60 px share, and lose its View for no gain.
+    """
+
+    row = _row((1 / 9,) * 9, *(_area(number) for number in range(1, 10)))
+    tree = _column((0.5, 0.5), row, _area(10))
+    kept = frozenset(AreaId(number) for number in range(2, 11))
+    fit = settle(
+        tree,
+        PixelSize(600, 590),
+        _HANDLE_PX,
+        {**_each(tree, PixelSize(50, 300)), AreaId(1): PixelSize(100, 300)},
+        _fixed(_each(tree, PixelSize(40, 60))),
+        kept=kept,
+    )
+
+    assert fit.apportionment.splits[()] == (300, 282)
+    assert fit.apportionment.areas[AreaId(1)] == PixelSize(100, 300)
+    assert fit.drawn == {AreaId(number) for number in range(1, 10)}
+    assert [entry.area_id for entry in fit.too_small] == [AreaId(10)]
+
+
+def test_a_tree_too_large_to_weigh_whole_drops_only_the_areas_that_clear_its_shortfall() -> None:
+    """In a tree of eleven Areas, Areas drop one at a time, each the one that gains most.
+
+    A column holds a row of nine Areas, then Area 10, then Area 11, split 0.5, 0.25 and
+    0.25. Each Area needs 300 px of height, and the column has 600 px. The needs take
+    3 * 300 + 2 * 8 = 916 px. Dropping one of the row's Areas gains nothing, because the
+    others still hold the row 300 px tall. Dropping Area 10 or Area 11 leaves
+    300 + 300 + 60 + 16 = 676 px, still 76 px short. Dropping both leaves
+    300 + 60 + 60 + 16 = 436 px, which fits. So Areas 10 and 11 drop, and the nine in the
+    row keep their Views. That is so whether the Areas are new or kept, because the rule
+    is the same within each group.
+
+    The column's 584 px would give the row 292 px, so the row is held at 300 px. Areas 10
+    and 11 share the other 284 px equally.
+    """
+
+    row = _row((1 / 9,) * 9, *(_area(number) for number in range(1, 10)))
+    tree = _column((0.5, 0.25, 0.25), row, _area(10), _area(11))
+    needs = _each(tree, PixelSize(50, 300))
+    floors = _fixed(_each(tree, PixelSize(40, 60)))
+
+    for kept in (frozenset(), frozenset(area.id for area in areas_in(tree))):
+        fit = settle(tree, PixelSize(600, 600), _HANDLE_PX, needs, floors, kept=kept)
+
+        assert fit.apportionment.splits[()] == (300, 142, 142)
+        assert fit.drawn == {AreaId(number) for number in range(1, 10)}
+        assert [entry.area_id for entry in fit.too_small] == [AreaId(10), AreaId(11)]
+
+
+def test_a_window_exactly_as_wide_as_a_drawn_area_measures_floors_at_that_width() -> None:
+    """`PL-9Z74`: the lower floor of a wide Area applies when the window is exactly its width.
+
+    This is the case of the test above that measures a too-small Area's floor at the
+    width it is drawn, in a window 300 px wide instead of 400. Area 1 is drawn at its
+    need of 300 by 200 px, so the window is exactly as wide as the least width of the
+    layout. Each Area is still drawn 300 px wide, where its floor is 80 px tall. So
+    200 + 80 = 280 px fits in the 300 px of height, and Area 1 keeps its View.
+    """
+
+    tree = _column((0.5, 0.5), _area(1), _area(2))
+    needs = _each(tree, PixelSize(300, 200))
+    floors = {area_id: Floor(100, lambda width_px: _notice_floor(width_px)) for area_id in needs}
+    fit = settle(tree, PixelSize(300, 308), _HANDLE_PX, needs, floors, kept=frozenset())
+
+    assert fit.drawn == {AreaId(1)}
+    assert fit.apportionment.splits[()] == (200, 100)
+    assert fit.too_small == (TooSmall(AreaId(2), PixelSize(300, 200), PixelSize(300, 100)),)
