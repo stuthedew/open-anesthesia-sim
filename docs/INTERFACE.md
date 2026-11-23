@@ -4108,9 +4108,14 @@ true:
    cause.
 2. $`F_A/F_I \leq 1`$, which is the uptake regime. Alveolar gas gives up agent
    to blood, so the alveolar fraction stays below the inspired one and reaches
-   it only at equilibrium. Above 1, the tissues are returning agent faster
-   than it is delivered, which is elimination, not wash-in. The chart draws
-   equilibrium as a labelled reference line.
+   it only at equilibrium. Above 1, the alveolar fraction exceeds the inspired
+   one, and the number is no longer a wash-in fraction. With ventilation
+   running, the patient is then returning agent to the circuit. With alveolar
+   ventilation at zero, no agent moves between the lungs and the circuit. The
+   ratio can then pass 1 because fresh gas washes the circuit out, or because
+   blood returns agent to the alveoli, and neither is elimination. So the
+   caption beside the plot names the condition and not a cause. The chart
+   draws equilibrium as a labelled reference line.
 
    This boundary allows the ratio up to 1.000001. At zero cardiac output the
    exact ratio rises to 1 and stops, but the simulation's rounding can leave
@@ -4146,9 +4151,9 @@ at the point marker, where a reader is most likely to look.
 
 **The caption beside the plot states the ratio, or says why the trace is
 blank.** While the trace is drawn, the caption gives the value at its
-right-hand end. An inspired concentration too low to divide by and a patient
-returning agent are different situations, and an absent trace alone cannot
-show which applies. The caption and the trace are computed separately, from the same
+right-hand end. An inspired concentration too low to divide by and an alveolar
+concentration above the inspired are different situations, and an absent trace
+alone cannot show which applies. The caption and the trace are computed separately, from the same
 stored state. The caption reads the state that the run stored for the second it
 has reached, and the trace's right-hand end is drawn from that same state by the
 same division, so the two show the same ratio.
@@ -6094,7 +6099,7 @@ Wash-in FA/FI (alveolar / modelled circuit)
 
 The caption in parentheses says that $`F_I`$ is the modelled circuit, not the
 vaporizer dial. At the one column that a stretch draws past equilibrium, the
-third line reads `Past equilibrium: not a wash-in fraction` instead of a number
+third line reads `Alveolar exceeds inspired: not a wash-in fraction` instead of a number
 (§ "F_A/F_I as a displayed ratio").
 
 The 1 MAC line, the MAC-awake band and the control marks do not respond. What
