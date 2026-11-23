@@ -13,6 +13,7 @@ frame reads (`PL-RD3B`). Neither module imports this one, so code that reads eit
 does not also depend on the controller.
 """
 
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, fields, replace
 from itertools import pairwise
@@ -124,6 +125,8 @@ changes, with columns from 43 s to 579 s apart, the widest a chart draws
 (`PL-Z6C8`, 2026-11-21).
 """
 
+
+_LOG: Final = logging.getLogger(__name__)
 
 # The way out that a refused branch names when an earlier point is still
 # open to it. It names the controls by their words on screen, because a
@@ -2112,6 +2115,12 @@ class SimulationController:
         Args:
             resume_point: The branch's provenance, including the stretch the
                 step reaching the fork ran under.
+
+        Raises:
+            SimulationConfigurationError: The branch was rebuilt with a value
+                that this run did not hold at the fork (`_disagreements_with`).
+                The message is written for a learner. Each value that differs
+                is in the exception's note and in the failure log (`PL-72X2`).
         """
 
         fork_at_s = resume_point.fork.instant_s
@@ -2131,12 +2140,24 @@ class SimulationController:
         disagreements = self._disagreements_with(branch, settings)
 
         if disagreements:
-            raise SimulationConfigurationError(
-                f"a branch at {format_elapsed(fork_at_s)} would be rebuilt from values this run "
-                "did not hold there, which would make it a second case rather than a second "
-                f"management of this one: {'; '.join(disagreements)} "
+            # The learner reads the first text in the branch panel. A developer
+            # needs each value that differs, written exactly, and reads it in
+            # the failure log and in the exception's note (`PL-72X2`).
+            detail = (
+                f"a branch at {fork_at_s!r} s was rebuilt with values this run did not hold "
+                f"there: {'; '.join(disagreements)} "
                 '(docs/ARCHITECTURE.md, "What a branch is, and what it shares with its parent")'
             )
+            refusal = SimulationConfigurationError(
+                f"a branch at {format_elapsed(fork_at_s)} would not open on the values this run "
+                "held there, so it would be a different case rather than another way of "
+                "managing this one; the simulator's data may have changed since this run "
+                "began, so reopen the simulator and run the case again to branch it"
+            )
+            refusal.add_note(detail)
+            _LOG.error("Branch refused: %s", detail)
+
+            raise refusal
 
         # The branch inherits the marks but not the timeline. The two are
         # treated in opposite ways for the same reason. The timeline is this
