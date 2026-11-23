@@ -243,7 +243,9 @@ CHART_HEIGHT = 360
 # before the View starts to scroll inside its Area. 160 px is a placeholder
 # that `PL-CBYS` chose: the percent axis still shows its 1 ×MAC and 2 ×MAC
 # ticks at this height. A smaller value lets the View scroll later and makes
-# the traces harder to tell apart.
+# the traces harder to tell apart. A desktop font large enough to make the
+# tallest hover box taller than this raises the least height to the box's
+# (`qt_chart._HoverReadout.hold_the_tallest_box`).
 CHART_LEAST_HEIGHT = 160
 
 # The least height of the box that holds the rows above a chart View's plot:
