@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -530,9 +530,7 @@ def test_a_p1_workflow_filing_breaks_no_prediction() -> None:
     triage had not already recorded. A week whose only change is a `P1`
     workflow filing is now silent.
     """
-    week = [
-        _item(f"PL-1{n:03d}", date(2026, 9, 1), touches=("tools/a.py",)) for n in range(10)
-    ]
+    week = [_item(f"PL-1{n:03d}", date(2026, 9, 1), touches=("tools/a.py",)) for n in range(10)]
     severe = [
         _item(f"PL-2{n:03d}", date(2026, 9, 8), touches=("tools/a.py",), priority=band)
         for n, band in enumerate(("P0", "P1", "P1"))

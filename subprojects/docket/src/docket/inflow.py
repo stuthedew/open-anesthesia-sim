@@ -107,14 +107,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import (
-    LANE_PRODUCT,
-    LANE_WORKFLOW,
-    MIN_ROOT_CAUSE_ITEMS,
-    Item,
-    is_under,
-    pr_number,
-)
+from .model import LANE_PRODUCT, LANE_WORKFLOW, MIN_ROOT_CAUSE_ITEMS, Item, is_under, pr_number
 from .plan import Fact, clusters, facts
 from .trend import BY_WEEK, WINDOWS, _windows, window_label
 from .vcs import FilingParents
@@ -133,6 +126,7 @@ NEW_PATHS_CEILING = 0.13
 #: missed week's investigation is listed where the next cut tells a session
 #: to look before filing another (`PL-P6KV`).
 INFLOW_FEATURE = "convergence-visibility"
+
 
 @dataclass(frozen=True)
 class InflowPeriod:
