@@ -114,3 +114,9 @@ commit `67923625`) and 0.2-1.4 px (2026-09-19, `PL-QYBW`).
 Files checked in the sweep: `docs/INTERFACE.md` whole, `docs/VERIFICATION.md`,
 `docs/MODEL.md`, `docs/PARAMETERS.md`, `README.md` and `ROADMAP.md`, searched
 for each wrong figure above; none repeats it.
+
+**Merge review, 2026-11-23.** No value the simulator computes or shows
+changes, because no file under `src/` changes. Every figure this change
+rewrites in `docs/INTERFACE.md` is restated from what its own tests measure,
+and no sentence changes what a value means or what a limitation promises. So
+the owner's read is not needed, and the pull request merges on green.
