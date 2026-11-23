@@ -60,18 +60,22 @@ source list here keeps its own reading record beside a pointer.
 
 **Built 2026-11-23.** In `docs/PARAMETERS.md` § "Intertissue diffusion: the
 missing fourth compartment", the two Yasuda et al. 1991 entries now name each
-paper by authors, journal and year, keep every page read, the route and the
-depth, and point to `docs/references/README.md` § "Yasuda et al. 1991 — the two
-human kinetics papers". The Workbook and Hendrickx and De Wolf entry names the
+paper by its first author and its journal locator, keep every page read, the
+route and the depth, and point to `docs/references/README.md` § "Yasuda et al. 1991 — the two
+human kinetics papers". Each entry keeps its journal locator because
+§ "The evidence behind the known limitations" requires a paragraph that states
+a figure with a unit to name its test, its date or its published source, and
+`tools/doc_check.py` recognizes a source only as a DOI, a PMID, an ISBN or a
+journal locator. An entry with only the authors and the year failed it. The Workbook and Hendrickx and De Wolf entry names the
 chapter in *Modern Anesthetics*, keeps its pages, and points to the two README
 entries that carry the full citations. The README's entry for the chapter
 gave its PMID but not its DOI, which only `docs/PARAMETERS.md` had written out,
 so the entry now gives the DOI too, checked against PubMed's record for PMID
 18175091 on 2026-11-23. The README's Hendrickx and De Wolf entry
-said `docs/MODEL.md` § "Known limitations" cites pp. 163 and 165-66. That was
-stale since `PL-48MX` moved the cautions to `docs/PARAMETERS.md`, so it now
-names `docs/MODEL.md` § "What the model represents" for p. 163 and
-`docs/PARAMETERS.md` for pp. 165-66. The PMIDs that `docs/VERIFICATION.md`
+said `docs/MODEL.md` § "Known limitations" cites pp. 163, 165 and 166 for
+the description and the cautions. Since `PL-48MX` moved most of the cautions
+to `docs/PARAMETERS.md`, it now names both documents and no section, because
+each cites the pages in more than one section. The PMIDs that `docs/VERIFICATION.md`
 keeps beside its published-data tables are locators that its required-tests
 check needs, as `PL-R3J6` decided, and stay.
 

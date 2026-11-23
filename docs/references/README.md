@@ -525,10 +525,8 @@ Ishibashi et al. 2006 and Wissing's compartmental parameters (Rietbrock et al.
 demographics in no straightforward way, Wissing calls allocating fitted
 compartments to tissues "hardly feasible", and the chapter's authors find
 compartmental and physiologic models fit equally well (Hendrickx et al. 2006a).
-`docs/MODEL.md` § "What the model represents" cites p. 163 for Eger's
-five-compartment model. `docs/PARAMETERS.md` § "Intertissue diffusion: the
-missing fourth compartment" cites pp. 165-66 for the cautions. Neither cites
-the chapter for a value.
+`docs/MODEL.md` and `docs/PARAMETERS.md` cite these pages for that
+description and those cautions, and for no value.
 
 ### Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber
 

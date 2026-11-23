@@ -1746,19 +1746,20 @@ times were computed on 2026-09-26 from the published means in that table and thi
 model's parameters as stored then. None of the sources below is the authority
 for a stored value:
 
-- Yasuda et al., *Anesth Analg* 1991, on sevoflurane and isoflurane.
-  **Full text**, from the private reference corpus: the compartment
-  assumptions on p. 319, the interpretation on p. 320, Tables 1, 2 and 4 on
-  p. 321, Table 5 on p. 322, and the volume and muscle remarks on p. 323.
-  Seven volunteers, with 30 minutes' administration and six to seven days'
-  elimination.
-- Yasuda et al., *Anesthesiology* 1991, on desflurane, isoflurane and
-  halothane. **Full text**, a scan with no text layer, read as page images
-  from the private reference corpus: the interpretation on p. 493, Table 1 on
-  p. 494, Table 2 on p. 495, Tables 4 and 5 on p. 496. Eight volunteers, with
-  30 minutes' administration and five to seven days' elimination. The full
-  citations of both Yasuda papers are in `docs/references/README.md`
-  § "Yasuda et al. 1991 — the two human kinetics papers".
+- Yasuda et al., *Anesth Analg* 1991;72(3):316-24, on sevoflurane and
+  isoflurane. **Full text**, from the private reference corpus: the
+  compartment assumptions on p. 319, the interpretation on p. 320, Tables 1,
+  2 and 4 on p. 321, Table 5 on p. 322, and the volume and muscle remarks on
+  p. 323. Seven volunteers, with 30 minutes' administration and six to seven
+  days' elimination.
+- Yasuda et al., *Anesthesiology* 1991;74(3):489-98, on desflurane,
+  isoflurane and halothane. **Full text**, a scan with no text layer, read as
+  page images from the private reference corpus: the interpretation on
+  p. 493, Table 1 on p. 494, Table 2 on p. 495, Tables 4 and 5 on p. 496.
+  Eight volunteers, with 30 minutes' administration and five to seven days'
+  elimination. The full citations of both Yasuda papers are in
+  `docs/references/README.md` § "Yasuda et al. 1991 — the two human kinetics
+  papers".
 - Carpenter RL, Eger EI 2nd, Johnson BH, Unadkat JD, Sheiner LB.
   *Pharmacokinetics of inhaled anesthetics in humans: measurements during and
   after the simultaneous administration of enflurane, halothane, isoflurane,
@@ -1797,8 +1798,9 @@ for a stored value:
   and De Wolf's chapter in *Modern Anesthetics* (2008), pp. 163 and 165-66.
   Both were read from the private reference corpus. The Workbook is tier 3
   and the chapter is tier 2. Their full citations are in
-  `docs/references/README.md`, under § "Philip — *Workbook for Gas Man*" and
-  § "Schüttler & Schwilden 2008 — *Modern Anesthetics*".
+  `docs/references/README.md` § "Philip — *Workbook for Gas Man*" and
+  `docs/references/README.md` § "Schüttler & Schwilden 2008 — *Modern
+  Anesthetics*".
 
 ### The tissue:gas coefficients are carried as exact
 
