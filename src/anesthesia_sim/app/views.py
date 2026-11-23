@@ -1226,14 +1226,16 @@ class _CasePanelView[W: QWidget, S](QWidget):
 
 
 class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
-    """The case's marked instants and marked heights, with the forms that add and remove them.
+    """The case's marked instants and marked heights, each with a Remove button, and the add forms.
 
     Every Area that shows this View lists the same marks, because the marks
     belong to the case (`PL-9YPR`). The marks are edited here rather than in a
     window, so no window opens over the readouts while a run plays (`PL-CHX0`).
     Every copy of the forms shows the same entry, because the dashboard keeps
-    it and hands it in every tick (`MarkEntry`). A press of a button sends the
-    copy's entry with the request, and the dashboard makes the edit.
+    it and hands it in every tick (`MarkEntry`). A press of an Add button
+    sends the copy's entry with the request, and a press of a row's Remove
+    button sends which list the row is in and its place in that list. The
+    dashboard makes the edit.
 
     Args:
         context: What the View is built from.
@@ -1252,20 +1254,19 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
     def _built(self) -> BookmarksPanel:
         panel = BookmarksPanel()
         editor = panel.editor
-
-        for button, pressed in (
-            (MarkButton.ADD_TIME, editor.add_time_button),
-            (MarkButton.REMOVE_TIME, editor.remove_time_button),
-            (MarkButton.ADD_TARGET, editor.add_target_button),
-            (MarkButton.REMOVE_TARGET, editor.remove_target_button),
-        ):
-            pressed.clicked.connect(partial(self._ask_for_edit, button))
-
+        editor.add_time_button.clicked.connect(partial(self._ask_to_add, MarkButton.ADD_TIME))
+        editor.add_target_button.clicked.connect(partial(self._ask_to_add, MarkButton.ADD_TARGET))
+        panel.times.remove_requested.connect(
+            partial(self._requests.mark_remove, MarkButton.REMOVE_TIME)
+        )
+        panel.targets.remove_requested.connect(
+            partial(self._requests.mark_remove, MarkButton.REMOVE_TARGET)
+        )
         editor.entry_edited.connect(self._report_entry)
 
         return panel
 
-    def _ask_for_edit(self, button: MarkButton) -> None:
+    def _ask_to_add(self, button: MarkButton) -> None:
         if self._panel is not None:
             self._requests.mark_edit(button, self._panel.editor.entry())
 
@@ -1279,14 +1280,12 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
         The editor's signals are blocked while the tick is written, so that
         a bound that holds the height control down is not mistaken for the
         reader editing it. The dashboard works out the same held entry itself
-        (`MarkEntry.kept_through`).
+        (`MarkEntry.held_within`).
 
         The forms are rewritten only when the dashboard's entry differs both
         from the entry last handed here and from what the forms hold. Writing a
         field moves its cursor, so the copy the reader is typing in is never
-        rewritten with its own entry. The selected rows are written on every
-        tick, because a refill of a list can leave a copy built while the
-        lists were hidden with no row selected.
+        rewritten with its own entry.
         """
 
         editor = panel.editor
@@ -1302,14 +1301,11 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
 
             entry = shown.entry
 
-            if entry is not None:
-                if entry != self._entry_written and entry != editor.entry():
-                    editor.set_entry(entry)
-                else:
-                    editor.select_rows(entry)
+            if entry is not None and entry != self._entry_written and entry != editor.entry():
+                editor.set_entry(entry)
 
             self._entry_written = entry
-            editor.show_refusal(shown.refusal)
+            panel.show_refusal(shown.refusal)
 
 
 class BranchView(_CasePanelView[ForkPanel, BranchPresentation]):

@@ -68,11 +68,11 @@ of the case, not an input to it. A run that halts at its marks computes exactly
 the values that an unmarked run computes, element for element. The only thing a mark changes is when
 the run stops.
 
-**The marks are added and removed in the Bookmarks View**, below the lists of
-marks and each run's standing on them. No window opens to edit a mark
-(§ "What this list requires once the layout is the reader's"). After a mark is
-removed, no mark in that list is selected, so a second press of its Remove
-button removes nothing.
+**The marks are added and removed in the Bookmarks View.** Each listed mark
+has its own Remove button, which removes that mark and no other. The forms
+that add a mark sit below the lists and each run's standing on them. No window
+opens to edit a mark (§ "What this list requires once the layout is the
+reader's").
 
 **The run halts on the simulation step that crossed a mark, at every playback
 rate.** Every step is tested for a crossing. At the faster rates, a halt is
@@ -3225,8 +3225,10 @@ stated as data in `app/unconditional_set.py`, with the inhaled-agent tier as
 does not declare it. The interpretation statement is
 `INTERPRETATION_DISCLAIMER_TEXT`.
 
-The marks editor is `MarkEditor`, in `app/qt_widgets.py`, and each copy of the
-Bookmarks View holds one. A test adds and removes marks with a run playing and
+The forms that add a mark are `MarkEditor`, and each listed mark with its
+Remove button is a `MarkRow` of a `MarkList`, all in `app/qt_widgets.py`. Each
+copy of the Bookmarks View holds one `MarkEditor` and one `MarkList` for each
+kind of mark. A test adds and removes marks with a run playing and
 checks that no window opens
 (`test_editing_a_mark_while_a_run_plays_opens_no_window`, in
 `tests/integration/simulation_view/test_simulation_view_comparison.py`).

@@ -9,7 +9,7 @@ from typing import NoReturn
 
 import pytest
 from PySide6.QtCore import QPoint
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel, QListWidget, QPushButton, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import ViewScroll
@@ -21,13 +21,12 @@ from anesthesia_sim.app.dashboard_frame import (
     MARK_STILL_RUNNING_TEXT,
     NO_MAC_TARGETS_TEXT,
     NO_TIME_BOOKMARKS_TEXT,
-    REMOVE_NOTHING_SELECTED_TEXT,
     STATUS_FAILED_TEXT,
     MarkListing,
     run_label,
 )
 from anesthesia_sim.app.formatting import format_elapsed, mac_multiple
-from anesthesia_sim.app.qt_widgets import MarkEditor, MarkListingLabel
+from anesthesia_sim.app.qt_widgets import BookmarksPanel, MarkEditor, MarkList
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import MARK_ROW_BULLET
@@ -72,7 +71,7 @@ def test_an_instant_entered_in_the_editor_is_listed_with_the_marks(
     editor.add_time_button.click()
 
     assert "intubation" in _marks_panel(view).times.text()
-    assert editor.time_list.count() == 1
+    assert len(_marks_panel(view).times.rows) == 1
 
 
 def test_the_entered_instant_is_restated_in_the_form_the_clock_uses(
@@ -202,27 +201,65 @@ def test_every_displayed_run_carries_the_same_marks_after_an_add_and_a_removal(
         editor.instant_spin.setValue(instant_s)
         editor.add_time_button.click()
 
-    editor.time_list.setCurrentRow(0)
-    editor.remove_time_button.click()
+    _marks_panel(view).times.rows[0].remove_button.click()
 
     assert first.snapshot().bookmarks == second.snapshot().bookmarks
     assert [mark.instant_s for mark in first.snapshot().bookmarks.time_bookmarks] == [600.0]
 
 
-def test_removing_with_nothing_selected_says_so_and_removes_nothing(
+def test_a_row_s_remove_button_removes_that_row_s_mark_and_no_other(
     application: QApplication,
 ) -> None:
+    """Each listed mark's own Remove button removes that mark, from every run (`PL-G1JM`).
+
+    Three instants and three heights are marked, and the middle row of each
+    list is removed. A removal that took the wrong row, or every row after
+    it, would leave a different pair of marks.
+    """
+
     controller = SimulationController()
     view = _shown_view(application, controller)
     editor = _mark_editor(view)
-    editor.instant_spin.setValue(600)
-    editor.add_time_button.click()
-    editor.time_list.setCurrentRow(-1)
-    editor.remove_time_button.click()
+    panel = _marks_panel(view)
 
-    assert editor.remove_time_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+    for instant_s in (300, 600, 900):
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
+
+    for height_mac in (0.5, 1.0, 1.5):
+        editor.height_spin.setValue(height_mac)
+        editor.add_target_button.click()
+
+    panel.times.rows[1].remove_button.click()
+    panel.targets.rows[1].remove_button.click()
+    bookmarks = controller.snapshot().bookmarks
+
+    assert [mark.instant_s for mark in bookmarks.time_bookmarks] == [300.0, 900.0]
+    assert [float(mark.mac_multiple) for mark in bookmarks.mac_targets] == [0.5, 1.5]
+    assert len(panel.times.rows) == len(panel.targets.rows) == 2
     assert editor.add_time_notice.notice() is None
-    assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
+    assert panel.times.remove_notice.notice() is None
+
+
+def test_each_remove_button_names_its_mark_to_a_screen_reader(application: QApplication) -> None:
+    """Every Remove button reads as one word, so its accessible name says which mark it removes.
+
+    The names are built from the marks the test adds, not read from the rows.
+    """
+
+    view = _shown_view(application, SimulationController())
+    editor = _mark_editor(view)
+
+    for instant_s, name in ((300, "induction"), (600, "incision")):
+        editor.instant_spin.setValue(instant_s)
+        editor.time_label_edit.setText(name)
+        editor.add_time_button.click()
+
+    names = [row.remove_button.accessibleName() for row in _marks_panel(view).times.rows]
+
+    assert [row.remove_button.text() for row in _marks_panel(view).times.rows] == ["Remove"] * 2
+    assert names[0].startswith("Remove 5m – induction")
+    assert names[1].startswith("Remove 10m – incision")
 
 
 def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplication) -> None:
@@ -328,8 +365,7 @@ def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplica
 
     assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
 
-    editor.time_list.setCurrentRow(0)
-    editor.remove_time_button.click()
+    _marks_panel(view).times.rows[0].remove_button.click()
 
     assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
     assert branch.snapshot().bookmarks.time_bookmarks == ()
@@ -371,18 +407,51 @@ def test_a_name_field_is_cleared_after_a_mark_is_added_and_the_value_is_not(
     assert editor.instant_spin.value() == 600
 
 
-def test_the_editor_and_the_lists_above_it_show_one_set_of_rows(application: QApplication) -> None:
-    # Both read `dashboard_frame.bookmark_panel`, so a reader moving between
-    # them is reading one listing in two places.
+def _shown_texts(panel: BookmarksPanel) -> list[str]:
+    """Every line of text the panel shows: each label, each button and each row of a list widget.
+
+    A list widget is read as well as the labels, because the marks were once
+    listed a second time in one (`PL-G1JM`).
+    """
+
+    texts: list[str] = []
+
+    for child in panel.findChildren(QWidget):
+        if not isinstance(child, QLabel | QPushButton | QListWidget):
+            continue
+
+        if not child.isVisibleTo(panel):
+            continue
+
+        if isinstance(child, QListWidget):
+            texts.extend(child.item(row).text() for row in range(child.count()))
+        else:
+            texts.append(child.text())
+
+    return texts
+
+
+def test_the_bookmarks_view_lists_each_mark_once(application: QApplication) -> None:
+    """A mark's name appears once in the Bookmarks View, on its row with its Remove button.
+
+    The forms used to hold a second, selectable copy of each list, so every
+    mark was shown twice in a View that is short at 1366 by 768 (`PL-G1JM`).
+    """
+
     view = _shown_view(application, SimulationController())
     editor = _mark_editor(view)
     editor.instant_spin.setValue(600)
     editor.time_label_edit.setText("intubation")
     editor.add_time_button.click()
+    editor.height_spin.setValue(0.8)
+    editor.target_label_edit.setText("awake")
+    editor.add_target_button.click()
+    # Qt shows a row added to a shown list on the next pass of the event loop.
+    _settle(application)
+    texts = _shown_texts(_marks_panel(view))
 
-    listed = [editor.time_list.item(row).text() for row in range(editor.time_list.count())]
-
-    assert _marks_panel(view).times.text() == "\n".join(listed)
+    assert sum("intubation" in text for text in texts) == 1
+    assert sum("awake" in text for text in texts) == 1
 
 
 def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QApplication) -> None:
@@ -390,7 +459,7 @@ def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QAp
     # When the rows were joined into one label, the first row's continuation
     # began at the same margin as every row. So `Run 2 reached` looked like a
     # mark of its own, and attached one run's answer to the wrong mark.
-    listing = MarkListingLabel()
+    listing = MarkList()
     listing.set_listing(
         MarkListing(
             heading="MAC targets",
@@ -577,12 +646,18 @@ def test_the_bookmark_panel_is_placed_inside_its_bookmarks_view(application: QAp
 # ------------------------------------------- the editor, in more than one Area
 
 
-def _editors(view: SimulationView) -> list[MarkEditor]:
-    """Every Area's copy of the marks editor, in the order the layout lists the Views."""
+def _panels(view: SimulationView) -> list[BookmarksPanel]:
+    """Every Area's copy of the bookmarks panel, in the order the layout lists the Views."""
 
     panels = [v.panel for v in view.layout_container.views() if isinstance(v, BookmarksView)]
 
-    return [panel.editor for panel in panels if panel is not None]
+    return [panel for panel in panels if panel is not None]
+
+
+def _editors(view: SimulationView) -> list[MarkEditor]:
+    """Every Area's copy of the marks editor, in the order the layout lists the Views."""
+
+    return [panel.editor for panel in _panels(view)]
 
 
 def _show_bookmarks_in_two_areas(application: QApplication, view: SimulationView) -> None:
@@ -593,34 +668,37 @@ def _show_bookmarks_in_two_areas(application: QApplication, view: SimulationView
     view.present(False)
 
 
-def test_a_remove_leaves_no_mark_selected_so_a_second_press_removes_nothing(
+def test_each_copy_of_the_view_removes_the_mark_on_the_row_pressed(
     application: QApplication,
 ) -> None:
-    """After a Remove, no row is selected in any copy, so pressing Remove again takes nothing.
+    """Two Areas list the same marks, and a row's Remove button in either copy removes that mark.
 
-    Three instants are marked and the middle one is removed. The mark below
-    it moves up into its row. Before the fix, that row stayed selected in
-    every copy of the editor, and a second press of Remove took the 900 s
-    mark from every run although the reader never chose it.
+    Three instants are marked. The middle row is removed in the first copy,
+    and then the last row in the second. The mark below a removed one moves
+    up into its row, and no press removes a mark that the reader did not
+    press. Before `PL-G1JM`, a selected row stayed selected after a removal,
+    so a second press could take a mark that the reader never chose
+    (`PL-CHX0`).
     """
 
     controller = SimulationController()
     view = _shown_view(application, controller)
     _show_bookmarks_in_two_areas(application, view)
-    first, second = _editors(view)
+    first, second = _panels(view)
+    editor = first.editor
 
     for instant_s in (300, 600, 900):
-        first.instant_spin.setValue(instant_s)
-        first.add_time_button.click()
+        editor.instant_spin.setValue(instant_s)
+        editor.add_time_button.click()
 
-    first.time_list.setCurrentRow(1)
-    first.remove_time_button.click()
-    rows_after_remove = [first.time_list.currentRow(), second.time_list.currentRow()]
-    second.remove_time_button.click()
+    first.times.rows[1].remove_button.click()
 
-    assert rows_after_remove == [-1, -1]
-    assert [mark.instant_s for mark in controller.snapshot().bookmarks.time_bookmarks] == [300, 900]
-    assert second.remove_time_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [300.0, 900.0]
+    assert [len(panel.times.rows) for panel in (first, second)] == [2, 2]
+
+    second.times.rows[1].remove_button.click()
+
+    assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [300.0]
 
 
 def test_every_copy_of_the_marks_editor_shows_one_entry_and_acts_on_it(
@@ -655,13 +733,11 @@ def test_every_copy_of_the_marks_editor_shows_one_entry_and_acts_on_it(
         first.instant_spin.setValue(instant_s)
         first.add_time_button.click()
 
-    second.time_list.setCurrentRow(2)
-
-    assert first.time_list.currentRow() == 2
-
-    first.remove_time_button.click()
+    first.instant_spin.setValue(1500)
+    _panels(view)[1].times.rows[2].remove_button.click()
 
     assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [900.0, 300.0]
+    assert [editor.instant_spin.value() for editor in (first, second)] == [1500, 1500]
 
 
 def test_a_refusal_shows_in_every_copy_under_the_button_that_was_pressed(
@@ -686,14 +762,17 @@ def test_a_refusal_shows_in_every_copy_under_the_button_that_was_pressed(
         notice = editor.add_time_notice.notice()
         assert notice is not None
         assert "marked once" in notice
-        assert editor.remove_target_notice.notice() is None
+        assert editor.add_target_notice.notice() is None
 
-    second.target_list.setCurrentRow(-1)
-    second.remove_target_button.click()
+    for panel in _panels(view):
+        assert panel.times.remove_notice.notice() is None
+        assert panel.targets.remove_notice.notice() is None
+
+    second.instant_spin.setValue(900)
+    second.add_time_button.click()
 
     for editor in (first, second):
         assert editor.add_time_notice.notice() is None
-        assert editor.remove_target_notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
 
 
 def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_left(
@@ -725,7 +804,6 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
         editor.compartment_combo.findData(RecordedQuantity.FAT.value)
     )
     editor.height_spin.setValue(3.7)
-    editor.time_list.setCurrentRow(0)
     refusal = editor.add_time_notice.notice()
     assert refusal is not None
     assert editor.height_spin.value() == 3.7
@@ -745,67 +823,25 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
     assert rebuilt.time_label_edit.text() == "emergence"
     assert rebuilt.compartment_combo.currentData() == RecordedQuantity.FAT.value
     assert rebuilt.height_spin.value() == 3.7
-    assert rebuilt.time_list.currentRow() == 0
     assert rebuilt.add_time_notice.notice() == refusal
 
 
-def test_a_rebuilt_bookmarks_view_does_not_select_a_row_the_reader_lost(
-    application: QApplication,
-) -> None:
-    """A row that a removal deselected stays deselected in a copy of the editor built later.
-
-    Removing the last of three rows leaves nothing selected, because that row
-    is gone. If the dashboard still kept the old selection, a copy built after
-    a third mark was added would select the new third row, and its Remove
-    button would remove a mark the reader never chose (`PL-CHX0`).
-    """
-
-    controller = SimulationController()
-    view = _shown_view(application, controller)
-    (editor,) = _editors(view)
-
-    for instant_s in (300, 600, 900):
-        editor.instant_spin.setValue(instant_s)
-        editor.add_time_button.click()
-
-    editor.time_list.setCurrentRow(2)
-    editor.remove_time_button.click()
-
-    assert editor.time_list.currentRow() == -1
-
-    # The third mark is added through the controller, so that no field of the
-    # editor changes and nothing but a frame can update the kept entry.
-    controller.add_time_bookmark(TimeBookmark(CaseInstant(1200)))
-    view.present(False)
-    view.layout_container.choose_view(AreaId(5), AGENT_ACCOUNTING)
-    _settle(application)
-    view.layout_container.choose_view(AreaId(5), BOOKMARKS)
-    _settle(application)
-    view.present(False)
-    (rebuilt,) = _editors(view)
-
-    assert rebuilt.time_list.count() == 3
-    assert rebuilt.time_list.currentRow() == -1
-
-
-def test_a_copy_built_while_a_halt_hides_the_lists_selects_the_kept_row_once_they_return(
+def test_a_copy_built_while_a_halt_hides_the_lists_lists_the_marks_once_they_return(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A copy of the editor built while the lists are hidden selects the reader's row once shown.
+    """A copy of the View built while the lists are hidden lists every mark once a frame shows them.
 
     A halt that cannot work out the marks' standings hides the lists in every
-    copy (`PL-F5KT`). A copy built then has no rows, so it cannot select the
-    row the reader chose. Once a frame lists the marks again, both copies must
-    select that row. Otherwise the two Areas show different selections, and
-    Remove acts in one copy and is refused in the other (`PL-CHX0`).
+    copy, with their Remove buttons (`PL-F5KT`). A copy built then has no
+    rows. Once a frame lists the marks again, its rows and their Remove
+    buttons must act on the marks the first copy lists.
     """
 
     controller = _paused_run_with_history()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600), "check"))
     controller.add_time_bookmark(TimeBookmark(CaseInstant(900), "later"))
     view = _shown_view(application, controller)
-    (first,) = _editors(view)
-    first.time_list.setCurrentRow(1)
+    (first,) = _panels(view)
 
     def unanswerable(self: SimulationController) -> NoReturn:
         raise RuntimeError("the run could not say where it stands on its marks")
@@ -815,17 +851,17 @@ def test_a_copy_built_while_a_halt_hides_the_lists_selects_the_kept_row_once_the
     view.present(False)
     view.layout_container.choose_view(AreaId(2), BOOKMARKS)
     _settle(application)
-    (second,) = [editor for editor in _editors(view) if editor is not first]
+    (second,) = [panel for panel in _panels(view) if panel is not first]
 
-    assert second.time_list.isHidden() is True
+    assert second.times.isHidden() is True
 
     monkeypatch.undo()
     view.present(False)
 
-    assert second.time_list.isHidden() is False
-    assert [editor.time_list.currentRow() for editor in (first, second)] == [1, 1]
+    assert second.times.isHidden() is False
+    assert second.times.text() == first.times.text()
 
-    second.remove_time_button.click()
+    second.times.rows[1].remove_button.click()
 
     assert [mark.instant_s for mark in controller.bookmarks.time_bookmarks] == [600.0]
 
@@ -861,13 +897,10 @@ def test_the_marks_editor_scrolls_inside_the_default_bookmarks_area_rather_than_
         editor.instant_spin,
         editor.time_label_edit,
         editor.add_time_button,
-        editor.time_list,
         editor.compartment_combo,
         editor.height_spin,
         editor.target_label_edit,
         editor.add_target_button,
-        editor.remove_target_button,
-        editor.target_list,
     )
 
     assert box.viewport().height() < bookmarks.height()
@@ -880,18 +913,16 @@ def test_the_marks_editor_scrolls_inside_the_default_bookmarks_area_rather_than_
         assert bottom <= bookmarks.height(), control
 
 
-def test_a_frame_that_lists_the_same_marks_keeps_where_the_reader_scrolled_each_list(
+def test_a_frame_that_lists_the_same_marks_keeps_where_the_reader_scrolled_the_view(
     application: QApplication,
 ) -> None:
-    """A list longer than its box keeps its scroll position from one frame to the next.
+    """A Bookmarks View longer than its Area keeps its scroll position from one frame to the next.
 
-    Every frame redraws the lists while a run plays. A list that was emptied
-    and filled again on every frame, and then had its selected row set again,
-    scrolled back to that row each time. A reader with a row selected could
-    then not scroll the list while a run played (`PL-CHX0`). The test marks
-    more instants and heights than either box shows, selects the first row of
-    each list, scrolls both lists to the bottom, and draws another frame with
-    the same marks.
+    Every frame redraws the lists while a run plays. The rows are rewritten in
+    place, so a reader who scrolled down to a mark's Remove button can still
+    reach it while a run plays (`PL-CHX0`). The test marks more instants and
+    heights than the Area shows, scrolls the Area to the bottom, and draws
+    another frame with the same marks.
     """
 
     controller = SimulationController()
@@ -901,22 +932,19 @@ def test_a_frame_that_lists_the_same_marks_keeps_where_the_reader_scrolled_each_
         controller.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.1 * minute)))
 
     view = _shown_view(application, controller)
-    editor = _mark_editor(view)
     view.present(False)
     _settle(application)
-    bars = [listing.verticalScrollBar() for listing in (editor.time_list, editor.target_list)]
+    bookmarks = next(v for v in view.layout_container.views() if isinstance(v, BookmarksView))
+    box = bookmarks.parentWidget()
+    box = None if box is None else box.parentWidget()
+    assert isinstance(box, ViewScroll)
+    bar = box.verticalScrollBar()
 
-    assert all(bar.maximum() > 0 for bar in bars)
+    assert bar.maximum() > 0
 
-    editor.time_list.setCurrentRow(0)
-    editor.target_list.setCurrentRow(0)
-
-    for bar in bars:
-        bar.setValue(bar.maximum())
-
-    scrolled = [bar.value() for bar in bars]
+    bar.setValue(bar.maximum())
+    scrolled = bar.value()
     view.present(False)
     _settle(application)
 
-    assert [bar.value() for bar in bars] == scrolled
-    assert [editor.time_list.currentRow(), editor.target_list.currentRow()] == [0, 0]
+    assert bar.value() == scrolled

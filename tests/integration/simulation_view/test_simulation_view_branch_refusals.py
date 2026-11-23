@@ -31,7 +31,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _failure_details,
     _fork_panel,
     _halted_trunk_case,
-    _mark_editor,
+    _marks_panel,
     _paused_run_with_history,
     _read_the_alveolar_quotient_as,
     _select_agent,
@@ -83,9 +83,9 @@ def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt(
     capfd: pytest.CaptureFixture[str],
     kind: str,
 ) -> None:
-    """Pressing Remove in the marks editor on a run whose snapshot raises shows the halt.
+    """Pressing a mark's Remove button on a run whose snapshot raises shows the halt.
 
-    Both remove handlers read the reference run's snapshot to find the selected mark.
+    The remove handler reads the reference run's snapshot to find the pressed row's mark.
     They used to read it outside the code that halts the run on an error. So on a run
     whose snapshot rejects a value, the press raised out of the slot. The button did
     nothing, and nothing on screen said why (`PL-F2T2`). The read now goes through the
@@ -98,13 +98,8 @@ def test_removing_a_mark_on_a_run_whose_snapshot_refuses_restates_the_halt(
     controller.add_time_bookmark(time_mark)
     controller.add_mac_target(target)
     view = _shown_view(application, controller)
-    editor = _mark_editor(view)
-    listing, remove = (
-        (editor.time_list, editor.remove_time_button)
-        if kind == "time"
-        else (editor.target_list, editor.remove_target_button)
-    )
-    listing.setCurrentRow(0)
+    panel = _marks_panel(view)
+    remove = (panel.times if kind == "time" else panel.targets).rows[0].remove_button
     _read_the_alveolar_quotient_as(monkeypatch, 1.0000001)
     capfd.readouterr()
 
