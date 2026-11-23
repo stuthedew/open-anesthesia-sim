@@ -1236,8 +1236,176 @@ def test_the_worst_trace_contrast_pair_is_the_one_docs_model_records() -> None:
         for model in contrast_check.VISION_MODELS
     )
 
-    assert round(worst[0], 2) == 1.01
+    assert round(worst[0], 2) == 1.05
     assert (worst[1], worst[2]) == ("VESSEL_RICH_COLOR", "FAT_COLOR")
+
+
+# --- the MAC-awake band composite and the 1 MAC line (PL-GT8W, PL-6W49) -----
+
+
+def test_a_fill_over_the_panel_blends_the_stored_values() -> None:
+    """`INK` at 14% over white is `#E0E4E7`, the composite `PL-GT8W` measured the band at.
+
+    Each channel is 255 * 0.86 + the ink's channel * 0.14, rounded: red
+    255 * 0.86 + 36 * 0.14 = 224.34, green 255 * 0.86 + 59 * 0.14 = 227.56 and
+    blue 255 * 0.86 + 83 * 0.14 = 230.92.
+    """
+    assert contrast_check.composite_over("#243B53", 0.14, "#FFFFFF") == "#E0E4E7"
+    assert contrast_check.composite_over("#243B53", 0.0, "#FFFFFF") == "#FFFFFF"
+    assert contrast_check.composite_over("#243B53", 1.0, "#FFFFFF") == "#243B53"
+
+
+@pytest.mark.parametrize("opacity", [-0.01, 1.01])
+def test_an_opacity_outside_zero_to_one_is_refused(opacity: float) -> None:
+    with pytest.raises(ValueError, match="opacity"):
+        contrast_check.composite_over("#243B53", opacity, "#FFFFFF")
+
+
+def test_the_palette_derives_the_band_composite_from_the_theme(tmp_path: Path) -> None:
+    """The composite comes from the band colour, its opacity and the panel, so none is copied."""
+    root = _repo(
+        tmp_path,
+        theme=THEME_SOURCE + "\nMAC_AWAKE_BAND_COLOR = INK\nMAC_AWAKE_BAND_FILL_OPACITY = 0.14\n",
+    )
+
+    palette = contrast_check.read_palette(root)
+
+    assert palette[contrast_check.BAND_COMPOSITE] == "#E0E4E7"
+
+
+def test_a_band_fill_that_drops_a_trace_below_the_floor_is_an_error(
+    tmp_path: Path, declare
+) -> None:
+    """The band's old fill, which dropped the muscle trace to 2.68:1 inside the band (`PL-GT8W`).
+
+    The requirement is the shipped one, so this also shows that the table
+    measures the trace against the composite in every vision model.
+    """
+    (requirement,) = (
+        each
+        for each in contrast_check.REQUIREMENTS
+        if isinstance(each, contrast_check.Requirement)
+        and (each.foreground, each.background) == ("MUSCLE_COLOR", contrast_check.BAND_COMPOSITE)
+    )
+    declare((requirement,))
+    theme = (
+        THEME_SOURCE
+        + "\nMAC_AWAKE_BAND_COLOR = INK\nMAC_AWAKE_BAND_FILL_OPACITY = 0.14\n"
+        + 'MUSCLE_COLOR = "#D17206"\n'
+    )
+    root = _repo(tmp_path, theme=theme)
+
+    report = contrast_check.analyze(root)
+
+    (result,) = report.unexpected
+    assert result.requirement == requirement
+    # Muscle measures 2.68:1 as displayed and less under deuteranopia, where
+    # the muscle trace is lightest against the panel (3.22:1 on white).
+    assert result.model == "deuteranopia"
+    assert result.rounded < 2.68
+    assert "under deuteranopia" in contrast_check.format_report(report, matrix=False)
+
+
+def test_a_requirement_held_in_every_model_fails_on_a_dichromacy_alone(
+    tmp_path: Path, declare
+) -> None:
+    """A pair that passes as displayed and fails under one dichromacy is an error.
+
+    `#DC2626` on white is 4.83:1 as displayed and 4.14:1 as a deuteranope sees
+    it (`docs/INTERFACE.md`'s trace table), so a 4.5:1 minimum held in every
+    model fails, and the same minimum held as displayed passes.
+    """
+    held = contrast_check.Requirement(
+        "TRACE_TWO", "PANEL", 4.5, contrast_check.PROJECT_BAR, "a test pair", every_model=True
+    )
+    displayed = contrast_check.Requirement(
+        "TRACE_TWO", "PANEL", 4.5, contrast_check.PROJECT_BAR, "a test pair"
+    )
+    root = _repo(tmp_path)
+
+    declare((held,))
+    (failed,) = contrast_check.analyze(root).unexpected
+    declare((displayed,))
+    passed = contrast_check.analyze(root).unexpected
+
+    assert failed.model == "deuteranopia"
+    assert failed.rounded == 4.14
+    assert passed == ()
+
+
+def test_the_palette_derives_the_preview_composites_from_the_theme(tmp_path: Path) -> None:
+    """The preview fill over the panel, and the darker of its two stackings with the band.
+
+    Each channel is the lower colour's * (1 - opacity) + the fill's * opacity,
+    rounded. `#59728A` at 10% over white is `#EEF1F3`. Over the band
+    composite `#E0E4E7` it is 224 * 0.9 + 89 * 0.1 = 210.5, which Python
+    rounds to the even 210, then 216.6 and 221.7: `#D2D9DE`. `INK` at 14% over
+    the preview composite is 238 * 0.86 + 36 * 0.14 = 209.72, then 215.52 and
+    220.6: `#D2D8DD`, which is the darker of the two.
+    """
+    root = _repo(
+        tmp_path,
+        theme=THEME_SOURCE
+        + "\nMAC_AWAKE_BAND_COLOR = INK\nMAC_AWAKE_BAND_FILL_OPACITY = 0.14\n"
+        + 'PREVIEW_REGION_COLOR = "#59728A"\nPREVIEW_REGION_FILL_OPACITY = 0.10\n',
+    )
+
+    palette = contrast_check.read_palette(root)
+
+    assert palette[contrast_check.PREVIEW_COMPOSITE] == "#EEF1F3"
+    assert palette[contrast_check.BAND_AND_PREVIEW_COMPOSITE] == "#D2D8DD"
+
+
+def test_every_trace_clears_the_floor_inside_the_shipped_band() -> None:
+    """Each trace reaches 3:1 against the band's fill, in all four vision models."""
+    report = contrast_check.analyze(REPO_ROOT)
+    for fill in (
+        contrast_check.BAND_COMPOSITE,
+        contrast_check.PREVIEW_COMPOSITE,
+        contrast_check.BAND_AND_PREVIEW_COMPOSITE,
+    ):
+        declared = {
+            requirement.foreground
+            for requirement in contrast_check.REQUIREMENTS
+            if isinstance(requirement, contrast_check.Requirement)
+            and requirement.background == fill
+            and requirement.every_model
+        }
+        assert declared == set(contrast_check.TRACES), fill
+    assert [
+        result.requirement.key
+        for result in report.unexpected
+        if result.requirement.background.endswith("_COMPOSITE")
+    ] == []
+
+
+@pytest.mark.parametrize("reference", ["ONE_MAC_LINE_COLOR", "MAC_AWAKE_BAND_COLOR"])
+def test_each_chart_reference_is_held_apart_from_the_fat_trace(reference: str) -> None:
+    """`PL-6W49`: each pair is declared in every model, and fat colours that fail it are refused.
+
+    The old grey fat trace failed against the 1 MAC line, and the first ochre
+    chosen for it, `#5D4710`, failed against the band's `INK` edges.
+    """
+    (requirement,) = (
+        each
+        for each in contrast_check.REQUIREMENTS
+        if isinstance(each, contrast_check.Requirement)
+        and (each.foreground, each.background) == ("FAT_COLOR", reference)
+    )
+    palette = contrast_check.read_palette(REPO_ROOT)
+
+    def worst(fat: str) -> float:
+        return min(
+            contrast_check.contrast_ratio(
+                contrast_check.as_seen(fat, model),
+                contrast_check.as_seen(palette[reference], model),
+            )
+            for model in contrast_check.VISION_MODELS
+        )
+
+    assert requirement.every_model
+    assert worst(palette["FAT_COLOR"]) >= requirement.minimum
+    assert min(worst("#64748B"), worst("#5D4710")) < requirement.minimum
 
 
 def test_the_separation_ceiling_falls_once_every_trace_must_clear_the_panel() -> None:
