@@ -647,7 +647,10 @@ class LayoutModel:
                 cannot hold, such as the pinwheel. Or every tree that could
                 hold the result, re-sliced from any split up to the whole
                 window, would nest a split deeper than `TREE_DEPTH_MAXIMUM`,
-                which `split` also refuses.
+                which `split` also refuses. Or an Area of the result would be
+                no wider or no taller than `BORDER_ALIGNMENT_TOLERANCE` of the
+                window once the rebuilt splits place its edges, which `split`
+                also refuses.
         """
 
         kept, _ = self._locate(keep)
@@ -711,6 +714,17 @@ class LayoutModel:
                 ) from None
             except _TooDeep:
                 continue
+
+            # The rebuilt splits store fractions, and an edge placed again from
+            # them can round. So an Area left just more than the tolerance wide
+            # can come out no wider than it, which the layout does not hold.
+            narrow = _too_narrow(resliced)
+
+            if narrow is not None:
+                raise LayoutRefused(
+                    f"Area {keep} and Area {remove} cannot be joined: "
+                    f"{_narrow_reason(*narrow, verb='would be')}"
+                )
 
             return LayoutModel(self._with_tree(kept.window, resliced), self.next_area_id)
 
@@ -1176,6 +1190,19 @@ def _close(first: float, second: float) -> bool:
     return abs(first - second) <= BORDER_ALIGNMENT_TOLERANCE
 
 
+def _clearly_before(first: float, second: float) -> bool:
+    """Return whether edge `first` lies before edge `second` by more than the tolerance.
+
+    It is the order that `_close` leaves: two edges that are not one edge. The
+    difference is compared with the tolerance, as `_close` compares it. A
+    tolerance added to one edge first would round, and could put the edges
+    in the wrong order where they lie a few units in the last place more than
+    the tolerance apart (`PL-6YDJ`).
+    """
+
+    return second - first > BORDER_ALIGNMENT_TOLERANCE
+
+
 def _share_a_whole_edge(first: _Rect, second: _Rect) -> bool:
     """Return whether two rectangles meet along a whole edge of each, so together they form one."""
 
@@ -1373,7 +1400,7 @@ def _full_cuts(
     lines: list[list[float]] = []
 
     for start in sorted(start for start, _ in spans):
-        if not low + BORDER_ALIGNMENT_TOLERANCE < start < high - BORDER_ALIGNMENT_TOLERANCE:
+        if not (_clearly_before(low, start) and _clearly_before(start, high)):
             continue
 
         if lines and _close(start, lines[-1][-1]):
@@ -1383,8 +1410,7 @@ def _full_cuts(
 
     def enters_none(at: float) -> bool:
         return not any(
-            begin < at - BORDER_ALIGNMENT_TOLERANCE and end > at + BORDER_ALIGNMENT_TOLERANCE
-            for begin, end in spans
+            _clearly_before(begin, at) and _clearly_before(at, end) for begin, end in spans
         )
 
     cuts = (next((edge for edge in line if enters_none(edge)), None) for line in lines)
