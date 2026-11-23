@@ -84,3 +84,11 @@ not True` on the Undo button's visibility, the second with `STILL_RUNNING is
 REACHED`. The optional finding was taken too: the run number is now
 `runs_discarded`, so the controller keeps one count of runs begun rather
 than two that could drift apart.
+
+**Fixed in place, 2026-11-23.** Running the bookmark tests and the keyboard
+tests in one session failed
+`test_dials_built_again_after_a_halt_follow_the_parameters_chooser`, which
+counts the shown windows. `test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it`
+showed a mark list as a window of its own and never closed it. The pair fails
+the same way on `main` at e6085fd9, so this change did not cause it. The
+wrapped-row test now closes and deletes its list.

@@ -8,7 +8,7 @@ These tests cover bookmarks.
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QEvent, QPoint
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QListWidget, QPushButton, QWidget
 
@@ -561,16 +561,23 @@ def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QAp
     width = wrapped.text_label.fontMetrics().horizontalAdvance(wrapped.text_label.text()) // 2
     listing.resize(width, listing.heightForWidth(width))
     listing.show()
-    application.processEvents()
 
-    continuation_x = wrapped.text_label.mapTo(listing, QPoint(0, 0)).x()
-    next_row_x = below.bullet_label.mapTo(listing, QPoint(0, 0)).x()
+    # The list is a window of its own. Left shown, it outlived this test and
+    # failed a later test that counts the shown windows.
+    try:
+        application.processEvents()
+        continuation_x = wrapped.text_label.mapTo(listing, QPoint(0, 0)).x()
+        next_row_x = below.bullet_label.mapTo(listing, QPoint(0, 0)).x()
 
-    # The case is exercised only if the first row really does wrap here.
-    assert wrapped.text_label.height() >= 2 * wrapped.text_label.fontMetrics().lineSpacing()
-    assert below.bullet_label.text() == MARK_ROW_BULLET
-    assert continuation_x > next_row_x
-    assert wrapped.geometry().bottom() < below.geometry().top()
+        # The case is exercised only if the first row really does wrap here.
+        assert wrapped.text_label.height() >= 2 * wrapped.text_label.fontMetrics().lineSpacing()
+        assert below.bullet_label.text() == MARK_ROW_BULLET
+        assert continuation_x > next_row_x
+        assert wrapped.geometry().bottom() < below.geometry().top()
+    finally:
+        listing.close()
+        listing.deleteLater()
+        application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
