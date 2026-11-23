@@ -3,14 +3,17 @@ id: PL-PZSF
 title: Fields and arguments that nothing reads in the display modules, and three docstrings that misstate what their functions raise or print, found by sorting the mutation survivors of PL-00Y5
 priority: P3
 effort: M
-status: ready
+status: done
 classes: refactor, defect
 feature: tests-detect-wrong-values
-touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/layout/serialization.py, src/anesthesia_sim/layout/model.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py
+touches: src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/layout/model.py, src/anesthesia_sim/layout/serialization.py, docs/items/PL-VW5V-the-area-layout-adapter-walks-a-split-s-path.md, docs/items/PL-WZDM-both-callers-of-the-controller-s-axis-spacing-s.md, docs/items/PL-2890-the-agent-cost-panel-s-two-caption-constants.md, docs/items/PL-0DRD-runframe-agent-id-and-hoverreading-quantity-in.md
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
+closed: 2026-11-23
+pr: 2306
 filed-pr: 2281
 payoff: the display modules hold no field nobody reads and no docstring that misstates what its function raises
+verify: ! grep -qF '0.5, 1 and 1.5' src/anesthesia_sim/app/chart_frame.py
 ---
 
 **Problem.** Fields and arguments that nothing reads in the display modules, and three docstrings that misstate what their functions raise or print, found by sorting the mutation survivors of PL-00Y5
@@ -32,3 +35,15 @@ payoff: the display modules hold no field nobody reads and no docstring that mis
 **Done when.** Each field, argument and branch in the list is removed or carries a comment saying why it stays, the three docstrings match their functions, and the mutation survivors listed are killed or recorded as equivalent.
 
 **Generator check.** A one-off: the remainder of one mutation sort, not a misread fact.
+
+**Done 2026-11-23.** Removed: the write of `PreferencesStore._loaded` at the end of `save`, which is already set and writable when a save succeeds, and which nothing reads afterwards; the `agent` argument of `_captions` in `app/agent_cost.py`, with the `.format` call, since both captions are plain strings with no fields (the caption text is unchanged); the empty-axis guard in `chart_frame._run_preview`, with a comment that says why a preview's window always ends after the reach; the `() if squeezed else` guard in `layout/model.py`'s `_dragged`, with its docstring sentence; and the `given <= 0` test in `LayoutModel.split`, with a comment that says why only the kept part can round to zero. `LayoutModel.edges` now calls `_split_at` instead of skipping an Area, so a broken tree raises `NotInLayout` instead of dropping a border. `_read_node` in `layout/serialization.py` checks an object's keys through a new `_exact_fields`, which takes no noun, and its messages are unchanged.
+
+Kept, each with a comment that says why: `RunFrame.agent_id` and `HoverReading.quantity`, which tests read; `RunFrame.elapsed_s`, which `dashboard_frame.held_window_notice` now reads (`PL-Z7LY`, merged after the mutation run); the `continue` in `_nearest_wash_in_point`, for the type checker; the joins of several branch names in `trunk_reset_question`, for a higher `MAX_DISPLAYED_RUNS`; the `NotInLayout` guards in `_node_at`, `_rect_at`, `_split_at` and `_replaced`; the whole-steps check in `SimulationController._resume_point`, for a step that is not 1 s; the zero spacing in `_axis_spacing_s`, whose docstring now says the chart never asks for a zero-width axis; and the two preview caches. The mutation survivors on these kept lines are therefore recorded here as unreachable or as equivalent, each for the reason its comment gives. The survivors on the removed lines went with them.
+
+Docstrings corrected: `percent_axis_ticks` now says a 0.5% step prints 0.0, 0.5, 1.0 and 1.5; `WashInStretch` lists the `ValueError` for instants and ratios of unequal length; and `PreferencesStore.save` lists the `ValueError` for a number that is not finite or an entry that holds itself, and the `TypeError` for a value JSON cannot write.
+
+Documents checked: `docs/ARCHITECTURE.md` § on the preferences store (says when `PreferencesStore.save` writes, which is unchanged) and its two mentions of `_resume_point` (which still rejects a fork on the supported run length); and `docs/INTERFACE.md` § on the agent cost panel's captions, whose wording is unchanged. `docs/MODEL.md`, `docs/VERIFICATION.md` and `docs/PARAMETERS.md` name none of the changed code.
+
+Found while doing it and filed: `PL-VW5V` (a second copy of the model's path walk in `app/area_layout.py`), `PL-WZDM` (the one-second minimum spacing applied twice outside `_axis_spacing_s`), `PL-2890` (two caption constants still named templates) and `PL-0DRD` (two fields that only tests read). A fifth candidate, that no test reaches the refusal of a cut whose kept part rounds to zero, was dropped: `tests/unit/test_layout_model.py::test_a_cut_outside_the_area_is_refused_and_the_layout_is_unchanged` already cuts at `5e-324` and checks that refusal.
+
+**Blind review, 2026-11-23.** One pass. It found nothing.

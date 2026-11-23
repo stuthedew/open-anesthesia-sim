@@ -579,7 +579,7 @@ def _read_node(value: object, where: str, enclosing: int) -> Node:
         raise LayoutFormatError(f"{where}: a node is an Area or a split, and this one names both")
 
     if "area" in value:
-        fields = _fields(value, where, "an Area", ("area", "view"))
+        fields = _exact_fields(value, where, ("area", "view"))
         view = fields["view"]
 
         if not isinstance(view, str):
@@ -602,7 +602,7 @@ def _read_node(value: object, where: str, enclosing: int) -> Node:
                 "window's tree"
             )
 
-        fields = _fields(value, where, "a split", ("split", "sizes", "children"))
+        fields = _exact_fields(value, where, ("split", "sizes", "children"))
 
         return _read_split(fields, where, enclosing + 1)
 
@@ -698,10 +698,20 @@ def _read_area_id(value: object, where: str) -> AreaId:
 
 
 def _fields(value: object, where: str, noun: str, keys: tuple[str, ...]) -> dict[str, object]:
-    """Return `value` as an object with exactly `keys`, none missing and none extra."""
+    """Return `value` as an object with exactly `keys`, none missing and none extra.
+
+    `noun` names what `value` should be, in the message for a value that is not
+    an object.
+    """
 
     if not isinstance(value, dict):
         raise LayoutFormatError(f"{where}: {noun} is an object, not {_json_kind(value)}")
+
+    return _exact_fields(value, where, keys)
+
+
+def _exact_fields(value: dict[str, object], where: str, keys: tuple[str, ...]) -> dict[str, object]:
+    """Return the object `value` once it has exactly `keys`, none missing and none extra."""
 
     missing = [key for key in keys if key not in value]
     unknown = sorted(str(key) for key in value if key not in keys)

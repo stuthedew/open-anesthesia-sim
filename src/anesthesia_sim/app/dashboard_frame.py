@@ -1262,14 +1262,18 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # What the wash-in plot is showing at this instant. A trace that stops has
 # to say at which of its two boundaries it stopped: an inspired concentration
 # too low to divide by, or an alveolar concentration above the inspired. A
-# reader shown only an empty plot could not tell the two apart. The first sentence names the
-# condition and not a cause, because the inspired concentration also falls
+# reader shown only an empty plot could not tell the two apart. Each sentence
+# names the condition and not a cause. The inspired concentration also falls
 # that low during a washout, while the patient still holds agent (`PL-P3ZL`).
+# And alveolar exceeds inspired with ventilation stopped too, when no agent
+# moves between the lungs and the circuit, so the patient is not returning any
+# (`PL-7PBB`). The sentence does not say "past equilibrium" either. With
+# ventilation stopped, the alveoli still give agent to the blood when the ratio
+# passes 1, so nothing is in equilibrium there.
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
 WASH_IN_ELIMINATION_TEXT: Final = (
-    "Past equilibrium: alveolar exceeds inspired — the patient is returning agent, "
-    "which is elimination and not wash-in."
+    "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 
@@ -4500,6 +4504,9 @@ def trunk_reset_question(trunk_name: str, branches: Sequence[BranchAtStake]) -> 
     if not branches:
         raise ValueError("a trunk's Reset asks only before it discards a branch; none was given")
 
+    # While `MAX_DISPLAYED_RUNS` is 2, only one branch can be drawn, so each
+    # join below holds one branch. The joins stay so that a higher limit cannot
+    # leave a branch that the Reset discards out of the question.
     names = " and ".join(branch.name for branch in branches)
 
     return NewCaseQuestion(

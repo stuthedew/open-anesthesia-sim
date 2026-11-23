@@ -300,7 +300,7 @@ WASH_IN_HOVER_LABEL: Final = f"Wash-in {WASH_IN_RATIO_PLAIN_NAME} (alveolar / mo
 # such a quotient to be shown as a wash-in fraction (`PL-YH6Z`). Printed under the
 # wash-in label, it would suggest that wash-in can go past completion. It would do so
 # at the dot that a reader is most likely to point at.
-WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Past equilibrium: not a wash-in fraction"
+WASH_IN_HOVER_PAST_EQUILIBRIUM_TEXT: Final = "Alveolar exceeds inspired: not a wash-in fraction"
 
 # The word that opens every hover readout. It appears on every hover, not only
 # on the two compartments that have a measured twin, because the readout is
@@ -731,6 +731,7 @@ class WashInStretch:
             that every stretch keeps the guarantee the module docstring states
             by construction. The guarantee then does not depend on the order
             in which a frame is assembled.
+        ValueError: If `times_s` and `ratios` differ in length.
     """
 
     times_s: tuple[float, ...]
@@ -1374,9 +1375,14 @@ def _run_preview(
     }
     stretches = _drawn_wash_in(window, snapshot.agent_id)
 
+    # The prediction is never empty here. A run that has reached the supported
+    # run length refuses settings, so it draws no preview (`_held_preview`).
+    # Any other run's preview window is at least a minute wide and puts the
+    # reach at or left of its middle (`chart_time_base.preview_window`). So
+    # the window ends after the reach.
     return RunPreview(
         label=request.label,
-        region_s=(reached_s, window.times_s[-1] if window.times_s else reached_s),
+        region_s=(reached_s, window.times_s[-1]),
         times_s=window.times_s,
         fractions=MappingProxyType(fractions),
         wash_in=stretches[-MAX_CHART_WASH_IN_SEGMENTS:],
@@ -1556,9 +1562,10 @@ def percent_axis_ticks(top_percent: float, most_intervals: int) -> tuple[tuple[f
             into. The chart passes the MAC axis's count.
 
     Returns:
-        Ticks from zero upward, each as (percent position, label). A label
-        shows only the decimals its step can change, so a 0.5% step prints
-        0.5, 1 and 1.5.
+        Ticks from zero upward, each as (percent position, label). Every
+        label shows the decimals that the step can change and no more, so a
+        0.5% step prints 0.0, 0.5, 1.0 and 1.5, and a 1% step prints 0, 1
+        and 2.
 
     Raises:
         ValueError: `top_percent` is not strictly positive, or
@@ -1699,8 +1706,8 @@ def _wash_in_hover_value(ratio: float) -> str:
     """Return the ratio as the hover prints it, or a notice where it is not wash-in.
 
     The stretch's crossing column, where the trace passes equilibrium, has a quotient
-    above 1. That is elimination rather than wash-in, so no number is printed for it
-    (`PL-YH6Z`).
+    above 1. Alveolar then exceeds inspired, so the quotient is not a wash-in fraction,
+    and no number is printed for it (`PL-YH6Z`, `PL-7PBB`).
     """
 
     if not is_wash_in(ratio):
@@ -2309,6 +2316,9 @@ def _nearest_wash_in_point(
     for stretch in stretches:
         column = _nearest_column(stretch.times_s, time_s)
 
+        # Every stretch that a frame builds holds at least one anchor column
+        # (`wash_in_stretches`), so no stretch is skipped here. The check stays
+        # because it tells the type checker that `column` is an int.
         if column is None:
             continue
 
