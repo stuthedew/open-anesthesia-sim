@@ -3,6 +3,7 @@ id: PL-744F
 title: A whole View's Area is held at the height its View needs at the Area's least width, which overstates it at a wider drawn width; at 1366x768 with a branch, Induction's Parameters Area is held about 30 px taller than it needs, so the page scrolls that much more
 status: done
 feature: window-is-the-frame
+milestone: v0.6.23
 added: 2026-11-23
 closed: 2026-11-23
 pr: 2286

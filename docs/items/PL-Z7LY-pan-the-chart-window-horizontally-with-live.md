@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: ux, feature
 feature: chart-readout
+milestone: v0.6.23
 touches: docs/INTERFACE.md, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/chart_time_base.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_presentation.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/views.py, tests/integration/simulation_view/simulation_view_support.py, tests/integration/simulation_view/test_simulation_view_held_window.py, tests/integration/simulation_view/test_simulation_view_run_values.py, tests/integration/approved_interface_strings.json, tests/integration/test_interface_wording.py, tests/integration/test_layout_adapter.py, tests/integration/test_qt_chart.py, tests/integration/test_view_contract.py, tests/unit/test_chart_frame.py, tests/unit/test_chart_time_base.py, tests/unit/test_dashboard_frame.py, tests/unit/test_run_presentation.py, tests/unit/test_supported_range_edges.py, tools/glyph_check.py
 added: 2026-08-25
 closed: 2026-11-23

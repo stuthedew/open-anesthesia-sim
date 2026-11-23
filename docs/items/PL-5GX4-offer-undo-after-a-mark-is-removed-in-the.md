@@ -3,6 +3,7 @@ id: PL-5GX4
 title: Offer Undo after a mark is removed in the Bookmarks View, so an accidental removal can be reversed in one press rather than by entering the mark again (Baymard: undo is the ideal guard against accidental presses; found in PL-G1JM's review)
 status: done
 feature: interface-design-review
+milestone: v0.6.23
 added: 2026-11-23
 closed: 2026-11-23
 pr: 2288
