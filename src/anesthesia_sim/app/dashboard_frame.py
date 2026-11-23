@@ -291,8 +291,7 @@ REPORT_FAULT_NO_PAGE_TEXT: Final = (
 FAILURE_CAUSE_TEXTS: Final[Mapping[FailureKind, str]] = MappingProxyType(
     {
         FailureKind.ACCOUNTING: (
-            "the agent accounting check failed: the rejected step created or lost "
-            "anesthetic agent"
+            "the agent accounting check failed: the rejected step created or lost anesthetic agent"
         ),
         FailureKind.NUMERICAL: (
             "the model produced a value it cannot hold, such as a negative amount of agent"
