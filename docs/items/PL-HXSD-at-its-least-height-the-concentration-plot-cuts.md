@@ -12,7 +12,7 @@ added: 2026-11-23
 closed: 2026-11-23
 pr: 2276
 filed-pr: 2274
-tests: tests/integration/test_qt_chart.py::test_the_tallest_hover_box_is_drawn_whole_at_the_least_height, tests/integration/test_qt_chart.py::test_a_font_too_large_for_the_least_height_makes_the_chart_taller
+tests: tests/integration/test_qt_chart.py::test_the_tallest_hover_box_is_drawn_whole_at_the_least_height, tests/integration/test_qt_chart.py::test_a_font_too_large_for_the_least_height_makes_the_chart_taller, tests/integration/test_qt_chart.py::test_no_hover_box_runs_past_the_side_of_a_narrow_chart, tests/integration/test_qt_chart.py::test_a_box_on_show_is_placed_again_when_the_font_changes
 ---
 
 **Problem.** At its least height the concentration plot cuts through the hover box's last value line when the time axis's title wraps or the desktop font is larger than the container's (box 113 px, plot 101.1 px at 400 px wide; box 120 px, plot 112.3 px with a 13-pixel font; measured offscreen 2026-11-23); make the box fit whole
@@ -133,6 +133,25 @@ cut. It also hid a second cut: on the wide plot in the container's font the
 box's top border sat 0.4 px above the plot and was clipped, which its 0.5 px
 tolerance accepted. The new test reads the painted pixels of the box's top
 and bottom edges.
+
+**Blind review, 2026-11-23.** Both passes found that the first version moved
+the box only up and down. On a chart 420 px wide in DejaVu Sans even a
+three-line box is 371 px wide, wider than the 335 px plot, so a box beside a
+point in the middle ran past the chart's side: 66 of 156 hovers in the middle
+fifth of the plot, measured on that version. The box now goes to the other
+side of the point where it does not fit (Floating UI's `flip`), and is moved
+across into the chart where it fits on neither side, over the point. A value
+cut off at the edge can be misread, and a covered point cannot. Pass 2 also
+found that a font change gave a box on show its new size without placing it
+again, so a box above its point grew down over it. Both charts now place the
+box again on a font change. Regression tests:
+`test_no_hover_box_runs_past_the_side_of_a_narrow_chart` (66 of 156 boxes
+left the chart on the first version) and
+`test_a_box_on_show_is_placed_again_when_the_font_changes` (with the refresh
+removed, the box's bottom was 323.9 px against its point at 321 px). The
+beside-the-point test in `tests/integration/test_qt_rendering.py` now uses a
+box three quarters as wide as the plot and checks only the points at which
+that box fits beside them.
 
 **Regression check.** With `src/anesthesia_sim/app/qt_chart.py` reverted,
 `uv run pytest tests/integration/test_qt_chart.py -k "tallest or too_large"`
