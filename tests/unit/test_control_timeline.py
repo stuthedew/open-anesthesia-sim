@@ -2,7 +2,12 @@
 
 import pytest
 
-from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
+from anesthesia_sim.app.control_record import (
+    CONTROL_INPUT_DISPLAY_UNITS,
+    CONTROL_INPUT_UNITS,
+    ControlChange,
+    ControlInput,
+)
 from anesthesia_sim.app.control_timeline import (
     CONTROL_INPUT_LABELS,
     AdjustmentGrouping,
@@ -14,6 +19,7 @@ from anesthesia_sim.app.control_timeline import (
     wrapping_between_parts,
 )
 from anesthesia_sim.app.dashboard_frame import NO_CONTROL_CHANGES_TEXT
+from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.core.supported_ranges import CaseInstant
 
 #: U+00A0, the no-break space. It is written out here rather than imported, so
@@ -62,7 +68,6 @@ def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one(
             CaseInstant(60),
             6.0,
             2.0,
-            "L/min",
             1,
         )
 
@@ -73,7 +78,6 @@ def test_a_recorded_change_and_an_adjustment_refuse_an_instant_not_built_as_one(
             -60.0,  # type: ignore[arg-type]
             6.0,
             2.0,
-            "L/min",
             1,
         )
 
@@ -181,6 +185,31 @@ def test_flow_settings_are_displayed_in_the_unit_their_sliders_are() -> None:
     assert format_control_value(ControlInput.FRESH_GAS_FLOW, 4.0) == "4.0 L/min"
     assert format_control_value(ControlInput.ALVEOLAR_VENTILATION, 4.0) == "4.0 L/min"
     assert format_control_value(ControlInput.CARDIAC_OUTPUT, 5.0) == "5.0 L/min"
+
+
+@pytest.mark.parametrize("control", list(ControlInput))
+def test_each_line_states_the_unit_the_control_table_gives_it(control: ControlInput) -> None:
+    """A line takes its unit from the table that the slider label reads (`PL-8LZS`)."""
+
+    assert format_control_value(control, 1.0).endswith(CONTROL_INPUT_DISPLAY_UNITS[control].label)
+
+
+def test_a_control_given_a_unit_no_formatter_writes_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A unit the timeline cannot write is refused, rather than printed as a flow."""
+
+    monkeypatch.setitem(
+        CONTROL_INPUT_DISPLAY_UNITS, ControlInput.CARDIAC_OUTPUT, DisplayUnit.MAC_MULTIPLE
+    )
+
+    with pytest.raises(ValueError) as refused:
+        format_control_value(ControlInput.CARDIAC_OUTPUT, 5.0)
+
+    assert str(refused.value) == (
+        "CARDIAC_OUTPUT is recorded in multiple of MAC, and no formatter writes a recorded "
+        "control value in that unit"
+    )
 
 
 def test_every_control_has_a_label_and_a_unit() -> None:
@@ -400,7 +429,6 @@ def _parts(control: ControlInput, value: float, start_s: int, count: int) -> lis
         ended_at_s=CaseInstant(start_s + 1),
         from_value=value,
         to_value=value,
-        unit=CONTROL_INPUT_UNITS[control],
         change_count=count,
     )
 
