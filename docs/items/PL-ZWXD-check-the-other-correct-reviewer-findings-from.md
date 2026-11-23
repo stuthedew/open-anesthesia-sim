@@ -13,6 +13,7 @@ closed: 2026-10-25
 pr: 1830
 payoff: every still-present defect a blind checker confirmed in the replay is queued, instead of lost with the session that found it
 verify: grep -qE '^Every entry above is checked against main\.$' docs/items/PL-ZWXD-*.md
+sweep: checks the other correct findings of PL-TCBJ's reviewer replay against main, and files each one that still reproduces
 ---
 
 **Problem.** Check the other correct reviewer findings from PL-TCBJ's replay against main and file each one that still reproduces

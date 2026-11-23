@@ -12,6 +12,7 @@ added: 2026-11-20
 closed: 2026-11-21
 pr: 2176
 not-delegable: The work is a count of CI refusals sorted by reading each one, and a recommendation to the owner; no command can prove it.
+sweep: counts what each of the 13 workflow-record checks refused in CI, and files each defect the count finds
 ---
 
 **Problem.** Count, for each of the 13 checks that guard the workflow's own records, how many of its refusals caught a real mistake

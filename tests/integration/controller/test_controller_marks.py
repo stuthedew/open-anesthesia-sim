@@ -626,25 +626,30 @@ def test_a_branch_returned_to_a_mark_opens_on_it_and_reads_it_as_passed() -> Non
     So the branch opens on the mark, never just past it (`PL-SZ6G`). The
     branch reads the mark as passed, because the mark and the fork are one
     event (`PL-3K9B`), and a reset keeps that reading.
+
+    The mark is at 47 s because 47 is prime, so no step longer than a second
+    and shorter than the mark ends on it. With such a step the branch would
+    open after its own mark. This test then fails, as the clock rule in
+    `app/bookmarks.py` (`_time_bookmark_standing`) says it must.
     """
 
     trunk = _trunk_paused_past_a_change()
-    mark = TimeBookmark(CaseInstant(45))
+    mark = TimeBookmark(CaseInstant(47))
     trunk.add_time_bookmark(mark)
 
     branch = trunk.resumed_at_mark(mark)
 
-    assert branch.began_at_s == 45
+    assert branch.began_at_s == 47
     assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
 
     branch.start()
     _advance_for(branch, duration_s=10)
 
-    assert branch.snapshot().elapsed_s == 55
+    assert branch.snapshot().elapsed_s == 57
 
     branch.reset()
 
-    assert branch.snapshot().elapsed_s == 45
+    assert branch.snapshot().elapsed_s == 47
     assert branch.snapshot().bookmark_standings.of_time_bookmark(mark) is MarkStanding.PASSED
 
 
@@ -1253,6 +1258,32 @@ def test_a_time_mark_put_back_after_its_removal_returns_to_its_row() -> None:
     assert removed.position == 1
     assert after.bookmarks.time_bookmarks == tuple(marks)
     assert after.bookmark_halt == before.bookmark_halt
+
+
+def test_a_removed_time_mark_records_whether_the_run_had_passed_it() -> None:
+    """The record of a removed time mark says whether the run's clock was at or past it.
+
+    The run halts on the mark at 30 s and then runs on to 40 s. Its clock is
+    then past that mark and short of the one at 600 s, so `docs/INTERFACE.md`
+    § "What a mark's row reports" calls the first passed and the second still
+    running.
+    """
+
+    controller = SimulationController()
+    behind = TimeBookmark(CaseInstant(30))
+    ahead = TimeBookmark(CaseInstant(600))
+
+    for mark in (behind, ahead):
+        controller.add_time_bookmark(mark)
+
+    controller.start()
+    _advance_until_halted(controller, limit_s=60)
+    controller.start()
+    _advance_for(controller, duration_s=10)
+
+    assert controller.snapshot().elapsed_s == 40
+    assert controller.remove_time_bookmark(behind).reached
+    assert not controller.remove_time_bookmark(ahead).reached
 
 
 def test_a_target_put_back_after_a_reset_reads_as_the_new_run_has_it() -> None:
