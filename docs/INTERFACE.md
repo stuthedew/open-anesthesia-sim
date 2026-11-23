@@ -5787,6 +5787,17 @@ run arrive and leave. The box holds at most four value lines on a two-run chart,
 which draws at most two compartments. On a single-run chart it can hold six, as
 it does at the run's opening, where all six traces start together.
 
+**No line of the box is ever drawn in part** (`PL-HXSD`). The box stays inside
+the plot wherever the plot is at least as tall as the box. A shorter plot, as a
+narrow View or a larger desktop font can leave at the chart's least height,
+gets the box moved up over the time axis until all of it is inside the chart.
+A box wider than the room beside its point goes to the other side of the
+point, and where it fits on neither side it is moved across into the chart,
+over the point. Where the font makes the tallest box taller than the chart's
+least height, the chart's least height grows to hold it. A cut through a row of digits can turn
+one digit into another, as the top tick label's "6" once read as "0"
+(`PL-571L`).
+
 **For developers.** Two functions produce the forms above that list several runs or compartments
 (`chart_frame.format_compared_trace_hover` and
 `chart_frame.format_compared_wash_in_hover`), and their numbers come from
@@ -5794,13 +5805,21 @@ it does at the run's opening, where all six traces start together.
 `tests/unit/test_chart_frame.py` contain both worked examples above verbatim.
 They also contain the fat and muscle cases behind the decisions to report every
 run and every compartment in reach.
-At the plot's least height, the tallest box, the agent and six value lines,
-fits whole inside the plot while the time axis's title is on one line, in the
-container's font and in the font the CI runners draw in
-(`test_the_tallest_hover_box_fits_the_plot_at_its_least_height`).
-It does not fit, and the plot's edge cuts through its last value line, in two
-cases: a plot about 400 px wide, where the title breaks onto a second line,
-and a 13-pixel desktop font (`PL-HXSD`).
+The box is an item of the plot's scene, not of its view box, because a view
+box clips what it holds to the plot inside the axes. `_HoverReadout.show` in
+`app/qt_chart.py` places it, and `_HoverReadout.hold_the_tallest_box` sets
+the least height. At the chart's least height the tallest box, the agent and
+six value lines, is drawn whole on a wide plot and on a narrow one whose time
+axis's title takes two lines, in the container's font, in the font the CI
+runners draw in, and in a 13-pixel font. The test reads the painted pixels of
+the box's top and bottom edges, because the box's rectangle stays whole when
+something clips it
+(`test_the_tallest_hover_box_is_drawn_whole_at_the_least_height`). On a
+narrow chart, boxes beside points in the middle of the plot stay inside the
+chart (`test_no_hover_box_runs_past_the_side_of_a_narrow_chart`). A 24-pixel
+font set while the app runs makes the chart taller than its least height, and
+the box is drawn whole in it
+(`test_a_font_too_large_for_the_least_height_makes_the_chart_taller`).
 
 The rules weighed before this one, and the scans behind reporting every run in
 reach (`PL-JVHL`) and every compartment in reach (`PL-0RZ0`), are in those
