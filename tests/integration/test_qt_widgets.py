@@ -20,7 +20,15 @@ from collections.abc import Iterator
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
-from PySide6.QtGui import QColor, QFontMetrics, QKeyEvent, QMouseEvent, QPalette, QWheelEvent
+from PySide6.QtGui import (
+    QAccessible,
+    QColor,
+    QFontMetrics,
+    QKeyEvent,
+    QMouseEvent,
+    QPalette,
+    QWheelEvent,
+)
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -55,6 +63,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_columns,
     readouts,
     setting_readouts,
+    setting_value_text,
     slider_position,
     slider_value,
 )
@@ -935,6 +944,73 @@ def test_a_second_mouse_button_while_the_thumb_is_held_does_nothing(
     assert events == held
     assert control.slider.isSliderDown()
     assert control.slider.sliderPosition() == start + 5
+
+
+def test_assistive_technology_hears_each_slider_as_its_setting_with_the_unit(
+    application: QApplication,
+) -> None:
+    """A screen reader hears the setting and its value with the unit, never a step count.
+
+    Before `PL-9QY5`, Qt's own accessible slider reported the position, such
+    as 180 for 1.80% sevoflurane, and no name. macOS reads the value as a bare
+    number, so the name carries the unit, and the numbers are in the
+    setting's unit, not in steps.
+    """
+
+    for setting in _settings():
+        control = ParameterSlider(setting)
+        interface = QAccessible.queryAccessibleInterface(control.slider)
+        values = interface.valueInterface()
+
+        assert interface.role() is QAccessible.Role.Slider, setting.control
+        assert interface.text(QAccessible.Text.Name) == f"{setting.name}, {setting.unit}"
+        assert interface.text(QAccessible.Text.Value) == setting.value_text
+        assert interface.text(QAccessible.Text.Value) == control.value_label.text()
+        assert values is not None, setting.control
+        assert values.currentValue() == setting.value, setting.control
+        assert values.minimumValue() == setting.minimum, setting.control
+        assert values.maximumValue() == setting.maximum, setting.control
+        assert values.minimumStepSize() == slider_value(1, setting.decimals), setting.control
+
+        start = control.slider.value()
+        QTest.keyClick(control.slider, Qt.Key.Key_Left)
+        stepped = slider_value(start - 1, setting.decimals)
+
+        assert values.currentValue() == stepped, setting.control
+        assert interface.text(QAccessible.Text.Value) == setting_value_text(
+            setting.control, stepped
+        )
+        assert str(start - 1) not in interface.text(QAccessible.Text.Value), setting.control
+
+
+def test_a_value_set_by_assistive_technology_applies_once_in_the_setting_s_unit(
+    application: QApplication,
+) -> None:
+    """A screen reader's own command to set a value is one input, like a key press (`PL-9QY5`).
+
+    It arrives in the setting's unit, is announced as one adjustment before
+    it applies, and is ignored while a pointer holds the handle (`PL-M3H5`).
+    """
+
+    setting = _settings()[1]
+    control = ParameterSlider(setting)
+    events: list[tuple[str, float | None]] = []
+    control.adjustment_started.connect(lambda: events.append(("started", None)))
+    control.value_changed.connect(lambda value, _input: events.append(("applied", value)))
+    values = QAccessible.queryAccessibleInterface(control.slider).valueInterface()
+    asked = slider_value(slider_position(setting.value, setting.decimals) + 7, setting.decimals)
+
+    values.setCurrentValue(asked)
+
+    assert events == [("started", None), ("applied", asked)]
+    assert control.value() == asked
+
+    events.clear()
+    control.slider.setSliderDown(True)
+    values.setCurrentValue(setting.minimum)
+
+    assert events == []
+    assert control.value() == asked
 
 
 def test_a_frame_written_during_a_drag_leaves_the_thumb_under_the_pointer(
