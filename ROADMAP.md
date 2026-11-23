@@ -27,42 +27,36 @@ explicit out-of-scope list.
   the cause produced point back to it. A head is live while the cause still
   produces items, and spent once it no longer does.
 
-## Current baseline: v0.6.23
+## Current baseline: v0.6.24
 
-In v0.6.23 the reader can step the concentration chart and the wash-in plot
-back through a run, with an arrow on either side of the time base. A window
-moved back holds still while the run goes on. The time axis title then says
-that the chart is not following the run, and a line under the controls gives
-the time shown and the run's present time beside a "Follow the run" button,
-which returns the chart to the live window in one press. The vaporizer setting
-reads "Vaporizer" on the run's controls row, so it can no longer be taken for
-a modelled concentration on the heading line, and the dial, the control record
-and the readout all use that one name. A refused branch gives its instants as
-the branch panel writes them, names the control that would open the branch,
-and keeps the developer's detail out of the learner's message. The Bookmarks
-View lists each mark once, with a Remove button on its row, and Undo puts a
-removed mark back. Each run's record of control changes states how many
-changes it holds and how many it leaves out, in a line that stays in view
-however long the list grows. At 1366 by 768 with a branch open, each Area is
-held only as tall as its View needs at the width it is drawn, and the page
-scrolls by no more than the Areas lack. The release has 11 items. It is a
-patch on both halves of the patch test in § "Versioning decision": the
-schematic milestone is not finished until the project owner has test-driven
-it, and v0.7.0 is given to a milestone section, so no patch release may take
-that number. v0.6.23 finishes one feature: `replay-findings`.
+v0.6.24 changes nothing that a learner sees. Its four items make the tests and
+the documents more trustworthy. The chart legend test now writes out the words
+it expects, so a wrong legend word fails it instead of passing. The check that
+plants small deliberate errors in the code and counts how many the tests catch
+now covers the layout code and the display code that draws nothing on screen,
+and new tests close the gaps that it found. That check also stopped reporting
+six planted errors as uncaught when an existing test did catch them. In
+`docs/PARAMETERS.md`, the two Yasuda 1991 papers and Hendrickx and De Wolf are
+now cited in full only in the reference list, which the section on the
+missing fourth compartment points to. The release has 4 items. It is a patch
+on both halves of the patch test in § "Versioning decision": the schematic
+milestone is not finished until the project owner has test-driven it, and
+v0.7.0 is given to a milestone section, so no patch release may take that
+number. v0.6.24 finishes two features: `documentation-standard` and
+`tests-detect-wrong-values`.
 
 v0.7.0 is cut only after its Required scope has closed, Gate 3's frozen list
 has cleared and the project owner has test-driven `main`. All 19 Required
-scope ids have closed, and Gate 3's list has cleared: when v0.6.23 was cut,
+scope ids have closed, and Gate 3's list has cleared: when v0.6.24 was cut,
 191 of its 200 entries had cleared and the other 9 were deferred to the next
 gate. What is left before v0.7.0 is the owner's test drive.
 
 **No equation, step or stored value changed. Neither `core/` nor the stored
 data changed at all:**
 
-| Tree | v0.6.22 tag | This cut | What moved |
+| Tree | v0.6.23 tag | This cut | What moved |
 | --- | --- | --- | --- |
-| `src/` | `23b4a39` | `bd6c061` | `app/` only: the chart window stepped back and followed again (`#2283`), the vaporizer setting's name and place (`#2287`), the branch refusals' wording (`#2284`, `#2289`), the Bookmarks View's rows and Undo (`#2285`, `#2288`), the control-change record's count line (`#2280`) and the Areas' heights with a branch open (`#2282`, `#2286`) |
+| `src/` | `bd6c061` | `082416d` | `app/qt_chart.py` only: its two legends report each entry as it is drawn, so a test reads the drawn words (`#2292`) |
 | `src/anesthesia_sim/core/` | `e63728e` | `e63728e` | nothing |
 | `src/anesthesia_sim/data/` | `056f3e7` | `056f3e7` | nothing |
 | `tests/reference/` | `2e5f2d7` | `2e5f2d7` | nothing |
@@ -70,7 +64,7 @@ data changed at all:**
 **How far a run moved.** Both tags ran the same 81 cases and three runs of
 24 hours. Every compartment fraction, every agent total and all 174,960
 formatted readouts are identical, and all 271 stops on a marked crossing or a
-MAC target are at the same instant. `PL-P29J` names the scripts that measured
+MAC target are at the same instant. `PL-KJ9Q` names the scripts that measured
 this.
 
 § "What a tag ships that its notes may not name" says how work ships that
@@ -246,7 +240,8 @@ so no release's notes name it (`PL-KRS6`).
 | v0.6.20 | Completed | **The release where every MAC multiple divides by Mapleson's MAC at age 40 and the 1 MAC line names that age; where the model document is split by reader, so `docs/MODEL.md` describes the model for a clinician; where the shipped Workspaces fit a 1366 by 768 screen; and where Tab follows reading order and every control with the keyboard focus shows a ring.** | 57 items | `PL-245L` |
 | v0.6.21 | Completed | **The release where the agent cost View shows a cost as money to the cent; where a branch taken in a Workspace pinned to a closed run says where its comparison went; where a copied run is rebuilt through its checks; and where the published-data tests give a reason for each of their limits.** | 32 items | `PL-4N9Z` |
 | v0.6.22 | Completed | **The release where the reader chooses the top of the concentration chart from 1.5, 3 or 4.5 MAC, with the percent axis labelled at round values; where a run warns before it stops at 24 hours and draws that stop as a boundary rather than a failure; where the screen says when the computer cannot keep up with the set playback rate; where more of the model document's figures, and every figure in the interface specification, are each held to a test or a source; and where the control-change record stays readable at every window width; and where a run stopped by a fault names the kind of failure in plain words, with the error behind Show details.** | 45 items | `PL-6Y11` |
-| v0.6.23 | Completed / current baseline | **The release where the reader can step a chart's window back through the run and follow the run again in one press; where the vaporizer setting has one name and sits with the run's controls rather than among the modelled concentrations; where a refused branch uses the branch panel's own words; and where a removed mark can be put back with Undo.** | 11 items | `PL-P29J` |
+| v0.6.23 | Completed | **The release where the reader can step a chart's window back through the run and follow the run again in one press; where the vaporizer setting has one name and sits with the run's controls rather than among the modelled concentrations; where a refused branch uses the branch panel's own words; and where a removed mark can be put back with Undo.** | 11 items | `PL-P29J` |
+| v0.6.24 | Completed / current baseline | **The release where the tests catch a wrong legend word and more wrong values in the layout and display code, and where each source on the missing fourth compartment is cited in full in one place.** | 4 items | `PL-KJ9Q` |
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.

@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: test
 feature: tests-detect-wrong-values
+milestone: v0.6.24
 touches: docs/mutation-testing.md, docs/items/PL-33CG-the-mutation-check-of-a-branch-that-changes.md, tests/unit/, tests/integration/controller/
 added: 2026-11-11
 closed: 2026-11-23
