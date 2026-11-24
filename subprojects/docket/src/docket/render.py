@@ -30,6 +30,7 @@ from .concurrency import undeclared
 from .config import CONFIG_NAME, Config
 from .duplicates import Candidate
 from .feature_match import Match
+from .hotspots import REVIEW_FEATURE, Hotspots
 from .inflow import TREND_BOUND, TREND_MIN_EVENTS, UNBANDED, Inflow, TrendTest
 from .lines import split_lines
 from .model import (
@@ -4377,6 +4378,47 @@ def format_trend(report: Trend) -> str:
 
 
 _FILED, _PER_DAY, _REENTRY, _HEAD, _SWEEP, _BAND, _NEW, _PER_ITEM = 7, 6, 10, 7, 8, 5, 11, 7
+
+
+def format_hotspots(report: Hotspots) -> str:
+    """The simulator files where defects keep landing with no design review, or `""`.
+
+    Silent when a review covers every file at the top, for the reason a cut
+    prints an inflow miss and nothing else: it speaks when something is owed.
+    """
+    owed = report.owed
+    if not owed:
+        return ""
+    lines = [
+        "",
+        "Simulator files where defects keep landing, with no design review covering them.",
+        f"Counted from items classed {_either(report.classes)}, filed "
+        f"{report.start.isoformat()} to {report.end.isoformat()},",
+        "by the source files their touches declare:",
+    ]
+    for hotspot in owed:
+        detail = f"{hotspot.defects} defect items, {hotspot.lines:,} lines."
+        if hotspot.partner:
+            detail += f" Most often with {hotspot.partner}, in {hotspot.together}."
+        last = hotspot.last_review
+        if last is not None and last.closed is not None:
+            detail += (
+                f" {hotspot.since_review} filed since {last.identifier}, the last design review,"
+                f" closed {last.closed.isoformat()}."
+            )
+        lines += [f"  {hotspot.path}", f"      {detail}"]
+    lines += [
+        "A declared file is an item's scope, not proof that its fault lay there, so each file",
+        f"is a lead. Unless `bin/docket feature {REVIEW_FEATURE}` already lists a review of it,",
+        f'file one with `bin/docket new --feature {REVIEW_FEATURE} "..."` and name the file in',
+        "its touches. One review can take several files that change together.",
+    ]
+    return "\n".join(lines)
+
+
+def _either(names: Sequence[str]) -> str:
+    """`a`, `a or b`, or `a, b or c`."""
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} or {names[-1]}"
 
 
 #: Width of the event name in the inflow report's trend lines.
