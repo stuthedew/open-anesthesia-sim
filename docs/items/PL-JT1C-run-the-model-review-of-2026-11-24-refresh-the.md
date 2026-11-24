@@ -53,10 +53,11 @@ Kieser M, Pharm Stat 2013;12(3):141-6 (doi:10.1002/pst.1564).
    reported beside the primary one.
 2. **The session, not the item, is the unit of randomisation**, so the items
    of one session are analysed as a cluster. Taken without asking, because the
-   sources give one answer: standard methods are invalid when the unit
-   analysed differs from the unit randomised (Donner and Klar), and ignoring
+   sources give one answer: standard methods are invalid when clusters are
+   randomised and the individual is the unit of inference, unless the
+   analysis allows for the clustering (Donner and Klar), and ignoring
    clustering raised the false-positive rate to as much as 12% in the
-   simulation.
+   simulation (abstract only; see the recheck below).
 3. **Repeated monthly looks use an O'Brien-Fleming-type alpha-spending
    boundary** (Lan-DeMets), which allows any number of looks at any time,
    instead of 0.05 divided by six looks. Taken without asking, for the same
@@ -153,13 +154,47 @@ Kieser M, Pharm Stat 2013;12(3):141-6 (doi:10.1002/pst.1564).
    freedom, size 9.74 on 3. Lane did not (1.74 on 3), and is kept because the
    skill's step 4 names it.
 
+**Full-text recheck, 2026-11-24.** The owner asked that a cited paper's full
+text be read, not only its abstract (`PL-KQF4`). A subagent rechecked the
+sources of decisions 2 to 5 against their full texts where one could be
+reached, without pirate sites.
+
+- Royston and Parmar 2013 (PMC3922847), Uno et al. 2014 (PMC4105489) and
+  Amorim and Cai 2015 (PMC4339761): full text read, and each supports its use
+  above. Royston and Parmar call wider use of the restricted mean "merited"
+  rather than recommending it. Amorim and Cai also cover multi-state models.
+- Donner and Klar 2004 (PMC1448267): full text read. They reject the "unit of
+  analysis" framing, so decision 2 now says "unit of inference".
+- Chen, Harhay and Li 2023 was cited wrongly. It concerns regression on the
+  restricted mean survival time, not a Cox model, and only its abstract could
+  be reached. The source for the small-sample correction of a Cox model's
+  cluster-robust variance is Wang X, Turner EL, Li F, Biom J
+  2023;65(3):e2200113 (doi:10.1002/bimj.202200113), read in full as the arXiv
+  preprint 2203.02560v2. It says the default sandwich estimator "tends to
+  underestimate the variance" when clusters are few. Chen et al. stays the
+  source for clustered restricted-mean regression, from its abstract only.
+- Schoenfeld 1983 could not be reached. The events formula was checked in Wu
+  J, Xiong X, Stat Biopharm Res 2017;9(1):35-43 (PMC5619877), read in full,
+  which states it and attributes it to Schoenfeld 1981 (Biometrika
+  68:316-319) and 1983. So both are cited.
+- Pocock, Clayton and Altman 2002, DeMets and Lan 1994, Friede and Kieser 2013
+  and Dell-Kuster et al. 2018: no full text could be reached (publisher
+  refusals, closed repository copies). Each claim above that rests on them
+  rests on the abstract only. Two points are not in the abstracts: that the
+  plot shows the numbers still followed (Pocock), and that an
+  O'Brien-Fleming-type function spends little of the significance level early
+  (DeMets and Lan). The 1.0425 inflation does not rest on either, because a
+  simulation checked it. The owner was asked for these four papers' full
+  texts.
+
 **Result, 2026-11-24.** The run's entry is in `docs/model-review.md` under
 "Run of 2026-11-24", and the trial's record there carries the amended analysis
 plan. In short: 120 cloud sessions drew an arm, 135 items were worked only by
 them, and the trial is not yet adequate. At the realistic hazard ratio of 1.3
 it needs 476 failures, which cloud sessions alone would take about twelve
 years to supply. Threads do about five in six of the items and are not in the
-trial, so the question of bringing them in goes to the owner. Two findings
+trial. The owner chose on 2026-11-24 to bring them in (`PL-C38D`), and agreed
+to a less absolute form of the cost rule (`PL-1WTY`). Two findings
 were filed: `PL-JYC2` (arms kept only in the harness's events) and `PL-VGVV`
 (a third of the `xhigh` arm ran at `high`).
 

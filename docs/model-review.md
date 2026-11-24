@@ -49,7 +49,9 @@ trial began. `PL-JT1C` holds the sources.
    leaving it out of both arms). The comparison with moved sessions left out is
    a secondary result.
 2. The items that share a session form one cluster, because the session is
-   what was randomized, and every variance allows for the clustering.
+   what was randomized, and every variance allows for the clustering. The
+   Cox model's cluster-robust variance takes a small-sample correction,
+   because sessions are few (Wang, Turner and Li 2023).
 3. Each monthly run from 2026-11-24 to 2027-04-24 is one look, and the
    significance level is spent by a Lan-DeMets function of O'Brien-Fleming
    type, two-sided, 0.05 in all. A look's information is the failures observed
@@ -70,7 +72,7 @@ trial began. `PL-JT1C` holds the sources.
 5. The smallest difference worth acting on is a hazard ratio of 1.3. It is the
    realistic one, and any real rise is important to the owner. The failures
    needed are 4(z₀.₉₇₅ + z₀.₈)² / (ln HR)², times 1.0425 for the looks and
-   times the design effect (Schoenfeld 1983). The items needed are that number
+   times the design effect (Schoenfeld 1981 and 1983). The items needed are that number
    divided by the 30-day failure rate of both arms pooled, which keeps the
    estimate blind to the comparison. Each run also gives the numbers for a
    hazard ratio of 1.5, 2.0 and 3.0.

@@ -91,6 +91,15 @@ owner, not one they settle.
    until `high` is shown non-inferior is the owner's to decide, and the reply
    that asks about the margin says so.
 
+**Decided** (project owner, 2026-11-24, ratified: "Agree with best
+practixe", over margins of 2.0 and 1.25 and over keeping the rule absolute):
+the non-inferiority form above, with a margin of a hazard ratio of 1.5
+outside safety-critical work and zero within it. The decision card recorded
+the answer from the owner's words rather than a tap. Consequence 2, whether
+sessions open at `xhigh` until `high` passes, is still open and goes to the
+owner with this item's build, together with how the trial treats
+safety-critical work (`PL-C38D`, point 3).
+
 **Done when.** The owner has chosen the form and the margin, and
 `docs/maintainer.md`, `docs/dead-ends.md`, `.claude/rules/apparatus-standard.md`
 and the trial's analysis plan in `docs/model-review.md` say it.
