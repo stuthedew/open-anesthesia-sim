@@ -3,7 +3,7 @@ id: PL-FMGY
 title: PL-04KR's two remaining predictions compare one week's count with the week before, which counts this small break by chance; a trend test across the series is the established method
 priority: P3
 effort: S
-status: needs-decision
+status: ready
 classes: infra, planning
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/README.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
@@ -32,3 +32,5 @@ payoff: a release cut reports a convergence miss only when the trend across week
 **Done when.** The owner's answer is recorded here. If yes, `docket.inflow.missed` reports the trend test's statistic and verdict, a test pins it on a series with a known answer, `PL-04KR` records the deviation, and `subprojects/docket/README.md` describes the test.
 
 **Generator check.** One instance, the same misreading `PL-7TB2` fixed for priority: a single week's count read as the trend.
+
+**Answer, 2026-11-24.** Build the trend test (project owner, 2026-11-24, ratified, over keeping the week-against-week comparisons). The owner answered "Agree with best practice" to the recommendation above.
