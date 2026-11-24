@@ -1822,6 +1822,32 @@ an order as often as a severity. The owner chose on 2026-11-23 to stop
 checking it (`PL-7TB2`). The table still shows each week's filings by
 priority.
 
+### Where simulator defects land
+
+`docket release` also reads which simulator source files recent defects
+declare (`PL-36R0`). A file that keeps collecting defects for different
+reasons usually has a design problem that no single item names. Triage's
+generator check reads each filing for the fact it misread, so it cannot see
+unrelated misreads landing in one file. Kim, Zimmermann, Whitehead and Zeller,
+"Predicting Faults from Cached History", ICSE 2007, found in seven projects
+that 10% of the files, chosen from the recent history of faults and changes,
+held 73% to 95% of the later faults.
+
+The reading counts the items filed in the eight weeks before the cut that
+carry the `defect` class or one of `safety_classes`. Each is counted against
+every file its `touches` name that lies under `product_paths`, ends in `.py`
+and still exists. The five files with the most are read, and for each one the
+file those items most often name beside it.
+
+A design review is an item under the `hotspot-review` feature whose `touches`
+name the file. An open review covers the file. A finished one covers it until
+three more defects that name the file are filed after it closed, which is
+triage's rule for a fix that did not hold. A dropped one covers nothing. The
+cut names each of the five files that no review covers, with its count, its
+length and its usual partner, and says how to file a review. It prints nothing
+when every one is covered. A declared file is an item's scope rather than
+proof that the fault lay there, so the reading is a lead and never a gate.
+
 ### The digest and the ranking cannot disagree
 
 The session digest's `Top:` line is that same answer, from the same ranking

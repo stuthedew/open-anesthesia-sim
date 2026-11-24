@@ -92,6 +92,7 @@ guard-tool-names = { use = "guards-keyed-on-the-action" }
 guards-keyed-on-the-action = "Guards that judge a request by its spelling, its client or a tool name instead of the action it takes."
 guards-say-when-they-cannot-check = "Making a guard hook say so when it crashed or could not check."
 host-reachability = "Stating which outside hosts this container can reach as a dated probe, not a standing fact."
+hotspot-review = "Design reviews of the simulator files where defects keep landing, which the release cut names."
 inflight-verdict = { use = "carrier-detection" }
 instruction-staleness-audit = "Measuring the instructions loaded at launch on one basis, and reporting dated statements past a staleness threshold."
 interface-areas = "The Workspace, Area and View layout model adapted from Blender, including how Areas size, dock and behave when very narrow."

@@ -63,6 +63,7 @@ from .feature_match import (
     unfeatured_pairs,
 )
 from .feature_match import profiles as feature_profiles
+from .hotspots import read as read_hotspots
 from .inflow import INFLOW_FEATURE, LaneHistory, lane_history
 from .inflow import analyze as analyze_inflow
 from .inflow import missed as missed_inflow
@@ -4175,6 +4176,11 @@ def cmd_release(args: argparse.Namespace) -> int:
     )
     if missed:
         print(missed)
+    hotspots = render.format_hotspots(
+        read_hotspots(items, config, root, args.today or date.today())
+    )
+    if hotspots:
+        print(hotspots)
 
     if args.dry_run:
         print("Dry run: nothing was changed.")
@@ -5089,7 +5095,7 @@ def _missed_expectations(
             "`bin/docket inflow` has the table:",
             *(f"  {line}" for line in lines),
             "  A miss is PL-04KR's trigger to investigate. Unless `bin/docket feature "
-            f"{INFLOW_FEATURE}` already lists an item for this week, file one with "
+            f"{INFLOW_FEATURE}` already lists an open item on this miss, file one with "
             f'`bin/docket new --feature {INFLOW_FEATURE} "..."` and say so in the reply.',
         ]
     )
