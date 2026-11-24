@@ -3,14 +3,17 @@ id: PL-FMGY
 title: PL-04KR's two remaining predictions compare one week's count with the week before, which counts this small break by chance; a trend test across the series is the established method
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra, planning
 feature: convergence-visibility
-touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/README.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
+touches: subprojects/docket/src/docket/inflow.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_inflow.py, subprojects/docket/README.md, docs/items/PL-04KR-pre-register-the-apparatus-convergence.md
 deferred-from: v0.7.0 - filed after the gate froze; an apparatus reading with no effect on what a learner sees
 added: 2026-11-23
+closed: 2026-11-24
+pr: 2316
 filed-pr: 2301
 payoff: a release cut reports a convergence miss only when the trend across weeks says so, not on one week's noise
+tests: subprojects/docket/tests/test_inflow.py::test_the_laplace_statistic_matches_hand_worked_cases, subprojects/docket/tests/test_inflow.py::test_the_release_report_names_each_series_that_is_not_falling, subprojects/docket/tests/test_inflow.py::test_the_release_report_is_silent_when_both_series_fall
 ---
 
 **Problem.** PL-04KR's two remaining predictions compare one week's count with the week before, which counts this small break by chance; a trend test across the series is the established method
@@ -34,3 +37,15 @@ payoff: a release cut reports a convergence miss only when the trend across week
 **Generator check.** One instance, the same misreading `PL-7TB2` fixed for priority: a single week's count read as the trend.
 
 **Answer, 2026-11-24.** Build the trend test (project owner, 2026-11-24, ratified, over keeping the week-against-week comparisons). The owner answered "Agree with best practice" to the recommendation above.
+
+**Done 2026-11-24.** `docket.inflow.laplace` computes the statistic for observation that ends at a fixed time, from Tsang (2012), section 2.2(a): U = (sum(t_i) / T - n / 2) / sqrt(n / 12). Each event is placed at the midpoint of its day. `trend_test` applies it to the last eight complete weeks, counted from the first filing as the table's rows are, so the week still being filed into is left out. The two series are the days on which each apparatus path was first named, and the days of the re-entering filings that the `re-entry` column counts. `missed` reports a series whose statistic is not below -1.96, and `bin/docket inflow` prints both statistics under its table.
+
+Three choices were made here rather than put to the owner, because each is internal and the research settles it or leaves it close:
+
+1. Eight weeks. The window holds enough events to test, and leaves out the burst of filings in September 2026, when the apparatus was being built and a test over the whole history would read falling whatever happened since.
+2. Ten events at least. Tsang gives no minimum for the Laplace test and treats the related Mann test as normal from ten events. A series with fewer than ten events in eight weeks is too quiet for its direction to change a decision.
+3. Not falling is a miss, rather than significantly rising. `PL-04KR` predicted that inflow falls, and `CLAUDE.md` § "What this project is" says it should now decline, so a flat series breaks the prediction.
+
+On the store of 2026-11-24 the window is 2026-09-28 to 11-22. New apparatus paths number 153 with a statistic of -0.68, so the next cut reports that prediction as broken. Re-entries number 83 with a statistic of -2.77, which is falling at the 5% level.
+
+Files checked for prose the change made wrong: `subprojects/docket/README.md` (the inflow and release paragraphs, rewritten), `subprojects/docket/src/docket/inflow.py` (module docstring and `missed`), `subprojects/docket/src/docket/cli.py` (`_missed_expectations`), `subprojects/docket/src/docket/render.py` (`format_inflow`), `.claude/skills/docket/modes/release.md`, `.claude/skills/docket/modes/triage.md`, `CLAUDE.md` and `docs/items/PL-04KR-pre-register-the-apparatus-convergence.md`.

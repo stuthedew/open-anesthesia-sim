@@ -1798,16 +1798,21 @@ list names that item and its status (`PL-C4F0`). Three filings that re-enter the
 which is the answering item's `added:`, list the line as open again. Closing
 the answering item does not move that date. Like `trend`, it decides nothing and prints no score.
 
-`docket release` prints the one verdict, and only when it is unwelcome: when
-the last complete week broke one of `PL-04KR`'s pre-registered predictions -
-more than 0.13 new apparatus paths a filing, or more re-entries than the week
-before - the cut names it, and otherwise says nothing about inflow at all. A
-cut that prints a miss also says to file an investigation under
-`convergence-visibility` unless one is already listed for that week. A week
-above 0.13 new paths a filing breaks that prediction only when it named at
-least as many new paths as the week before. The ratio rises whenever filings
-fall faster than new paths, and a falling count of new paths is the
-convergence the prediction expects (`PL-2T7X`).
+Under the table, the report tests whether new paths and re-entries became
+rarer over the last eight complete weeks. It uses the Laplace trend test, whose
+statistic is close to a standard normal value when the events keep a steady
+rate. Below -1.96, the events became rarer at the 5% level, and above 1.96
+they became more frequent. The week still being filed into is left out, and a
+series with fewer than ten events in the window is not tested (`PL-FMGY`).
+
+`docket release` prints the one verdict, and only when it is unwelcome.
+`PL-04KR` predicted that new apparatus paths and re-entries would both fall.
+When either series' statistic is not below -1.96, the cut names it, and
+otherwise says nothing about inflow at all. A cut that prints a miss also says
+to file an investigation under `convergence-visibility` unless one is already
+listed. Until 2026-11-24 each prediction compared the last week with the week
+before. Counts this small broke that comparison by chance, and a rise spread
+over several weeks never broke it (`PL-2T7X`, `PL-FMGY`).
 
 No prediction reads a filing's priority. `PL-04KR` also predicted that no
 workflow filing would reach `P0` or `P1`. That prediction broke in every week

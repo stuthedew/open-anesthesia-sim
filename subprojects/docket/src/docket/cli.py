@@ -5080,9 +5080,7 @@ def _missed_expectations(
     """
     if not config.workflow_paths:
         return ""
-    lines = missed_inflow(
-        analyze_inflow(items, config, today=today, filing=filing, lanes=lanes), today
-    )
+    lines = missed_inflow(analyze_inflow(items, config, today=today, filing=filing, lanes=lanes))
     if not lines:
         return ""
     return "\n".join(

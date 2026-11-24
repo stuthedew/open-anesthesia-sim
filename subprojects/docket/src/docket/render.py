@@ -30,7 +30,7 @@ from .concurrency import undeclared
 from .config import CONFIG_NAME, Config
 from .duplicates import Candidate
 from .feature_match import Match
-from .inflow import UNBANDED, Inflow
+from .inflow import TREND_BOUND, TREND_MIN_EVENTS, UNBANDED, Inflow, TrendTest
 from .lines import split_lines
 from .model import (
     LANE_CROSSING,
@@ -4379,6 +4379,22 @@ def format_trend(report: Trend) -> str:
 _FILED, _PER_DAY, _REENTRY, _HEAD, _SWEEP, _BAND, _NEW, _PER_ITEM = 7, 6, 10, 7, 8, 5, 11, 7
 
 
+#: Width of the event name in the inflow report's trend lines.
+_TREND_NAME = 22
+
+
+def _weeks(start: date, end: date) -> int:
+    """Whole weeks from `start` to `end`, both days included."""
+    return ((end - start).days + 1) // 7
+
+
+def _trend_result(found: TrendTest) -> str:
+    """One series' events and statistic, or why the test was not applied."""
+    if found.statistic is None:
+        return f"{found.events:>4} events, too few to test (fewer than {TREND_MIN_EVENTS})"
+    return f"{found.events:>4} events, statistic {found.statistic:+.2f}"
+
+
 def format_inflow(report: Inflow) -> str:
     """What the apparatus, or the product, was handed, period by period, with no verdict.
 
@@ -4450,6 +4466,16 @@ def format_inflow(report: Inflow) -> str:
         "Each column counts one thing and none is a score: whether a row is the one",
         "expected is the reader's call.",
     ]
+    if report.trends:
+        first = report.trends[0]
+        lines += [
+            "",
+            f"Trend over the {_weeks(first.start, first.end)} complete weeks "
+            f"{first.start.isoformat()} to {first.end.isoformat()}, by the Laplace test:",
+            *(f"  {found.name:<{_TREND_NAME}}{_trend_result(found)}" for found in report.trends),
+            f"Below -{TREND_BOUND} the events became rarer, and above {TREND_BOUND} more frequent,",
+            "at the 5% level. The week still being filed into is left out.",
+        ]
     if report.sweeps_unread:
         lines += [
             "",

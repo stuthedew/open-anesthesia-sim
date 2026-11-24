@@ -9,15 +9,16 @@ from __future__ import annotations
 
 import os
 import subprocess
+from collections.abc import Sequence
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
 from docket.cli import _missed_expectations, main
 from docket.config import Config
-from docket.inflow import UNBANDED, LaneHistory, analyze, lane_history, missed
+from docket.inflow import UNBANDED, LaneHistory, analyze, lane_history, laplace, missed
 from docket.model import LANE_PRODUCT, Item, reentry_faults
 from docket.render import format_inflow
 from docket.vcs import FileRevisions, FilingParents, file_revisions
@@ -459,68 +460,115 @@ def test_a_reentry_must_name_a_fix_shipped_before_the_filing() -> None:
         assert named in faults
 
 
-def test_the_release_report_is_silent_when_every_prediction_holds() -> None:
-    """One new path in ten filings and no P1; the week still being filed into is not read."""
-    quiet = [_item(f"PL-1{n:03d}", date(2026, 9, 1), touches=("tools/a.py",)) for n in range(10)]
-    today = date(2026, 9, 8)
-    loud = _item("PL-2000", today, touches=("tools/b.py",), priority="P1")
-
-    assert missed(analyze([*quiet, loud], CONFIG, today=today), today) == ()
+#: A Monday, and the first filing of each series below.
+WEEK0 = date(2026, 9, 7)
+#: The first day of the ninth week, so the trend test reads weeks 0 to 7.
+WEEK8 = WEEK0 + timedelta(days=56)
 
 
-def test_the_release_report_names_each_prediction_the_last_week_broke() -> None:
-    today = date(2026, 9, 15)
-    items = [
-        FIXED,
-        _item("PL-1000", date(2026, 9, 1)),
-        _item("PL-2000", date(2026, 9, 8), touches=("tools/b.py",), priority="P1"),
-        _item("PL-2001", date(2026, 9, 9), reenters=("PL-FXD0",)),
-    ]
+def _series(
+    first: int, per_week: Sequence[int], *, reenters: tuple[str, ...] = (), root: str = "tools"
+) -> list[Item]:
+    """`per_week[w]` filings in week `w` from `WEEK0`, one a day from the week's first day.
 
-    head = _item(
-        "PL-2002", date(2026, 9, 9), priority="P1", root_cause_of=("PL-00B1", "PL-00B2", "PL-00B3")
-    )
+    Each filing names a path no other filing names, so each is also a new path.
+    """
+    items: list[Item] = []
+    for week, count in enumerate(per_week):
+        for day in range(count):
+            n = first + len(items)
+            items.append(
+                _item(
+                    f"PL-{n:04d}",
+                    WEEK0 + timedelta(days=7 * week + day),
+                    touches=(f"{root}/p{n}.py",),
+                    reenters=reenters,
+                )
+            )
+    return items
 
-    paths, reentry = missed(analyze([*items, head], CONFIG, today=today), today)
 
-    assert "1 new apparatus paths over 3 filings, 0.33 a filing" in paths
-    assert "1 re-entries against 0" in reentry
+#: Two a week for eight weeks: neither rarer nor more frequent.
+FLAT = (2, 2, 2, 2, 2, 2, 2, 2)
+#: Fewer each week, the last two weeks empty.
+FALLING = (6, 5, 4, 3, 2, 1, 0, 0)
 
 
-def test_the_new_paths_ceiling_breaks_only_when_the_count_did_not_fall() -> None:
-    """A week of fewer filings and fewer new paths can read above the ceiling per filing.
+def test_the_laplace_statistic_matches_hand_worked_cases() -> None:
+    """Zero for events placed evenly about the middle, and -39/7 for twelve on the first day.
+
+    Twelve events at day 0.5 of a 14-day window: (12 * 0.5 / 14 - 12 / 2) / sqrt(12 / 12).
+    """
+    assert laplace([WEEK0, WEEK0 + timedelta(days=6)], WEEK0, WEEK0 + timedelta(days=6)) == 0
+    assert laplace([WEEK0] * 12, WEEK0, WEEK0 + timedelta(days=13)) == pytest.approx(-39 / 7)
+
+
+def test_the_trend_test_leaves_out_the_week_still_being_filed_into() -> None:
+    """A burst on the day of the cut would otherwise read as a rise the week has not finished."""
+    burst = [_item(f"PL-9{n:03d}", WEEK8, touches=(f"tools/q{n}.py",)) for n in range(20)]
+
+    report = analyze([*_series(1000, FLAT), *burst], CONFIG, today=WEEK8)
+
+    paths, _ = report.trends
+    assert (paths.start, paths.end, paths.events) == (WEEK0, WEEK8 - timedelta(days=1), 16)
+
+
+def test_fewer_than_ten_events_are_not_tested_and_break_nothing() -> None:
+    report = analyze(_series(1000, (2, 2, 1, 1, 1, 1, 1, 0)), CONFIG, today=WEEK8)
+
+    paths, _ = report.trends
+    assert (paths.events, paths.statistic) == (9, None)
+    assert missed(report) == ()
+    assert "9 events, too few to test (fewer than 10)" in format_inflow(report)
+
+
+def test_the_release_report_is_silent_when_both_series_fall() -> None:
+    """A quiet week after a busy one is ordinary noise and breaks nothing on its own.
 
     The week from 2026-10-26 named 11 new paths over 19 filings, after 34 over
-    117, and was reported as growth (`PL-2T7X`). Here three new paths over ten
-    filings are followed by two over four: 0.50 a filing, but fewer new paths.
+    117. Compared with the week before, it read as growth (`PL-2T7X`).
     """
-    first = [
-        _item(f"PL-1{n:03d}", date(2026, 9, 1), touches=(f"tools/a{n % 3}.py",)) for n in range(10)
-    ]
-    fewer = [
-        _item(f"PL-2{n:03d}", date(2026, 9, 8), touches=(f"tools/b{n % 2}.py",)) for n in range(4)
-    ]
-    today = date(2026, 9, 15)
+    report = analyze(_series(1000, FALLING, reenters=("PL-FXD0",)), CONFIG, today=WEEK8)
 
-    assert missed(analyze([*first, *fewer], CONFIG, today=today), today) == ()
+    assert all(found.falling for found in report.trends)
+    assert missed(report) == ()
 
-    as_many = [*fewer, _item("PL-2009", date(2026, 9, 9), touches=("tools/b2.py",))]
-    (line,) = missed(analyze([*first, *as_many], CONFIG, today=today), today)
-    assert "3 new apparatus paths over 5 filings, 0.60 a filing" in line
-    assert "against 3 new the period before" in line
+
+def test_the_release_report_names_each_series_that_is_not_falling() -> None:
+    report = analyze(_series(1000, FLAT, reenters=("PL-FXD0",)), CONFIG, today=WEEK8)
+
+    paths, reentry = missed(report)
+
+    assert paths.startswith("2026-09-07..11-01: 16 new apparatus paths, trend statistic -0.62,")
+    assert paths.endswith("not below -1.96: the surface the apparatus changes is not shrinking")
+    assert reentry.startswith("2026-09-07..11-01: 16 re-entries, trend statistic -0.62,")
+    assert reentry.endswith("fixes are not holding any better")
+    shown = format_inflow(report)
+    assert "Trend over the 8 complete weeks 2026-09-07 to 2026-11-01" in shown
+    assert "  re-entries              16 events, statistic -0.62" in shown
+
+
+def test_a_slow_rise_breaks_though_the_last_week_did_not_rise() -> None:
+    """Re-entries rising across the weeks break the prediction.
+
+    Until 2026-11-24 a re-entry miss needed more in the last week than in the
+    week before, so a rise that ended on two equal weeks said nothing.
+    """
+    report = analyze(
+        _series(1000, (1, 1, 2, 2, 3, 3, 4, 4), reenters=("PL-FXD0",)), CONFIG, today=WEEK8
+    )
+
+    _, reentry = report.trends
+    assert reentry.statistic is not None and reentry.statistic > 0
+    assert any("20 re-entries" in line for line in missed(report))
 
 
 def test_a_cut_prints_the_broken_predictions_and_nothing_when_none_broke() -> None:
-    today = date(2026, 9, 15)
-    broken = [
-        FIXED,
-        _item("PL-1000", date(2026, 9, 1)),
-        _item("PL-2000", date(2026, 9, 8), reenters=("PL-FXD0",)),
-    ]
+    flat = _series(1000, FLAT, reenters=("PL-FXD0",))
 
-    assert "1 re-entries against 0" in _missed_expectations(broken, CONFIG, today)
-    assert _missed_expectations(broken[:2], CONFIG, today) == ""
-    assert _missed_expectations(broken, Config(items_dir="docs/items"), today) == ""
+    assert "16 re-entries, trend statistic" in _missed_expectations(flat, CONFIG, WEEK8)
+    assert _missed_expectations(_series(1000, FALLING), CONFIG, WEEK8) == ""
+    assert _missed_expectations(flat, Config(items_dir="docs/items"), WEEK8) == ""
 
 
 def test_a_p1_workflow_filing_breaks_no_prediction() -> None:
@@ -528,17 +576,13 @@ def test_a_p1_workflow_filing_breaks_no_prediction() -> None:
 
     Every week from 2026-10-12 to 11-22 broke the old prediction that no
     workflow filing reaches `P1`, and none of the six readings found a cause
-    triage had not already recorded. A week whose only change is a `P1`
-    workflow filing is now silent.
+    triage had not already recorded. A falling series with `P0` and `P1`
+    workflow filings in it is silent.
     """
-    week = [_item(f"PL-1{n:03d}", date(2026, 9, 1), touches=("tools/a.py",)) for n in range(10)]
-    severe = [
-        _item(f"PL-2{n:03d}", date(2026, 9, 8), touches=("tools/a.py",), priority=band)
-        for n, band in enumerate(("P0", "P1", "P1"))
-    ]
-    today = date(2026, 9, 15)
+    severe = [replace(item, priority="P1") for item in _series(1000, FALLING)]
+    severe[0] = replace(severe[0], priority="P0")
 
-    assert missed(analyze([*week, *severe], CONFIG, today=today), today) == ()
+    assert missed(analyze(severe, CONFIG, today=WEEK8)) == ()
 
 
 def test_a_missed_prediction_says_where_to_file_its_investigation() -> None:
@@ -546,12 +590,7 @@ def test_a_missed_prediction_says_where_to_file_its_investigation() -> None:
 
     Four cuts printed the week of 2026-10-19's misses and none filed an item.
     """
-    filings = [
-        _item(f"PL-0PT{n}", date(2026, 9, n), touches=(f"tools/t{n}.py",), priority="P1")
-        for n in range(7, 14)
-    ]
-
-    shown = _missed_expectations(filings, CONFIG, date(2026, 9, 14))
+    shown = _missed_expectations(_series(1000, FLAT), CONFIG, WEEK8)
 
     assert "bin/docket feature convergence-visibility" in shown
     assert 'bin/docket new --feature convergence-visibility "..."' in shown
@@ -586,15 +625,13 @@ def test_product_lane_counts_a_product_reentry() -> None:
 
 def test_the_release_report_never_reads_the_product_lane() -> None:
     """`PL-04KR`'s predictions are about the apparatus, so a product report breaks none."""
-    filings = [
-        _item(f"PL-0PS{n}", date(2026, 9, n), touches=("src/a.py",), priority="P1")
-        for n in range(1, 9)
-    ]
+    filings = _series(1000, FLAT, root="src")
 
-    report = analyze(filings, CONFIG, today=date(2026, 9, 21), lane=LANE_PRODUCT)
+    report = analyze(filings, CONFIG, today=WEEK8, lane=LANE_PRODUCT)
 
-    assert report.periods
-    assert missed(report, date(2026, 9, 21)) == ()
+    assert report.trends[0].name == "new product paths"
+    assert not report.trends[0].falling
+    assert missed(report) == ()
 
 
 # `PL-CJGH`: a sweep recorded only by `sweep:`, which no head's `root-cause-of:`
@@ -699,15 +736,13 @@ def test_a_store_with_no_sweep_needs_no_attribution() -> None:
 
 def test_a_miss_says_when_a_sweep_could_not_be_told_apart() -> None:
     """A broken prediction may be the sweep's own filings, so the cut says it could not tell."""
-    items, _ = _sweep_store()
+    items, filing = _sweep_store()
+    items += _series(1000, FLAT)
     shallow = FilingParents(declined="the checkout is a shallow clone")
+    today = date(2026, 10, 31)
 
-    lines = missed(
-        analyze(items, CONFIG, today=date(2026, 9, 14), filing=shallow), date(2026, 9, 14)
-    )
-    attributed = missed(
-        analyze(items, CONFIG, today=date(2026, 9, 14), filing=_sweep_store()[1]), date(2026, 9, 14)
-    )
+    lines = missed(analyze(items, CONFIG, today=today, filing=shallow))
+    attributed = missed(analyze(items, CONFIG, today=today, filing=filing))
 
     assert len(lines) == 2
     assert lines[-1].endswith(
@@ -791,15 +826,12 @@ def test_deleting_a_listed_file_leaves_an_earlier_weeks_row_unchanged() -> None:
 def test_an_unreadable_history_judges_by_todays_list_and_says_so() -> None:
     """The floor: a reading that could not use the history must not pass for one that did."""
     lanes = lane_history(FileRevisions(declined="this clone is shallow"))
-    items = [_item(f"PL-{n:04d}", date(2026, 9, 1)) for n in range(1000, 1010)]
-    items += [_item("PL-2000", date(2026, 9, 8), reenters=("PL-FXD0",))]
-    items += [_item("PL-FXD0", date(2026, 8, 30), closed=date(2026, 8, 31))]
 
-    report = analyze(items, CONFIG, today=date(2026, 9, 16), lanes=lanes)
+    report = analyze(_series(1000, FLAT), CONFIG, today=WEEK8, lanes=lanes)
 
     assert report.lanes_unread == "this clone is shallow"
     assert "this clone is shallow" in format_inflow(report)
-    lines = missed(report, date(2026, 9, 16))
+    lines = missed(report)
     assert any("today's list of workflow paths alone" in line for line in lines)
 
 
