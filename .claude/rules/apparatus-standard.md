@@ -45,13 +45,14 @@ cannot change its own effort level - that is the owner's lever and
 `docs/maintainer.md` carries it - but it sets the effort of every subagent and
 workflow agent it spawns. A subagent runs at the session's own effort
 level. A session does not set a lower level to save cost, for a search, a
-mechanical sweep or a review, unless the owner approves it for that task.
-The owner would rather pay for correct work than save on work that may be
-wrong, and this covers effort as well as model (project owner, 2026-10-19,
-replacing a ratified default of `high` for apparatus subagents from
-2026-09-19). The effort every session opens at is the default in
-`docket.toml`'s `[models]` table, the owner's own judgement of what the work
-needs (`docs/maintainer.md`, project owner, 2026-10-19, `PL-6XZG`).
+mechanical sweep or a review, unless the owner approves it for that task or a
+measurement shows that the lower level is not worse at it by more than a margin
+the owner set in advance. Correctness comes before cost, for effort as well as
+model (project owner, 2026-10-19, replacing a ratified default of `high` for
+apparatus subagents from 2026-09-19; revised 2026-11-24, ratified, `PL-1WTY`).
+The effort every session opens at is the default in `docket.toml`'s `[models]`
+table, the owner's own judgement of what the work needs (`docs/maintainer.md`,
+project owner, 2026-10-19, `PL-6XZG`).
 
 ## What a test on this side is for
 

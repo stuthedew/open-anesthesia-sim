@@ -804,6 +804,16 @@ and to look it up and give the source. The carrier test above applies to it
 unchanged. Nothing was cut to pay for it: it widens a sentence that is one
 day old, and no other sentence in that bullet covers a fact with no citation.
 
+**Widened on 2026-11-24 to a paper's full text (`PL-KQF4`).** The bullet asked
+a session to say whether it read a full text, an abstract or an index record,
+so a paper read only in abstract could still be cited. In the model review of
+that day, several sources reached the owner marked "abstract read". The owner
+answered: "If looking at paper, don't just read abstract". Two sentences, which
+add 213 characters to the bullet, now say to read a paper's full text, and where
+none can be reached, to say so and rest no recommendation on the abstract. The
+carrier test above applies to them unchanged. Nothing was cut to pay for them,
+and the instruction files stay under the cap.
+
 ## Rule 15, clock times in Central, added 2026-09-27
 
 Replies gave clock times in UTC, the zone `bin/docket`'s digest, the

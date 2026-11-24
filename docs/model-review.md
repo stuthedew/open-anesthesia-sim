@@ -103,6 +103,41 @@ trial began. `PL-JT1C` holds the sources.
    overall effect needs about four times the sample (Brookes et al. 2001).
    Design items, which include planning items, are already reported apart.
 
+Amended again 2026-11-24 (`PL-1WTY`, project owner, ratified, over margins of
+2.0 and 1.25 and over keeping the rule that a cheaper setting must be shown no
+less correct): the trial now asks whether `high` is worse than `xhigh` by no
+more than a margin set in advance. Points 9 to 12 replace point 5's hazard
+ratio of 1.3 as the difference the trial is planned for, and point 3's
+doubling as the measure of a look's information. `PL-1WTY` holds the sources.
+
+9. The margin is a hazard ratio of 1.5 for `high` against `xhigh` on the
+   primary outcome of point 4. At the 30-day failure rate of 5.9% seen before
+   the trial, it lets `high` fail on up to 8.8% of items. `high` is shown
+   non-inferior when the upper end of the two-sided 95% confidence interval
+   for the hazard ratio lies below 1.5 (FDA 2016, section III.A). At each look,
+   the statistic (ln 1.5 − ln of the estimated hazard ratio) divided by its
+   standard error is compared with that look's boundary from point 3, which
+   spends 0.025 on each side.
+10. The failures needed are 4(z₀.₉₇₅ + z₀.₈)² / (ln 1.5 − ln HR)², times
+    1.0425 for the looks and times the design effect, where HR is the true
+    ratio. If the arms are truly equal, that is 200 failures, and a look's
+    information is the failures observed divided by 200. Each run also gives
+    the number if the true ratio is 1.3, about 1,600, because 1.3 is the gap
+    between the two levels in Anthropic's published benchmark (`PL-JT1C`,
+    decision 6).
+11. An analysis by drawn arm is not conservative for this question. Sessions
+    that ran at a level other than the one drawn make the arms look more
+    alike, which favours a false finding of non-inferiority (FDA 2016, sections
+    III.D.3 and IV.F). So non-inferiority is concluded only when the analysis
+    by drawn arm (point 1) and the analysis by the level actually run both
+    show it.
+12. The owner's first question still applies. A look at which the log of the
+    estimated hazard ratio, divided by its standard error, crosses that look's
+    boundary shows that `high` fails more often. It is reported at once, even
+    when `high` is also shown non-inferior, because `high` can fail more often
+    and still fall within the margin. Both questions are read from the same
+    estimate and standard error.
+
 ## Runs
 
 ### Run of 2026-11-24

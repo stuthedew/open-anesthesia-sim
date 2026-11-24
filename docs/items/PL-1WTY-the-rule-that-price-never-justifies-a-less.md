@@ -1,10 +1,13 @@
 ---
 id: PL-1WTY
 title: The rule that price never justifies a less correct model or effort (PL-2D28) is absolute: no finite measurement can show a cheaper setting is no less correct, so it forbids every cheaper setting for good and made any rise in failures worth acting on; the owner asked on 2026-11-24 for a form that keeps its spirit
-status: untriaged
+status: done
 feature: model-evidence
 added: 2026-11-24
+closed: 2026-11-24
+pr: 2319
 filed-pr: 2318
+verify: grep -qF 'Correctness comes before cost' docs/maintainer.md
 ---
 
 **Problem.** The rule that price never justifies a less correct model or effort (PL-2D28) is absolute: no finite measurement can show a cheaper setting is no less correct, so it forbids every cheaper setting for good and made any rise in failures worth acting on; the owner asked on 2026-11-24 for a form that keeps its spirit
@@ -83,7 +86,7 @@ owner, not one they settle.
 1. An analysis by drawn arm is not conservative for this question. The FDA
    says intention-to-treat analyses "are not necessarily conservative in an NI
    study and can lead to an incorrect finding of non-inferiority" (section
-   III.E.3). The 22 `xhigh`-arm sessions that ran at `high` (`PL-VGVV`) push
+   III.D.3, and again in section IV.F). The 22 `xhigh`-arm sessions that ran at `high` (`PL-VGVV`) push
    toward that error, so non-inferiority is concluded only where the analysis
    by drawn arm and the analysis by the level actually run agree.
 2. Under either the present rule or this one, the burden of proof sits with
@@ -103,3 +106,38 @@ safety-critical work (`PL-C38D`, point 3).
 **Done when.** The owner has chosen the form and the margin, and
 `docs/maintainer.md`, `docs/dead-ends.md`, `.claude/rules/apparatus-standard.md`
 and the trial's analysis plan in `docs/model-review.md` say it.
+
+**Built, 2026-11-24.** The FDA guidance was read again in full text that day
+(the PDF at the URL above, as text). The intention-to-treat passage is in
+section III.D.3, "Good Study Quality", and is repeated in section IV.F, not
+in section III.E.3 as this brief first said. Section III.A gives the test:
+non-inferiority holds when the upper bound of the two-sided confidence
+interval lies below the margin, which a 95% interval makes a one-sided test at
+0.025.
+
+1. `docs/maintainer.md` § "Match model capability to the work" holds the rule
+   in the proposed wording, with the reason and the effort trial's margin. The
+   Explore paragraph's "no less correct" now names the margin.
+2. `docs/dead-ends.md`'s entry for a cheaper model or lower effort for a
+   subagent names the revision and the margin.
+3. `.claude/rules/apparatus-standard.md`'s effort paragraph allows a lower
+   subagent level on a measurement within a margin set in advance.
+4. `docs/model-review.md` adds points 9 to 12 to the trial's plan: the margin,
+   the failures it needs (200 if the arms are equal, about 1,600 if the true
+   ratio is 1.3), the rule that both analyses must agree, and the owner's
+   first question read from the same estimate.
+5. `.claude/skills/model-review/SKILL.md` asks a downgrade trial to show the
+   cheaper setting within a margin, adds a `Margin:` field to the trial form,
+   and points effort monitoring's steps 3 and 8 at the plan.
+
+Consequence 2, and what level safety-critical work runs at, moved to
+`PL-RZMZ`, which holds the research and a recommendation.
+
+Files checked for statements of the old rule: `docs/maintainer.md`,
+`docs/dead-ends.md`, `.claude/rules/apparatus-standard.md`,
+`.claude/rules/dead-ends-apparatus.md`, `.claude/skills/model-review/SKILL.md`,
+`.claude/skills/docket/modes/*.md`, `docs/model-review.md`, `docs/worker.md`,
+`docs/apparatus.md`, `CLAUDE.md` and `subprojects/docket/README.md`. The
+sentence in `docs/maintainer.md` § "Match effort to the standard the work is
+held to" that cost alone never justifies a lower setting is still true, and
+was left as it is.
