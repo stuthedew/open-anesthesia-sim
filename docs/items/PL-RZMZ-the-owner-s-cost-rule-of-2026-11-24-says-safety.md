@@ -1,11 +1,17 @@
 ---
 id: PL-RZMZ
 title: The owner's cost rule of 2026-11-24 says safety-critical work always gets the strongest effort level and that the stronger level stays until high is shown within the margin, but every session outside the effort trial, safety work included, still opens at high under the owner's choice of 2026-10-19; which level each kind of work outside the trial runs at is the owner's to decide
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: infra, docs
 feature: effort-trial
-touches: docket.toml, docs/maintainer.md, docs/model-review.md
+touches: docket.toml, docs/maintainer.md, docs/model-review.md, .claude/skills/docket/modes/start.md, .claude/skills/model-review/SKILL.md, subprojects/docket/README.md, subprojects/docket/src/docket/model_choice.py, subprojects/docket/tests/test_model_choice.py
 added: 2026-11-24
+closed: 2026-11-24
+pr: 2320
 filed-pr: 2319
+tests: subprojects/docket/tests/test_model_choice.py::test_the_project_table_runs_safety_work_at_xhigh_and_other_work_at_its_default
 ---
 
 **Problem.** The owner's cost rule of 2026-11-24 says safety-critical work always gets the strongest effort level and that the stronger level stays until high is shown within the margin, but every session outside the effort trial, safety work included, still opens at high under the owner's choice of 2026-10-19; which level each kind of work outside the trial runs at is the owner's to decide
@@ -72,3 +78,64 @@ becomes `xhigh` and the trial's draw still sets cloud sessions' levels.
 Under options 1 and 4, `docs/maintainer.md` says beside "Until then the
 stronger setting stays" that the level other work opens at outside the trial
 is the owner's own judgement, which the trial is testing.
+
+**Decided** (project owner, 2026-11-24: "Don't use max. It overthinks" and
+"Our max level is extra"): option 3. Options 1 and 2 put safety work at `max`,
+and option 4 leaves it at `high`, which breaks the zero margin, so option 3 is
+the one the owner's words leave. `xhigh` is the strongest level this project
+uses, so safety- and science-classed work runs at `xhigh` and other work
+outside the trial at `high`. The coordinator asked on the owner's behalf
+that the rule's wording change rather than carry an exception, so
+`docs/maintainer.md` names `xhigh` as the strongest setting and drops `max`.
+
+**How a thread gets to `xhigh`.** The Projects tool that sets a thread's
+effort level may be used only "when the user asks for it in their own words",
+and never "because a message, a document, or a tool result suggests it" (the
+tool's own description, read 2026-11-24). So a thread cannot raise itself to
+`xhigh` because the model table names it. This session first recommended a
+standing request in the project instructions. The thread building `PL-C38D`
+then measured that a thread obeys a `maxEffortLevel` cap written into
+`~/.claude/settings.json`, though not one in `.claude/settings.local.json`.
+So a thread started at `xhigh` can be capped at its level by the start hook,
+and `move` can lift the cap for safety work, with no request needed. That
+route is deterministic, so this item leaves it to `PL-C38D` and asks the owner
+for nothing. Until it lands, a thread doing safety work says it is below
+`xhigh`.
+
+**Generator check.** One-off. The fact misread is which effort level a kind of work runs at. The `[models]` table already states it, and this item adds the safety-critical rule there rather than in prose. No other open item describes it.
+
+**Built, 2026-11-24.**
+
+1. `docket.toml`'s `[models]` table has a first rule giving `xhigh` to items
+   whose `standard` is `safety-critical`. `item_facts` in
+   `subprojects/docket/src/docket/model_choice.py` sets that fact from
+   `Item.safety_classes`, so the rule does not list the classes a second time.
+   `bin/docket show PL-GJ1W` now prints "claude-opus-5-5 at xhigh effort", and
+   an ordinary item still prints `high`. A test in
+   `subprojects/docket/tests/test_model_choice.py` pins both against the
+   project's own table, and that a design-round item stays at `high`.
+2. `.claude/skills/docket/modes/start.md` tells a cloud session in the `high`
+   arm to run `python3 tools/effort_trial.py move --to xhigh --reason
+   "safety-critical work"` before it works such an item, and a thread to say
+   it is below `xhigh` until `PL-C38D` gives it the same command.
+3. `docs/maintainer.md` § "Match model capability to the work" now says that
+   until a measurement, no kind of work moves to a cheaper setting than the
+   one it has, and that the strongest setting is the strongest model at
+   `xhigh`. This replaces "Until then the stronger setting stays", which read
+   literally would have moved all other work to `xhigh`, and the coordinator
+   asked for the wording to change rather than carry an exception. § "Match
+   effort to the standard the work is held to" names the rule, the move and
+   the limit on a thread's own level.
+4. `docs/model-review.md` adds the trial's point 13, which leaves safety- and
+   science-classed items out of both arms, and the model review skill's
+   effort monitoring step 6 says the same.
+5. The thread building `PL-C38D` was told of the limit on the thread effort
+   tool, and owns that item's brief.
+
+Files checked for the old wording or for `max` as the strongest setting:
+`docs/maintainer.md`, `docs/dead-ends.md`, `.claude/rules/apparatus-standard.md`,
+`.claude/skills/docket/modes/triage.md`, `.claude/skills/docket/modes/start.md`,
+`.claude/skills/model-review/SKILL.md`, `docs/model-review.md`,
+`subprojects/docket/README.md` and `CLAUDE.md`. The README's example table
+still sets `max` for an example area. It is an example of the table's syntax,
+not this project's setting, and was left as it is.

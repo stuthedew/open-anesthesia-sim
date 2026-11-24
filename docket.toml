@@ -799,6 +799,14 @@ simulator = [
 ]
 interface = ["src/anesthesia_sim/app/"]
 
+# Safety- and science-classed work runs at `xhigh`, the highest effort level
+# this project uses, because its margin for a cheaper setting is zero (project
+# owner, 2026-11-24: "Don't use max. It overthinks" and "Our max level is
+# extra", `PL-RZMZ`). It comes first, so no later rule can lower it.
+[[models.rule]]
+match = { standard = "safety-critical" }
+effort = "xhigh"
+
 # The items a cheaper model may take go to Sonnet 5.5, not Haiku 5.5 (project
 # owner, 2026-09-19; `docs/maintainer.md` § "Match model capability to the work").
 [[models.rule]]
