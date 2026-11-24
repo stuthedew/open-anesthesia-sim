@@ -60,8 +60,9 @@ root=$(python3 "$(dirname "${BASH_SOURCE[0]}")/hook_input.py") || exit 0
 # hooks in parallel, so a separate reader could run before the cap is written.
 # The line in the transcript is the trial's record of the arm, which the
 # model review reads (`PL-HYRM`). Silent outside a cloud session. In a Projects
-# thread it writes no cap and says the thread is in neither arm, and a level a
-# session was moved to by hand survives the rerun at a compaction (`PL-6LVZ`).
+# thread it writes the cap into the user settings, the one file a thread reads
+# (`PL-C38D`), and a level a session was moved to by hand survives the rerun at
+# a compaction (`PL-6LVZ`).
 printf '%s' "$hook_input" | python3 "$root/tools/effort_trial.py" session-start 2>/dev/null || true
 
 [ -x "$root/bin/docket" ] || exit 0

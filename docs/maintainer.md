@@ -353,15 +353,17 @@ This is how the trial works (`PL-HYRM`, `PL-8MZ9`). The session-start hook runs
 resumed one and a Projects thread. The script picks the session's arm from a
 hash of its session id, so a resumed session keeps the same arm. The script
 writes the arm as both `effortLevel` and `maxEffortLevel` in
-`.claude/settings.local.json`. It then prints a line that names the arm. The
+`.claude/settings.local.json`, or in a thread's user settings, as below. It then prints a line that names the arm. The
 `maxEffortLevel` cap applies from the session's first request, and it outranks
 the app's effort picker. A cap only lowers a level, though. A session in the
 `xhigh` arm whose picker sent `high` runs at `high`. So keep the picker at
 `xhigh` for the length of the trial.
 
 Each session's start-of-session digest names its arm. The digest line stays
-in the session's transcript. That line is the trial's record of the arm, and
-the model review reads it from the transcript by session id. A session no
+in the session's transcript. The model review reads each session's line once
+and keeps the arm in `docs/effort-trial-arms.tsv`, so a later review reads
+only the sessions that are new since, and an arm survives the harness
+dropping the session (`PL-JYC2`). A session no
 longer repeats the arm in its first reply, because you do not act on it
 (`PL-J1ZM`). Sessions on your own computer are
 not in the trial, and the script writes nothing there.
@@ -370,15 +372,22 @@ The trial runs whatever model you start a session on, and changing the model
 does not end it (project owner, 2026-11-11, `PL-7KF5`). The review compares
 `high` with `xhigh` only between sessions on the same model.
 
-Projects threads are not in the trial either. A thread does not read
-`.claude/settings.local.json`, so a cap written there would do nothing, and
-the digest says the thread is in neither arm. A thread runs at the level the
-coordinator started it with (`PL-6LVZ`). A thread may change its own level
-only when you ask for it in your own words, because the Projects tool that
-sets the level allows nothing else (the tool's description, read 2026-11-24,
-`PL-RZMZ`).
+Projects threads joined the trial on 2026-11-24, at your request (`PL-C38D`).
+A thread does not read `.claude/settings.local.json`, but it does read its user
+settings, `~/.claude/settings.json`, and a cap written there applies from its
+next request. So in a thread the script writes the cap there, and the digest
+names the arm. A cap only lowers a level, so a thread drawn `xhigh` runs at
+`xhigh` only when it starts at `xhigh`. Set the thread effort level in Project
+settings, under General, Threads, to `xhigh` for the length of the trial. A
+thread that starts lower runs at its start level, and the review still counts
+it in the arm it drew. Threads created before 2026-11-24 are in neither arm,
+because the cap they were given was never read (`PL-6LVZ`).
+A thread changes its level after it starts only through the `move` command
+below. The Projects tool that sets a thread's level may be used only when you
+ask for a level in your own words, so nothing else may call it (the tool's
+description, read 2026-11-24, `PL-RZMZ`).
 
-To move a cloud session to another level, ask the session to run `python3
+To move a cloud session or a thread to another level, ask the session to run `python3
 tools/effort_trial.py move --to xhigh --reason "<why>"`. The app's effort
 picker cannot raise a session above its cap, so the picker alone does not
 move it. The command writes the new cap and records the move. The level then

@@ -304,6 +304,10 @@ def main(payload: str, *, entrypoint: str | None, root: Path, user_path: Path) -
     wanted = merged(user, project_hooks, root)
     if wanted == user:
         return ""
+    # The effort trial's hook writes its cap into this file at the same session
+    # start, in parallel with this one (`PL-C38D`). Merging onto a fresh read
+    # just before the write keeps a cap written since the first read.
+    wanted = merged(_read_json(user_path) or {}, project_hooks, root)
     try:
         user_path.parent.mkdir(parents=True, exist_ok=True)
         write_atomically(user_path, json.dumps(wanted, indent=2) + "\n")

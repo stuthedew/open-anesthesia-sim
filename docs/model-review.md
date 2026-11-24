@@ -149,6 +149,34 @@ now runs at `xhigh` whatever arm a session drew.
     the exclusion does not depend on the arm. The review reports how many
     items it left out on each arm, as a check that it did not.
 
+Amended again 2026-11-24 (`PL-C38D`, `PL-JYC2`, project owner, ratified, over
+keeping the trial to cloud sessions and over stopping it): Projects threads
+are assigned from this date by the same hash. In the 31 days to 2026-11-24
+threads merged 498 implementation items and cloud sessions 100, so without
+threads the trial gathers the failures point 10 needs about six times more
+slowly (run of 2026-11-24, below).
+
+14. A thread reads its user settings and not the repository's local settings,
+    so its cap is written there. This was measured on 2026-11-24: a cap written
+    into a thread's user settings lowered its level on the next request, and
+    the same cap in the local settings changed nothing.
+15. A cap only lowers a level, so a thread drawn `xhigh` runs at `xhigh` only
+    when it was started at `xhigh`. It stays in the arm it drew (point 1 of the
+    plan above), and point 11's analysis by the level actually run counts it at
+    its start level, which the session record gives.
+16. The item type now includes closed items whose sessions are all threads or
+    all cloud sessions with an arm. An item worked by both a thread and a cloud
+    session is counted and left out, as an item worked on two models is.
+17. Origin, thread or cloud session, is a stratum beside model and split
+    period, because a thread is a different way of working. Thread items count
+    only from this date, so the two strata enter the trial at different times
+    (`PL-JT1C`, decision 7).
+18. A thread created before this date is in neither arm, whatever its digest
+    says, because no cap it was given was ever read.
+19. Each session's arm is read once from its events and kept in
+    `docs/effort-trial-arms.tsv`, so a later run reads only new sessions and an
+    arm survives the harness dropping its session.
+
 ## Runs
 
 ### Run of 2026-11-24

@@ -23,6 +23,8 @@ import uuid
 from datetime import timedelta
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[2]
 TOOL = REPO / "tools" / "effort_trial.py"
 HOOK = REPO / ".claude" / "hooks" / "docket-digest.sh"
@@ -159,18 +161,28 @@ def test_the_session_start_hook_writes_the_cap_then_names_it(tmp_path: Path) -> 
     assert result.stdout.splitlines() == [effort_trial.arm_line("xhigh")]
 
 
-def test_a_projects_thread_writes_nothing_and_is_in_neither_arm(tmp_path: Path) -> None:
-    """A thread never reads `.claude/settings.local.json`, so no arm can be claimed for it."""
-    settings = tmp_path / "settings.local.json"
+def test_a_projects_thread_writes_its_cap_into_the_given_settings(tmp_path: Path) -> None:
+    """A thread draws the same arm, and its line says a cap cannot raise its start level."""
+    settings = tmp_path / "settings.json"
+    settings.write_text(json.dumps({"hooks": {"Stop": []}}))
     line = effort_trial.session_start(AFTER, _hook_input(XHIGH_ID), True, settings, thread=True)
-    assert line.startswith("Effort trial: this session is in neither arm, because")
-    assert "Projects thread" in line
-    assert "xhigh arm" not in line
-    assert not settings.exists()
-    status, moved = effort_trial.move("xhigh", "generator cause", XHIGH_ID, True, settings, True)
+    assert line == effort_trial.arm_line("xhigh", thread=True)
+    assert "started at xhigh or above" in line
+    written = json.loads(settings.read_text())
+    assert written["maxEffortLevel"] == "xhigh"
+    assert written["hooks"] == {"Stop": []}
+    status, moved = effort_trial.move(
+        "xhigh", "safety-critical work", HIGH_ID, True, settings, True
+    )
     assert status == 0
-    assert "in neither arm" in moved
-    assert not settings.exists()
+    assert moved == effort_trial.moved_line("high", "xhigh", "safety-critical work")
+    assert json.loads(settings.read_text())["maxEffortLevel"] == "xhigh"
+
+
+def test_a_thread_writes_its_user_settings_and_a_cloud_session_its_local_ones() -> None:
+    """A thread reads only its user settings, so its cap goes there (`PL-C38D`)."""
+    assert effort_trial.settings_for(thread=True) == Path.home() / ".claude" / "settings.json"
+    assert effort_trial.settings_for(thread=False) == effort_trial.SETTINGS_PATH
 
 
 def test_a_generator_cause_session_stays_in_its_drawn_arm(tmp_path: Path) -> None:
@@ -254,10 +266,12 @@ def test_outside_a_cloud_session_a_move_writes_nothing(tmp_path: Path) -> None:
     assert not settings.exists()
 
 
-def test_the_session_start_hook_in_a_projects_thread_names_no_arm(tmp_path: Path) -> None:
-    """The real hook reads the thread from `CLAUDE_CODE_ENTRYPOINT` and writes no cap."""
+def test_the_session_start_hook_in_a_projects_thread_caps_its_user_settings(tmp_path: Path) -> None:
+    """The real hook reads the thread from `CLAUDE_CODE_ENTRYPOINT` and writes under `HOME`."""
     result = _run_hook(tmp_path, {"CLAUDE_CODE_ENTRYPOINT": "remote_projects"})
-    assert result.stdout.splitlines() == [effort_trial.no_arm_line(effort_trial.THREAD_REASON)]
+    assert result.stdout.splitlines() == [effort_trial.arm_line("xhigh", thread=True)]
+    user = json.loads((tmp_path / ".claude" / "settings.json").read_text())
+    assert user["maxEffortLevel"] == "xhigh"
     assert not (tmp_path / ".claude" / "settings.local.json").exists()
 
 
@@ -285,3 +299,88 @@ def test_the_move_command_reads_the_session_id_from_the_environment(tmp_path: Pa
         check=False,
     )
     assert refused.returncode == 2
+
+
+def test_every_line_the_script_prints_reads_back_as_its_arm() -> None:
+    """The parser sits beside the writers, so a reworded line it no longer reads fails here."""
+    for arm in effort_trial.ARMS:
+        for thread in (False, True):
+            assert effort_trial.read_lines(effort_trial.arm_line(arm, thread)) == (
+                effort_trial.ArmReading(arm, "", 0)
+            )
+        moved = effort_trial.moved_line(arm, "xhigh", "generator cause")
+        assert effort_trial.read_lines(moved) == effort_trial.ArmReading(arm, "xhigh", 0)
+    neither = effort_trial.no_arm_line("it has no session id")
+    assert effort_trial.read_lines(neither) == effort_trial.ArmReading("none", "", 0)
+    assert effort_trial.read_lines("no line here") == effort_trial.ArmReading(None, "", 0)
+
+
+def test_the_first_arm_counts_and_later_ones_that_differ_are_counted() -> None:
+    """The model review's first-line rule, with the lines that differ reported."""
+    text = "\n".join(
+        (
+            effort_trial.arm_line("high"),
+            effort_trial.arm_line("xhigh"),
+            effort_trial.moved_line("high", "max", "the owner moved it"),
+        )
+    )
+    assert effort_trial.read_lines(text) == effort_trial.ArmReading("high", "max", 1)
+
+
+def _ledger(tmp_path: Path, rows: list[tuple[str, str, str]]) -> Path:
+    ledger = tmp_path / "session-ledger.tsv"
+    body = "".join(f'{sid}\tTitle "quoted"\t{created}\t{origin}\n' for sid, created, origin in rows)
+    ledger.write_text("session_id\ttitle\tcreated_at\torigin\n" + body)
+    return ledger
+
+
+def test_pending_lists_trial_sessions_with_no_recorded_arm(tmp_path: Path) -> None:
+    """Older sessions, and threads from before threads joined, are never read."""
+    ledger = _ledger(
+        tmp_path,
+        [
+            ("session_late", "2026-11-25T10:00:00.5Z", "claude-in-hearth"),
+            ("session_before_trial", "2026-10-01T00:00:00Z", "desktop_app"),
+            ("session_cloud", "2026-11-01T00:00:00Z", "desktop_app"),
+            ("session_old_thread", "2026-11-23T23:59:59Z", "claude-in-hearth"),
+            ("session_done", "2026-11-02T00:00:00Z", "ios"),
+        ],
+    )
+    arms = tmp_path / "arms.tsv"
+    done = effort_trial.record("session_done", [effort_trial.arm_line("high")], arms, "2026-11-24")
+    assert done == (0, "session_done: high")
+    assert effort_trial.pending(ledger, arms) == ["session_cloud", "session_late"]
+
+
+def test_record_writes_a_row_once_and_says_what_it_read(tmp_path: Path) -> None:
+    arms = tmp_path / "arms.tsv"
+    page = json.dumps([{"text": effort_trial.moved_line("xhigh", "high", "the owner moved it")}])
+    status, said = effort_trial.record("session_a", [page], arms, "2026-11-24")
+    assert (status, said) == (0, "session_a: xhigh, moved to high")
+    assert arms.read_text().splitlines() == [
+        "session_id\tarm\tmoved_to\trecorded_on",
+        "session_a\txhigh\thigh\t2026-11-24",
+    ]
+    again = effort_trial.record("session_a", [effort_trial.arm_line("high")], arms, "2026-11-25")
+    assert again[0] == 1
+    assert "already has a row" in again[1]
+    assert len(arms.read_text().splitlines()) == 2
+
+
+def test_record_refuses_events_with_no_line_unless_told_none(tmp_path: Path) -> None:
+    """A missing line may be a page the review did not save, so it is never guessed."""
+    arms = tmp_path / "arms.tsv"
+    status, said = effort_trial.record("session_b", ["nothing"], arms, "2026-11-24")
+    assert status == 1
+    assert "--none" in said
+    assert not arms.exists()
+    recorded = effort_trial.record("session_b", [], arms, "2026-11-24", none=True)
+    assert recorded == (0, "session_b: none")
+    assert effort_trial.record("cse_01abc", [], arms, "2026-11-24", none=True)[0] == 1
+
+
+def test_a_ledger_missing_a_column_is_refused(tmp_path: Path) -> None:
+    ledger = tmp_path / "session-ledger.tsv"
+    ledger.write_text("session_id\tcreated_at\n")
+    with pytest.raises(ValueError, match="origin"):
+        effort_trial.pending(ledger, tmp_path / "arms.tsv")
