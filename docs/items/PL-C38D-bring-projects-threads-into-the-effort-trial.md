@@ -1,10 +1,13 @@
 ---
 id: PL-C38D
 title: Bring Projects threads into the effort trial: each new thread draws high or xhigh at its start and its arm is recorded where the model review can read it, because threads do five in six of the implementation items and cloud sessions alone cannot reach an answer
-status: untriaged
+status: done
 feature: effort-trial
 added: 2026-11-24
+closed: 2026-11-24
+pr: 2321
 filed-pr: 2318
+tests: tests/unit/test_effort_trial.py::test_a_projects_thread_writes_its_cap_into_the_given_settings, tests/unit/test_effort_trial.py::test_the_session_start_hook_in_a_projects_thread_caps_its_user_settings
 ---
 
 **Problem.** Bring Projects threads into the effort trial: each new thread draws high or xhigh at its start and its arm is recorded where the model review can read it, because threads do five in six of the implementation items and cloud sessions alone cannot reach an answer
@@ -50,3 +53,44 @@ owner asked for it.
 where the review reads it, the trial's record carries the amendment, and the
 model review skill's step 6 says how threads are counted.
 
+
+**Built** (2026-11-24, this thread's pull request).
+
+1. **How a thread draws and applies its arm.** The draw is unchanged: the hash
+   of the hook's session id. The thread writes the cap into its user settings,
+   `~/.claude/settings.json`, which a thread reads, instead of
+   `.claude/settings.local.json`, which it never reads. Measured in this
+   thread on 2026-11-24: a `maxEffortLevel` of `medium` written into the user
+   settings moved `CLAUDE_EFFORT` from `high` to `medium` on the next tool
+   call, and the same key in `.claude/settings.local.json` left it at `high`.
+   Both probes were undone at once. The Projects effort tool was not used: its
+   own description allows it only "when the user asks for it in their own
+   words", never because a tool result suggests it, so a hook's printed arm
+   cannot drive it. A cap only lowers a level, and this thread's session record
+   shows `effort_level: high` set at creation, which outranks any level in
+   settings (*Model configuration*, "Adjust effort level", order of sources,
+   https://code.claude.com/docs/en/model-config, read 2026-11-24). So the
+   `xhigh` arm needs threads started at `xhigh`, which is the owner's Threads
+   setting in Project settings, General (*Claude Projects*, "Project settings
+   reference", https://code.claude.com/docs/en/claude-projects, read
+   2026-11-24). Until it is set, a thread drawn `xhigh` runs at `high`, and its
+   digest line says that a cap cannot raise the start level.
+   `thread_hooks.py` now merges its hooks onto a fresh read just before it
+   writes, so a cap the trial's hook wrote in parallel survives.
+2. **Where the arm is recorded.** `PL-JYC2`, built in the same pull request.
+3. **Safety-critical work.** Left to `PL-RZMZ` (pull request #2320), which
+   sets such work at `xhigh`, has a session in the `high` arm run `move`, and
+   leaves safety- and science-classed items out of both arms by class. A
+   thread can now run the same `move`, because its cap lives in a file it
+   reads. Whichever pull request merges second makes the start mode's thread
+   sentence say so.
+4. **Analysis.** `docs/model-review.md` carries the dated amendment: threads
+   from 2026-11-24, origin as a stratum, threads created earlier in neither
+   arm, and a thread started below its arm counted in the arm it drew.
+   `.claude/skills/model-review/SKILL.md` step 6 says the same.
+
+Files checked in the doc sweep: `tools/effort_trial.py`,
+`.claude/hooks/docket-digest.sh`, `.claude/hooks/thread_hooks.py`,
+`docs/maintainer.md` (the effort trial paragraphs),
+`docs/model-review.md` (the trial record),
+`.claude/skills/model-review/SKILL.md` (refresh steps and effort monitoring).

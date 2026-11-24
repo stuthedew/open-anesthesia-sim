@@ -94,6 +94,15 @@ self-assessment by each session).
    3. Rewrite the file, sorted by creation time. Keep every row whose session
       the harness no longer returns, because the ledger exists so that this
       record outlives the harness's.
+3. **The effort trial's arms.** `docs/effort-trial-arms.tsv` keeps each trial
+   session's arm once it has been read (`PL-JYC2`). Run `python3
+   tools/effort_trial.py pending` after the ledger, which prints the sessions
+   that still need reading. For each one, save its `list_events` pages with
+   `kinds: ["system", "user"]`, oldest first, then run `python3
+   tools/effort_trial.py record SESSION FILE...`. The script reads the lines
+   and appends the row; never type an arm by hand. Where it finds no line,
+   check that every page was saved before recording the session with
+   `--none`. A row once written is never changed.
 
 ## Join each closed item to its sessions
 
@@ -217,8 +226,8 @@ monthly run does this:
    `PL-HYRM`). The trial's data starts when `PL-8MZ9` moved the draw into the
    session-start hook. A session's arm is the line starting "Effort trial:"
    that `tools/effort_trial.py session-start` prints into its session-start
-   digest. Read it from the session's `hook_response` events with
-   `list_events` (`kinds: ["system"]`). The arm is a hash of the hook's
+   digest. Read it from `docs/effort-trial-arms.tsv`, which § "Refresh the
+   records first" fills from the session's events. The arm is a hash of the hook's
    session id, so a resumed session prints the same arm again. A `/clear`
    gives a new session id and can change it, so use the first such line in a
    session, and count the sessions whose later lines differ. The split was one
@@ -247,13 +256,15 @@ monthly run does this:
    one. A session with no such level started at its arm, because the hook also
    writes `effortLevel`. Report how many ran at a level other than the one
    assigned. Once it has adequate data, this randomized comparison is the
-   primary result and the historical one supports it. Projects threads are not
-   assigned and are analyzed apart. A thread never reads
-   `.claude/settings.local.json`, where the cap is written (`PL-CR81`), so a
-   thread is in neither arm whatever its digest says. Until `PL-6LVZ`, a
-   thread's digest printed an arm it never ran at. Tell a thread by its
-   `hearth-thread` tag in `list_sessions`. Its level is the one
-   `session_context.effort_level` gives.
+   primary result and the historical one supports it. Projects threads joined
+   the trial on 2026-11-24 (`PL-C38D`): a thread writes its cap into its user
+   settings, which it reads. A thread created before that day is in neither
+   arm whatever its digest says, because it never read the cap. Origin, thread
+   or cloud session, is a stratum beside model and split period, because a
+   thread is a different way of working, and the ledger's `origin` gives it
+   (`claude-in-hearth` for a thread). A thread runs at the lower of its arm
+   and the level it was started at, which `session_context.effort_level`
+   gives, so report its level actually run as for any other session.
 7. **When to stop.** Once both arms reach the sample size step 3 computes, put
    ending the trial to the owner with the result. Put it to them at the run on
    2027-04-24 in any case, six months in, with the counts and what more data
