@@ -34,8 +34,10 @@ self-assessment by each session).
 
 - **A downgrade needs a pre-registered trial.** Moving an item type to a
   cheaper model or a lower effort needs a trial registered before it starts,
-  in the form § "Pre-register a trial" gives below. The result applies to that
-  item type only.
+  in the form § "Pre-register a trial" gives below. The trial must show that
+  the cheaper setting is not worse by more than a margin the owner set before
+  it began, and the margin for safety-critical work is zero (`PL-1WTY`). The
+  result applies to that item type only.
 - **An upgrade needs one traced cluster.** A generator or cluster whose
   members were worked on a cheaper setting is enough to trial the stronger
   one.
@@ -195,7 +197,8 @@ monthly run does this:
    group needs to detect the smallest difference worth acting on, and state
    it. Until both groups reach it, report the counts and "not yet adequate",
    not a result. For the randomized trial, the trial's record in
-   `docs/model-review.md` gives the target difference and the calculation.
+   `docs/model-review.md` gives the margin, the failures needed and the
+   calculation.
 4. **Adjust and correct.** Compare the groups within lane and item size, for
    example with a stratified comparison or a logistic regression. Monthly
    looks at the same question inflate false positives, so correct the
@@ -256,9 +259,11 @@ monthly run does this:
    2027-04-24 in any case, six months in, with the counts and what more data
    would buy. The trial ends only on the owner's word. This is a placeholder
    rule, set by `PL-HYRM` on 2026-10-19, for the owner to change.
-8. **Report.** When the corrected test is significant, put it to the owner:
-   the effect with its 95% confidence interval, the counts, the confounders,
-   and a recommendation.
+8. **Report.** When a corrected test crosses its boundary, put it to the
+   owner: the effect with its 95% confidence interval, the counts, the
+   confounders, and a recommendation. For the randomized trial there are two
+   such tests, whether `high` is within the margin and whether it fails more
+   often, and the trial's record says how each is read.
 
 ## Check that each blind review pass still finds faults
 
@@ -323,6 +328,7 @@ Item type: <the rule that decides membership, read from the store>
 Assignment: <how each item gets its setting, and who may override it>
 Sample size: <n per arm, and the calculation behind it>
 Outcome: <which measure above, and its window>
+Margin: <for a downgrade, the largest rise in the outcome the owner accepts>
 Decision rule: <the result that changes the default, and the one that does not>
 Stop early if: <the harm that ends it, such as a safety-relevant defect>
 ```

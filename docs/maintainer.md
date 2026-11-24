@@ -82,12 +82,28 @@ It runs monthly, and after any generator or cluster appears (project owner,
 2026-10-19, ratified, over a weekly or a quarterly cadence, `PL-63CB`).
 `docs/model-review.md` holds its trials and its dated findings.
 
-**Price never justifies a less correct model or effort** (project owner,
-2026-10-19). Price, even a price of zero, does not justify a model or an effort
-level that may be less correct. You would rather pay for Opus and get correct
-work than take incorrect work from a cheaper model for free. So a cheaper model
-or a lower effort is used only where a measurement shows that it is no less
-correct at the task.
+**Correctness comes before cost** (project owner, 2026-11-24, ratified, over
+keeping the rule of 2026-10-19 absolute, `PL-1WTY`). A cheaper model or a lower
+effort is used for a kind of work only after a measurement shows that it is not
+worse than the stronger setting by more than a margin you set before the
+measurement began. Until then the stronger setting stays. For work under the
+safety-critical standard the margin is zero, so that work always gets the
+strongest setting. Price alone, even a price of zero, never justifies a
+cheaper setting.
+
+The rule of 2026-10-19 asked for a measurement showing that a cheaper setting
+is no less correct, and no finite measurement can show that. The FDA's guidance
+on non-inferiority trials says such a trial "will only rarely support a
+conclusion" that a new drug is equivalent to the one it is compared with
+(*Non-Inferiority Clinical Trials to Establish Effectiveness*, 2016, section
+III.F). So the rule now asks what medicine asks of a cheaper treatment: is it
+worse by no more than a margin set in advance? The guidance calls that margin
+"the largest clinically acceptable difference" and says its choice "is a matter
+of clinical judgment" (section III.C). In the effort trial the margin is a
+hazard ratio of 1.5 on a fix that did not hold within 30 days (project owner,
+2026-11-24, ratified, over 2.0 and 1.25). At the failure rate seen before the
+trial, that lets `high` fail on up to about 9 items in 100 where `xhigh` fails
+on 6. `docs/model-review.md` holds the analysis plan.
 
 ### Which model each flag means
 
@@ -206,8 +222,9 @@ the built-in Explore did in both
 "Built-in subagents", read 2026-10-17). So the file changes no model. It adds
 the read-only tool set and a report footer that names what was searched and
 what was not. With no `effort` line, a search runs at the session's effort
-level. Opus stays unless a measurement shows that a cheaper model is no less
-correct at the task (§ "Match model capability to the work").
+level. Opus stays unless a measurement shows that a cheaper model is not worse
+at the task by more than a margin set in advance (§ "Match model capability to
+the work").
 
 A cloud session loads the project's Explore definition. In an Opus 5.5 cloud
 session started after the definition merged, the Explore subagent's transcript
