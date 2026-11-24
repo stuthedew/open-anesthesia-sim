@@ -126,8 +126,11 @@ def item_facts(
 
     `role` is `strongest` where `Item.model_guidance` asks for the strongest
     model, `delegable` where a cheaper model may take the item, and empty
-    otherwise. `size` is the item's `effort:` field, named apart from the
-    reasoning effort the table sets.
+    otherwise. `standard` is `safety-critical` where the item carries a safety
+    class, which `Item.safety_classes` reads, and empty otherwise, so a rule
+    can single out that work without listing the classes again. `size` is the
+    item's `effort:` field, named apart from the reasoning effort the table
+    sets.
     """
     if item.model_guidance is not None:
         role = "strongest"
@@ -143,6 +146,7 @@ def item_facts(
         "size": item.effort,
         "area": table.areas_of(item.touches),
         "role": role,
+        "standard": "safety-critical" if item.safety_classes else "",
     }
 
 

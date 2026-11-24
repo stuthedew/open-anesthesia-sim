@@ -240,7 +240,10 @@ monthly run does this:
    prints that line into a tool result, so read the session's `user` events
    as well as its `system` ones. Report each such session at the level it was
    moved to in the secondary result below. Analyze sessions by the arm they
-   drew (intention to treat).
+   drew (intention to treat). Leave items with a safety or science class out
+   of both arms and count them by arm, because a session that starts one
+   moves to `xhigh` (`docs/model-review.md`, the trial's point 13,
+   `PL-RZMZ`).
    Report, as a second result, the level they actually ran at: the lower of
    the arm and the level the app asked for, which `list_sessions` gives as
    `session_context.effort_level`, since a cap lowers a level and never raises

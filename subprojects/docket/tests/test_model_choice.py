@@ -7,6 +7,7 @@ refused rather than read as if it said something.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -93,8 +94,10 @@ def test_an_item_gives_its_class_size_area_and_role() -> None:
     assert facts["size"] == "S"
     assert facts["area"] == {"simulator"}
     assert facts["role"] == "strongest"
+    assert facts["standard"] == "safety-critical"
     plain = item_facts(_item(), table, (), delegable=True)
     assert plain["role"] == "delegable"
+    assert plain["standard"] == ""
 
 
 def test_next_prints_the_table_s_choice_beside_the_flag() -> None:
@@ -112,6 +115,25 @@ def test_the_project_table_loads_and_prices_its_default() -> None:
     table = load(root).models
     assert table is not None
     assert table.price(table.choose({}).model) is not None
+
+
+def test_the_project_table_runs_safety_work_at_xhigh_and_other_work_at_its_default() -> None:
+    """Safety- and science-classed work gets `xhigh`, the owner's strongest level (`PL-RZMZ`).
+
+    A design-round item also asks for the strongest model, so the test pins
+    that it alone does not raise the effort.
+    """
+    root = Path(__file__).resolve().parents[3]
+    config = load(root)
+    table = config.models
+    assert table is not None
+    for classes in (("safety",), ("science",), ("defect", "safety")):
+        item = _item(classes=classes)
+        assert choose_model(item, table, config.workflow_paths, NO_DELEGATION).effort == "xhigh"
+    plain = choose_model(_item(), table, config.workflow_paths, NO_DELEGATION)
+    assert plain.effort == table.effort == "high"
+    design = replace(_item(), status="needs-decision")
+    assert choose_model(design, table, config.workflow_paths, NO_DELEGATION).effort == "high"
 
 
 @pytest.mark.parametrize(
