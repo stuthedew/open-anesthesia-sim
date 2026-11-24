@@ -78,7 +78,7 @@ counted only where the named item's `pr:` differs from the filing's
 the report says how many counted filings carry no `filed-pr:`.
 
 **At release time it is silent unless an expectation failed.** `missed`
-checks the last complete period against `PL-04KR`'s pre-registered
+tests the last eight complete weeks against `PL-04KR`'s pre-registered
 predictions, and `docket release` prints what it returns and nothing when it
 returns nothing: the owner asked for a report that speaks when the trend is
 not the expected one, not a number to watch (2026-09-19).
@@ -101,10 +101,11 @@ same `reenters:` record. `PL-04KR`'s predictions are about the apparatus, so
 
 from __future__ import annotations
 
+import math
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 
 from .config import Config, workflow_paths_in
 from .model import LANE_PRODUCT, LANE_WORKFLOW, MIN_ROOT_CAUSE_ITEMS, Item, is_under, pr_number
@@ -116,16 +117,83 @@ from .vcs import FileRevisions, FilingParents
 #: is shown rather than dropped from the mix.
 UNBANDED = "-"
 
-#: `PL-04KR`'s ceiling on new apparatus paths per filing: its baseline read
-#: 1.16, 0.26, 0.21, 0.13 over the weeks to 2026-09-19, and the prediction is
-#: that it stays at or below the last. `missed` reads it only in a week whose
-#: count of new paths did not fall, for the reason given there (`PL-2T7X`).
-NEW_PATHS_CEILING = 0.13
+#: How many complete weeks the trend test reads, ending with the last
+#: complete one. Eight weeks hold enough events to test, and are short enough
+#: that the burst of filings in September 2026, when the apparatus was being
+#: built, no longer decides the answer (`PL-FMGY`).
+TREND_WEEKS = 8
+
+#: The Laplace statistic below which a series is falling at the 5% level.
+#: Tsang (2012) gives -1.96 and 1.96 as the two-sided bounds at 5%.
+TREND_BOUND = 1.96
+
+#: The fewest events the trend test is applied to. Tsang (2012) gives no
+#: minimum for the Laplace test, and treats the statistic of the related Mann
+#: test as normal from ten events. Fewer than ten in eight weeks is a level low
+#: enough that whether it is still falling changes no decision.
+TREND_MIN_EVENTS = 10
 
 #: The feature that items about `PL-04KR`'s predictions are filed under, so a
 #: missed week's investigation is listed where the next cut tells a session
 #: to look before filing another (`PL-P6KV`).
 INFLOW_FEATURE = "convergence-visibility"
+
+
+def laplace(days: Sequence[date], start: date, end: date) -> float:
+    """The Laplace trend statistic of events on `days`, observed from `start` to `end`.
+
+    Tsang (2012), "A Review on Trend Tests for Failure Data Analysis", West
+    Indian Journal of Engineering 35(1):4-9, section 2.2(a), gives it for
+    observation that ends at a fixed time T rather than at an event:
+
+        U = (sum(t_i) / T - n / 2) / sqrt(n / 12)
+
+    where t_i is the time of the i-th of n events. With no trend, U is close to
+    a standard normal variable. A large negative U says events are becoming
+    rarer, and a large positive U says they are becoming more frequent. Each
+    event here is dated to a day, so it is placed at that day's midpoint, and
+    T is the number of days observed.
+    """
+    length = (end - start).days + 1
+    times = [(day - start).days + 0.5 for day in days if start <= day <= end]
+    count = len(times)
+    return (sum(times) / length - count / 2) / math.sqrt(count / 12)
+
+
+@dataclass(frozen=True)
+class TrendTest:
+    """The Laplace trend test of one kind of event over the last complete weeks."""
+
+    #: What the events are, such as "new apparatus paths".
+    name: str
+    start: date
+    end: date
+    events: int
+    #: `laplace`'s statistic, or `None` where fewer than `TREND_MIN_EVENTS`
+    #: events fell in the window and the test was not applied.
+    statistic: float | None
+
+    @property
+    def falling(self) -> bool:
+        """Whether the events became rarer across the window, at the 5% level."""
+        return self.statistic is not None and self.statistic < -TREND_BOUND
+
+
+def trend_test(name: str, days: Sequence[date], anchor: date, today: date) -> TrendTest | None:
+    """Test `days` over the `TREND_WEEKS` complete weeks before `today`, or `None`.
+
+    Weeks are counted from `anchor`, the first filing, as the table's rows are.
+    The week holding `today` is still being filed into, so it is left out.
+    There is no trend to test before one week has completed.
+    """
+    weeks = (today - anchor).days // 7
+    if weeks < 1:
+        return None
+    end = anchor + timedelta(days=7 * weeks - 1)
+    start = max(anchor, end - timedelta(days=7 * TREND_WEEKS - 1))
+    events = sum(1 for day in days if start <= day <= end)
+    statistic = laplace(days, start, end) if events >= TREND_MIN_EVENTS else None
+    return TrendTest(name=name, start=start, end=end, events=events, statistic=statistic)
 
 
 @dataclass(frozen=True)
@@ -227,6 +295,10 @@ class Inflow:
     #: Why each filing was judged by today's `workflow_paths` alone rather
     #: than by its own day's as well, or `""` (`PL-LJK4`).
     lanes_unread: str = ""
+    #: The trend test of new paths and of re-entries over the last
+    #: `TREND_WEEKS` complete weeks, in that order, or nothing before one week
+    #: has completed (`PL-FMGY`).
+    trends: tuple[TrendTest, ...] = ()
     #: How many of the re-entries counted carry no `filed-pr:`, so whether
     #: the pull request that closed the item they name also filed them could
     #: not be checked. They are counted, as every re-entry was before
@@ -466,8 +538,22 @@ def analyze(
             first_named.setdefault(path, when)
 
     anchor = filings[0][0]
+    until = today or date.today()
+    side = "product" if lane == LANE_PRODUCT else "apparatus"
+    # Dated as the table's rows date them, so the test reads the column's events.
+    reentry_days = [
+        when for when, item in filings if item.identifier not in swept and counted[item.identifier]
+    ]
+    trends = tuple(
+        found
+        for found in (
+            trend_test(f"new {side} paths", sorted(first_named.values()), anchor, until),
+            trend_test("re-entries", reentry_days, anchor, until),
+        )
+        if found is not None
+    )
     periods = []
-    for start, end in _windows(anchor, today or date.today(), WINDOWS.get(by, WINDOWS[BY_WEEK])):
+    for start, end in _windows(anchor, until, WINDOWS.get(by, WINDOWS[BY_WEEK])):
         window = [item for when, item in filings if start <= when <= end]
         organic = [item for item in window if item.identifier not in swept]
         periods.append(
@@ -547,6 +633,7 @@ def analyze(
         answered=answered,
         sweeps_unread=sweeps_unread,
         lanes_unread=history.declined,
+        trends=trends,
         unchecked_reentries=sum(
             1
             for _, item in filings
@@ -614,26 +701,27 @@ def _reentered_after(
     )
 
 
-def missed(report: Inflow, today: date) -> tuple[str, ...]:
-    """Each of `PL-04KR`'s predictions the last complete period broke, or `()`.
+#: What a series that is not falling says, by the event it counts.
+NOT_FALLING = {
+    "new apparatus paths": "the surface the apparatus changes is not shrinking",
+    "re-entries": "fixes are not holding any better",
+}
 
-    The last complete period is the last one that ended before `today`: the
-    one holding today is still being filed into, and a short count read as a
-    fall is the reassuring direction. Re-entry is compared with the complete
-    period before it, since the prediction is that it is flat or falling.
-    The predictions are stated per week, so `report` is read by week.
 
-    The new-paths ceiling breaks only in a week whose count of new paths is
-    at least the count of the complete week before it (`PL-2T7X`). The
-    ceiling is a ratio per filing, so it rises whenever filings fall faster
-    than new paths. The week of 2026-10-26 named 11 new paths, down from 34,
-    over 19 filings, down from 117, and read 0.58 against the 0.13 ceiling.
-    The surface grew more slowly that week, which is the convergence
-    `PL-04KR` expects. This relaxes the prediction only where the count fell:
-    every earlier week reads as it did, so the two weeks that broke the
-    ceiling while their counts rose, from 2026-10-12 and 2026-10-19, still
-    break it. A first complete week has no week before it, and is read
-    against the ceiling alone.
+def missed(report: Inflow) -> tuple[str, ...]:
+    """Each of `PL-04KR`'s predictions the last `TREND_WEEKS` complete weeks broke, or `()`.
+
+    The predictions are that new apparatus paths and re-entries both fall.
+    Each is tested with `laplace` over the window `trend_test` reads, and breaks
+    where its statistic is not below -`TREND_BOUND`: the events did not become
+    rarer at the 5% level. A series with fewer than `TREND_MIN_EVENTS` events
+    in the window is not tested and breaks nothing.
+
+    Until 2026-11-24 each prediction compared one week's count with the week
+    before. Counts this small broke that comparison by chance, and a slow rise
+    spread over several weeks never broke it. The owner chose the trend test
+    across weeks on 2026-11-24 (`PL-FMGY`). The ceiling of 0.13 new paths a
+    filing went with it, so the table's `/item` column is now read by eye.
 
     No prediction reads a filing's priority. `PL-04KR` also predicted that no
     workflow filing would reach `P0` or `P1`, and that prediction broke in
@@ -646,30 +734,12 @@ def missed(report: Inflow, today: date) -> tuple[str, ...]:
     """
     if report.lane != LANE_WORKFLOW:
         return ()
-    complete = [period for period in report.periods if period.end < today]
-    if not complete:
-        return ()
-    last = complete[-1]
-    out: list[str] = []
-    ratio = last.new_paths_per_item
-    before = complete[-2].new_paths if len(complete) > 1 else None
-    if (
-        ratio is not None
-        and ratio > NEW_PATHS_CEILING
-        and (before is None or last.new_paths >= before)
-    ):
-        against = "" if before is None else f", against {before} new the period before"
-        out.append(
-            f"{last.new_paths} new apparatus paths over {last.total} filings, "
-            f"{ratio:.2f} a filing, above the {NEW_PATHS_CEILING} ceiling{against}: the "
-            "surface is still growing"
-        )
-    if len(complete) > 1 and last.reentries > complete[-2].reentries:
-        out.append(
-            f"{last.reentries} re-entries against {complete[-2].reentries} the period before: "
-            "fixes are not holding"
-        )
-    lines = [f"{last.label}: {line}" for line in out]
+    lines = [
+        f"{window_label(found.start, found.end)}: {found.events} {found.name}, trend statistic "
+        f"{found.statistic:+.2f}, not below -{TREND_BOUND}: {NOT_FALLING[found.name]}"
+        for found in report.trends
+        if found.statistic is not None and not found.falling
+    ]
     if lines and report.sweeps_unread:
         lines.append(
             "a sweep's filings could not be told apart, so these counts include them: "

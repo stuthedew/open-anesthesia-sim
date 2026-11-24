@@ -3,7 +3,7 @@ id: PL-36R0
 title: Nothing reads where simulator defects land: 8 of 87 source files carry 47% of defect- and safety-classed items, the top three are the interface's largest files, and the generator check reads only what fact each item misread
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: infra, planning
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/release.py
@@ -36,3 +36,5 @@ None of these was tested on a project with one developer. This repository differ
 **Done when.** The owner's answer is recorded here. If yes, `bin/docket release` prints the reading, a test pins its counts on a fixture, and the first reading's top files each have a design-review item or a recorded reason for none.
 
 **Generator check.** One instance: a signal no reader collects. It is not a member of an existing head.
+
+**Answer, 2026-11-24.** Build the hotspot reading, as a report and never as a gate (project owner, 2026-11-24, ratified, over leaving defect location unread). The owner answered "Agree with best practice" to the recommendation above.
