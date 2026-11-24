@@ -325,8 +325,9 @@ cause fix) on extra high despite the current trial. The down stream
 consequences of the issue can still be in trial."). A cloud session that
 starts such work first runs `python3 tools/effort_trial.py move --to xhigh
 --reason "generator cause"`. That caps the session at `xhigh` for the rest of
-its life, compactions included, and records the move, so the trial's review
-leaves the session out of both arms (`PL-6LVZ`). A Projects thread is in
+its life, compactions included, and records the move. The trial's review
+still counts the session in the arm it drew and reports it apart (`PL-6LVZ`,
+`PL-JT1C`). A Projects thread is in
 neither arm already. `docs/maintainer.md` § "Match effort to the standard the
 work is held to" says the level it runs at. Work on the generator's downstream
 items stays in the trial.

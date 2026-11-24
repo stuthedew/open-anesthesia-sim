@@ -354,8 +354,9 @@ To move a cloud session to another level, ask the session to run `python3
 tools/effort_trial.py move --to xhigh --reason "<why>"`. The app's effort
 picker cannot raise a session above its cap, so the picker alone does not
 move it. The command writes the new cap and records the move. The level then
-holds through a compaction, and the model review leaves the session out of
-both arms. A session that starts work on a generator's cause runs the same
+holds through a compaction. The model review still counts the session in
+the arm it drew, because the draw is what was randomized, and reports it apart
+as well (your decision of 2026-11-24, `PL-JT1C`). A session that starts work on a generator's cause runs the same
 command, under your rule of 2026-11-02 that such work runs at `xhigh`
 (`PL-WBW3`). Sessions read that rule in
 `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the

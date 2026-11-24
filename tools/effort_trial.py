@@ -51,7 +51,7 @@ project's coordinator started it with. So in a thread the script writes
 nothing and prints the line that says the session is in neither arm. Until
 `PL-6LVZ`, it printed an arm that the thread never ran at.
 
-**A session moved to another level by hand is left out of both arms.** The
+**A session moved to another level by hand stays in the arm it drew.** The
 project owner ruled on 2026-11-02 that a session working on a generator's
 cause runs at `xhigh` whatever arm it drew, and the owner can also move a
 session by hand. Either way the draw no longer set the session's effort.
@@ -63,8 +63,10 @@ command prints a line that says the session was moved and why. When the hook
 runs again for the same session, on a resume or a compaction, it keeps the
 moved level and prints the moved line again, so a compaction no longer writes
 the drawn cap back over the move (`PL-WBW3`). A session with another id gets
-a fresh draw. The model review leaves every session with a moved line out of
-both arms.
+a fresh draw. The model review counts a session with a moved line in the arm
+it drew, because the draw is what was randomized, and reports it apart as well
+(project owner, 2026-11-24, ratified, over leaving it out of both arms,
+`PL-JT1C`).
 
 **The printed line is the trial's record of the arm.** The digest is stored
 in the session's transcript as a hook event, and the model review reads each
@@ -198,8 +200,8 @@ def moved_line(drawn: str, level: str, reason: str) -> str:
     return (
         f"Effort trial: this session drew the {drawn} arm and was then moved to {level} "
         f"by hand, because {reason}. Its effort is capped at {level} for the rest of the "
-        "session, and the trial's review leaves it out of both arms. Tell the owner this "
-        "in your next reply."
+        f"session. The trial's review still counts it in the {drawn} arm and also reports "
+        "it apart. Tell the owner this in your next reply."
     )
 
 

@@ -56,7 +56,12 @@ def _reader(runs: list[dict[str, object]], page: int = 100):
 
     def read(query: dict[str, str | int]) -> dict[str, object]:
         asked.append(query)
-        day = [run for run in runs if str(run["created_at"]).startswith(str(query["created"]))]
+        created = str(query["created"])
+        if ".." in created:
+            low, high = created.split("..")
+            day = [run for run in runs if low <= str(run["created_at"]) <= high]
+        else:
+            day = [run for run in runs if str(run["created_at"]).startswith(created)]
         start = (int(query["page"]) - 1) * page
         return {"total_count": len(day), "workflow_runs": day[start : start + page]}
 
@@ -117,11 +122,30 @@ def test_a_day_is_read_a_page_at_a_time_to_its_short_page() -> None:
     assert [query["page"] for query in read.asked] == [1, 2]
 
 
-def test_a_day_at_the_listing_cap_is_refused_rather_than_read_short() -> None:
+def test_a_day_at_the_listing_cap_is_read_in_halves_and_loses_no_run() -> None:
+    """On 2026-11-22 one day held 1,076 runs, and a refresh refused it (`PL-JT1C`)."""
+
+    runs = [
+        _run(index, "2026-11-22", created_at=f"2026-11-22T{index % 24:02d}:{index % 60:02d}:07Z")
+        for index in range(1, 1077)
+    ]
+    read = _reader(runs, page=CI_RUNS.PAGE)
+
+    listed = CI_RUNS.runs_on(date(2026, 11, 22), read)
+
+    assert sorted(int(str(run["id"])) for run in listed) == list(range(1, 1077))
+    assert {query["created"] for query in read.asked if query["page"] == 1} >= {
+        "2026-11-22",
+        "2026-11-22T00:00:00Z..2026-11-22T11:59:59Z",
+        "2026-11-22T12:00:00Z..2026-11-22T23:59:59Z",
+    }
+
+
+def test_a_second_at_the_listing_cap_is_refused_rather_than_read_short() -> None:
     def full(query: dict[str, str | int]) -> dict[str, object]:
         return {"total_count": CI_RUNS.LISTING_CAP, "workflow_runs": []}
 
-    with pytest.raises(CI_RUNS.RefreshFailed, match="at most 1000"):
+    with pytest.raises(CI_RUNS.RefreshFailed, match="the second 2026-10-20T00:00:00Z"):
         CI_RUNS.runs_on(date(2026, 10, 20), full)
 
 

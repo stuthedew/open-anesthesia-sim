@@ -23,9 +23,12 @@ yet recorded. A later attempt of a run is read again, because its steps may
 differ.
 
 GitHub's run listing returns at most 1,000 runs for one query, so each query
-covers one day. A day that reaches the cap is refused rather than read short,
-because a missing run reads exactly like a run that never happened. On
-2026-10-24 the busiest day held 361 runs.
+covers one day. A day that reaches the cap is read again as two halves of the
+day, and a half that reaches it is halved again, down to one second, the
+finest time the query can name. A second that still reaches the cap is refused
+rather than read short, because a missing run reads exactly like a run that
+never happened. On 2026-11-22 one day held
+1,076 runs, and the refresh refused it until the halving was added (`PL-JT1C`).
 
 The API is read through `open_pull_requests.api_request`, the one client
 `tools/fact_home_check.py` allows.
@@ -41,7 +44,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -144,20 +147,53 @@ def write_rows(path: Path, rows: Iterable[Row]) -> None:
 
 
 def runs_on(day: date, read: Reader) -> list[dict[str, object]]:
-    """Every run GitHub lists as created on `day`, read a page at a time."""
+    """Every run GitHub lists as created on `day`, read a page at a time.
+
+    A day at the listing cap is read as two halves, and so on down to one
+    second. Raises RefreshFailed when a single second still reaches the cap,
+    or when GitHub's answer is not a run listing.
+    """
+
+    runs = _listing(day.isoformat(), read)
+    if runs is not None:
+        return runs
+    start = datetime.combine(day, time(0, 0, 0), tzinfo=UTC)
+    return _runs_between(start, start + timedelta(days=1) - timedelta(seconds=1), read)
+
+
+def _runs_between(start: datetime, end: datetime, read: Reader) -> list[dict[str, object]]:
+    """Every run created from `start` to `end`, both included, halving a stretch at the cap.
+
+    The query names whole seconds, so a stretch of one second cannot be split.
+    """
+
+    if end <= start:
+        raise RefreshFailed(
+            f"the second {start:%Y-%m-%dT%H:%M:%SZ} holds at least {LISTING_CAP} runs,"
+            f" and GitHub lists at most {LISTING_CAP} for one query"
+        )
+    middle = start + timedelta(seconds=(end - start).total_seconds() // 2)
+    runs: list[dict[str, object]] = []
+    for low, high in ((start, middle), (middle + timedelta(seconds=1), end)):
+        window = f"{low:%Y-%m-%dT%H:%M:%SZ}..{high:%Y-%m-%dT%H:%M:%SZ}"
+        listed = _listing(window, read)
+        runs.extend(_runs_between(low, high, read) if listed is None else listed)
+    return runs
+
+
+def _listing(created: str, read: Reader) -> list[dict[str, object]] | None:
+    """Every run GitHub lists for one `created` query, or None when it reaches the cap."""
 
     runs: list[dict[str, object]] = []
     page = 1
     while True:
-        answer = read({"created": day.isoformat(), "per_page": PAGE, "page": page})
+        answer = read({"created": created, "per_page": PAGE, "page": page})
         listed = answer.get("workflow_runs")
         total = answer.get("total_count")
         if not isinstance(listed, list) or not isinstance(total, int):
-            raise RefreshFailed(f"GitHub's listing for {day} was not a run listing")
+            raise RefreshFailed(f"GitHub's listing for {created} was not a run listing")
         if total >= LISTING_CAP:
-            raise RefreshFailed(
-                f"{day} holds {total} runs, and GitHub lists at most {LISTING_CAP} for one query"
-            )
+            return None
         runs.extend(run for run in listed if isinstance(run, dict))
         if len(listed) < PAGE:
             return runs
