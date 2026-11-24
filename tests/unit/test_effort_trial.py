@@ -173,11 +173,12 @@ def test_a_projects_thread_writes_nothing_and_is_in_neither_arm(tmp_path: Path) 
     assert not settings.exists()
 
 
-def test_a_generator_cause_session_is_left_out_of_both_arms(tmp_path: Path) -> None:
+def test_a_generator_cause_session_stays_in_its_drawn_arm(tmp_path: Path) -> None:
     """The owner's rule of 2026-11-02 runs that work at `xhigh` whatever the draw (`PL-6LVZ`).
 
-    The move is recorded beside the cap, and its line says the session is left
-    out of both arms, for a session drawn `xhigh` as much as one drawn `high`.
+    The move is recorded beside the cap, and its line says the review still
+    counts the session in the arm it drew, for a session drawn `xhigh` as much
+    as one drawn `high` (`PL-JT1C`).
     """
     for session_id, drawn in ((HIGH_ID, "high"), (XHIGH_ID, "xhigh")):
         settings = tmp_path / f"{drawn}.json"
@@ -187,8 +188,8 @@ def test_a_generator_cause_session_is_left_out_of_both_arms(tmp_path: Path) -> N
         assert line == (
             f"Effort trial: this session drew the {drawn} arm and was then moved to xhigh by "
             "hand, because generator cause. Its effort is capped at xhigh for the rest of the "
-            "session, and the trial's review leaves it out of both arms. Tell the owner this in "
-            "your next reply."
+            f"session. The trial's review still counts it in the {drawn} arm and also reports "
+            "it apart. Tell the owner this in your next reply."
         )
         assert json.loads(settings.read_text()) == {
             "effortLevel": "xhigh",

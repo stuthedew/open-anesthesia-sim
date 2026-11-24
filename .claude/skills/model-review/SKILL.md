@@ -70,8 +70,10 @@ self-assessment by each session).
    steps a failed run failed, read from its jobs (`PL-SW87`). The
    tool asks for every day from the day before the newest row, keeps every row
    GitHub no longer returns, and keeps a pull request link that GitHub has
-   dropped because the branch was deleted. It refuses a day that reaches
-   GitHub's 1,000-run listing cap rather than read it short. Commit the file.
+   dropped because the branch was deleted. It reads a day that reaches
+   GitHub's 1,000-run listing cap in halves, down to one second, and refuses a
+   second still at the cap rather than read it short (`PL-JT1C`). Commit the
+   file.
    Runs before 2026-08-22 were already deleted when the first snapshot was
    taken on 2026-10-19.
 2. **The session ledger.** `docs/session-ledger.tsv` has one row per session
@@ -187,15 +189,18 @@ monthly run does this:
    2026-11-11, `PL-7KF5`). Items worked at mixed levels or on mixed models are
    counted and left out.
 2. **Outcomes.** The measures § "Outcome measures" defines above, within
-   their windows.
+   their windows. For the randomized trial, also the time from merge to the
+   first failure, as the trial's record in `docs/model-review.md` says.
 3. **Adequate data first.** Before any test, compute the number of items each
    group needs to detect the smallest difference worth acting on, and state
    it. Until both groups reach it, report the counts and "not yet adequate",
-   not a result.
+   not a result. For the randomized trial, the trial's record in
+   `docs/model-review.md` gives the target difference and the calculation.
 4. **Adjust and correct.** Compare the groups within lane and item size, for
    example with a stratified comparison or a logistic regression. Monthly
    looks at the same question inflate false positives, so correct the
-   significance level for repeated looks.
+   significance level for repeated looks. For the randomized trial, the
+   trial's record gives the boundary for each look.
 5. **Say what it cannot show.** From 2026-09-22 to 2026-10-19 the ledger holds
    Opus 5.5 sessions at `high` (189), `max` (242) and `xhigh` (59). But 174 of
    the 189 at `high` are Projects threads, a different way of working, and
@@ -225,12 +230,14 @@ monthly run does this:
    code; the first-line rule assigns it. A session with no line, or whose line
    says it is "in neither arm", has no arm and is counted and left out. A
    session any of whose "Effort trial:" lines says it "was then moved" to a
-   level is counted and left out of both arms too, because the owner or the
-   rule for a generator's cause set its effort, not the draw (`PL-6LVZ`,
-   `PL-WBW3`). The `move` command prints that line into a tool result, so
-   read the session's `user` events as well as its `system` ones. Report each
-   such session at the level it was moved to in the secondary result below.
-   Analyze sessions by the level they were assigned (intention to treat).
+   level stays in the arm it drew, because the draw is what was randomized
+   (project owner, 2026-11-24, ratified, over leaving it out of both arms as
+   `PL-6LVZ` set, `PL-JT1C`). Count such sessions, and report the comparison
+   with them left out as a further secondary result. The `move` command
+   prints that line into a tool result, so read the session's `user` events
+   as well as its `system` ones. Report each such session at the level it was
+   moved to in the secondary result below. Analyze sessions by the arm they
+   drew (intention to treat).
    Report, as a second result, the level they actually ran at: the lower of
    the arm and the level the app asked for, which `list_sessions` gives as
    `session_context.effort_level`, since a cap lowers a level and never raises
