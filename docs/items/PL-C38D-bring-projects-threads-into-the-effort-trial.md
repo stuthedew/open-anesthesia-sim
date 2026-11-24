@@ -94,3 +94,16 @@ Files checked in the doc sweep: `tools/effort_trial.py`,
 `docs/maintainer.md` (the effort trial paragraphs),
 `docs/model-review.md` (the trial record),
 `.claude/skills/model-review/SKILL.md` (refresh steps and effort monitoring).
+
+**Confirmed after the build** (project owner, 2026-11-24, ratified: "Agree
+with best practice changes", over stopping the trial, recorded by
+`PL-Y12B`). After this item merged, the owner was told that threads in the
+trial run half their work at `xhigh`, which on Anthropic's published
+benchmark costs about 1.75 times the threads' present usage ($0.30 per solved
+task at `high` and $0.75 at `xhigh`, *Optimizing for cost and intelligence*,
+https://platform.claude.com/docs/en/about-claude/models/optimizing-for-cost-and-intelligence,
+read 2026-11-24). He kept threads in the trial. The recommendation rested on
+the trial's power: at the 5.9% failure rate seen before the trial, threads
+bring the 200 failures the non-inferiority plan needs in about 7.5 months,
+and 200 failures catch `high` failing 1.5 times as often as `xhigh` 80% of the
+time.

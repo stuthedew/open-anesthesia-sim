@@ -3,11 +3,13 @@ id: PL-Y12B
 title: Record the owner's answer of 2026-11-24 that Projects threads stay in the effort trial at about 1.75 times their usage, which PL-C38D's build did not carry
 priority: P3
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: effort-trial
 touches: docs/items/PL-C38D-bring-projects-threads-into-the-effort-trial.md
 added: 2026-11-24
+closed: 2026-11-24
+pr: 2322
 payoff: a later session reads that the owner kept threads in the effort trial knowing its usage cost, and does not ask him again
 verify: grep -qF 'Agree with best practice changes' docs/items/PL-C38D-bring-projects-threads-into-the-effort-trial.md
 ---
