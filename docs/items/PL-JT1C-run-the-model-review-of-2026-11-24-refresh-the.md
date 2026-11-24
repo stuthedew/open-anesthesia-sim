@@ -113,6 +113,45 @@ Kieser M, Pharm Stat 2013;12(3):141-6 (doi:10.1002/pst.1564).
    new outcome would be tested only on items merged after the change, as the
    paper's staged design does, and the change would be recorded as an
    amendment in `docs/model-review.md`.
+8. **The analysis adjusts for item kind, size and lane, and treats a
+   difference between kinds as a hypothesis** (the owner asked on 2026-11-24:
+   "it seems like a pretty heterogenous data set (defects, planning, new
+   features) would it make sense to do subgroup analysis? Research best
+   practice"). Taken without asking, because the sources agree. Points 7 and 8
+   of the trial's amendment in `docs/model-review.md` carry it. Sources, with
+   what was read of each:
+   - Kahan BC et al., Trials 2014;15:139 (doi:10.1186/1745-6215-15-139), full
+     text through PMC4022337. Adjusting for known prognostic covariates raised
+     power from 80% to a median of 92.6% over 12 outcomes, and adjusting for
+     three covariates unrelated to the outcome lowered it at most to 78.5%.
+     The covariates are named before the data are seen. With a time-to-event
+     outcome and few events, too many covariates can raise the false-positive
+     rate. An adjusted hazard ratio compares like items, so it differs from the
+     unadjusted one.
+   - Brookes ST et al., Health Technol Assess 2001;5(33): the executive
+     summary, and the INAHTA brief that summarises the monograph, read by a
+     subagent. The monograph's body was not reached. Tests within each
+     subgroup found effects in 7% to 66% of simulations where none existed,
+     and an interaction as large as the overall effect needed four times the
+     sample. Their 2004 paper (J Clin Epidemiol 57:229-36,
+     doi:10.1016/j.jclinepi.2003.08.009) had no reachable full text and is not
+     relied on.
+   - Kent DM et al., the PATH Statement, Ann Intern Med 2020;172:35-45
+     (doi:10.7326/M18-3667), full text through PMC7531587. Risk-based
+     subgroups are of most value "When there is a well-established overall
+     treatment effect", subgroup results from overall null trials "should be
+     interpreted cautiously", and selecting effect modifiers by
+     one-variable-at-a-time tests is to be avoided.
+   - Schandelmaier S et al., ICEMAN, CMAJ 2020;192(32):E901-6
+     (doi:10.1503/cmaj.200077), main text read by a subagent; its appendices
+     were not reached. Credibility rests on a direction stated in advance,
+     prior evidence, a test for interaction, few modifiers tested, and no
+     arbitrary cut points.
+   Kind and size predicted failure before the trial, on the 376
+   implementation items merged from 2026-10-11 to the trial's start whose
+   window has closed (21 failures): kind chi-square 6.73 on 2 degrees of
+   freedom, size 9.74 on 3. Lane did not (1.74 on 3), and is kept because the
+   skill's step 4 names it.
 
 **Result, 2026-11-24.** The run's entry is in `docs/model-review.md` under
 "Run of 2026-11-24", and the trial's record there carries the amended analysis

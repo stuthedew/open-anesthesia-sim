@@ -40,7 +40,9 @@ not is reported apart
 Amended 2026-11-24 (`PL-JT1C`): this analysis plan replaces the rule of
 2026-11-03 for moved sessions and the first run's division of 0.05 across six
 looks. The project owner agreed to points 1 to 3 and asked that points 4 and 5
-follow best practice. `PL-JT1C` holds the sources.
+follow best practice. Points 7 and 8 answer the owner's question of the same
+day about the mix of item kinds, and rest only on items merged before the
+trial began. `PL-JT1C` holds the sources.
 
 1. A session moved to another level by hand stays in the arm it drew, because
    the draw is what was randomized (project owner, 2026-11-24, ratified, over
@@ -78,6 +80,26 @@ follow best practice. `PL-JT1C` holds the sources.
    interval at once. The run of 2027-04-24 reports the effect and its 95%
    confidence interval in any case, so that the owner sees how large a rise
    the data rule out.
+7. The Cox model also adjusts for three facts about each item that triage
+   records before a session works it: whether it is a defect, its size (S
+   against M or L) and its lane. Before the trial, 18 of 221 defects (8.1%) failed within 30
+   days against 3 of 155 other implementation items (1.9%), and 12 of 106 items
+   of size M against 9 of 247 of size S. Adjusting for a known predictor of the
+   outcome raises power, and adjusting for one that turns out not to predict it
+   costs little (Kahan et al. 2014). No other covariate is added while failures
+   are few, because too many covariates for the number of failures can raise
+   the false-positive rate.
+8. Whether `xhigh` helps more on one kind of item is reported only as a
+   hypothesis for a later trial, and only once the overall comparison is
+   adequate. The one kind named in advance is defects against all other
+   implementation items. The stated expectation is the same hazard ratio in
+   both, which already gives a larger absolute difference on defects because
+   they fail more often. The difference is tested by an interaction term in the
+   Cox model, never by a separate result within each kind, and no other kind is
+   compared. A test within each subgroup found effects that were not there in
+   7% to 66% of simulated trials, and detecting an interaction as large as the
+   overall effect needs about four times the sample (Brookes et al. 2001).
+   Design items, which include planning items, are already reported apart.
 
 ## Runs
 
