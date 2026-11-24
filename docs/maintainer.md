@@ -86,10 +86,13 @@ It runs monthly, and after any generator or cluster appears (project owner,
 keeping the rule of 2026-10-19 absolute, `PL-1WTY`). A cheaper model or a lower
 effort is used for a kind of work only after a measurement shows that it is not
 worse than the stronger setting by more than a margin you set before the
-measurement began. Until then the stronger setting stays. For work under the
-safety-critical standard the margin is zero, so that work always gets the
-strongest setting. Price alone, even a price of zero, never justifies a
-cheaper setting.
+measurement began. Until then, no kind of work moves to a cheaper setting
+than the one it has. For work under the safety-critical standard the margin is
+zero, so that work always gets the strongest setting: the strongest model at
+`xhigh`. `xhigh` is the highest effort level this project uses, because you
+judged that `max` overthinks (project owner, 2026-11-24: "Don't use max.
+It overthinks" and "Our max level is extra", `PL-RZMZ`). Price alone, even a
+price of zero, never justifies a cheaper setting.
 
 The rule of 2026-10-19 asked for a measurement showing that a cheaper setting
 is no less correct, and no finite measurement can show that. The FDA's guidance
@@ -307,6 +310,11 @@ section "Adjust effort level", https://code.claude.com/docs/en/model-config,
 read 2026-10-19). Opening at `high` is the owner's own judgement. The published
 gain from `xhigh` over `high` is small.
 
+**Safety- and science-classed work runs at `xhigh`** (project owner,
+2026-11-24, `PL-RZMZ`). A rule in the same table gives that work `xhigh`, so
+`bin/docket show` prints it. A session that starts such work moves to it, as
+the paragraph below on moving a cloud session says.
+
 The decision replaces two ratified records whose stated reason was cost. One
 set `high` for apparatus sessions (2026-10-17, `PL-SW0B`). The other set `max`
 for simulator sessions (2026-09-19, below). Cost alone never justifies a lower
@@ -365,7 +373,10 @@ does not end it (project owner, 2026-11-11, `PL-7KF5`). The review compares
 Projects threads are not in the trial either. A thread does not read
 `.claude/settings.local.json`, so a cap written there would do nothing, and
 the digest says the thread is in neither arm. A thread runs at the level the
-coordinator started it with (`PL-6LVZ`).
+coordinator started it with (`PL-6LVZ`). A thread may change its own level
+only when you ask for it in your own words, because the Projects tool that
+sets the level allows nothing else (the tool's description, read 2026-11-24,
+`PL-RZMZ`).
 
 To move a cloud session to another level, ask the session to run `python3
 tools/effort_trial.py move --to xhigh --reason "<why>"`. The app's effort
@@ -375,9 +386,10 @@ holds through a compaction. The model review still counts the session in
 the arm it drew, because the draw is what was randomized, and reports it apart
 as well (your decision of 2026-11-24, `PL-JT1C`). A session that starts work on a generator's cause runs the same
 command, under your rule of 2026-11-02 that such work runs at `xhigh`
-(`PL-WBW3`). Sessions read that rule in
+(`PL-WBW3`). So does a session that starts safety- or science-classed work
+(`PL-RZMZ`). Sessions read the first rule in
 `.claude/skills/docket/modes/triage.md` § "Generators, how they rank, and the
-pause they set".
+pause they set", and the second in `.claude/skills/docket/modes/start.md`.
 
 Until 2026-10-24, the cloud environment's setup script drew the arm, but it
 put no session in either arm (`PL-8MZ9`). § "Give Projects threads the

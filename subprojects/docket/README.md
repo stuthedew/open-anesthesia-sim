@@ -3784,14 +3784,16 @@ example, an item that touches both the simulator and the interface takes the
 first rule, at `max` effort.
 
 The categories a reader passes for an item are `class`, `lane`, `feature`,
-`status`, `size` (the item's `effort:` field, `S`, `M` or `L`), `area` and
-`role`. An item reaches an area when one of its `touches` lies inside one of
-the area's paths, or is a directory holding one. `role` is `strongest` where
-`Item.model_guidance` asks for the strongest model, `delegable` where a
-cheaper model may take the item, and empty otherwise. A tool passes its own
-role, such as `worker`, `review` or `exploration`. A new category is a data
-edit: a reader that knows the fact passes it, and a rule that names a
-category no reader passes never holds.
+`status`, `size` (the item's `effort:` field, `S`, `M` or `L`), `area`,
+`role` and `standard`. An item reaches an area when one of its `touches` lies
+inside one of the area's paths, or is a directory holding one. `role` is
+`strongest` where `Item.model_guidance` asks for the strongest model,
+`delegable` where a cheaper model may take the item, and empty otherwise.
+`standard` is `safety-critical` where the item carries one of the safety
+classes, and empty otherwise. A tool passes its own role, such as `worker`,
+`review` or `exploration`. A new category is a data edit: a reader that knows
+the fact passes it, and a rule that names a category no reader passes never
+holds.
 
 `config.load` reads the table into `Config.models`, which is `None` when the
 file has none. A malformed table is refused, as a malformed `docket.toml` is.

@@ -138,6 +138,17 @@ doubling as the measure of a look's information. `PL-1WTY` holds the sources.
     and still fall within the margin. Both questions are read from the same
     estimate and standard error.
 
+Amended again 2026-11-24 (`PL-RZMZ`, project owner: "Don't use max. It
+overthinks" and "Our max level is extra"): safety- and science-classed work
+now runs at `xhigh` whatever arm a session drew.
+
+13. Items with a safety or science class are left out of both arms. A
+    session that starts one moves to `xhigh`, so for those items the arms do
+    not differ, and randomizing safety-critical work is what the model review
+    skill forbids. Triage sets an item's classes before a session works it, so
+    the exclusion does not depend on the arm. The review reports how many
+    items it left out on each arm, as a check that it did not.
+
 ## Runs
 
 ### Run of 2026-11-24

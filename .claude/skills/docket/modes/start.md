@@ -70,6 +70,17 @@ and body, and mark it ready (`draft: false`), in the push that closes or blocks
 the claimed item. That push is also the one that arms it under
 `.claude/skills/pull-request/SKILL.md`.
 
+**Safety- and science-classed work runs at `xhigh`, whatever arm the effort
+trial drew** (project owner, 2026-11-24, `PL-RZMZ`). `bin/docket show` prints
+the effort the `[models]` table chooses for the item. Where it names `xhigh`
+and the session's start digest put it in the `high` arm, a cloud session runs
+`python3 tools/effort_trial.py move --to xhigh --reason "safety-critical work"`
+after the claim and before any other work. That caps the session at `xhigh`
+for the rest of its life, compactions included, and records the move. A
+Projects thread may change its own level only when the owner asks for it in
+their own words, so until `PL-C38D` gives threads the same command, a thread
+says in its first reply that it is doing safety work below `xhigh`.
+
 **A session has two things to remember: `claim` at pickup and for every rider,
 and `bin/docket yield <id>` when it stops without closing.** A rider is a second
 item picked up mid-session - one filed as housekeeping, or the item the first
