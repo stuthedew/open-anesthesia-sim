@@ -4,3 +4,4 @@ time	session	guard	rule
 2026-11-24T15:43:14.599185+00:00	4a2355dd-879a-5b71-b23f-4857b767a668	gate-status-guard	status-swallowed:ruff
 2026-11-24T16:13:16.892059+00:00	4a2355dd-879a-5b71-b23f-4857b767a668	gate-status-guard	arm-piped
 2026-11-24T16:37:43.386894+00:00	4a2355dd-879a-5b71-b23f-4857b767a668	gate-status-guard	status-swallowed:tools/doc_check.py
+2026-11-24T20:05:50.316512+00:00	4a2355dd-879a-5b71-b23f-4857b767a668	gate-status-guard	status-swallowed:bin/docket check
