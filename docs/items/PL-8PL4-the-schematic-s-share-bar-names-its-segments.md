@@ -72,3 +72,12 @@ and the names sit in a list under the bar.
 `docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 share bar assert", does not change under any option. That section's share-bar
 paragraph and its tests change with the option chosen.
+
+**Overlap with #2325 and `PL-P83G`, noted 2026-11-26.** The controls-placement
+thread's pull request #2325 moves the share bar and its naming lines above the
+containers in `RunSchematic` and adds a test that the bar is never on screen
+without its naming lines. It files `PL-P83G`: with two runs compared, the second
+run's bar can be on screen while its naming lines are scrolled out of the Area.
+Option 1 removes the separate bar and puts each share in its container's
+label, so it closes `PL-P83G` as well. Build on `main` after #2325 merges, and
+retire or rewrite its new test with the bar.
