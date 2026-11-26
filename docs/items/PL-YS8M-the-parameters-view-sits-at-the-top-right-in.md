@@ -3,10 +3,11 @@ id: PL-YS8M
 title: The Parameters View sits at the top right in the Default Workspace but under the chart on the left in Induction and Maintenance, so the controls move when the reader switches tabs
 priority: P2
 effort: S
-status: ready
+status: needs-decision
 classes: ux
 feature: interface-design-review
 touches: src/anesthesia_sim/data/workspaces/default.json
+deferred-from: v0.7.0 - filed 2026-11-26, after the gate froze. Hazard not live, checked 2026-11-26 at 971a9cb9: the controls change place between tabs, but every value and control is on screen in each Workspace; it can still land before the cut
 added: 2026-11-26
 payoff: a reader switching Workspace tabs finds the setting controls in the same place every time
 ---
@@ -37,16 +38,28 @@ like how the controls move between tabs."
 3. Blender's manual page on workspaces could not be read: docs.blender.org
    refuses automated fetching.
 
-**Decision.** Put the Parameters View under the concentration chart on the
-left in all three shipped Workspaces, as Induction and Maintenance already do.
-Only `default.json` changes: its left column becomes the chart above the
-Parameters strip at 0.9 and 0.1, and its right column holds the bookmarks and
-branch Views. This is a placement choice, decided in the session and told to
-the owner (`.claude/rules/instruction-writing.md` rule 14). The owner may
-still choose the right-hand column instead.
+**Measured 2026-11-26: both placements break a 1366 by 768 requirement.**
+Each was tried in the shipped files and run against the laptop-screen tests.
+
+1. Parameters under the chart in all three (only `default.json` changes). The
+   Default plot falls to 160 px of a 337 px Area, below the half that
+   `test_the_concentration_plot_takes_half_its_area_on_a_laptop` requires
+   (`PL-K4CZ`), and the keyboard-resize test of the controls Area fails.
+2. Parameters at the top of the right column in all three (Induction and
+   Maintenance change). Induction's wash-in plot and Maintenance's share bar
+   no longer fit on screen without scrolling, which
+   `test_each_shipped_workspace_shows_its_lesson_whole_at_1366_by_768`
+   requires (`PL-D5J4`).
+
+**Decision needed.** Which cost to take is the owner's, because each changes what a
+reader sees on the smallest supported screen. Recommendation: option 1. Its
+cost is a shorter Default plot on a 1366 by 768 screen only, with everything
+still on screen. Option 2 pushes a required part of two Views below the fold,
+and hiding a value is worse than shrinking it. The Default plot's half-Area
+bar would then be relaxed for that screen size, with the reason recorded.
 
 **Generator check.** No generator. The three shipped Workspaces were composed in separate items (`PL-KXTL`, `PL-L59K`), and nothing compared where they put the same View. The test this item adds is that comparison.
 
-**Done when.** The Parameters View is the Area under the concentration chart
+**Done when.** The Parameters View is in the same place
 in every shipped Workspace, and a test fails if a shipped Workspace puts it
 anywhere else.
