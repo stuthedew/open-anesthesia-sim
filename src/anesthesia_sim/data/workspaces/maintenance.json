@@ -17,25 +17,25 @@
               ],
               "children": [
                 {
+                  "area": 1,
+                  "view": "concentration_chart"
+                },
+                {
                   "split": "column",
                   "sizes": [
-                    0.9,
-                    0.1
+                    0.1,
+                    0.9
                   ],
                   "children": [
                     {
-                      "area": 1,
-                      "view": "concentration_chart"
-                    },
-                    {
                       "area": 2,
                       "view": "parameter_controls"
+                    },
+                    {
+                      "area": 3,
+                      "view": "compartment_schematic"
                     }
                   ]
-                },
-                {
-                  "area": 3,
-                  "view": "compartment_schematic"
                 }
               ]
             }

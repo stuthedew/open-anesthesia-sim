@@ -728,12 +728,12 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
         assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
 
 
-#: What each Workspace named for a task must show whole at 1366 by 768
-#: (`PL-D5J4`). The wash-in curve is Induction's lesson. The share bar is
+#: What each Workspace named for a task must show whole at 1440 by 900
+#: (`PL-D5J4`, `PL-YS8M`). The wash-in curve is Induction's lesson. The share bar is
 #: Maintenance's (`PL-PR1W`), with the lines under it that name each segment,
 #: so that no segment is told apart by colour alone. The bookmark editor sits
 #: in the Bookmarks View since `PL-CHX0`, and it scrolls inside its Area.
-_LESSONS_WHOLE_AT_1366: dict[str, frozenset[str]] = {
+_LESSONS_WHOLE_AT_1440: dict[str, frozenset[str]] = {
     "Induction": frozenset({"wash-in plot"}),
     "Maintenance": frozenset({"share bar", "share lines"}),
 }
@@ -758,24 +758,32 @@ def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
     return found
 
 
-@pytest.mark.parametrize("workspace", sorted(_LESSONS_WHOLE_AT_1366))
-def test_each_shipped_workspace_shows_its_lesson_whole_at_1366_by_768(
+@pytest.mark.parametrize("workspace", sorted(_LESSONS_WHOLE_AT_1440))
+def test_each_shipped_workspace_shows_its_lesson_whole_at_1440_by_900(
     application: QApplication, workspace: str
 ) -> None:
     """`PL-D5J4`: a Workspace named for a task shows that task's View whole on a laptop screen.
 
-    Before the fix, at 1366 by 768, Induction's wash-in curve started at its
-    Area's lower edge, and Maintenance's share bar and the lines under it were
-    below the schematic's Area. Each widget must be shown, and wholly inside
-    every scroll box around it, without the reader scrolling. The set of
-    widgets each Workspace must show is written out, so a Workspace cannot
-    pass by leaving its lesson out.
+    Before `PL-D5J4`, Induction's wash-in curve started at its Area's lower
+    edge, and Maintenance's share bar and the lines under it were below the
+    schematic's Area. Each widget must be shown, and wholly inside every
+    scroll box around it, without the reader scrolling. The set of widgets
+    each Workspace must show is written out, so a Workspace cannot pass by
+    leaving its lesson out.
+
+    The bar was 1366 by 768 until the parameter controls moved to the top of
+    the right-hand column in every shipped Workspace, so that they stay in one
+    place when the reader switches tabs (project owner, 2026-11-26, over
+    keeping them under the chart, `PL-YS8M`). The owner chose that placement
+    knowing that at 1366 by 768 the wash-in plot and the share bar then scroll
+    inside their Areas, because the controls and the bookmarks and branch
+    Views each hold their Area at its least height. At 1440 by 900 both fit.
     """
 
-    view = _shipped_view_at(application, workspace, 1366, 768)
+    view = _shipped_view_at(application, workspace, 1440, 900)
     found = _lesson_widgets(view)
 
-    assert set(found) == _LESSONS_WHOLE_AT_1366[workspace]
+    assert set(found) == _LESSONS_WHOLE_AT_1440[workspace]
 
     for name, widget in found.items():
         assert _wholly_in_view(view, widget), f"the {name} is not wholly on screen in {workspace}"
@@ -888,11 +896,14 @@ def test_the_1_mac_value_stays_on_screen_where_the_rows_above_the_plot_scroll(
 ) -> None:
     """`PL-K4CZ`: the clinical references are the legend's first row, above the compartments.
 
-    In the Induction Workspace at 1366 by 768 the box above the plot is
-    squeezed to its first rows, and the rest scroll. The 1 MAC value had a
+    In the Induction Workspace at 1366 by 768 the box above the plot was
+    squeezed to its first rows, and the rest scrolled. The 1 MAC value had a
     line of its own second in that box. It now sits in the clinical
     references row, and that row must come before the compartment rows, or
-    the value scrolls out of sight.
+    the value scrolls out of sight. Since the parameter controls left the
+    space under Induction's chart (`PL-YS8M`), the chart has the full height
+    and the box no longer scrolls at that size, so the test checks only that
+    the value is in view at the top of the box.
     """
 
     view = _shipped_view_at(application, "Induction", 1366, 768)
@@ -905,7 +916,6 @@ def test_the_1_mac_value_stays_on_screen_where_the_rows_above_the_plot_scroll(
     )
     top = one_mac.mapTo(key.viewport(), QPoint(0, 0)).y()
 
-    assert key.verticalScrollBar().maximum() > 0, "the box no longer scrolls here"
     assert key.verticalScrollBar().value() == 0
     assert 0 <= top
     assert top + one_mac.height() <= key.viewport().height()
@@ -1183,7 +1193,9 @@ def test_an_advisory_above_the_concentration_plot_grows_its_area_and_keeps_the_p
     assert scroll is not None
 
     assert not chart_view.hidden_traces_text.isHidden()
-    assert frame.height() > before_px
+    # The chart's Area already has the column's full height since `PL-YS8M`,
+    # so it may not grow further. It must not shrink.
+    assert frame.height() >= before_px
     assert scroll.verticalScrollBar().maximum() == 0
     plot = chart_view.chart.geometry()
     assert plot.bottom() < scroll.viewport().height(), (plot, scroll.viewport().height())

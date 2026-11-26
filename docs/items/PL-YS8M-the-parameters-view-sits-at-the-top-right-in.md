@@ -3,13 +3,16 @@ id: PL-YS8M
 title: The Parameters View sits at the top right in the Default Workspace but under the chart on the left in Induction and Maintenance, so the controls move when the reader switches tabs
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux
 feature: interface-design-review
 touches: src/anesthesia_sim/data/workspaces/default.json
 deferred-from: v0.7.0 - filed 2026-11-26, after the gate froze. Hazard not live, checked 2026-11-26 at 971a9cb9: the controls change place between tabs, but every value and control is on screen in each Workspace; it can still land before the cut
 added: 2026-11-26
+closed: 2026-11-26
+pr: 2325
 payoff: a reader switching Workspace tabs finds the setting controls in the same place every time
+tests: tests/unit/test_layout_shipped.py::test_every_shipped_workspace_puts_the_parameter_controls_at_the_top_of_the_right_column
 ---
 
 **Problem.** The Parameters View is the top-right Area of the Default
@@ -57,6 +60,23 @@ cost is a shorter Default plot on a 1366 by 768 screen only, with everything
 still on screen. Option 2 pushes a required part of two Views below the fold,
 and hiding a value is worse than shrinking it. The Default plot's half-Area
 bar would then be relaxed for that screen size, with the reason recorded.
+
+**Answered 2026-11-26** (project owner, 2026-11-26, over putting the
+controls under the chart and over leaving them as they were): the controls go
+at the top of the right-hand column in every shipped Workspace, accepting that
+at 1366 by 768 the wash-in plot and the share bar scroll inside their Areas.
+
+**Built.** Induction and Maintenance now give the chart the left half at full
+height, with the Parameters View first in the right-hand column. Induction's
+column is 0.1, 0.65 and 0.25, which gives the wash-in plot room to fit whole
+from 1440 by 900 up. Measured under both the container font and DejaVu Sans,
+the font the test machines draw with: the wash-in plot and the share bar fit
+whole at 1440 by 900 and 1920 by 1080, and scroll inside their Areas at 1366
+by 768, because the Parameters, Bookmarks and Branch Areas each sit at their
+least height there. The lesson test moved from 1366 by 768 to 1440 by 900 with
+the owner's decision in its docstring. Two Induction tests whose setting was a
+squeezed chart were updated: the chart now has the full height, so its legend
+box no longer scrolls and its Area cannot grow further.
 
 **Generator check.** No generator. The three shipped Workspaces were composed in separate items (`PL-KXTL`, `PL-L59K`), and nothing compared where they put the same View. The test this item adds is that comparison.
 
