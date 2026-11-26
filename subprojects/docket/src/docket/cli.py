@@ -135,9 +135,11 @@ from .release import (
     SEMVER_RE,
     TAG_SCRIPT,
     TAG_WORKFLOW,
+    Milestone,
     Readiness,
     already_released,
     below_current,
+    due_milestone,
     is_untagged,
     markdown_title,
     milestones,
@@ -1155,7 +1157,10 @@ def _suggestion(ready: Readiness, plan: Wave | None) -> str:
     if offer.kind == RESERVED:
         return render.reserved_refusal(offer, "`docket wave` for what is due")
     if offer.kind == PLANNED:
-        return f"Suggested: {offer.version}, the version the roadmap names for this release."
+        return (
+            f"Suggested: {offer.version}, the version the roadmap names for this release. "
+            f"{render.milestone_wait(offer)}"
+        )
     return f"Suggested: {offer.version}."
 
 
@@ -3956,8 +3961,21 @@ def cmd_release(args: argparse.Namespace) -> int:
     reclaim = resuming or recutting
     ready = readiness(items, current, config.minor_classes, reclaim)
 
-    if not ready.shippable:
+    # A milestone the plan is ready to release is cut with nothing new in it:
+    # a patch cut first took every finished item, and refusing here would
+    # leave the milestone uncuttable for good (`PL-FLXP`).
+    empty_milestone = (
+        None if ready.shippable or reclaim else due_milestone(_plan(root, items, config))
+    )
+    if not ready.shippable and (empty_milestone is None or named != empty_milestone[0]):
         print(f"Nothing to release: no finished work since {current}.")
+        if empty_milestone is not None:
+            version_due, name_due = empty_milestone
+            print(
+                f'The roadmap is ready to release {version_due}, "{name_due}", which needs no '
+                "finished item of its own: name it to cut it "
+                f"(`make release VERSION={version_due}`)."
+            )
         return 0
 
     if unmerged and not recutting:
@@ -4130,6 +4148,12 @@ def cmd_release(args: argparse.Namespace) -> int:
             if not args.dry_run:
                 return 1
             print()
+        # Refused outright, a dry run too, for the reservation's reason: it is
+        # a wrong number rather than a state to review (`PL-FLXP`).
+        due = due_milestone(plan)
+        if due is not None and due[0] != version:
+            print(_milestone_due_refusal(name, due, len(ready.shippable), current))
+            return 1
 
     if git is not None and not landed:
         holders, unread, train = _rival_cuts(args, root, git, base)
@@ -4148,7 +4172,7 @@ def cmd_release(args: argparse.Namespace) -> int:
                 return 1
             print()
 
-    milestone = milestones(stamp(ready.shippable, name))[name]
+    milestone = milestones(stamp(ready.shippable, name)).get(name, Milestone(name, []))
     notes = release_notes(milestone, args.today or date.today())
 
     already = sum(1 for item in ready.shippable if item.milestone)
@@ -4376,6 +4400,26 @@ def _reserved_cut_refusal(
             f"finished since {current.strip()}, and a tag makes that permanent. Name a number "
             "the roadmap leaves free, or cut this one when `docket wave` says it is due; if "
             f"the plan has changed, change {roadmap} first.",
+        ]
+    )
+
+
+def _milestone_due_refusal(name: str, due: tuple[str, str], shippable: int, current: str) -> str:
+    """Refuse a cut under any number but the milestone's while it is ready.
+
+    The milestone may be waiting on its owner's word, as v0.7.0 waited on a
+    test drive. What can ship then is the milestone's own content, so a cut
+    under another number ships that content twice, and the milestone is left
+    with nothing new (`PL-FLXP`, `due_milestone`).
+    """
+    version, milestone = due
+    return "\n".join(
+        [
+            f'Cannot cut {name}: the roadmap is ready to release {version}, "{milestone}", so '
+            "that is the next release. Nothing was stamped and nothing was written.",
+            f"The {shippable} item(s) finished since {current.strip()} are that release's to "
+            f"ship. Cut {version} when its owner gives the word; a fix found while it waits "
+            "ships in it.",
         ]
     )
 

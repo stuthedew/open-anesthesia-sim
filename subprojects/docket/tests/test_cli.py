@@ -2196,6 +2196,91 @@ def test_a_number_the_roadmap_leaves_free_is_cut_beside_a_reserved_one(tmp_path:
     assert (root / "docs" / "releases" / "v0.2.6.md").is_file()
 
 
+GATE_CLEARED = DONE.replace("PL-D1D1", "PL-B1B1").replace(
+    "title: A finished item", "title: The one entry on this gate"
+)
+
+
+@pytest.mark.parametrize("dry_run", [False, True], ids=["cut", "dry-run"])
+def test_a_patch_is_refused_while_the_milestone_is_ready_to_release(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], dry_run: bool
+) -> None:
+    """PL-FLXP: a patch cut while the milestone waited shipped the milestone's work.
+
+    With the gate's one entry done, `wave`'s beat is `release v0.3.0`, and
+    the finished items are that release's. v0.6.20 to v0.6.24 were each cut
+    as a patch at that point while v0.7.0 waited on its owner's test drive.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+    (root / "items" / "gate.md").write_text(GATE_CLEARED, encoding="utf-8")
+    flags = ["--dry-run"] if dry_run else []
+
+    assert main(["release", "0.2.6", *flags, "--items", str(root / "items")]) == 1
+
+    out = capsys.readouterr().out
+    assert 'Cannot cut v0.2.6: the roadmap is ready to release 0.3.0, "the foundation"' in out
+    assert "The 2 item(s) finished since 0.2.5 are that release's to ship." in out
+    assert "## v0.2.6" not in out
+    assert "milestone:" not in (root / "items" / "done.md").read_text(encoding="utf-8")
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert not (root / "docs" / "releases").exists()
+
+
+def _everything_shipped_in(root: Path, version: str) -> None:
+    """Stamp every finished item into `version`, with its notes, as a patch cut leaves it."""
+    for path in (root / "items").glob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        if "status: done" in text and "PL-TR4N" not in text:
+            stamped = text.replace("status: done\n", f"status: done\nmilestone: v{version}\n")
+            path.write_text(stamped, encoding="utf-8")
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True, exist_ok=True)
+    (notes / f"v{version}.md").write_text(f"## v{version} - 2026-08-21\n", encoding="utf-8")
+
+
+def test_a_ready_milestone_is_cut_with_no_item_finished_since_the_last_tag(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-FLXP: a patch cut first left the milestone with `Nothing to release`.
+
+    That answer exited 0, so the milestone could never be cut afterwards. The
+    milestone's work went out in the releases before it, and its notes say so.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+    (root / "items" / "gate.md").write_text(GATE_CLEARED, encoding="utf-8")
+    _everything_shipped_in(root, "0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    advice = capsys.readouterr().out
+    assert "Nothing to release: no finished work since 0.2.5." in advice
+    assert 'ready to release 0.3.0, "the foundation"' in advice
+    assert "`make release VERSION=0.3.0`" in advice
+
+    assert main(["release", "0.3.0", "--items", str(root / "items")]) == 0
+
+    notes = (root / "docs" / "releases" / "v0.3.0.md").read_text(encoding="utf-8")
+    assert "No item finished after the release before this one." in notes
+    assert not notes_ids(notes)
+    assert 'version = "0.3.0"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_nothing_to_release_stays_the_answer_when_no_milestone_is_ready(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """With the gate open the plan asks for no release, so naming it changes nothing."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(WAVE_ROADMAP, encoding="utf-8")
+    _everything_shipped_in(root, "0.2.5")
+
+    assert main(["release", "0.3.0", "--items", str(root / "items")]) == 0
+    out = capsys.readouterr().out
+    assert "Nothing to release: no finished work since 0.2.5." in out
+    assert "ready to release" not in out
+    assert not (root / "docs" / "releases" / "v0.3.0.md").exists()
+
+
 def test_a_reserved_version_the_default_branch_has_shipped_is_answered_by_the_base(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
