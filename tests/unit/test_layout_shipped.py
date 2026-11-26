@@ -167,14 +167,21 @@ def test_every_shipped_workspace_puts_the_parameter_controls_at_the_top_of_the_r
     A reader who switches tabs and then changes a setting should find the
     controls where they were (project owner, 2026-11-26, over putting them
     under the chart). So each shipped Workspace splits the window into a
-    concentration chart on the left and a column on the right, and the
-    parameter controls are that column's first Area.
+    concentration chart on the left and a column on the right, at the same
+    shares as Default, and the parameter controls are that column's first
+    Area. With other shares the controls' left edge moved by a fifth of the
+    window between Default and the other two tabs. The dashboard test
+    `test_the_parameter_controls_stand_where_they_did_after_a_tab_switch`
+    checks the drawn Areas.
     """
 
     tree = shipped_workspace(shipped_id).layout.windows[0].tree
+    default_tree = shipped_workspace(DEFAULT).layout.windows[0].tree
 
     assert isinstance(tree, Split)
+    assert isinstance(default_tree, Split)
     assert tree.orientation is Orientation.ROW
+    assert tree.sizes == default_tree.sizes
     first, right = tree.children
     assert isinstance(first, Area)
     assert first.view == CHART

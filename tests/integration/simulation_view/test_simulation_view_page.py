@@ -630,7 +630,7 @@ def test_a_frame_that_changes_no_need_does_not_lay_the_areas_out_again(
     assert settles == []
 
 
-@pytest.mark.parametrize("height_px", range(1044, 1077, 4))
+@pytest.mark.parametrize("height_px", range(1000, 1037, 4))
 def test_a_layout_drawn_again_keeps_its_sizes_where_the_page_scroll_bar_comes_and_goes(
     application: QApplication, height_px: int
 ) -> None:
@@ -639,9 +639,11 @@ def test_a_layout_drawn_again_keeps_its_sizes_where_the_page_scroll_bar_comes_an
     A whole View's need is measured at the width its Area is drawn. The page's
     scroll bar takes width from the Areas when it appears, so a need that fed
     back through it could give a different layout on each frame. Induction
-    with a branch open at 1366 px wide needs about 1,060 px of window height
-    for the page not to scroll, so these heights put the window on both sides
-    of the height at which the scroll bar comes and goes.
+    with a branch open at 1366 px wide needs about 1,020 px of window height
+    for the page not to scroll, in both of the fonts the tests are drawn in,
+    since the parameter controls moved beside the chart (`PL-YS8M`). So these
+    heights put the window on both sides of the height at which the scroll bar
+    comes and goes.
     """
 
     view = _shipped_view_at(application, "Induction", 1366, height_px, branched=True)
@@ -728,15 +730,27 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
         assert top + chart.height() <= area.viewport().height(), "the plot runs below a scroll box"
 
 
-#: What each Workspace named for a task must show whole at 1440 by 900
-#: (`PL-D5J4`, `PL-YS8M`). The wash-in curve is Induction's lesson. The share bar is
+#: What each Workspace named for a task must show whole with one run (`PL-D5J4`,
+#: `PL-YS8M`). The wash-in curve is Induction's lesson. The share bar is
 #: Maintenance's (`PL-PR1W`), with the lines under it that name each segment,
 #: so that no segment is told apart by colour alone. The bookmark editor sits
 #: in the Bookmarks View since `PL-CHX0`, and it scrolls inside its Area.
-_LESSONS_WHOLE_AT_1440: dict[str, frozenset[str]] = {
+_LESSONS: dict[str, frozenset[str]] = {
     "Induction": frozenset({"wash-in plot"}),
     "Maintenance": frozenset({"share bar", "share lines"}),
 }
+
+#: The window sizes at which each Workspace shows its lesson whole with one
+#: run. Induction's wash-in plot scrolls inside its Area at 1366 by 768 and at
+#: 1536 by 864, so those sizes are left out for it (`PL-YS8M`).
+_LESSON_WHOLE_SCREENS_PX: tuple[tuple[str, int, int], ...] = (
+    ("Induction", 1440, 900),
+    ("Induction", 1920, 1080),
+    ("Maintenance", 1366, 768),
+    ("Maintenance", 1440, 900),
+    ("Maintenance", 1536, 864),
+    ("Maintenance", 1920, 1080),
+)
 
 
 def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
@@ -758,9 +772,9 @@ def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
     return found
 
 
-@pytest.mark.parametrize("workspace", sorted(_LESSONS_WHOLE_AT_1440))
-def test_each_shipped_workspace_shows_its_lesson_whole_at_1440_by_900(
-    application: QApplication, workspace: str
+@pytest.mark.parametrize(("workspace", "width_px", "height_px"), _LESSON_WHOLE_SCREENS_PX)
+def test_each_shipped_workspace_shows_its_lesson_whole_with_one_run(
+    application: QApplication, workspace: str, width_px: int, height_px: int
 ) -> None:
     """`PL-D5J4`: a Workspace named for a task shows that task's View whole on a laptop screen.
 
@@ -771,22 +785,104 @@ def test_each_shipped_workspace_shows_its_lesson_whole_at_1440_by_900(
     each Workspace must show is written out, so a Workspace cannot pass by
     leaving its lesson out.
 
-    The bar was 1366 by 768 until the parameter controls moved to the top of
-    the right-hand column in every shipped Workspace, so that they stay in one
-    place when the reader switches tabs (project owner, 2026-11-26, over
+    Both fitted at 1366 by 768 until the parameter controls moved to the top
+    of the right-hand column in every shipped Workspace, so that they stay in
+    one place when the reader switches tabs (project owner, 2026-11-26, over
     keeping them under the chart, `PL-YS8M`). The owner chose that placement
-    knowing that at 1366 by 768 the wash-in plot and the share bar then scroll
-    inside their Areas, because the controls and the bookmarks and branch
-    Views each hold their Area at its least height. At 1440 by 900 both fit.
+    knowing that at 1366 by 768 the wash-in plot then scrolls inside its Area,
+    because the controls and the bookmarks and branch Views each hold their
+    Area at its least height. The share bar and its lines sit at the top of
+    the schematic since then, so they are on screen at that size. With a
+    branch open, the controls' Area holds a second row and neither lesson
+    fits whole.
     """
 
-    view = _shipped_view_at(application, workspace, 1440, 900)
+    view = _shipped_view_at(application, workspace, width_px, height_px)
     found = _lesson_widgets(view)
 
-    assert set(found) == _LESSONS_WHOLE_AT_1440[workspace]
+    assert set(found) == _LESSONS[workspace]
 
     for name, widget in found.items():
         assert _wholly_in_view(view, widget), f"the {name} is not wholly on screen in {workspace}"
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), (*_COMMON_SCREENS_PX, (1440, 900)))
+def test_the_share_bar_is_never_on_screen_without_the_lines_that_name_its_segments(
+    application: QApplication, width_px: int, height_px: int
+) -> None:
+    """`PL-YS8M`: wherever any of the share bar is in view, the lines under it are wholly in view.
+
+    The lines name each segment, so that no segment is told apart by colour
+    alone (`docs/INTERFACE.md` § "The compartment schematic: what its heights,
+    amounts and share bar assert"). At 1366 by 768 the schematic is taller
+    than its Area in Maintenance and scrolls inside it. While the bar and its
+    lines were the last rows under the containers, the Area's lower edge
+    could fall between them, so the bar was on screen with nothing to name
+    its segments. They are now the rows under the schematic's name line. The
+    test scrolls the schematic through its whole range, a few pixels at a
+    time, with one run. With a branch open, the second run's bar is in the
+    middle of the View, and an edge of the Area can still fall between it and
+    its lines.
+    """
+
+    from anesthesia_sim.app.qt_schematic import RunSchematic
+
+    view = _shipped_view_at(application, "Maintenance", width_px, height_px)
+    (schematic,) = (shown for shown in view.findChildren(RunSchematic) if shown.isVisible())
+    areas = view.layout_container
+    (frame,) = (
+        areas.frame(area.id)
+        for area in areas.model.areas()
+        if areas.frame(area.id).isAncestorOf(schematic)
+    )
+    assert frame.view_scroll is not None
+    bar = frame.view_scroll.verticalScrollBar()
+
+    for position in range(0, bar.maximum() + 1, 2):
+        bar.setValue(position)
+        application.processEvents()
+
+        if not _partly_in_view(view, schematic.share_bar):
+            continue
+
+        assert _wholly_in_view(view, schematic.share_text), (
+            f"at scroll {position} of {bar.maximum()} the bar is in view and its lines are not"
+        )
+
+
+@pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
+def test_the_parameter_controls_stand_where_they_did_after_a_tab_switch(
+    application: QApplication, width_px: int, height_px: int
+) -> None:
+    """`PL-YS8M`: the controls' Area keeps its top and right edges in every shipped Workspace.
+
+    A reader who switches tabs and then changes a setting should find the
+    controls where they were (project owner, 2026-11-26). Every shipped
+    Workspace puts them at the top of the column right of the chart, at the
+    same shares of the window. On a 1920 by 1080 screen the Area is then the
+    same in every Workspace. On a 1366 by 768 screen the column is as wide as
+    the widest View in it needs, so the Area keeps its top and right edges and
+    is wider where the wash-in plot or the schematic sits under it.
+    """
+
+    drawn: dict[str, tuple[int, int, int, int]] = {}
+
+    for workspace in _shipped_workspace_names():
+        view = _shipped_view_at(application, workspace, width_px, height_px)
+        areas = view.layout_container
+        (parameters,) = (area for area in areas.model.areas() if area.view == PARAMETER_CONTROLS)
+        frame = areas.frame(parameters.id)
+        corner = frame.mapTo(view, QPoint(0, 0))
+        drawn[workspace] = (corner.x(), corner.y(), frame.width(), frame.height())
+
+    rights = {workspace: x + width for workspace, (x, _, width, _) in drawn.items()}
+    tops = {workspace: y for workspace, (_, y, _, _) in drawn.items()}
+
+    assert len(set(rights.values())) == 1, rights
+    assert len(set(tops.values())) == 1, tops
+
+    if width_px >= 1920:
+        assert len(set(drawn.values())) == 1, drawn
 
 
 @pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
@@ -901,12 +997,12 @@ def test_the_1_mac_value_stays_on_screen_where_the_rows_above_the_plot_scroll(
     line of its own second in that box. It now sits in the clinical
     references row, and that row must come before the compartment rows, or
     the value scrolls out of sight. Since the parameter controls left the
-    space under Induction's chart (`PL-YS8M`), the chart has the full height
-    and the box no longer scrolls at that size, so the test checks only that
-    the value is in view at the top of the box.
+    space under the chart (`PL-YS8M`), the box scrolls at 1366 by 768 only
+    where the chart is narrow and its rows wrap, as in Maintenance with a
+    branch open, so the test uses that case.
     """
 
-    view = _shipped_view_at(application, "Induction", 1366, 768)
+    view = _shipped_view_at(application, "Maintenance", 1366, 768, branched=True)
     chart_view = _concentration(view)
     (key,) = chart_view.findChildren(QScrollArea)
     (one_mac,) = (
@@ -916,6 +1012,7 @@ def test_the_1_mac_value_stays_on_screen_where_the_rows_above_the_plot_scroll(
     )
     top = one_mac.mapTo(key.viewport(), QPoint(0, 0)).y()
 
+    assert key.verticalScrollBar().maximum() > 0, "the box no longer scrolls here"
     assert key.verticalScrollBar().value() == 0
     assert 0 <= top
     assert top + one_mac.height() <= key.viewport().height()

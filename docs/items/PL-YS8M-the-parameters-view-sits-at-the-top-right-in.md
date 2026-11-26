@@ -6,13 +6,13 @@ effort: S
 status: done
 classes: ux
 feature: interface-design-review
-touches: src/anesthesia_sim/data/workspaces/default.json
+touches: src/anesthesia_sim/data/workspaces/default.json, src/anesthesia_sim/data/workspaces/induction.json, src/anesthesia_sim/data/workspaces/maintenance.json, src/anesthesia_sim/data/workspaces/__init__.py, src/anesthesia_sim/app/qt_schematic.py
 deferred-from: v0.7.0 - filed 2026-11-26, after the gate froze. Hazard not live, checked 2026-11-26 at 971a9cb9: the controls change place between tabs, but every value and control is on screen in each Workspace; it can still land before the cut
 added: 2026-11-26
 closed: 2026-11-26
 pr: 2325
 payoff: a reader switching Workspace tabs finds the setting controls in the same place every time
-tests: tests/unit/test_layout_shipped.py::test_every_shipped_workspace_puts_the_parameter_controls_at_the_top_of_the_right_column
+tests: tests/unit/test_layout_shipped.py::test_every_shipped_workspace_puts_the_parameter_controls_at_the_top_of_the_right_column, tests/integration/simulation_view/test_simulation_view_page.py::test_the_parameter_controls_stand_where_they_did_after_a_tab_switch, tests/integration/simulation_view/test_simulation_view_page.py::test_the_share_bar_is_never_on_screen_without_the_lines_that_name_its_segments
 ---
 
 **Problem.** The Parameters View is the top-right Area of the Default
@@ -77,6 +77,16 @@ least height there. The lesson test moved from 1366 by 768 to 1440 by 900 with
 the owner's decision in its docstring. Two Induction tests whose setting was a
 squeezed chart were updated: the chart now has the full height, so its legend
 box no longer scrolls and its Area cannot grow further.
+
+**Review, 2026-11-26.** Two blind review passes found five things, and all five were fixed on the branch.
+
+1. The controls still moved. Default split the row 0.7 to 0.3 and the other two 0.5 to 0.5, so at 1920 by 1080 the controls' left edge moved by 376 px between tabs. Every shipped Workspace now splits the row 0.6 to 0.4. At 1920 by 1080 the Parameters Area is then 752 px wide at x 1152 in all three. At 1366 by 768 each right-hand column is as wide as its widest View needs: 541 px in Default, 640 in Induction and 720 in Maintenance (Inter; 550, 661 and 750 in DejaVu Sans). An exact match there would need every column at 750 px, and Default's chart at 600 px wide fails the rule that its plot takes at least half its Area (`PL-K4CZ`): measured 195 px of plot in a 482 px Area at 0.43 to 0.57. So the Area keeps its top and right edges at laptop sizes, and `test_the_parameter_controls_stand_where_they_did_after_a_tab_switch` checks the edges at both sizes and the whole Area at 1920 by 1080. It failed against the 0.7 and 0.5 shares.
+2. Maintenance's share bar could be on screen without the lines that name its segments. At 1366 by 768 the schematic scrolled, and the Area's lower edge fell between the bar and its lines at 34 scroll positions. The bar and its lines are now the schematic's first rows under its name line. `test_the_share_bar_is_never_on_screen_without_the_lines_that_name_its_segments` failed against the old row order, at scroll 26 of 108. The two-run case predates this item and is `PL-P83G`.
+3. The 1 MAC row test lost its premise when the chart got the full height. It now runs in Maintenance with a branch open at 1366 by 768, where the legend box scrolls (83 px in Inter, 78 in DejaVu Sans), and checks that it does.
+4. The page scroll bar test's heights no longer straddled the height at which Induction with a branch stops needing the page to scroll. That height moved from about 1,060 px to 1,016 px (1,020 in DejaVu Sans), and the range is now 1,000 to 1,036.
+5. The package docstring of `src/anesthesia_sim/data/workspaces/` described the old layouts. It now describes these.
+
+The lesson test now runs at each size where the lesson fits with one run: Maintenance from 1366 by 768, Induction at 1440 by 900 and 1920 by 1080. Induction's wash-in plot scrolls at 1536 by 864 too. With a branch open, the Parameters Area grows to a second row, and the wash-in plot scrolls at every tested size. On `main` it fitted with a branch open. Its "modelled" line is pinned above the scroll box, so the plot is never on screen without it (`PL-26BZ`).
 
 **Generator check.** No generator. The three shipped Workspaces were composed in separate items (`PL-KXTL`, `PL-L59K`), and nothing compared where they put the same View. The test this item adds is that comparison.
 
