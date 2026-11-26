@@ -208,13 +208,14 @@ points the digest's `Top:` line at the product lane (`PL-2CPD`).
 
 Cut a release whenever the repository's release rules call for one, each in
 its own thread as `.claude/skills/docket/modes/release.md` runs it. On every
-merge report, the coordinator reads `bin/docket status`. When it says features
-finished since the last tag and no session holds the release train, the
-coordinator starts the cut that same turn, even above the place cap. The
-release the Goal names is never cut automatically. When everything else for
-it is done, the coordinator tells the owner, the owner test-drives `main` and
-gives feedback, the tweaks are made, and that cut starts only at the owner's
-word.
+merge report, the coordinator reads `bin/docket status`. When it offers a
+patch and no session holds the release train, the coordinator starts the cut
+that same turn, even above the place cap. When it offers the release the Goal
+names, nothing is cut automatically. The coordinator tells the owner once that
+the release is ready to test-drive, the owner test-drives `main` and gives
+feedback, the tweaks are made, and that cut starts only at the owner's word.
+No patch is cut while it waits, because a patch would ship the same work under
+another number (`.claude/skills/docket/modes/release.md`, `PL-FLXP`).
 
 ## The coordinator's own housekeeping
 

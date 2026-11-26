@@ -3598,6 +3598,8 @@ def format_status(
             lines.append(f"  {reserved_refusal(offer, '`docket wave` for what is due')}")
         elif offer.kind == PATCH:
             lines.append(f"  Next version would be {offer.version}. {patch_reason(offer)}")
+        elif offer.kind == PLANNED:
+            lines.append(f"  Next version would be {offer.version}. {milestone_wait(offer)}")
         else:
             lines.append(f"  Next version would be {offer.version}.")
     # The legend's blank says no section places an unmarked id, which a list
@@ -4120,6 +4122,20 @@ def patch_reason(offer: ReleaseOffer) -> str:
     )
 
 
+def milestone_wait(offer: ReleaseOffer) -> str:
+    """What a `PLANNED` offer adds: that no patch is cut while the milestone waits.
+
+    One wording for the survey, the digest and `bin/docket release`'s dry run,
+    as `patch_reason` is. A coordinator that read "the version the plan names"
+    and knew the milestone needed its owner's word cut patches instead, five
+    of them, so the sentence says what the cut path now refuses (`PL-FLXP`).
+    """
+    return (
+        f'It is the milestone "{offer.milestone}", ready to release, so no patch is cut while '
+        "it waits: a patch would ship the same work under another number."
+    )
+
+
 def _release_advice(ready: Readiness, plan: Wave | None) -> str:
     """The digest's release sentence, once the roadmap has had its say.
 
@@ -4137,7 +4153,7 @@ def _release_advice(ready: Readiness, plan: Wave | None) -> str:
     if offer.kind == PLANNED:
         return (
             f"Offer {offer.version} before taking new work - the version the plan names, "
-            f"not the {ready.suggested_version} a bump arrives at."
+            f"not the {ready.suggested_version} a bump arrives at. {milestone_wait(offer)}"
         )
     return f"Offer {offer.version} before taking new work."
 

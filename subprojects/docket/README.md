@@ -2388,6 +2388,17 @@ a `Current baseline:` heading reserves nothing, since it records a release
 rather than planning one, and a roadmap not read whole refuses the cut rather
 than taking silence for a free number.
 
+**While the plan is ready to release a milestone, that milestone is the only
+number the cut takes** (`PL-FLXP`). `release.due_milestone` reads `wave`'s
+`release` beat. Every release is cut from the default branch, so a patch cut
+while the milestone waits on its owner's word ships the milestone's own work
+under a second number, and leaves the milestone nothing new. v0.6.20 to v0.6.24
+were cut that way. So the cut refuses any other number then, a dry run
+included, and the digest and `status` say so beside the offer. The same answer
+lets the milestone be cut with no item finished since the last tag, which
+`Nothing to release` used to refuse. Its notes then say that no item finished
+after the release before it.
+
 **What a release deliberately does not write is the roadmap.** A project that
 keeps a version table in a hand-maintained plan will find it left behind by
 every release — twice here, the second time one release after the first was

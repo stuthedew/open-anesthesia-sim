@@ -2054,7 +2054,9 @@ def test_the_dry_run_suggestion_reads_the_plan_on_every_answer() -> None:
         'No release to offer: the roadmap gives 0.2.8 to "the workflow works"'
     )
     assert _suggestion(_ready("0.3.9", "0.3.10"), released) == (
-        "Suggested: 0.4.0, the version the roadmap names for this release."
+        "Suggested: 0.4.0, the version the roadmap names for this release. It is the "
+        'milestone "the teachable case", ready to release, so no patch is cut while it '
+        "waits: a patch would ship the same work under another number."
     )
 
 
