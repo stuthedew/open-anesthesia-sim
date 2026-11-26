@@ -171,6 +171,32 @@ release` refuses to cut it (`PL-SYG4`). `docket wave`'s `Reserved` line is the
 whole set of numbers the plan has spent, which is the evidence behind either
 answer.
 
+**A milestone that is ready to release is the next release, and no patch is
+cut while it waits** (project owner, 2026-11-26, ratified, over cutting the
+next patch while the milestone waits on the owner's test drive, `PL-FLXP`).
+The beat reads `release vX.Y.0` once the milestone's gate is clear and its
+Required scope has closed. Every release here is cut from `main`, so a patch
+cut then ships the milestone's own work under another number. v0.6.20 to
+v0.6.24 were cut that way while v0.7.0 waited. `bin/docket release` refuses
+any other number then, a dry run too, and the digest and `bin/docket status`
+say so beside the offer. Projects that cut release candidates work the same
+way. Once a release reaches its candidate phase only fixes go into it, and a
+patch on the old line carries only a fix already on the main branch (the
+Python devguide, "Development cycle"; Kubernetes, "Release Cycle" and "Patch
+Releases"). `PL-FLXP` records what was read.
+
+While the milestone waits:
+
+1. Tell the owner once that it is ready to test-drive, name `main`'s commit at
+   that moment, and cut nothing.
+2. Land each fix the test drive asks for on `main` as an ordinary item. It
+   ships in the milestone.
+3. Cut the milestone at the owner's word. Record in the cut item the commit
+   the owner drove, and list in the pull request body each item merged after
+   it, so the owner sees what the release holds that they did not drive.
+   Where a patch already took every finished item, the cut still goes ahead,
+   and its notes say that no item finished after the release before it.
+
 But the digest says it in *every* session, including the ones where it is
 beside the point. Offer it when the owner is choosing what to work on or has
 just finished something. Not in a design round, a triage pass, a

@@ -1,10 +1,13 @@
 ---
 id: PL-FLXP
 title: A patch can be cut while a milestone is ready and waiting on the owner's test drive, shipping the milestone's work under another number, and a ready milestone with no item finished since the last tag cannot be cut at all
-status: untriaged
+status: done
 feature: release-process
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/coordinator.md, ROADMAP.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/modes/release.md, .claude/skills/docket/modes/coordinator.md, ROADMAP.md
 added: 2026-11-26
+closed: 2026-11-26
+pr: 2324
+tests: subprojects/docket/tests/test_cli.py::test_a_patch_is_refused_while_the_milestone_is_ready_to_release, subprojects/docket/tests/test_cli.py::test_a_ready_milestone_is_cut_with_no_item_finished_since_the_last_tag
 ---
 
 **Problem.** A patch can be cut while a milestone is ready and waiting on the owner's test drive, shipping the milestone's work under another number, and a ready milestone with no item finished since the last tag cannot be cut at all
@@ -87,3 +90,29 @@ only be the milestone's own content under another number.
 4. `.claude/skills/docket/modes/release.md`, `.claude/skills/docket/modes/coordinator.md`
    and `ROADMAP.md` § "Versioning decision" state the rule, and the reply
    carries replacement text for the project instructions' "Releases" paragraph.
+
+**Generator check.** The fact misread is which release the plan says is due.
+The digest's offer read `wave`'s `release` beat, and the cut path did not,
+which is the shape `PL-Z85N` fixed for reserved numbers. It is the first
+instance for the due release, and the coordinator rule that starts a cut on
+every finished feature is what reached it, so it is a one-off on that fact
+rather than a re-entry of `PL-Z85N`, whose fix covered only reservations.
+
+**Docs checked, 2026-11-26.** `subprojects/docket/README.md` (the offer and
+cut paragraphs, with one added), `.claude/skills/docket/modes/release.md` (the
+offer section, with the wait steps added), `.claude/skills/docket/modes/coordinator.md`
+§ "Releases", `ROADMAP.md` § "Versioning decision" and v0.7.0's frozen list,
+and each line `tools/doc_check.py candidates` named for the four source files,
+none of which states anything this change made untrue.
+
+**Project instructions, 2026-11-26.** Their "Releases" paragraph lives outside
+the repository and still starts a cut whenever features finish, which now
+disagrees with `.claude/skills/docket/modes/coordinator.md` § "Releases". The
+replacement text given to the coordinator for its first sentence and a half:
+"on every merge report the coordinator reads `bin/docket status`, and when it
+offers a patch and no session holds the release train, it starts the cut that
+same turn, even above the place cap. A milestone version (0.7.0, 0.8.0 and so
+on) is never cut automatically: when `bin/docket status` offers it, the
+coordinator tells me once that it is ready to test-drive, names main's commit,
+and cuts nothing, not even a patch, because a patch would ship the same work
+under another number."

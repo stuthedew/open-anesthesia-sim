@@ -641,6 +641,10 @@ def release_notes(milestone: Milestone, today: date) -> str:
     wrote the notes forgot it.
     """
     lines = [f"## {milestone.name} - {today.isoformat()}", ""]
+    if not milestone.done:
+        # A milestone cut with nothing finished since the last tag
+        # (`due_milestone`): its work went out in the releases before it.
+        lines += ["No item finished after the release before this one.", ""]
     by_class: dict[str, list[Item]] = {}
     for item in milestone.done:
         key = item.classes[0] if item.classes else "other"
@@ -1194,6 +1198,32 @@ def free_patch(current: str, plan: Wave) -> str | None:
     if any(held.version <= candidate for held in plan.reserved):
         return None
     return "{}.{}.{}".format(*candidate)
+
+
+def due_milestone(plan: Wave | None) -> tuple[str, str] | None:
+    """The version and name of the milestone the plan is ready to release, or `None`.
+
+    `wave` reaches its `release` beat when a milestone's gate is clear and its
+    `Required scope` has closed, and names the version then. That release is
+    the next one, whatever number a bump arrives at. A patch cut while it
+    waits, as on the owner's test drive, can only be the milestone's own work
+    under a second number, because every release here is cut from the default
+    branch. Projects that cut release candidates take only fixes from that
+    point on, and a patch on the old line carries only a fix already on the
+    main branch (the Python devguide, "Development cycle"; Kubernetes,
+    "Release Cycle"; `PL-FLXP`). Five patches, v0.6.20 to v0.6.24, were cut that
+    way while v0.7.0 waited, and a sixth nearly was.
+
+    So the cut refuses any other number while this answers, and a cut of this
+    number goes ahead even where nothing has finished since the last tag:
+    otherwise a patch cut first would leave the milestone with nothing to
+    release and no way to be cut.
+    """
+    from .roadmap import RELEASE
+
+    if plan is None or plan.beat != RELEASE or plan.release_version is None:
+        return None
+    return "{}.{}.{}".format(*plan.release_version), plan.release_name
 
 
 def reservation(version: str, plan: Wave | None) -> ReservedVersion | None:
