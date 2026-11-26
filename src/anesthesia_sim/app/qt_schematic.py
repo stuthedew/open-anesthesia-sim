@@ -25,7 +25,7 @@ are never drawn as a chain through which agent passes from one tissue to the
 next. No container stands for arterial blood, for the reason `docs/MODEL.md`
 § "What the model represents" gives.
 
-**The share bar** (`PL-S79P`). Under the containers, `ShareBar` draws one bar.
+**The share bar** (`PL-S79P`). Above the containers, `ShareBar` draws one bar.
 The bar is divided into each compartment's share of all the agent the run
 holds, in the containers' order and colours. The lines under the bar name each
 share in text. The containers' heights are tensions, so fat's container stays
@@ -461,11 +461,14 @@ class RunSchematic(QWidget):
         column.setContentsMargins(0, 0, 0, 0)
         column.setSpacing(VIEW_ROW_SPACING)
         column.addWidget(self.name_text)
+        # The share bar and the lines that name its segments come before the
+        # containers. Where the schematic is taller than its Area, an edge of
+        # the Area then cannot fall between them with one run (`PL-YS8M`).
+        column.addWidget(self.share_bar)
+        column.addWidget(self.share_text)
         column.addWidget(self.canvas)
         column.addWidget(self.off_scale_text)
         column.addWidget(self.scale_text)
-        column.addWidget(self.share_bar)
-        column.addWidget(self.share_text)
         self._name = name
         self._shown = shown
         self.show_schematic(shown)

@@ -5,10 +5,11 @@ by the same reader that a user's own `workspaces.json` goes through. These
 tests check that each shipped file is what it claims to be: one Workspace, at
 the current version, naming its own file's id, and written in the form that
 the writer produces. They also check what each arrangement shows. No shipped
-Workspace contains the accounting View (project owner, 2026-09-16). The
-default gives the chart the window's full height beside a column of the
-parameter controls, the bookmarks and the branch control. The chart at full
-height is the composition the pixel budget was set for (`PL-84QX`), and the
+Workspace contains the accounting View (project owner, 2026-09-16). Every
+shipped Workspace gives the chart the window's full height, with the parameter
+controls at the top of the column beside it, so the controls stay in one place
+when the reader switches tabs (`PL-YS8M`). The chart at full height is the
+composition the pixel budget was set for (`PL-84QX`). In the default, the
 bookmarks and the branch control joined the column later (`PL-9YPR`).
 
 The tests of refusals run against a directory of the test's own.
@@ -136,13 +137,10 @@ def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_ch
     """Maintenance puts the compartment schematic beside the concentration chart (`PL-PR1W`).
 
     The schematic shows where the agent is now, and the chart shows its tensions
-    over time. During maintenance, the agent moves into muscle and fat while the
-    tensions in those tissues stay low, and the schematic's share bar is where
-    that shows. So the schematic takes the place that the wash-in chart had. The
-    wash-in chart, whose lesson is the first minutes, stays in Induction. The
-    schematic has the right half to itself, so that its share bar and the lines
-    naming each segment are on screen in a 768 px tall window (`PL-D5J4`). The
-    parameter controls sit under the chart.
+    over time. So the schematic takes the place that the wash-in chart has in
+    Induction. The chart has the left half to itself, and the parameter
+    controls sit above the schematic, as they sit at the top of the right-hand
+    column in every shipped Workspace (`PL-YS8M`).
     """
 
     tree = shipped_workspace(ShippedWorkspaceId("maintenance")).layout.windows[0].tree
@@ -150,14 +148,48 @@ def test_maintenance_shows_the_compartment_schematic_beside_the_concentration_ch
     assert isinstance(tree, Split)
     assert tree.orientation is Orientation.ROW
     first, second = tree.children
-    assert isinstance(first, Split)
-    assert first.orientation is Orientation.COLUMN
-    assert [child.view for child in first.children if isinstance(child, Area)] == [
-        CHART,
+    assert isinstance(first, Area)
+    assert first.view == CHART
+    assert isinstance(second, Split)
+    assert second.orientation is Orientation.COLUMN
+    assert [child.view for child in second.children if isinstance(child, Area)] == [
         PARAMETERS,
+        SCHEMATIC,
     ]
-    assert isinstance(second, Area)
-    assert second.view == SCHEMATIC
+
+
+@pytest.mark.parametrize("shipped_id", SHIPPED_WORKSPACE_IDS)
+def test_every_shipped_workspace_puts_the_parameter_controls_at_the_top_of_the_right_column(
+    shipped_id: ShippedWorkspaceId,
+) -> None:
+    """The setting controls are in the same place in every shipped Workspace (`PL-YS8M`).
+
+    A reader who switches tabs and then changes a setting should find the
+    controls where they were (project owner, 2026-11-26, over putting them
+    under the chart). So each shipped Workspace splits the window into a
+    concentration chart on the left and a column on the right, at the same
+    shares as Default, and the parameter controls are that column's first
+    Area. With other shares the controls' left edge moved by a fifth of the
+    window between Default and the other two tabs. The dashboard test
+    `test_the_parameter_controls_stand_where_they_did_after_a_tab_switch`
+    checks the drawn Areas.
+    """
+
+    tree = shipped_workspace(shipped_id).layout.windows[0].tree
+    default_tree = shipped_workspace(DEFAULT).layout.windows[0].tree
+
+    assert isinstance(tree, Split)
+    assert isinstance(default_tree, Split)
+    assert tree.orientation is Orientation.ROW
+    assert tree.sizes == default_tree.sizes
+    first, right = tree.children
+    assert isinstance(first, Area)
+    assert first.view == CHART
+    assert isinstance(right, Split)
+    assert right.orientation is Orientation.COLUMN
+    top = right.children[0]
+    assert isinstance(top, Area)
+    assert top.view == PARAMETERS
 
 
 def test_induction_opens_its_concentration_chart_on_the_15_minute_window() -> None:
