@@ -14,6 +14,7 @@ import pytest
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import dashboard_frame as dashboard_frame_module
 from anesthesia_sim.app import run_presentation as run_presentation_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -85,6 +86,7 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
 from anesthesia_sim.core.supported_ranges import CardiacOutput, CaseInstant
 from anesthesia_sim.layout.tree import AreaId
+from tests.integration.announcement_support import POLITE, record_announcements
 from tests.integration.simulation_view.simulation_view_support import (
     _CARDIAC_OUTPUT_REFUSED_ON_A_STOPPED_RUN,
     _CLOCK_INDEX,
@@ -363,6 +365,39 @@ def test_the_supported_limit_banner_is_not_drawn_in_the_failure_colour(
 
         assert banner.notice() is not None
         assert banner.styleSheet() == foreground_stylesheet(color)
+
+
+def test_the_countdown_and_the_stop_at_the_supported_run_length_are_each_read_out_once(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each waits until speech pauses, and the countdown is not read again as it counts down.
+
+    The supported run length is moved to 300 s, both where the run stops and
+    where the banner counts down to, so the countdown is on screen from the
+    first frame. Its time left differs on each of the three frames before the
+    stop, and a screen reader is told it once. Neither banner asks the reader
+    to act, so neither interrupts (`PL-J7Z5`).
+    """
+
+    monkeypatch.setattr(supported_ranges_module, "MAXIMUM_STEP_COUNT", 300 // SIMULATION_STEP_S)
+    monkeypatch.setattr(dashboard_frame_module, "MAXIMUM_ELAPSED_SIMULATION_TIME_S", 300)
+    recorded = record_announcements(monkeypatch)
+    controller = SimulationController()
+    controller.start()
+    view = _shown_view(application, controller)
+    application.processEvents()
+
+    for _ in range(3):
+        _advance(controller, 100)
+        view.present(False)
+        application.processEvents()
+
+    assert controller.has_reached_supported_limit is True
+    assert [announcement.politeness for announcement in recorded] == [POLITE, POLITE]
+    assert recorded[0].message.startswith("This run stops in 5m of simulated time")
+    assert recorded[1].message.startswith(
+        "Simulation stopped — this run reached the supported run length"
+    )
 
 
 def test_a_frame_that_keeps_failing_is_attempted_once_not_every_tick(

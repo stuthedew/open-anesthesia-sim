@@ -25,9 +25,11 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_elapsed
 from anesthesia_sim.app.run_series import RecordedQuantity
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BRANCH
 from anesthesia_sim.core.concentration import MacMultiple, MacPercent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import CaseInstant
+from tests.integration.announcement_support import ASSERTIVE, Announcement, record_announcements
 from tests.integration.simulation_view.simulation_view_support import (
     _branched_case,
     _case_view,
@@ -310,6 +312,39 @@ def test_a_branch_control_with_nothing_selected_says_so(application: QApplicatio
 
     assert len(view.runs) == 1
     assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_each_refused_branch_press_is_read_out_once(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A screen reader is interrupted at each refused press, and at nothing else (`PL-J7Z5`).
+
+    A reader who presses again is told again, so a second press is not met
+    with silence. A branch View built again shows the standing refusal
+    without reading it out.
+    """
+
+    view = _case_view(application, _branched_case())
+    recorded = record_announcements(monkeypatch)
+    _fork_panel(view).point_selector.clear()
+
+    for _ in range(2):
+        _fork_panel(view).take_button.click()
+        _settle(application)
+
+    assert recorded == [Announcement(FORK_NOTHING_SELECTED_TEXT, ASSERTIVE)] * 2
+
+    recorded.clear()
+    (area,) = (area for area in view.layout_container.model.areas() if area.view == BRANCH)
+    view.layout_container.choose_view(area.id, AGENT_ACCOUNTING)
+    _settle(application)
+    view.layout_container.choose_view(area.id, BRANCH)
+    _settle(application)
+    view.present(False)
+    _settle(application)
+
+    assert _fork_panel(view).notice.notice() == FORK_NOTHING_SELECTED_TEXT
+    assert recorded == []
 
 
 def test_a_refused_branch_shows_its_reason_between_the_selector_and_the_here_button(

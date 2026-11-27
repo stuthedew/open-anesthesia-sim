@@ -39,6 +39,7 @@ from anesthesia_sim.app.chart_frame import (
     format_compared_wash_in_hover,
     format_trace_hover,
     format_wash_in_hover,
+    latest_values_lines,
     nearest_trace_point,
     nearest_wash_in_point,
     percent_axis_ticks,
@@ -60,7 +61,11 @@ from anesthesia_sim.app.controller import (
     SimulationController,
     _with_later_crossings,
 )
-from anesthesia_sim.app.dashboard_frame import run_label
+from anesthesia_sim.app.dashboard_frame import (
+    concentration_chart_description,
+    concentration_chart_name,
+    run_label,
+)
 from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
     ChartCeiling,
@@ -994,6 +999,80 @@ def _frame(
         visible=visible,
         undrawn_compartments=0,
         runs=(run,),
+    )
+
+
+# The traces shown in the text alternative's tests: three of the six, so that
+# a sentence that named every compartment, or only the first, would differ.
+_THREE_SHOWN = (RecordedQuantity.ALVEOLAR, RecordedQuantity.MUSCLE, RecordedQuantity.FAT)
+
+
+def test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value() -> None:
+    """A screen reader hears each shown trace's last drawn value, in both units (`PL-T9RB`).
+
+    Each expected value is worked out by hand from the fractions below and
+    sevoflurane's 1 MAC of 1.8% at age 40. 1.12% is 0.622 of 1 MAC, which
+    shows as 0.62. 0.06% is 0.033 of 1 MAC, which shows as 0.03. 0.002% is
+    below both readouts' resolution of 0.01, so it shows as "<0.01". The
+    instant is the last drawn point's, 600 s, which the clock writes as 10m.
+    The earlier points carry other values, so a sentence read from the first
+    point would differ.
+    """
+
+    run = _run_frame(
+        (0.0, 300.0, 600.0),
+        alveolar=(0.0, 0.009, 0.0112),
+        muscle=(0.0, 0.0003, 0.0006),
+        fat=(0.0, 0.00001, 0.00002),
+    )
+    frame = _frame(run, visible=_THREE_SHOWN)
+
+    assert concentration_chart_description(frame).splitlines()[:3] == [
+        "Line chart.",
+        "Modelled sevoflurane at 10m: Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC; "
+        "Muscle 0.06%, 0.03 ×MAC; Fat <0.01%, <0.01 ×MAC.",
+        "1 MAC sevoflurane (age 40) = 1.8%",
+    ]
+    assert (
+        concentration_chart_description(frame)
+        .splitlines()[3]
+        .startswith("MAC-awake sevoflurane = 0.34 ×MAC")
+    )
+    assert concentration_chart_name(frame) == (
+        "Agent concentration and relative partial pressure over time, whole run so far, "
+        "1 hour shown"
+    )
+
+
+def test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn() -> None:
+    """With two runs each sentence names its run, and with no trace or no frame the screen's words.
+
+    A branch stands at its own instant, so each run's sentence gives its own.
+    A window in which no run has a point gives no values. It does not say that
+    no compartment is checked, because the reader has checked one.
+    """
+
+    trunk = _run_frame((0.0, 300.0, 600.0), alveolar=(0.0, 0.009, 0.0112))
+    branch = replace(_run_frame((0.0, 300.0), alveolar=(0.0, 0.0145)), label=run_label(SECOND_RUN))
+    compared = replace(_frame(trunk, visible=(RecordedQuantity.ALVEOLAR,)), runs=(trunk, branch))
+
+    assert latest_values_lines(compared) == (
+        "Modelled sevoflurane, Run 1, at 10m: Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC.",
+        "Modelled sevoflurane, Run 2, at 5m: Alveolar (end-tidal-equivalent) 1.45%, 0.81 ×MAC.",
+    )
+    assert latest_values_lines(_frame(trunk, visible=())) == ()
+    assert concentration_chart_description(_frame(trunk, visible=())).splitlines()[1] == (
+        "No compartment traces are shown. Check a compartment above to draw it — "
+        "the readouts and the run itself are unaffected."
+    )
+    assert concentration_chart_description(
+        _frame(replace(trunk, times_s=()), visible=(RecordedQuantity.ALVEOLAR,))
+    ).splitlines()[:2] == ["Line chart.", "1 MAC sevoflurane (age 40) = 1.8%"]
+    assert concentration_chart_name(None) == (
+        "Agent concentration and relative partial pressure over time"
+    )
+    assert concentration_chart_description(None) == (
+        "Nothing is plotted, because no frame could be drawn for this chart."
     )
 
 
