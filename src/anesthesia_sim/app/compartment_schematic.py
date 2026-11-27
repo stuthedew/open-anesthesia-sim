@@ -17,7 +17,7 @@ marked as off the scale. Its label still prints the tension. Each container
 carries a mark at each MAC value that the chart's MAC axis labels at that
 top, so a fill level is read against the container's own marks. Each label gives
 the compartment's name, its tension as its readout prints it, its amount, and
-its share of all the agent that the circuit and body hold. The amount comes
+its share of all the agent that the six compartments hold. The amount comes
 from the snapshot's record of the agent in each compartment (`PL-KFTM`). So a
 label cannot disagree with its readout, and the schematic computes no amount of
 its own. A short bar under each label draws its share, on one scale for all six
@@ -141,7 +141,7 @@ OFF_SCALE_LINE_TEMPLATE: Final = (
 )
 
 #: Each container's label ends with this line, which gives the compartment's
-#: share of all the agent that the circuit and body hold at the instant shown
+#: share of all the agent that the six containers hold at the instant shown
 #: (`PL-8PL4`). Each share sits in the label of its own container, so no share
 #: is told apart by colour and no key is needed to name it. The line is kept no
 #: wider than a compartment's name or amount, so it adds no width to a column.
@@ -156,19 +156,23 @@ SHARE_TEMPLATE: Final = "{share} of agent"
 #: the readouts use for a value they do not show. The wording is a placeholder.
 NO_SHARE_TEXT: Final = "\u2014 of agent"
 
-#: This caption line says what every share is a part of, which is the agent held
-#: at the instant shown, circuit included. The project owner first read the old
-#: single bar's heading, "Share of the agent the run holds", as agent counted
-#: over the whole run (`PL-8PL4`). The wording is a placeholder, but the instant
-#: and the circuit's place in the whole must be on screen.
-SHARE_CAPTION: Final = "Shares are of all the agent in the circuit and body at this instant."
+#: This caption line says what every share is a part of, which is the agent that
+#: the six containers hold at the instant shown. The project owner first read the
+#: old single bar's heading, "Share of the agent the run holds", as agent counted
+#: over the whole run (`PL-8PL4`), so the line names the instant. It names the six
+#: containers rather than the circuit and body, because the model leaves out lung
+#: tissue, a vessel-poor group and the circuit's plastics. A patient's body holds
+#: agent there that no share counts (`docs/MODEL.md` § "What the model does not
+#: represent", `PL-KQ0S`). The wording is a placeholder, but the instant and the
+#: six containers as the whole must be on screen.
+SHARE_CAPTION: Final = "Shares are of all the agent in the six containers at this instant."
 
 #: The caption line shows this text while the run holds no agent. No share
 #: exists then, so each label shows `NO_SHARE_TEXT`, and this line says why,
 #: rather than the labels showing six zeros as if they were shares. It is one
 #: line, as `SHARE_CAPTION` is, so the schematic keeps its height when the first
 #: agent arrives. The wording is a placeholder.
-NO_AGENT_SHARE_CAPTION: Final = "No shares yet: the circuit and body hold no agent."
+NO_AGENT_SHARE_CAPTION: Final = "No shares yet: the six containers hold no agent."
 
 #: The label texts that set the width of each container's column, so that a
 #: column does not widen while a run fills. Room for a tension is reserved in the
@@ -212,7 +216,7 @@ class ContainerReading:
         amount: The amount of agent in the compartment, written in millilitres
             of vapour.
         share: The compartment's amount divided by `stored_agent_l`, all the
-            agent that the circuit and body hold, from 0 through 1. The
+            agent that the six compartments hold, from 0 through 1. The
             container's share bar is filled to this share of its length. It is
             None while the run holds no agent, because no share exists then,
             and while the values are withheld.

@@ -6710,7 +6710,7 @@ in `tests/reference/test_interface_figures.py` computes the factors, and
 `tests/unit/test_display_units.py` checks the spellings.
 
 **Each container's label gives its compartment's share of all the agent that
-the circuit and body hold at the instant shown, and a bar under the label draws
+the six containers hold at the instant shown, and a bar under the label draws
 it.** The share is the compartment's amount divided by the sum of the six
 amounts:
 
@@ -6726,15 +6726,19 @@ so the six printed shares need not add up to 100%. The
 six bars are one length, and each is filled from its left end to its share, so
 equal lengths of fill are equal shares. Each bar stands in its own container's
 column, under the label that names it, so no share is told apart by colour. One
-caption line says that the shares are of all the agent in the circuit and body
-at this instant (`PL-S79P`, `PL-8PL4`). It stands just under the containers,
+caption line says that the shares are of all the agent in the six containers
+at this instant (`PL-S79P`, `PL-8PL4`). It names the six containers, not the
+circuit and body, because the model leaves out three stores that a patient's
+body and circuit hold: lung tissue and pulmonary blood, a vessel-poor group,
+and the circuit's plastics (`docs/MODEL.md` § "What the model does not
+represent", `PL-KQ0S`). It stands just under the containers,
 so on a 1366 by 768 screen it stays in view with the bars while the scale
 caption below it scrolls. The line naming a container above the scale comes
 before it, because that line warns that a container's fill is cut off. While
 that line shows on a 1366 by 768 screen, the share caption can scroll too. A
 run holds no agent when it starts, so no share exists then: each bar is drawn
 empty, each label prints a dash where its share would be, and the caption line
-says that the circuit and body hold no agent.
+says that the six containers hold no agent.
 
 **Lines between the containers show ventilation and blood flow.** The
 containers stand in one row. A line joins the circuit to the alveoli for

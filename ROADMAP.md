@@ -1582,7 +1582,9 @@ closes in the pull request that filed it.
    share, and a bar under it draws that share on one scale for all six. No
    teaching source read for that item draws a single divided bar, and
    separate bars are the form a data-visualization text prefers for
-   comparing fractions.
+   comparing fractions. The caption names the whole as the agent in the six
+   containers, not in the circuit and body, since the model leaves out stores
+   a patient holds agent in (`PL-KQ0S`, filed by that item's review).
 
 5. **A shipped Workspace that places the schematic** (queue item `PL-PR1W`).
    The schematic is already reachable from every Workspace through the View
@@ -1676,8 +1678,8 @@ closes in the pull request that filed it.
 - Each container fills to that compartment's modelled tension, on one scale
   for every container of the run. Each is labelled with its tension and its
   amount, and the amount is named as vapour.
-- Each container's label gives its compartment's share of the agent the
-  circuit and body hold at that instant, and a bar under the label draws it.
+- Each container's label gives its compartment's share of the agent the six
+  containers hold at that instant, and a bar under the label draws it.
   The six bars share one scale, and the shares add up to the whole
   (`PL-8PL4`, which replaced one divided bar before the cut).
 - The schematic says on its face that its values are modelled. Its amounts are

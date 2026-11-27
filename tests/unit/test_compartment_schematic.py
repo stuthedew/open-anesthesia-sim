@@ -234,6 +234,7 @@ def test_a_run_that_holds_no_agent_prints_no_share_and_says_why() -> None:
     assert shown.share_caption == NO_AGENT_SHARE_CAPTION
     assert "%" not in NO_SHARE_TEXT
     assert "%" not in NO_AGENT_SHARE_CAPTION
+    assert "the six containers hold no agent" in NO_AGENT_SHARE_CAPTION
 
 
 def test_the_share_caption_keeps_its_height_when_the_first_agent_arrives() -> None:
@@ -252,18 +253,23 @@ def test_the_share_caption_keeps_its_height_when_the_first_agent_arrives() -> No
 
 
 def test_the_share_caption_says_the_shares_are_of_the_agent_held_at_this_instant() -> None:
-    """`PL-8PL4`: the caption says the whole is all the agent in the circuit and body now.
+    """`PL-8PL4`, `PL-KQ0S`: the caption says the whole is the agent in the six containers now.
 
     The project owner read the old bar's heading, "Share of the agent the run
     holds", as agent counted over the whole run. So the caption must name the
-    instant, and must say that the circuit's agent is in the whole.
+    instant. The share is computed over the six containers drawn, and the model
+    leaves out stores that a patient's body holds agent in (`docs/MODEL.md`
+    § "What the model does not represent"). So the caption names the six
+    containers, and must not claim the whole body. The count in the caption is
+    checked against the number of containers the schematic shows.
     """
 
     shown = schematic_shown(_run("sevoflurane", 60 * SECONDS_PER_MINUTE).snapshot())
 
     assert shown.share_caption == SHARE_CAPTION
-    assert "at this instant" in SHARE_CAPTION
-    assert "circuit and body" in SHARE_CAPTION
+    assert len(shown.readings) == 6
+    assert "in the six containers at this instant" in SHARE_CAPTION
+    assert "body" not in SHARE_CAPTION
 
 
 def test_each_label_prints_its_own_compartment_s_share_in_whole_percent() -> None:

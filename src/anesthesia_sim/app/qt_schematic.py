@@ -28,7 +28,7 @@ next. No container stands for arterial blood, for the reason `docs/MODEL.md`
 
 **The share bars** (`PL-S79P`, `PL-8PL4`). Under each container's label, a
 short bar is filled from its left end to the compartment's share of all the
-agent that the circuit and body hold. The six bars are one length, so they
+agent that the six compartments hold. The six bars are one length, so they
 compare the shares on one scale, and each sits in its own container's column
 under the label that names it. The containers' heights are tensions, so fat's
 container stays nearly empty even while fat comes to hold a fifth of the agent.
