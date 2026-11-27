@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from anesthesia_sim.app.controller import _ALVEOLAR_SERIES, _with_extremes
+from anesthesia_sim.app.controller import _ALVEOLAR_SERIES, _INSPIRED_SERIES, _with_extremes
 from anesthesia_sim.core.governing_equations import FRACTION_STATE_NAMES
 from anesthesia_sim.core.supported_ranges import CaseInstant
 
@@ -23,4 +23,41 @@ def test_an_alveolar_series_longer_than_the_inspired_one_is_refused() -> None:
     series[_ALVEOLAR_SERIES] = [0.01, 0.02, 0.03, 0.02, 0.01, 0.02]
 
     with pytest.raises(ValueError):
-        _with_extremes(0, 4, (CaseInstant(0), CaseInstant(4)), series)
+        _with_extremes(0, 4, (CaseInstant(0), CaseInstant(4)), series, (True,) * 5)
+
+
+def test_a_ventilation_series_shorter_than_the_fractions_is_refused() -> None:
+    """Each second's ratio is formed with that second's ventilation, so a shorter series is refused.
+
+    Paired anyway, a second would be judged by another second's ventilation,
+    and a ratio reached at zero ventilation could be searched as a wash-in
+    fraction (`PL-49D5`).
+    """
+
+    series = [[0.01, 0.02, 0.03, 0.02, 0.01] for _ in FRACTION_STATE_NAMES]
+
+    with pytest.raises(ValueError):
+        _with_extremes(0, 4, (CaseInstant(0), CaseInstant(4)), series, (True,) * 4)
+
+
+def test_a_second_reached_at_zero_ventilation_is_left_out_of_the_ratio_search() -> None:
+    """The first ventilated second after an apnoea is drawn where the ratio is lowest.
+
+    Seconds 0 and 1 were reached at zero alveolar ventilation, so they have no
+    ratio to draw (rule 3 of `app/wash_in.py`). The ratio at second 2, 0.3, is
+    the lowest of the rest and below the column at second 6, 0.6. Compared
+    with second 0's ratio of 0.2, it would not be below both ends, and it
+    would be left out (`PL-49D5`).
+    """
+
+    alveolar = [0.004, 0.005, 0.006, 0.008, 0.009, 0.010, 0.012]
+    series = [[0.01] * len(alveolar) for _ in FRACTION_STATE_NAMES]
+    series[_INSPIRED_SERIES] = [0.02] * len(alveolar)
+    series[_ALVEOLAR_SERIES] = alveolar
+    ventilated = (False, False, True, True, True, True, True)
+
+    assert _with_extremes(0, 6, (CaseInstant(0), CaseInstant(6)), series, ventilated) == (
+        CaseInstant(0),
+        CaseInstant(2),
+        CaseInstant(6),
+    )

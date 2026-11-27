@@ -665,6 +665,97 @@ def test_a_trough_of_the_ratio_between_two_chart_columns_is_drawn_at_its_stored_
     )
 
 
+APNOEA_STARTS_S = 600
+APNOEA_ENDS_S = 900
+APNOEA_RUN_S = 1200
+APNOEA_DIAL_PERCENT = 4.0
+RESTORED_VENTILATION_L_MIN = 5.0
+# A window from 0 to 1 200 s in five columns has a column every 300 s, and two
+# of them fall on the seconds at which ventilation changed.
+APNOEA_COLUMNS_S = (0, 300, APNOEA_STARTS_S, APNOEA_ENDS_S, APNOEA_RUN_S)
+
+
+def _apnoea_stepped_in_core() -> list[tuple[float, ...]]:
+    """Return each second's state at 4% sevoflurane, unventilated from 600 s to 900 s."""
+
+    state = SimulationState(uptake_system=AgentUptakeSystem.for_agent(AGENT))
+    state.uptake_system.set_delivered_concentration_percent(Percent(APNOEA_DIAL_PERCENT))
+    states = [state.uptake_system.case_state()]
+
+    for second in range(1, APNOEA_RUN_S + 1):
+        states.append(state.advance().state)
+
+        if second == APNOEA_STARTS_S:
+            state.uptake_system.set_alveolar_ventilation(AlveolarVentilation(0.0))
+
+        if second == APNOEA_ENDS_S:
+            state.uptake_system.set_alveolar_ventilation(
+                AlveolarVentilation(RESTORED_VENTILATION_L_MIN)
+            )
+
+    return states
+
+
+def test_the_ratio_restarts_at_the_first_ventilated_second_after_an_apnoea() -> None:
+    """After an apnoea, F_A/F_I is drawn again from the first state a ventilated step reached.
+
+    The states from 601 s to 900 s were reached at zero alveolar ventilation,
+    so they have no ratio to draw (rule 3 of `app/wash_in.py`). The first
+    state reached with ventilation running again is at 901 s, and there the
+    ratio is lower than at any later second up to the next column. A column search that still
+    compared the apnoeic second at 900 s left 901 s out, so the trace started
+    again at a later column and higher (`PL-49D5`, domain review). The ratios
+    are found here from a run stepped in `core/`, with the ratio formed by the
+    test.
+    """
+
+    expected = _apnoea_stepped_in_core()
+    first_ventilated_s = APNOEA_ENDS_S + 1
+
+    def ratio(second: int) -> float:
+        return expected[second][1] / expected[second][0]
+
+    # The test is of a low point that no column draws: the ratio is lowest at
+    # the first ventilated second, and climbs from there to the next column.
+    assert first_ventilated_s not in APNOEA_COLUMNS_S
+    assert ratio(first_ventilated_s) == min(
+        ratio(second) for second in range(first_ventilated_s, APNOEA_RUN_S + 1)
+    )
+    assert ratio(first_ventilated_s) < ratio(APNOEA_RUN_S)
+
+    controller = SimulationController(agent_id=AGENT)
+    controller.set_delivered_concentration_percent(Percent(APNOEA_DIAL_PERCENT))
+    controller.start()
+
+    for second in range(1, APNOEA_RUN_S + 1):
+        controller.advance()
+
+        if second == APNOEA_STARTS_S:
+            controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+
+        if second == APNOEA_ENDS_S:
+            controller.set_alveolar_ventilation(AlveolarVentilation(RESTORED_VENTILATION_L_MIN))
+
+    window = controller.drawn_window(0.0, float(APNOEA_RUN_S), 5)
+    quotients = dict(zip(window.times_s, window.wash_in_quotients(AGENT), strict=True))
+
+    assert set(APNOEA_COLUMNS_S) <= set(quotients)
+    assert [
+        second
+        for second, quotient in quotients.items()
+        if APNOEA_STARTS_S < second <= APNOEA_ENDS_S and quotient is not None
+    ] == []
+    assert (
+        min(
+            second
+            for second, quotient in quotients.items()
+            if second > APNOEA_ENDS_S and quotient is not None
+        )
+        == first_ventilated_s
+    )
+    assert quotients[first_ventilated_s] == ratio(first_ventilated_s)
+
+
 def test_a_window_with_a_column_on_every_second_draws_no_other_point() -> None:
     drawn = _drawn_states(_overpressure_in_the_controller(), 100.0, 160.0, 61)
 

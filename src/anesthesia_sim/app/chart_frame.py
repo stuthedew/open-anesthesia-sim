@@ -115,7 +115,7 @@ from anesthesia_sim.app.wash_in import (
     WASH_IN_EQUILIBRIUM_RATIO,
     WashInReading,
     is_wash_in,
-    read_wash_in,
+    read_wash_in_with_ventilation,
 )
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -719,8 +719,8 @@ class WashInStretch:
             column rather than the live end of the run. The crossing column
             is the one drawn past equilibrium so that the curve meets the
             reference line. Only a stretch that *stopped* carries the
-            terminus marker, because the growing right-hand end of a run is
-            not an ending.
+            terminus marker for that reason, because the growing right-hand
+            end of a run is not an ending (`has_end_dot`).
 
     Raises:
         SimulationConfigurationError: If a ratio is NaN or infinite. No
@@ -737,6 +737,19 @@ class WashInStretch:
     times_s: tuple[float, ...]
     ratios: tuple[float, ...]
     ends_above_equilibrium: bool
+
+    @property
+    def has_end_dot(self) -> bool:
+        """Whether the plot marks the stretch's last point with a dot.
+
+        A stretch that stopped past equilibrium has one, because the dot says
+        that the trace ends there. A stretch of one point has one too, because
+        a line needs two points. Without the dot, the point would not be drawn.
+        One second after ventilation is restored, that point is the one the
+        caption beside the plot reads (`PL-49D5`).
+        """
+
+        return bool(self.times_s) and (self.ends_above_equilibrium or len(self.times_s) == 1)
 
     def __post_init__(self) -> None:
         for time_s, ratio in zip(self.times_s, self.ratios, strict=True):
@@ -834,7 +847,8 @@ class RunFrame:
         wash_in: The F_A/F_I stretches drawn, oldest first. They are the most
             recent stretches that fit the pool.
         wash_in_now: The F_A/F_I reading at `elapsed_s`, from the snapshot's
-            own alveolar and inspired fractions. The wash-in plot's line for
+            own alveolar and inspired fractions and the alveolar ventilation
+            of the step that reached them. The wash-in plot's line for
             this run states it. It is held here, beside the run's name, so the
             line cannot be written from another run's snapshot (`PL-RF2S`).
         undrawn_wash_in_stretches: How many stretches inside the window the
@@ -1319,8 +1333,10 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
         times_s=window.times_s,
         fractions=MappingProxyType(fractions),
         wash_in=stretches[-MAX_CHART_WASH_IN_SEGMENTS:],
-        wash_in_now=read_wash_in(
-            snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
+        wash_in_now=read_wash_in_with_ventilation(
+            snapshot.alveolar_partial_pressure_fraction,
+            snapshot.inspired_partial_pressure_fraction,
+            snapshot.reaching_alveolar_ventilation_l_min,
         ),
         undrawn_wash_in_stretches=max(0, len(stretches) - MAX_CHART_WASH_IN_SEGMENTS),
         control_marks_s=marks,
@@ -1432,7 +1448,8 @@ def wash_in_stretches(
     all three of these hold:
 
     - it has a quotient at all, because its denominator was at least one
-      displayed unit (rule 1 of `app/wash_in.py`);
+      displayed unit and a step with ventilation running reached it (rules 1
+      and 3 of `app/wash_in.py`, `wash_in.wash_in_quotient`);
     - that quotient is no higher than `extension_ceiling`;
     - it is next to an anchor.
 
@@ -1527,8 +1544,9 @@ def _extends_a_stretch(
 ) -> bool:
     """Return whether the column at `column` is the crossing point to draw.
 
-    `None` marks a column with no quotient at all, under `app/wash_in.py`'s
-    rule 1: the inspired concentration is too low to divide by, so there is
+    `None` marks a column with no quotient at all, under rule 1 or rule 3 of
+    `app/wash_in.py`. The inspired concentration was too low to divide by, or
+    a step at zero alveolar ventilation reached the state. Either way there is
     nothing to draw.
     Every other out-of-domain column crossed equilibrium, and it is drawn
     when it is close enough to stay on the plot. A column outside the window

@@ -2122,8 +2122,11 @@ After the dial is raised, the inspired fraction rises faster than the alveolar
 one, so the ratio falls for some seconds and then recovers. So the chart also
 draws the second at which the ratio is highest and the second at which it is
 lowest between two columns, by the rule it uses for a compartment. A second
-whose inspired fraction is too small to divide by has no ratio. That second is
-left out of the search, and a column with no ratio is not compared with.
+whose inspired fraction is too small to divide by has no ratio, and neither
+has a second that a step at zero alveolar ventilation reached. Such a second
+is left out of the search, and a column with no ratio is not compared with.
+So after ventilation is restored, the ratio's low point at the first
+ventilated second is drawn (`PL-49D5`).
 
 A plot that drew the ratio only at its columns and at the fractions' turns
 could draw it above its trough. With the default sevoflurane patient on the
@@ -4115,12 +4118,9 @@ true:
    to blood, so the alveolar fraction stays below the inspired one and reaches
    it only at equilibrium. Above 1, the alveolar fraction exceeds the inspired
    one, and the number is no longer a wash-in fraction. With ventilation
-   running, the patient is then returning agent to the circuit. With alveolar
-   ventilation at zero, no agent moves between the lungs and the circuit. The
-   ratio can then pass 1 because fresh gas washes the circuit out, or because
-   blood returns agent to the alveoli, and neither is elimination. So the
-   caption beside the plot names the condition and not a cause. The chart
-   draws equilibrium as a labelled reference line.
+   running, the patient is then returning agent to the circuit. The caption
+   beside the plot names the condition and not a cause. The chart draws
+   equilibrium as a labelled reference line.
 
    This boundary allows the ratio up to 1.000001. At zero cardiac output the
    exact ratio rises to 1 and stops, but the simulation's rounding can leave
@@ -4128,7 +4128,26 @@ true:
    longest supported length, the run would lose less than 1% of the agent in
    alveolar gas, venous blood and the vessel-rich group.
 
-Outside either boundary nothing is drawn, so the trace breaks into separate
+**Nothing is drawn while alveolar ventilation is zero.** The model moves
+agent between the circuit and the lungs only by alveolar ventilation. With
+ventilation stopped, the ratio still moves, because fresh gas washes the
+circuit toward the dial and blood takes agent from the alveoli or returns it.
+Drawn on the wash-in curve, a rise toward 1 would read as the alveoli filling,
+though no agent reaches them. So a column is outside the plot's domain when
+the step that reached it ran at zero alveolar ventilation, whichever side of 1
+its ratio is on. The column at the second ventilation is stopped was reached
+with ventilation running, so the trace ends at that second. The caption beside
+the plot says that alveolar ventilation was zero over the last simulated
+second. It speaks of the state shown and not of the setting, so it stays true
+on a paused run whose ventilation has been restored but which has not yet
+taken a step. The trace starts again one second after ventilation is
+restored, at the first state that a step with ventilation running reached.
+The ratio is often lowest at that second, and the plot then draws it, by the
+rule for the ratio's troughs in § "What the chart draws". While that stretch
+has only one point, the point is drawn as a dot, because a line needs two
+points.
+
+Outside the boundaries nothing is drawn, so the trace breaks into separate
 stretches. No value is pinned to the edge of the axis or replaced by a
 default, and no line bridges a gap. A ratio held at 1.0 would show a completed
 wash-in that the run never reached. A line joining the wash-in on either side
@@ -4136,7 +4155,9 @@ of a washout would show values that the run never produced.
 
 **Each stretch of the trace is extended by one column at each end, so a reader
 can see where it stops.** That extra column is the stretch's *crossing column*:
-the neighbouring column that has a ratio but lies outside the boundaries.
+the neighbouring column that has a ratio but lies outside the boundaries. A
+column that a step at zero alveolar ventilation reached has no ratio here,
+so a stretch is never extended into an apnoea.
 Without it, the trace would stop at its last column inside the boundaries,
 still climbing steeply. That last column can lie below the equilibrium line by
 as much as the trace rises between two columns. A trace that stops in clear
@@ -4149,16 +4170,17 @@ stretch then ends at its last column inside the boundaries, with no point moved
 onto the ceiling and no line drawn toward it.
 
 **The extra column at each end of a stretch is drawn, but its value is not
-shown as wash-in.** Its ratio is above 1. Hovering over it shows "Past
-equilibrium: not a wash-in fraction" under the wash-in label, in place of the
-ratio. A value such as 1.03 shown there would teach a wash-in past completion,
+shown as wash-in.** Its ratio is above 1. Hovering over it shows "Alveolar
+exceeds inspired: not a wash-in fraction" under the wash-in label, in place of
+the ratio. A value such as 1.03 shown there would teach a wash-in past completion,
 at the point marker, where a reader is most likely to look.
 
 **The caption beside the plot states the ratio, or says why the trace is
 blank.** While the trace is drawn, the caption gives the value at its
-right-hand end. An inspired concentration too low to divide by and an alveolar
-concentration above the inspired are different situations, and an absent trace
-alone cannot show which applies. The caption and the trace are computed separately, from the same
+right-hand end. An inspired concentration too low to divide by, alveolar
+ventilation at zero and an alveolar concentration above the inspired are
+different situations, and an absent trace alone cannot show which applies.
+Where more than one holds, the caption names the first in that order. The caption and the trace are computed separately, from the same
 stored state. The caption reads the state that the run stored for the second it
 has reached, and the trace's right-hand end is drawn from that same state by the
 same division, so the two show the same ratio.
@@ -4182,9 +4204,13 @@ values.** Yasuda et al. report 0.850, 0.733 and 0.90, with standard deviations
 of 0.018, 0.027 and 0.01, so a third decimal would be finer than that spread.
 See `docs/VERIFICATION.md` § "Published wash-in and elimination validation test".
 
-**For developers.** The ratio and its two boundaries are computed only in
-`app/wash_in.py`, a module that contains nothing else. Unit tests cover both
-(`tests/unit/test_wash_in.py`). The ratio is no part of a run's definition. A
+**For developers.** The ratio, its two boundaries and the rule on
+ventilation are computed only in `app/wash_in.py`, a module that contains
+nothing else. Unit tests cover each (`tests/unit/test_wash_in.py`). Each
+column carries the alveolar ventilation of the step that reached it
+(`DrawnWindow.alveolar_ventilations_l_min` in `app/run_series.py`), and the
+caption reads the same value for the second the run stands at
+(`SimulationSnapshot.reaching_alveolar_ventilation_l_min`). The ratio is no part of a run's definition. A
 test checks that the plotted ratio is the quantity that the validation compares
 (`test_the_displayed_ratio_is_the_quantity_this_file_validates` in `tests/reference/test_published_wash_in_and_elimination.py`).
 

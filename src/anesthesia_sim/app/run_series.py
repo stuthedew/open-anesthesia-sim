@@ -31,7 +31,7 @@ from math import isfinite
 from types import MappingProxyType
 from typing import Final
 
-from anesthesia_sim.app.wash_in import wash_in_ratio
+from anesthesia_sim.app.wash_in import is_ventilated, wash_in_quotient
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -39,6 +39,7 @@ from anesthesia_sim.core.governing_equations import (
     INSPIRED_FRACTION,
     VENOUS_FRACTION,
 )
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 
 __all__ = [
     "COMPARTMENT_FRACTION_NAMES",
@@ -200,9 +201,15 @@ class DrawnWindow:
             rejects any other agent.
         times_s: The instants drawn, ascending, in simulated seconds.
         states: One state per instant.
+        alveolar_ventilations_l_min: For each instant, the alveolar
+            ventilation of the step that reached its state, in L/min. The
+            F_A/F_I plot draws nothing at a state that a step at zero
+            ventilation reached (rule 3 of `app/wash_in.py`), so the window
+            carries the ventilation beside each state rather than leaving the
+            chart to look it up.
 
     Raises:
-        SimulationConfigurationError: If the two sequences differ in length.
+        SimulationConfigurationError: If the three sequences differ in length.
             A trace would then be drawn against another trace's time axis.
             Also raised if an instant is NaN or infinite. Every instant here
             is a time the run reached, so a non-finite one is a defect. The
@@ -214,12 +221,20 @@ class DrawnWindow:
     substance_id: str
     times_s: tuple[float, ...]
     states: tuple[tuple[float, ...], ...]
+    alveolar_ventilations_l_min: tuple[AlveolarVentilation, ...]
 
     def __post_init__(self) -> None:
         if len(self.times_s) != len(self.states):
             raise SimulationConfigurationError(
                 f"a drawn window has {len(self.times_s)} instants and {len(self.states)} "
                 "states; each state belongs to one instant"
+            )
+
+        if len(self.alveolar_ventilations_l_min) != len(self.times_s):
+            raise SimulationConfigurationError(
+                f"a drawn window has {len(self.times_s)} instants and "
+                f"{len(self.alveolar_ventilations_l_min)} alveolar ventilations; each "
+                "instant needs the ventilation of the step that reached it"
             )
 
         for time_s in self.times_s:
@@ -280,8 +295,12 @@ class DrawnWindow:
         rather than stopping short of it. Choosing that column means comparing
         its ratio against the axis ceiling. `None` is what
         `wash_in.wash_in_ratio` itself returns when the denominator is less
-        than the smallest concentration the display resolves. In that case there
-        is nothing to draw at all.
+        than the smallest concentration the display resolves. It is also the
+        entry for a state that a step at zero alveolar ventilation reached
+        (`wash_in.is_ventilated`), where the ratio is not a wash-in fraction
+        on either side of one. In both cases there is nothing to draw at all,
+        and no crossing column either, so a stretch ends at the last
+        ventilated state.
 
         Args:
             substance_id: The substance whose ratio to form. The quotient is
@@ -299,7 +318,12 @@ class DrawnWindow:
         alveolar = COMPARTMENT_STATE_INDEX[RecordedQuantity.ALVEOLAR]
         circuit = COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
 
-        return [wash_in_ratio(state[alveolar], state[circuit]) for state in self.states]
+        return [
+            wash_in_quotient(state[alveolar], state[circuit], ventilated=is_ventilated(ventilation))
+            for state, ventilation in zip(
+                self.states, self.alveolar_ventilations_l_min, strict=True
+            )
+        ]
 
     def _require_substance(self, substance_id: str) -> None:
         """Reject a read for a substance this window does not describe.
