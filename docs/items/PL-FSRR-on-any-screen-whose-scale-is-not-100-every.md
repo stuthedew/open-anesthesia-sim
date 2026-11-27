@@ -134,3 +134,17 @@ painted 1.50 px at ratio 2.0" and "legend swatch: specified 3.0 px, painted
 traces: what separates them" (states the unit, and its note for developers
 names the tests), `docs/ARCHITECTURE.md`, `README.md`, `docs/MODEL.md`,
 `docs/VERIFICATION.md` (none describes how chart lines are drawn).
+
+**Blind review, 2026-11-27.** Pass 1 found nothing. Pass 2 found two things,
+both fixed on the branch:
+
+1. Should-fix. `drawn_pen` and `preview_pen` now return the pen held for a
+   curve rather than the pen the curve draws with, so a pen set on a curve
+   without `_ScreenPens.hold` would go unseen by the tests that compare them
+   with `chart_frame`. The scene walk in
+   `test_every_line_on_a_plot_is_kept_to_scale_and_follows_a_move_to_another_screen`
+   now compares each line's whole pen, colour and dash included, with its held
+   pen scaled to the ratio. A mutant that sets one sevoflurane curve red after
+   drawing fails it.
+2. Optional. The `PL-QCFC` closing note said its test measured painted widths,
+   and it reads pens. The note now says what each test does.

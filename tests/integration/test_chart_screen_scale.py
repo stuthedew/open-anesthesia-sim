@@ -269,7 +269,12 @@ def _line_items(chart: ConcentrationChart | WashInChart) -> list[tuple[object, Q
 
 
 def _assert_every_line_drawn_for(chart: ConcentrationChart | WashInChart, ratio: float) -> int:
-    """Every line the plot strokes is held, and is stroked at its specified width for `ratio`."""
+    """Every line the plot strokes is held, and is stroked with its specified pen for `ratio`.
+
+    The whole pen is compared, colour and dash included, so a line whose pen
+    was set without `_ScreenPens.hold` fails here, although `drawn_pen` and
+    `preview_pen` would still report the pen that was held.
+    """
 
     pens = chart._pens
     items = _line_items(chart)
@@ -281,7 +286,12 @@ def _assert_every_line_drawn_for(chart: ConcentrationChart | WashInChart, ratio:
         specified = pens.specified(item)
 
         assert drawn.widthF() == specified.widthF() * ratio, type(item).__name__
-        assert drawn.dashPattern() == specified.dashPattern(), type(item).__name__
+        # pyqtgraph's `InfiniteLine.paint` sets a mitre join on the pen it
+        # draws with, which a straight line does not show, so the join is
+        # left out of the comparison.
+        joined = QPen(drawn)
+        joined.setJoinStyle(specified.joinStyle())
+        assert joined == on_screen(specified, ratio), type(item).__name__
 
     return len(items)
 
