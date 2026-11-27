@@ -14,6 +14,8 @@ filed-pr: 2331
 
 **Direction.** The Maintenance Workspace already overflows a 1366 by 768 window by 47 px once a branch is open, because the Parameters View holds a row of dials for each run whole and shares the right-hand column with the schematic. A fix gives the schematic room without growing the page: another arrangement of that Workspace for two runs, a schematic that draws its containers shorter when its Area is short, or a chart kept in view by its title rather than its plot's foot. Each changes what a user sees in a shipped Workspace, so it is a design round for the interface pass (`PL-9WDN`) and the project owner.
 
+**Decided 2026-11-27.** The schematic keeps its 110 px least height for v0.7.0. Growing it put the concentration chart's title and key above the window after a branch, and NUREG-0700 Rev. 3 guideline 2.5.1.3-6 (p. 2-67) asks that displays not require excessive scrolling. The coordinator took this on the recommendation without putting it to the owner, under his rule that threads apply a sourced recommendation themselves.
+
 **Done when** a test opens a branch in the Maintenance Workspace at 1366 by 768 and finds, for each run, a scroll position at which all six containers are whole under the run's heading, with the chart's title and key in view.
 
 **Generator check.** A consequence of `PL-3NGZ`'s pinned heading meeting the Workspace's overflow at this size; a one-off.
