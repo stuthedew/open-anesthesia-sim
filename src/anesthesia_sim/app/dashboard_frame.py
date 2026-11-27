@@ -71,6 +71,7 @@ from anesthesia_sim.app.control_timeline import (
 from anesthesia_sim.app.controller import (
     HereForkPoint,
     MarkForkPoint,
+    PreviewOfAnotherCase,
     RunRecord,
     RunSettings,
     RunStatus,
@@ -407,6 +408,16 @@ REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 # A refused branch changed no setting, so its notice does not say "Setting
 # refused" (`PL-3JTH`).
 REFUSED_BRANCH_TEMPLATE: Final = "Branch not opened — {error}"
+# A refused preview changes no setting either, and the thumb is still held, so its
+# notice opens by saying that the preview was not drawn. It takes the form of the
+# two notices above, because NUREG-0700 Rev. 3 guideline 2.7.1-2 asks that "System
+# messages should use consistent grammatical construction". The release still
+# applies the held value, so the notice ends by saying so rather than that the run
+# is unchanged. Guideline 2.7.3-1 asks that "an error message should state the
+# error and possible subsequent operations" (`PL-412F`).
+REFUSED_PREVIEW_TEMPLATE: Final = (
+    "Preview not drawn — {error}. Releasing the dial still applies the new setting."
+)
 # A setting refused for lying outside a limit is named to the user by its control's
 # label, with the value asked for and the limit, as the stopped run's refusal names
 # its control (`SimulationController._refuse_a_setting_on_a_stopped_run`). The core's
@@ -2448,6 +2459,24 @@ def refused_branch_notice(error: SimulationConfigurationError) -> str:
     return REFUSED_BRANCH_TEMPLATE.format(error=error)
 
 
+def refused_preview_notice(error: PreviewOfAnotherCase) -> str:
+    """Return what the banner says while a held dial's preview is refused.
+
+    The preview is refused because the run it was rebuilt as differs from the
+    run on screen. The banner says that the release still applies the held
+    value, because applying a value rebuilds nothing. So the notice is not
+    worded as a refused setting, whose run keeps its previous setting.
+
+    Args:
+        error: The refusal, whose message names the dial and what to do.
+
+    Returns:
+        The whole banner, which `notice` shows in place of a refused setting's.
+    """
+
+    return REFUSED_PREVIEW_TEMPLATE.format(error=error)
+
+
 def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | None) -> str:
     """Return the way out that a stopped-run banner names when the core refused Reset.
 
@@ -2493,14 +2522,17 @@ def notice(
     *,
     refused_reset: str | None = None,
     branch_offered: bool = False,
+    refused_preview: str | None = None,
 ) -> str | None:
-    """Return the banner for a frame that drew: a stopped run, a refused setting, or nothing.
+    """Return the banner for a frame that drew: a stopped run, a refusal, or nothing.
 
-    A stopped run outranks a refused setting, because it describes the state
-    of everything else on screen, while a refusal describes only one control.
+    A stopped run outranks a refusal, because it describes the state of
+    everything else on screen, while a refusal describes only one control.
     A failure in turn outranks the supported run length. A setting refused on
     a stopped run is stated inside the stopped run's banner, in place of its
-    way out (`_stopped_run_exit`, `PL-3B34`).
+    way out (`_stopped_run_exit`, `PL-3B34`). A refused preview outranks a
+    refused setting, because it is about the dial the user holds now, and an
+    earlier refusal returns once the drag ends (`PL-412F`).
 
     `RunView.show_presentation` writes this banner while the frame for which the status
     was read is on screen. That is what lets the failure wording say that the
@@ -2524,6 +2556,9 @@ def notice(
             names a branch as its way out only while this is True. It is False
             by default, so when a caller leaves it out, the banner names only
             Reset, which is always offered.
+        refused_preview: The banner from `refused_preview_notice` while a
+            held dial's preview is refused, or None. The run's view keeps it,
+            and drops it when the drag ends.
 
     Returns:
         The banner text, or None when there is nothing to say.
@@ -2551,6 +2586,9 @@ def notice(
                 setting_way_out=_supported_limit_setting_way_out(branch_offered),
             ),
         )
+
+    if refused_preview is not None:
+        return refused_preview
 
     if rejected_setting_notice is not None:
         return REFUSED_SETTING_NOTICE_TEMPLATE.format(refused=rejected_setting_notice)
@@ -2660,6 +2698,7 @@ def run_notice(
     elapsed_s: int,
     refused_reset: str | None = None,
     branch_offered: bool = False,
+    refused_preview: str | None = None,
 ) -> Notice | None:
     """Return the banner for a frame that drew, with its emphasis.
 
@@ -2679,13 +2718,18 @@ def run_notice(
             seconds.
         refused_reset: As `notice` takes it.
         branch_offered: As `notice` takes it.
+        refused_preview: As `notice` takes it.
 
     Returns:
         The banner, or None when there is nothing to say.
     """
 
     text = notice(
-        status, rejected_setting_notice, refused_reset=refused_reset, branch_offered=branch_offered
+        status,
+        rejected_setting_notice,
+        refused_reset=refused_reset,
+        branch_offered=branch_offered,
+        refused_preview=refused_preview,
     )
     remaining_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S - elapsed_s
     countdown = (

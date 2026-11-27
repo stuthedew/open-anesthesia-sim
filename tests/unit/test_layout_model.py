@@ -1037,6 +1037,44 @@ def test_a_chain_of_borders_wider_than_the_tolerance_is_cut_where_it_enters_no_a
     assert_places(model.join(AreaId(1), AreaId(3)), joined_places(places, 1, 3))
 
 
+def test_a_line_that_chains_back_to_its_regions_edge_is_not_a_cut() -> None:
+    """A line followed from edge to edge to its region's own edge is not a cut (`PL-PL6D`).
+
+    Area 2 is 1.3e-9 of the window wide, a little more than the tolerance,
+    and sits at 0.3 above the middle. Below the middle, Area 5 ends and Areas
+    6 and 7 begin at 0.3 + 0.8e-9. Joining Areas 4 and 6 leaves no straight
+    cut across the window, so the region is first cut at 0.3. To the right of
+    that cut, the edges at 0.3, 0.3 + 0.8e-9 and 0.3 + 1.3e-9 form one line
+    that reaches the region's left edge. When each edge was compared with the
+    region's edge alone, the last one was taken as a cut. Area 2 then filled
+    a strip down to 0.6, and its bottom moved from 0.5 to 0.6 though it is not
+    part of the join. The join is refused instead, and every Area keeps its
+    place.
+    """
+
+    model = layout(
+        column(
+            (0.5, 0.5),
+            row(
+                (0.3, 1.3e-9, 0.7 - 1.3e-9), area(1), area(2), column((0.5, 0.5), area(3), area(4))
+            ),
+            row((0.3 + 0.8e-9, 0.7 - 0.8e-9), area(5), column((0.2, 0.8), area(6), area(7))),
+        )
+    )
+    places = rectangles(model)
+    copy = layout_to_json(model)
+
+    assert places[2][2] - places[2][0] > BORDER_ALIGNMENT_TOLERANCE
+    assert places[6][0] - places[2][0] <= BORDER_ALIGNMENT_TOLERANCE
+    assert places[2][2] - places[6][0] <= BORDER_ALIGNMENT_TOLERANCE
+
+    with pytest.raises(LayoutRefused, match="no straight cut divides the Areas the join would"):
+        model.join(AreaId(4), AreaId(6))
+
+    assert layout_to_json(model) == copy
+    assert_places(model, places)
+
+
 def test_an_id_is_never_handed_out_twice() -> None:
     """`PL-HJPY` Q3: state kept per Area id must never pass to an Area that did not have it."""
 
@@ -1665,6 +1703,35 @@ def test_a_reference_the_layout_does_not_hold_is_refused() -> None:
 
     with pytest.raises(InvalidLayout, match="counts from zero"):
         Handle(0, (-1,), 0)
+
+
+def test_split_at_returns_the_split_a_path_leads_to_and_refuses_any_other_path() -> None:
+    """The interface reads the split a splitter draws through `split_at` (`PL-VW5V`).
+
+    A path past a split's last child, a negative index, a path through an
+    Area, a path to an Area and a window the layout lacks are each a stale
+    reference, which is the caller's error, and each is refused as one. A
+    negative index would otherwise count from the end and return another split.
+    """
+
+    inner = row((0.5, 0.5), area(1), area(2))
+    model = layout(column((0.4, 0.6), inner, area(3)))
+
+    assert model.split_at(()) == column((0.4, 0.6), inner, area(3))
+    assert model.split_at((0,)) == inner
+    assert model.split_at((0,), window=0) == inner
+
+    for stale in ((2,), (0, 2), (1, 0), (0, 0, 0), (-1,), (-2,), (0, -1)):
+        with pytest.raises(NotInLayout, match=re.escape(f"the path {stale} leads to no node")):
+            model.split_at(stale)
+
+    for area_path in ((1,), (0, 1)):
+        with pytest.raises(NotInLayout, match="leads to an Area, not a split"):
+            model.split_at(area_path)
+
+    for window in (1, -1):
+        with pytest.raises(NotInLayout, match=f"this layout has no window {window}"):
+            model.split_at((), window=window)
 
 
 def test_a_bare_value_is_refused_where_a_checked_type_is_required() -> None:

@@ -60,6 +60,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _concentration,
     _dials,
     _drag,
+    _select_agent,
     _select_playback_rate,
     _set_delivered_percent,
     _set_fresh_gas_flow,
@@ -1023,6 +1024,78 @@ def test_a_drag_that_follows_a_jump_to_the_pointer_previews_and_applies_at_relea
     assert held_label == f"Preview: Fresh gas flow {format_flow(released)}, not applied"
     assert controller.record().control_timeline[-1].new_value == released
     assert chart.preview_label(0) is None
+
+
+def _start_over(application: QApplication, run: RunView, how: str) -> None:
+    """Start the run over by a Reset or by a change to desflurane, answering any question."""
+
+    if how == "Reset":
+        run._reset_button.click()
+        dialog = run._reset_dialog
+    else:
+        _select_agent(run, "desflurane")
+        dialog = run._new_case_dialog
+
+    if dialog is not None:
+        dialog.discard_button.click()
+
+    _settle(application)
+
+
+@pytest.mark.parametrize("how", ["Reset", "agent change"])
+@pytest.mark.parametrize("platform", list(_Platform), ids=[p.value for p in _Platform])
+def test_a_thumb_held_when_the_run_starts_over_is_let_go_and_its_release_applies_nothing(
+    application: QApplication, platform: _Platform, how: str
+) -> None:
+    """A drag begun before a Reset or an agent change does not set the new run.
+
+    The pointer presses the flow handle and drags it right, which previews a
+    flow above 4.0 L/min. The run then starts over while the button is still
+    down. The start-over lets go of the handle, as a platform cancels a
+    gesture whose target is taken away. The pointer then moves further and
+    the button is released. Before the fix, that release applied the dragged
+    flow to the new run as an ordinary change (`PL-HPD0`). Now the handle
+    follows no move after the start-over, and the release applies nothing,
+    so the new run's settings and its record of changes are what the
+    start-over left. The handle shows the flow in force.
+    """
+
+    controller, view, run, control, signals = _flow_slider_at_four(application, platform)
+    slider = control.slider
+    _, handle_centre, _ = _handle_rect(slider)
+    pressed = QPoint(handle_centre, slider.height() // 2)
+    dragged = QPoint(handle_centre + 40, pressed.y())
+    further = QPoint(handle_centre + 80, pressed.y())
+
+    QTest.mousePress(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, pressed)
+    QTest.mouseMove(slider, dragged)
+    view.render_tick()
+    previewed = [
+        signal[1] for signal in signals if isinstance(signal, tuple) and signal[0] == "preview"
+    ]
+    _start_over(application, run, how)
+    view.render_tick()
+    held_after_start_over = slider.isSliderDown()
+    started_over = (controller.settings(), controller.record().control_timeline)
+    QTest.mouseMove(slider, further)
+    position_after_move = slider.sliderPosition()
+    # The button is released before any assertion, so that a failure here
+    # leaves no button held for the tests that follow.
+    QTest.mouseRelease(slider, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, further)
+    _settle(application)
+    view.render_tick()
+
+    assert previewed[-1] > 4.0, "the drag previewed a flow other than the one in force"
+    assert held_after_start_over is False
+    assert position_after_move == slider.value()
+    assert started_over[1] == ()
+    assert (controller.settings(), controller.record().control_timeline) == started_over
+    assert control.value() == started_over[0].fresh_gas_flow_l_min
+    assert not [
+        signal for signal in signals if isinstance(signal, tuple) and signal[0] == "applied"
+    ]
+    assert "preview ended" not in signals
+    assert _concentration(view).chart.preview_label(0) is None
 
 
 # ---------------------------------------------------------- the playback
