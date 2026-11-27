@@ -74,7 +74,11 @@ from anesthesia_sim.app.chart_time_base import (
     saved_time_base,
     saved_time_base_value,
 )
-from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
+from anesthesia_sim.app.compartment_schematic import (
+    AMOUNT_UNIT_TEXT,
+    SCHEMATIC_HEADING,
+    TENSION_UNIT_TEXT,
+)
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CHART_CEILING_LABEL,
@@ -209,6 +213,7 @@ _CEILING_KEY: Final = "ceiling_mac"
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
 _WASH_IN_PINNED_ROW_NAME: Final = "washInPinnedRow"
+_SCHEMATIC_PINNED_ROW_NAME: Final = "schematicPinnedRow"
 _SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
 _AGENT_COST_VIEW_NAME: Final = "agentCostView"
 _BOOKMARKS_VIEW_NAME: Final = "bookmarksView"
@@ -1534,11 +1539,23 @@ class CompartmentSchematicView(QWidget):
     readouts. So the schematic shows the same step as the readouts, and it
     is withheld whenever they are. The View asks for no chart frame.
     The statement that its values are model outputs, not measurements, appears
-    once, in the View's heading, because every value the View shows is a model
-    output.
+    once, because every value the View shows is a model output. It shares a
+    line with the unit of every tension, and the line under it names the unit
+    of every amount and the condition the amounts are stated at. The two
+    lines are the View's `pinned_row`: its Area shows them above the box that
+    scrolls the View, so they are on screen wherever any value is (`PL-26BZ`,
+    `PL-3NGZ`). Each run's own heading, which names the run and says what its
+    shares are of, stays at the top of that run's part in view
+    (`RunSchematic`).
 
     Args:
         context: What the View is built from.
+
+    Attributes:
+        qualifier_label: The lines that say the values are model outputs,
+            and name the units of every tension and every amount.
+        pinned_row: The row that holds `qualifier_label`, which the View's
+            Area keeps on screen above the View's scroll box.
     """
 
     scope = ViewScope.RUNS
@@ -1551,12 +1568,12 @@ class CompartmentSchematicView(QWidget):
             lambda run: RunSchematic(run.values.schematic, run.name), PAGE_SPACING
         )
         column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
-        heading = QHBoxLayout()
-        heading.setSpacing(VIEW_HEADING_SPACING)
-        heading.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True), 1)
-        heading.addWidget(styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED))
+        self.qualifier_label = styled_label(
+            f"{INTERPRETATION_DISCLAIMER_TEXT} {TENSION_UNIT_TEXT}\n{AMOUNT_UNIT_TEXT}", color=MUTED
+        )
+        self.pinned_row = _panel_row(self.qualifier_label, _SCHEMATIC_PINNED_ROW_NAME)
         column.addWidget(self.state_notice)
-        column.addLayout(heading)
+        column.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True))
         column.addWidget(self._schematics.holder)
         column.addStretch(1)
 
@@ -1593,9 +1610,7 @@ class CompartmentSchematicView(QWidget):
 
     def painted_strings(self) -> tuple[str, ...]:
         return tuple(
-            text
-            for schematic in self._schematics.widgets
-            for text in schematic.canvas.painted_strings()
+            text for schematic in self._schematics.widgets for text in schematic.painted_strings()
         )
 
 

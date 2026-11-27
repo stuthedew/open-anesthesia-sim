@@ -1245,14 +1245,28 @@ CLAIMING_CONNECTIVE = r"§{1,2}|" + POSSESSIVE
 # regex: this tests whether a captured connective is one of the claiming forms: the section mark or
 # a possessive.
 CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
-#: A code-spanned source - a document, an item, a module - standing directly
-#: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
-#: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
-#: telling it to take a `§` would break the one match that reads it.
+#: A code-spanned source standing directly before a citation, which then
+#: quotes *that* source, and which a reader of its own holds. A document is one
+#: after any connective: `` `docs/MODEL.md` under "Known limitations" `` is
+#: `QUOTED_SOURCE_RE`'s to hold, by containment, and telling it to take a `§`
+#: would break the one match that reads it. An item brief is one after nothing
+#: or the possessive (`ITEM_SECTION_RE`), and so is a Python module's docstring
+#: (`MODULE_SECTION_RE`).
+#:
+#: **After any other code span, or after an item or a module and a connective
+#: that claims nothing, the mark names a section of the text around it**
+#: (`PL-MWL0`). The documents and the Python files held 11 such marks on
+#: 2026-11-27, and each named a section of the text around it:
+#: `` `PL-B9PY` under § "Cleared by v0.5.0 itself" `` names a section of
+#: `ROADMAP.md`, and `` `tests/unit/test_generated_runs.py` (§
+#: "Step-refinement test") `` one of `docs/VERIFICATION.md`. No reader held any
+#: of the 11 while a code span before the mark handed it on.
 # regex: this tests whether a code-spanned source stands just before a quotation, across a soft
 # break where there is one.
 QUALIFIED_RE = re.compile(
-    r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
+    r"(?:`[\w./-]+\.md`" + GAP + r"*" + CITATION_CONNECTIVE + r"?"
+    rf"|`(?:{ID_PATTERN}|[\w./-]+\.py)`(?:{GAP}*{POSSESSIVE})?)" + GAP + r"*(?=.\Z)",
+    re.DOTALL,
 )
 #: A code-spanned document, a connective that claims nothing, and then the
 #: section mark: `` `docs/MODEL.md`, § "Time" `` or `` `docs/MODEL.md` (§
@@ -1271,6 +1285,18 @@ CONNECTED_MARK_RE = re.compile(
     + r"*§{1,2}"
     + GAP
     + rf'*"(?:(?P<quoted>\w{QUOTATION_CHAR}*+)"|(?=\w){UNCLOSED_QUOTATION})'
+)
+#: A code-spanned Python file directly before a section mark, or after its
+#: possessive, which cites a heading of that module's docstring read as
+#: Markdown: `` `core/governing_equations.py` § "The state vector" ``. Before
+#: `PL-MWL0` no reader held one, so renaming such a heading left its citations
+#: pointing at nothing. A mark inside a code span is an example written out,
+#: and is not read.
+# regex: a code-spanned `.py` path, the section mark and a quotation are an explicit citation
+# syntax, searched for through prose.
+MODULE_SECTION_RE = re.compile(
+    rf"`(?P<module>[\w./-]+\.py)`(?:{GAP}*['\u2019]s)?{GAP}*(?P<mark>§{{1,2}}){GAP}*"
+    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}*+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 #: A claiming connective after a code-spanned item id, which cites that item's
 #: brief: `` `PL-MB2W` § "Design round, 2026-09-24" `` or `` `PL-CNJ1`'s
@@ -7505,10 +7531,19 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     id's brief is `vcs.ITEM_FILE_RE`'s reading of its name; a glob of this
     tool's own took a file whose name carries no slug for one, which `docket`
     reads as no item's (`PL-5QG4`).
+
+    **A Python file is a source after the mark or the possessive** -
+    `MODULE_SECTION_RE`. Its module docstring is read as Markdown, and the
+    quotation is held to its headings, as `` `core/governing_equations.py` §
+    "The state vector" `` is (`PL-MWL0`). A file Python cannot parse is
+    declined. After any other code span, and after an item or a module and a
+    connective that claims nothing, the mark is a bare mark of the text around
+    it, as `QUALIFIED_RE` says.
     """
     bodies: dict[str, str | None] = {}
     briefs: dict[str, list[str]] = {}
     titles: dict[str, list[str] | None] = {}
+    modules: dict[str, list[str] | None] = {}
 
     def target_of(cited: str) -> Path | None:
         return next(
@@ -7551,6 +7586,20 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             )
         return f'{where}: quotes {cited} § "{term}", which is no heading of {cited}'
 
+    def module_titles(cited: str) -> list[str] | None:
+        """The headings of `cited`'s module docstring, read as Markdown, or `None` where no file is.
+
+        Raises: one of `docket.python.UNPARSABLE`: Python cannot parse `cited`.
+        """
+        if cited not in modules:
+            target = target_of(cited)
+            modules[cited] = (
+                _headings(ast.get_docstring(ast.parse(target.read_text(encoding="utf-8"))) or "")
+                if target is not None
+                else None
+            )
+        return modules[cited]
+
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
             target = target_of(cited)
@@ -7582,12 +7631,12 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             line = offset + _line_of(text, match.start()) - 1
             claims = CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or "")
             if match["unclosed"] is not None:
-                refusal = _unclosed(
+                unclosed = _unclosed(
                     f"{path}:{line}",
                     f"this citation of {cited}",
                     "whether the file holds the words",
                 )
-                (report.errors if claims else report.advisories).append(refusal)
+                (report.errors if claims else report.advisories).append(unclosed)
                 continue
             quoted = _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:
@@ -7625,6 +7674,34 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 report.errors.append(f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}")
             elif not _cites_heading(quoted, titles_of(cited) or []):
                 report.errors.append(unheaded(f"{path}:{line}", cited, quoted))
+
+        literals = [(span.start(), span.end()) for span in _statement_spans(text)]
+        for match in _statement_matches(MODULE_SECTION_RE, prose, kinds):
+            if _inside(match.start("mark"), literals):
+                continue
+            cited = match["module"]
+            line = offset + _line_of(text, match.start()) - 1
+            if match["unclosed"] is not None:
+                report.errors.append(
+                    _unclosed(f"{path}:{line}", f"this § of {cited}", "the section it names")
+                )
+                continue
+            quoted = _normalized(match["quoted"])
+            try:
+                headed = module_titles(cited)
+            except UNPARSABLE as error:
+                report.declined.append(
+                    f'{path}:{line}: cites {cited} § "{quoted}", but Python cannot parse '
+                    f"{cited} ({refusal(error)}), so its docstring's headings were not read"
+                )
+                continue
+            if headed is None:
+                report.errors.append(f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}")
+            elif not _cites_heading(quoted, headed):
+                report.errors.append(
+                    f'{path}:{line}: quotes {cited} § "{quoted}", which is no heading of its '
+                    "module docstring"
+                )
 
         for match in _statement_matches(ITEM_SECTION_RE, prose, kinds):
             item = match.group("item")
