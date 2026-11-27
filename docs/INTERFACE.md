@@ -2889,7 +2889,8 @@ While two or more runs are drawn, each of these places names its run in text:
    runs use this one place, and an empty banner is hidden and takes no room. A
    banner's position therefore does not show which run it belongs to.
 6. The heading over each run's compartment schematic, taken from the name on
-   the run's own panel.
+   the run's own panel. It stays at the top of the part of that run's
+   schematic in view while the Area scrolls (`PL-3NGZ`).
 7. The heading over each run's agent cost panel, in the same way.
 8. The line above each run's row of dials in the setting controls view, in the
    same way (`PL-CPF2`).
@@ -6687,8 +6688,11 @@ agent the container holds and its share of all the agent, and a bar under the
 label draws that share.
 
 **Every height, amount and share on the schematic is a model output.** The
-schematic therefore prints "Model outputs — not measurements." once, in its
-own heading, as the readout section does. No amount is a prediction about a
+schematic therefore prints "Model outputs — not measurements." once, as the
+readout section does, followed by the tensions' unit. The line under it names
+the amounts' unit and the condition they are stated at. Both lines stand in a
+row above the part of the View that scrolls, so they stay in view whatever part
+of the schematic the Area shows (`PL-3NGZ`). No amount is a prediction about a
 patient to its last digit, for the reason § "Displayed precision" gives for
 the readouts.
 
@@ -6736,9 +6740,10 @@ expresses an amount of agent, not gas present in the body. This subsection's
 rules for an agent amount also apply to every other View that shows one,
 such as the agent cost View (`PL-B396`).
 § "Displayed precision" derives the precision at which amounts are shown. The
-label names the reference condition
+line above the scrolling part of the View names the reference condition
 (`test_the_reference_condition_label_names_the_conversions_temperature_and_pressure`
-in `tests/unit/test_display_units.py`).
+in `tests/unit/test_display_units.py`). The caption under the containers says
+that the amounts held in the body read high at that condition.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **An agent amount's unit always names vapour or liquid, and is never a bare
@@ -6782,14 +6787,11 @@ at this instant (`PL-S79P`, `PL-8PL4`). It names the six containers, not the
 circuit and body, because the model leaves out three stores that a patient's
 body and circuit hold: lung tissue and pulmonary blood, a vessel-poor group,
 and the circuit's plastics (`docs/MODEL.md` § "What the model does not
-represent", `PL-KQ0S`). It stands just under the containers,
-so on a 1366 by 768 screen it stays in view with the bars while the scale
-caption below it scrolls. The line naming a container above the scale comes
-before it, because that line warns that a container's fill is cut off. While
-that line shows on a 1366 by 768 screen, the share caption can scroll too. A
-run holds no agent when it starts, so no share exists then: each bar is drawn
-empty, each label prints a dash where its share would be, and the caption line
-says that the six containers hold no agent.
+represent", `PL-KQ0S`). It stands in the run's heading, so it stays in view
+with every bar (§ "Each schematic shows its run at the same instant as the
+readouts" below). A run holds no agent when it starts, so no share exists
+then: each bar is drawn empty, each label prints a dash where its share would
+be, and the caption line says that the six containers hold no agent.
 
 **Lines between the containers show ventilation and blood flow.** The
 containers stand in one row. A line joins the circuit to the alveoli for
@@ -6811,7 +6813,28 @@ would show agent that the model does not hold.
 **Each schematic shows its run at the same instant as the readouts.** A line
 of text above the schematic gives that instant as the readouts' clock prints
 it. While runs are compared, that line also names the run, so that a reader
-does not take one run's value for the other's. Two compared runs can be at
+does not take one run's value for the other's. That line, the share caption
+and the six compartments' names, each over its own container, form the run's
+heading. The heading stays at the top of the part of the schematic in view
+while the Area scrolls, as a list's section headers stay pinned while the list
+scrolls (Apple, SwiftUI documentation, "Grouping data with lazy stack views",
+section "Keep important information visible", read 2026-11-27). NUREG-0700
+Rev. 3 asks the same of any scrollable display: "General labels and row and
+column labels should remain along the top (or bottom) and left (or right)
+edges of the display" (O'Hara, Brookhaven National Laboratory for the U.S.
+Nuclear Regulatory Commission, 2020, guideline 1.5-15, p. 1-59). So no tension,
+amount or share is in view without its run, its compartment and what its
+share is of. The heading follows a scroll of the whole page as well as a
+scroll of the Area. On a 1366 by 768 screen, the Maintenance Workspace gives the
+schematic an Area too short to hold even one run's schematic, and two
+compared runs share it (`PL-3NGZ`). With a branch open there, the Area is held
+at its least height, so the part under a pinned heading shows about one line
+of a label at a time and no container whole. The Area is not made taller,
+because the page would then grow and push the concentration chart's title and
+key above the window's top after a branch. The row above the scrolling part,
+and the Area's header, still move out of view when the page itself scrolls
+them past the window's edge (`PL-DKQ5`).
+Two compared runs can be at
 different times, as when one is a branch taken at an earlier point. A
 difference between their schematics may then come from elapsed time rather
 than from the change the branch made. The schematic withholds its values
@@ -6862,6 +6885,24 @@ schematic's width as it was.
 `tests/integration/simulation_view/test_simulation_view_page.py` checks that
 the containers and the share caption are wholly in view in the Maintenance
 Workspace at 1366 by 768 and three larger screen sizes.
+
+Each run's heading is a `PinnedHeadingSection` (`app/pinned_heading.py`).
+`ViewScroll` in `app/area_layout.py` moves every such heading after each
+resize, and `pin_on_scroll` after each scroll of the Area's box or of the
+dashboard's page. The heading is drawn over the rows on the panel's colour,
+so a row is either below it and seen, or under it and hidden. Three tests in
+`tests/integration/test_compartment_schematic_view.py` hold this.
+
+1. `test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`
+   scrolls the Maintenance Workspace at 1366 by 768 through every position,
+   with two runs, with one run and with one run's circuit above the scale.
+   Wherever a container, a share bar or a label line is wholly in view and
+   not under the heading, the whole heading is in view too.
+2. `test_each_compartment_name_stands_over_its_own_container` checks that
+   each name is centred over its container, at two widths.
+3. `test_a_run_heading_follows_a_scroll_of_the_page` scrolls the page of a
+   window 400 px tall through every position, and makes the same check as
+   the first test.
 
 The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.
