@@ -100,7 +100,7 @@ from product_paths import MODEL_DOC, SPECIFICATION_DOCS  # noqa: E402
 
 #: What reading a test file's comments and docstrings raises where Python cannot
 #: read it: the parser's errors and the tokenizer's.
-UNREADABLE = (*UNPARSABLE, *UNTOKENIZABLE)
+SOURCE_UNREADABLE = (*UNPARSABLE, *UNTOKENIZABLE)
 
 #: The opening line of a display equation's fence, its trailing blanks removed.
 MATH_FENCE_OPENING = "```math"
@@ -679,7 +679,7 @@ def _citing_spans(path: str, text: str, trees: Sequence[str]) -> list[tuple[int,
     `trees` is the test trees, as `docket.toml`'s `collected_test_paths` lists
     them.
 
-    Raises: one of `UNREADABLE`: `path` is a Python file in a test tree, and
+    Raises: one of `SOURCE_UNREADABLE`: `path` is a Python file in a test tree, and
     Python cannot parse or tokenize it.
     """
     name = PurePosixPath(path)
@@ -804,7 +804,7 @@ def repoint(
             continue
         try:
             spans = _citing_spans(path, text, trees)
-        except UNREADABLE as error:
+        except SOURCE_UNREADABLE as error:
             unread.append(f"{path}: {refusal(error)}")
             continue
         edits: list[tuple[int, int, str]] = []
@@ -888,7 +888,7 @@ def misattributed(
         try:
             text = (root / path).read_text(encoding="utf-8")
             spans = _citing_spans(path, text, trees)
-        except (UnicodeDecodeError, *UNREADABLE):
+        except (UnicodeDecodeError, *SOURCE_UNREADABLE):
             continue
         mentions = _mentions(text, documents)
         for index, (start, own) in enumerate(mentions):
