@@ -116,6 +116,7 @@ from anesthesia_sim.app.control_timeline import (
     wrapping_between_parts,
 )
 from anesthesia_sim.app.controller import (
+    PreviewOfAnotherCase,
     RunRecord,
     RunStatus,
     SettingPreview,
@@ -146,6 +147,7 @@ from anesthesia_sim.app.dashboard_frame import (
     new_case_question,
     preview_label,
     readouts,
+    refused_preview_notice,
     refused_reset_exit,
     refused_setting_notice,
     run_label,
@@ -434,6 +436,11 @@ class RunView(QWidget):
         # names the run, so the preview ends once the run's name changes
         # (`preview`, `PL-1WFW`).
         self._preview_name: str | None = None
+        # The banner's notice while the held thumb's preview is refused
+        # because the run it was rebuilt as differs from this run, or None
+        # (`request_preview`, `PL-412F`). It is held here for the same reason
+        # as the preview, and it ends with the drag.
+        self._refused_preview_notice: str | None = None
         self._playback_rate: PlaybackRate = DEFAULT_PLAYBACK_RATE
         self._owed_time = OwedSimulatedTime()
         self._pace = TickPace(SIMULATION_TICK_INTERVAL_MS)
@@ -854,6 +861,7 @@ class RunView(QWidget):
             and not comparing
             and self.controller.fork_refusal is None,
             rejected_setting_notice=self._rejected_setting_notice,
+            refused_preview_notice=self._refused_preview_notice,
             refused_reset_notice=self._refused_reset_notice,
             refused_reset_reason=self._refused_reset_reason,
             pending_agent_name=(
@@ -1317,13 +1325,23 @@ class RunView(QWidget):
         The dashboard calls this method when a View says where a held dial
         of this run stands. During the drag, the run keeps its current setting (`ParameterSlider`).
         The value is checked by building the settings it would give
-        (`SimulationController.preview_settings`). The run refuses a value when
-        the run has stopped, when the value is outside the core's range, or
-        when the core holds a setting the controller did not record. A value
-        the run would refuse draws no preview, so the chart never predicts a
-        future the run cannot have. The release then reports the refusal
-        through `_apply_setting`, as it reports any refused setting. The
-        dashboard draws the chart at once for the first move, and within
+        (`SimulationController.preview_settings`). A value that the run would
+        refuse draws no preview, so the chart never predicts a future the run
+        cannot have.
+
+        The run refuses a value when the run has stopped, when the value is
+        outside the core's range, or when the core holds a setting the
+        controller did not record. Applying the value is refused for the same
+        reason, so the release reports each of these refusals through
+        `_apply_setting`, and the drag shows none of them. The run also
+        refuses a preview whose trial run differs from this run
+        (`PreviewOfAnotherCase`), which happens when a data file changed after
+        the run began. The release applies such a value, because applying it
+        rebuilds nothing, so the release would report nothing. So the banner
+        states this refusal while the thumb is held, and the failure log
+        records each value that differs, once for each drag (`PL-412F`).
+
+        The dashboard draws the chart at once for the first move, and within
         `INPUT_FRAME_INTERVAL_MS` for each move after it
         (`SimulationView.present_input`, `PL-NKFD`).
         """
@@ -1332,9 +1350,17 @@ class RunView(QWidget):
 
         try:
             self.controller.preview_settings(setting)
+        except PreviewOfAnotherCase as refusal:
+            if self._refused_preview_notice is None:
+                _LOG.error("Preview refused: %s", "\n".join(refusal.__notes__))
+
+            self._preview = None
+            self._refused_preview_notice = refused_preview_notice(refusal)
         except SimulationConfigurationError, SimulationExecutionError:
             self._preview = None
+            self._refused_preview_notice = None
         else:
+            self._refused_preview_notice = None
             self._preview_name = self._name(self.run_id)
             self._preview = PreviewRequest(
                 setting,
@@ -1356,10 +1382,12 @@ class RunView(QWidget):
         this run was released. A preview that outlived the drag could be mistaken for a run that
         happened, so it is gone from the frame drawn at the release. The slider
         has applied the released value by then (`ParameterSlider`), so that
-        frame shows the run under its new setting (`PL-5B1N`).
+        frame shows the run under its new setting (`PL-5B1N`). A notice that
+        the preview was refused ends with it (`PL-412F`).
         """
 
         self._preview = None
+        self._refused_preview_notice = None
         self.presentation_requested.emit(False)
 
     @halt_gate
@@ -1712,11 +1740,15 @@ class RunView(QWidget):
 
         A preview held across the start-over ends here. It previewed a setting
         of the discarded run, and its label names that run's agent, so it
-        would describe a run that is no longer shown (`PL-1WFW`). A thumb
-        still held previews again from the new run when it next moves.
+        would describe a run that is no longer shown (`PL-1WFW`). The dials
+        View then lets go of the thumb, so its release applies nothing to the
+        new run (`views.RunDials`, `PL-HPD0`). A notice that the preview was
+        refused ends with it, because it named a dial of the discarded run
+        (`PL-412F`).
         """
 
         self._preview = None
+        self._refused_preview_notice = None
         self._owed_time.clear()
         self._pace.restart()
         self._case += 1

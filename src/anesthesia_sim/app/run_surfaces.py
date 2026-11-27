@@ -184,6 +184,12 @@ class ParameterControls(QWidget):
         for slider, setting in zip(self.sliders, settings, strict=True):
             slider.set_setting(setting)
 
+    def cancel_holds(self) -> None:
+        """Let go of any held thumb, applying nothing (`ParameterSlider.cancel_hold`)."""
+
+        for slider in self.sliders:
+            slider.cancel_hold()
+
     def name_run(self, run_name: str | None) -> None:
         """Name the run in each control's accessible name while runs are compared.
 
