@@ -1260,17 +1260,18 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
     "Every compartment's value is in " + READOUTS_PLACE_TEXT + ", for both runs."
 )
 # What the wash-in plot is showing at this instant. A trace that stops has
-# to say at which of its two boundaries it stopped: an inspired concentration
-# too low to divide by, or an alveolar concentration above the inspired. A
-# reader shown only an empty plot could not tell the two apart. Each sentence
-# names the condition and not a cause. The inspired concentration also falls
-# that low during a washout, while the patient still holds agent (`PL-P3ZL`).
-# The sentence for a ratio above 1 does not say that the patient returns agent
-# or that the run is past equilibrium, for the same reason (`PL-7PBB`). The
-# third sentence names zero alveolar ventilation, the setting the reader can
-# see on its control. At zero ventilation no agent moves between the circuit
-# and the lungs, so the ratio is not a wash-in fraction on either side of 1,
-# and the plot draws nothing (rule 3 of `app/wash_in.py`, `PL-49D5`).
+# to say which condition stopped it: an inspired concentration too low to
+# divide by, alveolar ventilation at zero, or an alveolar concentration above
+# the inspired. A reader shown only an empty plot could not tell them apart.
+# Each sentence names the condition and not a cause. The inspired
+# concentration also falls that low during a washout, while the patient still
+# holds agent (`PL-P3ZL`). The sentence for a ratio above 1 does not say that
+# the patient returns agent or that the run is past equilibrium, for the same
+# reason (`PL-7PBB`). The sentence for zero ventilation names the setting the
+# reader can see on its control. At zero ventilation no agent moves between
+# the circuit and the lungs, so the ratio is not a wash-in fraction on either
+# side of 1, and the plot draws nothing (rule 3 of `app/wash_in.py`,
+# `PL-49D5`).
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
 WASH_IN_ELIMINATION_TEXT: Final = (
