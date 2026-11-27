@@ -111,9 +111,13 @@ these rules, "phases," or "closed loops" in the output itself.
       answer rests on.** Theirs are the consequential questions: the order
       features come in, what the project is for, behavior a user would see,
       and anything the safety-critical standard reaches. **Look, wording and
-      placement are not among them for now.** Decide one yourself, record it in
-      the item as a placeholder, and say in one line what you chose. A choice
-      stays theirs where it decides whether a value the safety-critical
+      placement are not among them, and they are decided from a source.** Take
+      the option a cited standard, design system or professional product's
+      documentation supports, record the choice and its source in the item, and
+      say in one line what you chose. Where no source settles it, say what you
+      searched and ask, rather than choosing by your own taste (project owner,
+      2026-11-27, ratified, over deciding by the session's judgment as a
+      placeholder, `PL-HWZK`). A choice stays theirs where it decides whether a value the safety-critical
       standard requires is on screen, readable or correctly labelled
       (`PL-KBBJ`). **A choice with one clearly correct option is never offered:
       take it, record why in the item, and say in one line what you did.**

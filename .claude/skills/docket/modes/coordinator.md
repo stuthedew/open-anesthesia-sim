@@ -172,10 +172,10 @@ themselves, or once a plugin carries the hooks (`PL-XFDQ`).
   (project owner, 2026-09-27).
 - **A brief is the coordinator's**, and so are its stop rules. Never call one
   the owner's brief (project owner, 2026-09-27).
-- **Styling, wording and placement are placeholders** while structure and
-  function are built. Decide them without a decision card, unless a required
-  value's visibility is at stake (`.claude/rules/instruction-writing.md` rule
-  14).
+- **Styling, wording and placement are decided from a cited source**, without
+  a decision card. Where no source settles one, the thread says what it
+  searched and asks. A required value's visibility stays the owner's
+  (`.claude/rules/instruction-writing.md` rule 14).
 
 ## Product focus and the Projects trial
 
