@@ -130,18 +130,25 @@ def _smallest_fraction_shown_as_one_display_step() -> Fraction:
     at most 64 halvings, on the boundary to the last bit.
     """
 
+    # The search reads only non-negative doubles, whose sign bit is zero, so
+    # reading their bits as a signed or an unsigned integer gives the same
+    # number, and no input can tell the two apart.
     def bits(value: float) -> int:
-        packed: int = struct.unpack("<q", struct.pack("<d", value))[0]
+        packed: int = struct.unpack("<q", struct.pack("<d", value))[0]  # pragma: no mutate
         return packed
 
     def value_of(pattern: int) -> float:
-        unpacked: float = struct.unpack("<d", struct.pack("<q", pattern))[0]
+        unpacked: float = struct.unpack("<d", struct.pack("<q", pattern))[0]  # pragma: no mutate
         return unpacked
 
     below = bits(0.0)
     reaching = bits(fraction_from_percent(Percent(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT)))
 
-    while reaching - below > 1:
+    # The function takes no input, and its last halving at the readout's
+    # boundary leaves a gap of one pattern. So ending the loop at a gap of two
+    # returns the same double. A resolution at which it would not fails
+    # `test_the_search_for_the_floor_ends_on_the_readout_boundary`.
+    while reaching - below > 1:  # pragma: no mutate
         middle = (below + reaching) // 2
 
         if reaches_concentration_display_resolution(Fraction(value_of(middle))):
