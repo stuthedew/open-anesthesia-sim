@@ -9,6 +9,7 @@ feature: provenance
 touches: CLAUDE.md
 added: 2026-11-27
 closed: 2026-11-27
+pr: 2338
 payoff: the owner is never offered an option to build something resting on a paper nobody read in full
 verify: grep -qF 'Offer no option to build something that rests on it either' CLAUDE.md
 ---

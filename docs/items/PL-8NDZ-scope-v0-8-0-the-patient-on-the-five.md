@@ -9,6 +9,7 @@ feature: patient-model
 touches: ROADMAP.md, docs/items, docs/features.toml
 added: 2026-11-27
 closed: 2026-11-27
+pr: 2338
 payoff: v0.8.0 has a scope and build items a session can pick, so the patient work can start once Gate 4 clears
 verify: grep -qF '## v0.8.0 - the patient, on the five-compartment model' ROADMAP.md
 ---
