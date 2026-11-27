@@ -1748,7 +1748,7 @@ COMPARTMENT_SHARE_DECIMALS: Final = 0
 
 
 def format_compartment_share(share: float) -> str:
-    """Render one compartment's share of the agent the run holds, for the schematic's share bar.
+    """Render one compartment's share of the agent the run holds, for its schematic label.
 
     The share is shown in whole percent, with `COMPARTMENT_SHARE_DECIMALS`
     decimal places. It is rounded to the nearest whole percent, and halves

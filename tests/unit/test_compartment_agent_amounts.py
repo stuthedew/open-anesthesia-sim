@@ -4,7 +4,7 @@
 oracles independent of `core/`. This module checks the record type itself. It checks
 which records are rejected and that a record cannot be changed once built. It also checks
 that a record's six amounts add up to the snapshot's `stored_agent_l` exactly, so that
-the planned share bar will divide the parts by their own total (`PL-KFTM`).
+the schematic's shares divide the parts by their own total (`PL-KFTM`).
 """
 
 from collections.abc import Callable
@@ -133,7 +133,7 @@ def _snapshots_of_a_changing_run(agent_id: str) -> list[tuple[CompartmentAgentAm
 
 @pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
 def test_the_six_amounts_add_up_to_the_stored_total_exactly(agent_id: str) -> None:
-    """The share bar's denominator is the sum of its own parts, to the last bit.
+    """The shares' denominator is the sum of their own parts, to the last bit.
 
     `core/` sums the circuit and the alveoli, then the patient: the three
     tissue groups in order, then venous blood

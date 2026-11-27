@@ -731,13 +731,13 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
 
 
 #: What each Workspace named for a task must show whole with one run (`PL-D5J4`,
-#: `PL-YS8M`). The wash-in curve is Induction's lesson. The share bar is
-#: Maintenance's (`PL-PR1W`), with the lines under it that name each segment,
-#: so that no segment is told apart by colour alone. The bookmark editor sits
-#: in the Bookmarks View since `PL-CHX0`, and it scrolls inside its Area.
+#: `PL-YS8M`). The wash-in curve is Induction's lesson. Maintenance's is the
+#: schematic's containers with their labels and the share bar under each label
+#: (`PL-PR1W`, `PL-8PL4`), all drawn by one canvas. The bookmark editor sits in
+#: the Bookmarks View since `PL-CHX0`, and it scrolls inside its Area.
 _LESSONS: dict[str, frozenset[str]] = {
     "Induction": frozenset({"wash-in plot"}),
-    "Maintenance": frozenset({"share bar", "share lines"}),
+    "Maintenance": frozenset({"containers and shares"}),
 }
 
 #: The window sizes at which each Workspace shows its lesson whole with one
@@ -754,7 +754,7 @@ _LESSON_WHOLE_SCREENS_PX: tuple[tuple[str, int, int], ...] = (
 
 
 def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
-    """The shown wash-in plot, share bar and share lines, by name."""
+    """The shown wash-in plot and schematic canvas, by name."""
 
     from anesthesia_sim.app.qt_schematic import RunSchematic
 
@@ -766,8 +766,7 @@ def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
 
     for schematic in view.findChildren(RunSchematic):
         if schematic.isVisible():
-            found["share bar"] = schematic.share_bar
-            found["share lines"] = schematic.share_text
+            found["containers and shares"] = schematic.canvas
 
     return found
 
@@ -780,7 +779,9 @@ def test_each_shipped_workspace_shows_its_lesson_whole_with_one_run(
 
     Before `PL-D5J4`, Induction's wash-in curve started at its Area's lower
     edge, and Maintenance's share bar and the lines under it were below the
-    schematic's Area. Each widget must be shown, and wholly inside every
+    schematic's Area. Each container's share is now in its label, with a bar
+    under it, so the canvas that draws the containers is Maintenance's lesson
+    (`PL-8PL4`). Each widget must be shown, and wholly inside every
     scroll box around it, without the reader scrolling. The set of widgets
     each Workspace must show is written out, so a Workspace cannot pass by
     leaving its lesson out.
@@ -791,10 +792,9 @@ def test_each_shipped_workspace_shows_its_lesson_whole_with_one_run(
     keeping them under the chart, `PL-YS8M`). The owner chose that placement
     knowing that at 1366 by 768 the wash-in plot then scrolls inside its Area,
     because the controls and the bookmarks and branch Views each hold their
-    Area at its least height. The share bar and its lines sit at the top of
-    the schematic since then, so they are on screen at that size. With a
-    branch open, the controls' Area holds a second row and neither lesson
-    fits whole.
+    Area at its least height. The schematic's canvas is its first row under
+    the name line, so it is on screen at that size. With a branch open, the
+    controls' Area holds a second row and neither lesson fits whole.
     """
 
     view = _shipped_view_at(application, workspace, width_px, height_px)
@@ -804,50 +804,6 @@ def test_each_shipped_workspace_shows_its_lesson_whole_with_one_run(
 
     for name, widget in found.items():
         assert _wholly_in_view(view, widget), f"the {name} is not wholly on screen in {workspace}"
-
-
-@pytest.mark.parametrize(("width_px", "height_px"), (*_COMMON_SCREENS_PX, (1440, 900)))
-def test_the_share_bar_is_never_on_screen_without_the_lines_that_name_its_segments(
-    application: QApplication, width_px: int, height_px: int
-) -> None:
-    """`PL-YS8M`: wherever any of the share bar is in view, the lines under it are wholly in view.
-
-    The lines name each segment, so that no segment is told apart by colour
-    alone (`docs/INTERFACE.md` § "The compartment schematic: what its heights,
-    amounts and share bar assert"). At 1366 by 768 the schematic is taller
-    than its Area in Maintenance and scrolls inside it. While the bar and its
-    lines were the last rows under the containers, the Area's lower edge
-    could fall between them, so the bar was on screen with nothing to name
-    its segments. They are now the rows under the schematic's name line. The
-    test scrolls the schematic through its whole range, a few pixels at a
-    time, with one run. With a branch open, the second run's bar is in the
-    middle of the View, and an edge of the Area can still fall between it and
-    its lines.
-    """
-
-    from anesthesia_sim.app.qt_schematic import RunSchematic
-
-    view = _shipped_view_at(application, "Maintenance", width_px, height_px)
-    (schematic,) = (shown for shown in view.findChildren(RunSchematic) if shown.isVisible())
-    areas = view.layout_container
-    (frame,) = (
-        areas.frame(area.id)
-        for area in areas.model.areas()
-        if areas.frame(area.id).isAncestorOf(schematic)
-    )
-    assert frame.view_scroll is not None
-    bar = frame.view_scroll.verticalScrollBar()
-
-    for position in range(0, bar.maximum() + 1, 2):
-        bar.setValue(position)
-        application.processEvents()
-
-        if not _partly_in_view(view, schematic.share_bar):
-            continue
-
-        assert _wholly_in_view(view, schematic.share_text), (
-            f"at scroll {position} of {bar.maximum()} the bar is in view and its lines are not"
-        )
 
 
 @pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)

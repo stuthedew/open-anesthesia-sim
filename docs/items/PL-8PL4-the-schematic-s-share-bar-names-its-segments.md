@@ -3,13 +3,16 @@ id: PL-8PL4
 title: The schematic's share bar names its segments only in a text list under it, so a reader cannot tell which colour is fat, and its caption reads as agent held over the whole run rather than at this instant
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: schematic
 touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/qt_schematic.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - filed on 2026-11-26, after the gate froze; the owner asked on 2026-11-27 for it to land before the cut; every share it shows was right, so no learner sees a wrong value
 added: 2026-11-26
+closed: 2026-11-27
+pr: 2326
 payoff: a learner reads each compartment's share of the agent under its own container, with no colour key to decode, and does not take the shares for agent counted over the whole run
+tests: tests/integration/test_compartment_schematic_view.py::test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label, tests/unit/test_compartment_schematic.py::test_each_label_prints_its_own_compartment_s_share_in_whole_percent, tests/unit/test_compartment_schematic.py::test_the_share_caption_says_the_shares_are_of_the_agent_held_at_this_instant
 ---
 
 **Problem.** The schematic's share bar names its segments only in a text list under it, so a reader cannot tell which colour is fat, and its caption reads as agent held over the whole run rather than at this instant
@@ -64,8 +67,8 @@ Side-by-side bars "are preferred when we want to directly compare the
 individual fractions". On legends: "legends always put an extra mental burden
 on the reader", and "Whenever possible, design your figures so they don't need
 a legend" (ch. 20, https://clauswilke.com/dataviz/redundant-coding.html). Both
-pages were read in full on 2026-11-26. Here four of six segments are below 1%,
-and the names sit in a list under the bar.
+pages were read in full on 2026-11-26. In the owner's run, four of the six
+segments were 1% or less, and the names sat in a list under the bar.
 
 **Options, with mock-ups in `/mnt/project-files/v0.7.0/pl-8pl4-screens/`.**
 
@@ -114,3 +117,14 @@ each share line shows a dash, each bar is empty, and the caption line says why.
 `docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
 share bar assert" describes the new form, and `PL-P83G` closes with the bar
 it was about.
+
+**Docs checked 2026-11-27.** `docs/INTERFACE.md` (the schematic section, and
+the amounts paragraph under § "Displayed precision"), `docs/VERIFICATION.md`
+(the hazard row on reading a height as an amount), `docs/ARCHITECTURE.md` (the
+package map and the snapshot paragraph), `ROADMAP.md` (v0.7.0's scope entry 4,
+its definition of done and item 33), `src/anesthesia_sim/data/workspaces/__init__.py`
+(the Maintenance Workspace), the docstrings in `app/controller.py` and
+`app/formatting.py`, and the lines `tools/doc_check.py candidates` printed for
+`tools/contrast_check.py`. `tests/reference/test_compartment_amounts_against_oracles.py`
+says the schematic draws "its share bar" from the amounts, which is still true
+of the six bars, so it is unchanged.

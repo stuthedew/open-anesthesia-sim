@@ -25,7 +25,11 @@ from PySide6.QtWidgets import QApplication, QLabel
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
-from anesthesia_sim.app.compartment_schematic import NO_AGENT_SHARE_LINE, WITHHELD_AMOUNT_TEXT
+from anesthesia_sim.app.compartment_schematic import (
+    NO_AGENT_SHARE_CAPTION,
+    NO_SHARE_TEXT,
+    WITHHELD_AMOUNT_TEXT,
+)
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
 from anesthesia_sim.app.formatting import format_elapsed
@@ -34,7 +38,7 @@ from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import MUTED, PANEL, WARNING
+from anesthesia_sim.app.theme import INK, MUTED, WARNING
 from anesthesia_sim.app.view_registry import BRANCH, COMPARTMENT_SCHEMATIC, REGISTERED
 from anesthesia_sim.app.views import BranchView, CompartmentSchematicView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
@@ -485,7 +489,8 @@ def test_a_reset_that_no_frame_draws_withholds_the_schematic_with_the_readouts(
     assert [reading.fill for reading in schematic.canvas.readings] == [0.0] * 6
     assert schematic.scale_text.isHidden()
     assert schematic.off_scale_text.isHidden()
-    assert schematic.share_bar.segments is None
+    assert [reading.share for reading in schematic.canvas.readings] == [None] * 6
+    assert [reading.share_text for reading in schematic.canvas.readings] == [NO_SHARE_TEXT] * 6
     assert schematic.share_text.isHidden()
 
 
@@ -500,7 +505,6 @@ def _everything_drawn(schematic: RunSchematic) -> tuple[object, ...]:
         [label.text() for label in schematic.findChildren(QLabel) if not label.isHidden()],
         schematic.canvas.painted_strings(),
         schematic.canvas.readings,
-        schematic.share_bar.segments,
     )
 
 
@@ -639,9 +643,10 @@ def test_each_container_is_painted_to_its_tension_and_an_off_scale_one_is_marked
     """The painted fill, not only the reading, is the tension's share of the scale.
 
     The test measures the fill by counting pixels of the compartment's own colour
-    down the container's centre. The outline and the off-scale bar cover up to
-    three pixels of the fill. So the count must be within three pixels of the
-    reading's share of the container's height.
+    down the container's centre, from the container's top to its bottom, so a
+    share bar under the label is not counted. The outline and the off-scale bar
+    cover up to three pixels of the fill. So the count must be within three
+    pixels of the reading's share of the container's height.
     """
 
     off_scale = SimulationController(agent_id="sevoflurane")
@@ -664,7 +669,8 @@ def test_each_container_is_painted_to_its_tension_and_an_off_scale_one_is_marked
         for index, reading in enumerate(canvas.readings):
             x = _column_centre(canvas, index)
             colour = QColor(trace_style(reading.quantity).color).rgb()
-            painted = sum(image.pixelColor(x, y).rgb() == colour for y in range(image.height()))
+            container_rows = range(_CONTAINER_TOP_PX, _CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX + 1)
+            painted = sum(image.pixelColor(x, y).rgb() == colour for y in container_rows)
             assert abs(painted - reading.fill * _CONTAINER_HEIGHT_PX) <= 3, reading.name
             marked = any(
                 image.pixelColor(x, y).rgb() == warning
@@ -722,74 +728,77 @@ def test_the_tissues_are_drawn_in_parallel_and_never_joined_to_each_other(
         assert any(lined(left, left + 1, below_rows)), f"venous line spans gap {left}"
 
 
-def test_the_share_bar_is_painted_to_each_share_and_named_in_text(
+def test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """Each segment's painted length is its share of the bar, and the lines under it name each.
+    """`PL-8PL4`: each bar is filled to its compartment's share, all six on one scale.
 
-    The segment of each compartment is measured in pixels of its own colour
-    along the bar's middle row. Antialiasing and the divider before a segment
-    can take one pixel at each end of it. So each count must be within two
-    pixels of the share multiplied by the bar's width. At ten seconds, venous
-    blood, muscle and fat each hold far less than 1%. The blind review of
-    `PL-S79P` found that their dividers then covered them and merged into one
-    another. So the test checks the bar at that instant as well as at one hour.
+    The fill of each bar is counted in pixels of its compartment's colour along
+    the bar's middle row. The outline covers the first pixel of a fill, and the
+    last pixel of a fill can round either way, so each count must be within two
+    pixels of the share multiplied by the bar's length. The share is worked out
+    here from the six amounts. The six bars must be one length, so that equal
+    lengths of fill are equal shares. Each bar must stand inside its own
+    container's column, under the label that names it, and that label must end
+    with the share. At ten seconds, venous blood, muscle and fat each hold far
+    less than 1%, so the test checks the bars then as well as at one hour.
     """
 
     for seconds in (10, 60 * SECONDS_PER_MINUTE):
-        _check_the_share_bar(application, shown, seconds)
+        _check_the_share_bars(application, shown, seconds)
 
 
-def _check_the_share_bar(
+def _check_the_share_bars(
     application: QApplication, shown: list[SimulationView], seconds: int
 ) -> None:
     controller = SimulationController()
     controller.start()
     _advance(controller, seconds)
     controller.pause()
-    schematic = _schematic(_dashboard(application, shown, controller)).schematics[0]
-    bar = schematic.share_bar
-    segments = bar.segments
-    assert segments is not None
-    image = bar.grab().toImage()
-    assert image.devicePixelRatio() == 1.0
-    middle = image.height() // 2
+    canvas = _schematic(_dashboard(application, shown, controller)).schematics[0].canvas
+    image = _painted(canvas)
     amounts = controller.snapshot().compartment_agent_amounts
-    total = sum(amounts.of(segment.quantity) for segment in segments)
+    total = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
+    bars = [canvas.share_bar(index) for index in range(6)]
+    column = canvas.width() / 6
+    painted_strings = canvas.painted_strings()
 
-    for segment in segments:
-        colour = QColor(trace_style(segment.quantity).color).rgb()
-        painted = sum(image.pixelColor(x, middle).rgb() == colour for x in range(image.width()))
-        expected = amounts.of(segment.quantity) / total * image.width()
-        assert abs(painted - expected) <= 2, segment.name
-        assert f"{segment.name} {segment.text}" in schematic.share_text.text()
+    assert len({bar.width() for bar in bars}) == 1, "the six bars are not one length"
 
-    assert not schematic.share_text.isHidden()
-
-    # Inside the outline, the row is coloured segments with one panel-coloured
-    # divider between each pair of neighbours, and no divider that stands
-    # beside another or covers a segment.
-    trace_colours = {QColor(trace_style(segment.quantity).color).rgb() for segment in segments}
-    panel = QColor(PANEL).rgb()
-    runs: list[int] = []
-    for x in range(1, image.width() - 1):
-        colour = image.pixelColor(x, middle).rgb()
-        if not runs or runs[-1] != colour:
-            runs.append(colour)
-    assert set(runs) <= trace_colours | {panel}, "every pixel is a segment or a divider"
-    assert runs[0] != panel
-    assert runs[-1] != panel
-    assert runs.count(panel) == len(runs) - runs.count(panel) - 1, seconds
+    for index, (reading, bar) in enumerate(zip(canvas.readings, bars, strict=True)):
+        assert column * index <= bar.left(), reading.name
+        assert bar.right() <= column * (index + 1), reading.name
+        assert painted_strings[4 * index + 3] == reading.share_text, reading.name
+        assert reading.share_text.endswith(" of the agent"), reading.name
+        middle = int(bar.center().y())
+        colour = QColor(trace_style(reading.quantity).color).rgb()
+        painted = sum(
+            image.pixelColor(x, middle).rgb() == colour
+            for x in range(int(bar.left()), int(bar.right()))
+        )
+        expected = amounts.of(reading.quantity) / total * bar.width()
+        assert abs(painted - expected) <= 2, (reading.name, painted, expected)
 
 
-def test_a_run_that_holds_no_agent_shows_an_empty_share_bar_and_says_why(
+def test_a_run_that_holds_no_agent_shows_empty_share_bars_and_says_why(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    schematic = _schematic(_dashboard(application, shown, SimulationController())).schematics[0]
-    image = schematic.share_bar.grab().toImage()
-    middle = image.height() // 2
-    colours = {QColor(trace_style(quantity).color).rgb() for quantity in COMPARTMENT_QUANTITIES}
+    """Before any agent, each bar is an outline, each share a dash, and the caption says why."""
 
-    assert schematic.share_bar.segments is None
-    assert schematic.share_text.text() == NO_AGENT_SHARE_LINE
-    assert not any(image.pixelColor(x, middle).rgb() in colours for x in range(image.width()))
+    schematic = _schematic(_dashboard(application, shown, SimulationController())).schematics[0]
+    canvas = schematic.canvas
+    image = _painted(canvas)
+    colours = {QColor(trace_style(quantity).color).rgb() for quantity in COMPARTMENT_QUANTITIES}
+    ink = QColor(INK).rgb()
+
+    assert [reading.share_text for reading in canvas.readings] == [NO_SHARE_TEXT] * 6
+    assert schematic.share_text.text() == NO_AGENT_SHARE_CAPTION
+    assert not schematic.share_text.isHidden()
+
+    for index in range(6):
+        bar = canvas.share_bar(index)
+        middle = int(bar.center().y())
+        row = [image.pixelColor(x, middle).rgb() for x in range(int(bar.left()), int(bar.right()))]
+        assert not any(colour in colours for colour in row), index
+        assert row[0] == ink, index
+        assert row[-1] == ink, index
