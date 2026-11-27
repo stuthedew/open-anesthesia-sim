@@ -131,6 +131,17 @@ _BOTTLE_PRICE_KEY: Final = "bottle_price"
 _BOTTLE_VOLUME_KEY: Final = "bottle_volume_ml"
 _CURRENCY_KEY: Final = "currency"
 _APPLIES_ON_KEY: Final = "applies_on"
+#: What a user calls each part of a price, for a refusal that names a missing
+#: one. The file's own keys are for a developer (`PL-VT87`).
+_PRICE_KEY_WORDS: Final = MappingProxyType(
+    {
+        _AGENT_KEY: "agent",
+        _APPLIES_ON_KEY: "date",
+        _BOTTLE_PRICE_KEY: "bottle price",
+        _BOTTLE_VOLUME_KEY: "bottle volume",
+        _CURRENCY_KEY: "currency",
+    }
+)
 _PRICE_KEYS: Final = frozenset(
     {_AGENT_KEY, _BOTTLE_PRICE_KEY, _BOTTLE_VOLUME_KEY, _CURRENCY_KEY, _APPLIES_ON_KEY}
 )
@@ -146,6 +157,30 @@ class PreferencesFileError(Exception):
 
     The message names the file, what was being done, and the reason.
     """
+
+
+def _require_above_zero(name: str, value: object) -> None:
+    """Refuse a bottle price or volume that is not a number above zero, in a user's words.
+
+    `require_positive_finite` makes the check, and this restates its refusal
+    for the user who typed the value, who reads it in the price form and in the
+    notice of refused preferences (`PL-VT87`). The original error is kept as
+    the cause, for a developer.
+
+    Raises:
+        TypeError: `value` is not a number, or is a `bool`.
+        SimulationConfigurationError: `value` is zero, negative, a NaN, an
+            infinity or too large for a float.
+    """
+
+    message = f"{name} must be a number above zero, and it is {value!r}"
+
+    try:
+        require_positive_finite(name, value)  # type: ignore[arg-type]
+    except TypeError as error:
+        raise TypeError(message) from error
+    except SimulationConfigurationError as error:
+        raise SimulationConfigurationError(message) from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,10 +215,11 @@ class AgentPrice:
         """Refuse a price that `docs/INTERFACE.md` § "Setting a price" says the store refuses.
 
         Raises:
-            SimulationConfigurationError: If the agent is not a shipped agent,
-                if the bottle price or the bottle volume is not a positive
-                finite number, or if the currency is not three capital
-                letters. The message names the field and the value. A price of
+            SimulationConfigurationError: If the simulator has no agent of
+                that name, if the bottle price or the bottle volume is not a
+                positive finite number, or if the currency is not three
+                capital letters. The message names the field, in the words the
+                View uses, and the value. A price of
                 zero is refused because it is far more likely to be an empty
                 field than an agent given away.
             TypeError: If the agent, the currency or the date is of the wrong
@@ -193,35 +229,31 @@ class AgentPrice:
         """
 
         if not isinstance(self.agent_id, str):
-            raise TypeError(f"an agent price's agent is a str, not {type(self.agent_id).__name__}")
+            raise TypeError(f"the agent must be named in words, and it is {self.agent_id!r}")
 
         if self.agent_id not in AGENT_DATA_FILENAMES:
             raise SimulationConfigurationError(
-                f"an agent price names {self.agent_id!r}, which is not a shipped agent; "
-                f"expected one of {sorted(AGENT_DATA_FILENAMES)}"
+                f"the simulator has no agent called {self.agent_id!r}; it has "
+                f"{', '.join(sorted(AGENT_DATA_FILENAMES))}"
             )
 
-        require_positive_finite(f"the {self.agent_id} bottle price", self.bottle_price)
-        require_positive_finite(
-            f"the {self.agent_id} bottle volume in {DisplayUnit.AGENT_LIQUID_MILLILITRES.recorded}",
+        _require_above_zero("the bottle price", self.bottle_price)
+        _require_above_zero(
+            f"the bottle volume in {DisplayUnit.AGENT_LIQUID_MILLILITRES.recorded}",
             self.bottle_volume_ml,
         )
 
-        if not isinstance(self.currency, str):
-            raise TypeError(
-                f"the {self.agent_id} price's currency is a str, not {type(self.currency).__name__}"
+        if not isinstance(self.currency, str) or not is_currency_code(self.currency):
+            message = (
+                "the currency must be a three-letter code in capital letters, such as USD, "
+                f"and it is {self.currency!r}"
             )
-
-        if not is_currency_code(self.currency):
-            raise SimulationConfigurationError(
-                f"the {self.agent_id} price's currency must be an ISO 4217 code of three capital "
-                f"letters, such as USD, and {self.currency!r} is not"
-            )
+            if not isinstance(self.currency, str):
+                raise TypeError(message)
+            raise SimulationConfigurationError(message)
 
         if isinstance(self.applies_on, datetime) or not isinstance(self.applies_on, date):
-            raise TypeError(
-                f"the {self.agent_id} price's date is a date, not {type(self.applies_on).__name__}"
-            )
+            raise TypeError(f"the date must be a calendar date, and it is {self.applies_on!r}")
 
         object.__setattr__(self, "bottle_price", float(self.bottle_price))
         object.__setattr__(self, "bottle_volume_ml", float(self.bottle_volume_ml))
@@ -526,11 +558,13 @@ def refusals_notice(path: Path, preferences: Preferences) -> str | None:
     may have replaced a refused entry by then, and that entry's reason no
     longer applies.
 
-    The notice names each refused preference, then says why in brackets, so
-    the reader can tell which ones to set again (Nielsen Norman Group,
-    "Error-Message Guidelines": "Concisely and precisely describe the issue").
-    It ends with what the reader can do, as a refusal a user reads must
-    (NUREG-0700 Rev. 3, guideline 2.7.3-1, `PL-VT87`). The agent cost View
+    The notice lists each refused preference on a line of its own, names it,
+    and says what is wrong with it in the user's words, as the GOV.UK Design
+    System's error summary lists each error. Microsoft's Windows error-message
+    guidelines ask for a problem stated "in terms of user actions or goals" and
+    for a full file path to stay out of the main instruction, so the path comes
+    last. The notice says what the reader can do, as a refusal a user reads
+    must (NUREG-0700 Rev. 3, guideline 2.7.3-1). `PL-VT87` records the sources. The agent cost View
     shows it, with the form that sets a price and the offer to discard the
     refused entries under it.
     """
@@ -543,9 +577,11 @@ def refusals_notice(path: Path, preferences: Preferences) -> str | None:
     if not refused:
         return None
 
+    lines = "\n".join(f"• {reason}" for reason in refused)
+
     return (
-        f"These saved preferences were refused and are not used: {'; '.join(refused)}. "
-        f"They are saved in {path}. {REFUSED_PREFERENCES_NEXT_STEP}"
+        f"These saved settings could not be used:\n{lines}\n"
+        f"{REFUSED_PREFERENCES_NEXT_STEP} They are saved in {path}."
     )
 
 
@@ -703,11 +739,11 @@ def _from_document(document: object) -> Preferences:
             # Name the price by its agent where the entry gives one, as the
             # reader set it in the View, and otherwise by its place in the file.
             name = (
-                f"your {agent_id} price"
+                f"Your {agent_id} price"
                 if agent_id is not None
-                else f"price entry {position + 1} in the file"
+                else f"Price {position + 1} in the file"
             )
-            refused.append(RefusedEntry(raw, f"{name} ({error})", agent_id))
+            refused.append(RefusedEntry(raw, f"{name}: {error}.", agent_id))
         else:
             prices[price.agent_id] = price
 
@@ -719,11 +755,11 @@ def _from_document(document: object) -> Preferences:
     )
 
     if unit_member is None:
-        offered = ", ".join(repr(member.value) for member in AGENT_COST_VIEW_UNITS)
+        offered = " or ".join(member.value for member in AGENT_COST_VIEW_UNITS)
         refused_unit = RefusedEntry(
             raw_unit,
-            f"the agent cost unit ({raw_unit!r} is not one of {offered}, so the View shows "
-            f"{DEFAULT_AGENT_COST_VIEW_UNIT.value})",
+            f"How agent amounts are shown: {raw_unit!r} is not one of the choices, {offered}, "
+            f"so the View shows {DEFAULT_AGENT_COST_VIEW_UNIT.value}.",
             None,
         )
     else:
@@ -739,24 +775,33 @@ def _from_document(document: object) -> Preferences:
 
 def _price_from_entry(raw: object) -> AgentPrice:
     if not isinstance(raw, dict):
-        raise TypeError(f"an entry is a JSON object, not {type(raw).__name__}")
+        raise TypeError(f"it is not a price, and it holds {raw!r}")
 
     keys = set(raw)
     if keys != _PRICE_KEYS:
-        missing = sorted(_PRICE_KEYS - keys)
-        unknown = sorted(keys - _PRICE_KEYS)
-        raise ValueError(f"its keys are wrong: missing {missing}, not known {unknown}")
+        problems = []
+        missing = [_PRICE_KEY_WORDS[key] for key in sorted(_PRICE_KEYS - keys)]
+        unknown = [repr(key) for key in sorted(keys - _PRICE_KEYS)]
+        if missing:
+            listed = (
+                missing[0] if len(missing) == 1 else f"{', '.join(missing[:-1])} or {missing[-1]}"
+            )
+            problems.append(f"it has no {listed}")
+        if unknown:
+            problems.append(f"it holds entries the simulator does not use: {', '.join(unknown)}")
+        raise ValueError(", and ".join(problems))
 
     applies_on = raw[_APPLIES_ON_KEY]
     if not isinstance(applies_on, str) or _DATE_PATTERN.fullmatch(applies_on) is None:
         raise ValueError(
-            f"its date must be written as YYYY-MM-DD, such as 2008-03-05, and {applies_on!r} is not"
+            "the date must be written as year-month-day, such as 2008-03-05, "
+            f"and it is {applies_on!r}"
         )
 
     try:
         day = date.fromisoformat(applies_on)
     except ValueError:
-        raise ValueError(f"its date {applies_on!r} is not a real calendar date") from None
+        raise ValueError(f"the date {applies_on!r} is not a real calendar date") from None
 
     return AgentPrice(
         agent_id=raw[_AGENT_KEY],

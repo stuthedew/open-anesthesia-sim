@@ -484,12 +484,12 @@ def test_a_cost_too_large_and_a_cost_too_small_each_say_which() -> None:
         return cost_shown(_shown_with_liquid(liquid_ml), _priced(price)).cost
 
     assert shown(1e308, 26.0) == (
-        "No cost: the cost of the isoflurane is too large to compute. "
-        "Check your price for isoflurane below."
+        "No cost: at your price, the isoflurane would cost more than the simulator can show. "
+        "Check the bottle price and volume below for a typing error."
     )
     assert shown(5e-324, 0.4) == (
-        "No cost: the cost of the isoflurane is too small to compute. "
-        "Check your price for isoflurane below."
+        "No cost: at your price, the isoflurane would cost less than the simulator can show. "
+        "Check the bottle price and volume below for a typing error."
     )
 
 
@@ -533,10 +533,18 @@ def test_a_price_entered_as_the_reader_types_it_is_read_exactly() -> None:
         pytest.param("2e1", "100", "USD", "at most one decimal point", id="an exponent"),
         pytest.param("", "100", "USD", "bottle price", id="an empty price"),
         pytest.param("20.47", "", "USD", "bottle volume", id="an empty volume"),
-        pytest.param("0", "100", "USD", "positive", id="a price of zero"),
-        pytest.param("20.47", "0.0", "USD", "positive", id="a volume of zero"),
-        pytest.param("20.47", "100", "usd", "three capital letters", id="a lower-case code"),
-        pytest.param("20.47", "100", "$", "three capital letters", id="a sign for the currency"),
+        pytest.param("0", "100", "USD", "a number above zero", id="a price of zero"),
+        pytest.param("20.47", "0.0", "USD", "a number above zero", id="a volume of zero"),
+        pytest.param(
+            "20.47", "100", "usd", "three-letter code in capital letters", id="a lower-case code"
+        ),
+        pytest.param(
+            "20.47",
+            "100",
+            "$",
+            "three-letter code in capital letters",
+            id="a sign for the currency",
+        ),
     ],
 )
 def test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason(

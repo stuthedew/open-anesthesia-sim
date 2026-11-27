@@ -117,7 +117,7 @@ def test_the_cost_views_unit_names_are_the_members_full_spellings() -> None:
 
 def test_a_refused_bottle_volume_names_its_unit_from_the_member() -> None:
     with pytest.raises(
-        SimulationConfigurationError, match="isoflurane bottle volume in millilitres of liquid"
+        SimulationConfigurationError, match="the bottle volume in millilitres of liquid"
     ):
         AgentPrice("isoflurane", 20.47, 0.0, "USD", date(2008, 3, 5))
 

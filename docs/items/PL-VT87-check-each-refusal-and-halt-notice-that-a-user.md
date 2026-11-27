@@ -86,9 +86,8 @@ Changed:
    on the owner's word on 2026-11-27 ("Should say whether too large and
    separate too small"), it was split in two. `COST_TOO_LARGE_TEXT` covers a
    cost that overflows or is too large to hold to its minor unit, and
-   `COST_TOO_SMALL_TEXT` a cost that underflows to zero. Each says "too large
-   to compute" or "too small to compute", then "Check your price for {agent}
-   below." `test_a_cost_too_large_and_a_cost_too_small_each_say_which` in
+   `COST_TOO_SMALL_TEXT` a cost that underflows to zero. Their present wording
+   is in the next paragraph. `test_a_cost_too_large_and_a_cost_too_small_each_say_which` in
    `tests/unit/test_agent_cost.py` checks both sentences as written.
 
 Left without a step, because the user can do nothing about the cause in the
@@ -112,6 +111,46 @@ notice began "some preferences" in lower case. The audit's mutation run then
 showed that one refused entry cannot catch a wrong separator between reasons,
 so the test now refuses three entries and compares the whole notice; a mutant
 that joins them with "XX; XX" fails it.
+
+**Plain-language rewrite, 2026-11-27.** The owner asked of the texts above "Are
+these best practice in terms of technical writing for humans?". Checked
+against the published guides, they were not, in three ways. Reasons were
+written from the code's view, such as "an agent price's agent is a str, not
+int". The file's full path sat in the middle of the main sentence. "Too large
+to compute" described what the software could not do rather than what the user
+had entered. The guides read on 2026-11-27 were the Microsoft Windows
+error-message guidelines (learn.microsoft.com/en-us/windows/win32/uxguide/mess-error:
+write "in terms of user actions or goals, not in terms of what the software is
+unhappy with", "Avoid technical jargon", be specific with "names, locations,
+and values", and keep full file paths out of the main instruction), the
+Nielsen Norman Group's "Error-Message Guidelines", the GOV.UK Design System's
+error summary, and GitLab Pajamas on error messages ("concise, specific, and
+consistent").
+
+What changed:
+
+1. `refusals_notice` opens "These saved settings could not be used:", then
+   lists one refused entry per line, each led by its name in the View's words,
+   such as "Your isoflurane price:" or "How agent amounts are shown:", and
+   the reason in the user's terms. It ends with the step and then the file's
+   location: "Set them again in this View, or discard the refused entries
+   below. They are saved in {path}."
+2. Each price-entry reason names the field in the View's words and the value:
+   "the bottle price must be a number above zero, and it is 0", "the currency
+   must be a three-letter code in capital letters, such as USD, and it is
+   'usd'", "the date must be written as year-month-day, such as 2008-03-05".
+   `_require_above_zero` in `app/preferences.py` gives the bottle price and
+   volume one wording. A refused display unit names the choices and the one
+   the View shows instead.
+3. The cost texts say what the user can check: "No cost: at your price, the
+   {agent} would cost more than the simulator can show. Check the bottle price
+   and volume below for a typing error." `COST_TOO_SMALL_TEXT` says "less
+   than". `PRICE_PER_ML_NOT_SHOWN_TEXT` says the price per mL is "too large or
+   too small to use" and asks for the same check.
+
+The message given when the whole preferences file is unreadable still
+describes the file's keys in its own terms. `PL-W312` records it, because that
+text is not one this item's inventory listed.
 
 **Docs checked at close-out.** `docs/INTERFACE.md` § "A cost at the reader's
 price" (updated, with the steps each case names), `docs/MODEL.md` (no mention of

@@ -317,18 +317,22 @@ COST_ROUNDED_TEXT: Final = "Rounded, so the figures may not multiply exactly."
 NO_PRICE_TEXT: Final = "No cost: set your price for {agent} below."
 REFUSED_PRICE_TEXT: Final = "No cost: your saved price for {agent} was refused. Set it again below."
 PRICE_PER_ML_NOT_SHOWN_TEXT: Final = (
-    "No cost: your bottle price and volume for {agent} do not give a usable price per mL. "
-    "Check them below."
+    "No cost: your bottle price and volume for {agent} give a price per mL too large or too "
+    "small to use. Check them below for a typing error."
 )
 #: A cost too large is one that overflows, or one too large to hold to its
 #: currency's minor unit. A cost too small is one that underflows to zero. Each
 #: says which, so the reader knows which way the price is wrong (project owner,
-#: 2026-11-27, `PL-VT87`).
+#: 2026-11-27, `PL-VT87`). A price that far out is most likely mistyped, so the
+#: text says so, in the user's terms rather than the computer's (Microsoft,
+#: Windows error-message guidelines).
 COST_TOO_LARGE_TEXT: Final = (
-    "No cost: the cost of the {agent} is too large to compute. Check your price for {agent} below."
+    "No cost: at your price, the {agent} would cost more than the simulator can show. "
+    "Check the bottle price and volume below for a typing error."
 )
 COST_TOO_SMALL_TEXT: Final = (
-    "No cost: the cost of the {agent} is too small to compute. Check your price for {agent} below."
+    "No cost: at your price, the {agent} would cost less than the simulator can show. "
+    "Check the bottle price and volume below for a typing error."
 )
 COST_NOT_CONVERTED_TEXT: Final = "No cost: the {agent} could not be converted to liquid."
 

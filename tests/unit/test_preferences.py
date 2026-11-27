@@ -271,19 +271,19 @@ def test_a_file_that_cannot_be_read_turns_saving_off(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("field", "value", "reason"),
     [
-        ("agent", "halothane", "not a shipped agent"),
+        ("agent", "halothane", "no agent called 'halothane'"),
         ("bottle_price", 0, "bottle price"),
         ("bottle_price", -20.47, "bottle price"),
         ("bottle_price", "20.47", "bottle price"),
         ("bottle_price", True, "bottle price"),
         ("bottle_volume_ml", 0.0, "bottle volume"),
-        ("currency", "usd", "three capital"),
-        ("currency", "US", "three capital"),
-        ("currency", "USDX", "three capital"),
-        ("currency", "$", "three capital"),
+        ("currency", "usd", "three-letter code in capital letters"),
+        ("currency", "US", "three-letter code in capital letters"),
+        ("currency", "USDX", "three-letter code in capital letters"),
+        ("currency", "$", "three-letter code in capital letters"),
         ("applies_on", "2008-02-30", "not a real calendar date"),
-        ("applies_on", "03/05/2008", "YYYY-MM-DD"),
-        ("applies_on", "20080305", "YYYY-MM-DD"),
+        ("applies_on", "03/05/2008", "year-month-day"),
+        ("applies_on", "20080305", "year-month-day"),
     ],
 )
 def test_a_refused_price_is_not_used_and_the_others_are(
@@ -308,7 +308,7 @@ def test_a_refused_price_is_not_used_and_the_others_are(
     # The refused price is named by the agent it gives, or by its place in the
     # file where it gives none as text.
     name = refused["agent"]
-    named = f"your {name} price (" if isinstance(name, str) else "price entry 2 in the file ("
+    named = f"Your {name} price: " if isinstance(name, str) else "Price 2 in the file: "
     assert named in loaded.notice
     assert reason in loaded.notice
 
@@ -345,7 +345,7 @@ def test_a_refused_unit_falls_back_to_liquid_with_a_notice_and_is_kept(
     assert loaded.writable
     assert loaded.preferences.agent_cost_unit is AgentAmountUnit.MILLILITRES_OF_LIQUID
     assert loaded.notice is not None
-    assert "agent cost unit" in loaded.notice
+    assert "How agent amounts are shown: " in loaded.notice
     assert loaded.preferences.price_for("sevoflurane") is not None
 
     store.save(loaded.preferences)
@@ -371,15 +371,14 @@ def test_the_notice_of_refused_preferences_says_what_the_reader_can_do(tmp_path:
     # Three refused entries, so a wrong separator between them shows. Each is
     # named first, then why it was refused.
     assert notice == (
-        "These saved preferences were refused and are not used: "
-        "your isoflurane price (the isoflurane price's currency must be an ISO 4217 code of "
-        "three capital letters, such as USD, and 'usd' is not); "
-        "your desflurane price (the desflurane bottle price must be positive and finite, "
-        "and 0 is not greater than zero); "
-        "the agent cost unit ('gallons' is not one of 'millilitres of liquid', "
-        "'litres of vapour', so the View shows millilitres of liquid). "
-        f"They are saved in {tmp_path / PREFERENCES_FILE_NAME}. "
-        "Set them again in this View, or discard the refused entries below."
+        "These saved settings could not be used:\n"
+        "• Your isoflurane price: the currency must be a three-letter code in capital letters, "
+        "such as USD, and it is 'usd'.\n"
+        "• Your desflurane price: the bottle price must be a number above zero, and it is 0.\n"
+        "• How agent amounts are shown: 'gallons' is not one of the choices, millilitres of "
+        "liquid or litres of vapour, so the View shows millilitres of liquid.\n"
+        "Set them again in this View, or discard the refused entries below. "
+        f"They are saved in {tmp_path / PREFERENCES_FILE_NAME}."
     )
 
 
@@ -391,17 +390,19 @@ def test_a_price_entry_that_is_not_an_object_is_refused_alone(tmp_path: Path) ->
     assert loaded.writable
     assert loaded.preferences.price_for("sevoflurane") is not None
     assert loaded.notice is not None
-    assert "price entry 1 in the file (" in loaded.notice
+    assert "Price 1 in the file: it is not a price" in loaded.notice
 
 
 # ------------------------------------------------------------- the records
 
 
 def test_a_price_entered_in_the_wrong_form_is_refused_where_it_is_built() -> None:
-    with pytest.raises(SimulationConfigurationError, match="isoflurane bottle price"):
+    with pytest.raises(
+        SimulationConfigurationError, match="the bottle price must be a number above zero"
+    ):
         AgentPrice("isoflurane", 0.0, 100.0, "USD", date(2008, 3, 5))
 
-    with pytest.raises(SimulationConfigurationError, match="three capital letters"):
+    with pytest.raises(SimulationConfigurationError, match="three-letter code in capital letters"):
         AgentPrice("isoflurane", 20.47, 100.0, "€", date(2008, 3, 5))
 
     with pytest.raises(TypeError, match="date"):
@@ -686,7 +687,7 @@ def test_a_price_whose_agent_is_not_text_is_refused_alone_and_names_no_agent(
     )
     assert [entry.agent_id for entry in loaded.preferences.refused_prices] == [None, None, None]
     assert loaded.notice is not None
-    assert all(f"price entry {number} in the file (" in loaded.notice for number in (1, 2, 3))
+    assert all(f"Price {number} in the file: " in loaded.notice for number in (1, 2, 3))
 
 
 def test_a_file_holding_text_beyond_ascii_is_read_whatever_the_platform_encoding_is(

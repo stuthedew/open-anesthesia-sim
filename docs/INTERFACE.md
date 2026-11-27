@@ -6567,8 +6567,9 @@ form below the readout. Where the cost itself cannot be computed, the readout
 says whether it is too large or too small, so the reader knows which way the
 price is wrong
 (`test_a_cost_too_large_and_a_cost_too_small_each_say_which` in
-`tests/unit/test_agent_cost.py`). The notice that names the refused entries ends
-the same way: "Set them again in this View, or discard the refused entries below." In
+`tests/unit/test_agent_cost.py`). The notice that names the refused entries
+lists them one per line and gives the step "Set them again in this View, or
+discard the refused entries below." In
 the fourth case the reader can do nothing in this View, so the readout names no
 step (NUREG-0700 Rev. 3, guideline 2.7.3-1; `PL-VT87`). For developers: the
 texts are the constants beside `NO_PRICE_TEXT` in `app/agent_cost.py`, and
