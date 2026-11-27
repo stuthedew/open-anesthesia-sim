@@ -1279,6 +1279,10 @@ class _SettingSlider(QSlider):
     would repeat into the run with no announcement, and its steps would be
     counted as part of the drag.
 
+    **A hold on the handle can be cancelled** (`cancel_hold`, `PL-HPD0`). The
+    handle goes back to the value the slider holds, the rest of the gesture
+    moves nothing, and its release applies nothing.
+
     **Assistive technology is told the setting, not the position**
     (`PL-9QY5`). The slider's position is a count of display steps, such as
     180 for 1.80% sevoflurane, and Qt's own accessible slider reports that
@@ -1314,6 +1318,9 @@ class _SettingSlider(QSlider):
         self._grab_offset: int | None = None
         self._ignored_keys: set[int] = set()
         self._ignoring_swipe = False
+        # True from a cancelled hold until the release of the mouse button that
+        # held the handle (`cancel_hold`).
+        self._hold_cancelled = False
 
     def setting(self) -> float:
         """Return the setting that the slider's value stands for, in the setting's unit."""
@@ -1342,6 +1349,31 @@ class _SettingSlider(QSlider):
         position = slider_position(min(max(setting, lowest), highest), self.decimals)
         self.input_started.emit()
         self.setValue(position)
+
+    def cancel_hold(self) -> None:
+        """End a pointer's hold on the handle without applying the value under it.
+
+        The handle goes back to the value the slider holds, and no signal is
+        emitted, so nothing is applied and no preview is reported as ended.
+        Until the mouse button that held the handle is released, a move of the
+        pointer moves nothing, and the release applies nothing. A slider whose
+        handle is not held is left as it is.
+
+        Each platform ends a pointer gesture in this way when something takes
+        it away. Android's `MotionEvent.ACTION_CANCEL` says "You should not
+        perform any action that you normally would as a result of this
+        gesture", and `PL-HPD0` lists the other sources.
+        """
+
+        if not self.isSliderDown():
+            return
+
+        self._hold_cancelled = True
+        self._grab_offset = None
+
+        with QSignalBlocker(self):
+            self.setSliderPosition(self.value())
+            self.setSliderDown(False)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
         if self.isSliderDown():
@@ -1395,6 +1427,8 @@ class _SettingSlider(QSlider):
             event.accept()
             return
 
+        # No button was down, so no cancelled hold is still going on.
+        self._hold_cancelled = False
         self.input_started.emit()
         button = event.button().value
         moves_to_pointer = self.style().styleHint(
@@ -1433,6 +1467,10 @@ class _SettingSlider(QSlider):
             self.sliderPressed.emit()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        if self._hold_cancelled:
+            event.accept()
+            return
+
         if self._grab_offset is None or not self.isSliderDown():
             super().mouseMoveEvent(event)
             return
@@ -1459,6 +1497,17 @@ class _SettingSlider(QSlider):
             return
 
         self._grab_offset = None
+
+        if self._hold_cancelled:
+            self._hold_cancelled = False
+
+            # Qt's own release still runs, so the slider no longer counts the
+            # handle as pressed. Its signals are blocked, so it applies nothing.
+            with QSignalBlocker(self):
+                super().mouseReleaseEvent(event)
+
+            return
+
         super().mouseReleaseEvent(event)
 
     def _handle_rect(self) -> QRect:
@@ -1814,6 +1863,19 @@ class ParameterSlider(QWidget):
         """The value the slider's position stands for, in the setting's unit."""
 
         return self.slider.setting()
+
+    def cancel_hold(self) -> None:
+        """Let go of a held thumb without applying its value, and end its preview without a signal.
+
+        The View calls this when the run starts over, by a Reset or an agent
+        change, while the thumb is held (`PL-HPD0`). The run's view has already
+        dropped the preview, so `preview_ended` is not emitted. Neither is
+        `value_changed`, so the release applies nothing to the new run. A thumb
+        that is not held is left as it is.
+        """
+
+        self._previewing = False
+        self.slider.cancel_hold()
 
     def _on_slider_moved(self, position: int) -> None:
         dial_input = DialInput.RELEASE if self._releasing else DialInput.STEP

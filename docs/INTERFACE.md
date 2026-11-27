@@ -6380,8 +6380,12 @@ pattern, because those tell the six compartments apart.
    the press and is gone from the frame drawn at release. It also ends while the
    handle is still held when the run starts over, on a Reset or an agent change,
    and when a branch is opened or dropped, because its label would otherwise
-   name an agent or a run that is no longer shown (`PL-1WFW`). If the held
-   handle then moves, a new preview is drawn from the run on screen.
+   name an agent or a run that is no longer shown (`PL-1WFW`). After a branch
+   is opened or dropped, a move of the held handle draws a new preview from the
+   run on screen. A start-over also lets go of the handle, so the rest of the
+   drag moves nothing and its release applies nothing to the new run
+   (`PL-HPD0`). The drag began on a run that is gone, and each platform's own
+   input system cancels a gesture whose target is taken away in the same way.
 
 **The preview comes from the same model and version as the run.** It starts from
 the run's state at its current time, as § "Each second has one stored state"
@@ -6435,6 +6439,21 @@ moves the handle only as far as the pointer moves.
 **A stopped run accepts no new setting and draws no preview.** A run stops when
 it fails or reaches the end of the longest run the simulator supports.
 
+**A preview that would not start from the run's own values is not drawn, and
+the banner says why while the handle is held** (`PL-412F`). A preview rebuilds
+the run from its settings and reads the agent, the patient and the circuit from
+the data files again. A data file changed after the run began gives the rebuilt
+run values that the run does not hold, so its future would be another case's.
+The run's notice banner then names the dial, says that the simulator's data may
+have changed or the simulator may have a fault, and says to reopen the
+simulator to preview a setting. It also says that releasing the dial still
+applies the new setting, because applying a value rebuilds nothing. So it is
+not worded as a refused setting, and it takes the place of an earlier refused
+setting's notice until the drag ends. The failure log records each value that
+differs. Every other refusal of a
+preview is also a refusal of the value itself, so the drag shows none of them
+and the release reports it in the banner.
+
 **The time window keeps its width during a preview.** It slides so that the
 run's current time sits at mid-plot: half the window shows the run that
 happened, and half shows the prediction. Early in a run the window stops at
@@ -6464,7 +6483,14 @@ in `tests/unit/test_chart_frame.py` checks the split. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial
 run is rebuilt from the settings in force and checked to match the run in every
 value. The trial run then takes the new value through the same setter that
-applies a value to the run. The centred time window comes from
+applies a value to the run. A trial run that does not match raises
+`controller.PreviewOfAnotherCase`, which `RunView.request_preview` puts in the
+banner (`test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_the_release`
+in `tests/integration/simulation_view/test_simulation_view_refusals.py`).
+`dashboard_frame.notice` ranks that banner below a stopped run and above a
+refused setting
+(`test_a_refused_preview_outranks_a_refused_setting_and_says_the_release_still_applies`
+in `tests/unit/test_dashboard_frame.py`). The centred time window comes from
 `chart_time_base.preview_window`, and the wording of the off-scale notice from
 `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
 
@@ -6484,6 +6510,11 @@ presses under Fusion and under a style that returns the macOS hints
 (`test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview`,
 `test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing`,
 `test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves`).
+`views.RunDials.show_dials` lets go of a held handle when the presentation's
+start-over count, `RunPresentation.case`, changes. `_SettingSlider.cancel_hold`
+puts the handle back with its signals blocked and ignores the rest of the
+gesture (`test_a_thumb_held_when_the_run_starts_over_is_let_go_and_its_release_applies_nothing`
+in the same file).
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel

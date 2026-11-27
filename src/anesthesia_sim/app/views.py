@@ -1220,6 +1220,12 @@ class RunDials(QWidget):
     apart. A lone run is not named. The name is written from the presentation on every tick, so it
     changes with the run set (`PL-CPF2`).
 
+    A thumb still held when the run starts over, by a Reset or an agent
+    change, is let go before the new run's settings are written. Its release
+    then applies nothing, so a drag begun on the run that was discarded never
+    sets the new one (`PL-HPD0`). The row tells a start-over from the count in
+    `RunPresentation.case`.
+
     Args:
         run_id: The run whose settings the dials show and ask to change.
         requests: How the View asks the dashboard for a change.
@@ -1234,6 +1240,9 @@ class RunDials(QWidget):
         super().__init__()
         self._run_id = run_id
         self._requests = requests
+        # The start-over count of the presentation this row last showed, or
+        # None before the first (`show_dials`).
+        self._case: int | None = None
         self.controls: ParameterControls | None = None
         self.name_text = styled_label("", color=INK, bold=True)
         self.name_text.setHidden(True)
@@ -1253,6 +1262,9 @@ class RunDials(QWidget):
     def show_dials(self, run: RunPresentation) -> None:
         """Write the run's name, then the four dials from `run.dials` or the line in their place.
 
+        A thumb held across a start-over of the run is let go first, applying
+        nothing (`PL-HPD0`).
+
         Args:
             run: The presentation of the run that this row was built for.
 
@@ -1266,6 +1278,12 @@ class RunDials(QWidget):
                 f"a presentation built for {run_label(run.run_id)} was given to the dials of "
                 f"{run_label(self._run_id)}: each row of dials shows the run it was built for"
             )
+
+        started_over = self._case is not None and run.case != self._case
+        self._case = run.case
+
+        if started_over and self.controls is not None:
+            self.controls.cancel_holds()
 
         self.name_text.setText(run.name or "")
         self.name_text.setHidden(run.name is None)
