@@ -159,6 +159,34 @@ def test_a_preview_on_an_axis_whose_columns_are_a_second_apart_is_drawn_at_every
     assert window.times_s == tuple(range(60, 121))
 
 
+def test_a_run_on_an_axis_of_zero_width_is_drawn_at_that_one_second() -> None:
+    """An axis of zero width is one instant, and the run is drawn there alone (`PL-WZDM`).
+
+    At 30 s the run holds a state, so that one second is drawn. At 30.5 s it
+    holds none, because a run stands only on whole seconds, so nothing is.
+    """
+
+    run = _isoflurane_run_off_its_defaults()
+
+    assert run.drawn_window(30.0, 30.0, 150).times_s == (30,)
+    assert run.drawn_window(30.5, 30.5, 150).times_s == ()
+
+
+def test_a_preview_toward_an_axis_of_zero_width_is_drawn_at_every_second_up_to_it() -> None:
+    """A prediction toward an axis of zero width is drawn one second apart (`PL-WZDM`).
+
+    The run has reached 60 s and the axis is the one instant 70 s. Its grid
+    spacing is one second, so the prediction is drawn at each second from the
+    reach to 70 s, as the run would be drawn there.
+    """
+
+    run = _isoflurane_run_off_its_defaults()
+
+    window = run.preview_window(SettingPreview(ControlInput.FRESH_GAS_FLOW, 6.0), 70.0, 70.0, 150)
+
+    assert window.times_s == tuple(range(60, 71))
+
+
 def test_a_preview_on_an_axis_that_ends_at_the_reach_is_an_empty_window_of_the_run_s_agent() -> (
     None
 ):
