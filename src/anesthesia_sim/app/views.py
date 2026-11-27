@@ -55,7 +55,6 @@ one of the tick's presentations.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import replace
 from functools import partial
 from types import MappingProxyType
 from typing import Final, cast
@@ -113,7 +112,7 @@ from anesthesia_sim.app.dashboard_frame import (
     wash_in_state_lines,
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
-from anesthesia_sim.app.preferences import Preferences
+from anesthesia_sim.app.preferences import Preferences, chart_ceiling_notice
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_agent_price import PriceEntry, RefusedEntriesDiscard
 from anesthesia_sim.app.qt_chart import (
@@ -200,18 +199,18 @@ _STATE_VERSION: Final = 1
 #: The version of a chart View's saved state. Version 2 added the chart's
 #: time window under `_TIME_BASE_KEY` (`PL-L59K`). Version 1 held no setting,
 #: so a chart treats a version 1 state as the default window and loses nothing.
+#:
+#: A concentration chart saved by v0.6.22 to v0.6.24 also holds its own axis
+#: top in its version 2 state, under "ceiling_mac" (`PL-K1VH`). The top is now
+#: the reader's preference, which every chart and schematic shares
+#: (`PL-7LZ7`), so a chart reads its window from such a state and passes over
+#: the old top. The state is still readable, and the chart shows no notice.
 _CHART_STATE_VERSION: Final = 2
 _SETTINGLESS_CHART_STATE_VERSION: Final = 1
 
 #: The key under which a chart saves its window, in the form
 #: `chart_time_base.saved_time_base_value` writes.
 _TIME_BASE_KEY: Final = "time_base_s"
-
-#: The key under which the concentration chart saves the top of its axis, as
-#: its value in MAC (`PL-K1VH`). It sits in the chart's version 2 state beside
-#: the window. A state saved before the key existed has none, and the chart
-#: then opens at the standard top, which is the top it always had.
-_CEILING_KEY: Final = "ceiling_mac"
 
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
@@ -372,35 +371,6 @@ def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
         return saved_time_base(saved.get(_TIME_BASE_KEY)), None
     except ValueError:
         return None, UNREADABLE_STATE_TEXT
-
-
-def _read_ceiling(saved: object) -> tuple[ChartCeiling, str | None]:
-    """Return the axis top a concentration chart saved, and a notice if it could not be read.
-
-    A state with no `_CEILING_KEY` gives the standard top. A value that is not
-    one of `ChartCeiling`'s tops gives the standard top with
-    `UNREADABLE_STATE_TEXT`, so the chart says that it is not showing what was
-    saved (Q4). A state that `_read_time_base` cannot read is that function's
-    to report, so it gives the standard top and no second notice.
-    """
-
-    if (
-        not isinstance(saved, Mapping)
-        or _CEILING_KEY not in saved
-        or unreadable_state_text(saved, _CHART_STATE_VERSION) is not None
-    ):
-        return ChartCeiling.STANDARD, None
-
-    value = saved[_CEILING_KEY]
-
-    # `type` rather than `isinstance`, so that True does not pass for 1.
-    if type(value) not in (int, float):
-        return ChartCeiling.STANDARD, UNREADABLE_STATE_TEXT
-
-    try:
-        return ChartCeiling(value), None
-    except ValueError:
-        return ChartCeiling.STANDARD, UNREADABLE_STATE_TEXT
 
 
 class _TimeWindow:
@@ -633,6 +603,13 @@ def _state_notice(text: str | None) -> QLabel:
     return notice
 
 
+def _show_notice(notice: QLabel, text: str | None) -> None:
+    """Write a conditional line built by `_state_notice`, and hide it while `text` is None."""
+
+    notice.setText(text or "")
+    notice.setHidden(text is None)
+
+
 def _saved_state() -> SavedState:
     return MappingProxyType({STATE_VERSION_KEY: _STATE_VERSION})
 
@@ -720,8 +697,7 @@ def _withholds(shown: ShownFrame | None, drawn: ChartFrame | None, width_px: flo
 
     Args:
         shown: The tick's frame for the chart's window, or None.
-        drawn: The frame the chart's plot was drawn from, or None. A chart
-            at a top other than the standard one draws a copy of that frame.
+        drawn: The frame the chart's plot was drawn from, or None.
         width_px: The width of the chart's plot, in logical pixels.
     """
 
@@ -799,12 +775,14 @@ class ConcentrationView(QWidget):
     as soon as it applies (`PL-CBYS`).
 
     The time window is the View's own, set from its control and saved in its
-    state (`PL-L59K`). So is the top of the axis, which the reader chooses
-    from `ChartCeiling` (`PL-K1VH`). The dashboard assembles each frame at the
-    standard top, so that every chart showing one window shares its frame,
-    and this View draws it at its own top. The legend shows the dashboard's compartment selection
-    and asks for a change through the context's requests, so two of these
-    Views show the same compartments (`PL-VN6M`).
+    state (`PL-L59K`). The top of the axis is not. It is the reader's
+    preference, chosen from `ChartCeiling` (`PL-K1VH`), and every
+    concentration chart and every compartment schematic draws against it
+    (`PL-7LZ7`). The dashboard assembles each frame at that top. The
+    axis-top control shows the top of the frame on the plot, and asks for
+    another through the context's requests. The legend shows the dashboard's
+    compartment selection and asks for a change in the same way, so two of
+    these Views show the same compartments (`PL-VN6M`).
 
     Args:
         context: What the View is built from.
@@ -822,15 +800,15 @@ class ConcentrationView(QWidget):
         super().__init__()
         self._drawn = False
         self._window = _TimeWindow(context)
-        self._ceiling, ceiling_notice = _read_ceiling(context.saved_state)
-        # The top that the plot shows now, and the frame it was drawn from
-        # before this View set its top. A kept frame is drawn again only when
-        # it is not that frame, or when the reader has chosen another top.
-        self._drawn_ceiling: ChartCeiling | None = None
+        # The frame the plot shows now. A kept frame is drawn again only when
+        # it is not this frame.
         self._source: ChartFrame | None = None
-        self._request_frame = context.requests.frame
+        # The top that the axis-top control names: the top of the frame on
+        # the plot, or the reader's top while the plot is withheld. None
+        # before the first tick.
+        self._shown_ceiling: ChartCeiling | None = None
+        self._request_ceiling = context.requests.chart_ceiling
         self.ceiling_selector = ChartCeilingSelector()
-        self.ceiling_selector.show_ceiling(self._ceiling)
         self.ceiling_selector.ceiling_requested.connect(self._choose_ceiling)
         self.chart = ConcentrationChart()
         self.legend = TraceLegend()
@@ -848,7 +826,8 @@ class ConcentrationView(QWidget):
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
         self.capped_traces_text.setHidden(True)
-        self.state_notice = _state_notice(self._window.notice_text or ceiling_notice)
+        self.state_notice = _state_notice(self._window.notice_text)
+        self.ceiling_notice = _state_notice(None)
         self.withheld_text = _withheld_frame_notice()
         self.off_scale = _RunLines(WARNING, italic=True)
         self.unmarked_changes = _RunLines(MUTED, italic=True)
@@ -868,6 +847,7 @@ class ConcentrationView(QWidget):
         column.addLayout(controls)
         column.addWidget(self._window.held_row)
         column.addWidget(self.state_notice)
+        column.addWidget(self.ceiling_notice)
         column.addWidget(
             FittedScroll((self.legend,), CHART_KEY_LEAST_HEIGHT, CONCENTRATION_LEGEND_NAME)
         )
@@ -892,36 +872,29 @@ class ConcentrationView(QWidget):
         lines, names the runs the tick holds now, and shows why
         (`run_presentation.shown_without_a_frame`). A kept frame is withheld
         in the same way in the cases that `_withholds` names.
+
+        While the saved axis top was refused, a line under the controls says
+        so, on every tick (`preferences.chart_ceiling_notice`).
         """
 
+        _show_notice(self.ceiling_notice, chart_ceiling_notice(tick.preferences.preferences))
         shown = tick.frame
 
-        # At a top other than the standard one the plot holds a copy of the
-        # shared frame, so whether the plot already shows the kept frame is
-        # read from the frame the copy was made from.
         if _withholds(shown, self._source, self.chart.plot_width_px()):
             self._withhold(tick)
             return
 
-        source = _frame_to_draw(
-            shown, self._source if self._drawn_ceiling is self._ceiling else None
-        )
+        frame = _frame_to_draw(shown, self._source)
 
-        if source is None or shown is None:
+        if frame is None or shown is None:
             self.off_scale.drop_absent(tick.runs)
             self.unmarked_changes.drop_absent(tick.runs)
             return
 
-        # A frame at this View's top already is drawn as it is, so Views at the
-        # standard top still share one frame object with the other charts.
-        frame = (
-            source if source.ceiling is self._ceiling else replace(source, ceiling=self._ceiling)
-        )
         self.chart.draw(frame)
         self._drawn = True
-        self._source = source
-        self._drawn_ceiling = self._ceiling
-        self.ceiling_selector.show_ceiling(self._ceiling)
+        self._source = frame
+        self._show_ceiling(frame.ceiling)
         self._window.drew(frame)
         self.withheld_text.setHidden(True)
         # Show the run names before the selection. Then, when the legend is told
@@ -944,6 +917,7 @@ class ConcentrationView(QWidget):
         self.chart.withhold()
         self._window.withheld()
         self._source = None
+        self._show_ceiling(tick.preferences.preferences.chart_ceiling)
         self.withheld_text.setHidden(False)
         self.legend.show_run_names(_shown_run_names(tick.runs))
         self.legend.show_selection(tick.selection)
@@ -953,29 +927,28 @@ class ConcentrationView(QWidget):
         self.off_scale.drop_absent(())
         self.unmarked_changes.drop_absent(())
 
-    def _choose_ceiling(self, ceiling: ChartCeiling) -> None:
-        self._ceiling = ceiling
-        self._request_frame()
+    def _show_ceiling(self, ceiling: ChartCeiling) -> None:
+        self._shown_ceiling = ceiling
+        self.ceiling_selector.show_ceiling(ceiling)
 
-        # A frame that drew has already shown the pick. One that failed drew
-        # nothing, so the control goes back to the top still on the plot.
-        if self._drawn_ceiling is not None:
-            self.ceiling_selector.show_ceiling(self._drawn_ceiling)
+    def _choose_ceiling(self, ceiling: ChartCeiling) -> None:
+        self._request_ceiling(ceiling)
+
+        # A frame that drew has already shown the pick on this control. One
+        # that failed drew nothing, so the control goes back to the top still
+        # on the plot (`PL-G3K7`).
+        if self._shown_ceiling is not None:
+            self.ceiling_selector.show_ceiling(self._shown_ceiling)
 
     @property
     def owes_a_frame(self) -> bool:
-        return (
-            not self._drawn
-            or self.chart.owes_a_frame
-            or self._window.owes_a_frame
-            or self._drawn_ceiling is not self._ceiling
-        )
+        return not self._drawn or self.chart.owes_a_frame or self._window.owes_a_frame
 
     def frame_request(self) -> FrameRequest | None:
         return self._window.request(self.chart.plot_width_px())
 
     def save_state(self) -> SavedState:
-        return MappingProxyType({**self._window.saved_state(), _CEILING_KEY: self._ceiling.value})
+        return self._window.saved_state()
 
     def painted_strings(self) -> tuple[str, ...]:
         return self.chart.axis_titles()
@@ -1568,7 +1541,11 @@ class CompartmentSchematicView(QWidget):
     Each schematic draws the circuit, the alveoli, venous blood and the three
     tissue groups as containers. Each container is filled to its tension on
     the concentration chart's scale, and labelled with its name, its tension
-    and its amount of agent vapour. Each schematic is written from its run's
+    and its amount of agent vapour. The top of that scale is the reader's
+    preference, which every concentration chart draws against too
+    (`PL-7LZ7`). The View's axis-top control shows the top that the
+    containers are filled against, and asks for another through the
+    context's requests, as a chart's control does. Each schematic is written from its run's
     presentation on every tick: the drawing from `RunValues.schematic`, and
     the name from the run's name. That presentation also holds the run's
     readouts. So the schematic shows the same step as the readouts, and it
@@ -1591,6 +1568,8 @@ class CompartmentSchematicView(QWidget):
             and name the units of every tension and every amount.
         pinned_row: The row that holds `qualifier_label`, which the View's
             Area keeps on screen above the View's scroll box.
+        ceiling_selector: The control that sets the top of the scale, for
+            every concentration chart and schematic at once.
     """
 
     scope = ViewScope.RUNS
@@ -1598,7 +1577,13 @@ class CompartmentSchematicView(QWidget):
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
+        # The top that the axis-top control names. None before the first tick.
+        self._shown_ceiling: ChartCeiling | None = None
+        self._request_ceiling = context.requests.chart_ceiling
+        self.ceiling_selector = ChartCeilingSelector()
+        self.ceiling_selector.ceiling_requested.connect(self._choose_ceiling)
         self.state_notice = _state_notice_for(context)
+        self.ceiling_notice = _state_notice(None)
         self._schematics = _RunWidgets(
             lambda run: RunSchematic(run.values.schematic, run.name), PAGE_SPACING
         )
@@ -1609,6 +1594,11 @@ class CompartmentSchematicView(QWidget):
         self.pinned_row = _panel_row(self.qualifier_label, _SCHEMATIC_PINNED_ROW_NAME)
         column.addWidget(self.state_notice)
         column.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True))
+        controls = QHBoxLayout()
+        controls.addWidget(_labelled_control(CHART_CEILING_LABEL, self.ceiling_selector))
+        controls.addStretch(1)
+        column.addLayout(controls)
+        column.addWidget(self.ceiling_notice)
         column.addWidget(self._schematics.holder)
         column.addStretch(1)
 
@@ -1622,16 +1612,41 @@ class CompartmentSchematicView(QWidget):
         """Show one schematic for each run in the tick, written from that run's presentation.
 
         A tick with no frame is drawn as a tick with one is, and the View
-        counts as drawn after either.
+        counts as drawn after either. The axis-top control names the top that
+        the first drawn schematic is filled against. While every schematic is
+        withheld, it names the reader's top, which the next drawn frame uses.
+        While the saved axis top was refused, a line under the control says
+        so (`preferences.chart_ceiling_notice`).
         """
 
+        _show_notice(self.ceiling_notice, chart_ceiling_notice(tick.preferences.preferences))
         self._schematics.follow(tick.runs)
 
         for schematic, run in zip(self._schematics.widgets, tick.runs, strict=True):
             schematic.show_name(run.name)
             schematic.show_schematic(run.values.schematic)
 
+        filled = (run.values.schematic.ceiling for run in tick.runs)
+        self._show_ceiling(
+            next(
+                (ceiling for ceiling in filled if ceiling is not None),
+                tick.preferences.preferences.chart_ceiling,
+            )
+        )
         self._drawn = True
+
+    def _show_ceiling(self, ceiling: ChartCeiling) -> None:
+        self._shown_ceiling = ceiling
+        self.ceiling_selector.show_ceiling(ceiling)
+
+    def _choose_ceiling(self, ceiling: ChartCeiling) -> None:
+        self._request_ceiling(ceiling)
+
+        # A frame that drew has already shown the pick on this control. One
+        # that failed drew nothing, so the control goes back to the top that
+        # the containers still show.
+        if self._shown_ceiling is not None:
+            self.ceiling_selector.show_ceiling(self._shown_ceiling)
 
     @property
     def owes_a_frame(self) -> bool:

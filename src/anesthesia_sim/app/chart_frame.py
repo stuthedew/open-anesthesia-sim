@@ -939,11 +939,11 @@ class ChartFrame:
         mac_age_years: The age, in years, that `mac_percent` is
             the MAC for. The `1 MAC` reference line prints it.
         ceiling: The top of the compartment chart's axis, as the reader
-            chose it. A frame is assembled at the standard top, and a chart
-            draws it at its own top with `dataclasses.replace`. So two charts
-            that share a window share one frame whatever their tops
-            (`PL-K1VH`). The axis's top in percent and both axes' labels are
-            properties that read this field, so they cannot disagree with it.
+            chose it. The reader chooses one top for every concentration
+            chart and every schematic, and the dashboard assembles each frame
+            at it (`PL-K1VH`, `PL-7LZ7`). The axis's top in percent and both
+            axes' labels are properties that read this field, so they cannot
+            disagree with it.
         one_mac_percent: Where the 1 MAC line is drawn.
         mac_awake_band_percent: The MAC-awake band's lower and upper edges.
         mac_awake: The agent's published MAC-awake fraction and its standard
@@ -1001,8 +1001,8 @@ class ChartFrame:
     def __post_init__(self) -> None:
         """Build the axis top once, so that a top past one atmosphere is refused here.
 
-        The top is refused when the frame is built, and again whenever a View
-        builds it at another top, before any chart draws it (`PL-7DJK`).
+        The top is refused when the frame is built, before any chart draws it
+        (`PL-7DJK`).
 
         Raises:
             SimulationConfigurationError: The top is outside 0 to 100%, as
@@ -1125,6 +1125,7 @@ def assemble_chart_frame(
     *,
     plot_width_px: float,
     held_start_s: CaseInstant | None,
+    ceiling: ChartCeiling,
 ) -> ChartFrame:
     """Read every run once and work out everything the frame draws.
 
@@ -1153,6 +1154,11 @@ def assemble_chart_frame(
             rather than defaulted, as the width is, so that a caller states
             which window it wants. Where the held window has reached the
             run's own window, the frame follows the run (`held_window`).
+        ceiling: The top the reader chose for the axis, from the reader's
+            preferences. It is required rather than defaulted, as the width
+            is, so that a frame is never drawn at a top that the reader did
+            not choose while the schematic beside it fills against the one
+            they did (`PL-7LZ7`).
 
     Returns:
         The frame.
@@ -1261,7 +1267,7 @@ def assemble_chart_frame(
         plot_width_px=plot_width_px,
         mac_percent=mac_percent,
         mac_age_years=reference.agent_mac_age_years,
-        ceiling=ChartCeiling.STANDARD,
+        ceiling=ceiling,
         one_mac_percent=mac_percent,
         mac_awake_band_percent=mac_awake_band_percent(
             fraction_of_mac=mac_awake.fraction_of_mac,

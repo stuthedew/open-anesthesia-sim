@@ -4227,10 +4227,9 @@ def above_the_axis_top(percent: float, axis_top_percent: float) -> bool:
 
     A display step is the smallest change that the readouts print. This is the
     one test of "off the scale", and both the chart's off-scale notice and the
-    compartment schematic's off-scale mark use it (`PL-RNYV`). Each passes its
-    own top: the chart the top its View chose, and the schematic the standard
-    top. So the two agree about one tension only while the chart is at the
-    standard top. The margin of one display step is
+    compartment schematic's off-scale mark use it (`PL-RNYV`). Both pass the
+    top that the reader chose for every chart and schematic (`PL-7LZ7`), so
+    the two agree about every tension. The margin of one display step is
     needed because of binary rounding. For example, desflurane's top of 3 x 6.6
     is 19.799999999999997 in binary. A value that the readouts print as the top
     is not above it.

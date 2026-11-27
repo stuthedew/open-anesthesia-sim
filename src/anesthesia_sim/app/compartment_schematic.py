@@ -8,14 +8,15 @@ is and what its label prints. The schematic's View draws the readings
 computed and tested apart from the drawing.
 
 A container's fill is the compartment's tension, on the concentration chart's
-standard scale, from zero to `chart_axis_top_percent` at
-`ChartCeiling.STANDARD`. The schematic keeps that scale whatever top a reader
-chooses for the chart, because the top is the chart View's own setting
-(`PL-K1VH`). The fill is not an amount. A
-tension above the top of that scale fills the container, and the container is
-marked as off the scale. Its label still prints the tension. Each container
-carries a mark at each MAC value that the chart's MAC axis labels at that
-top, so a fill level is read against the container's own marks. Each label gives
+scale, from zero to `chart_axis_top_percent` at the top that the reader chose
+(`ChartCeiling`). The reader chooses one top for every concentration chart and
+every schematic (`PL-7LZ7`), and the dashboard passes it here. So a container
+is marked as off the scale exactly when the chart's off-scale notice names its
+compartment. The fill is not an amount. A tension above the top of the scale
+fills the container, and the container is marked as off the scale. Its label
+still prints the tension. Each container carries a mark at each MAC value that
+the chart's MAC axis labels at that top, so a fill level is read against the
+container's own marks. Each label gives
 the compartment's name, its tension as its readout prints it, its amount, and
 its share of all the agent that the six compartments hold. The amount comes
 from the snapshot's record of the agent in each compartment (`PL-KFTM`). So a
@@ -107,17 +108,17 @@ TENSION_UNIT_TEXT: Final = f"Tensions are in {DisplayUnit.CONCENTRATION.axis_tit
 SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
 
 #: The caption that says what a container's height means. A height is a
-#: tension, as a share of the concentration chart's standard range. So the caption names
+#: tension, as a share of the concentration chart's range. So the caption names
 #: that range, says what the marks stand for, and says that a height is not an
 #: amount (`docs/INTERFACE.md` § "The compartment schematic: what its
 #: heights, amounts and share bar assert"). The containers are 96 px tall and the
 #: chart's plot is several hundred, and a Workspace can show the two side by
 #: side. A fill level read across to the chart's gridlines would give the wrong
 #: tension. So each container carries a mark at each labelled MAC value of the
-#: chart's standard scale (`scale_marks`), and is read against its own marks
-#: (`PL-8W1B`). The caption names the scale in its own terms rather than as the
-#: chart's, because a reader can give the chart another top (`PL-K1VH`). The caption
-#: is separate lines rather than one wrapped line. Qt leaves a wrapped label's
+#: chart's scale (`scale_marks`), and is read against its own marks
+#: (`PL-8W1B`). The caption names the scale's top in percent and in MAC, so a
+#: Workspace that shows no chart still says what the heights are measured
+#: against. The caption is separate lines rather than one wrapped line. Qt leaves a wrapped label's
 #: extra lines out of the minimum size that a View declares, so the containers'
 #: labels would lose the room in which their amounts are printed. The wording
 #: is a placeholder, but what the caption must say is not.
@@ -215,10 +216,10 @@ class ContainerReading:
         quantity: The compartment that the container stands for.
         name: The compartment's name, as its readout panel names it.
         fill: The share of the container's height that is filled, from 0 to
-            1. It is the tension divided by the top of the chart's standard
-            scale (`ChartCeiling.STANDARD`), whatever top a chart View has
-            chosen, and it is 1 for a tension above that top.
-        off_scale: Whether the tension is above the top of the standard scale
+            1. It is the tension divided by the top of the chart's scale at
+            the top the reader chose, and it is 1 for a tension above that
+            top.
+        off_scale: Whether the tension is above the top of the scale
             by more than the smallest step that the readouts show. The test is
             `above_the_axis_top`, the same one that the chart's off-scale
             notice uses. When it is true, the View marks the container as off
@@ -254,22 +255,26 @@ class ContainerReading:
         return _share_text(self.share)
 
 
-def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, ...]:
+def container_readings(
+    snapshot: SimulationSnapshot, ceiling: ChartCeiling
+) -> tuple[ContainerReading, ...]:
     """Return one reading per container, in the readout row's order.
 
     The schematic uses the readout panels' own order and names, so the
     schematic and the readout row list the six compartments in the same way.
     Every container of the run fills against one top of scale. The top is
-    computed once from this snapshot's MAC, so no two containers can be drawn
-    against two different agents' scales. Each share is the compartment's
-    amount divided by the snapshot's `stored_agent_l`. The six amounts sum to
-    that total exactly, so the six shares make up the whole
+    computed once from this snapshot's MAC and `ceiling`, so no two containers
+    can be drawn against two different agents' scales or two different tops.
+    Each share is the compartment's amount divided by the snapshot's
+    `stored_agent_l`. The six amounts sum to that total exactly, so the six shares make up the whole
     (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
     and share bar assert"). While the run holds no agent, no share exists, and
     each reading's share is None, rather than a division by zero or six zeros.
 
     Args:
         snapshot: The run's state at the instant drawn.
+        ceiling: The top the reader chose for every concentration chart and
+            schematic, as the dashboard holds it in the reader's preferences.
 
     Returns:
         Six readings: the circuit, the alveoli, venous blood, the vessel-rich
@@ -277,7 +282,8 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
 
     Raises:
         TypeError: If the snapshot's `agent_mac_percent` was not built as a
-            `MacPercent`. `chart_axis_top_percent` raises it.
+            `MacPercent`, or if `ceiling` is not a `ChartCeiling`.
+            `chart_axis_top_percent` raises it.
         ValueError: If a compartment's recorded amount is negative or not
             finite, which `format_compartment_amount` raises. If
             `stored_agent_l` is negative or not finite, or if a share falls
@@ -286,7 +292,7 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
             total disagree.
     """
 
-    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ChartCeiling.STANDARD)
+    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ceiling)
     total_l = snapshot.stored_agent_l
 
     if not isfinite(total_l) or total_l < 0.0:
@@ -326,27 +332,30 @@ def _share_text(share: float | None) -> str:
     return SHARE_TEMPLATE.format(share=format_compartment_share(share))
 
 
-def _scale_ticks(snapshot: SimulationSnapshot) -> tuple[tuple[float, str], ...]:
-    """Return the chart's MAC ticks at its standard top, for this snapshot's agent.
+def _scale_ticks(
+    snapshot: SimulationSnapshot, ceiling: ChartCeiling
+) -> tuple[tuple[float, str], ...]:
+    """Return the chart's MAC ticks at `ceiling`, for this snapshot's agent.
 
     The ticks come from `mac_axis_ticks`, as the chart's own MAC axis takes
     them. So the schematic's marks and its caption describe one scale, and it
-    is the scale the chart draws at its standard top.
+    is the scale the chart draws at the same top.
 
     Raises:
         TypeError: If the snapshot's `agent_mac_percent` was not built as a
-            `MacPercent`. `chart_axis_top_percent` raises it.
+            `MacPercent`, or if `ceiling` is not a `ChartCeiling`.
+            `chart_axis_top_percent` raises it.
     """
 
     mac_percent = snapshot.agent_mac_percent
 
-    return mac_axis_ticks(chart_axis_top_percent(mac_percent, ChartCeiling.STANDARD), mac_percent)
+    return mac_axis_ticks(chart_axis_top_percent(mac_percent, ceiling), mac_percent)
 
 
-def scale_marks(snapshot: SimulationSnapshot) -> tuple[float, ...]:
+def scale_marks(snapshot: SimulationSnapshot, ceiling: ChartCeiling) -> tuple[float, ...]:
     """Return the height of each mark on a container, as a share of the container's height.
 
-    A mark stands at each MAC value that the chart labels at its standard top,
+    A mark stands at each MAC value that the chart labels at `ceiling`,
     between the bottom and the top of the scale. The bottom and the top are
     the container's own edges, so they carry no mark. A container filled to a
     mark shows the tension at that MAC value (`PL-8W1B`).
@@ -359,16 +368,16 @@ def scale_marks(snapshot: SimulationSnapshot) -> tuple[float, ...]:
         TypeError: As `_scale_ticks` raises it.
     """
 
-    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ChartCeiling.STANDARD)
+    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ceiling)
 
     return tuple(
         position / top_percent
-        for position, _ in _scale_ticks(snapshot)
+        for position, _ in _scale_ticks(snapshot, ceiling)
         if 0.0 < position < top_percent
     )
 
 
-def scale_caption(snapshot: SimulationSnapshot) -> str:
+def scale_caption(snapshot: SimulationSnapshot, ceiling: ChartCeiling) -> str:
     """Return the caption naming the scale that every container of this run fills against.
 
     The caption names the top of the scale in percent and in MAC, and the
@@ -380,13 +389,13 @@ def scale_caption(snapshot: SimulationSnapshot) -> str:
         TypeError: As `_scale_ticks` raises it.
     """
 
-    ticks = _scale_ticks(snapshot)
-    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ChartCeiling.STANDARD)
+    ticks = _scale_ticks(snapshot, ceiling)
+    top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ceiling)
 
     scale = SCALE_CAPTION_TEMPLATE.format(
         top=f"{top_percent:g}",
         unit=DisplayUnit.CONCENTRATION.axis_title,
-        top_mac=ChartCeiling.STANDARD.label,
+        top_mac=ceiling.label,
         step_mac=f"{ticks[1][1]}{MAC_UNIT_SUFFIX}",
     )
 
@@ -434,6 +443,9 @@ class SchematicShown:
         share_caption: The line saying what the shares are of, or that the
             run holds no agent yet (`share_caption`), or None while the values
             are withheld.
+        ceiling: The top that the containers are filled against, or None
+            while the values are withheld. The View's axis-top control shows
+            it, so the control names the top that the containers show.
     """
 
     instant: str
@@ -442,25 +454,27 @@ class SchematicShown:
     scale_caption: str | None
     off_scale_line: str | None
     share_caption: str | None
+    ceiling: ChartCeiling | None
 
 
-def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
-    """Return what one run's schematic shows for `snapshot`.
+def schematic_shown(snapshot: SimulationSnapshot, ceiling: ChartCeiling) -> SchematicShown:
+    """Return what one run's schematic shows for `snapshot`, filled against `ceiling`.
 
     Raises:
         TypeError: As `container_readings`, `scale_marks` and `scale_caption` raise it.
         ValueError: As `container_readings` raises it.
     """
 
-    readings = container_readings(snapshot)
+    readings = container_readings(snapshot, ceiling)
 
     return SchematicShown(
         format_elapsed(snapshot.elapsed_s),
         readings,
-        scale_marks(snapshot),
-        scale_caption(snapshot),
+        scale_marks(snapshot, ceiling),
+        scale_caption(snapshot, ceiling),
         off_scale_line(readings),
         share_caption(readings),
+        ceiling,
     )
 
 
@@ -489,6 +503,7 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
         for panel in COMPARTMENT_PANELS
     ),
     (),
+    None,
     None,
     None,
     None,

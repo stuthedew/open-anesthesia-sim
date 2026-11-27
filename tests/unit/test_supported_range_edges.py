@@ -115,6 +115,7 @@ from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationSnapshot,
 )
+from anesthesia_sim.app.formatting import ChartCeiling
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, AgentSimulationValidator
@@ -189,6 +190,7 @@ def _chart_frame() -> ChartFrame:
         COMPARTMENT_QUANTITIES,
         plot_width_px=CHART_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 
