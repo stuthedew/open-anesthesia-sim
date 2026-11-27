@@ -130,6 +130,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RENDER_INTERVAL_S,
     TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
+    WORKSPACE_PAGE_NAME,
     BookmarkPanel,
     BranchAtStake,
     CaseMarks,
@@ -171,6 +172,7 @@ from anesthesia_sim.app.qt_widgets import (
     MarkEntry,
     MarkRefusal,
     MarkUndo,
+    announce,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -757,6 +759,7 @@ class SimulationView(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
         scroll.setWidget(middle)
+        scroll.setAccessibleName(WORKSPACE_PAGE_NAME)
         FocusRing(scroll)
         # `actionTriggered` fires when the reader scrolls with the wheel, the
         # keys or the bar. It does not fire for a scroll that this view makes.
@@ -1445,7 +1448,7 @@ class SimulationView(QWidget):
 
         if compared is not None:
             # `MAX_DISPLAYED_RUNS` is two, so a second run on the chart is the cap.
-            self._fork_refusal = comparing_fork_lock_text(compared)
+            self._refuse_branch(comparing_fork_lock_text(compared))
             self.present(False)
 
             return
@@ -1454,7 +1457,7 @@ class SimulationView(QWidget):
         point = self._fork_selection
 
         if point is None:
-            self._fork_refusal = FORK_NOTHING_SELECTED_TEXT
+            self._refuse_branch(FORK_NOTHING_SELECTED_TEXT)
             self.present(False)
 
             return
@@ -1466,7 +1469,7 @@ class SimulationView(QWidget):
                 else case.fork_at_mark(point.mark)
             )
         except SimulationConfigurationError as error:
-            self._fork_refusal = refused_branch_notice(error)
+            self._refuse_branch(refused_branch_notice(error))
             self.present(False)
 
             return
@@ -1503,7 +1506,7 @@ class SimulationView(QWidget):
 
         if compared is not None:
             # `MAX_DISPLAYED_RUNS` is two, so a second run on the chart is the cap.
-            self._fork_refusal = comparing_fork_lock_text(compared)
+            self._refuse_branch(comparing_fork_lock_text(compared))
             self.present(False)
 
             return
@@ -1513,7 +1516,7 @@ class SimulationView(QWidget):
         try:
             branch = case.fork_here()
         except SimulationConfigurationError as error:
-            self._fork_refusal = refused_branch_notice(error)
+            self._refuse_branch(refused_branch_notice(error))
             self.present(False)
 
             return
@@ -1682,7 +1685,39 @@ class SimulationView(QWidget):
         self._fork_selection = kept_fork_selection(
             None if shown is None else shown.points, self._fork_selection, offer.points
         )
+
+        # The caption that takes the branch control's place says where the
+        # comparison is drawn, so a screen reader is told it when it appears
+        # or changes. The dashboard tells it once, rather than each branch
+        # View, which is built again on every Workspace switch (`PL-J7Z5`).
+        if (
+            shown is not None
+            and offer.locked
+            and (not shown.locked or shown.lock_reason != offer.lock_reason)
+        ):
+            announce(self, offer.lock_reason, interrupt=False)
+
         self._fork_offer_shown = offer
+
+    def _refuse_branch(self, refusal: str) -> None:
+        """Keep the branch control's refusal for every branch View, and tell a screen reader once.
+
+        Each press that is refused is announced, so a reader who presses again
+        hears the refusal again. A branch View built later shows the refusal
+        without announcing it (`qt_widgets.NoticeLabel`, `PL-J7Z5`).
+        """
+
+        self._fork_refusal = refusal
+        announce(self, refusal, interrupt=True)
+
+    def _refuse_mark(self, refusal: MarkRefusal) -> None:
+        """Keep a refused mark edit for every Bookmarks View, and tell a screen reader once.
+
+        As `_refuse_branch` does for the branch control.
+        """
+
+        self._mark_refusal = refusal
+        announce(self, refusal.text, interrupt=True)
 
     @halt_gate
     def _handle_branch_point_request(self, point: ForkPoint | None) -> None:
@@ -2437,7 +2472,7 @@ class SimulationView(QWidget):
         except SimulationConfigurationError as error:
             # The entry describes no mark that the case accepts, so nothing
             # was offered to any run.
-            self._mark_refusal = MarkRefusal(button, refused_setting_notice(error))
+            self._refuse_mark(MarkRefusal(button, refused_setting_notice(error)))
 
             return False
 
@@ -2484,7 +2519,7 @@ class SimulationView(QWidget):
         try:
             removed = tuple(remove(controller, selected) for controller in controllers)
         except SimulationConfigurationError as error:
-            self._mark_refusal = MarkRefusal(button, refused_setting_notice(error))
+            self._refuse_mark(MarkRefusal(button, refused_setting_notice(error)))
 
             return
 
@@ -2527,7 +2562,7 @@ class SimulationView(QWidget):
             for run in self._runs:
                 edit(run.controller)
         except SimulationConfigurationError as error:
-            self._mark_refusal = MarkRefusal(button, refused_setting_notice(error))
+            self._refuse_mark(MarkRefusal(button, refused_setting_notice(error)))
 
         return True
 

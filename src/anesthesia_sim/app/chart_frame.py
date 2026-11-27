@@ -154,6 +154,7 @@ __all__ = [
     "format_compared_trace_hover",
     "format_compared_wash_in_hover",
     "format_trace_hover",
+    "latest_values_lines",
     "format_wash_in_hover",
     "nearest_trace_point",
     "nearest_wash_in_point",
@@ -1684,6 +1685,48 @@ def format_trace_hover(
             _hover_value(run, quantity, index),
         )
     )
+
+
+def latest_values_lines(frame: ChartFrame) -> tuple[str, ...]:
+    """Return one sentence per run with the latest drawn value of each trace the chart shows.
+
+    A screen reader reads these sentences in place of the traces, as the
+    chart's long description (`PL-T9RB`). Each opens with the hover's
+    qualifiers, "Modelled" and the agent, then the run while more than one is
+    drawn, then the instant of the run's last drawn point. That instant is the
+    right edge of a held window rather than the run's own instant, so a
+    sentence never states a value the chart does not show. Each value is in
+    both units the chart uses, formatted as the hover formats it
+    (`_hover_value`), and named by its compartment as the hover names it
+    (`_hover_subject`). A run with no drawn point, and a frame with no trace
+    shown, give no sentence.
+
+    Args:
+        frame: The frame the chart drew.
+
+    Returns:
+        The sentences, in the frame's run order.
+    """
+
+    if not frame.visible:
+        return ()
+
+    lines: list[str] = []
+
+    for run in frame.runs:
+        if not run.times_s:
+            continue
+
+        run_named = f", {run.label}," if frame.run_count > 1 else ""
+        context = f"{_hover_agent(run)}{run_named} at {_hover_instant(run.times_s[-1])}"
+        values = "; ".join(
+            f"{_hover_subject(quantity)} {format_percent(run.fractions[quantity][-1])}, "
+            f"{format_mac_multiple(run.fractions[quantity][-1], run.mac_percent)}"
+            for quantity in frame.visible
+        )
+        lines.append(f"{context}: {values}.")
+
+    return tuple(lines)
 
 
 def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_count: int) -> str:
