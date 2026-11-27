@@ -1,13 +1,18 @@
 ---
 id: PL-FSRR
-title: On a Retina screen every chart line, dash and legend swatch is drawn at half its specified width and length, because the chart's pens are cosmetic and Qt draws a cosmetic pen's width in device pixels
-status: untriaged
+title: On any screen whose scale is not 100%, every chart line, dash and legend swatch is drawn thinner and shorter than specified, because the chart's pens are cosmetic and Qt draws a cosmetic pen's width in device pixels
+priority: P2
+effort: M
+status: ready
+classes: defect, ux
 feature: presentation-safety
+touches: src/anesthesia_sim/app/qt_chart.py, ROADMAP.md
 added: 2026-11-27
 filed-pr: 2332
+payoff: a user on a Retina or scaled Windows screen sees each chart trace at the width and dash pattern that tells it apart from the others
 ---
 
-**Problem.** On a Retina screen every chart line, dash and legend swatch is drawn at half its specified width and length, because the chart's pens are cosmetic and Qt draws a cosmetic pen's width in device pixels
+**Problem.** On any screen whose scale is not 100%, every chart line, dash and legend swatch is drawn thinner and shorter than specified, because the chart's pens are cosmetic and Qt draws a cosmetic pen's width in device pixels
 
 **How it was found.** `PL-QCFC` rendered the three shipped Workspaces offscreen
 at 1366 by 768, once at a device pixel ratio of 1 and once at 2
@@ -33,6 +38,56 @@ search of its source for `devicePixelRatio` finds handling only for scatter
 symbols, images and OpenGL. The measurement was made in emulation. It matches
 Qt's documented rule, and the owner's Mac draws at a ratio of 2.
 
+**Every scale, not only Retina.** Measured 2026-11-27 with
+`out/pen_probe.py`, a 3 px pen drawn on a `QImage` at five device pixel ratios
+with `QT_QPA_PLATFORM=offscreen`. In device-independent pixels the cosmetic pen
+drew 3, 2.4, 2, 1.5 and 1 px at ratios 1, 1.25, 1.5, 2 and 3. A non-cosmetic
+pen drew 3, 2.4, 2.67, 3 and 3: its width is kept, rounded to whole device
+pixels without antialiasing. Windows offers 125% and 150% scales, so the fault
+is not confined to Retina screens. The schematic and the other widgets draw
+with non-cosmetic `QPen`s and are not affected.
+
+**Why Qt does this, from its source.** `QPainterPrivate::updateMatrix` in
+`qtbase/src/gui/painting/qpainter.cpp` (branch 6.10, read 2026-11-27) appends
+`hidpiScaleTransform()`, a scale by the device's pixel ratio, to the painter's
+matrix. `QPaintEngineEx::stroke` in `qpaintengineex.cpp` strokes a cosmetic
+pen after mapping the path through that matrix, so the width is applied in
+device pixels.
+
+**What the platforms recommend, read 2026-11-27.**
+1. Qt, https://doc.qt.io/qt-6/highdpi.html: "Qt applications generally operate
+   in device-independent pixels." Qt 6 is per-monitor DPI aware by default on
+   Windows, and its default scale-factor rounding policy is PassThrough, so a
+   ratio of 1.25 or 1.75 reaches the application unrounded.
+2. Qt, https://doc.qt.io/qt-6/qevent.html: `QEvent::DevicePixelRatioChange`
+   (since Qt 6.6) is sent when "The devicePixelRatio has changed for this
+   widget's or window's underlying backing store."
+3. Microsoft, https://learn.microsoft.com/en-us/windows/win32/hidpi/high-dpi-desktop-application-development-on-windows:
+   per-monitor v2 awareness is recommended, an application redraws when it
+   moves between displays, and "search for hard-coded sizes in your codebase
+   that assume a constant DPI".
+4. Apple, https://developer.apple.com/library/archive/documentation/GraphicsAnimation/Conceptual/HighResolutionOSX/Explained/Explained.html:
+   "You should refer to display dimensions only in points", and the backing
+   scale factor "is influenced by the display on which it is placed".
+5. pyqtgraph has no option for it. Discussion #2215,
+   https://github.com/pyqtgraph/pyqtgraph/discussions/2215, asked in 2022
+   whether line width should follow the scale factor and has no reply. The
+   library's own `ScatterPlotItem.paint` reads `widget.devicePixelRatioF()` at
+   paint time and rebuilds its symbol atlas when the ratio changes, which is
+   the same pattern applied to its symbols.
+
+**The approach (owner asked for the general solution, 2026-11-27).** Every
+chart pen is built by one function from its width and dash pattern in
+device-independent pixels and the drawing widget's current device pixel ratio.
+A check refuses a cosmetic pen built anywhere else in `src/`. Each chart and
+legend rebuilds its pens on `QEvent.DevicePixelRatioChange`. Tests render at
+ratios 1, 1.25, 1.5, 2 and 3. A non-cosmetic pen was ruled out: the curves are
+drawn in the plot's data coordinates, whose two axes scale differently, so a
+non-cosmetic width would change with the axis ranges. An audit of `src/` for
+other content in device pixels found none: the app ships no image or icon
+file, font sizes set with `setPixelSize` are device-independent in Qt, and the
+one `QImage` is a 1 by 1 buffer used to measure tick labels.
+
 **Why it matters.** `docs/INTERFACE.md` § "The six compartment traces: what
 separates them" specifies each trace's width and dash pattern in pixels, and
 the dash pattern is the channel that separates traces for a reader with a
@@ -41,17 +96,10 @@ of 2 on and 3 off at 2 px is drawn as 1 on and 1.5 off at 1 px, and the mixed
 venous short dash as 2 on and 1.5 off. Those are the patterns least easy to
 tell apart, drawn at half the size at which their separation was chosen.
 
-**What a fix needs.** Each chart pen's width multiplied by the device pixel
-ratio of the widget that draws it. Qt then scales the dash pattern with the
-width. The legend swatches need the same scaling, so the key keeps matching
-the plot. The pens must be rebuilt when the window moves to a screen with
-another ratio, such as from a Retina laptop to an external monitor. A test
-renders the chart at a ratio of 2 and asserts that a trace's drawn thickness,
-in device-independent pixels, matches the one at a ratio of 1.
+**Done when.** At device pixel ratios of 1, 1.25, 1.5, 2 and 3 every chart
+line, dash and legend swatch has the width and dash lengths that
+`docs/INTERFACE.md` specifies, in device-independent pixels, and tests hold
+it. Moving to a screen with another ratio redraws at the new ratio, and a test
+holds that too.
 
-**Done when.** At a device pixel ratio of 2 every chart line, dash and legend
-swatch has the width and dash lengths that `docs/INTERFACE.md` specifies, in
-device-independent pixels. A test at a ratio of 2 holds it, and moving to a
-screen with another ratio redraws at the new ratio.
-
-**Generator check.** One-off: the first rendering at a ratio other than 1.
+**Generator check.** One-off: the first rendering at a ratio other than 1. The check that refuses a cosmetic pen built outside the one function stops the next instance.

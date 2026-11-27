@@ -1299,6 +1299,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-FLXP (S) The release tool let a patch be cut while a milestone was ready and waiting on the owner's test drive, shipping the milestone's work under another number, and a ready milestone with no item finished since the last tag could not be cut
 - PL-49D5 (S) With ventilation stopped and the dial lowered, the F_A/F_I trace climbs toward 1 because the circuit washes out, and the plot draws that climb as wash-in ending at equilibrium
 - PL-3NGZ (M) On a laptop screen the compartment schematic's labels can be in view while the lines that qualify them have scrolled away: the run's name while two runs are compared, the line saying what the shares are of while a container is above the scale, and the tension's unit
+- PL-FSRR (M) On any screen whose scale is not 100%, such as a Retina screen or a Windows laptop at 125%, every chart line, dash and legend swatch is drawn thinner and shorter than docs/INTERFACE.md specifies
 
 ### Captures after the cut
 
@@ -1513,6 +1514,15 @@ schematic's run name, share caption and tension unit in view with the values
 they qualify, which on a laptop screen can scroll away from them. The same pass
 deferred the other debt it triaged to the next gate, each with its reason in
 `deferred-from`.
+
+**`PL-FSRR` joined the frozen list on 2026-11-27, after the freeze.** Its
+problem was present at the freeze, because the chart already drew every line
+with the charting library's pens at `817a4d88`. On any screen whose scale is
+not 100%, every chart line and dash is drawn thinner and shorter than
+`docs/INTERFACE.md` specifies: at half its size on a Retina screen and at 80%
+on a Windows laptop at 125%. The dash pattern is what separates the six
+compartment traces for a reader with a colour-vision deficiency. This milestone
+clears it (project owner, 2026-11-27).
 
 ### Required scope
 
