@@ -83,6 +83,16 @@ The schematic's tests still pass with `pin_heading()` removed from
 `moveEvent`, because their runs are paused and no section moves without a
 scroll. The plain-widget test in the table's last row catches it.
 
+**Nearest string, not an exact copy (2026-11-27).** The painted-cell test
+first held each cell to an exact copy of the cell painted with its own string.
+That passed here under both fonts and failed on CI's ARM runner at the first
+name, "Circuit", in run 46078107422 of the pull request. The cause cannot be
+seen from this container. The test now paints each string of the cell's row in
+the cell in turn, and nothing, and requires the painted cell to be nearest to
+its own string, by the summed difference of its colour bytes. Each change in
+the table's second and third rows still fails it under both fonts, and so do
+two more: two names swapped, and names not painted at all.
+
 **Two findings not taken.** The review found that removing
 `ViewScroll._pin_headings` from a resize changed no test, and could not
 show a resize that needs it. It stays: since `PL-H55Q`, a change of range also

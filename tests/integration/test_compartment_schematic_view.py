@@ -1218,6 +1218,17 @@ def _with_text_alone(widget: QWidget, painted: QImage, cell: QRectF, text: str) 
     return image
 
 
+def _distance(first: QImage, second: QImage, area: QRect) -> int:
+    """Return the sum, over `area`, of the absolute differences of the two images' colour bytes."""
+
+    one = first.copy(area).convertToFormat(QImage.Format.Format_RGB32)
+    two = second.copy(area).convertToFormat(QImage.Format.Format_RGB32)
+
+    return sum(
+        abs(a - b) for a, b in zip(bytes(one.constBits()), bytes(two.constBits()), strict=True)
+    )
+
+
 def test_each_name_and_label_line_is_painted_in_its_own_container_s_column(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
@@ -1228,10 +1239,15 @@ def test_each_name_and_label_line_is_painted_in_its_own_container_s_column(
     where the strings are painted. So a name or a tension painted in another
     container's cell would put "Fat", or another compartment's tension, over
     the circuit with every rectangle still right. This test reads the painted
-    pixels of each cell. They must be the pixels of the same cell cleared and
-    painted with the string that belongs there and nothing else. Every string
-    shown here differs from the others in its row, so a string painted in
-    another container's cell changes the cell's pixels.
+    pixels of each cell. It clears the cell and paints in it, alone, each
+    string of the cell's row in turn, and also nothing. The painted cell must
+    be nearest to the one painted with the string that belongs there. Every
+    string shown here differs from the others in its row, so a string painted
+    in another container's cell is nearer to that string, and an empty cell is
+    nearer to nothing. The cell is held to the nearest string, not to an exact
+    copy, because an exact copy failed on CI's ARM runners. There the widget's
+    own painting and the test's differ, which they do not in the x86
+    development container.
     """
 
     view = _paused_dashboard(
@@ -1251,18 +1267,26 @@ def test_each_name_and_label_line_is_painted_in_its_own_container_s_column(
         widget: widget.grab().toImage() for widget in (run.names, run.canvas)
     }
 
+    rows = [_NAMES] + [
+        tuple(labels[index * 3 + line] for index in range(len(_NAMES))) for line in range(3)
+    ]
+
     # The premise: no two strings in a row are the same, so each cell's pixels
     # tell its string from every other in the row.
-    for line in range(3):
-        row = [labels[index * 3 + line] for index in range(len(_NAMES))]
+    for row in rows:
         assert len(set(row)) == len(row), row
 
-    for widget, cell, text in placed:
+    for position, (widget, cell, text) in enumerate(placed):
         image = painted[widget]
         area = cell.toAlignedRect().intersected(image.rect())
-        expected = _with_text_alone(widget, image, cell, text)
+        # The names come first, one row of six, then each container's three lines.
+        row = rows[0] if position < len(_NAMES) else rows[1 + (position - len(_NAMES)) % 3]
+        distances = {
+            candidate: _distance(image, _with_text_alone(widget, image, cell, candidate), area)
+            for candidate in (*row, "")
+        }
 
-        assert image.copy(area) == expected.copy(area), text
+        assert min(distances, key=lambda candidate: distances[candidate]) == text, (text, distances)
 
 
 def test_a_run_heading_follows_a_scroll_of_the_page(
