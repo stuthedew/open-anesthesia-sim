@@ -76,6 +76,17 @@ def clear_scroll_area_stylesheet() -> str:
     return "QScrollArea { background-color: transparent; }"
 
 
+def heading_surface_stylesheet(object_name: str) -> str:
+    """The panel's colour with square corners, scoped to one widget, for a heading drawn over rows.
+
+    A heading that stays in view while its rows scroll under it covers those
+    rows (`app/pinned_heading.py`). Square corners leave no gap through which
+    a scrolled row could show.
+    """
+
+    return f"QWidget#{object_name} {{ background-color: {PANEL}; }}"
+
+
 def panel_stylesheet(object_name: str) -> str:
     """The panel surface: PANEL, rounded, scoped to one widget so its children keep their own."""
 

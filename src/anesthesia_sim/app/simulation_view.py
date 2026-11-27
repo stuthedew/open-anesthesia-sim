@@ -153,6 +153,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit
 from anesthesia_sim.app.halt_gate import halt_gate
+from anesthesia_sim.app.pinned_heading import pin_on_scroll
 from anesthesia_sim.app.preferences import (
     AgentPrice,
     LoadedPreferences,
@@ -764,6 +765,9 @@ class SimulationView(QWidget):
         # The page's height changes with each pass of layout that moves the
         # chart, so the bar's range changing is when to follow it.
         scroll.verticalScrollBar().rangeChanged.connect(self._follow_chart)
+        # A page scroll moves every Area, and with it the part of each View
+        # in view, so each heading that stays in view moves with it (`PL-3NGZ`).
+        pin_on_scroll(scroll)
         self._page_scroll = scroll
         column.addWidget(scroll, 1)
         column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
