@@ -37,6 +37,7 @@ from anesthesia_sim.core.concentration import MacMultiple, fraction_from_percent
 from anesthesia_sim.core.supported_ranges import CaseInstant
 from anesthesia_sim.layout.shipped import shipped_workspaces
 from anesthesia_sim.layout.tree import AreaId
+from tests.integration.announcement_support import ASSERTIVE, Announcement, record_announcements
 from tests.integration.simulation_view.simulation_view_support import (
     FIRST_RUN,
     SECOND_RUN,
@@ -909,6 +910,45 @@ def test_a_rebuilt_bookmarks_view_shows_the_entry_and_the_refusal_the_reader_lef
     assert rebuilt.compartment_combo.currentData() == RecordedQuantity.FAT.value
     assert rebuilt.height_spin.value() == 3.7
     assert rebuilt.add_time_notice.notice() == refusal
+
+
+def test_a_refused_mark_is_read_out_once_however_many_copies_show_it(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A screen reader is interrupted once for each refused press, by the dashboard (`PL-J7Z5`).
+
+    Two Areas show the editor, and both show the refusal under the button
+    that was pressed. When each copy read out its own refusal, a reader heard
+    it twice. A copy built again later shows the refusal the reader left, which
+    is not news, so it is not read out again.
+    """
+
+    view = _shown_view(application, SimulationController())
+    _show_bookmarks_in_two_areas(application, view)
+    first, _ = _editors(view)
+    first.instant_spin.setValue(600)
+    first.add_time_button.click()
+    _settle(application)
+    recorded = record_announcements(monkeypatch)
+
+    first.add_time_button.click()
+    _settle(application)
+
+    refusal = first.add_time_notice.notice()
+    assert refusal is not None
+    assert "marked once" in refusal
+    assert recorded == [Announcement(refusal, ASSERTIVE)]
+
+    recorded.clear()
+    view.layout_container.choose_view(AreaId(5), AGENT_ACCOUNTING)
+    _settle(application)
+    view.layout_container.choose_view(AreaId(5), BOOKMARKS)
+    _settle(application)
+    view.present(False)
+    _settle(application)
+
+    assert [editor.add_time_notice.notice() for editor in _editors(view)] == [refusal, refusal]
+    assert recorded == []
 
 
 def test_a_copy_built_while_a_halt_hides_the_lists_lists_the_marks_once_they_return(

@@ -83,6 +83,7 @@ from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CHART_CEILING_LABEL,
     CHART_HEADING,
+    CONCENTRATION_LEGEND_NAME,
     EARLIER_WINDOW_NAME,
     EARLIER_WINDOW_TEXT,
     FOLLOW_RUN_TEXT,
@@ -95,6 +96,7 @@ from anesthesia_sim.app.dashboard_frame import (
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
+    WASH_IN_LEGEND_NAME,
     WITHHELD_FRAME_TEXT,
     WITHHELD_REFERENCE_TEXT,
     SettingReadout,
@@ -131,6 +133,7 @@ from anesthesia_sim.app.qt_widgets import (
     ForkPanel,
     MarkButton,
     MarkEntry,
+    label_control,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -647,14 +650,21 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
     return column
 
 
-def _labelled_control(label: str, control: QWidget) -> QWidget:
-    """Return `control` with its muted label before it, as one item that a row wraps whole."""
+def _labelled_control(label: str, control: QWidget, named: QWidget | None = None) -> QWidget:
+    """Return `control` with its muted label before it, as one item that a row wraps whole.
+
+    The label names `named` for assistive technology (`label_control`). That
+    is the selector inside `control` where `control` holds the selector and
+    its step buttons, and `control` itself by default.
+    """
 
     item = QWidget()
     pair = QHBoxLayout(item)
     pair.setContentsMargins(0, 0, 0, 0)
     pair.setSpacing(VIEW_HEADING_SPACING)
-    pair.addWidget(styled_label(label, color=MUTED))
+    name = styled_label(label, color=MUTED)
+    label_control(name, control if named is None else named)
+    pair.addWidget(name)
     pair.addWidget(control)
 
     return item
@@ -850,13 +860,17 @@ class ConcentrationView(QWidget):
         # the View would grow taller than the Induction Workspace has room for.
         controls = QHBoxLayout()
         controls.setSpacing(VIEW_HEADING_SPACING)
-        controls.addWidget(_labelled_control(TIME_BASE_LABEL, self._window.control))
+        controls.addWidget(
+            _labelled_control(TIME_BASE_LABEL, self._window.control, self._window.selector)
+        )
         controls.addWidget(_labelled_control(CHART_CEILING_LABEL, self.ceiling_selector))
         controls.addStretch(1)
         column.addLayout(controls)
         column.addWidget(self._window.held_row)
         column.addWidget(self.state_notice)
-        column.addWidget(FittedScroll((self.legend,), CHART_KEY_LEAST_HEIGHT))
+        column.addWidget(
+            FittedScroll((self.legend,), CHART_KEY_LEAST_HEIGHT, CONCENTRATION_LEGEND_NAME)
+        )
         column.addWidget(self.withheld_text)
         column.addWidget(self.hidden_traces_text)
         column.addWidget(self.capped_traces_text)
@@ -1012,7 +1026,9 @@ class WashInView(QWidget):
         heading = QHBoxLayout()
         heading.setSpacing(VIEW_HEADING_SPACING)
         heading.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True), 1)
-        heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
+        time_base_name = styled_label(TIME_BASE_LABEL, color=MUTED)
+        label_control(time_base_name, self._window.selector)
+        heading.addWidget(time_base_name)
         heading.addWidget(self._window.control)
         column.addLayout(heading)
         column.addWidget(self._window.held_row)
@@ -1029,6 +1045,7 @@ class WashInView(QWidget):
             FittedScroll(
                 (styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True), self.legend),
                 CHART_KEY_LEAST_HEIGHT,
+                WASH_IN_LEGEND_NAME,
             )
         )
         column.addWidget(self.withheld_text)
@@ -1690,6 +1707,7 @@ class AgentCostView(QWidget):
         # in force on each tick never reads as a request.
         self.unit_selector.activated.connect(self._handle_pick)
         self.unit_label = styled_label(UNIT_CHOICE_LABEL, color=INK)
+        label_control(self.unit_label, self.unit_selector)
         # Until a tick has drawn the panels, the selector has no unit in force
         # to show, so it is hidden rather than showing the default.
         self.unit_label.setHidden(True)

@@ -2960,10 +2960,10 @@ Run 2."). The user stays in the Workspace they chose. The sentence goes as
 soon as the Workspace is unpinned or the reader switches to another Workspace.
 The interface does not switch the Workspace itself, because the press asked
 for a branch and not for another Workspace. WCAG 2.2 Success Criterion 4.1.3
-treats a result shown without moving the reader as a status message. Nothing
-announces this one to a screen reader yet, because screen-reader support is
-planned and not yet a commitment (§ "Color contrast, and the standard this
-interface is held to"). The Understanding document for Success Criterion 3.2.2 holds a change of context
+treats a result shown without moving the reader as a status message. So the
+caption is announced to a screen reader when it appears or changes, without
+moving the focus, once speech pauses (§ "Color contrast, and the standard this
+interface is held to", `PL-J7Z5`). The Understanding document for Success Criterion 3.2.2 holds a change of context
 appropriate "only when it is clear that such a change will happen in response
 to the user's action"
 (`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`
@@ -4374,6 +4374,92 @@ carry (`test_each_reading_is_named_with_its_compartment_and_that_it_is_modelled`
 `test_a_screen_reader_hears_each_reading_with_its_compartment_and_that_it_is_modelled`
 and `test_a_compared_run_s_readings_are_named_with_their_run` in
 `tests/integration/simulation_view/test_simulation_view_readouts.py`).
+
+**Every control a screen reader can reach says what it is for** (`PL-RK9Z`).
+WCAG 2.2 SC 4.1.2 requires a name for each control at Level A. Each field and
+selector is tied to the label shown beside it. On Linux and macOS, Qt names a
+selector by the entry it shows, such as "Sevoflurane", and takes what the
+selector is for only from a label tied to it. Windows reads the control's
+accessible name instead, so each control has one as well. The run's agent
+selector had no label on screen, so the word "Agent" now stands before it, in
+the muted style of "Playback" before the playback rate. Where two controls
+share a label, the name adds which one it is: "Name, time bookmark" and "Name,
+MAC target", "Add, time bookmark" and "Add, MAC target", and "From, branch
+point". Each name starts with the label shown, which the Understanding
+document for SC 2.5.3 (Label in Name) calls best practice. A scroll box that
+takes the focus so that the keyboard can scroll it is named by the heading
+above it, or by what it holds, such as "Concentration chart legend". An Area's
+corner is named "Area corner", and its description says that the Area menu
+does from the keyboard what a drag on the corner does
+(`test_every_control_a_reader_can_reach_says_what_it_is_for` and
+`test_each_selector_is_named_by_its_shown_label_on_every_platform` in
+`tests/integration/test_keyboard_focus.py`).
+
+**A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
+reader says nothing when a label's text changes, and SC 4.1.3 (Status
+Messages) asks that a status message reach it all the same. So each new
+banner above a run's values, and each refusal under a bookmark form or the
+branch control, is sent to the screen reader as an announcement. A failure and
+a refused setting or request interrupt what is being read, because each asks
+the reader to act. The countdown to the supported run length, and the stop
+there, wait until speech pauses. Qt's documentation asks that an interrupting
+announcement be used only where the interruption is imperative. A banner
+drawn again unchanged on the next frame is not read again, nor is a banner
+that gains its run's name when a second run is drawn. The countdown changes
+every second and is read once, when it appears. A banner written twice in one
+action, as a halt writes it before and after its frame, is read once, as the
+action leaves it. The caption that takes the branch control's place is read
+when it appears or changes, once speech pauses. The dashboard, not each View,
+reads out a refusal under a bookmark form or the branch control, and the
+caption. So two Areas that show the same refusal read it once, and a View
+built again after a Workspace switch shows it without reading it again. Each
+refused press is read, even where the refusal is already shown, so that a
+second press is not met with silence
+(`test_each_new_banner_is_read_out_once_and_a_warning_interrupts` and
+`test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends` in
+`tests/integration/test_qt_widgets.py`,
+`test_a_countdown_keeps_one_topic_while_its_time_left_changes` in
+`tests/unit/test_dashboard_frame.py`,
+`test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` in
+`tests/integration/simulation_view/test_simulation_view_refusals.py`,
+`test_the_countdown_and_the_stop_at_the_supported_run_length_are_each_read_out_once`
+in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`,
+`test_a_refused_mark_is_read_out_once_however_many_copies_show_it` in
+`tests/integration/simulation_view/test_simulation_view_bookmarks.py`,
+`test_each_refused_branch_press_is_read_out_once` in
+`tests/integration/simulation_view/test_simulation_view_branch_refusals.py`, and
+`test_the_caption_that_replaces_the_branch_control_is_read_out_once` and
+`test_a_banner_standing_when_a_branch_is_taken_is_not_read_out_again` in
+`tests/integration/simulation_view/test_simulation_view_branch_control.py`).
+
+**The concentration chart has a text alternative** (`PL-T9RB`). SC 1.1.1
+asks a chart for a text alternative at Level A, and the W3C's example of one
+pairs a short name with a long description that names the type of chart and
+summarises its data. The chart reports itself as an image. Its name is the
+chart's heading and the time axis's caption, such as "Agent concentration and
+relative partial pressure over time, whole run so far, 15 minutes shown". Its
+description opens "Line chart." Then, for each run, it gives the latest drawn
+value of each trace shown, in percent and in multiples of 1 MAC, as the hover
+words them, such as "Modelled sevoflurane at 10m: Circuit (inspired) 1.45%,
+0.81 ×MAC; Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC". The instant is
+that of the run's last drawn point, which is the right edge of a held window.
+The 1 MAC and MAC-awake references follow. With every compartment unchecked,
+or no frame drawn, the description says what the screen says. A window in
+which no run has a drawn point gives no values. Both texts are written when a
+screen reader asks for them, and the chart reports each change to either. The
+AT-SPI client library on Linux keeps the texts it has read until told they
+changed, so without these reports it would go on reading an earlier frame's.
+The chart gives no table of its values. The Understanding document for SC 1.1.1
+provides one "where possible and practical", and the readouts already give
+each compartment's current value in text. The wash-in plot and the compartment
+schematic have no text alternative yet (`PL-R1M6`)
+(`test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value` and
+`test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn`
+in `tests/unit/test_chart_frame.py`, and
+`test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends`
+and `test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+<!-- not-restated: 15 minutes -->
 
 #### Minimum contrast for text and graphics
 
@@ -6834,8 +6920,12 @@ share is of. The heading follows a scroll of the whole page as well as a
 scroll of the Area. On a 1366 by 768 screen, the Maintenance Workspace gives the
 schematic an Area too short to hold even one run's schematic, and two
 compared runs share it (`PL-3NGZ`). With a branch open there, the Area is held
-at its least height, so the part under a pinned heading shows about one line
-of a label at a time and no container whole. The Area is not made taller,
+at its least height. After the branch opens, the dashboard scrolls the page so
+the concentration chart's plot is whole, which leaves about 10 px of the
+schematic's box on screen under a pinned heading. No label line is whole
+there, and a number in that band is cut at the window's lower edge. Scrolling the page
+to its end shows about 24 px, one label line at a time, and still no container
+whole (`PL-C14T`). The Area is not made taller,
 because the page would then grow and push the concentration chart's title and
 key above the window's top after a branch. The row above the scrolling part,
 and the Area's header, still move out of view when the page itself scrolls
@@ -6895,20 +6985,29 @@ Workspace at 1366 by 768 and three larger screen sizes.
 Each run's heading is a `PinnedHeadingSection` (`app/pinned_heading.py`).
 `ViewScroll` in `app/area_layout.py` moves every such heading after each
 resize, and `pin_on_scroll` after each scroll of the Area's box or of the
-dashboard's page. The heading is drawn over the rows on the panel's colour,
-so a row is either below it and seen, or under it and hidden. Three tests in
-`tests/integration/test_compartment_schematic_view.py` hold this.
+dashboard's page, and after each change of what either can scroll. The
+heading is drawn over the rows on the panel's colour, so the part of a row
+under it is hidden. A label line or a container can stand across the
+heading's lower edge and show in part. A container cut there shows only its
+lower part, so its fill can look like that of a container at or over the
+scale's top. A label line cut there shows only the lower part of its
+characters, so its value can look like another (`PL-GWTR`). Four tests in
+`tests/integration/test_compartment_schematic_view.py` hold the rest.
 
 1. `test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`
    scrolls the Maintenance Workspace at 1366 by 768 through every position,
    with two runs, with one run and with one run's circuit above the scale.
    Wherever a container, a share bar or a label line is wholly in view and
-   not under the heading, the whole heading is in view too.
+   not under the heading, the whole heading is in view too, above it.
 2. `test_each_compartment_name_stands_over_its_own_container` checks that
    each name is centred over its container, at two widths.
 3. `test_a_run_heading_follows_a_scroll_of_the_page` scrolls the page of a
    window 400 px tall through every position, and makes the same check as
    the first test.
+4. `test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view`
+   makes the window taller while the schematic's Area is below its lower
+   edge, with no scroll and no change to the box's size, and makes the same
+   check.
 
 The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.

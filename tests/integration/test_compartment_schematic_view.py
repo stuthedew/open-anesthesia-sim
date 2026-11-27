@@ -18,9 +18,9 @@ from math import exp, floor, log10
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, QRect, QRectF
-from PySide6.QtGui import QColor, QFontMetrics, QImage
-from PySide6.QtWidgets import QApplication, QLabel, QWidget
+from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt
+from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter
+from PySide6.QtWidgets import QAbstractSlider, QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import ViewScroll
@@ -991,6 +991,72 @@ def _paused_dashboard(
     return view
 
 
+def _shown_part(page: QScrollArea, scroll: ViewScroll) -> QRect:
+    """Return the part of the schematic's box in view on the page, in the page viewport's pixels."""
+
+    box = QRect(scroll.viewport().mapTo(page.viewport(), QPoint(0, 0)), scroll.viewport().size())
+
+    return page.viewport().rect().intersected(box)
+
+
+def _seen_without_heading(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> list[QRect]:
+    """Return each container, share bar and label line of the run that is seen in `shown_part`.
+
+    A value is seen when it lies wholly in `shown_part` and clear of the
+    run's heading. Each is in the page viewport's pixels. A value under the heading is
+    hidden by it, so only a value clear of the heading is seen.
+    """
+
+    heading = QRect(run.heading.mapTo(page.viewport(), QPoint(0, 0)), run.heading.size())
+    values = [
+        QRect(run.canvas.mapTo(page.viewport(), drawn.topLeft().toPoint()), drawn.size().toSize())
+        for index in range(len(_NAMES))
+        for drawn in (
+            run.canvas.container(index),
+            run.canvas.share_bar(index),
+            *(run.canvas.label_line(index, line) for line in range(3)),
+        )
+    ]
+
+    return [
+        value for value in values if shown_part.contains(value) and not value.intersects(heading)
+    ]
+
+
+def _qualifiers(run: RunSchematic) -> tuple[QWidget, ...]:
+    """Return the run's heading, and its run name, share caption and compartment names.
+
+    Each line must stand in the heading, which is drawn over the rows. A line
+    that left it would scroll with the rows and could be hidden under the
+    heading while a value under it is seen.
+    """
+
+    lines = (run.name_text, run.share_text, run.names)
+
+    for line in lines:
+        assert run.heading.isAncestorOf(line), line
+
+    return (run.heading, *lines)
+
+
+def _heading_in_view(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> bool:
+    """Return whether the run's heading is wholly in `shown_part`, above each value seen there.
+
+    Each line the heading holds must lie wholly in `shown_part`. A value seen
+    above its own run's heading would stand under the rows of the run above,
+    and read as that run's value.
+    """
+
+    heading_bottom = run.heading.mapTo(page.viewport(), QPoint(0, 0)).y() + run.heading.height()
+
+    return all(
+        shown_part.contains(QRect(line.mapTo(page.viewport(), QPoint(0, 0)), line.size()))
+        for line in _qualifiers(run)
+    ) and all(
+        value.top() >= heading_bottom for value in _seen_without_heading(page, run, shown_part)
+    )
+
+
 def _in_run(run: RunSchematic, widget: QWidget, rectangle: QRectF) -> QRectF:
     """Return `rectangle`, in `widget`'s pixels, in the pixels of the run's schematic."""
 
@@ -1014,8 +1080,9 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
     shorter than one run's schematic, and two compared runs share it. The test
     scrolls the Area through every position. Wherever a container, a share bar
     or a line of a label is wholly in view and not under the heading, the
-    heading is wholly in view too. It holds the line that names the run and
-    the instant, the share caption and the compartments' names. Before the
+    heading is wholly in view too, and above that value. It holds the line
+    that names the run and the instant, the share caption and the
+    compartments' names. Before the
     heading was pinned, a scroll of the two runs' schematic showed a tension
     with neither its run nor its compartment named. The disclaimer, the
     tensions' unit and the amounts' unit with its condition stand above the
@@ -1058,6 +1125,9 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
             # covers the other run's rows.
             assert run.rect().contains(run.heading.geometry()), position
             heading = _in_viewport(scroll, run.heading, QRectF(run.heading.rect()))
+            qualifiers = [
+                _in_viewport(scroll, line, QRectF(line.rect())) for line in _qualifiers(run)
+            ]
             canvas = run.canvas
             values = [
                 _in_viewport(scroll, canvas, drawn)
@@ -1075,7 +1145,16 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
             ]
 
             if seen:
-                assert viewport.contains(heading), (position, run.name_text.text())
+                for qualifier in qualifiers:
+                    assert viewport.contains(qualifier), (position, run.name_text.text())
+
+            # A value seen above its own run's heading would stand under the
+            # rows of the run above, and read as that run's value.
+            for value in seen:
+                assert value.top() >= heading.top() + heading.height(), (
+                    position,
+                    run.name_text.text(),
+                )
 
 
 @pytest.mark.parametrize(
@@ -1118,6 +1197,98 @@ def test_each_compartment_name_stands_over_its_own_container(
             assert abs(cell.center().x() - container.center().x()) <= 0.5, name
 
 
+def _with_text_alone(widget: QWidget, painted: QImage, cell: QRectF, text: str) -> QImage:
+    """Return `painted` with `cell` cleared to its background and `text` painted alone in it.
+
+    The text is centred at the top of the cell, in `widget`'s font and in
+    `INK`, as `widget` paints each string. So the result is what `widget` would
+    show if `cell` held `text`. The cell's corner is clear of its text, so its
+    pixel is the background.
+    """
+
+    image = painted.copy()
+    area = cell.toAlignedRect().intersected(image.rect())
+    painter = QPainter(image)
+    painter.fillRect(area, image.pixelColor(area.topLeft()))
+    painter.setFont(widget.font())
+    painter.setPen(QColor(INK))
+    painter.drawText(cell, int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop), text)
+    painter.end()
+
+    return image
+
+
+def _distance(first: QImage, second: QImage, area: QRect) -> int:
+    """Return the sum, over `area`, of the absolute differences of the two images' colour bytes."""
+
+    one = first.copy(area).convertToFormat(QImage.Format.Format_RGB32)
+    two = second.copy(area).convertToFormat(QImage.Format.Format_RGB32)
+
+    return sum(
+        abs(a - b) for a, b in zip(bytes(one.constBits()), bytes(two.constBits()), strict=True)
+    )
+
+
+def test_each_name_and_label_line_is_painted_in_its_own_container_s_column(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-Q740`: the pixels of each name and each label line are that string, in its own cell.
+
+    `test_each_compartment_name_stands_over_its_own_container` compares the
+    cells that `name_cell` and `container` return, and nothing there reads
+    where the strings are painted. So a name or a tension painted in another
+    container's cell would put "Fat", or another compartment's tension, over
+    the circuit with every rectangle still right. This test reads the painted
+    pixels of each cell. It clears the cell and paints in it, alone, each
+    string of the cell's row in turn, and also nothing. The painted cell must
+    be nearest to the one painted with the string that belongs there. Every
+    string shown here differs from the others in its row, so a string painted
+    in another container's cell is nearer to that string, and an empty cell is
+    nearer to nothing. The cell is held to the nearest string, not to an exact
+    copy, because an exact copy failed on CI's ARM runners. There the widget's
+    own painting and the test's differ, which they do not in the x86
+    development container.
+    """
+
+    view = _paused_dashboard(
+        application, shown, _SCHEMATIC_ONLY, (_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX), branched=False
+    )
+    run = _schematic(view).schematics[0]
+    labels = run.canvas.painted_strings()
+    placed: list[tuple[QWidget, QRectF, str]] = [
+        (run.names, run.names.name_cell(index), name) for index, name in enumerate(_NAMES)
+    ]
+    placed += [
+        (run.canvas, run.canvas.label_line(index, line), labels[index * 3 + line])
+        for index in range(len(_NAMES))
+        for line in range(3)
+    ]
+    painted: dict[QWidget, QImage] = {
+        widget: widget.grab().toImage() for widget in (run.names, run.canvas)
+    }
+
+    rows = [_NAMES] + [
+        tuple(labels[index * 3 + line] for index in range(len(_NAMES))) for line in range(3)
+    ]
+
+    # The premise: no two strings in a row are the same, so each cell's pixels
+    # tell its string from every other in the row.
+    for row in rows:
+        assert len(set(row)) == len(row), row
+
+    for position, (widget, cell, text) in enumerate(placed):
+        image = painted[widget]
+        area = cell.toAlignedRect().intersected(image.rect())
+        # The names come first, one row of six, then each container's three lines.
+        row = rows[0] if position < len(_NAMES) else rows[1 + (position - len(_NAMES)) % 3]
+        distances = {
+            candidate: _distance(image, _with_text_alone(widget, image, cell, candidate), area)
+            for candidate in (*row, "")
+        }
+
+        assert min(distances, key=lambda candidate: distances[candidate]) == text, (text, distances)
+
+
 def test_a_run_heading_follows_a_scroll_of_the_page(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
@@ -1130,7 +1301,8 @@ def test_a_run_heading_follows_a_scroll_of_the_page(
     box until a container, a share bar or a line of a label stands just
     under the heading pinned at the box's top. It then scrolls the page
     through every position. Wherever a value is wholly in view and not under
-    the heading, the heading is wholly in view too. Before the page's scroll
+    the heading, the heading is wholly in view too, and above that value.
+    Before the page's scroll
     moved the headings, the heading stayed where the box's last scroll put
     it, and went above the page's edge while the value under it stayed in
     view.
@@ -1168,38 +1340,81 @@ def test_a_run_heading_follows_a_scroll_of_the_page(
             for page_position in range(page_bar.maximum() + 1):
                 page_bar.setValue(page_position)
                 application.processEvents()
-                # What is in view is what lies inside both the page's viewport
-                # and the schematic's box, each mapped to the page's viewport.
-                box = QRect(
-                    scroll.viewport().mapTo(page.viewport(), QPoint(0, 0)), scroll.viewport().size()
-                )
-                shown_part = page.viewport().rect().intersected(box)
+                shown_part = _shown_part(page, scroll)
 
                 for run in schematic.schematics:
-                    heading = QRect(
-                        run.heading.mapTo(page.viewport(), QPoint(0, 0)), run.heading.size()
-                    )
-                    values = [
-                        QRect(
-                            run.canvas.mapTo(page.viewport(), drawn.topLeft().toPoint()),
-                            drawn.size().toSize(),
-                        )
-                        for index in range(len(_NAMES))
-                        for drawn in (
-                            run.canvas.container(index),
-                            run.canvas.share_bar(index),
-                            *(run.canvas.label_line(index, line) for line in range(3)),
-                        )
-                    ]
-                    seen = [
-                        value
-                        for value in values
-                        if shown_part.contains(value) and not value.intersects(heading)
-                    ]
-
-                    if seen:
-                        assert shown_part.contains(heading), (
+                    if _seen_without_heading(page, run, shown_part):
+                        assert _heading_in_view(page, run, shown_part), (
                             box_position,
                             page_position,
                             run.name_text.text(),
                         )
+
+
+def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-H55Q`: a taller window moves each heading over the part of its run it brings into view.
+
+    In the Maintenance Workspace at 1366 by 600 with a branch open, the page
+    scrolls. The page is scrolled to its end, as a reader scrolls it. That
+    ends the hold on the concentration chart that the branch began, so no
+    later change of the page's range scrolls the page to the chart. The
+    schematic's box is scrolled until the first run's tension line stands
+    just under the heading, and the page is scrolled back to its top, which
+    takes the schematic's Area below the window's lower edge. No part of
+    either section is then in view, so each heading stands at its section's
+    top. The window is then made as tall as it can be while the page still
+    scrolls, which brings the box back into view. While the page scrolls, its
+    Areas keep their least heights, so the box keeps its size. The test checks
+    that the resize scrolls neither the page nor the box and leaves the box's
+    size as it was, and the run is paused, so no drawn frame moves a heading
+    either. Wherever a value is then seen, its run's heading is wholly
+    in view, and above that value. Before a change of the page's scroll
+    range moved the headings, the first run's six tensions were in view with
+    its heading above the box's top edge.
+    """
+
+    view = _paused_dashboard(application, shown, _maintenance(), (1366, 600), branched=True)
+    page = view._page_scroll
+    schematic = _schematic(view)
+    scroll = _view_scroll(schematic)
+    first = schematic.schematics[0]
+    page_bar = page.verticalScrollBar()
+    box_bar = scroll.verticalScrollBar()
+
+    # `triggerAction` reports the scroll through `actionTriggered`, as the
+    # wheel, the keys and the bar do, so it ends the hold on the chart.
+    page_bar.triggerAction(QAbstractSlider.SliderAction.SliderToMaximum)
+    application.processEvents()
+    box_bar.setValue(
+        first.mapTo(schematic, QPoint(0, 0)).y()
+        + first.canvas.mapTo(first, first.canvas.label_line(0, 0).topLeft().toPoint()).y()
+        - first.heading.height()
+    )
+    application.processEvents()
+    page_bar.triggerAction(QAbstractSlider.SliderAction.SliderToMinimum)
+    application.processEvents()
+
+    # The premise: the page's scroll has taken the whole box out of view.
+    assert _shown_part(page, scroll).isEmpty()
+    before = (page_bar.value(), box_bar.value(), scroll.viewport().size())
+
+    # The page's viewport grows with the window, so this leaves the page one
+    # pixel to scroll.
+    view.resize(1366, 600 + page_bar.maximum() - 1)
+    application.processEvents()
+    shown_part = _shown_part(page, scroll)
+
+    # The premise: the taller window scrolled neither the page nor the box and
+    # left the box's size as it was. A scroll or a resize would move the
+    # headings by itself, so only the change of the page's range can have.
+    assert page_bar.maximum() == 1
+    assert (page_bar.value(), box_bar.value(), scroll.viewport().size()) == before
+
+    # The premise: the taller window shows the first run's values again.
+    assert _seen_without_heading(page, first, shown_part)
+
+    for run in schematic.schematics:
+        if _seen_without_heading(page, run, shown_part):
+            assert _heading_in_view(page, run, shown_part), run.name_text.text()
