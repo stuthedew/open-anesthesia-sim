@@ -4792,7 +4792,9 @@ reader can learn every style from the legend alone.
 screen.** That is the unit Qt lays out every widget in, so a 3 px trace is as
 wide beside the text on a Retina screen at 200%, or on a Windows screen at 125%,
 as it is on a screen at 100%. The same holds for every other line on both plots
-and for each legend swatch (`PL-FSRR`).
+and for each legend swatch (`PL-FSRR`;
+`test_each_trace_is_painted_at_its_specified_width_at_every_screen_scale` in
+`tests/integration/test_chart_screen_scale.py`).
 
 **Color cannot be the first cue, because some pairs of trace colors are almost
 equally bright.** The closest pairs are alveolar and muscle, circuit and
@@ -6526,6 +6528,16 @@ these four cases:
   `test_a_cost_too_large_to_show_to_its_minor_unit_is_refused` in
   `tests/unit/test_formatting.py`); or
 - the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
+
+In each of the first three cases the readout also says what the reader can do:
+set the price, set it again, or check the bottle price and volume, all in the
+form below the readout. The notice that names the refused entries ends the same
+way: "Set them again in this View, or discard the refused entries below." In
+the fourth case the reader can do nothing in this View, so the readout names no
+step (NUREG-0700 Rev. 3, guideline 2.7.3-1; `PL-VT87`). For developers: the
+texts are the constants beside `NO_PRICE_TEXT` in `app/agent_cost.py`, and
+`test_the_notice_of_refused_preferences_says_what_the_reader_can_do` in
+`tests/unit/test_preferences.py` checks the notice.
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
 it show a cost left over from an earlier instant, another agent or an earlier

@@ -525,6 +525,11 @@ def refusals_notice(path: Path, preferences: Preferences) -> str | None:
     was read. After a save, the dashboard calls this again, because the reader
     may have replaced a refused entry by then, and that entry's reason no
     longer applies.
+
+    The notice ends with what the reader can do, as a refusal a user reads
+    must (NUREG-0700 Rev. 3, guideline 2.7.3-1, `PL-VT87`). The agent cost View
+    shows it, with the form that sets a price and the offer to discard the
+    refused entries under it.
     """
 
     refused = [entry.reason for entry in preferences.refused_prices]
@@ -535,7 +540,18 @@ def refusals_notice(path: Path, preferences: Preferences) -> str | None:
     if not refused:
         return None
 
-    return f"some preferences in {path} were refused and are not used: " + "; ".join(refused)
+    return (
+        f"Some preferences in {path} were refused and are not used: {'; '.join(refused)}. "
+        f"{REFUSED_PREFERENCES_NEXT_STEP}"
+    )
+
+
+#: What a reader can do about a refused preference, which the notice that names
+#: them ends with. The form and the offer to discard are both under the notice
+#: in the agent cost View.
+REFUSED_PREFERENCES_NEXT_STEP: Final = (
+    "Set them again in this View, or discard the refused entries below."
+)
 
 
 def unsaved_preferences_notice(error: PreferencesFileError) -> str:

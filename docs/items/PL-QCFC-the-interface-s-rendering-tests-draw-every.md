@@ -3,11 +3,14 @@ id: PL-QCFC
 title: The interface's rendering tests draw every screen at a device pixel ratio of 1, so nothing checks a layout at the ratio of 2 that a Retina Mac draws
 priority: P3
 effort: S
-status: ready
+status: done
 classes: test, ux
-touches: tests/integration/test_compartment_schematic_view.py
+touches: tests/integration/test_chart_screen_scale.py
 added: 2026-11-27
+closed: 2026-11-27
+pr: 2332
 payoff: a layout fault that appears only on a Retina screen is caught by a test instead of on the owner's Mac
+tests: tests/integration/test_chart_screen_scale.py::test_on_a_screen_at_each_scale_both_plots_stroke_every_line_at_its_width
 ---
 
 **Problem.** The interface's rendering tests draw every screen at a device pixel ratio of 1, so nothing checks a layout at the ratio of 2 that a Retina Mac draws
@@ -44,3 +47,15 @@ painted inside the chart did change: each one, with its dashes and the legend
 swatches, is drawn at half its width and length at a ratio of 2. That is
 `PL-FSRR`, which carries the fix and the test at a ratio of 2. The pictures are
 in `/mnt/project-files/v0.7.0/pl-qcfc-screens/`.
+
+**Closed with `PL-FSRR`, 2026-11-27.** The test this item asked for is
+`tests/integration/test_chart_screen_scale.py`. It renders the charts and their
+legends at device pixel ratios of 1, 1.25, 1.5, 2 and 3, both into an image of
+that ratio and in a child process run with `QT_SCALE_FACTOR` set, and checks
+each line's painted width and dash length against its specified size. The
+layout itself needed no test of its own, because the measurement above found
+no widget that moved or changed size.
+
+**Docs checked at close-out.** `docs/INTERFACE.md` § "The six compartment
+traces: what separates them" (updated with `PL-FSRR`), `README.md` (no
+mention of screen scale), `docs/VERIFICATION.md` (none).

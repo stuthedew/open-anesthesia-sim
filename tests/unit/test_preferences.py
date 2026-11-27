@@ -350,6 +350,25 @@ def test_a_refused_unit_falls_back_to_liquid_with_a_notice_and_is_kept(
     assert written["agent_cost_unit"] == unit
 
 
+def test_the_notice_of_refused_preferences_says_what_the_reader_can_do(tmp_path: Path) -> None:
+    """`PL-VT87`: the notice names the file and each refused entry, then the way out.
+
+    A refusal a user reads says what to do next (NUREG-0700 Rev. 3, guideline
+    2.7.3-1). The expected sentences are written out here rather than read from
+    the module, so a change to them fails this test.
+    """
+    _write(tmp_path, _document([SEVOFLURANE_PRICE_ENTRY], unit="gallons"))
+
+    notice = PreferencesStore(tmp_path).load().notice
+
+    assert notice is not None
+    assert notice.startswith(
+        f"Some preferences in {tmp_path / PREFERENCES_FILE_NAME} were refused and are not used: "
+    )
+    assert "agent cost unit" in notice
+    assert notice.endswith(". Set them again in this View, or discard the refused entries below.")
+
+
 def test_a_price_entry_that_is_not_an_object_is_refused_alone(tmp_path: Path) -> None:
     _write(tmp_path, _document(["isoflurane", SEVOFLURANE_PRICE_ENTRY]))
 

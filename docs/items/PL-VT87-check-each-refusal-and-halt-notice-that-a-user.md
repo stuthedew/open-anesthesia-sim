@@ -3,13 +3,16 @@ id: PL-VT87
 title: Check each refusal and halt notice that a user reads for what to do next, now that a refusal must say it (NUREG-0700 guideline 2.7.3-1)
 priority: P3
 effort: S
-status: ready
+status: done
 classes: ux
 feature: interface-design-review
-touches: src/anesthesia_sim/core/supported_ranges.py
+touches: src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/agent_cost.py, src/anesthesia_sim/app/simulation_view.py, docs/INTERFACE.md, tests/unit/test_preferences.py
 added: 2026-11-27
+closed: 2026-11-27
+pr: 2332
 filed-pr: 2330
 payoff: a user who meets a refused setting or a halted run is told how to go on, not only what went wrong
+tests: tests/unit/test_preferences.py::test_the_notice_of_refused_preferences_says_what_the_reader_can_do
 ---
 
 **Problem.** Check each refusal and halt notice that a user reads for what to do next, now that a refusal must say it (NUREG-0700 guideline 2.7.3-1)
@@ -34,3 +37,62 @@ ones that were changed.
 
 **Generator check.** One-off: the rule that these messages now miss was
 written on 2026-11-27.
+
+**Built 2026-11-27.** Every string under `src/anesthesia_sim/app/` that a user
+reads when a setting, a branch, a price or a preference is refused, or when a
+run halts, was read. `core/supported_ranges.py` writes its messages for a
+developer, and `setting_refusal_for_a_user` in `app/dashboard_frame.py` rewords
+them before a user sees one, so the user's texts are all in `app/`.
+
+Already say what to do next, and left alone:
+
+1. The setting refusals in `app/dashboard_frame.py`.
+   `REFUSED_SETTING_OUTSIDE_RANGE_TEMPLATE` with `SETTING_LIMIT_REASONS` gives
+   the range the setting must fall in, and `REFUSED_SETTING_NOTICE_TEMPLATE`
+   says the run keeps its previous setting.
+2. The refusals on a stopped run, which end with
+   `SUPPORTED_LIMIT_SETTING_WAY_OUT_TEXT` or `RESET_SETTING_WAY_OUT_TEXT`.
+3. Every halt banner (`FAILURE_NOTICE_TEMPLATE`, the three undrawn-failure
+   templates, `REJECTED_ACCOUNTING_NOTICE_TEMPLATE`,
+   `SUPPORTED_LIMIT_NOTICE_TEMPLATE`), which end with `{exit}`: Reset, a
+   branch, or closing and reopening the application when Reset was refused
+   (`REFUSED_RESET_WAY_OUT_TEXT`).
+4. The branch refusals in `app/controller.py`, which name an earlier point or
+   the trunk to branch from instead.
+5. The price entry refusals, which give the form required, such as "such as
+   20.47" or "such as USD", and `NO_PRICE_TEXT` and `REFUSED_PRICE_TEXT` in
+   `app/agent_cost.py`.
+
+Changed:
+
+1. `refusals_notice` in `app/preferences.py`, which the agent cost View shows.
+   Before: "some preferences in {path} were refused and are not used: {reasons}".
+   After: "Some preferences in {path} were refused and are not used: {reasons}.
+   Set them again in this View, or discard the refused entries below." The
+   sentence now starts with a capital, and `simulation_view.py` drops the
+   "Also," it joined the notice with after an unsaved-change notice.
+2. `PRICE_PER_ML_NOT_SHOWN_TEXT` gains "Check them below."
+3. `COST_NOT_COMPUTED_TEXT` gains "Check your price for {agent} below."
+
+Left without a step, because the user can do nothing about the cause in the
+application: `COST_NOT_CONVERTED_TEXT`, shown when the run's delivered amount
+could not be converted to liquid or is withheld (`DeliveredShown.liquid_ml`),
+which no price can repair, and `unsaved_preferences_notice`, whose
+cause is the file system's refusal and whose message already says the change
+lasts until the application closes.
+
+The wording follows NUREG-0700 Rev. 3 guideline 2.7.3-1 and the Siemens iX
+guidance on error messages, both quoted in
+`.claude/rules/sources-and-docstrings.md` and read for `PL-HWZK`. No sentence
+changes what a value means, so no clinician decision is asked.
+
+Regression test: `test_the_notice_of_refused_preferences_says_what_the_reader_can_do`
+in `tests/unit/test_preferences.py`. Run against `preferences.py` from HEAD
+before the change (`git show HEAD:src/anesthesia_sim/app/preferences.py`, then
+`pytest tests/unit/test_preferences.py -k says_what_the_reader`), it fails on
+its `startswith` assertion, because the old notice began "some preferences" in
+lower case.
+
+**Docs checked at close-out.** `docs/INTERFACE.md` § "A cost at the reader's
+price" (updated, with the steps each case names), `docs/MODEL.md` (no mention of
+these texts), `README.md` (none), `docs/VERIFICATION.md` (none).

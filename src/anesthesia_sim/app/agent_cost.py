@@ -309,14 +309,20 @@ COST_PRICE_TEMPLATE: Final = (
 COST_ROUNDED_TEXT: Final = "Rounded, so the figures may not multiply exactly."
 
 #: Why no cost is shown, in each case that `docs/INTERFACE.md` § "A cost at the
-#: reader's price" lists. The wording is a placeholder.
+#: reader's price" lists. Each but the last ends with what the reader can do,
+#: because a refusal a user reads says what to do next (NUREG-0700 Rev. 3,
+#: guideline 2.7.3-1, `PL-VT87`). A delivered amount that cannot be converted to
+#: liquid has no remedy in this View, so its text names none. The wording is a
+#: placeholder.
 NO_PRICE_TEXT: Final = "No cost: set your price for {agent} below."
 REFUSED_PRICE_TEXT: Final = "No cost: your saved price for {agent} was refused. Set it again below."
 PRICE_PER_ML_NOT_SHOWN_TEXT: Final = (
-    "No cost: your bottle price and volume for {agent} do not give a usable price per mL."
+    "No cost: your bottle price and volume for {agent} do not give a usable price per mL. "
+    "Check them below."
 )
 COST_NOT_COMPUTED_TEXT: Final = (
-    "No cost: the cost of the {agent} is too large or too small to compute."
+    "No cost: the cost of the {agent} is too large or too small to compute. "
+    "Check your price for {agent} below."
 )
 COST_NOT_CONVERTED_TEXT: Final = "No cost: the {agent} could not be converted to liquid."
 

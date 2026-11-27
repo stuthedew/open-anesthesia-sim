@@ -3,13 +3,16 @@ id: PL-FSRR
 title: On any screen whose scale is not 100%, every chart line, dash and legend swatch is drawn thinner and shorter than specified, because the chart's pens are cosmetic and Qt draws a cosmetic pen's width in device pixels
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_chart.py, ROADMAP.md, docs/INTERFACE.md, tests/integration/test_chart_screen_scale.py
 added: 2026-11-27
+closed: 2026-11-27
+pr: 2332
 filed-pr: 2332
 payoff: a user on a Retina or scaled Windows screen sees each chart trace at the width and dash pattern that tells it apart from the others
+tests: tests/integration/test_chart_screen_scale.py::test_each_trace_is_painted_at_its_specified_width_at_every_screen_scale, tests/integration/test_chart_screen_scale.py::test_each_legend_swatch_is_painted_at_its_line_s_width_at_every_screen_scale, tests/integration/test_chart_screen_scale.py::test_every_line_on_a_plot_is_kept_to_scale_and_follows_a_move_to_another_screen
 ---
 
 **Problem.** On any screen whose scale is not 100%, every chart line, dash and legend swatch is drawn thinner and shorter than specified, because the chart's pens are cosmetic and Qt draws a cosmetic pen's width in device pixels
