@@ -3,10 +3,10 @@ id: PL-8Q1P
 title: Run the heuristic evaluation of the current interface: four user tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
 priority: P3
 effort: M
-status: ready
+status: blocked
 classes: planning, ux
 feature: interface-pass-design-round
-blocked-by: PL-4JCC, PL-9YPR, PL-CBYS
+blocked-by: PL-4JCC, PL-9YPR, PL-CBYS, PL-TJM4
 added: 2026-11-11
 payoff: the interface pass starts from a ranked list of what stops a resident completing the four tasks, rather than from taste
 not-delegable: the owner is one of the two evaluators
