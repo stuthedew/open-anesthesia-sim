@@ -2,15 +2,15 @@
 id: PL-7LZ7
 title: With a concentration chart at 1.5 or 4.5 xMAC, the compartment schematic still fills against the standard 3 xMAC scale, so the two Views can disagree about whether one tension is off the scale; decide whether the schematic should follow a chart's top
 priority: P2
-effort: S
-status: needs-decision
-classes: defect
+effort: M
+status: ready
+classes: defect, ux
 feature: chart-readout
-touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/views.py, docs/INTERFACE.md
+touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/qt_schematic.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/preferences.py, docs/INTERFACE.md, tests/integration/test_view_contract.py
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 filed-pr: 2270
-payoff: the schematic and a chart cannot seem to disagree about whether a tension is off the scale
+payoff: the schematic and every chart draw a tension against one top, so they cannot disagree about whether it is off the scale
 ---
 
 **Problem.** With a concentration chart at 1.5 or 4.5 xMAC, the compartment schematic still fills against the standard 3 xMAC scale, so the two Views can disagree about whether one tension is off the scale; decide whether the schematic should follow a chart's top
@@ -21,10 +21,52 @@ payoff: the schematic and a chart cannot seem to disagree about whether a tensio
 
 **Decision needed.** Should the compartment schematic keep the standard 3 ×MAC scale, follow one chart's top, or carry an axis-top control of its own?
 
-**Recommendation (provisional).** Keep the standard scale on the schematic, and state it beside each chart's top control, because the schematic cannot know which of two charts to follow. The design round for `chart-readout` owes research on how linked views share a scale before this reaches the owner.
+**Recommendation (provisional).** [superseded 2026-11-27: the design round below decides one top for every chart and the schematic] Keep the standard scale on the schematic, and state it beside each chart's top control, because the schematic cannot know which of two charts to follow. The design round for `chart-readout` owes research on how linked views share a scale before this reaches the owner.
 
-**Done when.** The decision is recorded here, and a test shows the schematic and a chart at a non-standard top cannot be read as disagreeing without a visible statement of each scale.
+**Done when.** [superseded 2026-11-27: the decided Done-when under the design round] The decision is recorded here, and a test shows the schematic and a chart at a non-standard top cannot be read as disagreeing without a visible statement of each scale.
 
 **Generator check.** A one-off: a consequence of `PL-K1VH` giving each chart its own top.
 
 **Reproduced 2026-11-23.** `src/anesthesia_sim/app/compartment_schematic.py` still fills against the standard scale with no reference to a chart's top.
+
+## Design round, 2026-11-27
+
+**Decided: every View that draws a tension against the MAC scale uses one top.** The concentration charts and the compartment schematic all read that one top, and the "Axis top" control on any of them sets it for all. None of the brief's three options is taken, for the reasons under "Why the other options are set aside". The round takes this as an obvious call under `.claude/skills/docket/modes/design.md` step 4. The closest analog, a patient monitor, a human-factors guideline and two papers on multiple views give the same answer, and so does this repository's rule that a shared fact has one source of truth (`CLAUDE.md` § "Architecture and development discipline"). Today the top is two facts: each chart's chosen top, and a second copy at the standard top in the schematic.
+
+The decision reopens no owner decision. `PL-V67Q`'s answer (project owner, 2026-10-03, ratified) chose a reader-chosen fixed top from a ladder over continuous auto-scale, over a typed range, and over per-unit or per-agent ranges. This keeps the ladder, the control on the chart, the top holding across runs and a comparison, and the refusal of auto-scale. It picks none of the alternatives, so it extends that decision rather than reopening it (`.claude/skills/docket/modes/triage.md`, "Reopening a ratified decision means choosing what it was chosen over"). That each chart View holds its own top was a choice made in `PL-K1VH`'s build, because the control's home follows the time base's. No owner decision states it.
+
+### What was read, closest analog first
+
+The candidates are ranked as `.claude/rules/expert-review.md` § "Search the closest analog first" asks: the same quantity first, then the same class of product, then the same pattern of use.
+
+1. **Gas Man draws the same quantity in the same two ways.** Its Picture draws each compartment's tension as the fill of a container, and its Graph draws the same tensions as traces. One scale sets both. Source: Philip JH, *Workbook for Gas Man®: a simulation and teaching tool* (Med Man Simulations, 2012), read in the private reference corpus. Printed p. 193, "Scaling": "When you change the height of the DEL scale, the height of each of the body compartments changes accordingly (CKT, ALV, ART, VRG, MUS, FAT and VEN). In addition, the height of the DEL scale set in the Picture determines the height of the y-axis of the compartment tension and DEL portions of the Gas Man Graph." Printed p. 12 says that the Graph's tension scale "is automatically determined by the height of the DEL scale at the upper left of the Picture". Printed p. 186, Table E-5, lists "Scaling (gauge and graph)" among the view settings saved with an experiment. Printed p. 188 says that a control offered in several panels is "connected to the same input in the model". Pages read: 12, 180, 186-188 and 193.
+2. **A patient monitor gives each measurement one trend scale.** Source: Philips, *IntelliVue Patient Monitor MP20/30, MP40/50, MP60/70/80/90 Instructions for Use*, Release G.0, part number M8000-9001K, 09/2008, PDF fetched from medaval.ie. Read: chapter 21, "Trends", pp. 274-282, and "Hi-Res Trend Wave Scales", p. 289. "Parameter scales define how the trend waveform will appear on the screen and in trend reports", and they are set once under Main Setup, Trends, Parameter Scales (p. 276). Trends are set up in Configuration Mode, and a scale changed while monitoring is one of the "temporary changes" (p. 274). One segment of the Graphical Trends window can be given an automatic "Optimum Scale", and "This scale change is temporary. When the graphical trend window is closed the scale reverts back to the setting in Parameter Scales" (p. 275). A high-resolution trend drawn from a wave uses that wave's scale: "Changing the wave scale changes the hi-res trend wave scale" (p. 289).
+3. **No anesthesia workstation manual could be read on 2026-11-27.** draeger.com returned an HTML page in place of the Infinity Acute Care System quick reference guide's PDF. The hiof.no copy of a Perseus A500 document was a Norwegian reprocessing supplement. kvalitet.sshf.no reset the connection. gehealthcare.co.uk returned HTML in place of two Aisys documents, and gehealthcare.com.au returned a 404 page. No part of the decision rests on a workstation.
+4. **A human-factors guideline asks for one scale across displays that a user compares.** Source: NUREG-0700 Rev. 3 (O'Hara, Brookhaven National Laboratory for the U.S. Nuclear Regulatory Commission, July 2020), full text from https://www.osti.gov/servlets/purl/1644018, read 2026-11-27. Read: § 1.3.6, "Scales, Axes, and Grids", guidelines 1.3.6-1 to 1.3.6-23, pp. 1-42 to 1-45. Guideline 1.3.6-8, p. 1-43: "If users must compare graphic data across a series of displays, the same scale should be used for each." Its additional information says that "users may overlook differences in labeling and assume that the same scale has been used, even when displayed scales are actually different from one another." Guideline 1.3.6-16, p. 1-44: "Users should be able to manually change the scale to maintain an undistorted display under different operating conditions."
+5. **Two papers on multiple views, each read in full, ask for consistent scales between views that are compared.** Wang Baldonado, Woodruff and Kuchinsky, "Guidelines for using multiple views in information visualization", *Proceedings of the Working Conference on Advanced Visual Interfaces* (AVI 2000), pp. 110-119, doi:10.1145/345513.345271, read from the copy at courses.ischool.berkeley.edu. Its Rule of Consistency asks designers to "make the states of multiple views consistent", because "view inconsistency can lead to false cognitive inferences by the user". Where a design keeps views in different states, "the rule of self-evidence dictates that decoupling be made clear". The same rule asks that "all views in the same equivalence class have the same affordances". Qu and Hullman, "Keeping Multiple Views Consistent: Constraints, Validations, and Exceptions in Visualization Authoring", *IEEE Transactions on Visualization and Computer Graphics* 24(1):468-477, 2018, doi:10.1109/TVCG.2017.2744198, read from the authors' copy at mucollective.northwestern.edu. Its constraint C1.1 asks that two position scales showing the same quantitative field have the same domain, length and mapping. In its study, the authors who set C1.1 aside did so only where the two axes were not side by side for comparison. One said: "If these charts (containing price) were to go side-by-side, I would consider making the scales the same."
+
+### Why the other options are set aside
+
+1. **Keep the standard scale and say so beside each chart's control**, the provisional recommendation. NUREG-0700 guideline 1.3.6-8 says that users overlook differences in labelling, so a statement leaves the disagreement in place. Baldonado et al. accept views in different states only where the user wants them so, and the schematic's 3 ×MAC scale is not a state that the user chose.
+2. **Give the schematic a top of its own.** This lets a user set the two Views differently, which is the disagreement itself, and leaves the user two controls to keep in step.
+3. **Make the schematic follow one chart.** With one chart this is the decision. With two charts, the schematic would have to pick one, and the user could not see which.
+4. **Keep one shared top, with a marked "this chart only" override**, as the Philips monitor lets one segment of its trend window take a temporary scale until the window closes. This is not built now. No shipped Workspace shows two charts (`src/anesthesia_sim/data/workspaces/`), and an override adds a mode, which `.claude/rules/expert-review.md` asks a design to minimise. It can be added later without undoing this decision.
+
+### What changes for a user
+
+Choosing 1.5, 3 or 4.5 ×MAC on any "Axis top" control redraws every concentration chart and every compartment schematic at that top, in every Workspace and in a separate window. The schematic's fill heights, its marks and its caption follow the top. The marks stand every 0.25 ×MAC at the 1.5 top and every 0.5 ×MAC at the other two, as the chart's gridlines do. The schematic marks a container as above the top of the scale exactly when the chart's off-scale notice names that compartment. The top is kept when the application is closed and opened again.
+
+### What the build must keep
+
+1. **There is one record of the top.** It is held once for the application and handed to each View with what the View draws (`ViewContext`, `ViewTick`), so that no View reaches another (`docs/interface-provenance.md`, "Each View's isolation has to be built, not inherited from Blender"). The schematic reads the top from that record, not from `ChartCeiling.STANDARD`.
+2. **The schematic carries the same "Axis top" control**, which sets the same record. Gas Man puts its scale's box on the Picture, and Baldonado et al. ask that views of one kind offer the same controls. Measure the control in the Maintenance Workspace at 1366 by 768, under the container's font and under DejaVu Sans, before choosing where it sits. If it cannot fit without scrolling the page, stop and report the measurement here rather than leave the control out.
+3. **The top is saved once**, preferably as an application setting in the preferences file beside the agent cost View's unit (`app/preferences.py`), and no longer in each chart View's state. A layout saved with a chart's own top (`ceiling_mac` in a version 2 chart state) still opens without the notice for an unreadable state. The build chooses how that saved value is migrated and records the choice here.
+4. **Any on-screen wording is checked** against published plain-language and technical-writing guides before the pull request asks for a review.
+5. **`test_an_axis_top_picked_in_one_chart_redraws_only_that_chart`** in `tests/integration/test_view_contract.py` asserts the behaviour that this decision removes. Rewrite it to assert the shared top.
+
+**Done when.**
+
+1. A test sets the top from a chart to 4.5 ×MAC with an 8% sevoflurane circuit, and to 1.5 ×MAC with an alveolar tension of 1.67 MAC. In each case, the schematic marks a container above the top of the scale exactly when the chart's off-scale notice names that compartment. The test fails on the code before the change.
+2. A test shows that choosing a top on one chart redraws every chart and every schematic at it, and that choosing it on the schematic does the same.
+3. A test shows that the top survives closing and reopening the application, and that a layout saved with a chart's own top opens without the notice for an unreadable state.
+4. `docs/INTERFACE.md` § "The chart's fixed MAC axis" and § "The compartment schematic: what its heights, amounts and share bar assert" describe the one shared top. The sentences "Each chart View keeps its own top and saves it with its layout" and "The schematic keeps that scale when a reader gives the chart another top" are replaced.

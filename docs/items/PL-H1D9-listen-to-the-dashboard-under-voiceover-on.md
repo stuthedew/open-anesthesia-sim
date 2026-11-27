@@ -3,7 +3,7 @@ id: PL-H1D9
 title: Listen to the dashboard under VoiceOver on macOS once the names are in place, because the headless check reads what Qt hands the platform, not what a screen reader says
 priority: P2
 effort: S
-status: blocked
+status: ready
 classes: test
 feature: presentation-safety
 blocked-by: PL-9QY5, PL-N5JB, PL-RK9Z, PL-T9RB, PL-J7Z5
@@ -18,3 +18,5 @@ payoff: the owner hears what a screen-reader user hears, so the accessible names
 **Approach.** Once those items are done, the owner turns VoiceOver on (Command-F5), opens the app, starts a run and moves through the controls and readouts with VoiceOver's keys, noting what is spoken for each setting slider, each readout and the banner. Record what was heard against what each item intended. This needs the owner's machine, so it is blocked on the five items and then on the owner.
 
 **Done when.** The owner has listened under VoiceOver and what was heard for each setting slider, readout and banner is recorded here against what each item intended, with the date. Any difference is filed as its own item.
+
+**Ready 2026-11-27.** Its last three blockers, `PL-RK9Z`, `PL-T9RB` and `PL-J7Z5`, closed in pull request #2333, so it moved from `blocked` to `ready` there, on the project owner's word ("If it's best practice then agree").

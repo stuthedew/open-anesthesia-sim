@@ -26,6 +26,7 @@ from anesthesia_sim.app.dashboard_frame import (
     run_label,
 )
 from anesthesia_sim.app.formatting import format_elapsed
+from anesthesia_sim.app.view_registry import AGENT_ACCOUNTING, BRANCH
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
@@ -33,6 +34,12 @@ from anesthesia_sim.core.supported_ranges import (
     FreshGasFlow,
 )
 from anesthesia_sim.core.units import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
+from tests.integration.announcement_support import (
+    ASSERTIVE,
+    POLITE,
+    Announcement,
+    record_announcements,
+)
 from tests.integration.simulation_view.simulation_view_support import (
     _BEHIND_MARK_LABEL,
     _BEHIND_MARK_S,
@@ -54,6 +61,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _real_step_failure,
     _rewind_case,
     _select_fork_entry,
+    _settle,
     _shown_view,
     _steps,
     _take_fork,
@@ -91,6 +99,69 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
     assert len(view.runs) == 2
     assert len(case.branches) == 1
     assert panel.lock_text.text() == comparing_fork_lock_text(COMPARED)
+
+
+def test_the_caption_that_replaces_the_branch_control_is_read_out_once(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A screen reader hears the caption that replaces the branch control once (`PL-J7Z5`).
+
+    The caption is announced politely, because a comparison in progress is
+    the dashboard working as intended. A branch View built again shows the
+    same caption without announcing it. A press of the branch control while
+    two runs are shown is a refusal, and it interrupts.
+    """
+
+    view = _case_view(application, _branched_case())
+    recorded = record_announcements(monkeypatch)
+    _take_fork(view, 60.0)
+    _settle(application)
+    caption = comparing_fork_lock_text(COMPARED)
+
+    assert recorded == [Announcement(caption, POLITE)]
+
+    recorded.clear()
+    (area,) = (area for area in view.layout_container.model.areas() if area.view == BRANCH)
+    view.layout_container.choose_view(area.id, AGENT_ACCOUNTING)
+    _settle(application)
+    view.layout_container.choose_view(area.id, BRANCH)
+    _settle(application)
+    view.present(False)
+    _settle(application)
+
+    assert _fork_panel(view).lock_text.text() == caption
+    assert recorded == []
+
+    view._handle_fork()
+    _settle(application)
+
+    assert recorded == [Announcement(caption, ASSERTIVE)]
+
+
+def test_a_banner_standing_when_a_branch_is_taken_is_not_read_out_again(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The trunk's banner gains its run's name when a second run is drawn, and is not read again.
+
+    The named banner says nothing new, so a screen reader hears only the
+    caption that replaces the branch control. Before the fix the named banner
+    counted as a new one and interrupted the reader (`PL-J7Z5`).
+    """
+
+    view = _case_view(application, _branched_case())
+    view.runs[0]._handle_delivered_concentration_change(50.0)
+    _settle(application)
+    refused = view.runs[0]._notice_text.notice()
+    assert refused is not None and refused.startswith("Setting refused")
+    recorded = record_announcements(monkeypatch)
+
+    _take_fork(view, 60.0)
+    _settle(application)
+    view.present(False)
+    _settle(application)
+
+    assert view.runs[0]._notice_text.notice() == f"Run 1: {refused}"
+    assert recorded == [Announcement(comparing_fork_lock_text(COMPARED), POLITE)]
 
 
 def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QApplication) -> None:
