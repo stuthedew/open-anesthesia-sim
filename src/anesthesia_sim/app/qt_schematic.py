@@ -5,10 +5,12 @@ the readings that `app/compartment_schematic.py` computes. The canvas computes
 no value of its own. Each container fills from its bottom to the reading's
 `fill`, in the colour of its compartment's chart trace. So a user who moves
 between the schematic and the chart finds each compartment in one colour. The
-compartment's name, tension, amount and share of all the agent are painted
-under its container, in text, so no value is carried by colour or height alone
+compartment's tension, amount and share of all the agent are painted under its
+container, in text, so no value is carried by colour or height alone
 (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
-and share bar assert").
+and share bar assert"). Its name is painted over its column in the run's
+heading (`ContainerNames`), which stays in view while any of the run's
+schematic is in view (`PL-3NGZ`).
 Short marks inside each container's two sides stand at the concentration
 chart's gridlines. A container is much shorter than the chart's plot, so a
 user reads a fill level against these marks, never across to the chart
@@ -45,7 +47,7 @@ from typing import Final
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QFontMetrics, QPainter, QPaintEvent, QPen
-from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
@@ -56,11 +58,19 @@ from anesthesia_sim.app.compartment_schematic import (
     SchematicShown,
     instant_line,
 )
+from anesthesia_sim.app.pinned_heading import PinnedHeadingSection
 from anesthesia_sim.app.qt_widgets import styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.theme import INK, METRIC_QUALIFIER_SIZE, MUTED, VIEW_ROW_SPACING, WARNING
+from anesthesia_sim.app.theme import (
+    INK,
+    METRIC_QUALIFIER_SIZE,
+    MUTED,
+    VIEW_HEADING_SPACING,
+    VIEW_ROW_SPACING,
+    WARNING,
+)
 
-__all__ = ["RunSchematic", "SchematicCanvas"]
+__all__ = ["ContainerNames", "RunSchematic", "SchematicCanvas"]
 
 _TISSUES: Final = frozenset(
     {RecordedQuantity.VESSEL_RICH, RecordedQuantity.MUSCLE, RecordedQuantity.FAT}
@@ -133,23 +143,19 @@ class SchematicCanvas(QWidget):
                 the wrong name.
         """
 
-        if tuple(reading.quantity for reading in readings) != CONTAINER_ORDER:
-            raise ValueError(
-                "the schematic draws one reading per container in "
-                f"{[quantity.name for quantity in CONTAINER_ORDER]}, not "
-                f"{[reading.quantity.name for reading in readings]}"
-            )
-
+        _check_order(readings)
         self._readings = readings
         self._marks = marks
         self.updateGeometry()
         self.update()
 
     def painted_strings(self) -> tuple[str, ...]:
-        """Every label painted now: each container's name, tension, amount and share, in order.
+        """Every label painted now: each container's tension, amount and share, in order.
 
         `paintEvent` paints exactly these strings, read through `_labels`, so a
-        test that reads them reads what the reader sees (`PL-0G2P`).
+        test that reads them reads what the reader sees (`PL-0G2P`). The
+        containers' names are painted in the run's heading
+        (`ContainerNames`).
         """
 
         return tuple(text for reading in self._readings for text in _labels(reading))
@@ -179,12 +185,7 @@ class SchematicCanvas(QWidget):
             IndexError: If `index` does not name one of the containers.
         """
 
-        if not 0 <= index < len(CONTAINER_ORDER):
-            raise IndexError(
-                f"the schematic has {len(CONTAINER_ORDER)} containers, "
-                f"so it has no share bar at index {index}"
-            )
-
+        _check_index(index)
         metrics = QFontMetrics(self.font())
         length = self._column_width(metrics) - _COLUMN_GAP
         centre = self.width() / len(CONTAINER_ORDER) * (index + _COLUMN_CENTRE)
@@ -196,15 +197,58 @@ class SchematicCanvas(QWidget):
             float(_SHARE_BAR_HEIGHT),
         )
 
+    def container(self, index: int) -> QRectF:
+        """Return the outline of container `index`, in the canvas's pixels.
+
+        `paintEvent` fills and outlines each container here, so a test that
+        finds a container finds what the reader sees.
+
+        Raises:
+            IndexError: If `index` does not name one of the containers.
+        """
+
+        _check_index(index)
+        centre = self.width() / len(CONTAINER_ORDER) * (index + _COLUMN_CENTRE)
+
+        return QRectF(
+            centre - _CONTAINER_WIDTH / 2.0,
+            self._containers_top(),
+            float(_CONTAINER_WIDTH),
+            float(_CONTAINER_HEIGHT),
+        )
+
+    def label_line(self, index: int, line: int) -> QRectF:
+        """Return where line `line` of container `index`'s label is painted, in the canvas's pixels.
+
+        The lines are counted from 0 at the top, in the order `_labels` gives
+        them: the tension, the amount and the share. Each line is as
+        wide as its container's column. `paintEvent` paints each line here, so
+        a test that finds a line finds what the reader sees.
+
+        Raises:
+            IndexError: If `index` does not name one of the containers, or
+                `line` is not one of the label's lines.
+        """
+
+        _check_index(index)
+
+        if not 0 <= line < _LABEL_LINES:
+            raise IndexError(f"a label has {_LABEL_LINES} lines, so it has no line {line}")
+
+        height = QFontMetrics(self.font()).height()
+        column = self.width() / len(CONTAINER_ORDER)
+
+        return QRectF(
+            column * index, float(self._labels_top() + line * height), column, float(height)
+        )
+
     def paintEvent(self, event: QPaintEvent) -> None:  # Qt spells this in camelCase.
         del event
 
         if not self._readings:
             return
 
-        metrics = QFontMetrics(self.font())
-        column = self.width() / len(CONTAINER_ORDER)
-        rectangles = [self._container(index, column) for index in range(len(CONTAINER_ORDER))]
+        rectangles = [self.container(index) for index in range(len(CONTAINER_ORDER))]
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         self._paint_connections(painter, rectangles)
@@ -212,7 +256,7 @@ class SchematicCanvas(QWidget):
         for index, (reading, rectangle) in enumerate(zip(self._readings, rectangles, strict=True)):
             self._paint_container(painter, reading, rectangle)
             self._paint_marks(painter, rectangle)
-            self._paint_labels(painter, metrics, reading, rectangle.center().x(), column)
+            self._paint_labels(painter, index, reading)
             self._paint_share_bar(painter, reading, self.share_bar(index))
 
         painter.end()
@@ -220,10 +264,7 @@ class SchematicCanvas(QWidget):
     def _column_width(self, metrics: QFontMetrics) -> int:
         """The width of one container's column: its widest label, reserved or shown, and a gap."""
 
-        texts = (*WIDEST_LABELS, *self.painted_strings())
-        widest = max(metrics.horizontalAdvance(text) for text in texts)
-
-        return max(widest, _CONTAINER_WIDTH) + _COLUMN_GAP
+        return _column_width(metrics, self.painted_strings())
 
     @staticmethod
     def _containers_top() -> float:
@@ -234,16 +275,6 @@ class SchematicCanvas(QWidget):
 
     def _share_bars_top(self, metrics: QFontMetrics) -> int:
         return self._labels_top() + _LABEL_LINES * metrics.height() + _SHARE_BAR_GAP
-
-    def _container(self, index: int, column: float) -> QRectF:
-        centre = column * (index + _COLUMN_CENTRE)
-
-        return QRectF(
-            centre - _CONTAINER_WIDTH / 2.0,
-            self._containers_top(),
-            float(_CONTAINER_WIDTH),
-            float(_CONTAINER_HEIGHT),
-        )
 
     def _paint_connections(self, painter: QPainter, rectangles: list[QRectF]) -> None:
         """Join the containers as the model's circulation joins the compartments."""
@@ -323,24 +354,14 @@ class SchematicCanvas(QWidget):
 
         painter.restore()
 
-    def _paint_labels(
-        self,
-        painter: QPainter,
-        metrics: QFontMetrics,
-        reading: ContainerReading,
-        centre: float,
-        column: float,
-    ) -> None:
-        """Paint the container's name, tension, amount and share under it, one line each."""
+    def _paint_labels(self, painter: QPainter, index: int, reading: ContainerReading) -> None:
+        """Paint the container's tension, amount and share under it, one line each."""
 
         painter.setPen(QColor(INK))
-        top = float(self._labels_top())
 
         for line, text in enumerate(_labels(reading)):
             painter.drawText(
-                QRectF(
-                    centre - column / 2.0, top + line * metrics.height(), column, metrics.height()
-                ),
+                self.label_line(index, line),
                 int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
                 text,
             )
@@ -376,14 +397,130 @@ class SchematicCanvas(QWidget):
         painter.restore()
 
 
-def _labels(reading: ContainerReading) -> tuple[str, str, str, str]:
-    """The lines painted under one container, from the top: its name, tension, amount and share.
+class ContainerNames(QWidget):
+    """The compartments' names, each centred over its own container's column.
+
+    The run's heading holds this row, so the names stay in view with the
+    heading while the Area scrolls. A tension, an amount or a share in view
+    then always has its compartment's name over it (`PL-3NGZ`). The row is as
+    wide as the canvas under it, and both divide their width into one equal
+    column per container, so each name stands over its own container.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._names: tuple[str, ...] = ()
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def show_names(self, readings: tuple[ContainerReading, ...]) -> None:
+        """Paint the name of each of `readings`, one per container, in `CONTAINER_ORDER`.
+
+        Raises:
+            ValueError: If the readings are not one per container in
+                `CONTAINER_ORDER`, as `SchematicCanvas.show_readings` says.
+        """
+
+        _check_order(readings)
+        self._names = tuple(reading.name for reading in readings)
+        self.updateGeometry()
+        self.update()
+
+    def painted_strings(self) -> tuple[str, ...]:
+        """Every name painted now, in the containers' order.
+
+        `paintEvent` paints exactly these strings, so a test that reads them
+        reads what the reader sees (`PL-0G2P`).
+        """
+
+        return self._names
+
+    def name_cell(self, index: int) -> QRectF:
+        """Return where container `index`'s name is painted, in the row's pixels.
+
+        The cell is as wide as the container's column. `paintEvent` paints each
+        name here, so a test that finds a name finds what the reader sees.
+
+        Raises:
+            IndexError: If `index` does not name one of the containers.
+        """
+
+        _check_index(index)
+        column = self.width() / len(CONTAINER_ORDER)
+
+        return QRectF(column * index, 0.0, column, float(self.height()))
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return self.minimumSizeHint()
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        metrics = QFontMetrics(self.font())
+
+        return QSize(_column_width(metrics, self._names) * len(CONTAINER_ORDER), metrics.height())
+
+    def paintEvent(self, event: QPaintEvent) -> None:  # Qt spells this in camelCase.
+        del event
+        painter = QPainter(self)
+        painter.setPen(QColor(INK))
+
+        for index, name in enumerate(self._names):
+            painter.drawText(
+                self.name_cell(index),
+                int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
+                name,
+            )
+
+        painter.end()
+
+
+def _check_order(readings: tuple[ContainerReading, ...]) -> None:
+    """Refuse readings that are not one per container, in `CONTAINER_ORDER`.
+
+    Raises:
+        ValueError: If the readings' compartments are not `CONTAINER_ORDER`.
+    """
+
+    if tuple(reading.quantity for reading in readings) != CONTAINER_ORDER:
+        raise ValueError(
+            "the schematic draws one reading per container in "
+            f"{[quantity.name for quantity in CONTAINER_ORDER]}, not "
+            f"{[reading.quantity.name for reading in readings]}"
+        )
+
+
+def _check_index(index: int) -> None:
+    """Refuse an index that names none of the containers.
+
+    Raises:
+        IndexError: If `index` is not from 0 to one less than the number of
+            containers.
+    """
+
+    if not 0 <= index < len(CONTAINER_ORDER):
+        raise IndexError(
+            f"the schematic has {len(CONTAINER_ORDER)} containers, so it has none at index {index}"
+        )
+
+
+def _column_width(metrics: QFontMetrics, shown: tuple[str, ...]) -> int:
+    """The width of one container's column: its widest label, reserved or `shown`, and a gap.
+
+    The canvas and the heading's row of names both read it, so a name stands
+    over its own container at every width.
+    """
+
+    widest = max(metrics.horizontalAdvance(text) for text in (*WIDEST_LABELS, *shown))
+
+    return max(widest, _CONTAINER_WIDTH) + _COLUMN_GAP
+
+
+def _labels(reading: ContainerReading) -> tuple[str, str, str]:
+    """The lines painted under one container, from the top: its tension, amount and share.
 
     The painting and `SchematicCanvas.painted_strings` both read this one
     function, so no painted line can be left out of what a test reads.
     """
 
-    return (reading.name, reading.tension, reading.amount, reading.share_text)
+    return (reading.tension, reading.amount, reading.share_text)
 
 
 #: How many lines `_labels` paints under each container. It is counted from
@@ -391,8 +528,12 @@ def _labels(reading: ContainerReading) -> tuple[str, str, str, str]:
 _LABEL_LINES: Final = len(_labels(WITHHELD_SCHEMATIC.readings[0]))
 
 
-class RunSchematic(QWidget):
-    """One run's compartment schematic: its name, its containers and share bars, and its lines.
+#: The object name of each run's heading, which scopes its surface's stylesheet.
+_RUN_HEADING_NAME: Final = "runSchematicHeading"
+
+
+class RunSchematic(PinnedHeadingSection):
+    """One run's compartment schematic: its heading, its containers and share bars, and its lines.
 
     The compartment schematic View builds one for each displayed run, and
     writes it on every tick from that run's `RunPresentation`
@@ -406,46 +547,94 @@ class RunSchematic(QWidget):
     `docs/VERIFICATION.md` § "Reasonably foreseeable misuse, and the hazards the
     presentation carries" has a row on reading one run's value as the other's.
 
+    The heading holds the line that names the run and the instant, the line
+    that says what the shares are of, and the containers' names. It stays at
+    the top of the part of the schematic in view while the Area scrolls
+    (`PinnedHeadingSection`). So on a laptop screen no label or share bar is
+    in view without the run's name, its compartment's name or what its share
+    is of (`PL-3NGZ`).
+
     Args:
         shown: The schematic to draw first.
         name: The run's name while runs are compared, or None.
+
+    Attributes:
+        name_text: The line that names the instant shown, and the run while
+            runs are compared.
+        share_text: The line that says what every share is a part of, or why
+            no share is shown.
+        names: The containers' names, each over its own container.
+        canvas: The containers, their labels and their share bars.
+        off_scale_text: The lines that name each container above the scale.
+        scale_text: The caption that names the scale the containers fill
+            against, and says that the amounts held in the body read high.
     """
 
     def __init__(self, shown: SchematicShown, name: str | None) -> None:
-        super().__init__()
-        self.name_text = styled_label("", color=INK, bold=True)
+        name_text = styled_label("", color=INK, bold=True)
+        share_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
+        names = ContainerNames()
+        heading = QWidget()
+        rows = QVBoxLayout(heading)
+        # The lower margin keeps a row that scrolls under the heading clear
+        # of its words, and is the gap above the canvas while nothing has
+        # scrolled.
+        rows.setContentsMargins(0, 0, 0, VIEW_ROW_SPACING)
+        rows.setSpacing(VIEW_ROW_SPACING)
+        line = QHBoxLayout()
+        line.setContentsMargins(0, 0, 0, 0)
+        line.setSpacing(VIEW_HEADING_SPACING)
+        line.addWidget(name_text, 0, Qt.AlignmentFlag.AlignBaseline)
+        line.addWidget(share_text, 0, Qt.AlignmentFlag.AlignBaseline)
+        line.addStretch(1)
+        rows.addLayout(line)
+        rows.addWidget(names)
+        super().__init__(heading, _RUN_HEADING_NAME)
+        self.name_text = name_text
+        self.share_text = share_text
+        self.names = names
         self.canvas = SchematicCanvas()
         self.scale_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
         self.off_scale_text = styled_label("", color=WARNING, size_px=METRIC_QUALIFIER_SIZE)
-        self.share_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
-        column = QVBoxLayout(self)
-        column.setContentsMargins(0, 0, 0, 0)
-        column.setSpacing(VIEW_ROW_SPACING)
-        column.addWidget(self.name_text)
-        column.addWidget(self.canvas)
-        column.addWidget(self.off_scale_text)
-        # The share caption says what every share is a part of, so it stands
-        # just under the containers and stays on screen with them on a laptop
-        # screen, where the scale caption below it scrolls (`PL-8PL4`). The
-        # off-scale line comes first, because it warns that a fill is cut off.
-        column.addWidget(self.share_text)
-        column.addWidget(self.scale_text)
+        self.column.setSpacing(VIEW_ROW_SPACING)
+        self.column.addWidget(self.canvas)
+        # The off-scale line comes first under the containers, because it
+        # warns that a fill is cut off.
+        self.column.addWidget(self.off_scale_text)
+        self.column.addWidget(self.scale_text)
         self._name = name
         self._shown = shown
         self.show_schematic(shown)
+
+    def painted_strings(self) -> tuple[str, ...]:
+        """Every string painted without a label: each container's name, tension, amount and share.
+
+        They come in the containers' order, the name first, which is the
+        order a reader takes them in down each column.
+        """
+
+        labels = self.canvas.painted_strings()
+
+        return tuple(
+            text
+            for index, name in enumerate(self.names.painted_strings())
+            for text in (name, *labels[index * _LABEL_LINES : (index + 1) * _LABEL_LINES])
+        )
 
     def show_name(self, name: str | None) -> None:
         """Name the schematic while runs are compared, or leave it unnamed when `name` is None."""
 
         self._name = name
         self.name_text.setText(instant_line(self._shown.instant, name))
+        self.pin_heading()
 
     def show_schematic(self, shown: SchematicShown) -> None:
         """Draw `shown`: the instant it is read at, its containers, and each of its other lines."""
 
+        self.canvas.show_readings(shown.readings, shown.marks)
+        self.names.show_names(shown.readings)
         self._shown = shown
         self.name_text.setText(instant_line(shown.instant, self._name))
-        self.canvas.show_readings(shown.readings, shown.marks)
 
         for label, text in (
             (self.scale_text, shown.scale_caption),
@@ -454,3 +643,5 @@ class RunSchematic(QWidget):
         ):
             label.setText(text or "")
             label.setHidden(text is None)
+
+        self.pin_heading()
