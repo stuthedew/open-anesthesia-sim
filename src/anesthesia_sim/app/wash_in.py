@@ -21,9 +21,10 @@ breathing system with several limbs would break that identity, and would make
 this ratio wrong too. $`F_I`$ is not the vaporizer dial setting. The circuit
 fraction only approaches the dial setting, over the circuit's own time constant.
 
-**Two rules decide when the quotient is a number that this application will
-show: a minimum denominator and a maximum of one.** Both rules exist because a
-plausible-looking number is worse here than no number at all.
+**Three rules decide when the quotient is a number that this application will
+show: a minimum denominator, a maximum of one, and ventilation running.** All
+three exist because a plausible-looking number is worse here than no number at
+all.
 
 1. *The denominator must be at least one displayed unit.* $`F_I`$ is zero
    before any agent reaches the circuit. It is exactly zero at the start of
@@ -39,25 +40,43 @@ plausible-looking number is worse here than no number at all.
    alveolar fraction stays below the inspired fraction and reaches it only at
    equilibrium. Above one, the alveolar fraction exceeds the inspired one,
    and the number is no longer a wash-in fraction. With ventilation running,
-   the patient is then returning agent to the circuit. With alveolar
-   ventilation at zero, no agent moves between the lungs and the circuit. The
-   ratio can then pass one because fresh gas washes the circuit out, or
-   because blood returns agent to the alveoli, and neither is elimination. So
-   the caption beside the plot names the condition and not a cause
-   (`PL-7PBB`). The curve claims to be the textbook wash-in graph, so drawing
-   such a number on it would teach a wash-in that went past completion.
-   The rule allows `WASH_IN_ROUNDING_ALLOWANCE` above one for rounding, and
-   nothing more, because rounding alone can put an equilibrium's quotient a hair
-   above one (`PL-N559`).
+   the patient is then returning agent to the circuit. The caption beside the
+   plot names the condition and not a cause (`PL-7PBB`). The curve claims to
+   be the textbook wash-in graph, so drawing such a number on it would teach a
+   wash-in that went past completion. The rule allows
+   `WASH_IN_ROUNDING_ALLOWANCE` above one for rounding, and nothing more,
+   because rounding alone can put an equilibrium's quotient a hair above one
+   (`PL-N559`).
+3. *Alveolar ventilation must be running.* The model moves agent between the
+   circuit and the alveoli only through the term $`\dot V_A (F_I - F_A)`$
+   (`build_system_matrix` in `core/governing_equations.py`). At zero alveolar
+   ventilation that term is zero, so nothing the ratio does is uptake from the
+   circuit. The ratio still moves. Fresh gas washes the circuit toward the
+   dial, and blood takes agent from the alveoli or returns it. Drawn on the
+   wash-in curve, that movement would read as the alveoli filling, though no
+   agent reaches them (`PL-49D5`). So a state that a step at zero alveolar
+   ventilation reached has no ratio to draw, and the caption beside the plot
+   says that ventilation is zero. The rule reads the ventilation of the step
+   that reached the state, because that step made it. The state at the second
+   ventilation is stopped was reached with ventilation running, so the trace
+   ends at that second. Zero is compared exactly, for the reason
+   `core/__init__.py` § "Zero flow is tested with `== 0.0`, never against a
+   tolerance" gives.
+
+A reading applies rule 1 first, because without a denominator there is no
+ratio to say anything about. It applies rule 3 next, because at zero
+ventilation a ratio above one is no more elimination than one below it is
+uptake. Rule 2 comes last.
 
 `WASH_IN_EQUILIBRIUM_RATIO` is the boundary that rule 2 uses. It is a
 *modelled* value, not a plotting choice, because it is where net uptake stops.
 That is why the chart draws it as a labelled reference line and ends the trace
 on it, rather than at the top of a frame.
 
-Neither rule invents a value, substitutes a default, or clamps a value into
-range. Where the ratio is outside its domain, this module returns no number to
-draw and says which rule excluded it (`read_wash_in`). The interface can then
+No rule invents a value, substitutes a default, or clamps a value into range.
+Where the ratio is outside its domain, this module returns no number to draw
+and says which rule excluded it (`read_wash_in_with_ventilation`). The
+interface can then
 state the cause instead of drawing a number it cannot stand behind. For the
 same reason, one call returns both the number and whether it is inside its
 domain. A caption saying that the inspired concentration is too low to divide
@@ -72,14 +91,17 @@ from typing import Final
 from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 from anesthesia_sim.core.rounding import WASH_IN_ROUNDING_ALLOWANCE
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 
 __all__ = [
     "WASH_IN_DENOMINATOR_FLOOR_FRACTION",
     "WASH_IN_EQUILIBRIUM_RATIO",
     "WashInDomain",
     "WashInReading",
+    "is_ventilated",
     "is_wash_in",
     "read_wash_in",
+    "read_wash_in_with_ventilation",
     "wash_in_ratio",
 ]
 
@@ -104,11 +126,11 @@ WASH_IN_EQUILIBRIUM_RATIO: Final = 1.0
 class WashInDomain(StrEnum):
     """Whether $`F_A/F_I`$ is a wash-in fraction, and if not, why not.
 
-    There are three outcomes rather than a `None`, because the interface has
+    There are four outcomes rather than a `None`, because the interface has
     to say *which* outcome a blank stretch of curve stands for: an inspired
-    concentration too low to divide by, or an alveolar concentration above the
-    inspired. A reader told only that the trace stopped would have no way to
-    tell them apart.
+    concentration too low to divide by, an alveolar concentration above the
+    inspired, or ventilation at zero. A reader told only that the trace
+    stopped would have no way to tell them apart.
     """
 
     WASH_IN = "wash_in"
@@ -120,10 +142,18 @@ class WashInDomain(StrEnum):
     ELIMINATION = "elimination"
     """The alveolar fraction exceeds the inspired fraction, so the ratio is not a wash-in fraction.
 
-    The name is the usual case, a run with ventilation, in which agent comes
-    back to the circuit. With alveolar ventilation at zero, no agent moves
-    between the lungs and the circuit, so text written from this member names
-    the condition and not elimination (`PL-7PBB`).
+    With ventilation running, agent then comes back to the circuit, which is
+    the case the name describes. Text written from this member still names
+    the condition and not elimination (`PL-7PBB`). A state reached at zero
+    alveolar ventilation is `VENTILATION_STOPPED` instead, whatever its ratio,
+    where the reading knows the ventilation (`read_wash_in_with_ventilation`).
+    """
+
+    VENTILATION_STOPPED = "ventilation_stopped"
+    """The step that reached the state ran at zero alveolar ventilation (rule 3).
+
+    No agent moved between the circuit and the alveoli in that step, so the
+    ratio is not a wash-in fraction, whichever side of one it is on.
     """
 
 
@@ -132,9 +162,9 @@ class WashInReading:
     """The wash-in display's reading of one pair of modelled fractions.
 
     Attributes:
-        domain: Which of `WashInDomain`'s three cases this pair falls in.
+        domain: Which of `WashInDomain`'s four cases this pair falls in.
         plotted_ratio: The dimensionless quotient where it is a wash-in
-            fraction, and `None` in the other two cases. It is never a
+            fraction, and `None` in the other three cases. It is never a
             clamped or substituted value. Outside the domain there is no
             number to draw, and saying so is the purpose of the pair.
     """
@@ -189,14 +219,36 @@ def is_wash_in(ratio: float) -> bool:
     return ratio <= WASH_IN_EQUILIBRIUM_RATIO + WASH_IN_ROUNDING_ALLOWANCE
 
 
+def is_ventilated(alveolar_ventilation_l_min: AlveolarVentilation) -> bool:
+    """Return whether a step ran with alveolar ventilation above zero.
+
+    The function writes rule 3 of the module docstring as a predicate. The
+    chart's columns and the caption's reading both use it, so they cannot
+    disagree about which states had ventilation.
+
+    Args:
+        alveolar_ventilation_l_min: The alveolar ventilation of the step that
+            reached the state, in L/min.
+
+    Returns:
+        `False` at exactly zero, and `True` otherwise.
+    """
+
+    return alveolar_ventilation_l_min != 0.0
+
+
 def read_wash_in(
     alveolar_partial_pressure_fraction: float, inspired_partial_pressure_fraction: float
 ) -> WashInReading:
-    """Read F_A/F_I at one moment, returning the value to plot and its domain.
+    """Read F_A/F_I from two fractions alone, by rules 1 and 2, returning the value and its domain.
 
     This is one call rather than a value function and a domain function. So
     the trace and the sentence beside it come from one evaluation of one rule,
     and they cannot come to disagree.
+
+    It does not know the ventilation, so it cannot apply rule 3. Its result is
+    the plot's reading only for a state that a ventilated step reached. A
+    reader of a run's state calls `read_wash_in_with_ventilation`.
 
     Args:
         alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
@@ -218,3 +270,36 @@ def read_wash_in(
         return WashInReading(WashInDomain.ELIMINATION, None)
 
     return WashInReading(WashInDomain.WASH_IN, ratio)
+
+
+def read_wash_in_with_ventilation(
+    alveolar_partial_pressure_fraction: float,
+    inspired_partial_pressure_fraction: float,
+    alveolar_ventilation_l_min: AlveolarVentilation,
+) -> WashInReading:
+    """Read F_A/F_I at one stored second by all three rules, returning the value and its domain.
+
+    The rules apply in the order the module docstring gives: rule 1, then
+    rule 3, then rule 2.
+
+    Args:
+        alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
+            atmosphere.
+        inspired_partial_pressure_fraction: $`F_I`$, as a fraction of one
+            atmosphere.
+        alveolar_ventilation_l_min: The alveolar ventilation of the step that
+            reached the state, in L/min (`RunDefinition.reaching_segment_at`).
+
+    Returns:
+        The reading, whose `plotted_ratio` is a number exactly when its
+        `domain` is `WashInDomain.WASH_IN`.
+    """
+
+    reading = read_wash_in(alveolar_partial_pressure_fraction, inspired_partial_pressure_fraction)
+
+    if reading.domain is WashInDomain.NO_INSPIRED_AGENT or is_ventilated(
+        alveolar_ventilation_l_min
+    ):
+        return reading
+
+    return WashInReading(WashInDomain.VENTILATION_STOPPED, None)

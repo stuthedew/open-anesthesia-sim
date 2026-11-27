@@ -80,7 +80,7 @@ from anesthesia_sim.app_metadata import APP_BUILD_VERSION
 from anesthesia_sim.core import supported_ranges as supported_ranges_module
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKind, Window
@@ -301,6 +301,38 @@ def _after_a_setting_change(application: QApplication, _patch: pytest.MonkeyPatc
     _run_to(controller, 100)
     controller.set_delivered_concentration_percent(Percent(4.0))
     _run_to(controller, 2 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller)
+
+
+def _with_ventilation_stopped(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane at 11 min, with alveolar ventilation stopped at 10 min.
+
+    The F_A/F_I plot draws nothing while ventilation is zero, and its caption
+    says so (`PL-49D5`).
+    """
+
+    controller = SimulationController()
+    _run_to(controller, 10 * _SECONDS_PER_MINUTE)
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    _run_to(controller, 11 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller)
+
+
+def _with_the_dial_turned_down(application: QApplication, _patch: pytest.MonkeyPatch) -> list[str]:
+    """Sevoflurane at 11 min, at 10 L/min of fresh gas, with the dial lowered to 0.5% at 10 min.
+
+    The high flow washes the circuit out within the minute, so the alveolar
+    concentration then exceeds the inspired, and the F_A/F_I plot's caption
+    says the ratio is not a wash-in fraction (`PL-7PBB`).
+    """
+
+    controller = SimulationController()
+    controller.set_fresh_gas_flow(FreshGasFlow(10.0))
+    _run_to(controller, 10 * _SECONDS_PER_MINUTE)
+    controller.set_delivered_concentration_percent(Percent(0.5))
+    _run_to(controller, 11 * _SECONDS_PER_MINUTE)
 
     return _strings_shown(application, controller)
 
@@ -527,6 +559,8 @@ def _with_a_window_held(application: QApplication, _patch: pytest.MonkeyPatch) -
 #: already covers.
 EVENT_POINTS: Final[Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], list[str]]]] = {
     "setting changed": _after_a_setting_change,
+    "ventilation stopped": _with_ventilation_stopped,
+    "dial turned down": _with_the_dial_turned_down,
     "marks set": _with_marks_set,
     "stopped on a mark": _stopped_on_a_mark,
     "mark reached": _a_mark_reached,

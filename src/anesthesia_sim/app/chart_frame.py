@@ -115,7 +115,7 @@ from anesthesia_sim.app.wash_in import (
     WASH_IN_EQUILIBRIUM_RATIO,
     WashInReading,
     is_wash_in,
-    read_wash_in,
+    read_wash_in_with_ventilation,
 )
 from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -834,7 +834,8 @@ class RunFrame:
         wash_in: The F_A/F_I stretches drawn, oldest first. They are the most
             recent stretches that fit the pool.
         wash_in_now: The F_A/F_I reading at `elapsed_s`, from the snapshot's
-            own alveolar and inspired fractions. The wash-in plot's line for
+            own alveolar and inspired fractions and the alveolar ventilation
+            of the step that reached them. The wash-in plot's line for
             this run states it. It is held here, beside the run's name, so the
             line cannot be written from another run's snapshot (`PL-RF2S`).
         undrawn_wash_in_stretches: How many stretches inside the window the
@@ -1319,8 +1320,10 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
         times_s=window.times_s,
         fractions=MappingProxyType(fractions),
         wash_in=stretches[-MAX_CHART_WASH_IN_SEGMENTS:],
-        wash_in_now=read_wash_in(
-            snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
+        wash_in_now=read_wash_in_with_ventilation(
+            snapshot.alveolar_partial_pressure_fraction,
+            snapshot.inspired_partial_pressure_fraction,
+            snapshot.reaching_alveolar_ventilation_l_min,
         ),
         undrawn_wash_in_stretches=max(0, len(stretches) - MAX_CHART_WASH_IN_SEGMENTS),
         control_marks_s=marks,

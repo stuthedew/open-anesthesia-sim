@@ -1265,15 +1265,19 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # reader shown only an empty plot could not tell the two apart. Each sentence
 # names the condition and not a cause. The inspired concentration also falls
 # that low during a washout, while the patient still holds agent (`PL-P3ZL`).
-# And alveolar exceeds inspired with ventilation stopped too, when no agent
-# moves between the lungs and the circuit, so the patient is not returning any
-# (`PL-7PBB`). The sentence does not say "past equilibrium" either. With
-# ventilation stopped, the alveoli still give agent to the blood when the ratio
-# passes 1, so nothing is in equilibrium there.
+# The sentence for a ratio above 1 does not say that the patient returns agent
+# or that the run is past equilibrium, for the same reason (`PL-7PBB`). The
+# third sentence names zero alveolar ventilation, the setting the reader can
+# see on its control. At zero ventilation no agent moves between the circuit
+# and the lungs, so the ratio is not a wash-in fraction on either side of 1,
+# and the plot draws nothing (rule 3 of `app/wash_in.py`, `PL-49D5`).
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
 WASH_IN_ELIMINATION_TEXT: Final = (
     "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
+)
+WASH_IN_VENTILATION_STOPPED_TEXT: Final = (
+    "Alveolar ventilation is zero, so the ratio is not a wash-in fraction."
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 
@@ -3965,13 +3969,13 @@ def mac_awake_caption(frame: ChartFrame) -> str:
 def wash_in_state(reading: WashInReading, undrawn_wash_in_stretches: int) -> str:
     """Return what the wash-in plot is showing at this instant, and why.
 
-    The reading comes from `read_wash_in` on the snapshot's own alveolar and
-    inspired fractions (`chart_frame.RunFrame.wash_in_now`). The trace's
-    right-hand end comes from the states that the chart evaluates
-    (`DrawnWindow.wash_in_quotients`). Both apply the same two boundaries
-    from `app/wash_in.py`, and the two values agree to
-    within rounding. `PL-MH9J` (one stored state for each second, read by the
-    chart and the readouts alike) would make them one value.
+    The reading comes from `read_wash_in_with_ventilation` on the snapshot's
+    own alveolar and inspired fractions and the ventilation of the step that
+    reached them (`chart_frame.RunFrame.wash_in_now`). The trace's right-hand
+    end comes from the states that the chart evaluates
+    (`DrawnWindow.wash_in_quotients`). Both read the state that the run stored
+    for the second (`PL-MH9J`), and both apply the three rules of
+    `app/wash_in.py`, so the caption names the value the trace ends at.
 
     Args:
         reading: The run's F_A/F_I reading this tick.
@@ -3988,6 +3992,8 @@ def wash_in_state(reading: WashInReading, undrawn_wash_in_stretches: int) -> str
         state = WASH_IN_STATE_TEMPLATE.format(ratio=format_wash_in_ratio(reading.plotted_ratio))
     elif reading.domain is WashInDomain.NO_INSPIRED_AGENT:
         state = WASH_IN_NOT_DEFINED_TEXT
+    elif reading.domain is WashInDomain.VENTILATION_STOPPED:
+        state = WASH_IN_VENTILATION_STOPPED_TEXT
     else:
         state = WASH_IN_ELIMINATION_TEXT
 

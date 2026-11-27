@@ -791,6 +791,18 @@
   "#m##s",
   "#m##s–#m##s · Vaporizer #.##% -> #.##% (# settings)\n#m · Fresh gas flow #.# L/min -> #.# L/min"
  ],
+ "ventilation stopped": [
+  "# change(s)",
+  "##m · Alveolar ventilation #.# L/min -> #.# L/min",
+  "Alveolar ventilation is zero, so the ratio is not a wash-in fraction."
+ ],
+ "dial turned down": [
+  "# change(s)",
+  "## mL of liquid",
+  "##.# L/min",
+  "##m · Vaporizer #.##% -> #.##%\n#s · Fresh gas flow #.# L/min -> ##.# L/min",
+  "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
+ ],
  "marks set": [
   "##m – the decision point",
   "Alveolar #.## ×MAC",

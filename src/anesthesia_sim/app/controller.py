@@ -581,6 +581,17 @@ class SimulationSnapshot(RunRecord):
     vessel_rich_partial_pressure_fraction: Fraction
     muscle_partial_pressure_fraction: Fraction
     fat_partial_pressure_fraction: Fraction
+    reaching_alveolar_ventilation_l_min: AlveolarVentilation
+    """The alveolar ventilation of the step that reached `elapsed_s`, in L/min.
+
+    The six fractions above are the state that step stored, so this is the
+    ventilation they were produced under. It differs from
+    `alveolar_ventilation_l_min`, the ventilation from now on, only at the
+    second a change to it was made. The wash-in caption reads it, as each
+    column of the wash-in plot reads the same value for its own state, so the
+    caption and the trace's end agree about whether the ratio is a wash-in
+    fraction (rule 3 of `app/wash_in.py`, `PL-49D5`).
+    """
     delivered_agent_l: float
     agent_vapour_per_liquid: float
     """The millilitres of the running agent's vapour that one millilitre of its liquid gives.
@@ -1507,6 +1518,9 @@ class SimulationController:
             vessel_rich_partial_pressure_fraction=fractions[RecordedQuantity.VESSEL_RICH],
             muscle_partial_pressure_fraction=fractions[RecordedQuantity.MUSCLE],
             fat_partial_pressure_fraction=fractions[RecordedQuantity.FAT],
+            reaching_alveolar_ventilation_l_min=self._reaching_alveolar_ventilation_l_min(
+                self._state.elapsed_s
+            ),
             delivered_agent_l=accounting.delivered_agent_l,
             agent_vapour_per_liquid=self._agent_vapour_per_liquid,
             exhausted_agent_l=accounting.exhausted_agent_l,
@@ -2867,7 +2881,9 @@ class SimulationController:
             # to the left of a branch's fork, which a learner sees before the
             # branch point scrolls into view. An empty window draws nothing,
             # which is not the same as drawing a zero.
-            return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
+            return DrawnWindow(
+                substance_id=self._agent_id, times_s=(), states=(), alveolar_ventilations_l_min=()
+            )
 
         # An axis of zero width is one instant, and it is still drawn. Both
         # bounds coincide, so no grid column can fall strictly between them,
@@ -2894,7 +2910,29 @@ class SimulationController:
             substance_id=self._agent_id,
             times_s=times_s,
             states=tuple(stored_states.state_at(instant_s) for instant_s in times_s),
+            alveolar_ventilations_l_min=tuple(
+                self._reaching_alveolar_ventilation_l_min(instant_s) for instant_s in times_s
+            ),
         )
+
+    def _reaching_alveolar_ventilation_l_min(self, instant_s: float) -> AlveolarVentilation:
+        """Return the alveolar ventilation of the step that reached `instant_s`, in L/min.
+
+        It is read from the stretch that `RunDefinition.reaching_segment_at`
+        returns, the settings the stored state at that second was stepped
+        under. The wash-in plot draws nothing at a state that a step at zero
+        ventilation reached (rule 3 of `app/wash_in.py`). At the second a
+        change was made, the state was reached under the earlier setting, so
+        a trace ends on the second that ventilation stopped.
+
+        Raises:
+            SimulationConfigurationError: As `reaching_segment_at`, for a
+                second before the run opened or past the one it has reached.
+        """
+
+        return self._run_definition.reaching_segment_at(
+            instant_s
+        ).settings.alveolar_ventilation_l_min
 
     def start(self) -> None:
         """Start or resume the run, refusing a session that cannot continue.
@@ -3311,7 +3349,9 @@ class SimulationController:
         horizon_s = min(floor(stop_s), MAXIMUM_ELAPSED_SIMULATION_TIME_S)
 
         if horizon_s <= reached_s:
-            return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
+            return DrawnWindow(
+                substance_id=self._agent_id, times_s=(), states=(), alveolar_ventilations_l_min=()
+            )
 
         reached_state = self._state.stored_states.state_at(reached_s)
         key: _PredictionKey = (
@@ -3351,13 +3391,24 @@ class SimulationController:
             settings, CaseInstant(exact_s), exact_state, later_times_s, later_states
         )
 
+        times_s = exact_times_s + later_times_s
+        # The first column is the run's own state at its reach, which the
+        # run's own step reached. Every later column is a predicted state,
+        # which a step under the previewed settings reached.
+        reach_ventilation_l_min = self._reaching_alveolar_ventilation_l_min(reached_s)
         window = DrawnWindow(
             substance_id=self._agent_id,
-            times_s=exact_times_s + later_times_s,
+            times_s=times_s,
             # The predicted states go into the one record that only the
             # chart reads. They are drawn and used for nothing else.
             states=tuple(predicted[instant_s - reached_s] for instant_s in exact_times_s)
             + later_states,
+            alveolar_ventilations_l_min=tuple(
+                reach_ventilation_l_min
+                if instant_s == reached_s
+                else settings.alveolar_ventilation_l_min
+                for instant_s in times_s
+            ),
         )
         self._prediction_memo = (key, window)
 

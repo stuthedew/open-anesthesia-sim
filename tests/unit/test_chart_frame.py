@@ -1033,7 +1033,9 @@ def _input_refusing_a_drawn_column(
         values[COMPARTMENT_STATE_INDEX[quantity]] = value
         states[-1] = tuple(values)
 
-        return DrawnWindow(window.substance_id, window.times_s, tuple(states))
+        return DrawnWindow(
+            window.substance_id, window.times_s, tuple(states), window.alveolar_ventilations_l_min
+        )
 
     controller.drawn_window = drawn_window  # type: ignore[method-assign]
 
