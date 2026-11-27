@@ -1757,8 +1757,8 @@ closes in the pull request that filed it.
   controls above.
 - **Containers drawn to scale.** The measurement in § "v0.7.0 - the schematic"
   shows that four of the six containers are between 1 and 7 px wide in a 600 px
-  View. A filled area therefore cannot show the amount here. The share bar
-  shows the amount instead.
+  View. A filled area therefore cannot show the amount here. Each label prints
+  the amount instead, with its share of the agent and a bar for that share.
 - **More than one agent on one schematic.** Gas Man keeps one Picture for each
   agent. This model holds one substance at a time until the substance
   generalization, which is on no release yet (§ "The timeline", Beyond row).

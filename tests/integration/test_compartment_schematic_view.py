@@ -171,8 +171,10 @@ def _assert_every_label_matches_its_run(view: SimulationView) -> None:
     Each schematic is named as its run's panel is named. A tension is checked
     against the run's own readout, which is written from the same snapshot by a
     different path. An amount is checked against the run's controller, read at
-    this moment, in millilitres to two significant figures. So the check fails
-    for a schematic that still shows a state its run has left.
+    this moment, in millilitres to two significant figures. A share is checked
+    against the same six amounts, summed here, and is None while they sum to
+    zero. So the check fails for a schematic that still shows a state its run
+    has left.
     """
 
     schematics = _schematic(view).schematics
@@ -194,9 +196,16 @@ def _assert_every_label_matches_its_run(view: SimulationView) -> None:
         assert tuple(reading.name for reading in readings) == _NAMES
         assert tuple(reading.tension for reading in readings) == _readout_values(run)
 
+        total_l = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
+
         for reading in readings:
             millilitres = amounts.of(reading.quantity) * 1000.0
             assert reading.amount == _two_figures(millilitres), reading.name
+
+            if total_l == 0.0:
+                assert reading.share is None, reading.name
+            else:
+                assert reading.share == pytest.approx(amounts.of(reading.quantity) / total_l)
 
 
 def _two_figures(millilitres: float) -> str:
@@ -583,9 +592,9 @@ def _column_centre(canvas: SchematicCanvas, index: int) -> int:
 _CONTAINER_TOP_PX = 14
 _CONTAINER_HEIGHT_PX = 96
 _CONTAINER_WIDTH_PX = 44
-# The width of a share bar's outline, which the fill stays inside, restated the
-# same way.
-_OUTLINE_PX = 1
+# How far inside a share bar's edge its fill starts, past the outline and one
+# pixel of ground, restated the same way.
+_FILL_INSET_PX = 2
 
 
 def test_a_container_cannot_be_read_against_the_chart(
@@ -739,11 +748,11 @@ def test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label
     """`PL-8PL4`: each bar is filled to its compartment's share, all six on one scale.
 
     The fill of each bar is counted in pixels of its compartment's colour along
-    the bar's middle row. The fill runs inside the bar's 1 px outline, and its
+    the bar's middle row. The fill starts 2 px inside the bar's edge, and its
     last pixel can round either way, so each count must be within one pixel of
-    the share multiplied by the length inside the outline. A share worth at
-    least one pixel must show at least one, which the outline hid when the fill
-    started under it. The share is worked out here from the six amounts. The
+    the share multiplied by the length left inside. A share worth at least one
+    pixel must show at least one, which the outline hid when the fill started
+    under it. The share is worked out here from the six amounts. The
     six bars must be one length, so that equal lengths of fill are equal
     shares. Each bar must stand inside its own container's column, under the
     label that names it, and that label must end with the share. At ten
@@ -783,7 +792,7 @@ def _check_the_share_bars(
             image.pixelColor(x, middle).rgb() == colour
             for x in range(int(bar.left()), int(bar.right()))
         )
-        expected = amounts.of(reading.quantity) / total * (bar.width() - 2 * _OUTLINE_PX)
+        expected = amounts.of(reading.quantity) / total * (bar.width() - 2 * _FILL_INSET_PX)
         assert abs(painted - expected) <= 1, (reading.name, painted, expected)
         if expected >= 1.0:
             assert painted >= 1, (reading.name, expected)

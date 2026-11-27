@@ -81,6 +81,10 @@ _LABEL_LINES: Final = 4
 # the label's last line.
 _SHARE_BAR_HEIGHT: Final = 8
 _SHARE_BAR_GAP: Final = 4
+# How far inside a share bar's edge its fill starts: past the 1 px outline and
+# one pixel of the canvas's ground. Fat's and venous blood's colours are dark,
+# so a small share drawn against the outline looked like a thicker outline.
+_SHARE_FILL_INSET: Final = 2.0
 # How far each mark reaches in from a container's side. It leaves the middle of
 # the container clear, so the fill is seen whole between the marks.
 _MARK_LENGTH: Final = 8.0
@@ -345,8 +349,9 @@ class SchematicCanvas(QWidget):
     def _paint_share_bar(painter: QPainter, reading: ContainerReading, bar: QRectF) -> None:
         """Outline the bar in INK, and fill the inside from its left end to the reading's share.
 
-        The fill stays inside the outline, so the outline never covers a small
-        share's first pixel. A reading with no share leaves the bar empty, and
+        The fill starts one pixel inside the outline, so the outline never
+        covers a small share, and a dark fill is not mistaken for a thicker
+        outline. A reading with no share leaves the bar empty, and
         the outline still shows where the bar is and how long the whole would
         be. The bar is drawn without antialiasing, so that its fill and outline
         fall on whole pixels and a fill's length can be counted in pixels.
@@ -356,7 +361,8 @@ class SchematicCanvas(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
 
         if reading.share is not None:
-            inside = bar.adjusted(_OUTLINE_WIDTH, _OUTLINE_WIDTH, -_OUTLINE_WIDTH, -_OUTLINE_WIDTH)
+            inset = _SHARE_FILL_INSET
+            inside = bar.adjusted(inset, inset, -inset, -inset)
             painter.fillRect(
                 QRectF(
                     inside.left(), inside.top(), inside.width() * reading.share, inside.height()

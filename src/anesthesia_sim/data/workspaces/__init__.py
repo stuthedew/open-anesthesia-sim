@@ -40,7 +40,7 @@ controls' Area holds a second row of controls, and neither lesson fits whole.
   its name line, and the line that says what the shares are of comes next.
   Both stay on screen at 1366 by 768, and the scale caption under them
   scrolls. While a container is above the scale, the line that names it comes
-  first, and the share line then scrolls too. The schematic needs nearly all of the column's height
+  first, and the share line can then scroll too. The schematic needs nearly all of the column's height
   on a laptop screen, so this Workspace leaves out the bookmarks and the
   branch control. A reader brings either back with the View chooser. The
   wash-in chart, whose lesson is the first minutes, stays in Induction. The

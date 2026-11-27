@@ -216,10 +216,6 @@ class ContainerReading:
             container's share bar is filled to this share of its length. It is
             None while the run holds no agent, because no share exists then,
             and while the values are withheld.
-        share_text: The share as the label's last line prints it:
-            `SHARE_TEMPLATE` with the share in whole percent, as
-            `format_compartment_share` writes it, or `NO_SHARE_TEXT` while
-            `share` is None.
     """
 
     quantity: RecordedQuantity
@@ -229,7 +225,18 @@ class ContainerReading:
     tension: str
     amount: str
     share: float | None
-    share_text: str
+
+    @property
+    def share_text(self) -> str:
+        """Return the share as the label's last line prints it.
+
+        It is `SHARE_TEMPLATE` with the share in whole percent, as
+        `format_compartment_share` writes it, or `NO_SHARE_TEXT` while `share`
+        is None. It is worked out from `share` each time, so the label and the
+        bar under it cannot disagree.
+        """
+
+        return _share_text(self.share)
 
 
 def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, ...]:
@@ -289,7 +296,6 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
                 tension=format_percent(fraction),
                 amount=format_compartment_amount(amount_l),
                 share=share,
-                share_text=_share_text(share),
             )
         )
 
@@ -463,7 +469,6 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
             tension=WITHHELD_CONCENTRATION_TEXT,
             amount=WITHHELD_AMOUNT_TEXT,
             share=None,
-            share_text=NO_SHARE_TEXT,
         )
         for panel in COMPARTMENT_PANELS
     ),

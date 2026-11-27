@@ -6721,7 +6721,8 @@ s_x = \frac{M_x}{\sum_y M_y}
 The six shares therefore add up to the whole. The label's last line prints the
 share in whole percent, as "38% of agent" (§ "Displayed precision",
 `test_each_label_prints_its_own_compartment_s_share_in_whole_percent` in
-`tests/unit/test_compartment_schematic.py`). The
+`tests/unit/test_compartment_schematic.py`). Each share is rounded on its own,
+so the six printed shares need not add up to 100%. The
 six bars are one length, and each is filled from its left end to its share, so
 equal lengths of fill are equal shares. Each bar stands in its own container's
 column, under the label that names it, so no share is told apart by colour. One
@@ -6730,7 +6731,7 @@ at this instant (`PL-S79P`, `PL-8PL4`). It stands just under the containers,
 so on a 1366 by 768 screen it stays in view with the bars while the scale
 caption below it scrolls. The line naming a container above the scale comes
 before it, because that line warns that a container's fill is cut off. While
-that line shows on a 1366 by 768 screen, the share caption scrolls as well. A
+that line shows on a 1366 by 768 screen, the share caption can scroll too. A
 run holds no agent when it starts, so no share exists then: each bar is drawn
 empty, each label prints a dash where its share would be, and the caption line
 says that the circuit and body hold no agent.
