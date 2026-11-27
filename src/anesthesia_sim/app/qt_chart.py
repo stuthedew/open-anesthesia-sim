@@ -1571,7 +1571,9 @@ class _WashInRunItems:
 
         # One scatter item holds every terminus dot of the run, in the trace's
         # own colour. A dot says that the series ends here rather than
-        # continuing out of view, and only a stretch that *stopped* gets one.
+        # continuing out of view, and only a stretch that *stopped* gets one
+        # for that reason. A stretch of one point gets one too, because a
+        # line needs two points (`WashInStretch.has_end_dot`).
         self.termini = pg.ScatterPlotItem(
             size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
         )
@@ -1702,7 +1704,7 @@ class WashInChart(QWidget):
                 _draw_curve(curve, stretch.times_s, stretch.ratios)
                 curve.show()
 
-                if stretch.ends_above_equilibrium and stretch.times_s:
+                if stretch.has_end_dot:
                     ends_x.append(stretch.times_s[-1])
                     ends_y.append(stretch.ratios[-1])
 
@@ -1717,7 +1719,7 @@ class WashInChart(QWidget):
                 _draw_curve(curve, stretch.times_s, stretch.ratios)
                 curve.show()
 
-                if stretch.ends_above_equilibrium and stretch.times_s:
+                if stretch.has_end_dot:
                     ends_x.append(stretch.times_s[-1])
                     ends_y.append(stretch.ratios[-1])
 

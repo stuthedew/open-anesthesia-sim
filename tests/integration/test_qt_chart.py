@@ -99,7 +99,7 @@ from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.simulation_step import SIMULATION_STEP_S
-from anesthesia_sim.core.supported_ranges import CaseInstant, FreshGasFlow
+from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CaseInstant, FreshGasFlow
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
 
 # These are the identities that a dashboard gives the first runs it places, in
@@ -527,6 +527,40 @@ def test_the_wash_in_trace_ends_on_the_equilibrium_line_with_a_terminus_dot(
     chart.draw(_frame(_run_with_a_dial_change()))
     assert chart.terminus_points(0) == ()
     assert len(chart.drawn_stretches(0)) == 1
+
+
+def test_one_second_after_ventilation_is_restored_the_ratio_is_drawn_as_a_dot(
+    application: QApplication,
+) -> None:
+    """The first state reached with ventilation running again is drawn, though it is one point.
+
+    The stretch that starts again after an apnoea has one point for one
+    second. The caption beside the plot reads that point, and a line needs
+    two points. So the point is drawn as a dot, and the plot and the caption
+    agree (`PL-49D5`, domain review). The expected ratio is formed by the test
+    from the run's two fractions.
+    """
+
+    controller = SimulationController()
+    controller.set_delivered_concentration_percent(Percent(4.0))
+    controller.start()
+    _advance(controller, 600)
+    ventilation = controller.snapshot().alveolar_ventilation_l_min
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    _advance(controller, 300)
+    controller.set_alveolar_ventilation(ventilation)
+    _advance(controller, 1)
+    snapshot = controller.snapshot()
+    ratio = (
+        snapshot.alveolar_partial_pressure_fraction / snapshot.inspired_partial_pressure_fraction
+    )
+    chart = _shown(application, WashInChart(), 300)
+
+    chart.draw(_frame(controller))
+
+    *_, restarted = chart.drawn_stretches(0)
+    assert restarted == (pytest.approx((901.0, ratio)),)
+    assert chart.terminus_points(0)[-1] == pytest.approx((901.0, ratio))
 
 
 # ------------------------------------------------------------------ the hover

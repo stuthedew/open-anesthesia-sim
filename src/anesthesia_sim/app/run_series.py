@@ -31,7 +31,7 @@ from math import isfinite
 from types import MappingProxyType
 from typing import Final
 
-from anesthesia_sim.app.wash_in import is_ventilated, wash_in_ratio
+from anesthesia_sim.app.wash_in import is_ventilated, wash_in_quotient
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -319,7 +319,7 @@ class DrawnWindow:
         circuit = COMPARTMENT_STATE_INDEX[RecordedQuantity.CIRCUIT]
 
         return [
-            wash_in_ratio(state[alveolar], state[circuit]) if is_ventilated(ventilation) else None
+            wash_in_quotient(state[alveolar], state[circuit], ventilated=is_ventilated(ventilation))
             for state, ventilation in zip(
                 self.states, self.alveolar_ventilations_l_min, strict=True
             )

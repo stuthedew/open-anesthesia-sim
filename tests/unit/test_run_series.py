@@ -163,4 +163,3 @@ def test_a_preview_of_zero_ventilation_gives_no_quotient_after_the_reach() -> No
     assert window.alveolar_ventilations_l_min == (running,) + (0.0,) * (len(window.times_s) - 1)
     assert quotients[0] is not None
     assert quotients[1:] == [None] * (len(window.times_s) - 1)
-

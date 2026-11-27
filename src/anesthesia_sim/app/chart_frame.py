@@ -719,8 +719,8 @@ class WashInStretch:
             column rather than the live end of the run. The crossing column
             is the one drawn past equilibrium so that the curve meets the
             reference line. Only a stretch that *stopped* carries the
-            terminus marker, because the growing right-hand end of a run is
-            not an ending.
+            terminus marker for that reason, because the growing right-hand
+            end of a run is not an ending (`has_end_dot`).
 
     Raises:
         SimulationConfigurationError: If a ratio is NaN or infinite. No
@@ -737,6 +737,19 @@ class WashInStretch:
     times_s: tuple[float, ...]
     ratios: tuple[float, ...]
     ends_above_equilibrium: bool
+
+    @property
+    def has_end_dot(self) -> bool:
+        """Whether the plot marks the stretch's last point with a dot.
+
+        A stretch that stopped past equilibrium has one, because the dot says
+        that the trace ends there. A stretch of one point has one too, because
+        a line needs two points. Without the dot, the point would not be drawn.
+        One second after ventilation is restored, that point is the one the
+        caption beside the plot reads (`PL-49D5`).
+        """
+
+        return bool(self.times_s) and (self.ends_above_equilibrium or len(self.times_s) == 1)
 
     def __post_init__(self) -> None:
         for time_s, ratio in zip(self.times_s, self.ratios, strict=True):
@@ -1435,7 +1448,8 @@ def wash_in_stretches(
     all three of these hold:
 
     - it has a quotient at all, because its denominator was at least one
-      displayed unit (rule 1 of `app/wash_in.py`);
+      displayed unit and a step with ventilation running reached it (rules 1
+      and 3 of `app/wash_in.py`, `wash_in.wash_in_quotient`);
     - that quotient is no higher than `extension_ceiling`;
     - it is next to an anchor.
 
@@ -1530,8 +1544,9 @@ def _extends_a_stretch(
 ) -> bool:
     """Return whether the column at `column` is the crossing point to draw.
 
-    `None` marks a column with no quotient at all, under `app/wash_in.py`'s
-    rule 1: the inspired concentration is too low to divide by, so there is
+    `None` marks a column with no quotient at all, under rule 1 or rule 3 of
+    `app/wash_in.py`. The inspired concentration was too low to divide by, or
+    a step at zero alveolar ventilation reached the state. Either way there is
     nothing to draw.
     Every other out-of-domain column crossed equilibrium, and it is drawn
     when it is close enough to stay on the plot. A column outside the window

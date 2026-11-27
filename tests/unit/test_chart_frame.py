@@ -1145,6 +1145,30 @@ def test_a_wash_in_stretch_refuses_instants_and_ratios_of_different_lengths() ->
         WashInStretch((4.0, 8.0), (0.5, 0.6, 0.7), False)
 
 
+@pytest.mark.parametrize(
+    ("stretch", "dotted"),
+    [
+        (WashInStretch((), (), False), False),
+        (WashInStretch((901.0,), (0.38,), False), True),
+        (WashInStretch((901.0, 904.0), (0.38, 0.44), False), False),
+        (WashInStretch((901.0, 904.0, 960.0), (0.38, 0.44, 1.02), True), True),
+    ],
+)
+def test_a_stretch_has_an_end_dot_where_it_stopped_or_has_one_point(
+    stretch: WashInStretch, dotted: bool
+) -> None:
+    """A stretch of one point is drawn as a dot, because a line needs two points.
+
+    One second after ventilation is restored, the stretch that starts again
+    has one point, and the caption beside the plot reads its ratio. Without
+    the dot, the plot drew nothing there (`PL-49D5`, domain review). A
+    stretch of two or more points that is still growing has no dot, and one
+    that stopped past equilibrium has one.
+    """
+
+    assert stretch.has_end_dot is dotted
+
+
 def test_a_frame_holds_built_fractions_so_nothing_drawn_from_it_builds_one() -> None:
     """The conversion, the hover and the cursor readouts use the `Fraction`s that the frame built.
 

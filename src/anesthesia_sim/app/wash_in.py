@@ -102,6 +102,7 @@ __all__ = [
     "is_wash_in",
     "read_wash_in",
     "read_wash_in_with_ventilation",
+    "wash_in_quotient",
     "wash_in_ratio",
 ]
 
@@ -198,6 +199,38 @@ def wash_in_ratio(
         return None
 
     return alveolar_partial_pressure_fraction / inspired_partial_pressure_fraction
+
+
+def wash_in_quotient(
+    alveolar_partial_pressure_fraction: float,
+    inspired_partial_pressure_fraction: float,
+    *,
+    ventilated: bool,
+) -> float | None:
+    """Return the quotient that the wash-in plot compares at one state, by rules 1 and 3.
+
+    It is `wash_in_ratio`'s quotient where a ventilated step reached the
+    state. It is `None` where the inspired fraction is too small to divide by,
+    or where a step at zero alveolar ventilation reached the state. It may
+    exceed one, because the plot compares a quotient past equilibrium to
+    choose the column at which a stretch meets the line. Each drawn column's
+    quotient (`DrawnWindow.wash_in_quotients`) and each second's in the search
+    for columns between two drawn ones (`controller._with_extremes`) are
+    formed here. So the two agree about which seconds have a quotient.
+
+    Args:
+        alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
+            atmosphere.
+        inspired_partial_pressure_fraction: $`F_I`$, as a fraction of one
+            atmosphere.
+        ventilated: Whether the step that reached the state ran with alveolar
+            ventilation above zero (`is_ventilated`).
+    """
+
+    if not ventilated:
+        return None
+
+    return wash_in_ratio(alveolar_partial_pressure_fraction, inspired_partial_pressure_fraction)
 
 
 def is_wash_in(ratio: float) -> bool:

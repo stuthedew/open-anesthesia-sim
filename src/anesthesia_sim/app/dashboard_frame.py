@@ -1279,7 +1279,8 @@ WASH_IN_ELIMINATION_TEXT: Final = (
     "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
 )
 WASH_IN_VENTILATION_STOPPED_TEXT: Final = (
-    "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction."
+    "Alveolar ventilation was zero over the last simulated second, "
+    "so the ratio is not a wash-in fraction."
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 

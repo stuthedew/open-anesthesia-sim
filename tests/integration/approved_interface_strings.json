@@ -794,7 +794,7 @@
  "ventilation stopped": [
   "# change(s)",
   "##m · Alveolar ventilation #.# L/min -> #.# L/min",
-  "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction."
+  "Alveolar ventilation was zero over the last simulated second, so the ratio is not a wash-in fraction."
  ],
  "dial turned down": [
   "# change(s)",

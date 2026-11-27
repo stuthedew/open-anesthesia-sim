@@ -3161,7 +3161,8 @@ def test_a_ratio_above_one_with_ventilation_stopped_names_no_elimination() -> No
     assert snapshot.alveolar_partial_pressure_fraction > snapshot.inspired_partial_pressure_fraction
     assert _reading(snapshot).plotted_ratio is None
     assert wash_in_state_lines(_frame(controller)) == (
-        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction.",
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
     )
 
 
@@ -3203,7 +3204,8 @@ def test_no_wash_in_point_is_drawn_while_alveolar_ventilation_is_zero(
     stopped_frame = _frame(controller)
 
     assert wash_in_state_lines(stopped_frame) == (
-        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction.",
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
     )
 
     drawn_s = _drawn_wash_in_seconds(stopped_frame)
@@ -3219,7 +3221,9 @@ def test_no_wash_in_point_is_drawn_while_alveolar_ventilation_is_zero(
 
         assert not [time_s for time_s in resumed_s if 600 < time_s <= 900]
         assert max(resumed_s) == 1200
-        assert wash_in_state_lines(resumed_frame)[0].startswith("Now: F<sub>A</sub>/F<sub>I</sub> = ")
+        assert wash_in_state_lines(resumed_frame)[0].startswith(
+            "Now: F<sub>A</sub>/F<sub>I</sub> = "
+        )
 
 
 def test_the_caption_reads_the_ventilation_that_reached_the_state_not_the_one_just_set() -> None:
@@ -3245,7 +3249,8 @@ def test_the_caption_reads_the_ventilation_that_reached_the_state_not_the_one_ju
     _advance_to(controller, 601)
 
     assert wash_in_state_lines(_frame(controller)) == (
-        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction.",
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
     )
 
 
@@ -3259,8 +3264,8 @@ def test_restoring_ventilation_on_a_paused_run_keeps_the_caption_true_of_the_sta
     """
 
     stopped_caption = (
-        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in "
-        "fraction.",
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
     )
     controller = SimulationController(agent_id="sevoflurane")
     controller.set_delivered_concentration_percent(Percent(4.0))
