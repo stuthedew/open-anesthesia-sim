@@ -357,16 +357,24 @@ def test_the_notice_of_refused_preferences_says_what_the_reader_can_do(tmp_path:
     2.7.3-1). The expected sentences are written out here rather than read from
     the module, so a change to them fails this test.
     """
-    _write(tmp_path, _document([SEVOFLURANE_PRICE_ENTRY], unit="gallons"))
+    refused_isoflurane = {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "currency": "usd"}
+    refused_desflurane = {**SEVOFLURANE_PRICE_ENTRY, "agent": "desflurane", "bottle_price": 0}
+    prices = [SEVOFLURANE_PRICE_ENTRY, refused_isoflurane, refused_desflurane]
+    _write(tmp_path, _document(prices, unit="gallons"))
 
-    notice = PreferencesStore(tmp_path).load().notice
+    loaded = PreferencesStore(tmp_path).load()
 
-    assert notice is not None
-    assert notice.startswith(
+    # Three refused entries, so a wrong separator between the reasons shows.
+    reasons = [entry.reason for entry in loaded.preferences.refused_prices]
+    assert loaded.preferences.refused_unit is not None
+    reasons.append(loaded.preferences.refused_unit.reason)
+    assert len(reasons) == 3
+    assert "agent cost unit" in reasons[2]
+    assert loaded.notice == (
         f"Some preferences in {tmp_path / PREFERENCES_FILE_NAME} were refused and are not used: "
+        f"{reasons[0]}; {reasons[1]}; {reasons[2]}. "
+        "Set them again in this View, or discard the refused entries below."
     )
-    assert "agent cost unit" in notice
-    assert notice.endswith(". Set them again in this View, or discard the refused entries below.")
 
 
 def test_a_price_entry_that_is_not_an_object_is_refused_alone(tmp_path: Path) -> None:

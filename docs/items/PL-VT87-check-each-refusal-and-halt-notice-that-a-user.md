@@ -89,9 +89,12 @@ changes what a value means, so no clinician decision is asked.
 Regression test: `test_the_notice_of_refused_preferences_says_what_the_reader_can_do`
 in `tests/unit/test_preferences.py`. Run against `preferences.py` from HEAD
 before the change (`git show HEAD:src/anesthesia_sim/app/preferences.py`, then
-`pytest tests/unit/test_preferences.py -k says_what_the_reader`), it fails on
-its `startswith` assertion, because the old notice began "some preferences" in
-lower case.
+`pytest tests/unit/test_preferences.py -k says_what_the_reader`), the first
+version of the test failed on its `startswith` assertion, because the old
+notice began "some preferences" in lower case. The audit's mutation run then
+showed that one refused entry cannot catch a wrong separator between reasons,
+so the test now refuses three entries and compares the whole notice; a mutant
+that joins them with "XX; XX" fails it.
 
 **Docs checked at close-out.** `docs/INTERFACE.md` § "A cost at the reader's
 price" (updated, with the steps each case names), `docs/MODEL.md` (no mention of
