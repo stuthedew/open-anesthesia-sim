@@ -6726,10 +6726,14 @@ six bars are one length, and each is filled from its left end to its share, so
 equal lengths of fill are equal shares. Each bar stands in its own container's
 column, under the label that names it, so no share is told apart by colour. One
 caption line says that the shares are of all the agent in the circuit and body
-at this instant (`PL-S79P`, `PL-8PL4`). A run holds no agent when it starts, so
-no share exists then: each bar is drawn empty, each label prints a dash where
-its share would be, and the caption line says that the circuit and body hold no
-agent.
+at this instant (`PL-S79P`, `PL-8PL4`). It stands just under the containers,
+so on a 1366 by 768 screen it stays in view with the bars while the scale
+caption below it scrolls. The line naming a container above the scale comes
+before it, because that line warns that a container's fill is cut off. While
+that line shows on a 1366 by 768 screen, the share caption scrolls as well. A
+run holds no agent when it starts, so no share exists then: each bar is drawn
+empty, each label prints a dash where its share would be, and the caption line
+says that the circuit and body hold no agent.
 
 **Lines between the containers show ventilation and blood flow.** The
 containers stand in one row. A line joins the circuit to the alveoli for
@@ -6795,6 +6799,10 @@ one member of that file.
 amounts. `test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label`
 in `tests/integration/test_compartment_schematic_view.py` checks that each bar is
 painted to its share, at one length for all six, in its own container's column.
+`test_each_shipped_workspace_shows_its_lesson_whole_with_one_run` in
+`tests/integration/simulation_view/test_simulation_view_page.py` checks that
+the containers and the share caption are wholly in view in the Maintenance
+Workspace at 1366 by 768 and three larger screen sizes.
 
 The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.

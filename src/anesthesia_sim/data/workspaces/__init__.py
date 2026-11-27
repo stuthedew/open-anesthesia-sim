@@ -37,8 +37,10 @@ controls' Area holds a second row of controls, and neither lesson fits whole.
   low. Each container's label gives its share of all the agent, with a bar
   under it, and that is where a learner sees it (`PL-PR1W`, `PL-8PL4`). The
   containers, their labels and their bars are the schematic's first row under
-  its name line, so they stay on screen at 1366 by 768, and the captions under
-  them scroll. The schematic needs nearly all of the column's height
+  its name line, and the line that says what the shares are of comes next.
+  Both stay on screen at 1366 by 768, and the scale caption under them
+  scrolls. While a container is above the scale, the line that names it comes
+  first, and the share line then scrolls too. The schematic needs nearly all of the column's height
   on a laptop screen, so this Workspace leaves out the bookmarks and the
   branch control. A reader brings either back with the View chooser. The
   wash-in chart, whose lesson is the first minutes, stays in Induction. The

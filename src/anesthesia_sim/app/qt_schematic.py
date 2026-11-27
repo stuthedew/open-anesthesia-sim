@@ -358,7 +358,9 @@ class SchematicCanvas(QWidget):
         if reading.share is not None:
             inside = bar.adjusted(_OUTLINE_WIDTH, _OUTLINE_WIDTH, -_OUTLINE_WIDTH, -_OUTLINE_WIDTH)
             painter.fillRect(
-                QRectF(inside.left(), inside.top(), inside.width() * reading.share, inside.height()),
+                QRectF(
+                    inside.left(), inside.top(), inside.width() * reading.share, inside.height()
+                ),
                 QBrush(QColor(trace_style(reading.quantity).color)),
             )
 
@@ -411,8 +413,12 @@ class RunSchematic(QWidget):
         column.addWidget(self.name_text)
         column.addWidget(self.canvas)
         column.addWidget(self.off_scale_text)
-        column.addWidget(self.scale_text)
+        # The share caption says what every share is a part of, so it stands
+        # just under the containers and stays on screen with them on a laptop
+        # screen, where the scale caption below it scrolls (`PL-8PL4`). The
+        # off-scale line comes first, because it warns that a fill is cut off.
         column.addWidget(self.share_text)
+        column.addWidget(self.scale_text)
         self._name = name
         self._shown = shown
         self.show_schematic(shown)

@@ -733,11 +733,13 @@ def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QAppli
 #: What each Workspace named for a task must show whole with one run (`PL-D5J4`,
 #: `PL-YS8M`). The wash-in curve is Induction's lesson. Maintenance's is the
 #: schematic's containers with their labels and the share bar under each label
-#: (`PL-PR1W`, `PL-8PL4`), all drawn by one canvas. The bookmark editor sits in
-#: the Bookmarks View since `PL-CHX0`, and it scrolls inside its Area.
+#: (`PL-PR1W`, `PL-8PL4`), all drawn by one canvas, and the line that says what
+#: the shares are of, without which a share reads as a share of the agent in the
+#: patient alone. The bookmark editor sits in the Bookmarks View since
+#: `PL-CHX0`, and it scrolls inside its Area.
 _LESSONS: dict[str, frozenset[str]] = {
     "Induction": frozenset({"wash-in plot"}),
-    "Maintenance": frozenset({"containers and shares"}),
+    "Maintenance": frozenset({"containers and shares", "share caption"}),
 }
 
 #: The window sizes at which each Workspace shows its lesson whole with one
@@ -754,7 +756,7 @@ _LESSON_WHOLE_SCREENS_PX: tuple[tuple[str, int, int], ...] = (
 
 
 def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
-    """The shown wash-in plot and schematic canvas, by name."""
+    """The shown wash-in plot, schematic canvas and share caption, by name."""
 
     from anesthesia_sim.app.qt_schematic import RunSchematic
 
@@ -767,6 +769,7 @@ def _lesson_widgets(view: SimulationView) -> dict[str, QWidget]:
     for schematic in view.findChildren(RunSchematic):
         if schematic.isVisible():
             found["containers and shares"] = schematic.canvas
+            found["share caption"] = schematic.share_text
 
     return found
 
@@ -780,8 +783,11 @@ def test_each_shipped_workspace_shows_its_lesson_whole_with_one_run(
     Before `PL-D5J4`, Induction's wash-in curve started at its Area's lower
     edge, and Maintenance's share bar and the lines under it were below the
     schematic's Area. Each container's share is now in its label, with a bar
-    under it, so the canvas that draws the containers is Maintenance's lesson
-    (`PL-8PL4`). Each widget must be shown, and wholly inside every
+    under it, so the canvas that draws the containers is Maintenance's lesson,
+    with the caption line that says what the shares are of (`PL-8PL4`). That
+    line was the schematic's last row, below the scale caption, and off screen
+    at 1366 by 768, until the review of `PL-8PL4` moved it up. Each widget
+    must be shown, and wholly inside every
     scroll box around it, without the reader scrolling. The set of widgets
     each Workspace must show is written out, so a Workspace cannot pass by
     leaving its lesson out.
@@ -793,7 +799,8 @@ def test_each_shipped_workspace_shows_its_lesson_whole_with_one_run(
     knowing that at 1366 by 768 the wash-in plot then scrolls inside its Area,
     because the controls and the bookmarks and branch Views each hold their
     Area at its least height. The schematic's canvas is its first row under
-    the name line, so it is on screen at that size. With a branch open, the
+    the name line, and the share caption comes next, so both are on screen at
+    that size. With a branch open, the
     controls' Area holds a second row and neither lesson fits whole.
     """
 
