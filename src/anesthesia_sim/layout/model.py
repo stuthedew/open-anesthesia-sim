@@ -1389,10 +1389,17 @@ def _full_cuts(
     The lines tried run across `orientation`'s axis, so for a row they are
     vertical. One line is tried at each piece's leading edge. Edges within
     `BORDER_ALIGNMENT_TOLERANCE` of each other count as one line. That line is
-    followed from one edge to the next, as `borders()` follows a line. An edge
-    that close to the region's own edge counts as the region's edge. A line
+    followed from one edge to the next, as `borders()` follows a line. A line
     enters a piece when the piece begins before the line and ends after it,
     each by more than the tolerance.
+
+    A line that reaches the region's own edge, followed that way, is the
+    region's edge and not a cut, even where its last edge lies further from
+    the region's edge than the tolerance (`PL-PL6D`). When only each edge was
+    compared with the region's edge, a later edge of such a line was taken as
+    a cut. The strip it cut off then held an Area no wider than the line, and
+    that Area was stretched across the whole strip, moving an Area that was
+    not part of the join.
 
     A line followed that way can be wider than the tolerance. So whether the
     cut enters a piece depends on which of the line's edges it is drawn at.
@@ -1406,14 +1413,14 @@ def _full_cuts(
     spans = [rect.span(orientation) for rect, _ in pieces]
     lines: list[list[float]] = []
 
-    for start in sorted(start for start, _ in spans):
-        if not (_clearly_before(low, start) and _clearly_before(start, high)):
-            continue
-
-        if lines and _close(start, lines[-1][-1]):
-            lines[-1].append(start)
+    for edge in sorted((low, high, *(start for start, _ in spans))):
+        if lines and _close(edge, lines[-1][-1]):
+            lines[-1].append(edge)
         else:
-            lines.append([start])
+            lines.append([edge])
+
+    # The lines that hold the region's own edges are not cuts.
+    lines = [line for line in lines if low not in line and high not in line]
 
     def enters_none(at: float) -> bool:
         return not any(

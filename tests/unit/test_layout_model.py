@@ -1037,6 +1037,44 @@ def test_a_chain_of_borders_wider_than_the_tolerance_is_cut_where_it_enters_no_a
     assert_places(model.join(AreaId(1), AreaId(3)), joined_places(places, 1, 3))
 
 
+def test_a_line_that_chains_back_to_its_regions_edge_is_not_a_cut() -> None:
+    """A line followed from edge to edge to its region's own edge is not a cut (`PL-PL6D`).
+
+    Area 2 is 1.3e-9 of the window wide, a little more than the tolerance,
+    and sits at 0.3 above the middle. Below the middle, Area 5 ends and Areas
+    6 and 7 begin at 0.3 + 0.8e-9. Joining Areas 4 and 6 leaves no straight
+    cut across the window, so the region is first cut at 0.3. To the right of
+    that cut, the edges at 0.3, 0.3 + 0.8e-9 and 0.3 + 1.3e-9 form one line
+    that reaches the region's left edge. When each edge was compared with the
+    region's edge alone, the last one was taken as a cut. Area 2 then filled
+    a strip down to 0.6, and its bottom moved from 0.5 to 0.6 though it is not
+    part of the join. The join is refused instead, and every Area keeps its
+    place.
+    """
+
+    model = layout(
+        column(
+            (0.5, 0.5),
+            row(
+                (0.3, 1.3e-9, 0.7 - 1.3e-9), area(1), area(2), column((0.5, 0.5), area(3), area(4))
+            ),
+            row((0.3 + 0.8e-9, 0.7 - 0.8e-9), area(5), column((0.2, 0.8), area(6), area(7))),
+        )
+    )
+    places = rectangles(model)
+    copy = layout_to_json(model)
+
+    assert places[2][2] - places[2][0] > BORDER_ALIGNMENT_TOLERANCE
+    assert places[6][0] - places[2][0] <= BORDER_ALIGNMENT_TOLERANCE
+    assert places[2][2] - places[6][0] <= BORDER_ALIGNMENT_TOLERANCE
+
+    with pytest.raises(LayoutRefused, match="no straight cut divides the Areas the join would"):
+        model.join(AreaId(4), AreaId(6))
+
+    assert layout_to_json(model) == copy
+    assert_places(model, places)
+
+
 def test_an_id_is_never_handed_out_twice() -> None:
     """`PL-HJPY` Q3: state kept per Area id must never pass to an Area that did not have it."""
 
