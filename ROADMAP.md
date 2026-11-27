@@ -445,8 +445,8 @@ to clear the ground that the feature releases are built on:
 | 9 | **v0.7.0 — the schematic** | Planned-milestone items 27 and 28: a compartment schematic whose containers fill to tension, as Gas Man's Picture does, labelled with their amounts and with a bar showing where the agent *is*, and the agent cost View. **Scoped 2026-10-25** by `PL-LF0P` (project owner, 2026-10-25, ratified, over containers drawn to scale, over Gas Man's Picture as it is, and over leaving item 28 unscheduled), and it has its own section below. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two, and `v0.8.0` from then until 2026-09-26, when break-out came off the timeline and this moved up one.) **Its Required scope closed in v0.6.16, except entry 13, which the project owner added on 2026-11-10** (`PL-HQPF`, `PL-RJN9`). That entry requires every agent amount on screen to name the condition it is stated at. The cut waits on entry 13, on Gate 3 and on the project owner's test drive. | 1 L, 9 M, 3 S |
 | — | **v0.7.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, 2026-09-16, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. **Renumbered `v0.6.x` on 2026-09-26** by the same rule, when break-out came off the timeline and this row came to follow v0.6.0 (`PL-V1Y7`); the entry for item 33 records why the argument that placed it still holds. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. **Moved after v0.7.0 and renamed `v0.7.x` on 2026-11-10** (project owner, 2026-11-10, ratified, over keeping it before v0.7.0). The pass styles each surface once, after the surface exists, and v0.7.0 adds the schematic and the agent cost View. A user sees the current look through v0.7.0. | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships. Its work ships in `v0.7.x` patches as it clears, before v0.8.0's implementation begins. | — |
-| 11 | **v0.8.0 — the next milestone** | What it holds is the project owner's pick, made when it is scoped. It was the substance generalization and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | — |
-| 12+ | **Beyond** | In § "Development pathway" order: patient factors (item 30); the substance generalization with nitrous oxide and its effects (items 6 and 7); the machine abstraction with interlocks (item 1) and agent switching (item 2); the preferences panel (item 24); end-tidal control, override mode and direct injection (items 5, 3 and 4); item 8's scenario events and accessibility (item 20); save/load and replay (items 9 and 10); then intravenous agents (items 13-15). Item 30 comes first because the project owner placed it ahead of the substance generalization on 2026-09-02, and item 30's entry gives the reason. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40, the machine-profile framework, is no longer in this row.** The project owner split it out of item 1 on 2026-09-20. It is patch-track work that may ship whenever its items finish, and it takes no version of its own and freezes no gate. What stays here is the interlock baseline, and the machine behaviors that need the solver work that item 40 defers. | — |
+| 11 | **v0.8.0 — the patient, on the five-compartment model** | Planned-milestone item 30, narrowed to age and weight for an adult, on Eger's five-compartment body model. **Scoped 2026-11-27** by `PL-8NDZ`, and it has its own section below, which records the three choices the project owner ratified that day. It was the substance generalization and nitrous oxide until 2026-09-26, when those came off the timeline (Beyond row). | 3 L, 5 M, 2 S |
+| 12+ | **Beyond** | In § "Development pathway" order: the rest of patient factors (item 30), which is children once a source for a child's body proportions has been read in full, and editable compartments; the substance generalization with nitrous oxide and its effects (items 6 and 7); the machine abstraction with interlocks (item 1) and agent switching (item 2); the preferences panel (item 24); end-tidal control, override mode and direct injection (items 5, 3 and 4); item 8's scenario events and accessibility (item 20); save/load and replay (items 9 and 10); then intravenous agents (items 13-15). Item 30 comes first because the project owner placed it ahead of the substance generalization on 2026-09-02, and item 30's entry gives the reason. **The substance generalization and items 6 and 7 came off the timeline on 2026-09-26** (project owner, 2026-09-26: "Add it back once we have a really fleshed out single agent set up with workspaces all working"). Whether that condition is met is the owner's judgment, so a session placing the next row after v0.7.0 asks the owner rather than placing the generalization by pathway order (`PL-5XG1`). **Item 40, the machine-profile framework, is no longer in this row.** The project owner split it out of item 1 on 2026-09-20. It is patch-track work that may ship whenever its items finish, and it takes no version of its own and freezes no gate. What stays here is the interlock baseline, and the machine behaviors that need the solver work that item 40 defers. | — |
 
 **The Size column counts the items that a step was scoped with, by effort
 (L, M and S).** For a milestone, the count is its Required scope when it was
@@ -463,7 +463,7 @@ each contain one milestone's findings. Their work takes no release of its own
 (§ "How gate work is released"), which is why rows 4, 6, 8 and 10 carry no
 version.
 
-Rows 5, 7 and 9 are scoped and have their own sections below. So does the
+Rows 5, 7, 9 and 11 are scoped and have their own sections below. So does the
 `v0.4.26` row above them. A row becomes real only when it gets its own goal,
 required scope, definition of done and out-of-scope list in this document, as
 the development rules require.
@@ -1099,7 +1099,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a user cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 199 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 208 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1300,6 +1300,15 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-49D5 (S) With ventilation stopped and the dial lowered, the F_A/F_I trace climbs toward 1 because the circuit washes out, and the plot draws that climb as wash-in ending at equilibrium
 - PL-3NGZ (M) On a laptop screen the compartment schematic's labels can be in view while the lines that qualify them have scrolled away: the run's name while two runs are compared, the line saying what the shares are of while a container is above the scale, and the tension's unit
 - PL-DKQ5 (M) When the dashboard's page scrolls, an Area's header and the row a View keeps above its scroll box move out of view while the View's values below them stay in view
+- PL-5PNY (L) Specify Eger's five-compartment model in docs/MODEL.md and docs/PARAMETERS.md, with a sourced intertissue compartment and lung store, before any code changes
+- PL-7627 (M) Show every run's patient age and weight beside it, on both runs of a comparison, and test patient inputs through to the displayed MAC
+- PL-8K1F (S) Rewrite docs/MODEL.md's Known limitations for the five-compartment model
+- PL-C3MQ (L) Make patient weight an input that scales compartment volumes, blood flows and ventilation together by one sourced rule, within a sourced range
+- PL-NPR0 (S) Rewrite docs/VERIFICATION.md's account of what keeps a real patient's data out of a run, now that age and weight are inputs
+- PL-PTYM (L) Build the five-compartment model in core/, with the agent conserved across every compartment
+- PL-R8JK (M) Make patient age an input for adults, 18 years and older, refusing any age outside its sourced range with a notice that names the limit and the value
+- PL-XXWY (M) Re-run the wash-in, elimination and 24-hour washout comparisons with measured human data on the five-compartment model, beside the four-compartment results, and check the new equations against an independent calculation
+- PL-Z2L5 (M) Show the intertissue compartment the way Eger and Saidman draw it, and label its tension and amount apart from bulk fat
 
 ### Captures after the cut
 
@@ -1523,6 +1532,15 @@ hazard is not live. On 2026-11-27 no shipped Workspace, at 1366 by 768, 1440 by
 900 or 1920 by 1080 and with one run or two, let the page scroll either of them
 out of view. It takes a layout the user arranged, or a smaller window. The
 item's `deferred-from` records the measurement.
+
+**Nine `safety` and `science` items joined the frozen list on 2026-11-27,
+deferred to the next gate.** They are v0.8.0's Required scope, filed when that
+release was scoped (`PL-8NDZ`). An item of either class re-enters this gate
+whatever its date, and a deferred one stays written on the list. They are
+`PL-5PNY`, `PL-7627`, `PL-8K1F`, `PL-C3MQ`, `PL-NPR0`, `PL-PTYM`, `PL-R8JK`,
+`PL-XXWY` and `PL-Z2L5`. Each describes work not yet built, so no user sees a
+wrong value from it now, and each item's `deferred-from` records that check,
+made against `009da829`.
 
 ### Required scope
 
@@ -1810,6 +1828,175 @@ item's `deferred-from` records the measurement.
 - **The rest of a preferences workflow.** Required scope entry 10 builds the
   file and what this milestone stores in it. Save, Revert and Load Factory
   Preferences (`PL-GL5X`) are not part of this milestone.
+
+## v0.8.0 - the patient, on the five-compartment model
+
+This milestone is planned-milestone item 30, patient factors, narrowed to age
+and weight for an adult. It also moves the body model from Eger's
+four-compartment form to his five-compartment form. `PL-8NDZ` scoped it on
+2026-11-27. Three choices went to the project owner:
+
+1. The model becomes Eger's five-compartment model: the vessel-rich, muscle
+   and fat groups, plus a lung compartment and an intertissue diffusion
+   compartment (Hendrickx and De Wolf 2008, *Modern Anesthetics*, pp. 163-166;
+   Eger and Saidman 2005, *Anesth Analg* 100:1020-33, Table 3, p. 1024). It is
+   built before any user can edit compartment sizes (project owner,
+   2026-11-27, ratified, over editable compartments on the four-compartment
+   model, and over age and weight alone).
+2. The patient inputs are age and weight. Sex, height and body composition are
+   not inputs (project owner, 2026-11-27, ratified, over keeping sex as an
+   input with no sourced effect on anything the model computes).
+3. The patient is an adult, 18 years or older. Children wait for a later
+   release (project owner, 2026-11-27, ratified, over accepting children from
+   1 year on an adult body scaled by weight).
+
+Every source named in this section was read in full, from the private
+reference corpus, except where a sentence says otherwise.
+
+### Goal
+
+On 2026-11-27 the simulator models one 70 kg, 40-year-old adult, and its body
+model is the four-compartment form. The review chapter calls that form
+intuitive and good for teaching. It also says that the form overestimates
+uptake early and underestimates it after 30 to 45 minutes (Hendrickx and De
+Wolf 2008, p. 164). Human washout needed a fifth compartment in every data set
+Yasuda fitted (Yasuda et al. 1991, *Anesth Analg* 72:316-24, all 14 data sets).
+`docs/MODEL.md` § "Known limitations" says what leaving that compartment out
+costs: fat holds too little agent, and the late washout loses its largest
+measured term.
+
+The end state is as follows. A user sets an adult patient's age and weight and
+sees how the anesthetic changes. Every MAC figure on screen is correct for that
+age. The body model is Eger's five-compartment model. Every value in the model
+comes from a source that was read in full.
+
+### Debt gate: the frozen list
+
+Gate 4 freezes the day v0.7.0 ships, and its list is written here then
+(§ "The cadence"). Its work clears in `v0.7.x` patches before this
+milestone's implementation begins. Two orderings are already known. `PL-64NJ`
+compares the model against Gas Man's engine, and it runs before the
+five-compartment change, because it checks the four-compartment form that the
+change starts from. `PL-B4P7` and `PL-WZVZ`, the machine-profile entries, wait
+on a second machine profile that no release schedules.
+
+### Required scope
+
+#### The five-compartment model
+
+1. **The specification, before any code** (`PL-5PNY`). `docs/MODEL.md` gains
+   the five-compartment equations, units and assumptions.
+   - The intertissue compartment is a parallel compartment at fat solubility,
+     2.9 L in the reference adult (Eger and Saidman 2005, Table 3, p. 1024).
+   - Its blood flow is a share of cardiac output, not flow added on top. That
+     is how the fitted five-compartment model accounts for it: in Yasuda's
+     Table 5, the five compartments' flows sum to the measured total clearance
+     of 3.6 L/min (p. 321).
+   - The split of cardiac output among the compartments is re-derived from the
+     five-compartment sources. Today's 76/18/6 split is Gas Man's.
+   - Lung tissue and pulmonary blood join the alveolar gas as one central
+     compartment. Today's figures are round numbers with no source. Davis and
+     Mapleson's standard man, taken from the ICRP Reference Man report, gives
+     464 mL of lung tissue and 506 mL of pulmonary blood at 70 kg (Davis and
+     Mapleson 1981, *Br J Anaesth* 53:399-405, Table I, p. 401). The
+     specification adopts these or names a better source read in full.
+   - `docs/PARAMETERS.md` gives each new value its source and page.
+2. **The core computes it** (`PL-PTYM`). The new compartment and the larger
+   lung store are in `core/`. The amount of agent is conserved across all
+   compartments, and a test checks that to the precision the conservation
+   tests already use.
+3. **It is checked against measured human data** (`PL-XXWY`). The three
+   existing comparisons are re-run: wash-in at 30 minutes, elimination at five
+   minutes, and the first 24 hours of elimination against Yasuda's mean
+   curves. Each result is recorded beside the four-compartment result, as
+   agreeing or not. An independent reference calculation checks the new
+   equations, not only the published curves.
+4. **The display shows the new compartment the way the published teaching
+   figures draw it** (`PL-Z2L5`). Eger and Saidman draw the intertissue
+   compartment as a distinct layer at the edge of the fat group, filled from
+   the vessel-rich and muscle groups beside it (Eger and Saidman 2005, Figures
+   4 and 5, pp. 1023-1025). The schematic follows that drawing. Its tension and
+   amount are labelled separately from bulk fat, because the two fill at very
+   different rates. How the chart and the readouts show it is decided from the
+   closest published sources, ranked as `.claude/rules/expert-review.md`
+   requires, and recorded with them.
+5. **`docs/MODEL.md` § "Known limitations" is rewritten for the new model**
+   (`PL-8K1F`). The sections on the missing fifth compartment and on the lung
+   store are replaced by what the five-compartment model still leaves out.
+
+#### The patient
+
+6. **Age is an input** for adults, 18 years and older (`PL-R8JK`). Mapleson's
+   equation holds from 1 year, and restricting his data to 18 years and over
+   barely changed the fit (Mapleson 1996, *Br J Anaesth* 76:179-85, pp.
+   180-181). The body model's sizes and flows are an adult's, and young
+   children's differ substantially (Davis and Mapleson 1981, p. 402). An age
+   outside the range is refused, with a notice that names the limit. The upper
+   limit is the oldest age in Mapleson's data. The default is 40 years.
+7. **Every MAC figure is adjusted for age** (`PL-8F9D`): the MAC divisor, the
+   1 MAC line and the dial's 1 MAC start, by Mapleson's equation. The MAC at
+   age 40 already stored is the equation's anchor. `docs/PARAMETERS.md`
+   records that Mapleson 1996 has now been read in full, where until now only
+   its abstract had been checked. `docs/MODEL.md` says that 95% of the
+   published values lie within -18% to +23% of his line for each agent
+   (p. 182), so the age-adjusted MAC is a population estimate.
+8. **Weight is an input** (`PL-C3MQ`). Weight scales the compartment volumes,
+   the blood flows and ventilation together, by one rule chosen from sources
+   read in full. Davis and Mapleson give one: distribute the individual's total
+   mass, cardiac output or blood volume in the standard man's proportions
+   (p. 400). Lerou and Booij scale every volume as a fraction of body mass
+   (*Br J Anaesth* 2001;86:12-28, Tables 6 and 7, p. 26), but only those
+   tables of that paper have been read. The rule and its range are recorded in
+   `docs/MODEL.md`. The limits on cardiac output and ventilation scale with it.
+9. **Each run states the patient it was run for** (`PL-7627`). Age and weight
+   appear with the run, including on both runs in a comparison, so that two
+   curves are never compared without the patient being visible. A test runs
+   patient inputs through to the displayed MAC.
+10. **The guard against a real patient's data is rewritten** (`PL-NPR0`).
+    `docs/VERIFICATION.md` § "What keeps a real patient's data out of a run"
+    loses one of its two safeguards when age and weight become inputs, as
+    item 30 says.
+
+### Definition of done
+
+- A user can set an adult's age and weight, within sourced ranges, and every
+  MAC figure on screen is the MAC for that age.
+- An age or weight outside its range is refused, with a notice that names the
+  limit and the value entered.
+- The model is the five-compartment model, and each new value has a source
+  read in full, with its page.
+- The three published comparisons are re-run and recorded, and an
+  end-to-end test runs patient inputs through the model to the displayed
+  value.
+- `docs/MODEL.md`, `docs/PARAMETERS.md`, `docs/VERIFICATION.md`,
+  `docs/INTERFACE.md` and `README.md` describe the model and interface that
+  exist.
+- v0.8.0 is cut only after the project owner has test-driven `main`.
+
+### Explicitly out of scope for v0.8.0
+
+- **Sex as an input.** MAC does not differ between women and men (Wadhwa et
+  al. 2003). Women wake faster, but the difference comes from how the brain
+  responds, not from uptake (Wasilczuk et al. 2024). The model has no way to
+  show it. `docs/MODEL.md` records it as a known limitation.
+- **Editing compartment sizes.** That is the next step for item 30, now that
+  the five-compartment model is in place.
+- **Children, aged 1 to 17 years.** The body model is an adult's, and young
+  children's shares of body mass and cardiac output differ substantially
+  (Davis and Mapleson 1981, p. 402). Children come in a later release, once a
+  source for a child's body proportions has been read in full (§ "The
+  timeline", Beyond row).
+- **Patients younger than 1 year.** Mapleson's equation is not valid below 1
+  year (Mapleson 1996, p. 181). The infant studies show a different pattern for
+  each agent: isoflurane and desflurane are lower in neonates than at the
+  infant peak, and sevoflurane is not (Cameron et al. 1984; Taylor and Lerman
+  1991; Lerman et al. 1994). An infant also needs an infant body model, which
+  no source read so far supplies.
+- **Height, body composition and saved patient profiles.**
+- **Spread of ventilation-perfusion ratios, shunt and dead space.** These are
+  not part of Eger's model, and the main source has only been read as an
+  abstract.
+- **Effect-site models.**
 
 ## Development pathway
 
@@ -2503,6 +2690,14 @@ recall (`PL-212V`).
 ### Items added later (items 30-44)
 
 #### 30. Patient factors
+
+*v0.8.0 takes the adult half of this item (project owner, 2026-11-27,
+ratified).* Its section records the three choices made in scoping: Eger's
+five-compartment model first, age and weight as the only inputs, and adults
+only. Sex is not an input, which supersedes the covariate sentence below. Two
+parts are left here for a later release. Children come once a source for a
+child's body proportions has been read in full. Editable compartments come
+after the five-compartment model ships.
 
 Add patient factors (age, sex and weight as inputs) so that a learner
 can see how patient characteristics change the anesthetic. This is a
