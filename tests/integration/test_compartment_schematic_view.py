@@ -581,6 +581,9 @@ def _column_centre(canvas: SchematicCanvas, index: int) -> int:
 _CONTAINER_TOP_PX = 14
 _CONTAINER_HEIGHT_PX = 96
 _CONTAINER_WIDTH_PX = 44
+# The width of a share bar's outline, which the fill stays inside, restated the
+# same way.
+_OUTLINE_PX = 1
 
 
 def test_a_container_cannot_be_read_against_the_chart(
@@ -734,14 +737,16 @@ def test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label
     """`PL-8PL4`: each bar is filled to its compartment's share, all six on one scale.
 
     The fill of each bar is counted in pixels of its compartment's colour along
-    the bar's middle row. The outline covers the first pixel of a fill, and the
-    last pixel of a fill can round either way, so each count must be within two
-    pixels of the share multiplied by the bar's length. The share is worked out
-    here from the six amounts. The six bars must be one length, so that equal
-    lengths of fill are equal shares. Each bar must stand inside its own
-    container's column, under the label that names it, and that label must end
-    with the share. At ten seconds, venous blood, muscle and fat each hold far
-    less than 1%, so the test checks the bars then as well as at one hour.
+    the bar's middle row. The fill runs inside the bar's 1 px outline, and its
+    last pixel can round either way, so each count must be within one pixel of
+    the share multiplied by the length inside the outline. A share worth at
+    least one pixel must show at least one, which the outline hid when the fill
+    started under it. The share is worked out here from the six amounts. The
+    six bars must be one length, so that equal lengths of fill are equal
+    shares. Each bar must stand inside its own container's column, under the
+    label that names it, and that label must end with the share. At ten
+    seconds, venous blood, muscle and fat each hold far less than 1%, and at one
+    hour venous blood holds about 1%, so the test checks the bars at both.
     """
 
     for seconds in (10, 60 * SECONDS_PER_MINUTE):
@@ -776,8 +781,10 @@ def _check_the_share_bars(
             image.pixelColor(x, middle).rgb() == colour
             for x in range(int(bar.left()), int(bar.right()))
         )
-        expected = amounts.of(reading.quantity) / total * bar.width()
-        assert abs(painted - expected) <= 2, (reading.name, painted, expected)
+        expected = amounts.of(reading.quantity) / total * (bar.width() - 2 * _OUTLINE_PX)
+        assert abs(painted - expected) <= 1, (reading.name, painted, expected)
+        if expected >= 1.0:
+            assert painted >= 1, (reading.name, expected)
 
 
 def test_a_run_that_holds_no_agent_shows_empty_share_bars_and_says_why(

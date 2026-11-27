@@ -6726,9 +6726,10 @@ six bars are one length, and each is filled from its left end to its share, so
 equal lengths of fill are equal shares. Each bar stands in its own container's
 column, under the label that names it, so no share is told apart by colour. One
 caption line says that the shares are of all the agent in the circuit and body
-at this instant (`PL-8PL4`). A run holds no agent when it starts, so no share
-exists then: each bar is drawn empty, each label prints a dash where its share
-would be, and the caption line says that the circuit and body hold no agent.
+at this instant (`PL-S79P`, `PL-8PL4`). A run holds no agent when it starts, so
+no share exists then: each bar is drawn empty, each label prints a dash where
+its share would be, and the caption line says that the circuit and body hold no
+agent.
 
 **Lines between the containers show ventilation and blood flow.** The
 containers stand in one row. A line joins the circuit to the alveoli for

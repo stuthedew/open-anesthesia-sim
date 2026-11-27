@@ -343,20 +343,22 @@ class SchematicCanvas(QWidget):
 
     @staticmethod
     def _paint_share_bar(painter: QPainter, reading: ContainerReading, bar: QRectF) -> None:
-        """Fill the bar from its left end to the reading's share, and outline it in INK.
+        """Outline the bar in INK, and fill the inside from its left end to the reading's share.
 
-        A reading with no share leaves the bar empty, and the outline still
-        shows where the bar is and how long the whole would be. The bar is
-        drawn without antialiasing, so that its fill and outline fall on whole
-        pixels and a fill's length can be counted in pixels.
+        The fill stays inside the outline, so the outline never covers a small
+        share's first pixel. A reading with no share leaves the bar empty, and
+        the outline still shows where the bar is and how long the whole would
+        be. The bar is drawn without antialiasing, so that its fill and outline
+        fall on whole pixels and a fill's length can be counted in pixels.
         """
 
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
 
         if reading.share is not None:
+            inside = bar.adjusted(_OUTLINE_WIDTH, _OUTLINE_WIDTH, -_OUTLINE_WIDTH, -_OUTLINE_WIDTH)
             painter.fillRect(
-                QRectF(bar.left(), bar.top(), bar.width() * reading.share, bar.height()),
+                QRectF(inside.left(), inside.top(), inside.width() * reading.share, inside.height()),
                 QBrush(QColor(trace_style(reading.quantity).color)),
             )
 
