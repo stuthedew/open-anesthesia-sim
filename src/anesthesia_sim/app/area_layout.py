@@ -227,7 +227,7 @@ from anesthesia_sim.layout.sizing import (
     pixel_sizes,
     settle,
 )
-from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, areas_in
+from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, ViewKind, areas_in
 
 __all__ = [
     "AREA_MENU_LABEL",
@@ -1640,7 +1640,7 @@ class AreaLayout(QWidget):
 
         if sizes is None:
             # The splitters are being built and nothing is settled yet.
-            split = _split_at(self._model.windows[MAIN_WINDOW].tree, splitter.path)
+            split = self._model.split_at(splitter.path)
             available = _drawable_px(splitter)
             sizes = pixel_sizes(split.sizes, max(available, len(split.sizes)))
 
@@ -1877,7 +1877,7 @@ class AreaLayout(QWidget):
         if fit is None or drawn is None or sum(drawn) <= 0:
             return None
 
-        split = _split_at(start.windows[MAIN_WINDOW].tree, splitter.path)
+        split = start.split_at(splitter.path)
         bounds = tuple(
             minimum_extent(child, AREA_HANDLE_WIDTH, fit.bounds).along(split.orientation)
             for child in split.children
@@ -3186,23 +3186,6 @@ def _shape(node: Node) -> tuple[object, ...]:
         return (node.id, node.view)
 
     return (node.orientation, tuple(_shape(child) for child in node.children))
-
-
-def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
-    """Return the split at `path`. The adapter built a splitter for it from this same tree."""
-
-    node = tree
-
-    for step in path:
-        if not isinstance(node, Split):
-            break
-
-        node = node.children[step]
-
-    if not isinstance(node, Split):
-        raise LookupError(f"the layout has no split at {path}")
-
-    return node
 
 
 def _attempt(label: str, group: str | None, operation: Callable[[], LayoutModel]) -> AreaOperation:

@@ -1705,6 +1705,34 @@ def test_a_reference_the_layout_does_not_hold_is_refused() -> None:
         Handle(0, (-1,), 0)
 
 
+def test_split_at_returns_the_split_a_path_leads_to_and_refuses_any_other_path() -> None:
+    """The interface reads the split a splitter draws through `split_at` (`PL-VW5V`).
+
+    A path past a split's last child, a path through an Area, a path to an
+    Area and a window the layout lacks are each a stale reference, which is the
+    caller's error, and each is refused as one.
+    """
+
+    inner = row((0.5, 0.5), area(1), area(2))
+    model = layout(column((0.4, 0.6), inner, area(3)))
+
+    assert model.split_at(()) == column((0.4, 0.6), inner, area(3))
+    assert model.split_at((0,)) == inner
+    assert model.split_at((0,), window=0) == inner
+
+    for stale in ((2,), (0, 2), (1, 0), (0, 0, 0)):
+        with pytest.raises(NotInLayout, match=re.escape(f"the path {stale} leads to no node")):
+            model.split_at(stale)
+
+    for area_path in ((1,), (0, 1)):
+        with pytest.raises(NotInLayout, match="leads to an Area, not a split"):
+            model.split_at(area_path)
+
+    for window in (1, -1):
+        with pytest.raises(NotInLayout, match=f"this layout has no window {window}"):
+            model.split_at((), window=window)
+
+
 def test_a_bare_value_is_refused_where_a_checked_type_is_required() -> None:
     """`mypy` checks `src/` but not a caller typed `Any`, so the types are required at run time too.
 

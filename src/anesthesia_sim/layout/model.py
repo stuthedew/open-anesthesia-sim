@@ -358,6 +358,24 @@ class LayoutModel:
 
         return Rectangle(place.window, rect.left, rect.top, rect.right, rect.bottom)
 
+    def split_at(self, path: tuple[int, ...], window: int = MAIN_WINDOW) -> Split:
+        """Return the split that `path`, a child index for each level, leads to in `window`.
+
+        The interface builds one splitter for each split and addresses it by
+        this path, so it reads the split back through here rather than walking
+        the tree itself (`PL-VW5V`).
+
+        Raises:
+            NotInLayout: this layout has no window `window`, or the path steps
+                into an Area, runs past a split's last child, or leads to an
+                Area rather than a split.
+        """
+
+        if not 0 <= window < len(self.windows):
+            raise NotInLayout(f"this layout has no window {window}")
+
+        return _split_at(self.windows[window].tree, path)
+
     def neighbours(self, area_id: AreaId) -> tuple[Neighbour, ...]:
         """Return the Areas whose edge meets an edge of this Area for some length, by side.
 
