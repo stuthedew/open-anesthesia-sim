@@ -31,6 +31,7 @@ from anesthesia_sim.core.concentration import MacPercent
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.layout.tree import AreaId
+from tests.integration.announcement_support import TextChange, record_text_changes
 from tests.integration.simulation_view.simulation_view_support import (
     _advance,
     _chosen_time_base,
@@ -98,6 +99,43 @@ def test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_i
     assert described.text(QAccessible.Text.Description) == (
         "Nothing is plotted, because no frame could be drawn for this chart."
     )
+
+
+def test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A new frame reports a changed description, and a withheld one a changed name (`PL-T9RB`).
+
+    A screen reader that keeps the texts it has read, as the AT-SPI client
+    library on Linux does, would otherwise go on reading an earlier frame's
+    values. A frame that changes neither text reports nothing, so a paused run
+    sends no event on each tick. The name stays the same from 10 to 11
+    minutes, because the whole run so far still fits in the 15 minutes shown.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600)
+    view = _shown_view(application, controller)
+    chart = _concentration(view).chart
+    recorded = record_text_changes(monkeypatch)
+
+    _advance(controller, 60)
+    view.present(False)
+
+    assert recorded == [TextChange(chart, QAccessible.Event.DescriptionChanged)]
+
+    recorded.clear()
+    view.present(False)
+
+    assert recorded == []
+
+    chart.withhold()
+
+    assert recorded == [
+        TextChange(chart, QAccessible.Event.NameChanged),
+        TextChange(chart, QAccessible.Event.DescriptionChanged),
+    ]
 
 
 def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) -> None:

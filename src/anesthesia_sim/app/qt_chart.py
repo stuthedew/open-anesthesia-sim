@@ -71,6 +71,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QAccessible,
+    QAccessibleEvent,
     QBrush,
     QColor,
     QFontMetrics,
@@ -1124,7 +1125,9 @@ class _ConcentrationChartAccessible(QAccessibleWidget):
     Automation and macOS each report as an image. Its name and long
     description are `dashboard_frame`'s, written from the frame the chart
     last drew (`PL-T9RB`). Both are written when a screen reader asks for
-    them, so neither can describe an earlier frame.
+    them. A screen reader that keeps the texts it has read, as the AT-SPI
+    client library on Linux does, reads them again when told that they
+    changed, so the chart reports each change (`ConcentrationChart.draw`).
     """
 
     def __init__(self, chart: ConcentrationChart) -> None:
@@ -1235,6 +1238,11 @@ class ConcentrationChart(QWidget):
 
         self._runs: list[_RunItems] = []
         self._frame: ChartFrame | None = None
+        # The name and description last reported to assistive technology.
+        self._accessible_texts = (
+            concentration_chart_name(None),
+            concentration_chart_description(None),
+        )
         self._hover = _HoverReadout(self._plot, CHART_LEAST_HEIGHT, _TRACE_HOVER_MOST_LINES)
         self._hover.moved.connect(self._on_pointer)
         # Whether the box goes above or below its point depends on the plot's
@@ -1318,7 +1326,29 @@ class ConcentrationChart(QWidget):
             items.hide()
 
         self._frame = frame
+        self._report_text_changes()
         self._refresh_hover()
+
+    def _report_text_changes(self) -> None:
+        """Tell assistive technology that the chart's name or description changed, if either did.
+
+        Qt sends these events for its own widgets when their text changes, as
+        `QLabel.setText` does. A screen reader that keeps the texts it has
+        read reads them again on these events. Without them it would go on
+        reading the values of an earlier frame (`PL-T9RB`).
+        """
+
+        texts = (
+            concentration_chart_name(self._frame),
+            concentration_chart_description(self._frame),
+        )
+        events = (QAccessible.Event.NameChanged, QAccessible.Event.DescriptionChanged)
+
+        for event, before, now in zip(events, self._accessible_texts, texts, strict=True):
+            if now != before:
+                QAccessible.updateAccessibility(QAccessibleEvent(self, event))
+
+        self._accessible_texts = texts
 
     def withhold(self) -> None:
         """Empty the plot: no trace, no mark and no clinical reference, until the next frame.
@@ -1339,6 +1369,7 @@ class ConcentrationChart(QWidget):
         self._band.hide()
         _clear_axes(self._plot.getPlotItem(), self._grid, self._time_title, ("left", "right"), ())
         self._frame = None
+        self._report_text_changes()
         self._refresh_hover()
 
     @property

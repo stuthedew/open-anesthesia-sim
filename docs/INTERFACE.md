@@ -4404,20 +4404,33 @@ a refused setting or request interrupt what is being read, because each asks
 the reader to act. The countdown to the supported run length, and the stop
 there, wait until speech pauses. Qt's documentation asks that an interrupting
 announcement be used only where the interruption is imperative. A banner
-drawn again unchanged on the next frame is not read again. The countdown
-changes every second and is read once, when it appears. A banner written
-twice in one action, as a halt writes it before and after its frame, is read
-once, as the action leaves it. The caption that takes the branch control's
-place is read when it appears or changes, once speech pauses
+drawn again unchanged on the next frame is not read again, nor is a banner
+that gains its run's name when a second run is drawn. The countdown changes
+every second and is read once, when it appears. A banner written twice in one
+action, as a halt writes it before and after its frame, is read once, as the
+action leaves it. The caption that takes the branch control's place is read
+when it appears or changes, once speech pauses. The dashboard, not each View,
+reads out a refusal under a bookmark form or the branch control, and the
+caption. So two Areas that show the same refusal read it once, and a View
+built again after a Workspace switch shows it without reading it again. Each
+refused press is read, even where the refusal is already shown, so that a
+second press is not met with silence
 (`test_each_new_banner_is_read_out_once_and_a_warning_interrupts` and
 `test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends` in
 `tests/integration/test_qt_widgets.py`,
 `test_a_countdown_keeps_one_topic_while_its_time_left_changes` in
 `tests/unit/test_dashboard_frame.py`,
 `test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` in
-`tests/integration/simulation_view/test_simulation_view_refusals.py`, and
+`tests/integration/simulation_view/test_simulation_view_refusals.py`,
 `test_the_countdown_and_the_stop_at_the_supported_run_length_are_each_read_out_once`
-in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`).
+in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`,
+`test_a_refused_mark_is_read_out_once_however_many_copies_show_it` in
+`tests/integration/simulation_view/test_simulation_view_bookmarks.py`,
+`test_each_refused_branch_press_is_read_out_once` in
+`tests/integration/simulation_view/test_simulation_view_branch_refusals.py`, and
+`test_the_caption_that_replaces_the_branch_control_is_read_out_once` and
+`test_a_banner_standing_when_a_branch_is_taken_is_not_read_out_again` in
+`tests/integration/simulation_view/test_simulation_view_branch_control.py`).
 
 **The concentration chart has a text alternative** (`PL-T9RB`). SC 1.1.1
 asks a chart for a text alternative at Level A, and the W3C's example of one
@@ -4430,10 +4443,13 @@ value of each trace shown, in percent and in multiples of 1 MAC, as the hover
 words them, such as "Modelled sevoflurane at 10m: Circuit (inspired) 1.45%,
 0.81 ×MAC; Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC". The instant is
 that of the run's last drawn point, which is the right edge of a held window.
-The 1 MAC and MAC-awake references follow. With no trace shown, or no frame
-drawn, the description says what the screen says. Both texts are written when
-a screen reader asks for them, so neither describes an earlier frame. The
-chart gives no table of its values. The Understanding document for SC 1.1.1
+The 1 MAC and MAC-awake references follow. With every compartment unchecked,
+or no frame drawn, the description says what the screen says. A window in
+which no run has a drawn point gives no values. Both texts are written when a
+screen reader asks for them, and the chart reports each change to either. The
+AT-SPI client library on Linux keeps the texts it has read until told they
+changed, so without these reports it would go on reading an earlier frame's.
+The chart gives no table of its values. The Understanding document for SC 1.1.1
 provides one "where possible and practical", and the readouts already give
 each compartment's current value in text. The wash-in plot and the compartment
 schematic have no text alternative yet (`PL-R1M6`)
@@ -4441,9 +4457,9 @@ schematic have no text alternative yet (`PL-R1M6`)
 `test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn`
 in `tests/unit/test_chart_frame.py`, and
 `test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends`
+and `test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
-<!-- not-restated: 1.45% -->
-<!-- not-restated: 1.12% -->
+<!-- not-restated: 15 minutes -->
 
 #### Minimum contrast for text and graphics
 

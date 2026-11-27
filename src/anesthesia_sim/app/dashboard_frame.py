@@ -4049,8 +4049,9 @@ def concentration_chart_description(frame: ChartFrame | None) -> str:
     (Understanding WCAG 2.2 SC 1.1.1, `PL-T9RB`). This one names the type,
     then gives the latest drawn value of each trace shown
     (`chart_frame.latest_values_lines`), then the 1 MAC and MAC-awake
-    references the chart draws. Where no trace is shown, or no frame could be
-    drawn, it says what the screen says instead.
+    references the chart draws. Where the reader has unchecked every
+    compartment, or no frame could be drawn, it says what the screen says
+    instead. A window in which no run has a drawn point gives no values.
 
     Args:
         frame: The frame the chart drew, or None while it draws none.
@@ -4062,7 +4063,7 @@ def concentration_chart_description(frame: ChartFrame | None) -> str:
     if frame is None:
         return WITHHELD_FRAME_TEXT
 
-    values = latest_values_lines(frame) or (NO_TRACES_SHOWN_TEXT,)
+    values = (NO_TRACES_SHOWN_TEXT,) if no_traces_shown(frame) else latest_values_lines(frame)
 
     return "\n".join(
         (CHART_TYPE_TEXT, *values, mac_reference_caption(frame), mac_awake_caption(frame))

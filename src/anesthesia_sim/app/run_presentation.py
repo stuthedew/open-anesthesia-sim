@@ -448,13 +448,19 @@ def _compared_banner(banner: Notice | None, run_name: str | None) -> Notice | No
     """Return the banner with its text naming the run while a second run is drawn.
 
     The emphasis is the banner's own, so naming the run never changes its
-    colour. A run with nothing to say keeps no banner, named or not.
+    colour. A run with nothing to say keeps no banner, named or not. The
+    topic is the unnamed banner's, so a banner that stands while a branch is
+    taken or closed is not read to a screen reader again (`PL-J7Z5`).
     """
 
     if banner is None:
         return None
 
-    return replace(banner, text=compared_run_notice(banner.text, run_name))
+    return replace(
+        banner,
+        text=compared_run_notice(banner.text, run_name),
+        topic=banner.text if banner.topic is None else banner.topic,
+    )
 
 
 def _at_playback_rate(

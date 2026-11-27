@@ -6,13 +6,13 @@ effort: M
 status: done
 classes: defect
 feature: presentation-safety
-touches: src/anesthesia_sim/app/qt_chart.py
+touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/chart_frame.py
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 closed: 2026-11-27
 pr: 2333
 payoff: a screen-reader user can learn what the concentration chart plots and each trace latest value
-tests: tests/unit/test_chart_frame.py::test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value, tests/unit/test_chart_frame.py::test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn, tests/integration/simulation_view/test_simulation_view_charts.py::test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends
+tests: tests/unit/test_chart_frame.py::test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value, tests/unit/test_chart_frame.py::test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn, tests/integration/simulation_view/test_simulation_view_charts.py::test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends, tests/integration/simulation_view/test_simulation_view_charts.py::test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes
 ---
 
 **Problem.** The concentration chart reaches assistive technology as two unnamed "Client" nodes (`ConcentrationChart` and pyqtgraph's `PlotWidget`) with nothing inside them. A screen-reader user learns nothing of what is plotted.
@@ -39,6 +39,10 @@ tests: tests/unit/test_chart_frame.py::test_the_chart_s_text_alternative_gives_e
 
 **Regression run, 2026-11-27.** `uv run pytest -q -p no:randomly tests/integration/simulation_view/test_simulation_view_charts.py -k screen_reader`, with `src/` stashed, failed with "assert <Role.Client: 10> is <Role.Graphic: 40>". The unit tests import the new functions, so they cannot be collected before the fix.
 
+**Review fixes, 2026-11-27.** Both independent reviews found that the chart sent no event when its text changed. Qt sends these events for its own widgets, as `QLabel::setText` sends `NameChanged` (`qlabel.cpp` in the Qt 6.12 source, read 2026-11-27). Qt's AT-SPI bridge passes each on to the screen reader as a property change, and its comments say that libatspi2, the AT-SPI client library on Linux, caches what it reads and needs a name change "to update caches" (`atspiadaptor.cpp`, read 2026-11-27). The macOS bridge posts a title-changed notification for `NameChanged` (`qcocoaaccessibility.mm`). So a screen reader on Linux could go on reading an earlier frame. `ConcentrationChart._report_text_changes` now sends each event when its text differs from the last one reported, from `draw` and from `withhold`. The second review found that a window in which no run has a drawn point said "No compartment traces are shown", which the screen says only when every compartment is unchecked. The description now gives that line only when `no_traces_shown` holds.
+
+**Regression run for the review fixes, 2026-11-27.** With `src/` stashed, the change-event test failed with "Right contains one more item: TextChange(source=<...ConcentrationChart...>, kind=<Event.DescriptionChanged: 32781>)", and the description test with "At index 1 diff: 'No compartment traces are shown. ...' != '1 MAC sevoflurane (age 40) = 1.8%'".
+
 **Left for later.** The wash-in plot and the compartment schematic have no text alternative. `PL-R1M6` holds them.
 
-**Docs swept.** `docs/INTERFACE.md` gains the requirement in § "Color contrast, and the standard this interface is held to". `docs/ARCHITECTURE.md`, `README.md` and `docs/MODEL.md` needed no change.
+**Docs swept.** `docs/INTERFACE.md` gains the requirement in § "Color contrast, and the standard this interface is held to". After the review fixes, the paragraph says that the chart reports each change to its texts. `docs/ARCHITECTURE.md`, `README.md` and `docs/MODEL.md` needed no change.

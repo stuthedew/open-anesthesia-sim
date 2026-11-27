@@ -1882,10 +1882,21 @@ class NoticeLabel(QLabel):
     stands then. So a banner written twice in one action is read once. A halt
     writes its banner before its frame is drawn and again from the frame, and
     only the second is read.
+
+    A label in a View that the dashboard builds again on each Workspace
+    switch, or holds in two Areas at once, is built with `announces` False.
+    The notice it shows belongs to the dashboard, which announces it once,
+    when it is made (`SimulationView`). A label that announced it would read
+    a standing refusal again in each new copy (`PL-J7Z5`).
+
+    Args:
+        parent: The widget the label is drawn in.
+        announces: Whether the label announces each new banner itself.
     """
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, *, announces: bool = True) -> None:
         super().__init__(parent)
+        self._announces = announces
         self.setWordWrap(True)
         font = QFont(self.font())
         font.setBold(True)
@@ -1929,7 +1940,7 @@ class NoticeLabel(QLabel):
         self.setText(text if text is not None else "")
         self.setHidden(text is None)
 
-        if self._topic != self._announced_topic:
+        if self._announces and self._topic != self._announced_topic:
             self._announcement.start()
 
     def notice(self) -> str | None:
@@ -2319,7 +2330,7 @@ class MarkList(QWidget):
         self.undo_button = QPushButton(UNDO_REMOVAL_LABEL)
         self.undo_button.setStyleSheet(outlined_button_stylesheet())
         self.undo_button.clicked.connect(self._ask_to_undo)
-        self.remove_notice = NoticeLabel()
+        self.remove_notice = NoticeLabel(announces=False)
         # When this list last asked for a removal or an undo, so that the
         # second press of a double-click is not taken for a press of the next
         # mark or of the next undo.
@@ -2619,7 +2630,7 @@ class ForkPanel(QWidget):
         self.lock_text.setHidden(True)
         self.pin_text = styled_label("", color=MUTED, wrap=True)
         self.pin_text.setHidden(True)
-        self.notice = NoticeLabel(self)
+        self.notice = NoticeLabel(self, announces=False)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
         label_control(self._point_label, self.point_selector, FORK_POINT_ACCESSIBLE_NAME)
         # The points behind the selector's entries, one per entry, in the
@@ -2728,12 +2739,6 @@ class ForkPanel(QWidget):
         self.here_button.setText(offer.here_label)
         self.here_button.setDisabled(not offer.here_offered)
         self.here_button.setHidden(not offer.here_offered)
-        # The caption that takes the control's place is the result of a
-        # branch, and it says where the comparison is drawn, so a screen
-        # reader is told it when it appears or changes (`PL-J7Z5`).
-        if offer.locked and offer.lock_reason != self.lock_text.text():
-            announce(self.lock_text, offer.lock_reason, interrupt=False)
-
         self.lock_text.setText(offer.lock_reason)
         self.lock_text.setHidden(not offer.locked)
         self.pin_text.setText(offer.pinned_notice)
@@ -2994,7 +2999,7 @@ class MarkEditor(QWidget):
         self.time_label_edit = QLineEdit()
         self.time_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_time_button = QPushButton(ADD_MARK_LABEL)
-        self.add_time_notice = NoticeLabel()
+        self.add_time_notice = NoticeLabel(announces=False)
 
         self.compartment_combo = FocusedComboBox()
         self.compartment_combo.setStyleSheet(selector_stylesheet())
@@ -3009,7 +3014,7 @@ class MarkEditor(QWidget):
         self.target_label_edit = QLineEdit()
         self.target_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_target_button = QPushButton(ADD_MARK_LABEL)
-        self.add_target_notice = NoticeLabel()
+        self.add_target_notice = NoticeLabel(announces=False)
 
         for field in (self.instant_spin, self.height_spin):
             wheel_only_with_focus(field)

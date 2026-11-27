@@ -1048,6 +1048,8 @@ def test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_dr
     """With two runs each sentence names its run, and with no trace or no frame the screen's words.
 
     A branch stands at its own instant, so each run's sentence gives its own.
+    A window in which no run has a point gives no values. It does not say that
+    no compartment is checked, because the reader has checked one.
     """
 
     trunk = _run_frame((0.0, 300.0, 600.0), alveolar=(0.0, 0.009, 0.0112))
@@ -1063,6 +1065,9 @@ def test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_dr
         "No compartment traces are shown. Check a compartment above to draw it — "
         "the readouts and the run itself are unaffected."
     )
+    assert concentration_chart_description(
+        _frame(replace(trunk, times_s=()), visible=(RecordedQuantity.ALVEOLAR,))
+    ).splitlines()[:2] == ["Line chart.", "1 MAC sevoflurane (age 40) = 1.8%"]
     assert concentration_chart_name(None) == (
         "Agent concentration and relative partial pressure over time"
     )
