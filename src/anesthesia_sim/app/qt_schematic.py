@@ -567,7 +567,7 @@ class RunSchematic(PinnedHeadingSection):
         canvas: The containers, their labels and their share bars.
         off_scale_text: The lines that name each container above the scale.
         scale_text: The caption that names the scale the containers fill
-            against, and the unit and condition of the amounts.
+            against, and says that the amounts held in the body read high.
     """
 
     def __init__(self, shown: SchematicShown, name: str | None) -> None:

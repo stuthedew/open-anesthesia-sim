@@ -64,7 +64,7 @@ __all__ = [
     "NO_AGENT_SHARE_CAPTION",
     "NO_SHARE_TEXT",
     "OFF_SCALE_LINE_TEMPLATE",
-    "AMOUNT_CONDITION_LINES",
+    "AMOUNT_UNIT_TEXT",
     "SCALE_CAPTION_TEMPLATE",
     "SCHEMATIC_HEADING",
     "SHARE_CAPTION",
@@ -99,8 +99,8 @@ COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
 #: The line that names the unit of every tension a container's label prints.
 #: Each label prints its tension with "%" alone, because the full unit would
 #: widen every column. The View keeps this line above the box that scrolls it,
-#: so the unit is on screen wherever any tension is (`PL-3NGZ`). The wording is
-#: a placeholder, but the unit must be on screen with the tensions.
+#: so the unit is on screen wherever any tension is (`PL-3NGZ`), as
+#: `AMOUNT_UNIT_TEXT` says for the amounts.
 TENSION_UNIT_TEXT: Final = f"Tensions are in {DisplayUnit.CONCENTRATION.axis_title}."
 
 #: The schematic's heading. The wording is a placeholder.
@@ -127,15 +127,18 @@ SCALE_CAPTION_TEMPLATE: Final = (
     "A container's height is its tension, not its amount of agent."
 )
 
-#: The lines under the scale caption that name the unit of the amounts and the
-#: temperature and pressure they are stated at, once for every container
-#: (`PL-HQPF`). Five of the six containers hold agent in the body, so the second
-#: line says that their amounts read high at that condition. The lines are
-#: explicit for the same reason as the scale caption's. The wording is a
-#: placeholder, but the condition and its effect must be on screen.
-AMOUNT_CONDITION_LINES: Final = (
-    f"Amounts are {DisplayUnit.AGENT_VAPOUR_MILLILITRES.recorded} at {REFERENCE_CONDITION_LABEL}.\n"
-    f"{BODY_STORES_CONDITION_LINES}"
+#: The line that names the unit of every amount a container's label prints,
+#: and the temperature and pressure the amounts are stated at (`PL-HQPF`). Each
+#: label prints its amount in "mL vapour", which does not name the condition.
+#: The View keeps this line above the box that scrolls it, beside the tensions'
+#: unit, so the unit and its condition are on screen wherever any amount is
+#: (`PL-3NGZ`). NUREG-0700 Rev. 3
+#: guideline 1.5-15 asks that a scrolled display keep all of its labelling
+#: information, and guideline 1.2.2-4 that a unit shared by every cell be part
+#: of the labels (O'Hara, US Nuclear Regulatory Commission, 2020, pp. 1-59 and
+#: 1-17).
+AMOUNT_UNIT_TEXT: Final = (
+    f"Amounts are {DisplayUnit.AGENT_VAPOUR_MILLILITRES.recorded} at {REFERENCE_CONDITION_LABEL}."
 )
 
 #: The lines that name the containers whose tension is above the top of the
@@ -370,7 +373,8 @@ def scale_caption(snapshot: SimulationSnapshot) -> str:
 
     The caption names the top of the scale in percent and in MAC, and the
     spacing of the marks in MAC, as the chart's MAC axis labels them
-    (`_scale_ticks`).
+    (`_scale_ticks`). It ends with the lines that say the amounts held in the
+    body read high at the condition `AMOUNT_UNIT_TEXT` names.
 
     Raises:
         TypeError: As `_scale_ticks` raises it.
@@ -386,7 +390,7 @@ def scale_caption(snapshot: SimulationSnapshot) -> str:
         step_mac=f"{ticks[1][1]}{MAC_UNIT_SUFFIX}",
     )
 
-    return f"{scale}\n{AMOUNT_CONDITION_LINES}"
+    return f"{scale}\n{BODY_STORES_CONDITION_LINES}"
 
 
 def off_scale_line(readings: tuple[ContainerReading, ...]) -> str | None:

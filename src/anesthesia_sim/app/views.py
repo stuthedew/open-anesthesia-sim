@@ -74,7 +74,11 @@ from anesthesia_sim.app.chart_time_base import (
     saved_time_base,
     saved_time_base_value,
 )
-from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING, TENSION_UNIT_TEXT
+from anesthesia_sim.app.compartment_schematic import (
+    AMOUNT_UNIT_TEXT,
+    SCHEMATIC_HEADING,
+    TENSION_UNIT_TEXT,
+)
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CHART_CEILING_LABEL,
@@ -1536,18 +1540,20 @@ class CompartmentSchematicView(QWidget):
     is withheld whenever they are. The View asks for no chart frame.
     The statement that its values are model outputs, not measurements, appears
     once, because every value the View shows is a model output. It shares a
-    line with the unit of every tension, and that line is the View's
-    `pinned_row`: its Area shows it above the box that scrolls the View, so
-    both are on screen wherever any value is (`PL-26BZ`, `PL-3NGZ`). Each
-    run's own heading, which names the run and says what its shares are of,
-    stays at the top of that run's part in view (`RunSchematic`).
+    line with the unit of every tension, and the line under it names the unit
+    of every amount and the condition the amounts are stated at. The two
+    lines are the View's `pinned_row`: its Area shows them above the box that
+    scrolls the View, so they are on screen wherever any value is (`PL-26BZ`,
+    `PL-3NGZ`). Each run's own heading, which names the run and says what its
+    shares are of, stays at the top of that run's part in view
+    (`RunSchematic`).
 
     Args:
         context: What the View is built from.
 
     Attributes:
-        qualifier_label: The line that says the values are model outputs, and
-            names the unit of every tension.
+        qualifier_label: The lines that say the values are model outputs,
+            and name the units of every tension and every amount.
         pinned_row: The row that holds `qualifier_label`, which the View's
             Area keeps on screen above the View's scroll box.
     """
@@ -1563,7 +1569,7 @@ class CompartmentSchematicView(QWidget):
         )
         column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
         self.qualifier_label = styled_label(
-            f"{INTERPRETATION_DISCLAIMER_TEXT} {TENSION_UNIT_TEXT}", color=MUTED
+            f"{INTERPRETATION_DISCLAIMER_TEXT} {TENSION_UNIT_TEXT}\n{AMOUNT_UNIT_TEXT}", color=MUTED
         )
         self.pinned_row = _panel_row(self.qualifier_label, _SCHEMATIC_PINNED_ROW_NAME)
         column.addWidget(self.state_notice)

@@ -13,17 +13,21 @@ information visible", read 2026-11-27).
 The heading is drawn over the section's rows, on the panel's colour. So a row
 is either below the heading, and seen, or under it, and hidden. No row can be
 seen without the heading.
+
+Every box that scrolls a section moves the heading again after each scroll
+(`pin_on_scroll`). That includes the dashboard's page, which scrolls every
+Area in a window too small for them.
 """
 
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QMoveEvent, QResizeEvent, QShowEvent
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.stylesheets import heading_surface_stylesheet
 
-__all__ = ["PinnedHeadingSection", "in_view", "pin_headings"]
+__all__ = ["PinnedHeadingSection", "in_view", "pin_headings", "pin_on_scroll"]
 
 
 def in_view(widget: QWidget) -> QRect:
@@ -55,11 +59,31 @@ def pin_headings(root: QWidget) -> None:
     A box that scrolls its widget calls this after each scroll and each
     resize, because a scroll moves the widget it holds and leaves each section
     where it is inside that widget. So no section learns of a scroll by
-    itself. `ViewScroll` calls it.
+    itself. `ViewScroll` calls it on a resize, and `pin_on_scroll` on a
+    scroll.
     """
 
     for section in root.findChildren(PinnedHeadingSection):
         section.pin_heading()
+
+
+def pin_on_scroll(box: QScrollArea) -> None:
+    """Move the headings in the widget that `box` scrolls each time `box` scrolls, on either axis.
+
+    A box moves the widget it holds when its scroll bar moves. Qt connects
+    the bar to that move when the box is built, so the move has happened by
+    the time this connection runs. `ViewScroll` and the dashboard's page call
+    this, so a heading follows a scroll of its Area and of the page alike.
+    """
+
+    def pin(_: int) -> None:
+        held = box.widget()
+
+        if held is not None:
+            pin_headings(held)
+
+    box.verticalScrollBar().valueChanged.connect(pin)
+    box.horizontalScrollBar().valueChanged.connect(pin)
 
 
 class PinnedHeadingSection(QWidget):

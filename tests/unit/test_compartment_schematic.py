@@ -344,6 +344,25 @@ def test_each_container_is_marked_every_half_mac_of_the_standard_scale(agent_id:
     assert "Marks stand every 0.5 ×MAC." in scale_caption(snapshot)
 
 
+def test_the_scale_caption_ends_with_the_body_stores_caveat_and_leaves_the_unit_out() -> None:
+    """`PL-3NGZ`: the caption under the containers says the body's amounts read high.
+
+    The amounts' unit and the condition they are stated at stand in the
+    View's row above its scroll box (`AMOUNT_UNIT_TEXT`), where no scroll can
+    take them out of view. The caption under the containers keeps only the
+    caveat that the amounts held in the body read high at that condition, so
+    the unit is not stated twice.
+    """
+
+    caption = scale_caption(SimulationController().snapshot())
+
+    assert caption.endswith(
+        "\nAmounts in the body read high,\nas they are gas at body temperature."
+    )
+    assert "millilitres" not in caption
+    assert "20 °C" not in caption
+
+
 def test_withheld_values_draw_no_marks() -> None:
     assert WITHHELD_SCHEMATIC.marks == ()
 

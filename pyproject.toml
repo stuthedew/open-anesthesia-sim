@@ -279,6 +279,7 @@ source_paths = ["src/"]
 do_not_mutate = [
     "src/anesthesia_sim/app/area_layout.py",
     "src/anesthesia_sim/app/main.py",
+    "src/anesthesia_sim/app/pinned_heading.py",
     "src/anesthesia_sim/app/qt_agent_cost.py",
     "src/anesthesia_sim/app/qt_agent_price.py",
     "src/anesthesia_sim/app/qt_chart.py",
