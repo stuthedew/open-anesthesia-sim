@@ -320,6 +320,24 @@ def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
     assert _drawn(controller, _state(name="Run 2")).notice is None
 
 
+def test_a_refused_preview_reaches_the_banner_in_place_of_a_refused_setting() -> None:
+    """The panel's notice for a refused preview is the banner while the dial is held (`PL-412F`).
+
+    The banner is the preview's own, not a refused setting's, because the
+    release of the dial still applies the held value.
+    """
+
+    controller = _run_at(30)
+    preview = "Preview not drawn — a reason. Releasing the dial still applies the new setting."
+
+    state = _state(
+        rejected_setting_notice="Setting refused: too high.", refused_preview_notice=preview
+    )
+    held = _drawn(controller, state)
+
+    assert _banner_text(held) == preview
+
+
 def test_a_compared_run_s_banner_names_the_run() -> None:
     """While a second run is drawn, a run's banner says which run it speaks for (`PL-TSZM`)."""
 

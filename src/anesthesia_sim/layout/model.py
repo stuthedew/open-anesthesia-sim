@@ -1185,9 +1185,7 @@ def _rect_at(tree: Node, path: tuple[int, ...]) -> _Rect:
     """Return where the node that `path` leads to from `tree` lies in its window.
 
     Raises:
-        NotInLayout: the path steps into an Area, or to an index that is not
-            one of a split's children, such as a negative one. `_node_at`
-            refuses the same paths.
+        NotInLayout: the path steps into an Area, or past a split's last child.
     """
 
     rect = _WINDOW
@@ -1198,7 +1196,7 @@ def _rect_at(tree: Node, path: tuple[int, ...]) -> _Rect:
         # never fails today. It stays because the type checker needs `node` to
         # be a split below it, and so that a wrong path from a later caller
         # raises `NotInLayout` rather than an `IndexError`.
-        if isinstance(node, Area) or not 0 <= index < len(node.children):
+        if isinstance(node, Area) or index >= len(node.children):
             raise NotInLayout(f"the path {path} leads to no node of this tree")
 
         bounds = _boundaries(*rect.span(node.orientation), node.sizes)

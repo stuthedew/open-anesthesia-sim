@@ -75,10 +75,12 @@ def test_an_axis_of_zero_width_is_spaced_one_second_and_a_wider_one_by_its_colum
     neither window sets a minimum of its own (`PL-WZDM`). A two-minute axis in
     150 columns would put them 120 / 149 = 0.81 s apart, which is raised to
     one second. A fifteen-minute axis gives 900 / 149 = 6.04 s and an hour
-    3600 / 149 = 24.2 s, each rounded down to a whole second.
+    3600 / 149 = 24.2 s, each rounded down to a whole second. Three columns
+    over ten seconds stand at 0, 5 and 10 s, so they are 5 s apart.
     """
 
     assert _axis_spacing_s(30.0, 30.0, 150) == 1
     assert _axis_spacing_s(0.0, 120.0, 150) == 1
     assert _axis_spacing_s(0.0, 900.0, 150) == 6
     assert _axis_spacing_s(0.0, 3600.0, 150) == 24
+    assert _axis_spacing_s(0.0, 10.0, 3) == 5
