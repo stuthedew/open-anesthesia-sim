@@ -320,7 +320,7 @@ ASK_CHECKED_SHOWN = "- **Already checked:** {checked}."
 #: review does not reach him at all, so the way out of a hold with nothing in
 #: it is `Owner-read: not needed`, never a question made up to fill the form.
 #: On `#1650` the owner had to ask twice what a recorded ask asked them to
-#: judge, so the text also asks for a user's terms and, for a choice between
+#: judge, so the text also asks for learner terms and, for a choice between
 #: interface approaches, a screenshot per option (`PL-KYTY`). On `#1946` a
 #: risk ask read "a pinned test of the owner-ask guard changes, so a relayed
 #: ask in the new form could be refused", and the owner could not tell what
@@ -336,7 +336,7 @@ READ_ASK = (
     "is obvious is wrong, as on #1516, whose ask invented two points to judge (PL-DKBG). "
     "Record one in the last paragraph of a commit, beside its Co-authored-by line, then ask "
     f"again: `{OWNER_ASK}: <question>? | <option>: <what it changes for the owner or a "
-    f"user>{ASK_COST}<what it gives up> | <option>: <what it changes>{ASK_COST}<what it "
+    f"learner>{ASK_COST}<what it gives up> | <option>: <what it changes>{ASK_COST}<what it "
     f"gives up> | {ASK_RECOMMEND} <option> - <why its gain is worth its cost> | "
     f"{ASK_CONTEXT} - <what changed, or what the choice is about> | "
     f"{ASK_WHY} - <why the choice is the owner's rather than the session's> | {ASK_CHECKED} - "
@@ -350,10 +350,9 @@ READ_ASK = (
     "Merging against holding for changes is not a choice, because holding gains the owner "
     "nothing they can name. The question is one the owner can decide as the owner or as a "
     "clinician. Word the "
-    "question in clinical terms, as a user would put it, and in one clause, so that the "
-    "owner sees on first reading what they are judging, and put its background in the "
-    "context field. "
-    "Under each option, say what a user sees or what changes for the owner, and what "
+    "question in clinical or learner terms and in one clause, so that the owner sees on "
+    "first reading what they are judging, and put its background in the context field. "
+    "Under each option, say what a learner sees or what changes for the owner, and what "
     "that option gives up, the recommended one included: a choice between one good option "
     "and one bad one is not a choice. Put in each option's cost the consequences the owner "
     "would not see from the option alone: what else it changes or breaks, the follow-on "
@@ -367,7 +366,7 @@ READ_ASK = (
     "such as whether a rewording kept its meaning: they cannot judge that from a reply. "
     "Under the ask, the reply quotes the text to judge, before and after. "
     "Write every field in plain words for a clinician who has not read this repository "
-    "(.claude/rules/plain-writing.md): say what the owner or a user would notice, and "
+    "(.claude/rules/plain-writing.md): say what the owner or a learner would notice, and "
     "never name a test, check, file or tool by its internal name. If no question can be "
     f"filled honestly, nothing needs the owner: record `{OWNER_READ}: {READ_NOT_NEEDED} - "
     "<why>` instead, and the change merges on green. A change to a test pinning the gate's "
@@ -728,7 +727,7 @@ _SPECIFICATION_NAMES = ", ".join(SPECIFICATION_DOCS[:-1]) + " or " + SPECIFICATI
 #: What a `hold` on a simulator path with no record tells the session. The
 #: test for a real decision is the design round's, so it is pointed at rather
 #: than restated, and the high-risk cases are the ones the owner's rule names
-#: in this repository's terms. What a user can be misled by is the first,
+#: in this repository's terms. What a learner can be misled by is the first,
 #: because the safety-critical standard in `CLAUDE.md` makes it so. A rewrite
 #: of a specification document that keeps every value, equation, code span and
 #: citation is housekeeping, and only a sentence whose meaning needs a
