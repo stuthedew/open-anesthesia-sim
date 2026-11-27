@@ -769,7 +769,7 @@ def test_refresh_view_reflects_running_state(
     assert transport(snapshot).pause_enabled is pause_enabled
 
 
-def test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause() -> None:
+def test_a_run_a_mark_stopped_is_not_worded_as_the_user_s_own_pause() -> None:
     """A paused run that a mark stopped says so, and a failure or the run length still outranks it.
 
     The fork control's "stopped on your mark" was the only cue that a mark had
@@ -2555,7 +2555,7 @@ def test_the_delivered_line_prints_the_dial_in_both_units() -> None:
 def test_the_delivered_line_is_labelled_as_the_vaporizer_setting() -> None:
     """The line says it is the vaporizer's setting, never a bare "Delivered" (`PL-M4WT`).
 
-    Labelled "Delivered 2.50%", a learner could take it for a modelled
+    Labelled "Delivered 2.50%", a user could take it for a modelled
     concentration or, at low fresh gas flow, for the inspired one. The
     withheld line keeps the same label.
     """
@@ -4133,7 +4133,7 @@ def test_a_mark_the_run_halted_on_says_so_on_its_row() -> None:
 
 
 def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing() -> None:
-    """`PL-N3N5`, checked at the row a learner reads.
+    """`PL-N3N5`, checked at the row a user reads.
 
     A failed run's marks used to be drawn with no words, because
     `STILL_RUNNING` renders as nothing at all on an unattributed row. So the
@@ -4193,7 +4193,7 @@ def test_a_mark_the_clock_has_gone_past_is_worded_apart_from_one_the_run_halted_
 
 
 def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
-    # "Not reached" alone would be true of both. It would also tell a learner
+    # "Not reached" alone would be true of both. It would also tell a user
     # that a bookmark before this branch's fork might arrive if they kept
     # running. `CLAUDE.md`'s safety-critical standard rules that out: the
     # model can decide the question outright, so a row must not imply
@@ -4261,7 +4261,7 @@ def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so
 
     The case is a MAC target on which the branch halts while the trunk is
     still running for it. When the row was drawn from the reference run, it
-    said nothing at all. A branch that stopped at a mark the learner set
+    said nothing at all. A branch that stopped at a mark the user set
     therefore looked the same on screen as a Pause. The one sign that a run
     had stopped where it was asked to existed for a lone run, and vanished as
     soon as a second run was drawn.
@@ -4315,7 +4315,7 @@ def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() 
 def test_the_inherited_standing_can_reach_a_drawn_row() -> None:
     """`PL-LHBY`: `BEFORE_THIS_BRANCH` had no screen it could appear on.
 
-    The standing exists so that a learner is not told something false about a
+    The standing exists so that a user is not told something false about a
     mark that a branch carries but cannot reach. The panel used to read the
     reference run, which is the trunk. The trunk opens at zero, and no instant
     lies before that. The word was unreachable by construction rather than by
@@ -4348,7 +4348,7 @@ def test_every_standing_a_run_can_report_has_a_word_on_an_attributed_row() -> No
 
 
 def test_no_two_standings_share_a_word_on_an_attributed_row() -> None:
-    """`PL-3K9B`'s wording guarantee, checked where a learner actually compares runs.
+    """`PL-3K9B`'s wording guarantee, checked where a user actually compares runs.
 
     "Passed" and "reached" are two words because they are two claims. The two
     unreachable outcomes are worded differently so that neither can be
@@ -4410,7 +4410,7 @@ def _offered_labels(offer: ForkOffer) -> tuple[str, ...]:
 
 #: A mark the trunk has passed, as `BranchedCase.mark_fork_points` lists it.
 #: A mark is a whole number of seconds and a step is one second. So the
-#: instant the learner marked is the instant at which a branch taken there
+#: instant the user marked is the instant at which a branch taken there
 #: opens, and no control event of the offers below stands at it.
 _PASSED_MARK = MarkForkPoint(TimeBookmark(CaseInstant(45), "the decision point"), CaseInstant(45))
 
@@ -4449,7 +4449,7 @@ def test_a_selected_point_is_kept_while_the_offer_still_holds_it() -> None:
 
 
 def test_a_selected_point_that_leaves_the_offer_is_cleared_and_stays_clear() -> None:
-    """Induction is never put in place of a point the learner chose (`PL-J12Z`).
+    """Induction is never put in place of a point the user chose (`PL-J12Z`).
 
     A setting change and a mark at the same instant are two points, so a
     selected mark that is removed is cleared even while the setting change at
@@ -4552,26 +4552,26 @@ def test_fork_offer_names_the_pin_only_beside_a_branch_that_can_be_taken() -> No
     assert only_here.pinned_notice == expected
 
 
-def test_the_comparison_lock_names_a_control_the_learner_can_press() -> None:
+def test_the_comparison_lock_names_a_control_the_user_can_press() -> None:
     """`PL-WG73`: "Reset the case to end this one" named no control on screen.
 
     The old assertion checked only the bare word "Reset", and it passed while
     the sentence pointed at a "case" that nothing on screen is labelled with.
-    A learner can act on a run's name and the word on its transport button.
+    A user can act on a run's name and the word on its transport button.
     So the test checks both named controls as the pair in which the screen
     draws them.
 
     **Each clause is checked against the run it is about, rather than the
     whole sentence against both names.** A sentence could name both controls
     correctly but pair each with the other's outcome. That would send the
-    learner to the same wrong button as the sentence this replaced, and a
+    user to the same wrong button as the sentence this replaced, and a
     test that reads the whole string cannot tell the two apart. So the way
     out is checked on its own. It names the trunk's Reset, it does not
     mention the branch at all, and it says that the press costs the case
     starting over.
 
     The clause after it is about the branch's Reset, and names what that
-    button does *instead*. A learner reaches for that Reset, because it
+    button does *instead*. A user reaches for that Reset, because it
     belongs to the run they are trying to end. Pressing it discards what that
     run has simulated since its fork, and leaves the lock exactly where it
     was.
@@ -4699,7 +4699,7 @@ def test_fork_offer_lists_each_passed_mark_among_the_keyframes_by_instant() -> N
     """`PL-W4XQ`: the marks the trunk has passed are offered beside the control events.
 
     Both kinds go in one list, earliest first, because both stay on offer
-    until the case itself changes. A learner paused at 3 h who marks 1 h
+    until the case itself changes. A user paused at 3 h who marks 1 h
     finds the mark where it falls on the clock, between the decision points
     on either side of it. The list is sorted here rather than trusted to
     arrive in order, so the marks are placed by instant whatever order they
@@ -4731,7 +4731,7 @@ def test_a_mark_s_entry_is_labelled_with_the_instant_its_branch_opens_at() -> No
 
     `BranchedCase.fork_at_mark` opens the branch at `MarkForkPoint.fork_s`, so
     that is the instant the entry must carry. It is also the instant the
-    learner marked, because a mark never lies inside a step (`PL-SZ6G`). A
+    user marked, because a mark never lies inside a step (`PL-SZ6G`). A
     label naming any other time would be the wrong label on a correct value,
     which `CLAUDE.md`'s safety-critical standard counts as a failure of the
     value. The words are restated rather than built from the template, so an

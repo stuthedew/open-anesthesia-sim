@@ -22,7 +22,7 @@ from tests.integration.simulation_view.simulation_view_support import _dials, _s
 # ---------------------------------------------- refusals, and the halt
 
 
-# The whole banner a learner reads for each refused vaporizer setting. Each is typed
+# The whole banner a user reads for each refused vaporizer setting. Each is typed
 # by hand: isoflurane's vaporizer maximum is 5% (`data/agents/isoflurane.json`), and
 # the banner writes each value exactly, as Python's `repr` writes it, so a value
 # just past a limit never reads as equal to it. The developer's message is the one

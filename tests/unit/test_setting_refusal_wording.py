@@ -1,10 +1,10 @@
-"""A refused setting reaches the learner named by its control, and the developer by its field.
+"""A refused setting reaches the user named by its control, and the developer by its field.
 
 The core refuses a setting outside a limit with a `SettingOutsideRange`, whose
 message names the value by its field in the code, for a developer. The field,
 the value, the limit and which limit refused it travel with the error as
-fields. The interface builds the learner's banner from those fields, naming the
-control by its label on screen (`setting_refusal_for_a_learner`, `PL-8QFW`).
+fields. The interface builds the user's banner from those fields, naming the
+control by its label on screen (`setting_refusal_for_a_user`, `PL-8QFW`).
 
 Each expected limit below is typed by hand from its source rather than read
 from the code under test: the supported input ranges from `docs/INTERFACE.md`
@@ -20,7 +20,7 @@ from collections.abc import Callable
 import pytest
 
 from anesthesia_sim.app.control_record import ControlInput
-from anesthesia_sim.app.dashboard_frame import setting_refusal_for_a_learner
+from anesthesia_sim.app.dashboard_frame import setting_refusal_for_a_user
 from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange, _require_deliverable_flow
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import (
@@ -127,7 +127,7 @@ def test_each_limit_refuses_with_the_value_and_the_limit_as_fields(
 
 
 @pytest.mark.parametrize(
-    ("control", "refuse", "learner"),
+    ("control", "refuse", "user"),
     [
         (
             ControlInput.DELIVERED,
@@ -191,8 +191,8 @@ def test_each_limit_refuses_with_the_value_and_the_limit_as_fields(
         "int-past-the-float-range",
     ],
 )
-def test_the_learner_reads_the_control_s_label_and_the_developer_the_core_s_message(
-    control: ControlInput, refuse: Callable[[], object], learner: str
+def test_the_user_reads_the_control_s_label_and_the_developer_the_core_s_message(
+    control: ControlInput, refuse: Callable[[], object], user: str
 ) -> None:
     """The banner's text names the control, the value and the limit, and keeps the core's words.
 
@@ -204,22 +204,22 @@ def test_the_learner_reads_the_control_s_label_and_the_developer_the_core_s_mess
 
     developer = _refusal(refuse)
 
-    refusal = setting_refusal_for_a_learner(control, developer)
+    refusal = setting_refusal_for_a_user(control, developer)
 
-    assert str(refusal) == learner
+    assert str(refusal) == user
     assert refusal.__notes__ == [str(developer)]
     assert refusal.__cause__ is developer
 
 
 def test_a_refusal_the_controller_already_words_is_shown_as_it_is() -> None:
-    """Only a refusal outside a limit is reworded; the controller words its own for the learner."""
+    """Only a refusal outside a limit is reworded; the controller words its own for the user."""
 
     stopped = SimulationConfigurationError(
         "the cardiac output setting cannot be changed on a stopped run, because no step will "
         "run under a new one"
     )
 
-    assert setting_refusal_for_a_learner(ControlInput.CARDIAC_OUTPUT, stopped) is stopped
+    assert setting_refusal_for_a_user(ControlInput.CARDIAC_OUTPUT, stopped) is stopped
 
 
 def test_a_range_refusal_of_another_control_s_field_is_shown_as_it_is() -> None:
@@ -233,4 +233,4 @@ def test_a_range_refusal_of_another_control_s_field_is_shown_as_it_is() -> None:
 
     vaporizer = _refusal(_vaporizer_at_50_with_a_5_percent_maximum)
 
-    assert setting_refusal_for_a_learner(ControlInput.CARDIAC_OUTPUT, vaporizer) is vaporizer
+    assert setting_refusal_for_a_user(ControlInput.CARDIAC_OUTPUT, vaporizer) is vaporizer

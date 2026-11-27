@@ -75,7 +75,7 @@ def test_reset_returns_a_run_to_holding_nothing_to_discard() -> None:
 def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
     """Right after a confirmed switch, the new run must not count as something to discard.
 
-    Otherwise a learner who confirmed a new case and then opened the selector
+    Otherwise a user who confirmed a new case and then opened the selector
     again would be asked about a case with nothing in it.
     """
 
@@ -88,15 +88,15 @@ def test_set_agent_leaves_a_new_run_holding_nothing_to_discard() -> None:
 
 
 def test_a_fresh_branch_holds_nothing_to_destroy() -> None:
-    """`PL-7TBQ`: a new branch is built at its fork, and being built there is not a learner's act.
+    """`PL-7TBQ`: a new branch is built at its fork, and being built there is not a user's act.
 
     The branch uses the case's clock, so its elapsed time is past zero as soon
-    as it exists. Counted from zero, it held a run to lose before the learner
+    as it exists. Counted from zero, it held a run to lose before the user
     had done anything to it. Counted from where it began, it holds nothing.
 
     A branch taken at a keyframe also opens with the trunk's change there in
     its own timeline (`PL-ZR49`). That entry is where the branch began, not
-    something the learner did to it, so it does not count either.
+    something the user did to it, so it does not count either.
     """
 
     trunk = _trunk_with_two_changes()
@@ -138,7 +138,7 @@ def test_a_branch_advanced_one_step_past_its_fork_holds_something_to_destroy() -
 
 
 def test_a_setting_changed_on_a_fresh_branch_is_something_to_destroy() -> None:
-    """Check the timeline half on a branch: a change made at the fork is the learner's act."""
+    """Check the timeline half on a branch: a change made at the fork is the user's act."""
 
     trunk = _trunk_with_two_changes()
     branch = trunk.resumed_at(trunk.run_segments[-1].opened_at_s)
@@ -155,7 +155,7 @@ def test_resetting_a_branch_returns_it_to_holding_nothing_to_destroy() -> None:
 
     A branch's reset returns it to its fork rather than to zero. So a branch
     that was only advanced is a fresh branch after its reset, and it must
-    count as one. A setting that the learner changed and kept through the
+    count as one. A setting that the user changed and kept through the
     reset is different. `PL-7TBQ`'s Done-when, the condition for closing that
     item, counts "a setting change of its own" as something to lose. Until
     `PL-K5BS`, a reset dropped the record of such a change while the branch

@@ -149,7 +149,7 @@ from anesthesia_sim.app.dashboard_frame import (
     refused_reset_exit,
     refused_setting_notice,
     run_label,
-    setting_refusal_for_a_learner,
+    setting_refusal_for_a_user,
     status_word,
     substance_heading,
     timeline_panel,
@@ -237,14 +237,14 @@ if set(AGENT_COLOR_SCHEMES) != set(AGENT_DATA_FILENAMES):
     raise RuntimeError("AGENT_COLOR_SCHEMES must define exactly the built-in volatile agents")
 
 #: The log that a halt writes the full exception to. The banner words a failure
-#: for the learner, and a developer reads the exception's own message here.
+#: for the user, and a developer reads the exception's own message here.
 _LOG: Final = logging.getLogger(__name__)
 
 
 def log_failure(stopped: str, error: BaseException) -> None:
     """Log a failure that stopped `stopped`, with its message and traceback, for a developer.
 
-    The banner words a failure for the learner and leaves out the exception's
+    The banner words a failure for the user and leaves out the exception's
     own message (`dashboard_frame.shown_failure_reason`). The details under the
     banner show the message, and the traceback is logged here (`PL-TWZY`,
     `PL-XWCH`). A run that reached its supported run length did not fail, so
@@ -845,7 +845,7 @@ class RunView(QWidget):
             comparing=comparing,
             # A branch can be offered in the stopped run's banner only while
             # an Area shows the branch control, so that the banner never sends
-            # a learner to a control that the screen does not show. None can
+            # a user to a control that the screen does not show. None can
             # be taken while two runs are compared, because `fork_offer` locks
             # the branch control then, and none from a run whose
             # `fork_refusal` gives a reason: a branch, or a trunk whose
@@ -1255,7 +1255,7 @@ class RunView(QWidget):
         exception escapes (`PL-M3M2`).
 
         A refusal of a dial's setting names the dial by its label on screen
-        (`setting_refusal_for_a_learner`, `PL-8QFW`). The core's message for a
+        (`setting_refusal_for_a_user`, `PL-8QFW`). The core's message for a
         developer is logged at error level, so it reaches the failure log. The
         dials offer only the values that the run accepts, so a refusal for a
         value outside a limit means the dial and the limit disagree.
@@ -1273,7 +1273,7 @@ class RunView(QWidget):
         try:
             apply()
         except SimulationConfigurationError as error:
-            refusal = error if control is None else setting_refusal_for_a_learner(control, error)
+            refusal = error if control is None else setting_refusal_for_a_user(control, error)
 
             if refusal is not error:
                 _LOG.error("Setting refused: %s", error)

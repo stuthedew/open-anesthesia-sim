@@ -27,7 +27,7 @@ tick (`ConcentrationChart.owes_a_frame`).
 runs on one axis into one patient under two managements, rather than two
 unrelated sessions (`docs/ARCHITECTURE.md` § "What a branch is"). So the case
 is built here, at the entry point, and the dashboard opens on the case's
-trunk. The learner adds the second run themselves, by taking a branch.
+trunk. The user adds the second run themselves, by taking a branch.
 
 **The interface's colours are declared on the application before the first
 widget exists** (`PL-KRZW`). Qt's palette follows the host's appearance, but
@@ -60,11 +60,11 @@ restart. Where there is no directory, the session uses the default
 preferences, and the agent cost View says that a change will not be kept.
 
 **A failure that stops a run is also written to a file in the same directory**
-(`PL-TWZY`). The halt banner words a failure for the learner, and leaves out
+(`PL-TWZY`). The halt banner words a failure for the user, and leaves out
 the exception's own message, which is written for a developer. So
 `failures.open_failure_log` sends the log records of `anesthesia_sim` to
 `failures.log` beside `workspaces.json`, as well as to standard error, where
-Python prints them when nothing else is set. A learner who opened the
+Python prints them when nothing else is set. A user who opened the
 application from an icon has no terminal, and the file keeps the record for
 whoever looks into the fault. The file is capped in size, and one older file
 is kept.

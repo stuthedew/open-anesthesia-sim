@@ -1,7 +1,7 @@
 """The words on the controls that open a branch.
 
 The Branch View draws these controls, and the controller's refusals name
-them, so a learner whose press is refused is told which control to use
+them, so a user whose press is refused is told which control to use
 instead. Both read the words from here (`PL-3JTH`). The controller cannot
 read them from `dashboard_frame.py`, which imports the controller. This
 module imports nothing, so either can read it.

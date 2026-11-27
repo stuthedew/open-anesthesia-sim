@@ -7,7 +7,7 @@ status: ready
 classes: defect
 feature: release-process
 touches: tools/doc_check.py, subprojects/docket/src/docket/release.py
-deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-22
 payoff: a release cut on a shallow clone says it could not read the history instead of leaving out pointer lines without a word
 ---

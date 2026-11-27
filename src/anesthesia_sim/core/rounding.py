@@ -23,7 +23,7 @@ scale that its docstring names.
 kind of comparison. Its docstring says what it is measured against, what the
 rounding was measured to be, and which test measures it again. A fixed
 allowance is not a bound. It is a chosen number, far above the measured
-rounding and far below anything a learner could read.
+rounding and far below anything a user could read.
 
 **The bound for n steps is the sum of the steps' bounds** (project owner,
 2026-11-11, ratified, over a bound that grows as the square root of n). The

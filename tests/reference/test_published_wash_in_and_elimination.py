@@ -2330,7 +2330,7 @@ def test_the_model_eliminates_more_slowly_than_every_published_cohort(
     The regression pin above fixes the magnitude and would fail on a move in
     either direction. This test pins the sign, which is the part a reader of
     the model needs. The modelled alveolar fraction at five minutes of
-    elimination is higher than every published cohort's. So a learner
+    elimination is higher than every published cohort's. So a user
     watching this simulator's washout sees a slower recovery than these
     volunteers had, not a faster one.
 
@@ -2456,7 +2456,7 @@ def test_desflurane_washout_at_the_default_fresh_gas_flow_regression_pin() -> No
     """Pin desflurane's five-minute washout at the default fresh gas flow.
 
     `docs/MODEL.md` § "Elimination at five minutes: does not agree" quotes this
-    figure to show a learner how much the circle system slows the washout on
+    figure to show a user how much the circle system slows the washout on
     screen. The flow is read from the shipped circuit's parameter file, so a
     change to the default is a change to the setting this test measures. A
     change to the circuit, the patient or the stepping that moves the figure

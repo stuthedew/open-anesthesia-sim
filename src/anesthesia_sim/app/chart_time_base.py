@@ -27,7 +27,7 @@ set the selectable list at 15 minutes to 12 hours (2026-09-04). "Fit run" is
 the default mode and has to work at ten seconds as well as at ten hours. So the
 ladder carries three rungs below 15 minutes. Fitting a thirty-second run to a
 fifteen-minute axis would draw the whole of induction into the leftmost 3% of
-the plot, and induction is the moment a learner is most likely to be watching.
+the plot, and induction is the moment a user is most likely to be watching.
 Those three rungs can be reached by fitting but not by choosing, because
 choosing one would zoom into a span with nothing in it.
 
@@ -336,7 +336,7 @@ class ChartWindow:
 
     A chart follows the run unless the reader has moved its window back
     (`PL-Z7LY`). A held window keeps its left edge where the reader put it,
-    so new samples do not move it, and a learner looking back at induction
+    so new samples do not move it, and a user looking back at induction
     is not carried away from it by the run. Two charts that ask for the same
     window are drawn from one frame, so this record is the key the
     dashboard assembles frames by.

@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 touches: tests/integration/simulation_view/conftest.py, tests/integration/test_run_surfaces.py
-deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-22
 payoff: a targeted test run passes or fails on the tests, not on the order the paths were typed
 ---

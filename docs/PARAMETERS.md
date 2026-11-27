@@ -155,7 +155,7 @@ Three rules apply to an entry under `sources`:
    one that cites nothing, because it stops the reader checking.
 3. Where no primary source has been adopted, record it as an open gap. "No
    primary source has been adopted for this value" is a legitimate provenance
-   state for an educational simulator, and one that can later be fixed. A
+   state for a simulator that is not a clinical tool, and one that can later be fixed. A
    tier-3 citation presented as settled is neither legitimate nor marked for
    fixing.
 
@@ -466,7 +466,7 @@ from De Wolf et al. 2012. Their Table 1 prints 75.8, and 75.8 + 18 + 6 = 99.8.
 The model requires the flow fractions to sum to 1 within the tolerance that
 `docs/MODEL.md` § "Blood flow to the tissue groups" gives, so the published set could not be stored as printed,
 even if it were preferred. The difference changes the vessel-rich time constant
-by 0.26%, below the resolution of anything a learner reads off the curve. The
+by 0.26%, below the resolution of anything a user reads off the curve. The
 De Wolf entry in the reference patient's data file (`reference_adult.json`)
 records the difference in full.
 <!-- provenance: data/patients/reference_adult.json tissue_groups.vessel_rich.perfusion_fraction = 0.76 -->
@@ -875,7 +875,7 @@ was kept rather than changed to 8.0 L, because the exact value is not critical
 the early rise in inspired concentration comes from the machine itself. At the
 same flow, $`\tau_C = V_C/\dot V_F`$ is 90 s here and 120 s at 8.0 L, so the
 apparatus lag is 25% shorter. That lag is the part of the inspired curve that a
-learner is most likely to attribute to uptake. So a run that reproduces a
+user is most likely to attribute to uptake. So a run that reproduces a
 published Gas Man trajectory has to set the circuit volume to 8.0 L explicitly,
 and cannot assume that value. Like every circuit volume in this model, the
 6.0 L is one total for the apparatus and the patient circuit together
@@ -954,7 +954,7 @@ disposable patient circuit. Adding the 1.2 L circuit that they computed their
 totals with gives 5.9, 3.3 and 3.2 L. At the default flow, the circuit time
 constant therefore runs from 89 s on the oldest of the three machines to about
 50 s on the newest. That is a factor of about 1.8 across machines that a
-learner would meet in the same department. The stored 6.0 L lies within 2% of
+user would meet in the same department. The stored 6.0 L lies within 2% of
 the Primus's assembled 5.9 L. The match is a coincidence: the stored value
 predates the survey, and was kept under the project owner's ruling of
 2026-09-01.
@@ -1102,7 +1102,7 @@ equal-weight mean of its four organ values, 1.0975, so sevoflurane alone does
 not show whether Gas Man used the brain value or the mean. Isoflurane's stored
 2.1 is 0.5% above its brain value, 2.09, and desflurane's stored 0.54 equals
 its brain value (the table above). These two matches indicate that the
-vessel-rich compartment uses the brain values, and a learner reading its trace
+vessel-rich compartment uses the brain values, and a user reading its trace
 is reading a brain trace. A test recomputes the percents and the mean in this
 paragraph (`test_the_vessel_rich_coefficients_match_yasudas_brain_values_as_printed`).
 <!-- provenance: data/agents/sevoflurane.json tissue_gas_partition_coefficients.vessel_rich = 1.1 -->
@@ -1824,7 +1824,7 @@ measured and which predicted. The set has no desflurane values.
 <!-- not-restated: 18 % -->
 
 Every stored tissue:gas coefficient lies within one standard deviation of its
-cited measurement. A learner should read the muscle and fat traces as one
+cited measurement. A user should read the muscle and fat traces as one
 well-measured parameter set, not the only set the literature supports.
 Yasuda, Targ and Eger's p. 373, Eger and Saidman's Table 1, Baker and
 Farmery's Table 2 and Hendrickx and De Wolf's p. 165 were read in full text.

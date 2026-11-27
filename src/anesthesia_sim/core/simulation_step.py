@@ -57,7 +57,7 @@ from typing import Final
 # This tolerance does not cover an abrupt manoeuvre. A ventilator start made
 # one second late displaces the alveolar reading by up to 1.3 pp, which is
 # more than one standard deviation of any single coefficient moves a readout
-# in the first hour. A learner who needs a change timed more finely than one
+# in the first hour. A user who needs a change timed more finely than one
 # second cannot have it: the pause, change, resume route in app/playback.py
 # also lands on a whole second.
 #

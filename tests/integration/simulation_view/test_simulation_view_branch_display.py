@@ -379,7 +379,7 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
     The run panels and both legends already follow this rule
     (`SimulationView._run_name`).
     The test checks it here, so that the attribution `PL-25DD` adds does not
-    become standing chrome on the display a learner opens.
+    become standing chrome on the display a user opens.
     """
 
     controller = SimulationController()
@@ -519,7 +519,7 @@ def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) 
     `SimulationView._run_name` applies this rule to the run panels and both
     legends. The
     test checks it here, so that the attribution does not become standing
-    chrome on the display a learner opens.
+    chrome on the display a user opens.
     """
 
     controller = SimulationController(agent_id="isoflurane")
@@ -845,7 +845,7 @@ def test_a_region_placed_inside_the_layout_container_is_refused(application: QAp
     because the misplaced value is outside the region. This test reaches the
     second check. It moves the whole region inside the layout container, so
     every value of the branch is still inside the region, and every one of
-    them now sits where a learner could close it with its Area. The guard is
+    them now sits where a user could close it with its Area. The guard is
     the only thing that stops a later layout change from putting the region
     there (`PL-VFPB`).
     """
@@ -912,7 +912,7 @@ def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QAppl
 
     `SimulationView._run_name` already applies this rule to the run panels
     and both legends. The test checks it here, so that `PL-C3GS`'s attribution does not
-    become standing chrome on the display a learner opens.
+    become standing chrome on the display a user opens.
     """
 
     controller = SimulationController()

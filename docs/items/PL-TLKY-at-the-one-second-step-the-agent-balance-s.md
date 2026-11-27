@@ -7,7 +7,7 @@ status: ready
 classes: safety
 feature: floating-point-domain
 touches: src/anesthesia_sim/core/rounding.py, src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/stored_states.py, docs/MODEL.md, docs/VERIFICATION.md, tests/unit/test_numerical_envelope_sweep.py
-deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: the fixed limit refuses only at the envelope's stiffest corners (alveolar volume 0.01 L, blood:gas coefficient 10 000), which no shipped agent or patient file reaches; a shipped agent's step needs at most three squarings and its 24-hour residual was at most 9.8e-12, and the limit errs only toward a halt, so no learner can see a wrong value now
+deferred-from: v0.7.0 - not live: checked 2026-11-22 at d4e8200c: the fixed limit refuses only at the envelope's stiffest corners (alveolar volume 0.01 L, blood:gas coefficient 10 000), which no shipped agent or patient file reaches; a shipped agent's step needs at most three squarings and its 24-hour residual was at most 9.8e-12, and the limit errs only toward a halt, so no user can see a wrong value now
 added: 2026-11-21
 payoff: The check that halts a run whose agent does not add up neither halts a correct run nor lets a real accounting error pass, at every step a run can take.
 ---
@@ -26,7 +26,7 @@ payoff: The check that halts a run whose agent does not add up neither halts a c
 
 **Decision needed.** Whether the limit stays at 1e-9 for every run, or widens by what the squarings of the run's own step add. The choice is the owner's, because it sets the threshold of a safety check in `core/`.
 
-**Recommendation:** widen by the squarings, `PL-D88N`'s option C, and keep 1e-9 as the least the limit can be. With `PROPAGATOR_ROUNDING_UNITS` of 10 for each step, option C adds 10 times (2**3 - 1) times 86 400 times 2.2e-16 to a shipped agent's longest run, which is 1.3e-9, so its limit would be at most 2.3e-9. A profile at the stiffest corners could then take its steps. No shipped or realistic profile is near those corners today, so nothing a learner can reach changes either way, and the item is not urgent.
+**Recommendation:** widen by the squarings, `PL-D88N`'s option C, and keep 1e-9 as the least the limit can be. With `PROPAGATOR_ROUNDING_UNITS` of 10 for each step, option C adds 10 times (2**3 - 1) times 86 400 times 2.2e-16 to a shipped agent's longest run, which is 1.3e-9, so its limit would be at most 2.3e-9. A profile at the stiffest corners could then take its steps. No shipped or realistic profile is near those corners today, so nothing a user can reach changes either way, and the item is not urgent.
 
 **Done when.** The agent balance's limit is the one the owner chose, `docs/MODEL.md` and `core/rounding.py` state it and its reason, and a test shows that a correct one-second step at the stiffest envelope corners passes or halts as that choice says.
 

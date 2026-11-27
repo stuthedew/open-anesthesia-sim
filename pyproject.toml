@@ -5,7 +5,7 @@ version = "0.6.24"
 # drift: a package Summary describes the artifact, and this release models
 # sevoflurane, isoflurane and desflurane only. README "What it does not
 # simulate" records the split and why (`PL-XF89`).
-description = "A deterministic simulator of volatile-anesthetic uptake and distribution, built for teaching. An educational tool, not a medical device: not for clinical prediction, dosing, or monitoring."
+description = "A deterministic simulator of volatile-anesthetic uptake and distribution, which can be used for teaching. Not a medical device: not for clinical prediction, dosing, or monitoring."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -47,10 +47,12 @@ requires-python = ">=3.15,<3.16"
 #   classifier. A second copy would drift silently, which is the failure mode
 #   the comments through the rest of this file are written against.
 # - **No `Intended Audience :: Science/Research`.** `README.md` names two
-#   readers - educators and trainees, and contributors - and neither is a
-#   researcher. Claiming a research audience would imply the model has been
-#   validated for inference rather than for teaching, which is the kind of
-#   over-claim `CLAUDE.md`'s presentation-correctness standard forbids.
+#   readers - clinicians in anesthesiology and critical care, and contributors.
+#   Claiming a research audience would imply the model has been validated for
+#   inference about real patients, which is the kind of over-claim
+#   `CLAUDE.md`'s presentation-correctness standard forbids. `Intended
+#   Audience :: Education` stays because teaching is one of the simulator's
+#   uses.
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Education",

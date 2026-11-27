@@ -16,7 +16,7 @@ payoff: A border drag in a Workspace of many Areas keeps up with the pointer, be
 
 **Checked 2026-11-22**, at `d4e8200c`. The cost is still there. In `AreaLayout._fits` in `app/area_layout.py`, the loop over `moved.areas()` calls `drawn(start, area.id)` for every Area, and `drawn` runs `apportion` over the whole tree each time. The start layout depends only on where the drag began, yet it is laid out again on every bisection step of every pointer move. The check came in with #2169 (718862f7, 2026-11-16, `PL-501T`).
 
-**Why it matters.** A stopped border drag runs this check on each pointer move. The blind review of `PL-501T` measured about 9 ms a move at 6 Areas and 56 ms at 20. At 20 Areas that is enough to make the drag lag visibly behind the pointer. About half of it is the start layout repeated. No value a learner reads changes.
+**Why it matters.** A stopped border drag runs this check on each pointer move. The blind review of `PL-501T` measured about 9 ms a move at 6 Areas and 56 ms at 20. At 20 Areas that is enough to make the drag lag visibly behind the pointer. About half of it is the start layout repeated. No value a user reads changes.
 
 **Done when.** The start layout of a border drag is laid out once for the drag rather than once per Area on each bisection step, and a test shows that a drag stops at the same place as before.
 

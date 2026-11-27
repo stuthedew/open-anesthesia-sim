@@ -659,7 +659,7 @@ the statement covers, not whether the statement is required.
 
 **Decided (project owner, 2026-09-20, ratified, recorded in `PL-FG9D`)**, on
 this session's recommendation and over naming the machine by its trade name in
-the running interface. It is what a learner sees, so the decision was theirs;
+the running interface. It is what a user sees, so the decision was theirs;
 the case below is the one they ratified rather than one they authored, which is
 the distinction `CLAUDE.md` asks to be recorded — **ordinary evidence reopens it**:
 a measurement, a cost this case did not carry, or a constraint that appears
@@ -703,7 +703,7 @@ Three facts decide where the trade name goes, and none is a matter of taste:
    archetype label it offers one entry, correctly.
 3. **`CLAUDE.md`'s clinical-output standard already governs the choice.** The
    correct number with the wrong model identity is a presentation failure, and
-   a learner who reads a trade name on a curve attributes the curve to the
+   a user who reads a trade name on a curve attributes the curve to the
    machine on the wall in their operating room.
 
 The two other options are weaker:
@@ -746,7 +746,7 @@ any two machine profiles, the fields that differ can be computed, and the
 `effect` clause that the schema already requires says what each one does. A
 derived table stays true, while one maintained by hand can go out of date.
 
-**The design rules out a difference that nobody could explain to a learner.**
+**The design rules out a difference that nobody could explain to a user.**
 Such a difference would arise if a machine changed a result through something
 unnamed, for example a default inside a strategy or a branch on an undeclared
 field. The interface would then attribute it to the machine's trade name. That

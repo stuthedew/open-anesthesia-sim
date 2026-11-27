@@ -423,7 +423,7 @@ value (`PL-9GP1`):
 
   This repository's time bookmarks were taken from Gas Man's
   (`src/anesthesia_sim/app/bookmarks.py`, `PL-LPLD`), and have the first use: a
-  run halts at one. A learner returns to a bookmark by taking a branch there
+  run halts at one. A user returns to a bookmark by taking a branch there
   (`PL-B8MK`, `PL-W4XQ`). The second use needs a replay control, which is
   `ROADMAP.md` planned item 10 and is not built. A branch taken at a bookmark
   stands at the bookmark itself, where Gas Man's default pauses one second

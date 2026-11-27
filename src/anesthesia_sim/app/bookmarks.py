@@ -1,4 +1,4 @@
-"""What a learner marks on a case, and the two collections that hold the marks.
+"""What a user marks on a case, and the two collections that hold the marks.
 
 This module holds the vocabulary for referring to moments in a run *by time and by
 threshold*. It sits alongside `app/control_record.py`, which says what a run can be set
@@ -16,7 +16,7 @@ that uses it to work out again which kind each entry is. That code is this modul
 panel, and the crossing detection that `PL-CTD7` builds. The fields differ too: a
 threshold names a compartment and a height, and an instant names neither.
 
-**What these are not.** A mark is a question the learner asks of the case. It is
+**What these are not.** A mark is a question the user asks of the case. It is
 not a record of what happened in the case. `control_record.ControlChange` is that
 record. It has one entry for each setting under which the model was integrated, and
 re-applying it reproduces the run. Nothing here is re-applied, and nothing here changes
@@ -35,7 +35,7 @@ simulation step.
 
 Keeping the test here and the loop in the controller is what stops a halt from
 overshooting a mark. If the crossing test ran only once per rendered frame, a halt
-would land up to `multiplier x 0.1` s past the value the learner marked, where
+would land up to `multiplier x 0.1` s past the value the user marked, where
 `multiplier` is the playback speed. At 300x that is 30 simulated seconds
 (`app/playback.py`, `PL-NBWP`). So the test has to be applied on every step, and
 applying it is the job of the advance loop. Because this module holds no state, it is
@@ -94,7 +94,7 @@ class MarkStanding(StrEnum):
     is the same distinction seen from the other side. "Reached" is a historical
     claim. A run whose clock is taken backwards, by a rewind or by truncating at
     a mark and running on, falsifies that claim. Yet the mark stays perfectly
-    reachable: it will stop the learner again. A positional word survives this,
+    reachable: it will stop the user again. A positional word survives this,
     because it is worked out again from the clock every time the standing is
     drawn. The reference simulator avoids the question by giving a bookmark no
     standing at all. In Philip JH, *Workbook for Gas Man*, chapter 2 "Using
@@ -105,7 +105,7 @@ class MarkStanding(StrEnum):
     `NOT_REACHED_WITHIN_CAP` is separate from `STILL_RUNNING` because a threshold
     above a compartment's asymptote is never reached. The run stops at
     `docs/INTERFACE.md` § "Supported run length", and by then the question is
-    settled. A row that still said "still running" would invite a learner to wait
+    settled. A row that still said "still running" would invite a user to wait
     for something that cannot arrive.
 
     `BEFORE_THIS_BRANCH` is separate from `NOT_REACHED_WITHIN_CAP` for the
@@ -113,7 +113,7 @@ class MarkStanding(StrEnum):
     that lies before the branch's own fork instant comes across with the rest,
     and the branch can never reach it going forward. Unlike `STILL_RUNNING` and
     the cap, this case can be decided statically, from
-    `ResumePoint.fork.instant_s`, without running anything. Telling a learner
+    `ResumePoint.fork.instant_s`, without running anything. Telling a user
     that the mark was "not reached within the cap" would say that running longer
     might reach it, which is false. The mark is inherited rather than dropped so
     that a trunk's list and a branch's list agree about which instants the case
@@ -145,7 +145,7 @@ class MarkStanding(StrEnum):
 
     This standing is positional and applies only to a time bookmark. So it
     still applies however the clock got there: by a step, by a fork taken at
-    the mark, or because the learner marked an instant the run had already
+    the mark, or because the user marked an instant the run had already
     passed.
     """
 
@@ -195,7 +195,7 @@ def _checked_label(label: str | None) -> str | None:
 
 @dataclass(frozen=True, slots=True)
 class TimeBookmark:
-    """An instant in the case that a learner wants the run to stop at and return to.
+    """An instant in the case that a user wants the run to stop at and return to.
 
     The instant is in the **case's** own simulated time. A branch shares that
     time axis with its trunk: `ResumePoint.fork.instant_s` is on it, and
@@ -211,7 +211,7 @@ class TimeBookmark:
             made at all (`PL-CN5S`).
         label: What to call the bookmark in a list, or `None` to list it under
             its own time. The default is `None` rather than a generated name,
-            so that nothing invents a name the learner did not choose.
+            so that nothing invents a name the user did not choose.
 
     Raises:
         TypeError: If `instant_s` is not a `CaseInstant`, which means nothing
@@ -272,7 +272,7 @@ class TimeBookmark:
 
 @dataclass(frozen=True, slots=True)
 class MacTarget:
-    """A height on one compartment at which a learner wants the run to stop.
+    """A height on one compartment at which a user wants the run to stop.
 
     **Stored as a multiple of the agent's 1 MAC rather than as a percent of
     it.** The interface already shows every compartment in that unit
@@ -293,7 +293,7 @@ class MacTarget:
 
     Because a target is a multiple rather than an absolute concentration, it
     survives a change of agent intact. 0.8 ×MAC is 0.8 ×MAC of whichever agent
-    is running, which is the comparison a learner switching agents wants. That
+    is running, which is the comparison a user switching agents wants. That
     is why `SimulationController.set_agent` keeps the marks, just as it keeps
     the other settings.
 
@@ -301,7 +301,7 @@ class MacTarget:
     `PL-LPLD`'s minimum scope took a direction from the reference simulator
     (rising, falling or either), and it is not wanted. A height is a height. A
     run that passes through it on the way up and again on the way down has
-    reached what the learner marked both times. So a target names a compartment
+    reached what the user marked both times. So a target names a compartment
     and a height and nothing else. Those two values are also what make two
     targets the same question (`crossing_key`). This is recorded here because
     the reference simulator has the field, and a later reader of the reference
@@ -385,7 +385,7 @@ class MacTarget:
 
         Both directions count, because a target has no crossing direction (see
         the class docstring). A case taken up through 0.8 ×MAC and back down
-        through it has reached the learner's mark twice, so it halts twice.
+        through it has reached the user's mark twice, so it halts twice.
 
         Args:
             before: The reading of this target's compartment before the step,
@@ -703,7 +703,7 @@ class BookmarkSet:
         `SimulationController.advance` calls this once per completed step, with
         the readings from either side of that step. Testing every step is the
         whole point. A test applied once per rendered frame would place the
-        halt up to one tick's steps past the value the learner marked, which
+        halt up to one tick's steps past the value the user marked, which
         is 30 simulated seconds at 300×. The same bookmark would
         then stop the run at a different concentration depending on the
         playback speed (`PL-NBWP`, `docs/VERIFICATION.md` § "Supported simulation

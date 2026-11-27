@@ -342,7 +342,7 @@ def test_vaporizer_maximum_matches_its_cited_specification(
     """Each agent's dial maximum equals the vaporizer its source describes.
 
     The maximum is a device limit rather than a model parameter. It still
-    bounds the delivered-concentration control a learner turns. Each comment
+    bounds the delivered-concentration control a user turns. Each comment
     above names the source, the locator and what was read. Two of the three
     specifications could not be read from this environment, and their
     comments say so (`PL-FY35`). `PL-L46W` is the item for reading them.

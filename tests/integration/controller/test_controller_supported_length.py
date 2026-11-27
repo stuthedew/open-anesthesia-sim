@@ -162,7 +162,7 @@ def test_switching_agent_clears_the_supported_limit() -> None:
 # pause on every route that brings it to 24:00:00 without a refused step. Those
 # routes are a trunk halted there on a mark, a branch forked there, and a branch
 # reset onto such a fork. Each of these offered Start, showed no limit notice,
-# and told a learner that an unreached mark was still ahead of a run that could
+# and told a user that an unreached mark was still ahead of a run that could
 # not step. Every assertion below is checked end to end, from the controller's
 # snapshot through the pure dashboard functions that a frame is built from. A
 # run steps by one second, so its last supported count lands exactly on 24

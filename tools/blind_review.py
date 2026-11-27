@@ -69,13 +69,13 @@ from docket.vcs import (  # noqa: E402
 #: severities are `docket.arming.BLIND_SEVERITIES`, which the `Blind-review`
 #: record is read against, so the brief and the record cannot name different ones.
 BRIEF = """\
-You are the single code reviewer for an open-source anesthesia simulator (inhaled-anesthetic uptake and distribution, with a Qt interface for learners). You are reviewing ONE pull request before it merges.
+You are the single code reviewer for an open-source anesthesia simulator (inhaled-anesthetic uptake and distribution, with a Qt interface for users). You are reviewing ONE pull request before it merges.
 
 Your directory is {DIR}. It holds `tree/`, the repository exactly as it stands with this pull request applied, and `tree/REVIEW_DIFF.patch`, the pull request's commit message and diff. Read ONLY inside {DIR}. Do not read any other path on this machine, do not run git, and do not use the network. The project's standards are in `tree/CLAUDE.md`, `tree/.claude/rules/`, `tree/docs/MODEL.md` and `tree/docs/INTERFACE.md`; read what you need. You may run read-only Python against `tree/` if it helps you check a claim (for example `cd {DIR}/tree && PYTHONPATH=src python3 -c '...'`), but write nothing inside `tree/`.
 
-Your field: General review, with no specialty. Cover whatever matters most in this change: correctness of the model and its units, numerical and state behaviour, and what a clinician or learner sees on screen.
+Your field: General review, with no specialty. Cover whatever matters most in this change: correctness of the model and its units, numerical and state behaviour, and what a clinician or user sees on screen.
 
-Review the whole diff from your field. Look for faults this change introduces or leaves in the code it adds: wrong results, unhandled cases, state that can go stale or partial, values a learner could misread, and refusals that fail to fire. Do not report style, naming, or documentation polish unless it could mislead a reader about a clinical value. Report only what you would defend to the author; it is better to report three real faults than eight weak ones.
+Review the whole diff from your field. Look for faults this change introduces or leaves in the code it adds: wrong results, unhandled cases, state that can go stale or partial, values a user could misread, and refusals that fail to fire. Do not report style, naming, or documentation polish unless it could mislead a reader about a clinical value. Report only what you would defend to the author; it is better to report three real faults than eight weak ones.
 
 Write at most eight findings, most severe first, in this exact form:
 

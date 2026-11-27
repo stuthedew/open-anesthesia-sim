@@ -4,7 +4,7 @@ Write all prose that a person will read in plain English: docstrings, comments,
 error messages, documents, rules, item briefs, commit messages, pull request
 titles and bodies, replies, and every question or review request sent to the
 project owner, including each field of the line `bin/docket arm` prints. In
-a question or a review request, say what changes for the owner or a learner,
+a question or a review request, say what changes for the owner or a user,
 and never name a test, check or tool by its internal name (project owner,
 2026-11-02, `PL-BGN1`). Write for the readers that the table below names for
 that kind of text. They should understand each sentence the first time they
@@ -25,7 +25,7 @@ after it is written, `PL-J1ZM`).
 | Kind of text | Reader | What they know | What they do not know | What they will do with it |
 | --- | --- | --- | --- | --- |
 | Docstrings and comments in `src/` and `tests/` | A Python developer who knows the basics of anesthesia | Python, and the basics of anesthesia. | This repository's own names and history, and any numerical-methods term the code does not explain. | Change the code, or check that it is right. |
-| String literals in `src/`, such as interface notices and refusal messages | A learner: a trainee in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
+| String literals in `src/`, such as interface notices and refusal messages | A user: a clinician in anesthesiology or critical care using the simulator | Anesthesia and critical care. | Software terms, numerical-methods terms, and this repository's own names. | Act on a notice beside a value, or learn from a refusal which condition failed and the value that failed it. |
 | String literals in `src/`, such as interface notices and refusal messages | A Python developer who meets the message in a log, a traceback or a test | Python, and the basics of anesthesia. | This repository's own names and history. | Find the input that failed and its value, and fix it. |
 | Replies, and questions and review requests to the project owner | The project owner, an anesthesiologist and intensive-care physician | Anesthesia, critical care, and what the project is for. | The internal names of tests, checks and tools, and what the session did. | Make a decision, or learn what changed. |
 | Item briefs in `docs/items/`; the workflow's files in `.claude/`, `tools/`, `subprojects/docket/src/`, `CLAUDE.md`, `docs/apparatus.md`, `docs/maintainer.md`, `docs/worker.md`, `docs/resident-instructions.md`, `docs/WORKING_NOTES.md`, `docs/dead-ends.md` and `docs/prose-review/README.md`; and commit messages | A later session, or the owner reading the history | Python, anesthesia, and this repository's rules. | What the writing session knew and did not write down. | Pick up the work, or find out why a change was made. |
@@ -112,7 +112,7 @@ an id was put and what each new item holds are in the item.
 >
 > 1. Answer the three questions in PL-HS9M (the design round's record). Is
 >    the order of work agreed: tasks, evaluation, wireframes, style, then
->    residents? I recommend it. Who is the first-pass learner, and are the
+>    residents? I recommend it. Who is the first-pass user, and are the
 >    four candidate tasks right? Can you supply the full text of Zhang et al.
 >    2003?
 > 2. Approve or decline the one-control trial in PL-BVC5 (how the controls

@@ -41,8 +41,8 @@ these rules, "phases," or "closed loops" in the output itself.
     follows; nothing precedes the questions.
     **The reader must see on first reading what they are judging** (project
     owner, 2026-10-19). This applies to every question, card and read ask.
-    Word the question in clinical or learner terms, not the code's or the
-    item's. Under each option, say what a learner sees or what changes for
+    Word the question in clinical terms, as a user would put it, not in
+    the code's or the item's. Under each option, say what a user sees or what changes for
     them. Give the recommendation and its reason, and say why the choice is
     theirs rather than the session's.
     **A session under a coordinator asks the coordinator, not the owner.**
@@ -109,7 +109,7 @@ these rules, "phases," or "closed loops" in the output itself.
       things and say you did.
       **Which of the first two applies turns on consequence, not on what the
       answer rests on.** Theirs are the consequential questions: the order
-      features come in, what the project is for, behavior a learner would see,
+      features come in, what the project is for, behavior a user would see,
       and anything the safety-critical standard reaches. **Look, wording and
       placement are not among them for now.** Decide one yourself, record it in
       the item as a placeholder, and say in one line what you chose. A choice

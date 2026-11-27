@@ -46,7 +46,7 @@ circuit, with no dead space and no separate inspiratory and expiratory limbs.
 So the gas the patient inspires *is* the circuit gas, and the circuit's
 fraction and the inspired fraction are identically the same quantity. The
 state is named for the clinical quantity rather than for its container,
-because $`F_A/F_I`$ is the curve that this simulator exists to let a learner
+because $`F_A/F_I`$ is the curve that this simulator exists to let a user
 produce. The container is still the circuit, and `circuit.py` still owns it.
 
 ## Why delivered and exhausted agent are states rather than a side calculation

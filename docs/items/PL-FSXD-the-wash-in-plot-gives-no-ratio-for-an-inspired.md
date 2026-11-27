@@ -7,7 +7,7 @@ status: ready
 classes: defect
 feature: interface-design-review
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/wash_in.py, docs/INTERFACE.md
-deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 filed-pr: 2294
 payoff: the Circuit readout and the F_A/F_I plot agree about which inspired values a ratio is drawn from
@@ -17,9 +17,9 @@ payoff: the Circuit readout and the F_A/F_I plot agree about which inspired valu
 
 Both blind review passes of `PL-P3ZL` found it on 2026-11-23. It is older than `PL-P3ZL`: the caption before that change said that no agent had reached the circuit, beside the same "0.01%".
 
-**What to do.** Make the readout and the plot agree about which inspired concentrations the ratio is formed from. Research how a monitor or a display standard aligns a limit with a rounded readout, and record the sources here. Candidates are to test the limit against the value as the readout rounds it, to raise the limit to where the readout shows 0.02%, or to keep the limit and have the caption state it. Each changes when a learner sees a ratio, so if the research does not settle it, put the choice to the project owner with a recommendation.
+**What to do.** Make the readout and the plot agree about which inspired concentrations the ratio is formed from. Research how a monitor or a display standard aligns a limit with a rounded readout, and record the sources here. Candidates are to test the limit against the value as the readout rounds it, to raise the limit to where the readout shows 0.02%, or to keep the limit and have the caption state it. Each changes when a user sees a ratio, so if the research does not settle it, put the choice to the project owner with a recommendation.
 
-**Why it matters.** In a washout the readout says 0.01% while the plot says the inspired concentration is too low to divide by, and at another moment the same 0.01% gives a drawn ratio. A learner cannot tell from the screen why one reading gives a ratio and the other does not.
+**Why it matters.** In a washout the readout says 0.01% while the plot says the inspired concentration is too low to divide by, and at another moment the same 0.01% gives a drawn ratio. A user cannot tell from the screen why one reading gives a ratio and the other does not.
 
 **Done when.** A test shows that whenever the Circuit readout shows a given inspired value, the plot either always or never forms a ratio from it, and `docs/INTERFACE.md` states the limit in the readout's terms. The research and its sources are recorded here.
 

@@ -155,7 +155,7 @@ under Fusion, confirmed per widget on a disabled `QPushButton`, `QComboBox` and
 `QLabel`. That value is declared nowhere in `app/theme.py`, so it is not merely
 undeclared but unreachable to the `ast` extraction above; and `app/main.py`
 never calls `setStyle`, so it is the *platform's* number rather than the
-product's and differs on the machine a learner uses. There is nothing here for
+product's and differs on the machine a user uses. There is nothing here for
 this tool to measure, and a requirement written against `#BEBEBE` would assert
 a value this project does not choose.
 

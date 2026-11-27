@@ -170,12 +170,12 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
 
     `docs/VERIFICATION.md`'s hazard row for entering an identifiable patient's data
     lists the fixed reference adult as one of its two safeguards. This test
-    enforces that safeguard. A learner can set four settings and the agent, but
+    enforces that safeguard. A user can set four settings and the agent, but
     nothing that would describe a particular patient: no weight, age, sex,
     height or body composition. A stretch is a `RunSegment`, a span of a run
     during which no setting changes. Every stretch of every run keeps the
     compartment volumes and perfusion fractions of
-    `data/patients/reference_adult.json`, whatever the learner sets.
+    `data/patients/reference_adult.json`, whatever the user sets.
 
     The first five assertions check each way a patient could get into a run
     today. They check that the package ships one patient file, that the uptake
@@ -198,14 +198,14 @@ def test_every_run_simulates_the_shipped_reference_adult() -> None:
     assert set(inspect.signature(uptake_system.AgentUptakeSystem.for_agent).parameters) == {
         "agent_id"
     }
-    learner_controls = {
+    user_controls = {
         ControlInput.FRESH_GAS_FLOW,
         ControlInput.DELIVERED,
         ControlInput.ALVEOLAR_VENTILATION,
         ControlInput.CARDIAC_OUTPUT,
     }
-    assert set(ControlInput) == learner_controls
-    assert {control.control for control in PARAMETER_CONTROLS} == learner_controls
+    assert set(ControlInput) == user_controls
+    assert {control.control for control in PARAMETER_CONTROLS} == user_controls
     assert set(inspect.signature(SimulationController).parameters) == {
         "agent_id",
         "circuit_volume_l",
@@ -319,7 +319,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
 
 
 _ORDERED_AGENT_PAIRS = tuple(permutations(AGENT_DATA_FILENAMES, 2))
-"""Every switch a learner can make: each agent to each other agent, both ways."""
+"""Every switch a user can make: each agent to each other agent, both ways."""
 
 
 def _run_with_non_default_settings(agent_id: str) -> SimulationController:

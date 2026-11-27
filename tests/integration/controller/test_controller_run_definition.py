@@ -318,7 +318,7 @@ def test_a_control_change_after_a_setting_written_past_the_controller_is_refused
 
     The controller records the whole settings record when a control changes.
     Before the fix, a circuit volume written onto the core was recorded with
-    the next dial change as if the learner had made it, and the run went on
+    the next dial change as if the user had made it, and the run went on
     under it. Before Start, the circuit holds no agent, so the run's own
     check on its state cannot see the change either. Nothing is applied:
     the dial, the run definition and the timeline stay as they were.

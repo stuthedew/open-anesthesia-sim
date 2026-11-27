@@ -652,7 +652,7 @@ def test_a_dial_moved_in_a_workspace_pinned_to_the_second_run_sets_that_run_alon
     """A pinned Workspace shows its run's dials alone, and they change that run.
 
     The Workspace is pinned to Run 2, so the setting controls View shows one
-    row of dials. Both runs hold a fresh gas flow of 4.0 L/min. The learner
+    row of dials. Both runs hold a fresh gas flow of 4.0 L/min. The user
     moves the dial to 4.2 L/min with two presses of an arrow key, which hold
     no thumb. The second press comes before any render tick, so it leaves
     its frame to the tick (`PL-2WVC`). Run 2 takes the setting and Run 1
@@ -828,10 +828,10 @@ def _pinned_fork_notice(pinned: str) -> str:
 
 
 def _case_words(view: SimulationView) -> dict[str, list[str]]:
-    """The words a learner reads in each View of the case, keyed by the View's class.
+    """The words a user reads in each View of the case, keyed by the View's class.
 
     A widget the View hides is left out, so two Views give the same words
-    only when a learner reads the same in both.
+    only when a user reads the same in both.
     """
 
     words: dict[str, list[str]] = {}
@@ -897,7 +897,7 @@ def test_a_workspace_pinned_to_a_run_that_is_not_open_still_shows_the_case_s_mar
     The marks and the branch points belong to the case, and no run owns them.
     The Workspace here is pinned to a run of an earlier session, which is
     not open. Before `PL-1D3Z`, the pin's notice covered both Views, and the
-    learner lost the marks and the branch control until they unpinned the
+    user lost the marks and the branch control until they unpinned the
     Workspace. Each View must read as it reads in the same Workspace unpinned,
     built afresh over a case built the same way: the mark at 30 s is listed,
     and the branch control offers induction and the mark. Neither Area's

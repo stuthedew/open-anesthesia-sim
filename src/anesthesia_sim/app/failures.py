@@ -1,6 +1,6 @@
 """What kind of failure stopped a run, and the file that records each failure for a developer.
 
-A run halts on any exception (`dashboard_frame.halt_disposition`). The learner
+A run halts on any exception (`dashboard_frame.halt_disposition`). The user
 is told in plain words what kind of fault it was, and the exception's own
 message, which is written for a developer, goes to the failure log and to the
 details under the banner (`PL-TWZY`, `PL-XWCH`). This module loads no toolkit,

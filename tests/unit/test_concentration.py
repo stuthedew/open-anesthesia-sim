@@ -874,7 +874,7 @@ def test_a_run_opens_with_its_dial_built_as_a_setting_not_as_the_mac(
     """The opening dial is at 1 MAC, but it is a dial setting and not the agent's MAC.
 
     When the opening setting was built from the agent's `MacPercent` itself,
-    it passed a MAC check until the learner first moved the dial. So a dial
+    it passed a MAC check until the user first moved the dial. So a dial
     setting passed to a formatter in place of the MAC showed a correct-looking
     1.00 ×MAC when the run opened, and failed only later, mid-run (`PL-F9TC`,
     blind review). The expected MACs are Mapleson 1996's MACs at age 40,

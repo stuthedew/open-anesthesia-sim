@@ -7,7 +7,7 @@ status: ready
 classes: safety
 feature: floating-point-domain
 touches: src/anesthesia_sim/core, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/core-domain.md
-deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer. Hazard not live, checked 2026-11-16 at 68fc719a: both wrong values it cites are fixed (PL-GKG4's 5e-324 L/min blood flow and PL-8W1Q's restored Keyframe at -50 s are done), and no open item reports a wrong value from a bare number reaching a learner; PL-VZ57's unconfirmed lead names core/ functions that take bare numbers, with no wrong value shown. The item prevents the next instance
+deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer. Hazard not live, checked 2026-11-16 at 68fc719a: both wrong values it cites are fixed (PL-GKG4's 5e-324 L/min blood flow and PL-8W1Q's restored Keyframe at -50 s are done), and no open item reports a wrong value from a bare number reaching a user; PL-VZ57's unconfirmed lead names core/ functions that take bare numbers, with no wrong value shown. The item prevents the next instance
 added: 2026-11-11
 filed-pr: 2095
 payoff: every number that crosses a function boundary in core/ is either a checked type or on one short list that says why it is bare, so a new unchecked way in fails a test the day it is written

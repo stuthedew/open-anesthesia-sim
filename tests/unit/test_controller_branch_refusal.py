@@ -1,4 +1,4 @@
-"""Tests of the words a branch refused for changed values gives the learner and the developer."""
+"""Tests of the words a branch refused for changed values gives the user and the developer."""
 
 from __future__ import annotations
 
@@ -15,14 +15,14 @@ from anesthesia_sim.core.parameters import load_agent_parameters, load_reference
 from anesthesia_sim.core.supported_ranges import CaseInstant
 
 
-def test_a_branch_rebuilt_on_changed_data_gives_the_learner_and_the_developer_their_own_text(
+def test_a_branch_rebuilt_on_changed_data_gives_the_user_and_the_developer_their_own_text(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """The learner reads the reason and what to do, and the developer reads each differing value.
+    """The user reads the reason and what to do, and the developer reads each differing value.
 
     The agent's file is edited after the run began, in two of the references a
     branch checks, so the branch would open under another name and another
-    MAC. The exception's message is the learner's: it gives the fork in the
+    MAC. The exception's message is the user's: it gives the fork in the
     panel's own form, names both possible causes and names no value. The
     exception's note and the failure log carry each differing value with both
     of its values, joined in the order they are compared (`PL-72X2`).

@@ -7,7 +7,7 @@ status: ready
 classes: perf
 feature: run-computed-one-way
 touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_time_base.py
-deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-22
 payoff: a 24-hour run does not make the chart lag behind the clock
 ---

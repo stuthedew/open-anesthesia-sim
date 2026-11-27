@@ -87,7 +87,7 @@ reader's").
 
 **The run halts on the simulation step that crossed a mark, at every playback
 rate.** Every step is tested for a crossing. At the faster rates, a halt is
-finer than anything a learner can do while the run plays. A setting changed
+finer than anything a user can do while the run plays. A setting changed
 during play first acts on the next step that the run takes. At 1x and 5x that
 step begins at the next whole second. At 20x, 60x and 300x the run takes 2, 6
 and 30 steps at a time, so a change can act only at instants 2, 6 and 30
@@ -99,18 +99,18 @@ depending on how fast the case was played, and nothing on screen would say so.
 Two runs both branched off the case "at 0.8 ×MAC" would then start from two
 different states.
 
-**A halt leaves the run paused until the learner resumes it.** No step is taken
+**A halt leaves the run paused until the user resumes it.** No step is taken
 while the run is paused, and a setting changed then applies at once. So the
-learner gets the safe order, pause, change, resume, without having to know it.
+user gets the safe order, pause, change, resume, without having to know it.
 The one exception is a mark on the supported run length. The run stops there as
 § "Supported run length" says, so it can be neither resumed nor given a new
 setting, and its status reads "Stopped — supported run length reached".
 Without the pause, the run would play on, and a change made after the halt would
 wait for the next point of the grid above, so turning the vaporizer off at a
 0.8 ×MAC mark could take effect up to 30 simulated seconds after the value the
-learner was looking at. The displayed value would be right, and the action
+user was looking at. The displayed value would be right, and the action
 taken from it would be wrong. The run's status reads "Paused — stopped on your
-mark", so the halt is not mistaken for the learner's own Pause while two runs
+mark", so the halt is not mistaken for the user's own Pause while two runs
 are compared and the branch control is withdrawn.
 
 **The value shown at a halt can lie one or more display counts past the mark,
@@ -145,12 +145,12 @@ is not crossed again.
 
 **A MAC target halts on every crossing, in either direction.** A target names a
 compartment and a height, and no direction. A case taken up through 0.8 ×MAC
-and back down through it has reached what the learner marked both times, so it
+and back down through it has reached what the user marked both times, so it
 stops both times. A target that halted once and then had to be set again would
 make two identical-looking targets in the list behave differently, according to
 which one had already halted. Nothing on screen would tell them apart, and this
 interface is built to avoid such hidden modes. Resuming a paused run takes one
-control, which the learner is already looking at.
+control, which the user is already looking at.
 
 **A target's height is a narrow band, so that a run settled on a target does
 not cross it again and again.** The band extends one part in a hundred thousand
@@ -177,8 +177,8 @@ paused on the crossing step
 (`test_a_halt_leaves_the_run_paused_on_the_crossing_step`). An unmarked run
 takes the same trajectory as one that halted
 (`test_an_unmarked_run_takes_the_same_trajectory_as_one_that_halted`). The
-status does not read as the learner's own pause
-(`test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` in
+status does not read as the user's own pause
+(`test_a_run_a_mark_stopped_is_not_worded_as_the_user_s_own_pause` in
 `tests/unit/test_dashboard_frame.py`). A halt can show a few display counts past
 a circuit target and many past an alveolar one
 (`test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_counts_past`
@@ -227,7 +227,7 @@ own wording, because a reader would otherwise mistake it for one of the others.
 - **Passed**: a time bookmark at or behind the run's own clock. This outcome
   applies however the clock came to be there. A step may have taken the run
   past the mark, the run may be a branch that opened standing on the mark, or
-  the learner may have marked an instant that the case had already run past.
+  the user may have marked an instant that the case had already run past.
   A passed mark on the trunk is one at which a branch may be taken
   (§ "What this requires of a branch"), unless the mark is on the supported run
   length, where a branch would have no step left to take.
@@ -254,7 +254,7 @@ own wording, because a reader would otherwise mistake it for one of the others.
   limit that § "Supported run length" declares, and this mark is still
   outstanding. A height above a compartment's asymptote is never reached, so
   this outcome is a result, not an interruption. A row that kept showing "still
-  running" would invite a learner to wait for something that cannot arrive.
+  running" would invite a user to wait for something that cannot arrive.
 - **Before this branch opened**: a time bookmark earlier than the step on
   which this branch opened. A bookmark inside that step reads as passed,
   because the branch opened standing on the step that crossed it. A branch
@@ -264,7 +264,7 @@ own wording, because a reader would otherwise mistake it for one of the others.
   do not disagree about what the case is marked at (`docs/ARCHITECTURE.md`
   § "What a branch is"). This outcome can be decided without running anything.
   Reporting it as "Not reached within the supported run length" would tell a
-  learner that a longer run might reach the mark, which is false. A MAC target
+  user that a longer run might reach the mark, which is false. A MAC target
   has no equivalent outcome. A height can be reached from either side, so a
   branch may cross a height that its trunk never crossed.
 - **Not reached before the simulation error**: the run stopped on an error that
@@ -306,7 +306,7 @@ wrong whenever the clock moves backwards. In the reference simulator, Gas Man,
 a bookmark is a pause point that fires on the original pass and on every replay
 alike (Philip JH, *Workbook for Gas Man®*, Med Man Simulations, chapter 2,
 "Using Bookmarks"). So a rewind, or cutting a run back to a mark and running
-on, leaves a mark that will stop the learner again, and any earlier claim that
+on, leaves a mark that will stop the user again, and any earlier claim that
 it was reached is no longer true. "Passed" is worked out again from the clock
 every time the row is drawn, so it survives a rewind. "Reached" would have to
 be withdrawn, and failing to withdraw it would leave a displayed value quietly
@@ -315,7 +315,7 @@ wrong.
 ### The control-input record
 
 A run keeps three records. The control-input timeline lists each change to a
-control that the model ran under, and is what the learner sees. The stored
+control that the model ran under, and is what the user sees. The stored
 states hold the state of every second the run has reached. The settings record
 holds the settings in force at each second. The subsections below say what
 each record holds and what it is for.
@@ -336,7 +336,7 @@ page.
 **A curve can be checked only against the settings that produced it.** The
 exercises that this simulator exists to support all take the form "change one
 thing and look at what happened". Examples are overpressuring and then dialling
-back, dropping the flow, and halving the cardiac output. A learner who cannot
+back, dropping the flow, and halving the cardiac output. A user who cannot
 see where they dialled back cannot read their own experiment. Given the
 recorded settings at the recorded times, a fresh run must reproduce the run
 that the timeline describes.
@@ -398,7 +398,7 @@ https://www.nngroup.com/articles/illusion-of-completeness/) (`PL-HF1B`).
 **The timeline itself has no limit.** The limits above apply only to what is
 shown. Capping the timeline would lose the settings needed to reproduce the run.
 Dropping the oldest entries would remove the start of the case, which is the
-part a learner returns to. The timeline can be unlimited because it grows with
+part a user returns to. The timeline can be unlimited because it grows with
 the number of settings changed, not with the length of the run.
 
 **For developers.** Each control is recorded under a fixed name from the
@@ -573,11 +573,11 @@ paused run stands. Taking a branch records nothing on the parent, so marking a
 run or branching from it never changes the parent's later states.
 
 **So no divergence is left over to bound, and there is nothing to show a
-learner.** The roadmap's definition of done for v0.5.0 asks this document for
+user.** The roadmap's definition of done for v0.5.0 asks this document for
 "the bound on any divergence that could not be eliminated" (`ROADMAP.md`). A
 branch and its parent hold the same stored state at every second they share,
 until a setting differs. The one computed value is the preview, and it is only
-drawn. A bound of zero drawn on screen would tell a learner there is something
+drawn. A bound of zero drawn on screen would tell a user there is something
 to watch where there is nothing. § "What a branch comparison asserts, and what
 it does not" says what a comparison of the two drawn runs may claim, and the
 zero bound is one of those claims.
@@ -599,9 +599,9 @@ under the wrong patient context, which the project's safety-critical standard
 
 **A branch taken where a run is paused or stopped runs under the settings the
 dials show there, and records the settings the run had on its way there as
-where it came from.** The two can differ, because the learner can turn a dial
+where it came from.** The two can differ, because the user can turn a dial
 while the run is paused. Take a sevoflurane run at 2% that is paused at
-10 min, after which the learner turns the vaporizer to 3%. The run reached
+10 min, after which the user turns the vaporizer to 3%. The run reached
 10 min under a stretch of settings at 2%, and that stretch cannot change. The
 3% starts a new stretch at 10 min that has not run yet. Any change made during
 the pause goes into that new stretch, so turning the dial again before the
@@ -623,7 +623,7 @@ one rule:
   stand when it is taken. A branch at a second that the trunk has already
   passed runs under the settings the trunk had as it left that second,
   including a change made at that second and no change made later. On a run
-  that a mark has halted, a branch taken before the learner changes a setting
+  that a mark has halted, a branch taken before the user changes a setting
   there runs under the old setting. A branch taken after that change runs under
   the new one, as do the branches taken from that second's mark and control
   change entries in the "From" selector. A branch opens at what the dial says
@@ -639,7 +639,7 @@ one rule:
   from the value the parent's timeline starts at. Either way, the branch's
   timeline shows the settings it opened under, whatever the trunk later does at
   the fork. No later change merges into a copied entry or removes it, and a
-  change the learner makes at the fork is recorded after the copies.
+  change the user makes at the fork is recorded after the copies.
 - **A reset branch keeps its settings and the entries it opened with.** Reset
   keeps the settings, restores the stored states up to the fork and reopens the
   branch at the fork on the same provenance. An entry the branch opened with
@@ -676,7 +676,7 @@ and `test_the_reaching_stretch_at_a_keyframe_is_the_one_before_it` in
 #### Returning to a mark, and branching where a run is paused
 
 **Returning to a mark the run has already passed is a branch taken at the
-mark's second.** Consider a learner paused at three hours who marks the
+mark's second.** Consider a user paused at three hours who marks the
 one-hour point and goes back to it. The run stored a state for that second, so
 a branch can open there although the run is not standing on it. Such a branch
 has six properties:
@@ -704,7 +704,7 @@ has six properties:
   because the branch opens standing on the step that crossed the mark.
 - **It does not replay what the trunk did afterwards.** The branch continues
   under the settings the trunk had as it left the mark's second, until the
-  learner changes something. Its own control record holds only a change the
+  user changes something. Its own control record holds only a change the
   trunk made at that second, if there was one. The trunk's later changes stay
   the trunk's. The reference simulator's rewind works differently. It returns
   to time zero, keeps the recorded settings and plays them back as it runs
@@ -717,7 +717,7 @@ has six properties:
 
 A mark still ahead of the clock is refused rather than reached. The case holds
 no state there yet, and a fork there would be a prediction drawn as if it were
-a run. The learner reaches such a mark by running on, and the halt there is
+a run. The user reaches such a mark by running on, and the halt there is
 then the fork.
 
 **A branch can be taken wherever a paused run stands.** The clock always
@@ -754,7 +754,7 @@ controller, and
 `test_a_refused_branch_names_the_on_screen_control_and_a_formatted_instant` in
 `tests/integration/controller/test_controller_branch_refusals.py` checks a
 refusal's wording.
-`test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words` in
+`test_a_branch_rebuilt_on_changed_data_is_refused_in_the_user_s_words` in
 `tests/integration/simulation_view/test_simulation_view_branch_refusals.py`
 checks the refusal for changed data, in the panel and in the failure log.
 
@@ -946,7 +946,7 @@ settings record (`UptakeEquationSettings` in `core/governing_equations.py`). The
 controller refuses or undoes a setting that the settings record refuses.
 A refusal outside a range is a `SettingOutsideRange`, whose message names the setting by its
 field in the code, for a developer. Its fields hold the field's name, the value, the limit and
-which limit refused it, and `setting_refusal_for_a_learner` in `app/dashboard_frame.py` builds the
+which limit refused it, and `setting_refusal_for_a_user` in `app/dashboard_frame.py` builds the
 banner's sentence from them, writing each value exactly so that a value just past a limit never
 reads as equal to it. A refusal of another control's field is shown unchanged rather than
 reworded for the control that moved. The run's view logs the developer's message at error level, so it reaches the failure
@@ -1263,7 +1263,7 @@ slowest term is somewhat longer than the isolated time constant, so 24 hours is 
 fraction of it. `docs/MODEL.md` § "Time constants" gives that term and says why it is
 longer. A run of a few hours would stop that trace near its start. The minimum says
 nothing about how far above it a run may go. The span is also far longer than any
-anesthetic this simulator is built to teach. A test recomputes the time constant and the
+anesthetic this simulator is built to model. A test recomputes the time constant and the
 fractions in this paragraph
 (`test_the_run_length_is_the_fraction_of_the_fat_time_constant_printed`).
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
@@ -1778,11 +1778,11 @@ The code enforces what the two runs share as follows:
 
 #### What differs between the two runs
 
-**Everything that either run records after the fork is what its learner did to
+**Everything that either run records after the fork is what its user did to
 it**, for three reasons. Taking a branch leaves the trunk unchanged. The
 branch's record of setting changes opens with copies of the trunk's changes at
 the fork, and holds none of the trunk's earlier changes. A reset branch keeps
-those copies and can record the learner's settings after them
+those copies and can record the user's settings after them
 (§ "Reset behavior").
 
 **For developers.** In the code, a run's record of setting changes is its
@@ -1795,7 +1795,7 @@ Each entry that a reset branch keeps states a setting in force from the fork
 on, so a reset does not change what can cause a difference after the fork.
 
 Building the case twice instead of forking would leave the two runs differing
-by everything that was not reproduced identically, and a learner could not see
+by everything that was not reproduced identically, and a user could not see
 which differences they had caused.
 
 ### The shared history is identical by construction, not by measurement
@@ -1840,7 +1840,7 @@ wash-in and elimination validation test" establishes.
 
 **A branch that differs in cardiac output is still not a second patient.** This
 is the case most likely to be misread, because cardiac output is both a setting
-the learner can adjust during a run and the quantity by which a clinician most
+the user can adjust during a run and the quantity by which a clinician most
 readily tells one patient from another. Dialling it changes this patient's
 circulation. Its effect on uptake is a real property of these equations, and
 setting it differently in the two runs is legitimate. But a patient who differs
@@ -1902,7 +1902,7 @@ of setting changes.**
   halted at one marked height therefore show two instants. Each is an instant
   that its run *reached*, not a predicted time for an endpoint that the run has
   not reached.
-- Each run's record of setting changes states what that run's learner did, not
+- Each run's record of setting changes states what that run's user did, not
   a difference between the two runs. That is why the record's heading names its
   run rather than the comparison.
 
@@ -2179,7 +2179,7 @@ the interface may draw only some of the six traces. When it does:
    legend entry for a line missing from the plot claims something about the
    run that the run does not support.
 
-A case runs for hours, but the moment a learner is most likely to be watching
+A case runs for hours, but the moment a user is most likely to be watching
 lasts minutes, and no single window width serves both. Two conditions apply to
 the width that the user chooses:
 
@@ -2268,11 +2268,11 @@ milliseconds. So nothing is rounded: the part of a second left over after a
 tick is carried to the next tick, and the run advances at the displayed rate to
 within one step. The step itself is the same at every rate. So faster playback
 stays within "The reproducibility guarantee":
-identical inputs still produce identical run definitions, and two learners
+identical inputs still produce identical run definitions, and two users
 comparing the same case at different speeds are comparing the same arithmetic.
 
 The second condition is control resolution, and it limits that last claim. The
-two learners are comparing the same *case* only if neither of them touches a
+two users are comparing the same *case* only if neither of them touches a
 control. The same slider moves made at two rates land at two different
 simulated instants and produce two different runs. The runs differ because the
 inputs differed, not because the arithmetic did. A change made during play can
@@ -2773,8 +2773,8 @@ from the type of error that stopped the run, and each kind has its own words:
 1. A failed accounting check: the words above.
 2. A value the model cannot hold, such as a negative amount of agent.
 3. A value that one part of the simulator gave another and that it does not
-   accept. A setting the learner chose is refused before it is applied, so the
-   learner's own dial never causes this kind.
+   accept. A setting the user chose is refused before it is applied, so the
+   user's own dial never causes this kind.
 4. A run that could not continue safely for another reason the model names.
 5. Any other error. The banner says that an unexpected error occurred and that
    its cause is not known, rather than guess at one.
@@ -2794,7 +2794,7 @@ lines:
 4. The message of a Reset refused after that, if any. A run keeps its first
    failure, so this line is the only place on screen that names the refusal.
 5. The path of the failure log, written from the home folder as `~`, because
-   the full path usually holds the learner's login name.
+   the full path usually holds the user's login name.
 
 A run stopped at the supported run length did not fail and has no details.
 "Copy details" puts the lines on the clipboard, and a line under them links the
@@ -2842,7 +2842,7 @@ run refuses every setting
 `tests/integration/controller/test_controller_running.py`. The banner after a
 failed accounting check shows no e-notation and no code name, and the log keeps
 the totals
-(`test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals`, in
+(`test_an_accounting_halt_tells_the_user_in_words_and_logs_the_totals`, in
 the same file as the first test). The failure log is written to the data
 directory (`test_a_failure_logged_by_a_run_reaches_the_file_in_the_data_directory`
 in `tests/integration/test_failure_log.py`), and a directory that cannot be made
@@ -2854,9 +2854,9 @@ Each kind of failure has its own words and no developer message
 (`test_each_kind_of_failure_has_its_own_plain_words_and_no_developer_message`
 in `tests/unit/test_failure_words.py`), and the details name the build, the
 error and the log (`test_the_details_name_the_build_the_message_and_the_log`,
-in the same file). A real failed step is worded for the learner and keeps its
+in the same file). A real failed step is worded for the user and keeps its
 message in the details
-(`test_a_failed_step_is_worded_for_the_learner_and_its_message_kept_in_the_details`
+(`test_a_failed_step_is_worded_for_the_user_and_its_message_kept_in_the_details`
 in `tests/integration/simulation_view/test_simulation_view_failure_details.py`).
 The same file tests the toggle, the copy button, the folding of new details,
 each kind's words on a real halt, the refused Reset's line and the run's name.
@@ -2894,7 +2894,7 @@ While two or more runs are drawn, each of these places names its run in text:
 With only one run drawn, the hover readout, the chart's advisory lines, the
 two record panels' headings and the banner show no run name.
 
-Without the run names, a learner could misread a comparison in three ways:
+Without the run names, a user could misread a comparison in three ways:
 
 - One run's F_A/F_I could be read as the other's, or its off-scale notice could
   be attributed to a run whose traces are all inside the axis.
@@ -2952,7 +2952,7 @@ its Branch View opens in none of its areas. The caption that replaces the
 branch control while two runs are open then adds a sentence naming the pin and
 the way to compare the runs ("This Workspace is pinned to Run 1, so it does not
 draw this comparison. Unpin it from the Workspace's tab to compare Run 1 and
-Run 2."). The learner stays in the Workspace they chose. The sentence goes as
+Run 2."). The user stays in the Workspace they chose. The sentence goes as
 soon as the Workspace is unpinned or the reader switches to another Workspace.
 The interface does not switch the Workspace itself, because the press asked
 for a branch and not for another Workspace. WCAG 2.2 Success Criterion 4.1.3
@@ -2968,7 +2968,7 @@ in `tests/integration/test_workspace_tabs.py`).
 
 **A pinned Workspace says so before a branch is taken, too** (`PL-RXR8`). A
 branch cannot be undone short of the trunk's Reset, which starts the case over,
-so the learner is told before pressing rather than only after. While one run is
+so the user is told before pressing rather than only after. While one run is
 open and a branch is offered, the Branch View says above its control that the
 Workspace will not draw a branch taken there ("This Workspace is pinned to Run
 1, so it will not draw a branch taken here beside it. Unpin it from the
@@ -3168,7 +3168,7 @@ the value's window is minimized or hidden.
 
 **The marks are edited in a view, not in a window of their own** (project
 owner, 2026-11-21, ratified, over a window kept off the readouts, an exemption
-from this rule, and an editor during which every run waits). A learner edits
+from this rule, and an editor during which every run waits). A user edits
 marks while a run plays. The Bookmarks View sits in an area, and the
 unconditional region is outside every area, so editing a mark cannot cover a
 value this list requires on any platform. A separate window could cover the readouts, and on Linux the
@@ -3705,8 +3705,8 @@ point sits. In a wider window, these states lie further apart in simulated time.
 No drawn value is estimated from its neighbours, and no stored image is
 enlarged.
 
-**No one width suits a whole case.** The compartments this model exists to teach
-are slow, but the moment a learner is most likely to be watching is not. At the
+**No one width suits a whole case.** The compartments this model exists to show
+are slow, but the moment a user is most likely to be watching is not. At the
 reference settings, sevoflurane's isolated time constant is about 135 min for
 muscle and about 42 h for fat (`docs/MODEL.md` § "Tissue groups"), while
 induction lasts minutes. A five-minute window hides everything slower than the
@@ -3766,7 +3766,7 @@ preview. Nothing is offered earlier than a window that starts at zero.
 
 **A window moved earlier holds still while the run goes on, and the chart says
 so.** The readouts above the chart show the present while the plot shows the
-past, and a learner who took the plot for the present would read stale values
+past, and a user who took the plot for the present would read stale values
 as current. So while the window is held, the time axis's title ends "held: not
 following the run". A line under the controls, in the warning colour, names the
 window's edges and the run's current time, such as "Showing 30m to 45m. The run
@@ -3986,7 +3986,7 @@ three are:
    population was measured against, as in the desflurane example in
    `docs/PARAMETERS.md` § "The MAC-awake fractions".
 
-A learner who takes away any of these errors carries into practice the belief
+A user who takes away any of these errors carries into practice the belief
 that a patient is more awake than they are.
 
 **The stored MAC is a fourth source of error in the band's height**
@@ -4280,7 +4280,7 @@ over-claim at one end.
 Recommendation (published 2023-10-05). Meeting its Level AA also satisfies the
 2.1 AA that EN 301 549 and the 2024 ADA Title II rule reference, and the 2.0 AA
 that Section 508 references. None of those applies to this project. AA was
-chosen as the right engineering bar for a teaching tool. The interface does not
+chosen as the right engineering bar for this simulator. The interface does not
 target WCAG 3.0, a Working Draft whose scoring model replaces pass and fail.
 <!-- not-restated: 2.1 -->
 
@@ -4570,7 +4570,7 @@ marks a line that is on screen *always*, while a monitor's alarm colors carry
 meaning because they are absent until something is wrong. A permanent element
 painted in a high- or medium-priority alarm color would teach the opposite of
 the convention it borrowed. Departing from the convention is also wanted for its
-own sake. A teaching tool that looks unmistakably unlike a monitor cannot be
+own sake. A simulator that looks unmistakably unlike a monitor cannot be
 mistaken for one, which is the view this project's disclaimers already take.
 
 *The disclaimer line has been in view at every window height since it was
@@ -5166,7 +5166,7 @@ calculation errors added together. How large each error can be depends on the ru
    fraction, not a percent. Those runs are five scripted runs of 600 s to 900 s and nine
    random runs of 600 s. A reversal in them needs a true gap below $`8\times10^{-13}`$.
 2. In the reference run held for an hour, the same section allows $`10^{-12}`$.
-3. **No test bounds the calculation error in a learner's own session.** The derived
+3. **No test bounds the calculation error in a user's own session.** The derived
    bound for the longest session the simulator allows, 24 h of one-second steps, is
    $`1.5\times10^{-9}`$ of the largest fraction in the run (`run_rounding` in
    `src/anesthesia_sim/core/rounding.py`). At desflurane's vaporizer maximum of 18%,
@@ -5887,7 +5887,7 @@ or `0.01%   <0.01 ×MAC`, depending on the run. The modelled values are 0.028% a
 threefold, between a run still carrying agent and a run 48 minutes into
 emergence (`test_the_hover_s_fat_values_after_a_fork_are_the_ones_printed` in
 `tests/reference/test_interface_figures.py`). The slow compartments are the ones
-this chart exists to teach.
+this chart exists to show.
 
 A single run goes unnamed because there is nothing to tell it apart from, and a
 name would suggest a comparison that is not on screen. A reader always sees when
@@ -6230,7 +6230,7 @@ both in `tests/integration/test_qt_chart.py`.
 
 ### A preview of an unapplied setting
 
-While a learner holds a slider's handle, the chart draws the trajectory that the
+While a user holds a slider's handle, the chart draws the trajectory that the
 run would take if the value under the handle were applied at the run's current
 time (`PL-5B1N`). Both plots draw it, so they never show two different futures.
 On the F_A/F_I plot the preview is the predicted ratio. A dot marks where a
@@ -6238,7 +6238,7 @@ stretch of it stops, as on the run's curve.
 
 **A preview is a prediction.** The run has not passed through it, so it is not a
 modelled state of the run. It is not a measurement either. It depends on a
-setting that the learner has not applied and may never apply. Drawn with the
+setting that the user has not applied and may never apply. Drawn with the
 run's line width and no label, it would look like a run that happened.
 
 **Four cues mark a preview: its position, a label, its line width and its timing.**

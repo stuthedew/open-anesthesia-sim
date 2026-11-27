@@ -777,7 +777,7 @@ CEILING_REFUSAL_AT_A_FULL_DIAL = (
     "pressure the model computes exceeds the ambient pressure, which the model fixes at one "
     'atmosphere (docs/VERIFICATION.md, "The numerical envelope")'
 )
-"""The whole message a learner reads when a dial of 100% is refused, written out by hand."""
+"""The whole message a user reads when a dial of 100% is refused, written out by hand."""
 
 
 def test_a_full_dial_is_refused_in_full_by_the_setter_and_by_the_settings_record() -> None:

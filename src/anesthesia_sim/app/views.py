@@ -1485,7 +1485,7 @@ class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
 
 
 class BranchView(_CasePanelView[ForkPanel, BranchPresentation]):
-    """Where a learner opens a branch of the case: the point to open it at, and the buttons.
+    """Where a user opens a branch of the case: the point to open it at, and the buttons.
 
     The selected point belongs to the case, so every Area that shows this
     View shows the same selection, and a copy built after a switch of

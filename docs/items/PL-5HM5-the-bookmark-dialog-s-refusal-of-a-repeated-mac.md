@@ -7,7 +7,7 @@ status: ready
 classes: ux
 touches: src/anesthesia_sim/app/bookmarks.py, tests/unit/test_bookmarks.py
 added: 2026-10-17
-payoff: a learner who marks the same MAC target or instant twice is told which mark in the dialog's own words, not in a Python repr or a unitless number
+payoff: a user who marks the same MAC target or instant twice is told which mark in the dialog's own words, not in a Python repr or a unitless number
 verify: grep -q 'def test_the_repeated_mac_target_refusal_is_pinned_whole' tests/unit/test_bookmarks.py
 ---
 
@@ -23,7 +23,7 @@ notice. Marking the same MAC target twice prints:
 a compartment and a height is marked once: a second MAC target naming (<RecordedQuantity.VESSEL_RICH: 'vessel_rich'>, 0.8) would be a row no run could stop at on its own account
 ```
 
-A learner reads a Python enum repr where the dialog's own words would be
+A user reads a Python enum repr where the dialog's own words would be
 "0.8 ×MAC on the vessel_rich compartment", the form `without_mac_target`'s
 refusal already uses. Marking one instant twice prints "a second time
 bookmark naming 600.0", with no "s". The opening "a compartment and a
@@ -44,7 +44,7 @@ as it stands, in `test_the_repeated_instant_refusal_is_pinned_whole`, so that
 test changes with the fix. It left the MAC-target message unpinned.
 
 **Suggested triage.** Product lane, P3, effort S; class `ux`. It reaches a
-learner only after they repeat a mark.
+user only after they repeat a mark.
 
 **Done when.** Both refusals name their key in the reader's terms: the instant
 with its unit in seconds, and the MAC target as its multiple and compartment, as

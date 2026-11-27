@@ -1017,7 +1017,7 @@ class AgentUptakeSystem:
         earlier than the start of the run, because a branch opens carrying
         its parent's running totals. Writing those totals in continues the
         parent's mass-balance readout across the fork, instead of restarting
-        it at zero. A learner comparing two managements of one case
+        it at zero. A user comparing two managements of one case
         needs that, because the agent the patient has received belongs to the
         case and not to the branch.
 

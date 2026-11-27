@@ -416,7 +416,7 @@ def test_a_branched_case_keeps_both_runs_drawn_and_named(
 ) -> None:
     """Two compared runs both stay drawn, named and complete through every layout operation.
 
-    v0.6.0's Definition of done asks that everything a learner could do with two
+    v0.6.0's Definition of done asks that everything a user could do with two
     runs still works now that the reader controls the layout (`PL-ZK09`). After
     each operation, each run's own unconditional values must be on screen, its
     alveolar curve must be drawn, and its name must be visible. The test writes

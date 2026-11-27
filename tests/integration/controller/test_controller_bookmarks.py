@@ -97,7 +97,7 @@ def test_a_marked_instant_cannot_be_marked_twice_through_the_controller() -> Non
 
 def test_resetting_a_run_keeps_its_marks() -> None:
     # A reset is for running the same case again, and it is the same case the
-    # learner was asking about. So the marks stay with the settings rather
+    # user was asking about. So the marks stay with the settings rather
     # than with the state.
     controller = SimulationController()
     controller.add_time_bookmark(TimeBookmark(CaseInstant(600)))
@@ -111,7 +111,7 @@ def test_resetting_a_run_keeps_its_marks() -> None:
 def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     # A MAC target is a multiple of whichever agent is running, so 0.8 x MAC
     # stays 0.8 x MAC of the new agent rather than becoming the old agent's
-    # absolute concentration under a new divisor. A learner who changes agent
+    # absolute concentration under a new divisor. A user who changes agent
     # wants to see the same multiple reached at a different time.
     controller = SimulationController()
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8))
@@ -158,9 +158,9 @@ def _sevoflurane_at_8_percent_and_10_l_min() -> SimulationController:
 def test_a_circuit_target_halts_within_one_step_of_its_mark_and_can_show_counts_past() -> None:
     """The simulation halts within one simulation step of the mark, as `docs/INTERFACE.md` now says.
 
-    A mark is the target value that the learner sets for a reading. The simulation halts when
+    A mark is the target value that the user sets for a reading. The simulation halts when
     the reading crosses it. § "Halting on a marked crossing" used to say that the value
-    displayed beside a halt is the value the learner marked (`PL-M8F6`). The specification
+    displayed beside a halt is the value the user marked (`PL-M8F6`). The specification
     now gives this case as its first example. With 8% sevoflurane at 10 L/min, a 0.10 ×MAC
     circuit target halts showing 0.12 ×MAC, two display counts past its mark. A bare uptake
     system with the same settings reads 0.1211 ×MAC of sevoflurane's 1.80% at 1 s
@@ -240,7 +240,7 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
     # Marks behave the opposite way to the control timeline, for the opposite
     # reason. The timeline records what was done to a run, and a mark is a
     # question about what is still to come. A comparison is two managements
-    # answering one question. A learner made to re-enter the marks could
+    # answering one question. A user made to re-enter the marks could
     # compare two branches at two different heights, with nothing to show it.
     trunk = _trunk_with_two_changes()
     target = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.3))
@@ -459,10 +459,10 @@ def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
 
 
 def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> None:
-    """`PL-Z3W6`: a branch agrees with its parent at every sampled point a learner sees.
+    """`PL-Z3W6`: a branch agrees with its parent at every sampled point a user sees.
 
     "Every sampled point" has a second meaning, and it is the one the release is
-    for: the columns that the chart draws. A learner does not compare two runs at
+    for: the columns that the chart draws. A user does not compare two runs at
     whole steps of the solver. They compare them at the vertices of two overlaid
     traces. A divergence before the fork would make it impossible to attribute a
     difference after the fork to the one setting that was changed.
@@ -525,10 +525,10 @@ def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> 
 
 
 def test_a_paused_trunk_branches_where_it_stands() -> None:
-    """`PL-Y2SL`'s deliverable: paused anywhere, the learner can branch right there.
+    """`PL-Y2SL`'s deliverable: paused anywhere, the user can branch right there.
 
     The trunk is paused at 120 s, which is neither a keyframe nor a mark.
-    Before this item, no fork method reached such an instant, so a learner had
+    Before this item, no fork method reached such an instant, so a user had
     to mark it first. The branch uses the bookmark fork's construction, with
     the clock giving the fork instant. The branch starts at the clock, and its
     definition opens at the keyframe where the trunk's current stretch opens.
@@ -717,7 +717,7 @@ def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> 
 def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> None:
     """`reset()` preserves settings, and the definition has to follow.
 
-    A branch reset after its learner has dialled something new is at the fork
+    A branch reset after its user has dialled something new is at the fork
     state under the new settings. A definition still opening at the parent's
     earlier keyframe would propagate that keyframe forward under settings the
     parent never used. It would draw the branch from a state the branch is not
@@ -773,7 +773,7 @@ def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachab
     fork, and the stretch between them belongs to the parent. A mark in that
     stretch can never be reached going forward, so the row must say so. Until
     `PL-B8MK`, the definition's own opening was the same number as the fork
-    for every branch. Using it here instead would tell a learner to wait for
+    for every branch. Using it here instead would tell a user to wait for
     something that no step can reach.
     """
 

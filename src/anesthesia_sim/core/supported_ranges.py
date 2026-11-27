@@ -314,7 +314,7 @@ refusing it would bring back the halt that this ceiling exists to remove.
 # metabolic rate.
 #
 # **Why 24 hours.** There are two reasons. First, 24 hours is longer than every
-# anesthetic this simulator exists to teach, by a wide margin. Second, it is
+# anesthetic this simulator exists to model, by a wide margin. Second, it is
 # about 0.6 of sevoflurane's fat time constant of roughly 42 h. After 0.6 of a
 # time constant, a first-order compartment has gone a little over two fifths of
 # the way to equilibrium. So the fat compartment is still visibly loading when
@@ -391,7 +391,7 @@ MINIMUM_COMPARTMENT_STEP_S: Final = 1e-3
 # decision that could change on its own: raising the cardiac output minimum
 # above zero would not imply raising the ventilation minimum. Zero is
 # supported for all three flows because each zero is a real clinical state
-# that the simulator exists to teach: apnoea, circulatory arrest, and the
+# that the simulator exists to model: apnoea, circulatory arrest, and the
 # fresh gas turned off. `docs/INTERFACE.md` § "Supported input ranges" argues each
 # (PL-629Z).
 #

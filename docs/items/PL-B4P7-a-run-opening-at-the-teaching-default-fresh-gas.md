@@ -22,7 +22,7 @@ which happened: the circuit holds a flow, not where it came from. Today the one
 shipped profile states its 4.0 L/min, so the question cannot arise. Once
 `PL-2FZ9` (load a machine profile by id) lets a silent profile reach a run, a
 machine-parameter display such as `PL-WZVZ`'s could not tell "this machine's
-flow" from "the project's teaching choice", and a learner could read 4 L/min as
+flow" from "the project's teaching choice", and a user could read 4 L/min as
 a property of, or a recommendation for, the selected machine.
 
 **Three places to settle together, when it goes live.**

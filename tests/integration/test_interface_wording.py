@@ -43,7 +43,7 @@ a stored, reviewed output that a test compares against.
 A session may rewrite the list itself. The change waits for the project
 owner, a clinician, only when it changes clinical meaning: the name, label or
 unit of a clinical value; whether a value reads as modeled or measured; what
-a warning, halt, refusal or stated limitation tells a learner about a value
+a warning, halt, refusal or stated limitation tells a user about a value
 or what to do; or wording that reads as a recommendation. The pull request's
 `Owner-read:` record says which it is, as for any other change to the
 simulator. Any other change merges on green, such as a layout notice, a

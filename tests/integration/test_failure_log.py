@@ -1,6 +1,6 @@
 """The failure log that a launch keeps in the reader's data directory (`PL-TWZY`).
 
-The halt banner words a failure for the learner and can leave out the
+The halt banner words a failure for the user and can leave out the
 exception's own message. That message is written for a developer, so the
 launch keeps it in a file, where it survives a session started from an icon
 with no terminal.

@@ -397,7 +397,7 @@ def test_a_line_that_records_no_change_is_left_as_it_is() -> None:
     assert wrapping_between_parts(NO_CONTROL_CHANGES_TEXT) == NO_CONTROL_CHANGES_TEXT
 
 
-def test_the_longest_parts_include_the_widest_line_a_learner_can_record() -> None:
+def test_the_longest_parts_include_the_widest_line_a_user_can_record() -> None:
     """The alveolar ventilation line at its 12.0 L/min ceiling is the widest middle part.
 
     `PL-92XM` found this part clipped at its arrow. The expected strings are

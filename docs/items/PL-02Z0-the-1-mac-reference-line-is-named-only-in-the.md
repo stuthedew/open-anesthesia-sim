@@ -9,7 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
 added: 2026-11-23
 filed-pr: 2271
-payoff: a learner can tell the 1 MAC reference line from a trace without looking away from the plot
+payoff: a user can tell the 1 MAC reference line from a trace without looking away from the plot
 ---
 
 **Problem.** The concentration chart draws 1 MAC as a dashed `MUTED` line and names it only in the legend and the heading's reference text. A reader has to look from the line to the legend to tell it from a compartment trace. `PL-6W49` (tell the fat trace from the 1 MAC line) moved the fat trace off grey, so the two no longer look alike, but the line is still identified only at a distance from it.
@@ -18,7 +18,7 @@ payoff: a learner can tell the 1 MAC reference line from a trace without looking
 
 **Done when.** The 1 MAC line carries its own label in the plot, the label never covers a trace's end value, and the label stays legible at the chart's minimum size.
 
-**Why it matters.** The 1 MAC line is the reference a learner reads every trace against. While it is named only in the legend and the heading, a learner whose eye is on the plot has to look away to confirm which line is the reference, and that look is repeated at every glance.
+**Why it matters.** The 1 MAC line is the reference a user reads every trace against. While it is named only in the legend and the heading, a user whose eye is on the plot has to look away to confirm which line is the reference, and that look is repeated at every glance.
 
 **Generator check.** Not owed: the item is new work, classed `feature`.
 
