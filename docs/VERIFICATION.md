@@ -3339,7 +3339,7 @@ Two safeguards protect against this misuse today:
    will remove this safeguard.
 
 A user can still set cardiac output or alveolar ventilation to a value
-measured in a real patient, because changing them is a core feature.
+measured in a real patient, because changing them is a core teaching feature.
 The run then shows the reference adult at that flow, not a prediction for that
 patient. Only the use statement guards against reading the run as one.
 

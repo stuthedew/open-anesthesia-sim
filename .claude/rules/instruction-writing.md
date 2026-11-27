@@ -41,8 +41,8 @@ these rules, "phases," or "closed loops" in the output itself.
     follows; nothing precedes the questions.
     **The reader must see on first reading what they are judging** (project
     owner, 2026-10-19). This applies to every question, card and read ask.
-    Word the question in clinical terms or in what a user sees, not in the
-    code's or the item's. Under each option, say what a user sees or what changes for
+    Word the question in clinical terms, as a user would put it, not in
+    the code's or the item's. Under each option, say what a user sees or what changes for
     them. Give the recommendation and its reason, and say why the choice is
     theirs rather than the session's.
     **A session under a coordinator asks the coordinator, not the owner.**

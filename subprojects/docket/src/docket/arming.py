@@ -320,7 +320,7 @@ ASK_CHECKED_SHOWN = "- **Already checked:** {checked}."
 #: review does not reach him at all, so the way out of a hold with nothing in
 #: it is `Owner-read: not needed`, never a question made up to fill the form.
 #: On `#1650` the owner had to ask twice what a recorded ask asked them to
-#: judge, so the text also asks for what a user sees and, for a choice between
+#: judge, so the text also asks for a user's terms and, for a choice between
 #: interface approaches, a screenshot per option (`PL-KYTY`). On `#1946` a
 #: risk ask read "a pinned test of the owner-ask guard changes, so a relayed
 #: ask in the new form could be refused", and the owner could not tell what
@@ -350,8 +350,9 @@ READ_ASK = (
     "Merging against holding for changes is not a choice, because holding gains the owner "
     "nothing they can name. The question is one the owner can decide as the owner or as a "
     "clinician. Word the "
-    "question in clinical terms or in what a user sees, and in one clause, so that the owner sees on "
-    "first reading what they are judging, and put its background in the context field. "
+    "question in clinical terms, as a user would put it, and in one clause, so that the "
+    "owner sees on first reading what they are judging, and put its background in the "
+    "context field. "
     "Under each option, say what a user sees or what changes for the owner, and what "
     "that option gives up, the recommended one included: a choice between one good option "
     "and one bad one is not a choice. Put in each option's cost the consequences the owner "

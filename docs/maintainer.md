@@ -585,7 +585,7 @@ as an `Owner-ask:` trailer on a commit. `arm` prints that trailer as the
 opening lines of the ask. Every ask has one form, which carries what
 `.claude/rules/instruction-writing.md` rule 10 requires:
 
-1. the question, in clinical terms or in what a user sees, and in one clause;
+1. the question, in clinical terms as a user would put it, and in one clause;
 2. the recommendation, and why its gain is worth its cost;
 3. the context: what changed, or what the choice is about;
 4. at least two options, each saying what it changes for you or for a

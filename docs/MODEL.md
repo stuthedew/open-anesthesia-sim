@@ -34,12 +34,12 @@ any other use as a medical device.
 It is meant to be run on hypothetical or illustrative values. It is not
 intended for entering, importing or reproducing an identifiable patient's
 values, or for informing the management of a specific patient. Keeping the
-simulator open on a computer during a case is within this intended use. A run
+simulator open on a computer during a case is ordinary teaching use. A run
 built from a particular patient's weight, age and cardiac output is a
 prediction about that patient, whatever the window is labeled.
 
 A user can still set cardiac output or alveolar ventilation to a value
-measured in a real patient, because changing them is a core feature.
+measured in a real patient, because changing them is a core teaching feature.
 The run then shows the reference adult at that flow. It is not a prediction
 for that patient, and only this statement of intended use guards against
 reading it as one.

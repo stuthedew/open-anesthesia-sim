@@ -11945,7 +11945,7 @@ def test_arm_read_ask_asks_in_user_terms_with_screenshots() -> None:
     parts = (
         "recommend <option> - <why its gain is worth its cost>",
         "why the choice is the owner's",
-        "clinical terms or in what a user sees",
+        "clinical terms, as a user would put it",
         "what they are judging",
         "what a user sees",
         "one annotated screenshot per option",
