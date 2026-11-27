@@ -445,8 +445,8 @@ one displayed act is a claim about what the user did, not a tidier rendering
 of what the model saw.
 
 In `app/wash_in.py`, the wash-in quotient has a domain. It is undefined before
-any agent reaches the circuit, and above 1 it stops being a wash-in fraction.
-So the module returns the value and the reason together, and the chart draws
+any agent reaches the circuit. Above 1, or after a step at zero alveolar
+ventilation, it is not a wash-in fraction. So the module returns the value and the reason together, and the chart draws
 the trace in segments that break where the domain does. `docs/INTERFACE.md`
 § "F_A/F_I as a displayed ratio" is the specification.
 

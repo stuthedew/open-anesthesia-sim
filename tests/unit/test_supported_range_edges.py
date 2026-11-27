@@ -254,13 +254,17 @@ TIED: Mapping[tuple[type, type], Callable[[typing.Any], object]] = {
 # The other values give a bookmark set's view of a run that has reached no
 # mark, has crossed no height and is neither at its cap nor failed. The squarings
 # are those of a shipped agent's step, which needs none. A prediction at chosen
-# seconds is given none, so it predicts nothing past its opening.
+# seconds is given none, so it predicts nothing past its opening. The F_A/F_I
+# reading is taken at an alveolar fraction half the inspired one, a state on the
+# wash-in curve, so the drawn ventilation alone decides the reading's domain.
 TYPICAL: Mapping[str, object] = {
     "adjustment_count": 0,
     "after": {},
+    "alveolar_partial_pressure_fraction": 0.01,
     "before": {},
     "compensation": UNCOMPENSATED,
     "initial_state": AgentUptakeSystem.default().state_vector(),
+    "inspired_partial_pressure_fraction": 0.02,
     "name": "Branch 1",
     "opening": AgentUptakeSystem.default().case_state(),
     "plot_width_px": CHART_PLOT_WIDTH_PX,

@@ -2,12 +2,11 @@
 
 These tests cover the second at which a preview's F_A/F_I ratio crosses
 equilibrium after the preview's first hour, where only the chart's columns are
-predicted.
+predicted, and a preview at zero alveolar ventilation, which has no ratio to
+cross.
 
 `controller_support.py` holds what several of these files share.
 """
-
-import pytest
 
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import PREVIEW_EXACT_S, SettingPreview, SimulationController
@@ -48,21 +47,23 @@ def _ratio(state: tuple[float, ...]) -> float | None:
     )
 
 
-def test_a_preview_draws_where_its_ratio_leaves_wash_in_before_a_column_with_no_ratio() -> None:
-    """The crossing second is drawn even when the next column has no F_A/F_I ratio at all.
+def test_an_apnoeic_preview_predicts_no_ratio_and_adds_no_crossing_second() -> None:
+    """A preview at zero alveolar ventilation has no F_A/F_I ratio past the reach.
 
     The run above is previewed with the vaporizer turned off, on a 6-hour axis
     of 20 columns. After its first hour, the preview predicts only the
-    columns, which are about 19 minutes apart here. The ratio is inside the
+    columns, which are about 19 minutes apart here. Read by the inspired
+    fraction floor and the equilibrium rule alone, the ratio is inside the
     wash-in domain at the end of the first hour and leaves it a few seconds
-    later. The inspired fraction then falls below the smallest value the
-    ratio is divided by before the next column, so that column has no ratio.
-    The second at which the ratio left the domain must still be drawn.
-    Without it, the wash-in trace would stop below the equilibrium line with
-    no sign that it reached the line (`PL-CJJ1`).
+    later, and `PL-CJJ1` added that second as a column. A step at zero alveolar
+    ventilation reached every predicted state, though, so none of them is a
+    wash-in fraction (rule 3 of `app/wash_in.py`, `PL-49D5`). Nothing is drawn
+    past the reach, and no second between two columns is predicted to find a
+    crossing.
 
-    The expected second comes from a twin run that applies the same settings
-    and steps every second (rule 2 of `.claude/rules/test-oracles.md`).
+    The second that the two rules alone would have drawn comes from a twin run
+    that applies the same settings and steps every second (rule 2 of
+    `.claude/rules/test-oracles.md`).
     """
 
     reach_s = 30
@@ -71,30 +72,26 @@ def test_a_preview_draws_where_its_ratio_leaves_wash_in_before_a_column_with_no_
     window = previewed.preview_window(
         SettingPreview(ControlInput.DELIVERED, 0.0), 0.0, reach_s + 6 * 3600.0, 20
     )
-    next_column = min(second for second in window.times_s if second > exact_s + 60)
-    next_column_s = int(next_column)
+    next_column_s = int(min(second for second in window.times_s if second > exact_s + 60))
 
     twin = _apnoeic_at_low_flow_after_a_brief_high_dose(0.0)
     twin.start()
     _advance_for(twin, duration_s=next_column_s - reach_s)
 
-    def twin_state(second: int) -> tuple[float, ...]:
-        return twin._state.stored_states.state_at(CaseInstant(second))
-
     def inside(second: int) -> bool:
-        ratio = _ratio(twin_state(second))
+        ratio = _ratio(twin._state.stored_states.state_at(CaseInstant(second)))
 
         return ratio is not None and is_wash_in(ratio)
 
+    # The premise: by the first two rules alone, the ratio leaves the domain
+    # between the end of the first hour and the next column.
+    assert inside(exact_s)
     crossing_s = next(second for second in range(exact_s, next_column_s) if not inside(second))
 
-    # The premises: inside the domain at the end of the first hour, leaving it
-    # with a ratio to draw, and no ratio at the next column, which is a
-    # whole second.
-    assert next_column_s == next_column
-    assert inside(exact_s)
-    assert _ratio(twin_state(crossing_s)) is not None
-    assert _ratio(twin_state(next_column_s)) is None
-
-    assert crossing_s in window.times_s
-    assert window.states[window.times_s.index(crossing_s)] == pytest.approx(twin_state(crossing_s))
+    quotients = window.wash_in_quotients("sevoflurane")
+    assert [
+        second
+        for second, quotient in zip(window.times_s, quotients, strict=True)
+        if second > reach_s and quotient is not None
+    ] == []
+    assert crossing_s not in window.times_s

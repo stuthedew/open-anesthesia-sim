@@ -449,6 +449,7 @@ def _snapshot(
         vessel_rich_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.VESSEL_RICH]),
         muscle_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.MUSCLE]),
         fat_partial_pressure_fraction=Fraction(compartments[RecordedQuantity.FAT]),
+        reaching_alveolar_ventilation_l_min=AlveolarVentilation(5.5),
         delivered_agent_l=delivered_agent_l,
         agent_vapour_per_liquid=load_agent_parameters(agent_id).vapour_volume_per_liquid_volume,
         exhausted_agent_l=exhausted_agent_l,
@@ -520,6 +521,10 @@ class _FakeController:
             substance_id=substance_id,
             times_s=tuple(sample.elapsed_s for sample in inside),
             states=tuple(_state_of(sample, substance_id) for sample in inside),
+            # The fake's run is ventilated throughout, at the snapshot's rate.
+            alveolar_ventilations_l_min=tuple(
+                self.snapshot_value.alveolar_ventilation_l_min for _ in inside
+            ),
         )
 
 
@@ -3136,8 +3141,9 @@ def test_a_ratio_above_one_with_ventilation_stopped_names_no_elimination() -> No
     and the vaporizer to 0.5%. No agent then moves between the lungs and the
     circuit, so the alveolar fraction stays high while fresh gas brings the
     inspired fraction down to 0.5%, and the ratio passes 1. The patient is
-    eliminating nothing, so the caption must say only that alveolar exceeds
-    inspired (`PL-7PBB`).
+    eliminating nothing (`PL-7PBB`). The caption names the zero ventilation,
+    which rule 3 of `app/wash_in.py` applies before the ratio's own boundary
+    (`PL-49D5`).
     """
 
     controller = SimulationController(agent_id="sevoflurane")
@@ -3155,8 +3161,131 @@ def test_a_ratio_above_one_with_ventilation_stopped_names_no_elimination() -> No
     assert snapshot.alveolar_partial_pressure_fraction > snapshot.inspired_partial_pressure_fraction
     assert _reading(snapshot).plotted_ratio is None
     assert wash_in_state_lines(_frame(controller)) == (
-        "Alveolar exceeds inspired, so the ratio is not a wash-in fraction.",
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
     )
+
+
+def _drawn_wash_in_seconds(frame: ChartFrame) -> list[float]:
+    """Return every second at which the frame's one run draws a wash-in point."""
+
+    return [time_s for stretch in frame.runs[0].wash_in for time_s in stretch.times_s]
+
+
+@pytest.mark.parametrize(
+    "dial_while_stopped_percent", [0.5, None], ids=["dial-lowered", "dial-unchanged"]
+)
+def test_no_wash_in_point_is_drawn_while_alveolar_ventilation_is_zero(
+    dial_while_stopped_percent: float | None,
+) -> None:
+    """The plot draws nothing for the seconds a step at zero ventilation reached (`PL-49D5`).
+
+    A run takes up sevoflurane at 4% for ten minutes. Alveolar ventilation is
+    set to zero at 600 s and back to 5 L/min at 900 s. With the dial lowered
+    to 0.5%, fresh gas washes the circuit out and the ratio climbs past 1.
+    With the dial left at 4%, blood takes agent from the alveoli and the ratio
+    falls. Before the fix, both stretches were drawn as wash-in. The expected
+    seconds come from the settings this test made, not from the plot. The
+    state at 600 s was reached with ventilation running, so the trace ends
+    there. The state at 900 s was reached at zero ventilation, so the trace
+    starts again after it.
+    """
+
+    controller = SimulationController(agent_id="sevoflurane")
+    controller.set_delivered_concentration_percent(Percent(4.0))
+    controller.start()
+    _advance_to(controller, 600)
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+
+    if dial_while_stopped_percent is not None:
+        controller.set_delivered_concentration_percent(Percent(dial_while_stopped_percent))
+
+    _advance_to(controller, 900)
+    stopped_frame = _frame(controller)
+
+    assert wash_in_state_lines(stopped_frame) == (
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
+    )
+
+    drawn_s = _drawn_wash_in_seconds(stopped_frame)
+
+    assert max(drawn_s) == 600
+    assert not [time_s for time_s in drawn_s if 600 < time_s <= 900]
+
+    if dial_while_stopped_percent is None:
+        controller.set_alveolar_ventilation(AlveolarVentilation(5.0))
+        _advance_to(controller, 1200)
+        resumed_frame = _frame(controller)
+        resumed_s = _drawn_wash_in_seconds(resumed_frame)
+
+        assert not [time_s for time_s in resumed_s if 600 < time_s <= 900]
+        assert max(resumed_s) == 1200
+        assert wash_in_state_lines(resumed_frame)[0].startswith(
+            "Now: F<sub>A</sub>/F<sub>I</sub> = "
+        )
+
+
+def test_the_caption_reads_the_ventilation_that_reached_the_state_not_the_one_just_set() -> None:
+    """Setting ventilation to zero changes the caption at the next step, as it changes the trace.
+
+    The state the run stands on was reached with ventilation running, so its
+    ratio is still a wash-in fraction and the trace's last point is drawn. The
+    caption agrees with that point until a step at zero ventilation is taken.
+    """
+
+    controller = SimulationController(agent_id="sevoflurane")
+    controller.set_delivered_concentration_percent(Percent(4.0))
+    controller.start()
+    _advance_to(controller, 600)
+    controller.pause()
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    paused_frame = _frame(controller)
+
+    assert wash_in_state_lines(paused_frame)[0].startswith("Now: F<sub>A</sub>/F<sub>I</sub> = ")
+    assert max(_drawn_wash_in_seconds(paused_frame)) == 600
+
+    controller.start()
+    _advance_to(controller, 601)
+
+    assert wash_in_state_lines(_frame(controller)) == (
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
+    )
+
+
+def test_restoring_ventilation_on_a_paused_run_keeps_the_caption_true_of_the_state_shown() -> None:
+    """A paused run standing on an apnoeic state keeps its caption until a step is taken.
+
+    The caption speaks of the state the run stands on, which was reached at
+    zero ventilation, so it stays true while the control already shows
+    ventilation restored (blind review of `PL-49D5`, pass 1). One step later
+    the state was reached with ventilation running, and its ratio is drawn.
+    """
+
+    stopped_caption = (
+        "Alveolar ventilation was zero over the last simulated second, so the ratio is not a "
+        "wash-in fraction.",
+    )
+    controller = SimulationController(agent_id="sevoflurane")
+    controller.set_delivered_concentration_percent(Percent(4.0))
+    controller.start()
+    _advance_to(controller, 600)
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    _advance_to(controller, 700)
+    controller.pause()
+    controller.set_alveolar_ventilation(AlveolarVentilation(5.0))
+    paused_frame = _frame(controller)
+
+    assert wash_in_state_lines(paused_frame) == stopped_caption
+    assert max(_drawn_wash_in_seconds(paused_frame)) == 600
+
+    controller.start()
+    _advance_to(controller, 701)
+    stepped_frame = _frame(controller)
+
+    assert wash_in_state_lines(stepped_frame)[0].startswith("Now: F<sub>A</sub>/F<sub>I</sub> = ")
+    assert max(_drawn_wash_in_seconds(stepped_frame)) == 701
 
 
 def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:

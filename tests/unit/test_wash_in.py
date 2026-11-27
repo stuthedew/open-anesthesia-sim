@@ -21,8 +21,11 @@ from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
     WASH_IN_EQUILIBRIUM_RATIO,
     WashInDomain,
+    WashInReading,
+    is_ventilated,
     is_wash_in,
     read_wash_in,
+    read_wash_in_with_ventilation,
     wash_in_ratio,
 )
 from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION, INSPIRED_FRACTION
@@ -36,6 +39,7 @@ from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_ELAPSED_SIMULATION_TIME_S,
     MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    AlveolarVentilation,
     CardiacOutput,
     FreshGasFlow,
 )
@@ -118,6 +122,63 @@ def test_no_ratio_is_formed_below_the_denominator_floor() -> None:
     assert wash_in_ratio(
         WASH_IN_DENOMINATOR_FLOOR_FRACTION / 2.0, WASH_IN_DENOMINATOR_FLOOR_FRACTION
     ) == pytest.approx(0.5)
+
+
+def test_zero_ventilation_is_stopped_and_any_flow_above_it_is_not() -> None:
+    """Rule 3 compares zero exactly, as every zero-flow test in this model does.
+
+    The smallest positive float is not zero, so a step at that ventilation is
+    ventilated. Its agent exchange is below what the fractions resolve, but
+    no band of nearly-zero ventilations is set apart, for the reason
+    `core/__init__.py` gives for every flow.
+    """
+
+    assert not is_ventilated(AlveolarVentilation(0.0))
+    assert is_ventilated(AlveolarVentilation(math.ulp(0.0)))
+    assert is_ventilated(AlveolarVentilation(5.0))
+
+
+@pytest.mark.parametrize(
+    ("alveolar", "inspired"), [(0.005, 0.01), (0.02, 0.01)], ids=["below-one", "above-one"]
+)
+def test_a_state_reached_at_zero_ventilation_is_not_a_wash_in_fraction(
+    alveolar: float, inspired: float
+) -> None:
+    """With ventilation stopped, no ratio is a wash-in fraction, whichever side of 1 (`PL-49D5`).
+
+    No agent moves between the circuit and the alveoli, so a ratio of 0.5
+    is not half-way through a wash-in, and a ratio of 2 is not elimination.
+    """
+
+    reading = read_wash_in_with_ventilation(alveolar, inspired, AlveolarVentilation(0.0))
+
+    assert reading == WashInReading(WashInDomain.VENTILATION_STOPPED, None)
+
+
+def test_the_denominator_rule_is_applied_before_the_ventilation_rule() -> None:
+    """With no inspired agent to divide by, the reading says that, ventilated or not."""
+
+    reading = read_wash_in_with_ventilation(0.002, 0.00005, AlveolarVentilation(0.0))
+
+    assert reading == WashInReading(WashInDomain.NO_INSPIRED_AGENT, None)
+
+
+@pytest.mark.parametrize(
+    ("alveolar", "inspired", "expected"),
+    [
+        (0.005, 0.01, WashInReading(WashInDomain.WASH_IN, 0.5)),
+        (0.02, 0.01, WashInReading(WashInDomain.ELIMINATION, None)),
+        (0.002, 0.00005, WashInReading(WashInDomain.NO_INSPIRED_AGENT, None)),
+    ],
+    ids=["wash-in", "above-one", "no-inspired-agent"],
+)
+def test_a_ventilated_state_is_read_by_the_first_two_rules(
+    alveolar: float, inspired: float, expected: WashInReading
+) -> None:
+    """With ventilation running, the reading is the one rules 1 and 2 give."""
+
+    assert read_wash_in_with_ventilation(alveolar, inspired, AlveolarVentilation(5.0)) == expected
+    assert read_wash_in(alveolar, inspired) == expected
 
 
 def test_the_trace_stops_where_alveolar_exceeds_inspired() -> None:
