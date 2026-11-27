@@ -218,7 +218,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
-from anesthesia_sim.app.wash_in import WashInReading, read_wash_in
+from anesthesia_sim.app.wash_in import WashInReading, read_wash_in_with_ventilation
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.agent_simulation_validation import (
     AgentSimulationValidationResult,
@@ -565,10 +565,17 @@ def _frame(
 
 
 def _reading(snapshot: Any) -> WashInReading:
-    """Return the F_A/F_I reading of one snapshot, worked out here from its two fractions."""
+    """Return the F_A/F_I reading of one snapshot, by the three rules the plot applies.
 
-    return read_wash_in(
-        snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
+    It reads the two fractions and the ventilation of the step that reached
+    them, as the dashboard does, so a reading here has no ratio where a step at
+    zero alveolar ventilation reached the state (`PL-ZZLW`).
+    """
+
+    return read_wash_in_with_ventilation(
+        snapshot.alveolar_partial_pressure_fraction,
+        snapshot.inspired_partial_pressure_fraction,
+        snapshot.reaching_alveolar_ventilation_l_min,
     )
 
 
@@ -3433,9 +3440,10 @@ def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_cou
     contradict (`PL-P3ZL`).
     """
 
-    in_domain = read_wash_in(0.0071, 0.01)
-    eliminating = read_wash_in(0.02, 0.01)
-    no_ratio = read_wash_in(0.002, 0.00004)
+    ventilated = AlveolarVentilation(5.0)
+    in_domain = read_wash_in_with_ventilation(0.0071, 0.01, ventilated)
+    eliminating = read_wash_in_with_ventilation(0.02, 0.01, ventilated)
+    no_ratio = read_wash_in_with_ventilation(0.002, 0.00004, ventilated)
 
     assert wash_in_state(in_domain, 2) == (
         "Now: F<sub>A</sub>/F<sub>I</sub> = 0.71 (2 earlier stretch(es) not drawn)"

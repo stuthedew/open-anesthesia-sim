@@ -2,6 +2,7 @@ from math import isfinite
 
 import pytest
 
+from anesthesia_sim.app import wash_in
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
@@ -217,11 +218,14 @@ def test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fracti
 def _plotted_wash_in_ratio(system: AgentUptakeSystem) -> float:
     """Return the F_A / F_I that the wash-in curve plots for this state.
 
-    The ratio comes from `read_wash_in`, the one function that computes the
-    plotted value, so this test checks the quotient a user sees. The result
-    of `read_wash_in` must lie in the wash-in domain, where agent has reached
-    the circuit and F_A / F_I lies between 0 and 1. Outside that domain the
-    curve plots nothing, and the lesson has nothing to compare.
+    The ratio comes from `read_wash_in`, which applies the plot's rules on the
+    inspired concentration and on the ratio. It is checked against
+    `read_wash_in_with_ventilation`, which also applies the plot's rule on
+    ventilation and so gives the value the plot draws (`PL-ZZLW`). So this
+    test checks the quotient a user sees. The result must lie in the wash-in
+    domain, where agent has reached the circuit and F_A / F_I lies between 0
+    and 1. Outside that domain the curve plots nothing, and the lesson has
+    nothing to compare.
     """
 
     reading = read_wash_in(
@@ -230,6 +234,16 @@ def _plotted_wash_in_ratio(system: AgentUptakeSystem) -> float:
 
     assert reading.domain is WashInDomain.WASH_IN
     assert reading.plotted_ratio is not None
+    # Each run here keeps one ventilation from its start, so the system's
+    # ventilation is the ventilation of the step that reached this state.
+    assert (
+        wash_in.read_wash_in_with_ventilation(
+            system.alveoli.partial_pressure_fraction,
+            system.circuit.inspired_partial_pressure_fraction,
+            system.alveoli.alveolar_ventilation_l_min,
+        )
+        == reading
+    )
 
     return reading.plotted_ratio
 

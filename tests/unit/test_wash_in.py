@@ -12,10 +12,13 @@ They show only that the displayed ratio is the same quantity that the
 published test validates.
 """
 
+import ast
 import math
+from pathlib import Path
 
 import pytest
 
+import anesthesia_sim
 from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, format_percent
 from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
@@ -434,3 +437,35 @@ def test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run(agent:
         "A longer run-length limit, a higher ventilation limit or a less soluble agent "
         "causes this (PL-N559)."
     )
+
+
+def test_only_the_full_reader_calls_the_reader_without_ventilation() -> None:
+    """No module in `src/` reads the plotted ratio through `read_wash_in`, which skips rule 3.
+
+    `read_wash_in` cannot apply the rule that a state reached at zero alveolar
+    ventilation has no ratio, because it is not given the ventilation. A
+    display path that called it would draw a ratio through an apnoea
+    (`PL-ZZLW`). So every call of it under `src/` must be the one inside
+    `read_wash_in_with_ventilation`.
+    """
+
+    package = Path(anesthesia_sim.__file__).parent
+    callers: list[str] = []
+
+    for path in sorted(package.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+
+        for function in ast.walk(tree):
+            if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
+                continue
+
+            for node in ast.walk(function):
+                called = isinstance(node, ast.Call) and (
+                    (isinstance(node.func, ast.Name) and node.func.id == "read_wash_in")
+                    or (isinstance(node.func, ast.Attribute) and node.func.attr == "read_wash_in")
+                )
+
+                if called:
+                    callers.append(f"{path.relative_to(package)}::{function.name}")
+
+    assert callers == ["app/wash_in.py::read_wash_in_with_ventilation"]
