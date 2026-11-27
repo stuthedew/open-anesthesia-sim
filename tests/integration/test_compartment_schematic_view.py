@@ -18,11 +18,12 @@ from math import exp, floor, log10
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent
+from PySide6.QtCore import QEvent, QRect, QRectF
 from PySide6.QtGui import QColor, QFontMetrics, QImage
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
+from anesthesia_sim.app.area_layout import ViewScroll
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
@@ -35,7 +36,7 @@ from anesthesia_sim.app.compartment_schematic import (
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
 from anesthesia_sim.app.formatting import format_compartment_share, format_elapsed
-from anesthesia_sim.app.qt_schematic import RunSchematic, SchematicCanvas
+from anesthesia_sim.app.qt_schematic import ContainerNames, RunSchematic, SchematicCanvas
 from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
@@ -514,7 +515,7 @@ def _everything_drawn(schematic: RunSchematic) -> tuple[object, ...]:
 
     return (
         [label.text() for label in schematic.findChildren(QLabel) if not label.isHidden()],
-        schematic.canvas.painted_strings(),
+        schematic.painted_strings(),
         schematic.canvas.readings,
     )
 
@@ -839,13 +840,30 @@ def test_a_run_that_holds_no_agent_shows_empty_share_bars_and_says_why(
 def test_a_share_bar_is_refused_for_an_index_outside_the_six_containers(
     application: QApplication,
 ) -> None:
-    """Asking for the bar of a seventh container, or of index -1, raises rather than wraps."""
+    """Asking for a seventh container's bar, outline, label or name, or index -1's, raises.
+
+    Python would read index -1 as the last container, and a test that found a
+    drawn item there would check the wrong compartment's.
+    """
 
     canvas = SchematicCanvas()
+    names = ContainerNames()
 
     for index in (-1, 6):
-        with pytest.raises(IndexError, match=f"no share bar at index {index}"):
-            canvas.share_bar(index)
+        for find in (
+            canvas.share_bar,
+            canvas.container,
+            lambda index: canvas.label_line(index, 0),
+            names.name_cell,
+        ):
+            with pytest.raises(
+                IndexError, match=f"has 6 containers, so it has none at index {index}"
+            ):
+                find(index)
+
+    for line in (-1, 3):
+        with pytest.raises(IndexError, match=f"a label has 3 lines, so it has no line {line}"):
+            canvas.label_line(0, line)
 
 
 def test_the_share_line_adds_no_width_to_a_column(application: QApplication) -> None:
@@ -872,3 +890,121 @@ def test_the_share_line_adds_no_width_to_a_column(application: QApplication) -> 
     widest_other = max(metrics.horizontalAdvance(text) for text in names_and_amounts)
 
     assert widest_share <= widest_other, (share_lines, widest_share, widest_other)
+
+
+def _view_scroll(widget: QWidget) -> ViewScroll:
+    """Return the box that scrolls the View holding `widget`."""
+
+    ancestor = widget.parentWidget()
+
+    while not isinstance(ancestor, ViewScroll):
+        assert ancestor is not None, "the widget is in no View's scroll box"
+        ancestor = ancestor.parentWidget()
+
+    return ancestor
+
+
+def _in_viewport(scroll: ViewScroll, widget: QWidget, rectangle: QRectF) -> QRect:
+    """Return `rectangle`, in `widget`'s pixels, in the pixels of the box's viewport."""
+
+    return QRect(
+        widget.mapTo(scroll.viewport(), rectangle.topLeft().toPoint()), rectangle.size().toSize()
+    )
+
+
+@pytest.mark.parametrize(
+    ("dial_percent", "branched"),
+    [(None, True), (8.0, False), (None, False)],
+    ids=["two runs", "one run off the scale", "one run"],
+)
+def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position(
+    application: QApplication,
+    shown: list[SimulationView],
+    dial_percent: float | None,
+    branched: bool,
+) -> None:
+    """`PL-3NGZ`: wherever a value of a run is in view, that run's whole heading is in view too.
+
+    The Maintenance Workspace at 1366 by 768 gives the schematic an Area
+    shorter than one run's schematic, and two compared runs share it. The test
+    scrolls the Area through every position. Wherever a container, a share bar
+    or a line of a label is wholly in view and not under the heading, the
+    heading is wholly in view too. It holds the line that names the run and
+    the instant, the share caption and the compartments' names. Before the
+    heading was pinned, a scroll of the two runs' schematic showed a tension
+    with neither its run nor its compartment named. The disclaimer and the
+    tensions' unit stand above the scroll box, so they are in view at every
+    position. At 8% the circuit is off the scale, which adds the off-scale
+    line to the schematic. At every position each heading stays inside its own
+    run's schematic, so it never covers the other run's rows.
+    """
+
+    workspaces = shipped_workspaces()
+    maintenance = next(
+        index
+        for index, workspace in enumerate(workspaces.workspaces)
+        if workspace.name == WorkspaceName("Maintenance")
+    )
+    controller = SimulationController()
+
+    if dial_percent is not None:
+        controller.set_delivered_concentration_percent(Percent(dial_percent))
+
+    controller.start()
+    _advance_to(controller, 10 * SECONDS_PER_MINUTE)
+    controller.pause()
+    case = BranchedCase(controller)
+    view = SimulationView(
+        (controller,), case=case, workspaces=WorkspaceSet(workspaces.workspaces, maintenance)
+    )
+    shown.append(view)
+    view.resize(1366, 768)
+    view.show()
+    application.processEvents()
+    view.present(False)
+
+    if branched:
+        view._show_branch(case.fork_here())
+        application.processEvents()
+        view.present(False)
+
+    application.processEvents()
+    schematic = _schematic(view)
+    scroll = _view_scroll(schematic)
+    bar = scroll.verticalScrollBar()
+    viewport = scroll.viewport().rect()
+
+    assert len(schematic.schematics) == (2 if branched else 1)
+    # The premise: the Area cannot hold the schematic, so the test scrolls.
+    assert bar.maximum() > 0
+    assert schematic.pinned_row.isVisible()
+    assert not scroll.isAncestorOf(schematic.pinned_row)
+
+    for position in range(bar.maximum() + 1):
+        bar.setValue(position)
+        application.processEvents()
+
+        for run in schematic.schematics:
+            assert run.names.painted_strings() == _NAMES
+            # The heading stays inside its own run's schematic, so it never
+            # covers the other run's rows.
+            assert run.rect().contains(run.heading.geometry()), position
+            heading = _in_viewport(scroll, run.heading, QRectF(run.heading.rect()))
+            canvas = run.canvas
+            values = [
+                _in_viewport(scroll, canvas, drawn)
+                for index in range(len(_NAMES))
+                for drawn in (
+                    canvas.container(index),
+                    canvas.share_bar(index),
+                    *(canvas.label_line(index, line) for line in range(3)),
+                )
+            ]
+            seen = [
+                value
+                for value in values
+                if viewport.contains(value) and not value.intersects(heading)
+            ]
+
+            if seen:
+                assert viewport.contains(heading), (position, run.name_text.text())

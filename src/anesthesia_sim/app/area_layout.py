@@ -150,6 +150,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
+from anesthesia_sim.app.pinned_heading import pin_headings
 from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.stylesheets import (
@@ -2541,6 +2542,24 @@ class ViewScroll(QScrollArea):
         # scroll bar appears and takes room from the View.
         super().resizeEvent(event)
         self._fit()
+        self._pin_headings()
+
+    def scrollContentsBy(self, dx: int, dy: int) -> None:  # Qt spells this in camelCase.
+        super().scrollContentsBy(dx, dy)
+        self._pin_headings()
+
+    def _pin_headings(self) -> None:
+        """Keep each pinned heading in the View at the top of its section's part in view.
+
+        A scroll moves the View and leaves each section where it is inside
+        the View, so no section learns of a scroll by itself
+        (`app/pinned_heading.py`, `PL-3NGZ`).
+        """
+
+        view = self.widget()
+
+        if view is not None:
+            pin_headings(view)
 
     def event(self, event: QEvent) -> bool:
         handled = super().event(event)

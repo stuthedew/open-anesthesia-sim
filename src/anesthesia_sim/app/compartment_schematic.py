@@ -69,6 +69,7 @@ __all__ = [
     "SCHEMATIC_HEADING",
     "SHARE_CAPTION",
     "SHARE_TEMPLATE",
+    "TENSION_UNIT_TEXT",
     "WIDEST_LABELS",
     "WITHHELD_AMOUNT_TEXT",
     "WITHHELD_SCHEMATIC",
@@ -94,6 +95,13 @@ CONTAINER_ORDER: Final[tuple[RecordedQuantity, ...]] = tuple(
 #: and the instant it shows. The wording is a placeholder.
 INSTANT_LINE_TEMPLATE: Final = "At {instant} of simulated time"
 COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
+
+#: The line that names the unit of every tension a container's label prints.
+#: Each label prints its tension with "%" alone, because the full unit would
+#: widen every column. The View keeps this line above the box that scrolls it,
+#: so the unit is on screen wherever any tension is (`PL-3NGZ`). The wording is
+#: a placeholder, but the unit must be on screen with the tensions.
+TENSION_UNIT_TEXT: Final = f"Tensions are in {DisplayUnit.CONCENTRATION.axis_title}."
 
 #: The schematic's heading. The wording is a placeholder.
 SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and amount"
