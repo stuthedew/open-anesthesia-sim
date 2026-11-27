@@ -6719,7 +6719,7 @@ s_x = \frac{M_x}{\sum_y M_y}
 ```
 
 The six shares therefore add up to the whole. The label's last line prints the
-share in whole percent, as "38% of the agent" (§ "Displayed precision",
+share in whole percent, as "38% of agent" (§ "Displayed precision",
 `test_each_label_prints_its_own_compartment_s_share_in_whole_percent` in
 `tests/unit/test_compartment_schematic.py`). The
 six bars are one length, and each is filled from its left end to its share, so
@@ -6799,6 +6799,9 @@ one member of that file.
 amounts. `test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label`
 in `tests/integration/test_compartment_schematic_view.py` checks that each bar is
 painted to its share, at one length for all six, in its own container's column.
+`test_the_share_line_adds_no_width_to_a_column` in the same file checks that no
+share line is wider than the widest name or amount, so the share lines leave the
+schematic's width as it was.
 `test_each_shipped_workspace_shows_its_lesson_whole_with_one_run` in
 `tests/integration/simulation_view/test_simulation_view_page.py` checks that
 the containers and the share caption are wholly in view in the Maintenance

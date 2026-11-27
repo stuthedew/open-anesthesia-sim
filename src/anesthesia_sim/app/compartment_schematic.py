@@ -143,14 +143,18 @@ OFF_SCALE_LINE_TEMPLATE: Final = (
 #: The last line of each container's label: the compartment's share of all the
 #: agent that the circuit and body hold at the instant shown (`PL-8PL4`). Each
 #: share sits in the label of its own container, so no share is told apart by
-#: colour and no key is needed to name it. The wording is a placeholder.
-SHARE_TEMPLATE: Final = "{share} of the agent"
+#: colour and no key is needed to name it. The line is kept no wider than a
+#: compartment's name or amount, so it adds no width to a column. Worded "of the
+#: agent", it was the widest label, and under the font that CI draws in, the
+#: Maintenance Workspace then scrolled sideways at 1366 by 768. The wording is a
+#: placeholder.
+SHARE_TEMPLATE: Final = "{share} of agent"
 
 #: What the share line shows while no share exists: while the run holds no
 #: agent, and while its values are withheld. The line stays, so the labels keep
 #: their height when the first agent arrives. The dash is the mark the readouts
 #: use for a value they do not show. The wording is a placeholder.
-NO_SHARE_TEXT: Final = "\u2014 of the agent"
+NO_SHARE_TEXT: Final = "\u2014 of agent"
 
 #: The caption line that says what every share is a part of: the agent held at
 #: the instant shown, circuit included. The project owner first read the old

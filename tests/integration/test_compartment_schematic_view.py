@@ -19,7 +19,7 @@ from typing import NoReturn
 
 import pytest
 from PySide6.QtCore import QEvent
-from PySide6.QtGui import QColor, QImage
+from PySide6.QtGui import QColor, QFontMetrics, QImage
 from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -28,11 +28,13 @@ from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
     NO_AGENT_SHARE_CAPTION,
     NO_SHARE_TEXT,
+    SHARE_TEMPLATE,
+    WIDEST_LABELS,
     WITHHELD_AMOUNT_TEXT,
 )
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
-from anesthesia_sim.app.formatting import format_elapsed
+from anesthesia_sim.app.formatting import format_compartment_share, format_elapsed
 from anesthesia_sim.app.qt_schematic import RunSchematic, SchematicCanvas
 from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
@@ -774,7 +776,7 @@ def _check_the_share_bars(
         assert column * index <= bar.left(), reading.name
         assert bar.right() <= column * (index + 1), reading.name
         assert painted_strings[4 * index + 3] == reading.share_text, reading.name
-        assert reading.share_text.endswith(" of the agent"), reading.name
+        assert reading.share_text.endswith(" of agent"), reading.name
         middle = int(bar.center().y())
         colour = QColor(trace_style(reading.quantity).color).rgb()
         painted = sum(
@@ -809,3 +811,29 @@ def test_a_run_that_holds_no_agent_shows_empty_share_bars_and_says_why(
         assert not any(colour in colours for colour in row), index
         assert row[0] == ink, index
         assert row[-1] == ink, index
+
+
+def test_the_share_line_adds_no_width_to_a_column(application: QApplication) -> None:
+    """`PL-8PL4`: no share line is wider than the widest name or amount that a column holds.
+
+    A column is as wide as its widest label, and the schematic is at least six
+    columns wide. A share line wider than every name and amount would therefore
+    widen the schematic, and with it the Maintenance Workspace's column that
+    holds it. Worded "of the agent", the share line at ">99%" was the widest
+    label. Under the font that CI draws in, the Maintenance Workspace then
+    scrolled sideways at 1366 by 768, and the parameter controls moved at 1920
+    by 1080. The share lines are worked out here, at a share that prints as
+    "<1%", two digits, ">99%" and "100%", and with no share.
+    """
+
+    metrics = QFontMetrics(SchematicCanvas().font())
+    share_lines = [
+        SHARE_TEMPLATE.format(share=format_compartment_share(share))
+        for share in (1e-9, 0.55, 1.0 - 1e-9, 1.0)
+    ] + [NO_SHARE_TEXT]
+    names_and_amounts = [text for text in WIDEST_LABELS if text not in share_lines]
+
+    widest_share = max(metrics.horizontalAdvance(text) for text in share_lines)
+    widest_other = max(metrics.horizontalAdvance(text) for text in names_and_amounts)
+
+    assert widest_share <= widest_other, (share_lines, widest_share, widest_other)

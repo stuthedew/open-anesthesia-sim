@@ -218,8 +218,8 @@ def test_with_no_ventilation_the_circuit_holds_the_whole_share() -> None:
     readings = container_readings(_run_with_no_ventilation(8.0, 90).snapshot())
 
     assert [(reading.share, reading.share_text) for reading in readings] == [
-        (1.0, "100% of the agent")
-    ] + [(0.0, "0% of the agent")] * 5
+        (1.0, "100% of agent")
+    ] + [(0.0, "0% of agent")] * 5
 
 
 def test_a_run_that_holds_no_agent_prints_no_share_and_says_why() -> None:
@@ -286,7 +286,7 @@ def test_each_label_prints_its_own_compartment_s_share_in_whole_percent() -> Non
         percent = 100.0 * amounts.of(reading.quantity) / total
         whole = round(percent)
         expected = "<1%" if whole == 0 and percent > 0.0 else f"{whole}%"
-        assert reading.share_text == f"{expected} of the agent", reading.name
+        assert reading.share_text == f"{expected} of agent", reading.name
 
 
 def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty() -> None:
@@ -376,8 +376,8 @@ def test_the_schematic_shows_every_part_from_one_snapshot() -> None:
     assert shown.scale_caption is not None
     assert f"0 to {AXIS_TOP_PERCENT:g}% of 1 atm (3 ×MAC)" in shown.scale_caption
     assert [(reading.share, reading.share_text) for reading in shown.readings] == [
-        (1.0, "100% of the agent")
-    ] + [(0.0, "0% of the agent")] * 5
+        (1.0, "100% of agent")
+    ] + [(0.0, "0% of agent")] * 5
     assert shown.share_caption == SHARE_CAPTION
 
 
