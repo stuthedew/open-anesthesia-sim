@@ -811,7 +811,7 @@ def test_a_preview_held_across_an_agent_change_ends_rather_than_name_the_earlier
     view.render_tick()
 
     assert run.snapshot().agent_id == "desflurane"
-    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert not control.slider.isSliderDown(), "the start-over let go of the thumb (PL-HPD0)"
     assert [plot.preview_label(0) for plot in plots] == [None, None]
     assert [plot.preview_region(0) for plot in plots] == [None, None]
 
@@ -850,7 +850,7 @@ def test_a_preview_held_across_a_reset_that_drops_the_branch_ends_rather_than_na
     view.render_tick()
 
     assert len(view.runs) == 1
-    assert control.slider.isSliderDown(), "the thumb is still held"
+    assert not control.slider.isSliderDown(), "the start-over let go of the thumb (PL-HPD0)"
     assert [plot.preview_label(0) for plot in plots] == [None, None]
     assert [plot.preview_region(0) for plot in plots] == [None, None]
 

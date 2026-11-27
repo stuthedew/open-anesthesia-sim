@@ -1746,10 +1746,11 @@ class RunView(QWidget):
 
         A preview held across the start-over ends here. It previewed a setting
         of the discarded run, and its label names that run's agent, so it
-        would describe a run that is no longer shown (`PL-1WFW`). A thumb
-        still held previews again from the new run when it next moves. A
-        notice that the preview was refused ends with it, because it named a
-        dial of the discarded run (`PL-412F`).
+        would describe a run that is no longer shown (`PL-1WFW`). The dials
+        View then lets go of the thumb, so its release applies nothing to the
+        new run (`views.RunDials`, `PL-HPD0`). A notice that the preview was
+        refused ends with it, because it named a dial of the discarded run
+        (`PL-412F`).
         """
 
         self._preview = None

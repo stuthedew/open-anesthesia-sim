@@ -6293,8 +6293,12 @@ pattern, because those tell the six compartments apart.
    the press and is gone from the frame drawn at release. It also ends while the
    handle is still held when the run starts over, on a Reset or an agent change,
    and when a branch is opened or dropped, because its label would otherwise
-   name an agent or a run that is no longer shown (`PL-1WFW`). If the held
-   handle then moves, a new preview is drawn from the run on screen.
+   name an agent or a run that is no longer shown (`PL-1WFW`). After a branch
+   is opened or dropped, a move of the held handle draws a new preview from the
+   run on screen. A start-over also lets go of the handle, so the rest of the
+   drag moves nothing and its release applies nothing to the new run
+   (`PL-HPD0`). The drag began on a run that is gone, and each platform's own
+   input system cancels a gesture whose target is taken away in the same way.
 
 **The preview comes from the same model and version as the run.** It starts from
 the run's state at its current time, as § "Each second has one stored state"
@@ -6413,6 +6417,11 @@ presses under Fusion and under a style that returns the macOS hints
 (`test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview`,
 `test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing`,
 `test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves`).
+`views.RunDials.show_dials` lets go of a held handle when the presentation's
+start-over count, `RunPresentation.case`, changes. `_SettingSlider.cancel_hold`
+puts the handle back with its signals blocked and ignores the rest of the
+gesture (`test_a_thumb_held_when_the_run_starts_over_is_let_go_and_its_release_applies_nothing`
+in the same file).
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel
