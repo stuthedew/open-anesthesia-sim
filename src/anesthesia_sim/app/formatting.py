@@ -67,6 +67,7 @@ from anesthesia_sim.core.concentration import (
     Fraction,
     MacMultiple,
     MacPercent,
+    Percent,
     percent_from_fraction,
     require_mac_percent,
 )
@@ -117,6 +118,7 @@ __all__ = [
     "format_mac_multiple",
     "format_mac_reference",
     "format_percent",
+    "reaches_concentration_display_resolution",
     "format_playback_rate",
     "format_price_per_liquid_ml",
     "format_subtitle",
@@ -576,7 +578,7 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     """
 
     percent = percent_from_fraction(partial_pressure_fraction)
-    rendered = f"{percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}"
+    rendered = _rendered_percent(percent)
 
     if percent > 0.0 and float(rendered) == 0.0:
         resolution = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
@@ -584,6 +586,35 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
         return f"<{resolution:.{CONCENTRATION_DISPLAY_DECIMALS}f}{_PERCENT}"
 
     return f"{rendered}{_PERCENT}"
+
+
+def reaches_concentration_display_resolution(partial_pressure_fraction: Fraction) -> bool:
+    """Return whether the concentration readout shows a fraction as at least one display step.
+
+    That is `0.01%` or more at two decimals. `format_percent` shows a smaller
+    positive fraction as `<0.01%`, and zero as `0.00%`, and for both this
+    returns `False`. The two functions round through `_rendered_percent`, so
+    they agree at every fraction, including those that round up to one step
+    from below it. `app/wash_in.py` forms an F_A/F_I ratio only from an
+    inspired fraction for which this returns `True` (`PL-FSXD`).
+
+    Raises:
+        TypeError: The value was not built as a `Fraction`, as for
+            `format_percent`.
+    """
+
+    return float(_rendered_percent(percent_from_fraction(partial_pressure_fraction))) > 0.0
+
+
+def _rendered_percent(percent: Percent) -> str:
+    """Round a percent to the concentration display's decimals, without the unit.
+
+    This is the one place where a concentration readout is rounded, so
+    `format_percent` and `reaches_concentration_display_resolution` cannot
+    disagree about what the readout shows.
+    """
+
+    return f"{percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}"
 
 
 def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: MacPercent) -> MacMultiple:

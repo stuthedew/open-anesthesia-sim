@@ -32,9 +32,15 @@ all.
    opened, so the quotient there is $`0/0`$. It also falls below one
    displayed unit during a washout, once the vaporizer is closed, while the
    patient still holds agent. Rather than treat $`0/0`$ as a
-   special case, the rule sets the minimum denominator at the smallest inspired
-   concentration that the interface itself reports as non-zero. So the ratio
-   is never formed from a denominator that the display shows as `0.00%`.
+   special case, the rule forms the ratio exactly when the concentration
+   readout shows the inspired fraction as a number, `0.01%` or more. It forms
+   none when the readout shows `<0.01%` or `0.00%`. The rule reads the
+   readout's own rounding, so every inspired value the readout shows either
+   always gives a ratio or never does (`PL-FSXD`). A test result is compared
+   with a specification limit the same way in pharmaceutical and materials
+   testing, rounded to the limit's last decimal place first
+   (`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio" cites the
+   sources).
 2. *The quotient must not exceed one.* The condition $`F_A \le F_I`$ is
    exactly the uptake regime. Alveolar gas gives agent up to the blood, so the
    alveolar fraction stays below the inspired fraction and reaches it only at
@@ -84,12 +90,16 @@ by, beside a trace that is still drawing, would be two displays disagreeing
 about the same instant.
 """
 
+import struct
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
-from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
-from anesthesia_sim.core.concentration import Percent, fraction_from_percent
+from anesthesia_sim.app.formatting import (
+    CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
+    reaches_concentration_display_resolution,
+)
+from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
 from anesthesia_sim.core.rounding import WASH_IN_ROUNDING_ALLOWANCE
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 
@@ -106,16 +116,53 @@ __all__ = [
     "wash_in_ratio",
 ]
 
-#: The smallest inspired fraction from which the ratio may be formed.
+
+def _smallest_fraction_shown_as_one_display_step() -> Fraction:
+    """Return the smallest fraction that the concentration readout shows as `0.01%` or more.
+
+    The readout rounds, so the boundary is about half a display step, near
+    0.005%. Its exact value depends on how the binary fraction rounds, so it
+    is found by asking the readout rather than written down. The search halves
+    the interval between two adjacent doubles. It starts from zero, which the
+    readout shows as `0.00%`, and from one whole display step, which it shows
+    as `0.01%`. Positive doubles sort in the same order as their bit patterns,
+    so the search runs over the integers those patterns spell and ends after
+    at most 64 halvings, on the boundary to the last bit.
+    """
+
+    def bits(value: float) -> int:
+        packed: int = struct.unpack("<q", struct.pack("<d", value))[0]
+        return packed
+
+    def value_of(pattern: int) -> float:
+        unpacked: float = struct.unpack("<d", struct.pack("<q", pattern))[0]
+        return unpacked
+
+    below = bits(0.0)
+    reaching = bits(fraction_from_percent(Percent(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT)))
+
+    while reaching - below > 1:
+        middle = (below + reaching) // 2
+
+        if reaches_concentration_display_resolution(Fraction(value_of(middle))):
+            reaching = middle
+        else:
+            below = middle
+
+    return Fraction(value_of(reaching))
+
+
+#: The smallest inspired fraction from which the ratio may be formed. This is
+#: rule 1 of the module docstring.
 #:
-#: The value is derived rather than chosen, for the same reason that
-#: `formatting.py` derives the MAC resolution from the percent resolution. It
-#: is `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` expressed as a fraction. So a
-#: change to the displayed resolution moves this value with it, and no second
-#: constant is left behind to go stale. This is rule 1 of the module docstring.
-WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = fraction_from_percent(
-    Percent(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT)
-)
+#: The value is derived rather than chosen. It is the smallest fraction that
+#: the concentration readout shows as `0.01%` or more
+#: (`reaches_concentration_display_resolution`). So a change to the readout's
+#: resolution or its rounding moves this value with it, and no second constant
+#: is left behind to go stale. Until `PL-FSXD` the limit was one whole display
+#: step, 0.01%, so an inspired fraction from 0.005% up to 0.01% was shown as
+#: `0.01%` beside a plot that formed no ratio from it.
+WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = _smallest_fraction_shown_as_one_display_step()
 
 #: The ratio at which $`F_A = F_I`$. With ventilation running, net uptake from
 #: the circuit stops there, so it is the wash-in curve's asymptote and rule 2

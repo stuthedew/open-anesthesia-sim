@@ -16,7 +16,7 @@ import math
 
 import pytest
 
-from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, format_percent
 from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
     WASH_IN_EQUILIBRIUM_RATIO,
@@ -28,6 +28,7 @@ from anesthesia_sim.app.wash_in import (
     read_wash_in_with_ventilation,
     wash_in_ratio,
 )
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION, INSPIRED_FRACTION
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
@@ -83,18 +84,54 @@ def test_the_ratio_is_the_plain_quotient_of_the_two_fractions() -> None:
     assert wash_in_ratio(0.02, 0.02) == 1.0
 
 
-def test_the_denominator_floor_is_the_displayed_resolution() -> None:
-    """The denominator floor is derived from the display resolution, not chosen separately.
+def test_the_denominator_floor_is_where_the_readout_first_shows_one_step() -> None:
+    """The floor is the smallest inspired fraction that the readout shows as `0.01%`.
 
-    The floor is the smallest inspired fraction from which a ratio is
-    formed. If it were a second constant chosen independently, the two
-    constants could drift apart. A ratio could then be formed from an
-    inspired concentration that the interface itself shows as `0.00%`.
+    The expected strings are the readout's forms that `docs/INTERFACE.md`
+    § "Displayed precision" specifies: two decimals, and `<0.01%` for a
+    positive value that rounds to zero. If the floor were a second constant
+    chosen apart from the readout, the two could drift apart. A ratio could
+    then be formed from an inspired concentration that the readout shows as
+    `<0.01%`, or refused for one it shows as `0.01%` (`PL-FSXD`).
     """
 
+    just_below = Fraction(math.nextafter(WASH_IN_DENOMINATOR_FLOOR_FRACTION, 0.0))
+
+    assert format_percent(WASH_IN_DENOMINATOR_FLOOR_FRACTION) == "0.01%"
+    assert format_percent(just_below) == "<0.01%"
+    # The readout rounds to the nearest hundredth of a percent, so the floor is half a step.
     assert WASH_IN_DENOMINATOR_FLOOR_FRACTION == pytest.approx(
-        CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 100.0
+        CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 100.0 / 2.0
     )
+
+
+def test_each_inspired_value_the_readout_shows_gives_a_ratio_always_or_never() -> None:
+    """Two inspired fractions that the readout shows alike are both divided by, or neither is.
+
+    Until `PL-FSXD` the floor was 0.01% itself. An inspired fraction from
+    0.005% up to 0.01% was then shown as `0.01%` beside a caption saying
+    that it was too low to divide by, while a fraction of 0.01% or more,
+    shown as the same `0.01%`, gave a drawn ratio. The grid runs in steps of
+    0.00001% from zero to 0.03%, so it crosses three readout steps, and it
+    adds the floor and its neighbour below. The two readout forms with no
+    number, `0.00%` and `<0.01%`, must give no ratio, and `0.01%` must give
+    one.
+    """
+
+    grid = [step * 1e-7 for step in range(3_001)]
+    grid += [WASH_IN_DENOMINATOR_FLOOR_FRACTION]
+    grid += [math.nextafter(WASH_IN_DENOMINATOR_FLOOR_FRACTION, 0.0)]
+    divided_by: dict[str, set[bool]] = {}
+
+    for inspired in grid:
+        shown = format_percent(Fraction(inspired))
+        divided_by.setdefault(shown, set()).add(wash_in_ratio(0.0, inspired) is not None)
+
+    assert {shown: answers for shown, answers in divided_by.items() if len(answers) > 1} == {}
+    assert divided_by["0.00%"] == {False}
+    assert divided_by["<0.01%"] == {False}
+    assert divided_by["0.01%"] == {True}
+    assert divided_by["0.03%"] == {True}
 
 
 def test_no_ratio_is_formed_from_an_empty_circuit() -> None:
@@ -158,7 +195,7 @@ def test_a_state_reached_at_zero_ventilation_is_not_a_wash_in_fraction(
 def test_the_denominator_rule_is_applied_before_the_ventilation_rule() -> None:
     """With no inspired agent to divide by, the reading says that, ventilated or not."""
 
-    reading = read_wash_in_with_ventilation(0.002, 0.00005, AlveolarVentilation(0.0))
+    reading = read_wash_in_with_ventilation(0.002, 0.00004, AlveolarVentilation(0.0))
 
     assert reading == WashInReading(WashInDomain.NO_INSPIRED_AGENT, None)
 
@@ -168,7 +205,7 @@ def test_the_denominator_rule_is_applied_before_the_ventilation_rule() -> None:
     [
         (0.005, 0.01, WashInReading(WashInDomain.WASH_IN, 0.5)),
         (0.02, 0.01, WashInReading(WashInDomain.ELIMINATION, None)),
-        (0.002, 0.00005, WashInReading(WashInDomain.NO_INSPIRED_AGENT, None)),
+        (0.002, 0.00004, WashInReading(WashInDomain.NO_INSPIRED_AGENT, None)),
     ],
     ids=["wash-in", "above-one", "no-inspired-agent"],
 )

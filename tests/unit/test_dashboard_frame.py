@@ -3098,8 +3098,9 @@ def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit()
     The run takes 8% sevoflurane at 10 L/min for 30 s. Then the vaporizer is
     closed and ventilation stopped, so the fresh gas washes the circuit out
     while the patient keeps agent in the alveoli. By 300 s the inspired
-    concentration is below 0.01%, the smallest that the ratio is divided by,
-    and the alveolar concentration is above it. The caption used to say here
+    concentration is below 0.005%, the smallest that the readout rounds up to
+    0.01% and so the smallest that the ratio is divided by (`PL-FSXD`). The
+    alveolar concentration is above it. The caption used to say here
     that no agent had reached the circuit, which this run shows to be false
     (`PL-P3ZL`). The limit and the sentence are written out from
     `docs/INTERFACE.md` § "A point is drawn only inside two boundaries".
@@ -3118,8 +3119,8 @@ def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit()
     snapshot = controller.snapshot()
 
     # The premises: the circuit is below the limit, and the patient still holds agent.
-    assert snapshot.inspired_partial_pressure_fraction < 0.0001
-    assert snapshot.alveolar_partial_pressure_fraction > 0.0001
+    assert snapshot.inspired_partial_pressure_fraction < 0.00005
+    assert snapshot.alveolar_partial_pressure_fraction > 0.00005
     assert wash_in_state_lines(_frame(controller)) == (
         "Not defined: the inspired concentration is too low to divide by.",
     )
@@ -3157,7 +3158,7 @@ def test_a_ratio_above_one_with_ventilation_stopped_names_no_elimination() -> No
     snapshot = controller.snapshot()
 
     # The premises: the circuit is above the limit, and alveolar exceeds it.
-    assert snapshot.inspired_partial_pressure_fraction >= 1e-4
+    assert snapshot.inspired_partial_pressure_fraction >= 0.00005
     assert snapshot.alveolar_partial_pressure_fraction > snapshot.inspired_partial_pressure_fraction
     assert _reading(snapshot).plotted_ratio is None
     assert wash_in_state_lines(_frame(controller)) == (
@@ -3321,7 +3322,7 @@ def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_cou
 
     in_domain = read_wash_in(0.0071, 0.01)
     eliminating = read_wash_in(0.02, 0.01)
-    no_ratio = read_wash_in(0.002, 0.00005)
+    no_ratio = read_wash_in(0.002, 0.00004)
 
     assert wash_in_state(in_domain, 2) == (
         "Now: F<sub>A</sub>/F<sub>I</sub> = 0.71 (2 earlier stretch(es) not drawn)"
