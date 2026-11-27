@@ -10,13 +10,14 @@ list's section headers stay pinned while the list scrolls (Apple, SwiftUI
 documentation, "Grouping data with lazy stack views", section "Keep important
 information visible", read 2026-11-27).
 
-The heading is drawn over the section's rows, on the panel's colour. So a row
-is either below the heading, and seen, or under it, and hidden. No row can be
-seen without the heading.
+The heading is drawn over the section's rows, on the panel's colour, so the
+part of a row under it is hidden. No row can be seen without the heading,
+though a row that stands across the heading's lower edge shows in part.
 
-Every box that scrolls a section moves the heading again after each scroll
-(`pin_on_scroll`). That includes the dashboard's page, which scrolls every
-Area in a window too small for them.
+Every box that scrolls a section moves the heading again after each scroll,
+and after each change of what it can scroll (`pin_on_scroll`). That includes
+the dashboard's page, which scrolls every Area in a window too small for
+them.
 """
 
 from __future__ import annotations
@@ -60,7 +61,7 @@ def pin_headings(root: QWidget) -> None:
     resize, because a scroll moves the widget it holds and leaves each section
     where it is inside that widget. So no section learns of a scroll by
     itself. `ViewScroll` calls it on a resize, and `pin_on_scroll` on a
-    scroll.
+    scroll or a change of what a box can scroll.
     """
 
     for section in root.findChildren(PinnedHeadingSection):
@@ -68,22 +69,34 @@ def pin_headings(root: QWidget) -> None:
 
 
 def pin_on_scroll(box: QScrollArea) -> None:
-    """Move the headings in the widget that `box` scrolls each time `box` scrolls, on either axis.
+    """Move the headings in the widget `box` scrolls after each scroll and each change of range.
 
     A box moves the widget it holds when its scroll bar moves. Qt connects
     the bar to that move when the box is built, so the move has happened by
-    the time this connection runs. `ViewScroll` and the dashboard's page call
-    this, so a heading follows a scroll of its Area and of the page alike.
+    the time this connection runs. A box's range changes when its viewport
+    grows or shrinks, which brings part of the widget into view, or takes it
+    out, with no scroll at all. A taller window does this to the dashboard's
+    page, so a section out of view can come back into view with its heading
+    still where it was put while the section was out of view. `ViewScroll`
+    and the dashboard's page call this, so a heading follows its Area and the
+    page alike.
     """
 
-    def pin(_: int) -> None:
+    def pin() -> None:
         held = box.widget()
 
         if held is not None:
             pin_headings(held)
 
-    box.verticalScrollBar().valueChanged.connect(pin)
-    box.horizontalScrollBar().valueChanged.connect(pin)
+    def after_scroll(_: int) -> None:
+        pin()
+
+    def after_range(_minimum: int, _maximum: int) -> None:
+        pin()
+
+    for bar in (box.verticalScrollBar(), box.horizontalScrollBar()):
+        bar.valueChanged.connect(after_scroll)
+        bar.rangeChanged.connect(after_range)
 
 
 class PinnedHeadingSection(QWidget):

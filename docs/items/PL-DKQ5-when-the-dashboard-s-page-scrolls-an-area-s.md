@@ -16,6 +16,18 @@ filed-pr: 2331
 
 **What was measured** (`PL-3NGZ`, 2026-11-27, offscreen platform, the container's font). With the schematic as the only Area of a window 1400 by 400, two runs open, the page scrolls 182 px, and the schematic's Area starts 27 px from the page's top. Past about 71 px of page scroll the pinned row is above the window's edge while label lines are in view. `PL-3NGZ` made each run's heading follow a page scroll, so the run's name and the compartments' names stay in view; only the header and the pinned row are left. In the shipped Workspaces at 1366 by 768 and larger, the schematic's Area sits low enough that the page never scrolls its top out of view, so this needs a small window or a Workspace the user arranged.
 
+**A second instance: a sideways scroll of the page** (the review of `PL-3NGZ`
+after it merged, 2026-11-27, offscreen platform). `pin_heading` moves a run's
+heading up and down only. With two runs and a branch, a window 1280 px wide,
+and the schematic swapped into the Maintenance Workspace's left Area, the page
+scrolls 36 px sideways. At its end the first 22 px of "Run 2, at 10m of
+simulated time" are left of the view while five of that run's six tensions
+stay wholly in view. At 1000 px wide the page scrolls 126 px and hides the
+first 112 px of the name, which takes "Run 2" off screen. At 1366 px the page
+does not scroll sideways. So it takes, as above, a layout the user arranged and
+a window smaller than the shipped sizes. The fix pins the heading's text at the
+left edge of the part in view as well as at its top.
+
 **Direction.** The same rule `PL-3NGZ` applied inside an Area: a label stays at the top edge of the part in view (NUREG-0700 Rev. 3, guideline 1.5-15, p. 1-59: "General labels and row and column labels should remain along the top (or bottom) and left (or right) edges of the display"). One route is to lay the Area's header and pinned row over the top of its scroll box, as `PinnedHeadingSection` lays a run's heading over its rows, so they slide down while the page carries the Area's top away. A heading inside the View would then have to pin below them rather than at the box's top, so `in_view` would need to leave out the part they cover. The other route is to keep the page from scrolling an Area's top out of view at all. Either changes `AreaFrame`, which the corner drags and the too-small notice also use, so it wants its own pull request and a look at the Wash-in View as well as the schematic.
 
 **Done when** a test scrolls the page of a short window through every position, with the schematic and the Wash-in View each at the top of the window, and no value is wholly in view without its Area's pinned row and header in view too.

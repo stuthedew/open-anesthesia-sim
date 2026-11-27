@@ -770,6 +770,8 @@ class SimulationView(QWidget):
         scroll.verticalScrollBar().rangeChanged.connect(self._follow_chart)
         # A page scroll moves every Area, and with it the part of each View
         # in view, so each heading that stays in view moves with it (`PL-3NGZ`).
+        # So does a change of the page's scroll range, such as a taller
+        # window, which can bring an Area into view with no scroll (`PL-H55Q`).
         pin_on_scroll(scroll)
         self._page_scroll = scroll
         column.addWidget(scroll, 1)
