@@ -66,13 +66,30 @@ Already say what to do next, and left alone:
 Changed:
 
 1. `refusals_notice` in `app/preferences.py`, which the agent cost View shows.
-   Before: "some preferences in {path} were refused and are not used: {reasons}".
-   After: "Some preferences in {path} were refused and are not used: {reasons}.
-   Set them again in this View, or discard the refused entries below." The
-   sentence now starts with a capital, and `simulation_view.py` drops the
-   "Also," it joined the notice with after an unsaved-change notice.
+   Before: "some preferences in {path} were refused and are not used: the price
+   at agent_prices[1]: {error}; ...". On the owner's word on 2026-11-27 ("Can
+   you say which preferences rather than 'some preferences' check best
+   practices"), it now names each refused preference first, then why in
+   brackets, then where the file is and what to do: "These saved preferences
+   were refused and are not used: your isoflurane price (...); the agent cost
+   unit (...). They are saved in {path}. Set them again in this View, or
+   discard the refused entries below." A price that gives no agent as text is
+   named by its place, such as "price entry 4 in the file". The sources are
+   the Nielsen Norman Group's "Error-Message Guidelines" ("Concisely and
+   precisely describe the issue", and hide codes such as `agent_prices[1]`
+   except for diagnosis) and the GOV.UK Design System's error summary, which
+   lists each error separately. Both pages were read on 2026-11-27.
+   `simulation_view.py` drops the "Also," it joined the notice with after an
+   unsaved-change notice.
 2. `PRICE_PER_ML_NOT_SHOWN_TEXT` gains "Check them below."
-3. `COST_NOT_COMPUTED_TEXT` gains "Check your price for {agent} below."
+3. `COST_NOT_COMPUTED_TEXT` gained "Check your price for {agent} below." Then,
+   on the owner's word on 2026-11-27 ("Should say whether too large and
+   separate too small"), it was split in two. `COST_TOO_LARGE_TEXT` covers a
+   cost that overflows or is too large to hold to its minor unit, and
+   `COST_TOO_SMALL_TEXT` a cost that underflows to zero. Each says "too large
+   to compute" or "too small to compute", then "Check your price for {agent}
+   below." `test_a_cost_too_large_and_a_cost_too_small_each_say_which` in
+   `tests/unit/test_agent_cost.py` checks both sentences as written.
 
 Left without a step, because the user can do nothing about the cause in the
 application: `COST_NOT_CONVERTED_TEXT`, shown when the run's delivered amount

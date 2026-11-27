@@ -305,7 +305,11 @@ def test_a_refused_price_is_not_used_and_the_others_are(
         applies_on=date(2008, 3, 5),
     )
     assert loaded.notice is not None
-    assert "agent_prices[1]" in loaded.notice
+    # The refused price is named by the agent it gives, or by its place in the
+    # file where it gives none as text.
+    name = refused["agent"]
+    named = f"your {name} price (" if isinstance(name, str) else "price entry 2 in the file ("
+    assert named in loaded.notice
     assert reason in loaded.notice
 
 
@@ -351,7 +355,7 @@ def test_a_refused_unit_falls_back_to_liquid_with_a_notice_and_is_kept(
 
 
 def test_the_notice_of_refused_preferences_says_what_the_reader_can_do(tmp_path: Path) -> None:
-    """`PL-VT87`: the notice names the file and each refused entry, then the way out.
+    """`PL-VT87`: the notice names each refused preference and why, then the way out.
 
     A refusal a user reads says what to do next (NUREG-0700 Rev. 3, guideline
     2.7.3-1). The expected sentences are written out here rather than read from
@@ -362,17 +366,19 @@ def test_the_notice_of_refused_preferences_says_what_the_reader_can_do(tmp_path:
     prices = [SEVOFLURANE_PRICE_ENTRY, refused_isoflurane, refused_desflurane]
     _write(tmp_path, _document(prices, unit="gallons"))
 
-    loaded = PreferencesStore(tmp_path).load()
+    notice = PreferencesStore(tmp_path).load().notice
 
-    # Three refused entries, so a wrong separator between the reasons shows.
-    reasons = [entry.reason for entry in loaded.preferences.refused_prices]
-    assert loaded.preferences.refused_unit is not None
-    reasons.append(loaded.preferences.refused_unit.reason)
-    assert len(reasons) == 3
-    assert "agent cost unit" in reasons[2]
-    assert loaded.notice == (
-        f"Some preferences in {tmp_path / PREFERENCES_FILE_NAME} were refused and are not used: "
-        f"{reasons[0]}; {reasons[1]}; {reasons[2]}. "
+    # Three refused entries, so a wrong separator between them shows. Each is
+    # named first, then why it was refused.
+    assert notice == (
+        "These saved preferences were refused and are not used: "
+        "your isoflurane price (the isoflurane price's currency must be an ISO 4217 code of "
+        "three capital letters, such as USD, and 'usd' is not); "
+        "your desflurane price (the desflurane bottle price must be positive and finite, "
+        "and 0 is not greater than zero); "
+        "the agent cost unit ('gallons' is not one of 'millilitres of liquid', "
+        "'litres of vapour', so the View shows millilitres of liquid). "
+        f"They are saved in {tmp_path / PREFERENCES_FILE_NAME}. "
         "Set them again in this View, or discard the refused entries below."
     )
 
@@ -385,7 +391,7 @@ def test_a_price_entry_that_is_not_an_object_is_refused_alone(tmp_path: Path) ->
     assert loaded.writable
     assert loaded.preferences.price_for("sevoflurane") is not None
     assert loaded.notice is not None
-    assert "agent_prices[0]" in loaded.notice
+    assert "price entry 1 in the file (" in loaded.notice
 
 
 # ------------------------------------------------------------- the records
@@ -680,7 +686,7 @@ def test_a_price_whose_agent_is_not_text_is_refused_alone_and_names_no_agent(
     )
     assert [entry.agent_id for entry in loaded.preferences.refused_prices] == [None, None, None]
     assert loaded.notice is not None
-    assert all(f"agent_prices[{position}]" in loaded.notice for position in range(3))
+    assert all(f"price entry {number} in the file (" in loaded.notice for number in (1, 2, 3))
 
 
 def test_a_file_holding_text_beyond_ascii_is_read_whatever_the_platform_encoding_is(

@@ -526,8 +526,11 @@ def refusals_notice(path: Path, preferences: Preferences) -> str | None:
     may have replaced a refused entry by then, and that entry's reason no
     longer applies.
 
-    The notice ends with what the reader can do, as a refusal a user reads
-    must (NUREG-0700 Rev. 3, guideline 2.7.3-1, `PL-VT87`). The agent cost View
+    The notice names each refused preference, then says why in brackets, so
+    the reader can tell which ones to set again (Nielsen Norman Group,
+    "Error-Message Guidelines": "Concisely and precisely describe the issue").
+    It ends with what the reader can do, as a refusal a user reads must
+    (NUREG-0700 Rev. 3, guideline 2.7.3-1, `PL-VT87`). The agent cost View
     shows it, with the form that sets a price and the offer to discard the
     refused entries under it.
     """
@@ -541,8 +544,8 @@ def refusals_notice(path: Path, preferences: Preferences) -> str | None:
         return None
 
     return (
-        f"Some preferences in {path} were refused and are not used: {'; '.join(refused)}. "
-        f"{REFUSED_PREFERENCES_NEXT_STEP}"
+        f"These saved preferences were refused and are not used: {'; '.join(refused)}. "
+        f"They are saved in {path}. {REFUSED_PREFERENCES_NEXT_STEP}"
     )
 
 
@@ -697,9 +700,14 @@ def _from_document(document: object) -> Preferences:
         try:
             price = _price_from_entry(raw)
         except (SimulationConfigurationError, TypeError, ValueError) as error:
-            refused.append(
-                RefusedEntry(raw, f"the price at {_PRICES_KEY}[{position}]: {error}", agent_id)
+            # Name the price by its agent where the entry gives one, as the
+            # reader set it in the View, and otherwise by its place in the file.
+            name = (
+                f"your {agent_id} price"
+                if agent_id is not None
+                else f"price entry {position + 1} in the file"
             )
+            refused.append(RefusedEntry(raw, f"{name} ({error})", agent_id))
         else:
             prices[price.agent_id] = price
 
@@ -714,8 +722,8 @@ def _from_document(document: object) -> Preferences:
         offered = ", ".join(repr(member.value) for member in AGENT_COST_VIEW_UNITS)
         refused_unit = RefusedEntry(
             raw_unit,
-            f"the agent cost unit {raw_unit!r} is not one of {offered}, so the View shows "
-            f"{DEFAULT_AGENT_COST_VIEW_UNIT.value}",
+            f"the agent cost unit ({raw_unit!r} is not one of {offered}, so the View shows "
+            f"{DEFAULT_AGENT_COST_VIEW_UNIT.value})",
             None,
         )
     else:

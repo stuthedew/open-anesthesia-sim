@@ -320,9 +320,15 @@ PRICE_PER_ML_NOT_SHOWN_TEXT: Final = (
     "No cost: your bottle price and volume for {agent} do not give a usable price per mL. "
     "Check them below."
 )
-COST_NOT_COMPUTED_TEXT: Final = (
-    "No cost: the cost of the {agent} is too large or too small to compute. "
-    "Check your price for {agent} below."
+#: A cost too large is one that overflows, or one too large to hold to its
+#: currency's minor unit. A cost too small is one that underflows to zero. Each
+#: says which, so the reader knows which way the price is wrong (project owner,
+#: 2026-11-27, `PL-VT87`).
+COST_TOO_LARGE_TEXT: Final = (
+    "No cost: the cost of the {agent} is too large to compute. Check your price for {agent} below."
+)
+COST_TOO_SMALL_TEXT: Final = (
+    "No cost: the cost of the {agent} is too small to compute. Check your price for {agent} below."
 )
 COST_NOT_CONVERTED_TEXT: Final = "No cost: the {agent} could not be converted to liquid."
 
@@ -416,12 +422,11 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
     # A product of two positive finite floats can overflow to infinity, or
     # underflow to zero, which would show a run that has delivered agent as
     # costing nothing.
-    if (
-        not isfinite(cost)
-        or not cost_is_exact_to_its_minor_unit(cost, price.currency)
-        or (cost == 0.0 and delivered.liquid_ml > 0.0)
-    ):
-        return _no_cost(delivered, COST_NOT_COMPUTED_TEXT)
+    if not isfinite(cost) or not cost_is_exact_to_its_minor_unit(cost, price.currency):
+        return _no_cost(delivered, COST_TOO_LARGE_TEXT)
+
+    if cost == 0.0 and delivered.liquid_ml > 0.0:
+        return _no_cost(delivered, COST_TOO_SMALL_TEXT)
 
     return CostShown(
         COST_LABEL_TEMPLATE.format(agent=delivered.agent_name),
