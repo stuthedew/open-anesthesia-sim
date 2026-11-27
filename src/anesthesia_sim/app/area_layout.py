@@ -2549,8 +2549,9 @@ class ViewScroll(QScrollArea):
         """Keep each pinned heading in the View at the top of its section's part in view.
 
         A resize can change which part of the View is in view without moving
-        any section in it, so no section learns of it by itself. A scroll is
-        followed through `pin_on_scroll` (`app/pinned_heading.py`, `PL-3NGZ`).
+        any section in it, so no section learns of it by itself. A scroll, and
+        a change of what the box can scroll, are followed through
+        `pin_on_scroll` (`app/pinned_heading.py`, `PL-3NGZ`, `PL-H55Q`).
         """
 
         view = self.widget()

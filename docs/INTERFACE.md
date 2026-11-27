@@ -6803,8 +6803,12 @@ share is of. The heading follows a scroll of the whole page as well as a
 scroll of the Area. On a 1366 by 768 screen, the Maintenance Workspace gives the
 schematic an Area too short to hold even one run's schematic, and two
 compared runs share it (`PL-3NGZ`). With a branch open there, the Area is held
-at its least height, so the part under a pinned heading shows about one line
-of a label at a time and no container whole. The Area is not made taller,
+at its least height. After the branch opens, the dashboard scrolls the page so
+the concentration chart's plot is whole, which leaves about 10 px of the
+schematic's box on screen under a pinned heading. No label line is whole
+there, and a number in that band is cut at the window's lower edge. Scrolling the page
+to its end shows about 24 px, one label line at a time, and still no container
+whole (`PL-C14T`). The Area is not made taller,
 because the page would then grow and push the concentration chart's title and
 key above the window's top after a branch. The row above the scrolling part,
 and the Area's header, still move out of view when the page itself scrolls
@@ -6864,9 +6868,13 @@ Workspace at 1366 by 768 and three larger screen sizes.
 Each run's heading is a `PinnedHeadingSection` (`app/pinned_heading.py`).
 `ViewScroll` in `app/area_layout.py` moves every such heading after each
 resize, and `pin_on_scroll` after each scroll of the Area's box or of the
-dashboard's page. The heading is drawn over the rows on the panel's colour,
-so a row is either below it and seen, or under it and hidden. Three tests in
-`tests/integration/test_compartment_schematic_view.py` hold this.
+dashboard's page, and after each change of what either can scroll. The
+heading is drawn over the rows on the panel's colour, so the part of a row
+under it is hidden. A label line or a container can stand across the
+heading's lower edge and show in part. A container cut there shows only its
+lower part, so its fill can look like that of a container at or over the
+scale's top (`PL-GWTR`). Four tests in
+`tests/integration/test_compartment_schematic_view.py` hold the rest.
 
 1. `test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`
    scrolls the Maintenance Workspace at 1366 by 768 through every position,
@@ -6878,6 +6886,9 @@ so a row is either below it and seen, or under it and hidden. Three tests in
 3. `test_a_run_heading_follows_a_scroll_of_the_page` scrolls the page of a
    window 400 px tall through every position, and makes the same check as
    the first test.
+4. `test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view`
+   makes the window taller while the schematic's Area is below its lower
+   edge, with no scroll at all, and makes the same check.
 
 The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.

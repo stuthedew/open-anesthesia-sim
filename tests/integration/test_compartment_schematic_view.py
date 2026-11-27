@@ -20,7 +20,7 @@ from typing import NoReturn
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QRect, QRectF
 from PySide6.QtGui import QColor, QFontMetrics, QImage
-from PySide6.QtWidgets import QApplication, QLabel, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import ViewScroll
@@ -991,6 +991,46 @@ def _paused_dashboard(
     return view
 
 
+def _shown_part(page: QScrollArea, scroll: ViewScroll) -> QRect:
+    """Return the part of the schematic's box in view on the page, in the page viewport's pixels."""
+
+    box = QRect(scroll.viewport().mapTo(page.viewport(), QPoint(0, 0)), scroll.viewport().size())
+
+    return page.viewport().rect().intersected(box)
+
+
+def _seen_without_heading(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> list[QRect]:
+    """Return each container, share bar and label line of the run that is seen in `shown_part`.
+
+    A value is seen when it lies wholly in `shown_part` and clear of the
+    run's heading. Each is in the page viewport's pixels. A value under the heading is
+    hidden by it, so only a value clear of the heading is seen.
+    """
+
+    heading = QRect(run.heading.mapTo(page.viewport(), QPoint(0, 0)), run.heading.size())
+    values = [
+        QRect(run.canvas.mapTo(page.viewport(), drawn.topLeft().toPoint()), drawn.size().toSize())
+        for index in range(len(_NAMES))
+        for drawn in (
+            run.canvas.container(index),
+            run.canvas.share_bar(index),
+            *(run.canvas.label_line(index, line) for line in range(3)),
+        )
+    ]
+
+    return [
+        value for value in values if shown_part.contains(value) and not value.intersects(heading)
+    ]
+
+
+def _heading_in_view(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> bool:
+    """Return whether the run's heading lies wholly in `shown_part`."""
+
+    return shown_part.contains(
+        QRect(run.heading.mapTo(page.viewport(), QPoint(0, 0)), run.heading.size())
+    )
+
+
 def _in_run(run: RunSchematic, widget: QWidget, rectangle: QRectF) -> QRectF:
     """Return `rectangle`, in `widget`'s pixels, in the pixels of the run's schematic."""
 
@@ -1168,38 +1208,62 @@ def test_a_run_heading_follows_a_scroll_of_the_page(
             for page_position in range(page_bar.maximum() + 1):
                 page_bar.setValue(page_position)
                 application.processEvents()
-                # What is in view is what lies inside both the page's viewport
-                # and the schematic's box, each mapped to the page's viewport.
-                box = QRect(
-                    scroll.viewport().mapTo(page.viewport(), QPoint(0, 0)), scroll.viewport().size()
-                )
-                shown_part = page.viewport().rect().intersected(box)
+                shown_part = _shown_part(page, scroll)
 
                 for run in schematic.schematics:
-                    heading = QRect(
-                        run.heading.mapTo(page.viewport(), QPoint(0, 0)), run.heading.size()
-                    )
-                    values = [
-                        QRect(
-                            run.canvas.mapTo(page.viewport(), drawn.topLeft().toPoint()),
-                            drawn.size().toSize(),
-                        )
-                        for index in range(len(_NAMES))
-                        for drawn in (
-                            run.canvas.container(index),
-                            run.canvas.share_bar(index),
-                            *(run.canvas.label_line(index, line) for line in range(3)),
-                        )
-                    ]
-                    seen = [
-                        value
-                        for value in values
-                        if shown_part.contains(value) and not value.intersects(heading)
-                    ]
-
-                    if seen:
-                        assert shown_part.contains(heading), (
+                    if _seen_without_heading(page, run, shown_part):
+                        assert _heading_in_view(page, run, shown_part), (
                             box_position,
                             page_position,
                             run.name_text.text(),
                         )
+
+
+def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-H55Q`: a taller window moves each heading over the part of its run it brings into view.
+
+    In the Maintenance Workspace at 1366 by 600 with a branch open, the page
+    scrolls. The schematic's box is scrolled until the first run's tension
+    line stands just under the heading, and the page is scrolled back to its
+    top, which takes the schematic's Area below the window's lower edge. No
+    part of either section is then in view, so each heading stands at its
+    section's top. Making the window 810 px tall brings the box back into
+    view with no scroll of the page or of the box, and the run is paused, so
+    no drawn frame moves a heading either. Wherever a value is then seen, its
+    run's heading is wholly in view. Before a change of the page's scroll
+    range moved the headings, the first run's six tensions were in view with
+    its heading above the box's top edge.
+    """
+
+    view = _paused_dashboard(application, shown, _maintenance(), (1366, 600), branched=True)
+    page = view._page_scroll
+    schematic = _schematic(view)
+    scroll = _view_scroll(schematic)
+    first = schematic.schematics[0]
+
+    page.verticalScrollBar().setValue(page.verticalScrollBar().maximum())
+    application.processEvents()
+    scroll.verticalScrollBar().setValue(
+        first.mapTo(schematic, QPoint(0, 0)).y()
+        + first.canvas.mapTo(first, first.canvas.label_line(0, 0).topLeft().toPoint()).y()
+        - first.heading.height()
+    )
+    application.processEvents()
+    page.verticalScrollBar().setValue(0)
+    application.processEvents()
+
+    # The premise: the page's scroll has taken the whole box out of view.
+    assert _shown_part(page, scroll).isEmpty()
+
+    view.resize(1366, 810)
+    application.processEvents()
+    shown_part = _shown_part(page, scroll)
+
+    # The premise: the taller window shows the first run's values again.
+    assert _seen_without_heading(page, first, shown_part)
+
+    for run in schematic.schematics:
+        if _seen_without_heading(page, run, shown_part):
+            assert _heading_in_view(page, run, shown_part), run.name_text.text()
