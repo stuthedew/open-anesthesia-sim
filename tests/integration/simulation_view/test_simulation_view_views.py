@@ -22,7 +22,6 @@ from anesthesia_sim.app.dashboard_frame import (
     STATUS_FAILED_TEXT,
     TRUNK_RUN_INDEX,
     run_label,
-    slider_position,
 )
 from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
@@ -30,7 +29,7 @@ from anesthesia_sim.app.formatting import (
     FLOW_DISPLAY_DECIMALS,
     format_flow,
 )
-from anesthesia_sim.app.qt_widgets import BookmarksPanel, DialInput, ForkPanel, ParameterSlider
+from anesthesia_sim.app.qt_widgets import BookmarksPanel, DialInput, ForkPanel
 from anesthesia_sim.app.run_presentation import ValuesStanding
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.run_surfaces import AccountingPanel, ParameterControls
@@ -75,6 +74,7 @@ from tests.integration.simulation_view.simulation_view_support import (
     _failure_details,
     _fork_panel,
     _halted_trunk_case,
+    _hold_thumb,
     _marks_panel,
     _no_setting,
     _paused_run_with_history,
@@ -624,13 +624,6 @@ def test_a_view_chosen_while_frames_fail_does_not_ask_again_every_tick(
 
 
 # ------------------------------------------------------ the preview of a dragged setting
-
-
-def _hold_thumb(control: ParameterSlider, value: float, decimals: int) -> None:
-    """Press a slider's thumb and drag it to `value`, without releasing it."""
-
-    control.slider.setSliderDown(True)
-    control.slider.setSliderPosition(slider_position(value, decimals))
 
 
 def test_a_held_thumb_previews_the_setting_without_applying_it(application: QApplication) -> None:

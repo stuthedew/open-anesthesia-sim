@@ -3,14 +3,17 @@ id: PL-412F
 title: A preview refused because a rebuilt run disagrees with the run disappears with no notice, and the release reports nothing
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: replay-findings
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/integration/controller/test_controller_preview.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_presentation.py, docs/INTERFACE.md, tests/integration/controller/test_controller_preview.py, tests/integration/simulation_view/test_simulation_view_refusals.py, tests/integration/simulation_view/simulation_view_support.py, tests/integration/simulation_view/test_simulation_view_views.py
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
+closed: 2026-11-27
+pr: 2334
 filed-pr: 2300
 payoff: a user whose dial preview is refused sees why, instead of a preview that silently vanishes
+tests: tests/integration/simulation_view/test_simulation_view_refusals.py::test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_the_release, tests/integration/controller/test_controller_preview.py::test_a_preview_of_a_run_whose_patient_file_changed_is_refused_naming_each_value
 ---
 
 **Problem.** `RunView.request_preview` in `src/anesthesia_sim/app/run_view.py` drops a refused preview and says nothing. Its docstring says "The release then reports the refusal through `_apply_setting`, as it reports any refused setting." That holds for a value the core refuses, but not for the refusal that `SimulationController.preview_settings` raises when the trial run it builds disagrees with this run (`_disagreements_with`). That happens when a data file the run was built from changed during the session. The trial run reads the new file and the run does not, so every drag on that run draws no preview, while the release applies the value through the run's own setter, which builds no trial and refuses nothing. The user sees the preview vanish with no notice, and nothing is logged.
@@ -24,5 +27,21 @@ payoff: a user whose dial preview is refused sees why, instead of a preview that
 **Done when.** A test changes the data that a trial run reads and shows that dragging a dial puts a notice in the banner, worded as a refused setting is, naming the dial. The docstring of `RunView.request_preview` says which refusals the release reports.
 
 **Placement decided 2026-11-23.** The notice goes in the banner, where every refused setting is already shown, so the user looks in one place for both. This is a placeholder under the owner's rule that look, wording and placement are the session's.
+
+**Placement, timing and wording taken from a source, 2026-11-27** (`PL-HWZK`). NUREG-0700 Rev. 3 (O'Hara JM, *Human-System Interface Design Review Guidelines*, Brookhaven National Laboratory for the US Nuclear Regulatory Commission, July 2020) was read in full, from the PDF that OSTI serves at https://www.osti.gov/servlets/purl/1644018, as text extracted with `pdftotext`. Each choice and the guideline behind it:
+
+1. Placement in the banner: 2.7.1-1, "System messages should appear in standard locations", and 2.7.3-14, "Error messages should be presented at the point of the error or in a consistent area of the display." The banner is where every refused setting is shown, so the placeholder of 2026-11-23 stays, now with a source.
+2. Shown while the thumb is held: 2.2.6-23, "The effects of operations performed on direct manipulation interfaces should be immediately visible", and 2.2.6-24, whose note warns against "relying on the ability of users to detect errors from the behavior of the user interface, rather than providing error messages". A preview that is simply absent is that reliance.
+3. The other refusals stay silent during the drag: 2.7.3-4, "The computer should display an error message only after completion of an entry." A value out of range, or a run that has stopped, refuses the value itself, and the release is the completion of that entry. This refusal is different, because the release completes the entry without error.
+4. The notice ends with the drag: 2.7.1-6, "No extraneous information should be displayed." Once the thumb is released no preview is asked for, so the notice no longer describes anything on screen.
+5. Wording: 2.7.3-1, "an error message should state the error and possible subsequent operations", 2.7.3-2, "language that reflects the user's point of view, not the programmer's", and 2.7.1-2, "System messages should use consistent grammatical construction." So the message names the dial by its label, gives the possible cause and the remedy in the form a refused branch already uses (`PL-72X2`), and opens "Preview not drawn —" beside "Setting refused —" and "Branch not opened —". The values that differ go to a note on the exception and to the failure log, once for each drag.
+
+**Fixed 2026-11-27.** `SimulationController.preview_settings` now raises `PreviewOfAnotherCase`, a `SimulationConfigurationError` whose message is for the user and names the dial. A note on it names each value that differs. `RunView.request_preview` catches it separately from the other refusals. It writes the banner's notice through `dashboard_frame.refused_preview_notice`, which uses `REFUSED_PREVIEW_TEMPLATE`, and logs the note at error level the first time in a drag. The notice is held in its own field, `_refused_preview_notice`, so a successful preview clears it without clearing a refused setting's notice. It takes the refused setting's place in the banner while it is set. It is cleared by a successful preview, by any other refusal, at the release (`end_preview`) and at a start-over (`_announce_the_start_over`). The docstring of `request_preview` now says which refusals the release reports and why this one is shown during the drag. `docs/INTERFACE.md` § "A preview of an unapplied setting" states the requirement, and its note for developers names the test.
+
+The run stopping while the thumb is held and not moved leaves the notice in place, and the stopped run's banner then states it before its way out, as it states a refused setting (`_stopped_run_exit`). That reads correctly, and the next move of the thumb clears it, because a stopped run refuses the preview for a different reason first.
+
+**Regression test.** `test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_the_release` in `tests/integration/simulation_view/test_simulation_view_refusals.py` edits the patient's muscle volume after the run is shown, holds the fresh gas flow thumb at two values, and checks the whole banner, the one log record and the release. Run against the code before the fix (`git stash push -- src/`, then `uv run pytest -q -p no:randomly` on that test), it failed at `assert run._notice_text.isHidden() is False` with `assert True is False`: the banner was hidden. `test_a_preview_of_a_run_whose_patient_file_changed_is_refused_naming_each_value` in `tests/integration/controller/test_controller_preview.py` now checks the user's message and finds the differences in the note. `_hold_thumb` moved into `simulation_view_support.py` so that both modules press a thumb the same way.
+
+**Docs swept 2026-11-27:** `docs/INTERFACE.md` (the preview section, and § "Supported input ranges" on how a refused setting is reported), `docs/ARCHITECTURE.md`, `docs/MODEL.md`, `docs/VERIFICATION.md`, `README.md` and `ROADMAP.md`, searched for `preview_settings`, `request_preview` and the old message. Only `docs/INTERFACE.md` described this path, and it is updated.
 
 **Generator check.** A one-off: a docstring claim that one kind of refusal reaches the reader, found by review.

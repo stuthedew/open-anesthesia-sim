@@ -905,6 +905,20 @@ class SettingPreview:
     value: float
 
 
+class PreviewOfAnotherCase(SimulationConfigurationError):
+    """A preview refused because the trial run it was rebuilt as differs from this run.
+
+    The trial run reads the agent, the patient and the circuit from the data
+    files again, so a file edited after this run began gives the trial values
+    that this run does not hold. Its future would then belong to another case.
+    The message is written for the user who holds the dial, and a note on the
+    exception names each value that differs, for a developer. `RunView` puts
+    this refusal in the banner while the dial is held. It reports no other
+    refusal of a preview there, because the release reports those
+    (`PL-412F`).
+    """
+
+
 def _unrecorded_setting_error() -> SimulationExecutionError:
     """Return the error for a setting written to the core without the controller recording it."""
 
@@ -3264,9 +3278,11 @@ class SimulationController:
             The settings record the run would continue under.
 
         Raises:
-            SimulationConfigurationError: If this run has stopped, if the
-                core refuses the value, or if the trial run was rebuilt with a
-                value this run does not have.
+            PreviewOfAnotherCase: If the trial run was rebuilt with a value
+                this run does not have. Its message names the dial, and its
+                note names each value that differs.
+            SimulationConfigurationError: If this run has stopped, or if the
+                core refuses the value.
             SimulationExecutionError: If the core holds a setting this
                 controller did not record, so applying the value would be
                 refused too (`_refuse_a_setting_after_an_unrecorded_one`).
@@ -3291,10 +3307,23 @@ class SimulationController:
         disagreements = self._disagreements_with(trial, in_force, "in the preview")
 
         if disagreements:
-            raise SimulationConfigurationError(
+            # The user reads the first text in the banner, as for a refused
+            # branch (`_branch_from`). A developer reads each value that
+            # differs in the note. The note is not logged here, because a drag
+            # asks for a preview on every frame (`RunView.request_preview`).
+            refusal = PreviewOfAnotherCase(
+                f"the {CONTROL_INPUT_LABELS[preview.control].lower()} preview would not start "
+                "from the values this run holds, so it would predict a different case. The "
+                "simulator's data may have changed since this run began, or the simulator may "
+                "have a fault. Reopen the simulator and run the case again to preview a "
+                "setting. If this notice comes back, the cause is a fault in the simulator"
+            )
+            refusal.add_note(
                 "a preview would be drawn from values this run does not hold, so it would "
                 f"predict a different case: {'; '.join(disagreements)}"
             )
+
+            raise refusal
 
         match preview.control:
             case ControlInput.FRESH_GAS_FLOW:

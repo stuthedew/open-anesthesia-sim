@@ -177,7 +177,8 @@ class RunPanelState:
         comparing: As `dashboard_frame.transport` takes it.
         branch_offered: As `dashboard_frame.notice` takes it.
         rejected_setting_notice: The notice for a setting the run refused,
-            or None.
+            or for the preview of a held dial that it refused (`PL-412F`), or
+            None.
         refused_reset_notice: The notice for a Reset the run refused, or None.
         refused_reset_reason: The message of the error with which a Reset
             was refused, for the failure's details, or None.

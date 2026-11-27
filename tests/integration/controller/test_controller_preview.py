@@ -13,11 +13,10 @@ from collections.abc import Callable
 import pytest
 
 from anesthesia_sim.app.control_record import ControlInput
-from anesthesia_sim.app.controller import SettingPreview, SimulationController
+from anesthesia_sim.app.controller import PreviewOfAnotherCase, SettingPreview, SimulationController
 from anesthesia_sim.app.run_series import RecordedQuantity, RecordedSeries
 from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.concentration import Percent
-from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.supported_ranges import AlveolarVentilation, CardiacOutput, FreshGasFlow
@@ -109,9 +108,10 @@ def test_a_preview_of_a_run_whose_patient_file_changed_is_refused_naming_each_va
     from the data file. Here the file is edited after the run was built, so
     the rebuilt patient's muscle and fat volumes differ from the run's. A
     preview drawn anyway would show the course of another patient as if it
-    were this one's. The refusal names each value that differs once, with
-    both of its values, so its reader can find the edit. Each entry names the
-    preview, which opens no branch (`PL-VYN4`).
+    were this one's. The refusal's message is for the user holding the dial,
+    and names the dial (`PL-412F`). Its note names each value that differs
+    once, with both of its values, so a developer can find the edit. Each
+    entry names the preview, which opens no branch (`PL-VYN4`).
     """
 
     run = _isoflurane_run_off_its_defaults()
@@ -123,10 +123,18 @@ def test_a_preview_of_a_run_whose_patient_file_changed_is_refused_naming_each_va
     )
     monkeypatch.setattr(uptake_system, "load_reference_adult_parameters", lambda: edited)
 
-    with pytest.raises(SimulationConfigurationError) as refusal:
+    with pytest.raises(PreviewOfAnotherCase) as refusal:
         run.preview_settings(SettingPreview(ControlInput.FRESH_GAS_FLOW, 6.0))
 
-    reason, _, named = str(refusal.value).partition(": ")
+    assert str(refusal.value) == (
+        "the fresh gas flow preview would not start from the values this run holds, so "
+        "it would predict a different case. The simulator's data may have changed since "
+        "this run began, or the simulator may have a fault. Reopen the simulator and run "
+        "the case again to preview a setting. If this notice comes back, the cause is a "
+        "fault in the simulator"
+    )
+    (note,) = refusal.value.__notes__
+    reason, _, named = note.partition(": ")
     differences = named.split("; ")
 
     assert reason == (

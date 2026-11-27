@@ -71,6 +71,7 @@ from anesthesia_sim.app.control_timeline import (
 from anesthesia_sim.app.controller import (
     HereForkPoint,
     MarkForkPoint,
+    PreviewOfAnotherCase,
     RunRecord,
     RunSettings,
     RunStatus,
@@ -407,6 +408,11 @@ REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 # A refused branch changed no setting, so its notice does not say "Setting
 # refused" (`PL-3JTH`).
 REFUSED_BRANCH_TEMPLATE: Final = "Branch not opened — {error}"
+# A refused preview changes no setting either, and the thumb is still held, so its
+# notice says only that the preview was not drawn. It takes the form of the two
+# notices above, because NUREG-0700 Rev. 3 guideline 2.7.1-2 asks that "System
+# messages should use consistent grammatical construction" (`PL-412F`).
+REFUSED_PREVIEW_TEMPLATE: Final = "Preview not drawn — {error}"
 # A setting refused for lying outside a limit is named to the user by its control's
 # label, with the value asked for and the limit, as the stopped run's refusal names
 # its control (`SimulationController._refuse_a_setting_on_a_stopped_run`). The core's
@@ -2446,6 +2452,23 @@ def refused_branch_notice(error: SimulationConfigurationError) -> str:
     """
 
     return REFUSED_BRANCH_TEMPLATE.format(error=error)
+
+
+def refused_preview_notice(error: PreviewOfAnotherCase) -> str:
+    """Return what the banner says while a held dial's preview is refused.
+
+    The preview is refused because the run it was rebuilt as differs from the
+    run on screen. The run is untouched, so `notice` adds that the run
+    continues unchanged, as it does for a refused setting.
+
+    Args:
+        error: The refusal, whose message names the dial and what to do.
+
+    Returns:
+        The first half of the banner, in the place of a refused setting's.
+    """
+
+    return REFUSED_PREVIEW_TEMPLATE.format(error=error)
 
 
 def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | None) -> str:
