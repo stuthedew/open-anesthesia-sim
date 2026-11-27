@@ -1,9 +1,16 @@
 ---
 id: PL-9WDN
 title: The interface has no written design language: no type scale, spacing scale or rule for surfaces, colour and standing text, so each View is styled on its own and the whole reads as unprofessional
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: ux, planning
 feature: interface-design-review
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/stylesheets.py, docs/INTERFACE.md
+blocked-by: v0.7.0
+deferred-from: v0.7.0 - filed on 2026-11-26, after the gate froze; the owner placed it first in the interface pass that follows v0.7.0 (item 33), so it waits for the cut
 added: 2026-11-26
+payoff: a learner meets one consistent screen, where size, spacing and colour each mean one thing, instead of surfaces styled one at a time
 ---
 
 **Problem.** The interface has no written design language: no type scale, spacing scale or rule for surfaces, colour and standing text, so each View is styled on its own and the whole reads as unprofessional
@@ -12,6 +19,10 @@ added: 2026-11-26
 project owner said the interface "still feels amateur" as a whole, that
 iterating on it feels like polishing, and asked what UI/UX best practice is
 for this kind of software and what a best-practice design language is.
+
+**Why it matters.** A screen that looks unfinished costs a teaching tool its
+credibility with the residents and faculty it is for, and each fix made to one
+surface alone leaves the whole as uneven as before.
 
 **What the screen shows, measured 2026-11-26** on the Maintenance Workspace
 at 3h8m11s of a sevoflurane run, rendered offscreen at 1500 by 1000
@@ -104,3 +115,24 @@ are outside dependencies. Borrow their scales instead.
 `/mnt/project-files/v0.7.0/design-language/2-restyle-mockup.png` is an HTML
 mock-up of the same screen and values under these rules. It is a starting
 point for item 33's design round, not a decided look.
+
+**Answered 2026-11-27: the interface pass is the next feature after v0.7.0,
+and it starts with this design language** (project owner, 2026-11-27,
+ratified, over going on correcting one surface at a time). He answered "Agree
+with recs" in this thread and "Agree with best practice" in the project chat.
+The seven rules above are the starting draft for item 33's design round, not
+decided values: the round settles the sizes, the spacing steps and the
+colours, then writes them as tokens and a check before any surface is
+restyled.
+
+**Generator check.** None recorded. The open `interface-design-review` items
+each fix one surface's own fault. Whether the missing design language caused
+three or more of them is for item 33's design round to judge, because that
+round reads each of them against the draft rules.
+
+**Done when.** One short document states the design language: the type
+sizes and weights, the spacing steps, the one level of container, what colour
+may mean, how charts label their lines, and where standing text goes. Its
+values are tokens in `app/theme.py`, and a check refuses a size, colour or
+radius in `app/` that is not one of them. Restyling each surface against it is
+item 33's later work, filed as items in its design round.

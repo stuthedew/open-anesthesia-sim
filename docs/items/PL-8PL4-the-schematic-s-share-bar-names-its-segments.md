@@ -1,9 +1,15 @@
 ---
 id: PL-8PL4
 title: The schematic's share bar names its segments only in a text list under it, so a reader cannot tell which colour is fat, and its caption reads as agent held over the whole run rather than at this instant
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, ux
 feature: schematic
+touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/qt_schematic.py, docs/INTERFACE.md
+deferred-from: v0.7.0 - filed on 2026-11-26, after the gate froze; the owner asked on 2026-11-27 for it to land before the cut; every share it shows was right, so no learner sees a wrong value
 added: 2026-11-26
+payoff: a learner reads each compartment's share of the agent under its own container, with no colour key to decode, and does not take the shares for agent counted over the whole run
 ---
 
 **Problem.** The schematic's share bar names its segments only in a text list under it, so a reader cannot tell which colour is fat, and its caption reads as agent held over the whole run rather than at this instant
@@ -14,6 +20,11 @@ the run holds" as a total over the run. He asked whether the bar is a standard
 figure or one made up because the data were there. The values were right: 650
 and 420 mL out of 1,092 mL are 60% and 38%. Fat's container is filled to
 0.09% of a 5.4% scale, about 2 px, so its colour barely shows there either.
+
+**Why it matters.** An anesthesiologist could not tell which compartment held
+38% of the agent, and took the shares for agent counted over the whole run. A
+figure an expert misreads teaches a resident the wrong thing, even when every
+number in it is right.
 
 **What the bar is for.** The containers fill to tension, so muscle and fat
 look nearly empty while they hold most of the agent (`ROADMAP.md` § "v0.7.0 -
@@ -73,7 +84,14 @@ and the names sit in a list under the bar.
 share bar assert", does not change under any option. That section's share-bar
 paragraph and its tests change with the option chosen.
 
-**Overlap with #2325 and `PL-P83G`, noted 2026-11-26.** The controls-placement
+**Answered 2026-11-27: option 1, each container gets its share** (project
+owner, 2026-11-27, ratified, over keeping the one bar with its segments
+labelled and over removing it). He answered "Agree with recs" on the decision
+card in this thread, and "Agree with best practice" in the project chat, and
+asked for it to land before the v0.7.0 cut.
+
+**Overlap with #2325 and `PL-P83G`, noted 2026-11-26.** #2325 merged on
+2026-11-26 as `0fbd7a8d`. The controls-placement
 thread's pull request #2325 moves the share bar and its naming lines above the
 containers in `RunSchematic` and adds a test that the bar is never on screen
 without its naming lines. It files `PL-P83G`: with two runs compared, the second
@@ -81,3 +99,18 @@ run's bar can be on screen while its naming lines are scrolled out of the Area.
 Option 1 removes the separate bar and puts each share in its container's
 label, so it closes `PL-P83G` as well. Build on `main` after #2325 merges, and
 retire or rewrite its new test with the bar.
+
+**Generator check.** No generator. The single bar was one scoping choice
+(`PL-S79P`), and no other View draws a part-to-whole figure. The rule that
+would have caught it, that a proposed figure says how the literature draws the
+same quantity, is now a standing instruction in the project's memory.
+
+**Done when.** Each container's label ends with its share of all the agent
+that the circuit and body hold, "38% of the agent", and a bar under the label is
+filled to that share. The six bars are one length. The separate bar and its
+three lines are gone, and one caption line says that the shares are of the
+agent held at this instant, circuit included. While the run holds no agent,
+each share line shows a dash, each bar is empty, and the caption line says why.
+`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and
+share bar assert" describes the new form, and `PL-P83G` closes with the bar
+it was about.

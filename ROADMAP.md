@@ -1574,6 +1574,16 @@ closes in the pull request that filed it.
    the bar carries the amount. In this model, containers drawn to scale cannot
    carry it.
 
+   **Replaced before the cut by one bar under each container's label**
+   (project owner, 2026-11-27, ratified, over keeping the one bar with its
+   segments labelled and over removing it, `PL-8PL4`). Test-driving main, the
+   owner could not tell which colour was fat and read the shares as agent
+   counted over the whole run. Each label now ends with its compartment's
+   share, and a bar under it draws that share on one scale for all six. No
+   teaching source read for that item draws a single divided bar, and
+   separate bars are the form a data-visualization text prefers for
+   comparing fractions.
+
 5. **A shipped Workspace that places the schematic** (queue item `PL-PR1W`).
    The schematic is already reachable from every Workspace through the View
    chooser. One shipped Workspace places it beside the concentration chart.
@@ -1666,8 +1676,10 @@ closes in the pull request that filed it.
 - Each container fills to that compartment's modelled tension, on one scale
   for every container of the run. Each is labelled with its tension and its
   amount, and the amount is named as vapour.
-- A bar shows each compartment's share of the agent the run holds. Each
-  segment is named in text, and the shares add up to the whole.
+- Each container's label gives its compartment's share of the agent the
+  circuit and body hold at that instant, and a bar under the label draws it.
+  The six bars share one scale, and the shares add up to the whole
+  (`PL-8PL4`, which replaced one divided bar before the cut).
 - The schematic says on its face that its values are modelled. Its amounts are
   given at the precision that `docs/INTERFACE.md` § "Displayed precision" derives
   for them.
@@ -2686,7 +2698,13 @@ chart, and it is a capability rather than a restyle.
 2026-09-26; moved after v0.7.0 on 2026-11-10, project owner, ratified, over
 keeping it before v0.7.0).* The pass comes after v0.7.0, as the
 `v0.7.x — the interface pass` row of "The timeline". It is a patch track
-rather than a numbered milestone, for the reason that row gives. The
+rather than a numbered milestone, for the reason that row gives. **It is the
+next feature after v0.7.0, and it starts by writing the design language down**
+(project owner, 2026-11-27, ratified, over going on correcting one surface at
+a time, `PL-9WDN`): one short document of type sizes, spacing steps, the one
+level of container, what colour may mean, how charts label their lines and
+where standing text goes, with its values as tokens and a check that refuses
+any other. Every surface is then restyled against it in one pass. The
 project owner requested it on 2026-09-08 as "a decent size overhaul
 (theme, style, overall polish)". The owner called it not urgent, and
 wanted it after the simulator works.
