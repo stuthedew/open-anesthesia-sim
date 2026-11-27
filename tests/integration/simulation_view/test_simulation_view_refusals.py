@@ -17,6 +17,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationDomainLimitError,
     SimulationExecutionError,
 )
+from tests.integration.announcement_support import ASSERTIVE, Announcement, record_announcements
 from tests.integration.simulation_view.simulation_view_support import _dials, _shown_view
 
 # ---------------------------------------------- refusals, and the halt
@@ -94,6 +95,54 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(
     # not running at: that is the correct number under the wrong label.
     assert controller.snapshot().delivered_concentration_percent == delivered_before
     assert _dials(run)._delivered_concentration_slider.value() == pytest.approx(delivered_before)
+
+
+def test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A screen reader is interrupted for each, and not told again on the frames after (`PL-J7Z5`).
+
+    The refusal's banner is the one the test above pins, typed here again. A
+    halt writes its banner before its frame and again from the frame, and only
+    the banner that stands once the halt is over is read. Before `PL-J7Z5`
+    neither banner reached a screen reader at all.
+    """
+
+    recorded = record_announcements(monkeypatch)
+    controller = SimulationController(agent_id="isoflurane")
+    view = _shown_view(application, controller)
+    controller.start()
+
+    view.runs[0]._handle_delivered_concentration_change(50.0)
+
+    for _ in range(3):
+        application.processEvents()
+        view.present(False)
+
+    application.processEvents()
+
+    assert recorded == [
+        Announcement(
+            "Setting refused — the vaporizer setting cannot be 50.0%, because this agent's "
+            f"vaporizer delivers at most 5.0%. {_UNCHANGED}",
+            ASSERTIVE,
+        )
+    ]
+
+    recorded.clear()
+    halted = SimulationController()
+    run = _shown_view(application, halted).runs[0]
+    halted.start()
+    application.processEvents()
+
+    run._halt_run(ValueError("mass balance violated"))
+    application.processEvents()
+
+    assert [announcement.politeness for announcement in recorded] == [ASSERTIVE]
+    assert recorded[0].message == run._notice_text.notice()
+    assert recorded[0].message.startswith(
+        "Simulation stopped — an unexpected error occurred in the simulator"
+    )
 
 
 def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplication) -> None:

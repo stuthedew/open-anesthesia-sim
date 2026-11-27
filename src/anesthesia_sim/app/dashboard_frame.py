@@ -30,7 +30,7 @@ enforces each of them.
 
 import html
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from math import ceil, floor, isfinite
 from pathlib import Path
@@ -54,6 +54,7 @@ from anesthesia_sim.app.chart_frame import (
     RunCount,
     RunIndex,
     TraceStyle,
+    latest_values_lines,
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
@@ -903,8 +904,10 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
 # The headings of the marks editor's two forms. Each names the one action
 # its form does, so a reader does not take a form for a second copy of the
 # list above it (`PL-G1JM`). The wording is a placeholder (`PL-CHX0`).
-TIME_FORM_HEADING: Final = "Add a time bookmark"
-TARGET_FORM_HEADING: Final = "Add a MAC target"
+TIME_MARK_KIND: Final = "time bookmark"
+TARGET_MARK_KIND: Final = "MAC target"
+TIME_FORM_HEADING: Final = f"Add a {TIME_MARK_KIND}"
+TARGET_FORM_HEADING: Final = f"Add a {TARGET_MARK_KIND}"
 ADD_MARK_LABEL: Final = "Add"
 # The label of the button on each listed mark. The button's accessible name
 # adds the mark's own text, so a screen reader says which mark it removes.
@@ -919,6 +922,20 @@ INSTANT_FIELD_LABEL: Final = "Instant"
 COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
 MARK_NAME_FIELD_LABEL: Final = "Name"
+
+
+def form_control_name(label: str, kind: str) -> str:
+    """Return what a screen reader calls a control of one of the marks editor's two forms.
+
+    Both forms have a "Name" field and an "Add" button. Each is named with its
+    form's kind of mark as well, such as "Name, MAC target", so the two are
+    not heard as the same control (`PL-RK9Z`). The name starts with the
+    label, as the Understanding document for WCAG 2.2 SC 2.5.3 recommends.
+    """
+
+    return f"{label}, {kind}"
+
+
 MARK_NAME_PLACEHOLDER: Final = "Optional"
 # The unit in which an instant is entered, and the resolution of the entry.
 # The unit is seconds rather than the compound form the clock shows, because a
@@ -1084,6 +1101,10 @@ ACCOUNTING_UNIT_CAPTION: Final = (
 ACCOUNTING_AMOUNT_NAMES: Final = ("Delivered", "Exhausted", "Stored", "Unaccounted")
 
 # The transport row's labels, and the two selector captions beside it.
+# The agent selector's caption is shown rather than given to a screen reader
+# alone. On Linux and macOS, Qt takes what a selector is for only from a
+# label shown beside it (`qt_widgets.label_control`, `PL-RK9Z`).
+AGENT_SELECTOR_LABEL: Final = "Agent"
 START_LABEL: Final = "Start"
 PAUSE_LABEL: Final = "Pause"
 RESET_LABEL: Final = "Reset"
@@ -1103,6 +1124,17 @@ FIT_RUN_LABEL: Final = "Fit run"
 # names the resulting width. The caption is written into the time axis's
 # title.
 CHART_HEADING: Final = "Agent concentration and relative partial pressure over time"
+# What the chart's long description opens with. The W3C example of a chart's
+# text alternative "identifies the type of chart" first (Understanding WCAG
+# 2.2 SC 1.1.1, `PL-T9RB`).
+CHART_TYPE_TEXT: Final = "Line chart."
+# What a screen reader calls the box that holds each chart View's legend,
+# which takes the focus so the keyboard can scroll it (`PL-RK9Z`).
+CONCENTRATION_LEGEND_NAME: Final = "Concentration chart legend"
+WASH_IN_LEGEND_NAME: Final = "Wash-in plot legend"
+# What a screen reader calls the page that scrolls the Workspace tabs and their
+# Areas, which takes the focus for the same reason (`PL-RK9Z`).
+WORKSPACE_PAGE_NAME: Final = "Workspace"
 # The time axis's title states the window after the axis's name, so the
 # window takes no line of its own above the plot (`PL-K4CZ`). A narrow plot
 # breaks the title after a comma, and so never between a span and its unit.
@@ -2647,10 +2679,23 @@ class Notice:
     muted, as the status word for that stop is. Nothing is wrong with a run
     that reaches its declared span, and drawing it in the warning colour
     would spend the interface's one signal for a real fault (`PL-0889`).
+
+    Attributes:
+        text: The banner's words.
+        emphasis: How the banner is drawn.
+        topic: What the banner is about, where its text changes while its
+            topic does not. A countdown's time left changes every second, so
+            a countdown's topic is its wording without that time. It is None
+            where the text is the topic. A screen reader is told the banner
+            when its topic changes, and not on each second of a countdown
+            (`qt_widgets.NoticeLabel`, `PL-J7Z5`). Two banners with the same
+            text are equal whatever their topics, because the topic is read
+            from the text.
     """
 
     text: str
     emphasis: Emphasis
+    topic: str | None = field(default=None, compare=False)
 
 
 def run_notice(
@@ -2696,15 +2741,24 @@ def run_notice(
         else None
     )
 
+    # The countdown's topic is its wording with the time left still a
+    # placeholder, so the topic stays the same while the time counts down.
     if text is None:
-        return None if countdown is None else Notice(countdown, Emphasis.MUTED)
+        return (
+            None
+            if countdown is None
+            else Notice(countdown, Emphasis.MUTED, topic=APPROACHING_LIMIT_NOTICE_TEMPLATE)
+        )
 
     stopped = status.failure_reason is not None or status.supported_limit_reason is not None
+    emphasis = _stopped_emphasis(status, rejected_setting_notice, refused_reset)
 
     if countdown is not None and not stopped:
-        text = f"{text} {countdown}"
+        return Notice(
+            f"{text} {countdown}", emphasis, topic=f"{text} {APPROACHING_LIMIT_NOTICE_TEMPLATE}"
+        )
 
-    return Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
+    return Notice(text, emphasis)
 
 
 def halt_run_notice(
@@ -3966,6 +4020,52 @@ def mac_awake_caption(frame: ChartFrame) -> str:
         fraction_of_mac=mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
         mac_percent=frame.mac_percent,
+    )
+
+
+def concentration_chart_name(frame: ChartFrame | None) -> str:
+    """Return what a screen reader calls the concentration chart: what it plots, and its window.
+
+    This is the chart's short text alternative, which WCAG 2.2 SC 1.1.1 asks
+    of non-text content (`PL-T9RB`). It is the chart's heading followed by the
+    time axis's caption, so it says the same as the screen. A withheld frame
+    has no window, so the name is the heading alone.
+
+    Args:
+        frame: The frame the chart drew, or None while it draws none.
+
+    Returns:
+        The name.
+    """
+
+    return CHART_HEADING if frame is None else f"{CHART_HEADING}, {time_axis_caption(frame)}"
+
+
+def concentration_chart_description(frame: ChartFrame | None) -> str:
+    """Return the concentration chart's long description, for a screen reader.
+
+    The W3C example of a chart's text alternative pairs a short name with a
+    longer description that names the type of chart and summarises its data
+    (Understanding WCAG 2.2 SC 1.1.1, `PL-T9RB`). This one names the type,
+    then gives the latest drawn value of each trace shown
+    (`chart_frame.latest_values_lines`), then the 1 MAC and MAC-awake
+    references the chart draws. Where no trace is shown, or no frame could be
+    drawn, it says what the screen says instead.
+
+    Args:
+        frame: The frame the chart drew, or None while it draws none.
+
+    Returns:
+        The description, one sentence or reference per line.
+    """
+
+    if frame is None:
+        return WITHHELD_FRAME_TEXT
+
+    values = latest_values_lines(frame) or (NO_TRACES_SHOWN_TEXT,)
+
+    return "\n".join(
+        (CHART_TYPE_TEXT, *values, mac_reference_caption(frame), mac_awake_caption(frame))
     )
 
 

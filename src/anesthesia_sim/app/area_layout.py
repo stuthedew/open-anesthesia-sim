@@ -2321,6 +2321,11 @@ class AreaFrame(QFrame):
         self._column.addWidget(self.header)
         self._column.addWidget(rule)
         self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
+
+        if self.view_scroll is not None:
+            # The box takes the focus so the keyboard can scroll it, so a
+            # screen reader names it by the View it holds (`PL-RK9Z`).
+            self.view_scroll.setAccessibleName(chooser.text())
         # A row that the View must keep on screen wherever any of the View is,
         # such as the wash-in plot's statement that it is modelled, sits above the
         # scroll box rather than in it (`PL-26BZ`).
@@ -2689,6 +2694,15 @@ _BORDER_ACCESSIBLE_NAME: Final = "Area border"
 _BORDER_ACCESSIBLE_DESCRIPTION: Final = (
     "The arrow keys move it. Shift moves it alone. Escape puts it back."
 )
+# What assistive technology says a corner is, and the keyboard's way to do
+# what dragging it does. A press on a corner gives it the focus, so Escape
+# can cancel the drag, and a screen reader then names what has the focus
+# (`PL-RK9Z`).
+_CORNER_ACCESSIBLE_NAME: Final = "Area corner"
+_CORNER_ACCESSIBLE_DESCRIPTION: Final = (
+    "Drag it to split or join the Area. "
+    f"The {AREA_MENU_LABEL} menu does the same from the keyboard."
+)
 
 
 @dataclass(frozen=True)
@@ -2985,6 +2999,8 @@ class _CornerZone(QWidget):
         self.setFixedSize(AREA_CORNER_ZONE, AREA_CORNER_ZONE)
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.setAccessibleName(_CORNER_ACCESSIBLE_NAME)
+        self.setAccessibleDescription(_CORNER_ACCESSIBLE_DESCRIPTION)
         self.place()
         self.raise_()
 

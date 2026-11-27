@@ -2959,10 +2959,10 @@ Run 2."). The user stays in the Workspace they chose. The sentence goes as
 soon as the Workspace is unpinned or the reader switches to another Workspace.
 The interface does not switch the Workspace itself, because the press asked
 for a branch and not for another Workspace. WCAG 2.2 Success Criterion 4.1.3
-treats a result shown without moving the reader as a status message. Nothing
-announces this one to a screen reader yet, because screen-reader support is
-planned and not yet a commitment (§ "Color contrast, and the standard this
-interface is held to"). The Understanding document for Success Criterion 3.2.2 holds a change of context
+treats a result shown without moving the reader as a status message. So the
+caption is announced to a screen reader when it appears or changes, without
+moving the focus, once speech pauses (§ "Color contrast, and the standard this
+interface is held to", `PL-J7Z5`). The Understanding document for Success Criterion 3.2.2 holds a change of context
 appropriate "only when it is clear that such a change will happen in response
 to the user's action"
 (`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`
@@ -4373,6 +4373,76 @@ carry (`test_each_reading_is_named_with_its_compartment_and_that_it_is_modelled`
 `test_a_screen_reader_hears_each_reading_with_its_compartment_and_that_it_is_modelled`
 and `test_a_compared_run_s_readings_are_named_with_their_run` in
 `tests/integration/simulation_view/test_simulation_view_readouts.py`).
+
+**Every control a screen reader can reach says what it is for** (`PL-RK9Z`).
+WCAG 2.2 SC 4.1.2 requires a name for each control at Level A. Each field and
+selector is tied to the label shown beside it. On Linux and macOS, Qt names a
+selector by the entry it shows, such as "Sevoflurane", and takes what the
+selector is for only from a label tied to it. Windows reads the control's
+accessible name instead, so each control has one as well. The run's agent
+selector had no label on screen, so the word "Agent" now stands before it, in
+the muted style of "Playback" before the playback rate. Where two controls
+share a label, the name adds which one it is: "Name, time bookmark" and "Name,
+MAC target", "Add, time bookmark" and "Add, MAC target", and "From, branch
+point". Each name starts with the label shown, which the Understanding
+document for SC 2.5.3 (Label in Name) calls best practice. A scroll box that
+takes the focus so that the keyboard can scroll it is named by the heading
+above it, or by what it holds, such as "Concentration chart legend". An Area's
+corner is named "Area corner", and its description says that the Area menu
+does from the keyboard what a drag on the corner does
+(`test_every_control_a_reader_can_reach_says_what_it_is_for` and
+`test_each_selector_is_named_by_its_shown_label_on_every_platform` in
+`tests/integration/test_keyboard_focus.py`).
+
+**A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
+reader says nothing when a label's text changes, and SC 4.1.3 (Status
+Messages) asks that a status message reach it all the same. So each new
+banner above a run's values, and each refusal under a bookmark form or the
+branch control, is sent to the screen reader as an announcement. A failure and
+a refused setting or request interrupt what is being read, because each asks
+the reader to act. The countdown to the supported run length, and the stop
+there, wait until speech pauses. Qt's documentation asks that an interrupting
+announcement be used only where the interruption is imperative. A banner
+drawn again unchanged on the next frame is not read again. The countdown
+changes every second and is read once, when it appears. A banner written
+twice in one action, as a halt writes it before and after its frame, is read
+once, as the action leaves it. The caption that takes the branch control's
+place is read when it appears or changes, once speech pauses
+(`test_each_new_banner_is_read_out_once_and_a_warning_interrupts` and
+`test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends` in
+`tests/integration/test_qt_widgets.py`,
+`test_a_countdown_keeps_one_topic_while_its_time_left_changes` in
+`tests/unit/test_dashboard_frame.py`,
+`test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` in
+`tests/integration/simulation_view/test_simulation_view_refusals.py`, and
+`test_the_countdown_and_the_stop_at_the_supported_run_length_are_each_read_out_once`
+in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`).
+
+**The concentration chart has a text alternative** (`PL-T9RB`). SC 1.1.1
+asks a chart for a text alternative at Level A, and the W3C's example of one
+pairs a short name with a long description that names the type of chart and
+summarises its data. The chart reports itself as an image. Its name is the
+chart's heading and the time axis's caption, such as "Agent concentration and
+relative partial pressure over time, whole run so far, 15 minutes shown". Its
+description opens "Line chart." Then, for each run, it gives the latest drawn
+value of each trace shown, in percent and in multiples of 1 MAC, as the hover
+words them, such as "Modelled sevoflurane at 10m: Circuit (inspired) 1.45%,
+0.81 ×MAC; Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC". The instant is
+that of the run's last drawn point, which is the right edge of a held window.
+The 1 MAC and MAC-awake references follow. With no trace shown, or no frame
+drawn, the description says what the screen says. Both texts are written when
+a screen reader asks for them, so neither describes an earlier frame. The
+chart gives no table of its values. The Understanding document for SC 1.1.1
+provides one "where possible and practical", and the readouts already give
+each compartment's current value in text. The wash-in plot and the compartment
+schematic have no text alternative yet (`PL-R1M6`)
+(`test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value` and
+`test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn`
+in `tests/unit/test_chart_frame.py`, and
+`test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+<!-- not-restated: 1.45% -->
+<!-- not-restated: 1.12% -->
 
 #### Minimum contrast for text and graphics
 

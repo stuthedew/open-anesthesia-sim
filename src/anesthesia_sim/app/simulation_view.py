@@ -130,6 +130,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RENDER_INTERVAL_S,
     TRUNK_RUN_INDEX,
     USE_DISCLAIMER_TEXT,
+    WORKSPACE_PAGE_NAME,
     BookmarkPanel,
     BranchAtStake,
     CaseMarks,
@@ -756,6 +757,7 @@ class SimulationView(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
         scroll.setWidget(middle)
+        scroll.setAccessibleName(WORKSPACE_PAGE_NAME)
         FocusRing(scroll)
         # `actionTriggered` fires when the reader scrolls with the wheel, the
         # keys or the bar. It does not fire for a scroll that this view makes.

@@ -6,6 +6,7 @@ These tests cover the charts.
 """
 
 import pytest
+from PySide6.QtGui import QAccessible
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -18,6 +19,8 @@ from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
     format_elapsed,
     format_mac_awake_reference,
+    format_mac_multiple,
+    format_percent,
     format_time_base,
     format_wash_in_ratio,
 )
@@ -42,6 +45,59 @@ from tests.integration.simulation_view.simulation_view_support import (
 )
 
 # ------------------------------------------------ the charts, integrated
+
+
+def test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends(
+    application: QApplication,
+) -> None:
+    """The chart reports itself as an image, with a name and each trace's latest value (`PL-T9RB`).
+
+    Before `PL-T9RB` the chart reached a screen reader as an unnamed client
+    area, which VoiceOver passes over. The expected alveolar value is read
+    from a second run built with the same settings, not from the run the chart
+    draws. The text is written when a screen reader asks, so after a further
+    frame it describes that frame, and once the frame is withheld it says so.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600)
+    fresh = SimulationController()
+    fresh.start()
+    _advance(fresh, 600)
+    alveolar = fresh.snapshot().alveolar_partial_pressure_fraction
+    mac_percent = MacPercent(float(load_agent_parameters("sevoflurane").mac_at_age_40_percent))
+    view = _shown_view(application, controller)
+    chart = _concentration(view).chart
+    described = QAccessible.queryAccessibleInterface(chart)
+
+    assert described.role() is QAccessible.Role.Graphic
+    assert described.text(QAccessible.Text.Name) == (
+        "Agent concentration and relative partial pressure over time, whole run so far, "
+        "15 minutes shown"
+    )
+    assert "Modelled sevoflurane at 10m: Circuit (inspired) " in described.text(
+        QAccessible.Text.Description
+    )
+    assert (
+        f"; Alveolar (end-tidal-equivalent) {format_percent(alveolar)}, "
+        f"{format_mac_multiple(alveolar, mac_percent)};"
+        in described.text(QAccessible.Text.Description)
+    )
+
+    _advance(controller, 60)
+    view.present(False)
+
+    assert "Modelled sevoflurane at 11m: " in described.text(QAccessible.Text.Description)
+
+    chart.withhold()
+
+    assert described.text(QAccessible.Text.Name) == (
+        "Agent concentration and relative partial pressure over time"
+    )
+    assert described.text(QAccessible.Text.Description) == (
+        "Nothing is plotted, because no frame could be drawn for this chart."
+    )
 
 
 def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) -> None:

@@ -1360,6 +1360,35 @@ def test_a_refusal_made_before_the_warning_does_not_hide_the_countdown() -> None
     )
 
 
+def test_a_countdown_keeps_one_topic_while_its_time_left_changes() -> None:
+    """A screen reader is told a banner when its topic changes, so a countdown is read once.
+
+    The countdown's text changes every second, and its topic does not, with or
+    without a refusal in front of it (`PL-J7Z5`). A refusal joining the
+    countdown is a new topic, because the banner now asks the reader to act. A
+    banner with no countdown has no topic of its own, so its text is its topic.
+    """
+
+    def banner_at(elapsed_s: int, refused: str | None = None) -> Notice:
+        snapshot = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(elapsed_s))
+        banner = run_notice(snapshot, refused, elapsed_s=snapshot.elapsed_s)
+        assert banner is not None
+        return banner
+
+    approach = (_FIRST_SECOND_OF_THE_APPROACH_S, 86_000, 86_399)
+    countdown = [banner_at(elapsed_s) for elapsed_s in approach]
+    refused = [banner_at(elapsed_s, "Setting refused — too high") for elapsed_s in approach]
+    before_the_countdown = banner_at(1_000, "Setting refused — too high")
+
+    assert len({banner.text for banner in countdown}) == 3
+    assert len({banner.topic for banner in countdown}) == 1
+    assert len({banner.text for banner in refused}) == 3
+    assert len({banner.topic for banner in refused}) == 1
+    assert countdown[0].topic is not None
+    assert refused[0].topic not in {None, countdown[0].topic}
+    assert before_the_countdown.topic is None
+
+
 def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
     """With no frame drawn, a failure is a warning and the run-length stop is not (`PL-0889`)."""
 

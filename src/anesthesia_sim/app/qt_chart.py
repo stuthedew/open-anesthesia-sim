@@ -70,6 +70,7 @@ from PySide6.QtCore import (
     SignalInstance,
 )
 from PySide6.QtGui import (
+    QAccessible,
     QBrush,
     QColor,
     QFontMetrics,
@@ -80,6 +81,7 @@ from PySide6.QtGui import (
     QPen,
 )
 from PySide6.QtWidgets import (
+    QAccessibleWidget,
     QCheckBox,
     QGraphicsView,
     QHBoxLayout,
@@ -137,6 +139,8 @@ from anesthesia_sim.app.dashboard_frame import (
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
     compared_trace_legend_label,
+    concentration_chart_description,
+    concentration_chart_name,
     trace_legend_label,
 )
 from anesthesia_sim.app.display_units import DisplayUnit
@@ -1111,6 +1115,71 @@ def _set_time_axis(item: Any, frame: ChartFrame) -> None:
     )
 
 
+class _ConcentrationChartAccessible(QAccessibleWidget):
+    """Describe the concentration chart to a screen reader, as an image with a text alternative.
+
+    Qt describes a plain widget as a client area, which VoiceOver on macOS
+    passes over, and pyqtgraph gives none of its plot items to assistive
+    technology. So the chart reports the role of a graphic, which AT-SPI, UI
+    Automation and macOS each report as an image. Its name and long
+    description are `dashboard_frame`'s, written from the frame the chart
+    last drew (`PL-T9RB`). Both are written when a screen reader asks for
+    them, so neither can describe an earlier frame.
+    """
+
+    def __init__(self, chart: ConcentrationChart) -> None:
+        super().__init__(chart, QAccessible.Role.Graphic)
+        self._chart = chart
+
+    def text(self, kind: QAccessible.Text) -> str:
+        """Return the chart's name or long description, or Qt's own text for anything else."""
+
+        if kind is QAccessible.Text.Name:
+            return concentration_chart_name(self._chart.frame)
+
+        if kind is QAccessible.Text.Description:
+            return concentration_chart_description(self._chart.frame)
+
+        return QAccessibleWidget.text(self, kind)
+
+
+def _concentration_chart_accessible(
+    key: str, widget: QObject
+) -> _ConcentrationChartAccessible | None:
+    """Return the accessible interface for a concentration chart, and nothing for any other object.
+
+    Qt asks each installed factory as `qt_widgets._setting_slider_accessible`
+    describes, and keeps the first interface returned.
+    """
+
+    if isinstance(widget, ConcentrationChart):
+        return _ConcentrationChartAccessible(widget)
+
+    return None
+
+
+# Whether `_concentration_chart_accessible` is installed. Qt keeps one list of
+# factories for the process, so one installation serves every chart.
+_chart_accessibility_installed = False
+
+
+def _install_concentration_chart_accessibility() -> None:
+    """Install `_concentration_chart_accessible` the first time a chart is built.
+
+    PySide6 installs a factory only once a `QApplication` exists, as
+    `qt_widgets._install_setting_slider_accessibility` records, and a chart
+    cannot be built before one.
+    """
+
+    global _chart_accessibility_installed
+
+    if _chart_accessibility_installed:
+        return
+
+    QAccessible.installFactory(_concentration_chart_accessible)
+    _chart_accessibility_installed = True
+
+
 class ConcentrationChart(QWidget):
     """The six compartment traces, both clinical references, both axes, and the marks.
 
@@ -1121,6 +1190,7 @@ class ConcentrationChart(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        _install_concentration_chart_accessibility()
         self._plot = _plot(PANEL)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)

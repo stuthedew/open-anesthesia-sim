@@ -45,6 +45,7 @@ from anesthesia_sim.app.qt_widgets import (
     FocusedComboBox,
     FocusedDateEdit,
     declare_interface_colours,
+    label_control,
     styled_label,
 )
 from anesthesia_sim.app.run_view import AVAILABLE_AGENTS
@@ -197,7 +198,9 @@ class PriceEntry(QWidget):
             # A field holds a few characters, so it stops growing at a set
             # width rather than stretching across a wide Area (`PL-PZD9`).
             field.setMaximumWidth(PRICE_FIELD_MAX_WIDTH)
-            form.addRow(styled_label(label, color=MUTED, wrap=True), field)
+            name = styled_label(label, color=MUTED, wrap=True)
+            label_control(name, field)
+            form.addRow(name, field)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(VIEW_HEADING_SPACING)

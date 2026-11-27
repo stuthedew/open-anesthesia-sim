@@ -18,12 +18,12 @@ from collections.abc import Iterator
 import pytest
 from pyqtgraph import PlotWidget
 from PySide6.QtCore import QPoint, Qt
-from PySide6.QtGui import QColor, QImage
+from PySide6.QtGui import QAccessible, QAccessibleInterface, QColor, QImage
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QPushButton, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import new_case_question
+from anesthesia_sim.app.dashboard_frame import AGENT_SELECTOR_LABEL, new_case_question
 from anesthesia_sim.app.qt_widgets import FocusRing, NewCaseDialog, SelectorComboBox
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
@@ -154,6 +154,114 @@ def test_every_tab_stop_in_the_new_case_question_shows_the_focus(
     application.processEvents()
     assert _unmarked(confirmation, application) == []
     confirmation.close()
+
+
+def _accessible_tree(root: QAccessibleInterface) -> list[QAccessibleInterface]:
+    """Every node of the accessible tree under `root`, as Qt hands it to the platform."""
+
+    nodes = [root]
+
+    for node in nodes:
+        nodes.extend(node.child(index) for index in range(node.childCount()))
+
+    return nodes
+
+
+def _labels(node: QAccessibleInterface) -> list[str]:
+    """Return the text of each label tied to `node`, which every platform reports as its label."""
+
+    return [
+        label.text(QAccessible.Text.Name) for label, _ in node.relations(QAccessible.Relation.Label)
+    ]
+
+
+def _said_purpose(node: QAccessibleInterface) -> str:
+    """Return what a screen reader is told a control is for, or "" where it is told nothing.
+
+    A label tied to the control comes first, because every platform reports
+    it. Otherwise the control's own name counts, unless the name only repeats
+    the control's value. On Linux and macOS, Qt names a selector by the entry
+    it shows (`QAccessibleComboBox::text` in Qt 6.12), so "Sevoflurane" alone
+    says nothing about what the selector sets.
+    """
+
+    labels = _labels(node)
+
+    if labels:
+        return labels[0]
+
+    name = node.text(QAccessible.Text.Name)
+
+    return "" if name == node.text(QAccessible.Text.Value) else name
+
+
+def _unnamed(window: QWidget) -> list[str]:
+    """Return each control in `window` that a reader can reach and a screen reader cannot name.
+
+    A control a reader can reach is a node on screen that takes the focus.
+    """
+
+    return [
+        f"{node.role().name} {type(node.object()).__name__}"
+        for node in _accessible_tree(QAccessible.queryAccessibleInterface(window))
+        if node.state().focusable and not node.state().invisible and not _said_purpose(node)
+    ]
+
+
+def test_every_control_a_reader_can_reach_says_what_it_is_for(
+    dashboard: SimulationView, application: QApplication
+) -> None:
+    """`PL-RK9Z`: no control reaches a screen reader without a name for its purpose.
+
+    WCAG 2.2 SC 4.1.2 (Name, Role, Value) asks every user interface component
+    for a name that a program can read. The walk reads the tree that Qt hands
+    each platform's accessibility interface, in every kind of View and in the
+    new-case question, so a control added later to any of them is in it.
+    Before `PL-RK9Z`, the walk found 61 controls without one, among them the
+    bookmark editor's fields, the price form's fields, the Area corners, the
+    scroll boxes and every selector.
+    """
+
+    assert len(built_view_kinds(dashboard)) == len(REGISTERED), built_view_kinds(dashboard)
+    assert _unnamed(dashboard) == []
+
+    snapshot = SimulationController(agent_id=_AGENT_ID).snapshot()
+    confirmation = NewCaseDialog(new_case_question(snapshot, "Isoflurane", 0), dashboard)
+    confirmation.show()
+    application.processEvents()
+    assert _unnamed(confirmation) == []
+    confirmation.close()
+
+
+def test_each_selector_is_named_by_its_shown_label_on_every_platform(
+    dashboard: SimulationView,
+) -> None:
+    """Each selector has a label tied to it, and its accessible name starts with that label.
+
+    Linux and macOS take a selector's purpose from the tied label, and Windows
+    from the accessible name (`qt_widgets.label_control`). The run's agent
+    selector had no label shown beside it, so it gained one, "Agent".
+    """
+
+    selectors = [
+        node
+        for node in _accessible_tree(QAccessible.queryAccessibleInterface(dashboard))
+        if node.role() is QAccessible.Role.ComboBox and not node.state().invisible
+    ]
+    labels = {_labels(node)[0] if _labels(node) else "" for node in selectors}
+
+    # The agent selector, the playback rate, the branch point, both time
+    # bases, the chart's top, the cost unit, the price form's agent and the
+    # bookmark editor's compartment.
+    assert len(selectors) == 9
+    assert AGENT_SELECTOR_LABEL in labels
+
+    for node in selectors:
+        label = _labels(node)
+        selector = node.object()
+        assert isinstance(selector, QWidget)
+        assert label, selector.accessibleName()
+        assert selector.accessibleName().startswith(label[0]), label[0]
 
 
 def test_a_plot_is_not_a_tab_stop(dashboard: SimulationView) -> None:

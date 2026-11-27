@@ -124,6 +124,7 @@ from anesthesia_sim.app.controller import (
 )
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_INITIAL_DETAIL_TEXT,
+    AGENT_SELECTOR_LABEL,
     BRANCH_AGENT_LOCK_TEXT,
     COMPARING_AGENT_LOCK_TEXT,
     CONTROL_TIMELINE_CAPTION,
@@ -177,6 +178,7 @@ from anesthesia_sim.app.qt_widgets import (
     OneLineWhereRoomLabel,
     ReadoutRow,
     SelectorComboBox,
+    label_control,
     style_label,
     styled_label,
 )
@@ -989,7 +991,9 @@ class RunView(QWidget):
         if banner is None:
             self._notice_text.set_notice(None)
         else:
-            self._notice_text.set_notice(banner.text, emphasis_color(banner.emphasis))
+            self._notice_text.set_notice(
+                banner.text, emphasis_color(banner.emphasis), topic=banner.topic
+            )
 
         self._failure_details.set_details(
             presentation.failure_details, APP_ISSUES_URL, run_name=presentation.name
@@ -1038,9 +1042,11 @@ class RunView(QWidget):
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
         self._readout_row.set_run_name(name)
-        self._control_timeline_heading_text.setText(
-            compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
-        )
+        timeline_heading = compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
+        self._control_timeline_heading_text.setText(timeline_heading)
+        # The box of entries is named by the heading above it, so a screen
+        # reader tells two runs' boxes apart as a reader does (`PL-RK9Z`).
+        self._control_timeline_entries.setAccessibleName(timeline_heading)
 
     def show_halt(self) -> None:
         """Write this run from its controller's record, when no frame can be drawn.
@@ -1954,13 +1960,21 @@ class RunView(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(CONTROL_ROW_SPACING)
         self._transport_layout = layout
+        # Each selector's caption is its label for a screen reader as well
+        # (`label_control`). The agent's caption stays beside the chip that
+        # takes the selector's place while a run is locked to its agent.
+        agent_caption = styled_label(AGENT_SELECTOR_LABEL, color=MUTED)
+        label_control(agent_caption, self._agent_dropdown)
+        playback_caption = styled_label(PLAYBACK_LABEL, color=MUTED)
+        label_control(playback_caption, self._playback_rate_dropdown)
         layout.addWidget(self._run_name_text)
+        layout.addWidget(agent_caption)
         layout.addWidget(self._agent_dropdown)
         layout.addWidget(self._running_agent_display)
         layout.addWidget(self._start_button)
         layout.addWidget(self._pause_button)
         layout.addWidget(self._reset_button)
-        layout.addWidget(styled_label(PLAYBACK_LABEL, color=MUTED))
+        layout.addWidget(playback_caption)
         layout.addWidget(self._playback_rate_dropdown)
         layout.addWidget(self._status_text)
         layout.addStretch(1)
@@ -2108,7 +2122,7 @@ class RunView(QWidget):
         # heading and count then stay in view when two runs' records share
         # the column and one of them is long (`PL-HF1B`).
         self._control_timeline_entries = FittedScroll(
-            (self._control_timeline_text,), RECORD_ENTRIES_LEAST_HEIGHT
+            (self._control_timeline_text,), RECORD_ENTRIES_LEAST_HEIGHT, CONTROL_TIMELINE_HEADING
         )
         timeline_column.addWidget(self._control_timeline_entries)
 
