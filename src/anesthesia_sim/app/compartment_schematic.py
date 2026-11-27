@@ -140,34 +140,34 @@ OFF_SCALE_LINE_TEMPLATE: Final = (
     "Each is drawn full, and its label gives its tension."
 )
 
-#: The last line of each container's label: the compartment's share of all the
-#: agent that the circuit and body hold at the instant shown (`PL-8PL4`). Each
-#: share sits in the label of its own container, so no share is told apart by
-#: colour and no key is needed to name it. The line is kept no wider than a
-#: compartment's name or amount, so it adds no width to a column. Worded "of the
-#: agent", it was the widest label, and under the font that CI draws in, the
-#: Maintenance Workspace then scrolled sideways at 1366 by 768. The wording is a
-#: placeholder.
+#: Each container's label ends with this line, which gives the compartment's
+#: share of all the agent that the circuit and body hold at the instant shown
+#: (`PL-8PL4`). Each share sits in the label of its own container, so no share
+#: is told apart by colour and no key is needed to name it. The line is kept no
+#: wider than a compartment's name or amount, so it adds no width to a column.
+#: Worded "of the agent", it was the widest label, and under the font that CI
+#: draws in, the Maintenance Workspace then scrolled sideways at 1366 by 768.
+#: The wording is a placeholder.
 SHARE_TEMPLATE: Final = "{share} of agent"
 
-#: What the share line shows while no share exists: while the run holds no
-#: agent, and while its values are withheld. The line stays, so the labels keep
-#: their height when the first agent arrives. The dash is the mark the readouts
-#: use for a value they do not show. The wording is a placeholder.
+#: The share line shows this text while no share exists, which is while the run
+#: holds no agent and while its values are withheld. The line stays, so the
+#: labels keep their height when the first agent arrives. The dash is the mark
+#: the readouts use for a value they do not show. The wording is a placeholder.
 NO_SHARE_TEXT: Final = "\u2014 of agent"
 
-#: The caption line that says what every share is a part of: the agent held at
-#: the instant shown, circuit included. The project owner first read the old
+#: This caption line says what every share is a part of, which is the agent held
+#: at the instant shown, circuit included. The project owner first read the old
 #: single bar's heading, "Share of the agent the run holds", as agent counted
 #: over the whole run (`PL-8PL4`). The wording is a placeholder, but the instant
 #: and the circuit's place in the whole must be on screen.
 SHARE_CAPTION: Final = "Shares are of all the agent in the circuit and body at this instant."
 
-#: The caption line while the run holds no agent. No share exists then, so each
-#: label shows `NO_SHARE_TEXT`, and this line says why, rather than the labels
-#: showing six zeros as if they were shares. It is one line, as `SHARE_CAPTION`
-#: is, so the schematic keeps its height when the first agent arrives. The
-#: wording is a placeholder.
+#: The caption line shows this text while the run holds no agent. No share
+#: exists then, so each label shows `NO_SHARE_TEXT`, and this line says why,
+#: rather than the labels showing six zeros as if they were shares. It is one
+#: line, as `SHARE_CAPTION` is, so the schematic keeps its height when the first
+#: agent arrives. The wording is a placeholder.
 NO_AGENT_SHARE_CAPTION: Final = "No shares yet: the circuit and body hold no agent."
 
 #: The label texts that set the width of each container's column, so that a
@@ -177,8 +177,8 @@ NO_AGENT_SHARE_CAPTION: Final = "No shares yet: the circuit and body hold no age
 #: formatter that prints amounts writes both texts. Room for a share is reserved
 #: for the share below 1%, the share just below the whole, the whole, and the
 #: text shown while no share exists. The View also widens a column for any label
-#: wider than these, so that no label is clipped. The View draws each share bar
-#: as long as the widest of these texts (`SchematicCanvas.share_bar`).
+#: wider than these, so that no label is clipped. Each share bar is as long as
+#: the widest label its column reserves or shows (`SchematicCanvas.share_bar`).
 WIDEST_LABELS: Final[tuple[str, ...]] = (
     *(panel.name for panel in COMPARTMENT_PANELS),
     WIDEST_COMPARTMENT_VALUE,

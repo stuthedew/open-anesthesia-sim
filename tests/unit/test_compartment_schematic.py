@@ -271,22 +271,27 @@ def test_each_label_prints_its_own_compartment_s_share_in_whole_percent() -> Non
 
     The expected text is worked out here from the six amounts, rounded to the
     nearest whole percent, with `<1%` for a share that rounds to 0 but is above
-    it (`docs/INTERFACE.md` § "Displayed precision"). At one hour, the circuit,
-    the alveoli, venous blood and the vessel-rich group each hold a few percent
-    or less, and muscle and fat hold the rest, so a share printed under the
-    wrong container would show.
+    it (`docs/INTERFACE.md` § "Displayed precision"). The test reads the run at
+    ten minutes, when no two of the six shares print the same, so a share
+    printed under the wrong container would show. It checks that they differ,
+    so a change to the model cannot leave two equal texts that a swap would not
+    change.
     """
 
-    snapshot = _run("sevoflurane", 60 * SECONDS_PER_MINUTE).snapshot()
+    snapshot = _run("sevoflurane", 10 * SECONDS_PER_MINUTE).snapshot()
     readings = container_readings(snapshot)
     amounts = snapshot.compartment_agent_amounts
     total = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
+    expected_texts = []
 
     for reading in readings:
         percent = 100.0 * amounts.of(reading.quantity) / total
         whole = round(percent)
         expected = "<1%" if whole == 0 and percent > 0.0 else f"{whole}%"
-        assert reading.share_text == f"{expected} of agent", reading.name
+        expected_texts.append(f"{expected} of agent")
+
+    assert len(set(expected_texts)) == len(expected_texts), expected_texts
+    assert [reading.share_text for reading in readings] == expected_texts
 
 
 def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty() -> None:

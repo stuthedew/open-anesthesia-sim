@@ -51,6 +51,7 @@ from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
     CONTAINER_ORDER,
     WIDEST_LABELS,
+    WITHHELD_SCHEMATIC,
     ContainerReading,
     SchematicShown,
     instant_line,
@@ -76,7 +77,6 @@ _LABEL_GAP: Final = 8
 _LINE_WIDTH: Final = 2.0
 _OUTLINE_WIDTH: Final = 1.0
 _OFF_SCALE_WIDTH: Final = 4.0
-_LABEL_LINES: Final = 4
 # The height of the share bar under each label, and the gap between the bar and
 # the label's last line.
 _SHARE_BAR_HEIGHT: Final = 8
@@ -384,6 +384,11 @@ def _labels(reading: ContainerReading) -> tuple[str, str, str, str]:
     """
 
     return (reading.name, reading.tension, reading.amount, reading.share_text)
+
+
+#: How many lines `_labels` paints under each container. It is counted from
+#: `_labels` itself, so a line added there moves the share bars down with it.
+_LABEL_LINES: Final = len(_labels(WITHHELD_SCHEMATIC.readings[0]))
 
 
 class RunSchematic(QWidget):

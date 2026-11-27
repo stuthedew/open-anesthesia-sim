@@ -750,14 +750,14 @@ def test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label
     The fill of each bar is counted in pixels of its compartment's colour along
     the bar's middle row. The fill starts 2 px inside the bar's edge, and its
     last pixel can round either way, so each count must be within one pixel of
-    the share multiplied by the length left inside. A share worth at least one
-    pixel must show at least one, which the outline hid when the fill started
-    under it. The share is worked out here from the six amounts. The
-    six bars must be one length, so that equal lengths of fill are equal
-    shares. Each bar must stand inside its own container's column, under the
-    label that names it, and that label must end with the share. At ten
-    seconds, venous blood, muscle and fat each hold far less than 1%, and at one
-    hour venous blood holds about 1%, so the test checks the bars at both.
+    the share multiplied by the length left inside. The share is worked out
+    here from the six amounts. The six bars must be one length, so that equal
+    lengths of fill are equal shares, and each must be at least as long as
+    every label line above it. Each bar must stand inside its own container's
+    column, under the label that names it, and that label's last line must be
+    the share worked out here. At ten seconds, venous blood, muscle and fat
+    each hold far less than 1%, and at one hour venous blood holds about 1%, so
+    the test checks the bars at both.
     """
 
     for seconds in (10, 60 * SECONDS_PER_MINUTE):
@@ -778,14 +778,18 @@ def _check_the_share_bars(
     bars = [canvas.share_bar(index) for index in range(6)]
     column = canvas.width() / 6
     painted_strings = canvas.painted_strings()
+    lines = len(painted_strings) // 6
+    metrics = QFontMetrics(canvas.font())
+    widest_line = max(metrics.horizontalAdvance(text) for text in painted_strings)
 
     assert len({bar.width() for bar in bars}) == 1, "the six bars are not one length"
+    assert bars[0].width() >= widest_line, "a bar is shorter than a label line"
 
     for index, (reading, bar) in enumerate(zip(canvas.readings, bars, strict=True)):
         assert column * index <= bar.left(), reading.name
         assert bar.right() <= column * (index + 1), reading.name
-        assert painted_strings[4 * index + 3] == reading.share_text, reading.name
-        assert reading.share_text.endswith(" of agent"), reading.name
+        share = format_compartment_share(amounts.of(reading.quantity) / total)
+        assert painted_strings[lines * index + lines - 1] == SHARE_TEMPLATE.format(share=share)
         middle = int(bar.center().y())
         colour = QColor(trace_style(reading.quantity).color).rgb()
         painted = sum(
@@ -794,14 +798,17 @@ def _check_the_share_bars(
         )
         expected = amounts.of(reading.quantity) / total * (bar.width() - 2 * _FILL_INSET_PX)
         assert abs(painted - expected) <= 1, (reading.name, painted, expected)
-        if expected >= 1.0:
-            assert painted >= 1, (reading.name, expected)
 
 
 def test_a_run_that_holds_no_agent_shows_empty_share_bars_and_says_why(
     application: QApplication, shown: list[SimulationView]
 ) -> None:
-    """Before any agent, each bar is an outline, each share a dash, and the caption says why."""
+    """Before any agent, each bar is an outline, each share a dash, and the caption says why.
+
+    Inside each empty outline every pixel must be the canvas's ground, so no
+    line of the label above runs into the bar, and the bar must lie wholly
+    inside the canvas.
+    """
 
     schematic = _schematic(_dashboard(application, shown, SimulationController())).schematics[0]
     canvas = schematic.canvas
@@ -820,6 +827,25 @@ def test_a_run_that_holds_no_agent_shows_empty_share_bars_and_says_why(
         assert not any(colour in colours for colour in row), index
         assert row[0] == ink, index
         assert row[-1] == ink, index
+        inside = {
+            image.pixelColor(x, y).rgb()
+            for x in range(int(bar.left()) + 1, int(bar.right()) - 1)
+            for y in range(int(bar.top()) + 1, int(bar.bottom()) - 1)
+        }
+        assert len(inside) == 1, index
+        assert bar.bottom() <= canvas.height(), index
+
+
+def test_a_share_bar_is_refused_for_an_index_outside_the_six_containers(
+    application: QApplication,
+) -> None:
+    """Asking for the bar of a seventh container, or of index -1, raises rather than wraps."""
+
+    canvas = SchematicCanvas()
+
+    for index in (-1, 6):
+        with pytest.raises(IndexError, match=f"no share bar at index {index}"):
+            canvas.share_bar(index)
 
 
 def test_the_share_line_adds_no_width_to_a_column(application: QApplication) -> None:
