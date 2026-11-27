@@ -1,6 +1,8 @@
 ---
 id: PL-DKQ5
 title: When the dashboard's page scrolls, an Area's header and the row a View keeps above its scroll box move out of view while the View's values below them stay in view
+priority: P1
+effort: M
 status: untriaged
 classes: defect, safety
 feature: interface-areas
