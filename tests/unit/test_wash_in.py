@@ -22,6 +22,7 @@ from anesthesia_sim.app.wash_in import (
     WASH_IN_EQUILIBRIUM_RATIO,
     WashInDomain,
     WashInReading,
+    _smallest_fraction_shown_as_one_display_step,
     is_ventilated,
     is_wash_in,
     read_wash_in,
@@ -103,6 +104,21 @@ def test_the_denominator_floor_is_where_the_readout_first_shows_one_step() -> No
     assert WASH_IN_DENOMINATOR_FLOOR_FRACTION == pytest.approx(
         CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 100.0 / 2.0
     )
+
+
+def test_the_search_for_the_floor_ends_on_the_readout_boundary() -> None:
+    """Running the search again gives the floor, and the readout's boundary lies just below it.
+
+    The floor is computed once, when `app/wash_in.py` is imported. This test
+    calls the search itself, so a change to the search fails here and not
+    only through a constant that was computed before the change ran.
+    """
+
+    found = _smallest_fraction_shown_as_one_display_step()
+
+    assert found == WASH_IN_DENOMINATOR_FLOOR_FRACTION
+    assert format_percent(found) == "0.01%"
+    assert format_percent(Fraction(math.nextafter(found, 0.0))) == "<0.01%"
 
 
 def test_each_inspired_value_the_readout_shows_gives_a_ratio_always_or_never() -> None:

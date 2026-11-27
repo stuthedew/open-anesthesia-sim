@@ -6,14 +6,14 @@ effort: S
 status: done
 classes: defect
 feature: interface-design-review
-touches: src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_time_base.py, docs/INTERFACE.md, tests/unit/test_wash_in.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_time_base.py, docs/INTERFACE.md, tests/unit/test_wash_in.py, tests/unit/test_dashboard_frame.py, tests/unit/test_formatting.py
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 closed: 2026-11-27
 pr: 2335
 filed-pr: 2294
 payoff: the Circuit readout and the F_A/F_I plot agree about which inspired values a ratio is drawn from
-tests: tests/unit/test_wash_in.py::test_each_inspired_value_the_readout_shows_gives_a_ratio_always_or_never, tests/unit/test_wash_in.py::test_the_denominator_floor_is_where_the_readout_first_shows_one_step
+tests: tests/unit/test_wash_in.py::test_each_inspired_value_the_readout_shows_gives_a_ratio_always_or_never, tests/unit/test_wash_in.py::test_the_denominator_floor_is_where_the_readout_first_shows_one_step, tests/unit/test_wash_in.py::test_the_search_for_the_floor_ends_on_the_readout_boundary, tests/unit/test_formatting.py::test_the_readout_reaches_its_resolution_exactly_where_it_shows_a_number
 ---
 
 **Problem.** `read_wash_in` in `src/anesthesia_sim/app/wash_in.py` gives no ratio while the inspired fraction is below 1e-4, and `docs/INTERFACE.md` § "A point is drawn only inside two boundaries" calls that 0.01% limit "the smallest step of the concentration display". But `format_percent` in `src/anesthesia_sim/app/formatting.py` rounds to 0.01 percentage points and shows `<0.01%` only for a value that rounds to 0.00%. An inspired fraction from 5e-5 up to 1e-4 is therefore shown as "0.01%" in the Circuit readout (checked 2026-11-23: 5e-5, 7e-5 and 9.9e-5 all give "0.01%", and 4e-5 gives "<0.01%"). In that band the readout shows the very value the document names as the limit, while the caption beside the plot says "Not defined: the inspired concentration is too low to divide by." At another moment the same "0.01%" reading, from a fraction of 1e-4 or more, gives a drawn ratio. A washout passes through the band, and in a low-flow washout it can stay there for minutes.
