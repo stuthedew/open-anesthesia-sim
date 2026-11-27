@@ -4788,6 +4788,12 @@ clinical value.
 The legend entry beside each checkbox names its trace's style in words, so a
 reader can learn every style from the legend alone.
 
+**Every width and dash length is in device-independent pixels, on every
+screen.** That is the unit Qt lays out every widget in, so a 3 px trace is as
+wide beside the text on a Retina screen at 200%, or on a Windows screen at 125%,
+as it is on a screen at 100%. The same holds for every other line on both plots
+and for each legend swatch (`PL-FSRR`).
+
 **Color cannot be the first cue, because some pairs of trace colors are almost
 equally bright.** The closest pairs are alveolar and muscle, circuit and
 mixed venous, and, under protanopia, vessel-rich and fat. No other choice of colors fixes this. Each color has at least the 3:1
@@ -4834,6 +4840,15 @@ ceilings and the 3:1 minimum against these figures
 before they were darkened, and no test checks those. The search over lightness
 is not part of the script. The script runs as part of `make check`, and its
 `--matrix` option prints the pairwise ratios in the table below.
+
+The chart's lines are cosmetic pens, which Qt draws in device pixels.
+`on_screen` in `src/anesthesia_sim/app/qt_chart.py` multiplies a pen's width by
+the screen's device pixel ratio, and each plot's `_ScreenPens` gives every line
+its pen through it again when the window moves to a screen with another ratio.
+`tests/integration/test_chart_screen_scale.py` paints every trace, dash pattern
+and legend swatch at ratios of 1, 1.25, 1.5, 2 and 3. It also checks, on a
+screen at each ratio, that every line both plots stroke goes through
+`on_screen`.
 
 Each trace has this contrast against the panel, as displayed (Normal) and as
 simulated for each dichromacy:

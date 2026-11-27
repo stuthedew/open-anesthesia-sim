@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/qt_chart.py, ROADMAP.md
+touches: src/anesthesia_sim/app/qt_chart.py, ROADMAP.md, docs/INTERFACE.md, tests/integration/test_chart_screen_scale.py
 added: 2026-11-27
 filed-pr: 2332
 payoff: a user on a Retina or scaled Windows screen sees each chart trace at the width and dash pattern that tells it apart from the others
@@ -103,3 +103,31 @@ it. Moving to a screen with another ratio redraws at the new ratio, and a test
 holds that too.
 
 **Generator check.** One-off: the first rendering at a ratio other than 1. The check that refuses a cosmetic pen built outside the one function stops the next instance.
+
+**Built 2026-11-27.** `on_screen` in `src/anesthesia_sim/app/qt_chart.py`
+multiplies a cosmetic pen's width by the device pixel ratio and returns a
+non-cosmetic pen unchanged. Each plot's `_ScreenPens`, made by `_plot`, gives
+every line its pen through `hold` and gives them all again on
+`DevicePixelRatioChange` and on show. Qt sends that event to every child widget
+of a window whose ratio changes (`sendChangeRecursively` in
+`qtbase/src/widgets/kernel/qwidgetwindow.cpp`, branch 6.10, read 2026-11-27).
+The legend swatches convert when they paint, at the ratio of
+`painter.paintEngine().paintDevice()`, because `painter.device()` is the widget
+itself even during a grab into an image. An axis's `setPen` also sets its
+title's colour, so `_set_drawn_pen` puts the title's style back. `drawn_pen`
+and `preview_pen` now return the pen as specified, in device-independent
+pixels.
+
+**Regression test, run against the code before the fix.** The tests need
+`on_screen`, which the fix added. The variant without it paints the chart's own
+`trace_pen` and a legend swatch onto an image at a ratio of 2, from a worktree
+of `origin/main` at `9c475dc7`. It printed "CIRCUIT trace: specified 3 px,
+painted 1.50 px at ratio 2.0" and "legend swatch: specified 3.0 px, painted
+1.50 px at ratio 2.0". On this branch the same measurement is
+`test_each_trace_is_painted_at_its_specified_width_at_every_screen_scale` and
+`test_each_legend_swatch_is_painted_at_its_line_s_width_at_every_screen_scale`.
+
+**Docs checked at close-out:** `docs/INTERFACE.md` § "The six compartment
+traces: what separates them" (states the unit, and its note for developers
+names the tests), `docs/ARCHITECTURE.md`, `README.md`, `docs/MODEL.md`,
+`docs/VERIFICATION.md` (none describes how chart lines are drawn).
