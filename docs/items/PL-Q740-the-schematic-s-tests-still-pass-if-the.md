@@ -72,6 +72,17 @@ The last row needed room under the sections. Without it, the section above
 grew into the space of the one below, which was resized as well as moved, so
 its `resizeEvent` moved the heading and hid the gap.
 
+**A fifth gap, from the pull request's review.** The three scroll tests
+checked that a run's heading was in view wherever its values were, and not
+that the values stood below it. A heading left partway down its section shows
+the rows above it directly under the run above, where they read as that run's
+values. Each seen value must now stand below its own run's heading
+(`_heading_in_view`, and the same check in
+`test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`).
+The schematic's tests still pass with `pin_heading()` removed from
+`moveEvent`, because their runs are paused and no section moves without a
+scroll. The plain-widget test in the table's last row catches it.
+
 **Two findings not taken.** The review found that removing
 `ViewScroll._pin_headings` from a resize changed no test, and could not
 show a resize that needs it. It stays: since `PL-H55Q`, a change of range also

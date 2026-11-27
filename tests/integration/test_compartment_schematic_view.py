@@ -20,7 +20,7 @@ from typing import NoReturn
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter
-from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
+from PySide6.QtWidgets import QAbstractSlider, QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.area_layout import ViewScroll
@@ -1040,11 +1040,20 @@ def _qualifiers(run: RunSchematic) -> tuple[QWidget, ...]:
 
 
 def _heading_in_view(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> bool:
-    """Return whether the run's heading, with each line it holds, lies wholly in `shown_part`."""
+    """Return whether the run's heading is wholly in `shown_part`, above each value seen there.
+
+    Each line the heading holds must lie wholly in `shown_part`. A value seen
+    above its own run's heading would stand under the rows of the run above,
+    and read as that run's value.
+    """
+
+    heading_bottom = run.heading.mapTo(page.viewport(), QPoint(0, 0)).y() + run.heading.height()
 
     return all(
         shown_part.contains(QRect(line.mapTo(page.viewport(), QPoint(0, 0)), line.size()))
         for line in _qualifiers(run)
+    ) and all(
+        value.top() >= heading_bottom for value in _seen_without_heading(page, run, shown_part)
     )
 
 
@@ -1071,8 +1080,9 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
     shorter than one run's schematic, and two compared runs share it. The test
     scrolls the Area through every position. Wherever a container, a share bar
     or a line of a label is wholly in view and not under the heading, the
-    heading is wholly in view too. It holds the line that names the run and
-    the instant, the share caption and the compartments' names. Before the
+    heading is wholly in view too, and above that value. It holds the line
+    that names the run and the instant, the share caption and the
+    compartments' names. Before the
     heading was pinned, a scroll of the two runs' schematic showed a tension
     with neither its run nor its compartment named. The disclaimer, the
     tensions' unit and the amounts' unit with its condition stand above the
@@ -1137,6 +1147,14 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
             if seen:
                 for qualifier in qualifiers:
                     assert viewport.contains(qualifier), (position, run.name_text.text())
+
+            # A value seen above its own run's heading would stand under the
+            # rows of the run above, and read as that run's value.
+            for value in seen:
+                assert value.top() >= heading.top() + heading.height(), (
+                    position,
+                    run.name_text.text(),
+                )
 
 
 @pytest.mark.parametrize(
@@ -1259,7 +1277,8 @@ def test_a_run_heading_follows_a_scroll_of_the_page(
     box until a container, a share bar or a line of a label stands just
     under the heading pinned at the box's top. It then scrolls the page
     through every position. Wherever a value is wholly in view and not under
-    the heading, the heading is wholly in view too. Before the page's scroll
+    the heading, the heading is wholly in view too, and above that value.
+    Before the page's scroll
     moved the headings, the heading stayed where the box's last scroll put
     it, and went above the page's edge while the value under it stayed in
     view.
@@ -1314,14 +1333,20 @@ def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
     """`PL-H55Q`: a taller window moves each heading over the part of its run it brings into view.
 
     In the Maintenance Workspace at 1366 by 600 with a branch open, the page
-    scrolls. The schematic's box is scrolled until the first run's tension
-    line stands just under the heading, and the page is scrolled back to its
-    top, which takes the schematic's Area below the window's lower edge. No
-    part of either section is then in view, so each heading stands at its
-    section's top. Making the window 810 px tall brings the box back into
-    view with no scroll of the page or of the box, and the run is paused, so
-    no drawn frame moves a heading either. Wherever a value is then seen, its
-    run's heading is wholly in view. Before a change of the page's scroll
+    scrolls. The page is scrolled to its end, as a reader scrolls it. That
+    ends the hold on the concentration chart that the branch began, so no
+    later change of the page's range scrolls the page to the chart. The
+    schematic's box is scrolled until the first run's tension line stands
+    just under the heading, and the page is scrolled back to its top, which
+    takes the schematic's Area below the window's lower edge. No part of
+    either section is then in view, so each heading stands at its section's
+    top. The window is then made as tall as it can be while the page still
+    scrolls, which brings the box back into view. While the page scrolls, its
+    Areas keep their least heights, so the box keeps its size. The test checks
+    that the resize scrolls neither the page nor the box and leaves the box's
+    size as it was, and the run is paused, so no drawn frame moves a heading
+    either. Wherever a value is then seen, its run's heading is wholly
+    in view, and above that value. Before a change of the page's scroll
     range moved the headings, the first run's six tensions were in view with
     its heading above the box's top edge.
     """
@@ -1331,24 +1356,37 @@ def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
     schematic = _schematic(view)
     scroll = _view_scroll(schematic)
     first = schematic.schematics[0]
+    page_bar = page.verticalScrollBar()
+    box_bar = scroll.verticalScrollBar()
 
-    page.verticalScrollBar().setValue(page.verticalScrollBar().maximum())
+    # `triggerAction` reports the scroll through `actionTriggered`, as the
+    # wheel, the keys and the bar do, so it ends the hold on the chart.
+    page_bar.triggerAction(QAbstractSlider.SliderAction.SliderToMaximum)
     application.processEvents()
-    scroll.verticalScrollBar().setValue(
+    box_bar.setValue(
         first.mapTo(schematic, QPoint(0, 0)).y()
         + first.canvas.mapTo(first, first.canvas.label_line(0, 0).topLeft().toPoint()).y()
         - first.heading.height()
     )
     application.processEvents()
-    page.verticalScrollBar().setValue(0)
+    page_bar.triggerAction(QAbstractSlider.SliderAction.SliderToMinimum)
     application.processEvents()
 
     # The premise: the page's scroll has taken the whole box out of view.
     assert _shown_part(page, scroll).isEmpty()
+    before = (page_bar.value(), box_bar.value(), scroll.viewport().size())
 
-    view.resize(1366, 810)
+    # The page's viewport grows with the window, so this leaves the page one
+    # pixel to scroll.
+    view.resize(1366, 600 + page_bar.maximum() - 1)
     application.processEvents()
     shown_part = _shown_part(page, scroll)
+
+    # The premise: the taller window scrolled neither the page nor the box and
+    # left the box's size as it was. A scroll or a resize would move the
+    # headings by itself, so only the change of the page's range can have.
+    assert page_bar.maximum() == 1
+    assert (page_bar.value(), box_bar.value(), scroll.viewport().size()) == before
 
     # The premise: the taller window shows the first run's values again.
     assert _seen_without_heading(page, first, shown_part)

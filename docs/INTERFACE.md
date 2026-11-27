@@ -6873,14 +6873,15 @@ heading is drawn over the rows on the panel's colour, so the part of a row
 under it is hidden. A label line or a container can stand across the
 heading's lower edge and show in part. A container cut there shows only its
 lower part, so its fill can look like that of a container at or over the
-scale's top (`PL-GWTR`). Four tests in
+scale's top. A label line cut there shows only the lower part of its
+characters, so its value can look like another (`PL-GWTR`). Four tests in
 `tests/integration/test_compartment_schematic_view.py` hold the rest.
 
 1. `test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`
    scrolls the Maintenance Workspace at 1366 by 768 through every position,
    with two runs, with one run and with one run's circuit above the scale.
    Wherever a container, a share bar or a label line is wholly in view and
-   not under the heading, the whole heading is in view too.
+   not under the heading, the whole heading is in view too, above it.
 2. `test_each_compartment_name_stands_over_its_own_container` checks that
    each name is centred over its container, at two widths.
 3. `test_a_run_heading_follows_a_scroll_of_the_page` scrolls the page of a
@@ -6888,7 +6889,8 @@ scale's top (`PL-GWTR`). Four tests in
    the first test.
 4. `test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view`
    makes the window taller while the schematic's Area is below its lower
-   edge, with no scroll at all, and makes the same check.
+   edge, with no scroll and no change to the box's size, and makes the same
+   check.
 
 The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.

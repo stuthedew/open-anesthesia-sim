@@ -40,6 +40,18 @@ CI draws text in. With `bar.rangeChanged.connect(after_range)` taken out of
 `pin_on_scroll`, `.venv/bin/pytest -q` on that test fails with
 `AssertionError: Run 1, at 10m of simulated time`.
 
+**The test's premise, after the pull request's review.** The first version of
+the test made the window 810 px tall. Under DejaVu Sans that resize also grew
+the schematic's box from 68 to 80 px, because the page no longer scrolled and
+its Areas grew. A resize of the box moves its headings by itself, so under
+CI's font the first version passed with the fix taken out. The test now makes
+the window as tall as it can be while the page still scrolls, which keeps the
+Areas at their least heights. It ends the page's hold on the chart with a
+scroll the reader could make, so a change of range cannot scroll the page to
+the chart. It then checks that the resize scrolled neither the page nor the
+box and left the box's size as it was. With the fix taken out, it fails with
+the message above under both fonts.
+
 **Gate.** Placed on v0.7.0's frozen list beside `PL-3NGZ`, which it completes:
 `PL-3NGZ` is done when no run's values are in view without its name, and this
 case broke that. `ROADMAP.md` § "The gate is a snapshot, not a moving target"
@@ -65,4 +77,3 @@ for a run's value read as another's, `docs/ARCHITECTURE.md`'s line for
 `app/simulation_view.py`. `docs/MODEL.md` and `README.md` do not describe the
 headings. The interface note also now gives the corrected measurement in
 `PL-C14T`, and names `PL-GWTR` for a container cut by a heading.
-

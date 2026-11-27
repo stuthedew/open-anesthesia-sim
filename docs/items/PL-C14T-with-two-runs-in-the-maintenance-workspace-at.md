@@ -34,6 +34,14 @@ two runs. Give the schematic room in the interface
 pass (`PL-9WDN`), with four whole label lines as the least that its box shows,
 and work `PL-GWTR` (a container cut by the heading) with it.
 
+**Agreed by the coordinator on 2026-11-27, and put back the same day.** The
+coordinator agreed to keep the 110 px Area for v0.7.0 and to fix it in the
+interface pass, with four whole label lines as the bar. The review of
+`PL-H55Q`'s pull request then found that what the band does show can be
+misread: a container cut by the heading can look full, and a cut tension can
+look like another. The case above did not weigh that, so the choice went back
+to the coordinator with `PL-GWTR`, which holds the measurements.
+
 **Done when** a test opens a branch in the Maintenance Workspace at 1366 by 768 and finds, for each run, a scroll position at which all six containers are whole under the run's heading, with the chart's title and key in view.
 
 **Generator check.** A consequence of `PL-3NGZ`'s pinned heading meeting the Workspace's overflow at this size; a one-off.
