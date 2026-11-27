@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: interface-design-review
-touches: src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, docs/INTERFACE.md, tests/unit/test_wash_in.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_time_base.py, docs/INTERFACE.md, tests/unit/test_wash_in.py, tests/unit/test_dashboard_frame.py
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 closed: 2026-11-27

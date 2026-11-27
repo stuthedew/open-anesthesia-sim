@@ -26,12 +26,12 @@ show: a minimum denominator, a maximum of one, and ventilation running.** All
 three exist because a plausible-looking number is worse here than no number at
 all.
 
-1. *The denominator must be at least one displayed unit.* $`F_I`$ is zero
-   before any agent reaches the circuit. It is exactly zero at the start of
-   every run, and for the whole of a run in which the vaporizer is never
-   opened, so the quotient there is $`0/0`$. It also falls below one
-   displayed unit during a washout, once the vaporizer is closed, while the
-   patient still holds agent. Rather than treat $`0/0`$ as a
+1. *The readout must show the denominator as at least one step, `0.01%`.*
+   $`F_I`$ is zero before any agent reaches the circuit. It is exactly zero
+   at the start of every run, and for the whole of a run in which the
+   vaporizer is never opened, so the quotient there is $`0/0`$. It also
+   falls below one shown step during a washout, once the vaporizer is
+   closed, while the patient still holds agent. Rather than treat $`0/0`$ as a
    special case, the rule forms the ratio exactly when the concentration
    readout shows the inspired fraction as a number, `0.01%` or more. It forms
    none when the readout shows `<0.01%` or `0.00%`. The rule reads the

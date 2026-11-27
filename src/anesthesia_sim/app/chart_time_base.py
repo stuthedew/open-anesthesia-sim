@@ -667,7 +667,7 @@ def extreme_seconds_with_gaps(
     """Return what `extreme_seconds` returns, for a trace that has no value at some seconds.
 
     The F_A/F_I ratio has no value at a second whose inspired fraction is
-    below the smallest one the display resolves (`wash_in.wash_in_ratio`).
+    one that the readout shows as `<0.01%` or `0.00%` (`wash_in.wash_in_ratio`).
     Its turns between two columns are drawn by the rule of `extreme_seconds`,
     with one more rule for such a second (`PL-DN13`). **A second with no
     value is left out of the search.** It is never returned, and an end of a

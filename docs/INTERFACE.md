@@ -4106,8 +4106,8 @@ columns. A column is inside the boundaries when both of these conditions are
 true:
 
 1. The Circuit readout shows $`F_I`$ as a number, `0.01%` or more. The
-   readout rounds to two decimals, so this holds from $`F_I = 5 \times
-   10^{-5}`$ (0.005%) up. Below that, the readout shows `<0.01%`, or `0.00%`
+   readout rounds to two decimals, so this holds from
+   $`F_I = 5 \times 10^{-5}`$ (0.005%) up. Below that, the readout shows `<0.01%`, or `0.00%`
    at exactly zero, and no ratio is formed. So every inspired value the
    readout shows either always gives a ratio or never does. $`F_I`$ is
    exactly zero until agent reaches the circuit: at the start of every run,
