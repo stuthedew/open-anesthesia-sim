@@ -148,6 +148,15 @@ What changed:
    than". `PRICE_PER_ML_NOT_SHOWN_TEXT` says the price per mL is "too large or
    too small to use" and asks for the same check.
 
+The audit's mutation run on the rewrite found 31 changed lines that no unit
+test caught, because the earlier tests matched only a phrase of each reason.
+`test_each_refused_price_is_explained_in_the_words_the_view_uses` in
+`tests/unit/test_preferences.py` now compares the whole line for eight refused
+prices, one of them missing four fields so that a wrong join shows. One mutant
+cannot be caught: `_require_above_zero` passes the field's name to
+`require_positive_finite`, then replaces that function's message with its own,
+so a mutant that drops the name changes nothing a user or a caller sees.
+
 The message given when the whole preferences file is unreadable still
 describes the file's keys in its own terms. `PL-W312` records it, because that
 text is not one this item's inventory listed.

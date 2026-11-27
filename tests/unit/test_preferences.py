@@ -382,6 +382,72 @@ def test_the_notice_of_refused_preferences_says_what_the_reader_can_do(tmp_path:
     )
 
 
+_WITHOUT_CURRENCY = {
+    key: value for key, value in SEVOFLURANE_PRICE_ENTRY.items() if key != "currency"
+}
+
+
+@pytest.mark.parametrize(
+    ("refused", "line"),
+    [
+        (
+            {"agent": "isoflurane"},
+            "• Your isoflurane price: it has no date, bottle price, bottle volume or currency.",
+        ),
+        (
+            {**_WITHOUT_CURRENCY, "agent": "isoflurane", "colour": "red", "size": 1},
+            "• Your isoflurane price: it has no currency, and it holds entries the simulator "
+            "does not use: 'colour', 'size'.",
+        ),
+        (
+            {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "currency": 7},
+            "• Your isoflurane price: the currency must be a three-letter code in capital "
+            "letters, such as USD, and it is 7.",
+        ),
+        (
+            {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "bottle_price": "20.47"},
+            "• Your isoflurane price: the bottle price must be a number above zero, and it is "
+            "'20.47'.",
+        ),
+        (
+            {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "bottle_volume_ml": 0},
+            "• Your isoflurane price: the bottle volume in millilitres of liquid must be a "
+            "number above zero, and it is 0.",
+        ),
+        (
+            {**SEVOFLURANE_PRICE_ENTRY, "agent": "isoflurane", "applies_on": "03/05/2008"},
+            "• Your isoflurane price: the date must be written as year-month-day, such as "
+            "2008-03-05, and it is '03/05/2008'.",
+        ),
+        (
+            {**SEVOFLURANE_PRICE_ENTRY, "agent": "halothane"},
+            "• Your halothane price: the simulator has no agent called 'halothane'; it has "
+            "desflurane, isoflurane, sevoflurane.",
+        ),
+        (
+            {**SEVOFLURANE_PRICE_ENTRY, "agent": 7},
+            "• Price 2 in the file: the agent must be named in words, and it is 7.",
+        ),
+    ],
+)
+def test_each_refused_price_is_explained_in_the_words_the_view_uses(
+    tmp_path: Path, refused: dict[str, object], line: str
+) -> None:
+    """`PL-VT87`: a refused price names the field as the View does, and the value.
+
+    The Microsoft Windows error-message guidelines ask for a message in the
+    user's terms, with specific names and values. The expected lines are written
+    out here rather than read from the module, so a change to one fails this
+    test. The first case lists four missing fields, so a wrong join shows.
+    """
+    _write(tmp_path, _document([SEVOFLURANE_PRICE_ENTRY, refused]))
+
+    notice = PreferencesStore(tmp_path).load().notice
+
+    assert notice is not None
+    assert line in notice.splitlines()
+
+
 def test_a_price_entry_that_is_not_an_object_is_refused_alone(tmp_path: Path) -> None:
     _write(tmp_path, _document(["isoflurane", SEVOFLURANE_PRICE_ENTRY]))
 
