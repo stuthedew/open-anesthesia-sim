@@ -309,14 +309,30 @@ COST_PRICE_TEMPLATE: Final = (
 COST_ROUNDED_TEXT: Final = "Rounded, so the figures may not multiply exactly."
 
 #: Why no cost is shown, in each case that `docs/INTERFACE.md` § "A cost at the
-#: reader's price" lists. The wording is a placeholder.
+#: reader's price" lists. Each but the last ends with what the reader can do,
+#: because a refusal a user reads says what to do next (NUREG-0700 Rev. 3,
+#: guideline 2.7.3-1, `PL-VT87`). A delivered amount that cannot be converted to
+#: liquid has no remedy in this View, so its text names none. The wording is a
+#: placeholder.
 NO_PRICE_TEXT: Final = "No cost: set your price for {agent} below."
 REFUSED_PRICE_TEXT: Final = "No cost: your saved price for {agent} was refused. Set it again below."
 PRICE_PER_ML_NOT_SHOWN_TEXT: Final = (
-    "No cost: your bottle price and volume for {agent} do not give a usable price per mL."
+    "No cost: your bottle price and volume for {agent} give a price per mL too large or too "
+    "small to use. Check them below for a typing error."
 )
-COST_NOT_COMPUTED_TEXT: Final = (
-    "No cost: the cost of the {agent} is too large or too small to compute."
+#: A cost too large is one that overflows, or one too large to hold to its
+#: currency's minor unit. A cost too small is one that underflows to zero. Each
+#: says which, so the reader knows which way the price is wrong (project owner,
+#: 2026-11-27, `PL-VT87`). A price that far out is most likely mistyped, so the
+#: text says so, in the user's terms rather than the computer's (Microsoft,
+#: Windows error-message guidelines).
+COST_TOO_LARGE_TEXT: Final = (
+    "No cost: at your price, the {agent} would cost more than the simulator can show. "
+    "Check the bottle price and volume below for a typing error."
+)
+COST_TOO_SMALL_TEXT: Final = (
+    "No cost: at your price, the {agent} would cost less than the simulator can show. "
+    "Check the bottle price and volume below for a typing error."
 )
 COST_NOT_CONVERTED_TEXT: Final = "No cost: the {agent} could not be converted to liquid."
 
@@ -410,12 +426,11 @@ def cost_shown(delivered: DeliveredShown, preferences: Preferences) -> CostShown
     # A product of two positive finite floats can overflow to infinity, or
     # underflow to zero, which would show a run that has delivered agent as
     # costing nothing.
-    if (
-        not isfinite(cost)
-        or not cost_is_exact_to_its_minor_unit(cost, price.currency)
-        or (cost == 0.0 and delivered.liquid_ml > 0.0)
-    ):
-        return _no_cost(delivered, COST_NOT_COMPUTED_TEXT)
+    if not isfinite(cost) or not cost_is_exact_to_its_minor_unit(cost, price.currency):
+        return _no_cost(delivered, COST_TOO_LARGE_TEXT)
+
+    if cost == 0.0 and delivered.liquid_ml > 0.0:
+        return _no_cost(delivered, COST_TOO_SMALL_TEXT)
 
     return CostShown(
         COST_LABEL_TEMPLATE.format(agent=delivered.agent_name),

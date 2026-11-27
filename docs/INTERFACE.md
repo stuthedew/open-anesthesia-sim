@@ -4875,6 +4875,14 @@ clinical value.
 The legend entry beside each checkbox names its trace's style in words, so a
 reader can learn every style from the legend alone.
 
+**Every width and dash length is in device-independent pixels, on every
+screen.** That is the unit Qt lays out every widget in, so a 3 px trace is as
+wide beside the text on a Retina screen at 200%, or on a Windows screen at 125%,
+as it is on a screen at 100%. The same holds for every other line on both plots
+and for each legend swatch (`PL-FSRR`;
+`test_each_trace_is_painted_at_its_specified_width_at_every_screen_scale` in
+`tests/integration/test_chart_screen_scale.py`).
+
 **Color cannot be the first cue, because some pairs of trace colors are almost
 equally bright.** The closest pairs are alveolar and muscle, circuit and
 mixed venous, and, under protanopia, vessel-rich and fat. No other choice of colors fixes this. Each color has at least the 3:1
@@ -4921,6 +4929,15 @@ ceilings and the 3:1 minimum against these figures
 before they were darkened, and no test checks those. The search over lightness
 is not part of the script. The script runs as part of `make check`, and its
 `--matrix` option prints the pairwise ratios in the table below.
+
+The chart's lines are cosmetic pens, which Qt draws in device pixels.
+`on_screen` in `src/anesthesia_sim/app/qt_chart.py` multiplies a pen's width by
+the screen's device pixel ratio, and each plot's `_ScreenPens` gives every line
+its pen through it again when the window moves to a screen with another ratio.
+`tests/integration/test_chart_screen_scale.py` paints every trace, dash pattern
+and legend swatch at ratios of 1, 1.25, 1.5, 2 and 3. It also checks, on a
+screen at each ratio, that every line both plots stroke goes through
+`on_screen`.
 
 Each trace has this contrast against the panel, as displayed (Normal) and as
 simulated for each dichromacy:
@@ -6629,6 +6646,21 @@ these four cases:
   `test_a_cost_too_large_to_show_to_its_minor_unit_is_refused` in
   `tests/unit/test_formatting.py`); or
 - the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
+
+In each of the first three cases the readout also says what the reader can do:
+set the price, set it again, or check the bottle price and volume, all in the
+form below the readout. Where the cost itself cannot be computed, the readout
+says whether it is too large or too small, so the reader knows which way the
+price is wrong
+(`test_a_cost_too_large_and_a_cost_too_small_each_say_which` in
+`tests/unit/test_agent_cost.py`). The notice that names the refused entries
+lists them one per line and gives the step "Set them again in this View, or
+discard the refused entries below." In
+the fourth case the reader can do nothing in this View, so the readout names no
+step (NUREG-0700 Rev. 3, guideline 2.7.3-1; `PL-VT87`). For developers: the
+texts are the constants beside `NO_PRICE_TEXT` in `app/agent_cost.py`, and
+`test_the_notice_of_refused_preferences_says_what_the_reader_can_do` in
+`tests/unit/test_preferences.py` checks the notice.
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
 it show a cost left over from an earlier instant, another agent or an earlier

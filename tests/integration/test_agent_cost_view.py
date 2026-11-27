@@ -391,7 +391,7 @@ def test_a_refused_price_s_notice_stays_after_a_unit_is_picked_and_saved(
 
     _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
 
-    assert "agent_prices[0]" in before
+    assert "Your sevoflurane price: " in before
     assert cost_view.preferences_notice.text() == before
     assert not cost_view.preferences_notice.isHidden()
 
@@ -427,7 +427,7 @@ def test_a_failed_save_says_so_and_still_names_the_refused_price(
     notice = cost_view.preferences_notice.text()
     assert cost_view.panels[0].amount_text.text() == "0.0 L vapour"
     assert notice.startswith("This change lasts only until the application closes")
-    assert "agent_prices[0]" in notice
+    assert "Your sevoflurane price: " in notice
 
 
 def test_a_pick_made_while_every_frame_fails_reaches_the_selector_and_the_amounts_together(
@@ -1298,7 +1298,7 @@ def test_the_reader_can_discard_refused_entries_and_the_next_launch_names_none(
     (cost_view,) = _cost_views(view)
     discard = cost_view.refused_discard
 
-    assert "agent_prices[0]" in cost_view.preferences_notice.text()
+    assert "Price 1 in the file: " in cost_view.preferences_notice.text()
     assert not discard.isHidden()
     assert not discard.offer_button.isHidden()
     assert discard.warning.isHidden()
@@ -1350,7 +1350,7 @@ def test_keeping_the_refused_entries_changes_nothing(
     assert not discard.offer_button.isHidden()
     assert discard.warning.isHidden()
     assert discard.discard_button.isHidden()
-    assert "agent_prices[0]" in cost_view.preferences_notice.text()
+    assert "Price 1 in the file: " in cost_view.preferences_notice.text()
     assert (tmp_path / PREFERENCES_FILE_NAME).read_text(encoding="utf-8") == before
 
 
