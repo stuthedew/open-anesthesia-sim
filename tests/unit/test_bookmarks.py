@@ -1,6 +1,6 @@
 """Test what a mark rejects, and how the two collections keep the two kinds of mark apart.
 
-`app/bookmarks.py` decides nothing about a run. It decides what a learner is
+`app/bookmarks.py` decides nothing about a run. It decides what a user is
 allowed to have *asked*. So the claims here are all about the boundary: which
 values are refused, and with what message. They are also about the two
 collections keeping the two kinds of mark separable, which is the property
@@ -169,7 +169,7 @@ def test_a_target_keeps_the_name_it_was_given_without_surrounding_space() -> Non
     """A target's name is checked as a time bookmark's is: trimmed, and refused when blank.
 
     The marks panel lists a target under its name. A name lost here would list
-    the target under its compartment and height instead, as if the learner had
+    the target under its compartment and height instead, as if the user had
     never named it.
     """
 
@@ -425,7 +425,7 @@ def _reaching_step_is_the_crossing_one(instant_s: int) -> bool:
     )
 
 
-def test_every_instant_a_learner_can_type_is_reached_on_the_step_the_halt_names() -> None:
+def test_every_instant_a_user_can_type_is_reached_on_the_step_the_halt_names() -> None:
     """Check all 3 601 whole seconds up to an hour, the dialog's own resolution.
 
     Each instant is reached by exactly the step that `crossed_between` picks.
@@ -807,7 +807,7 @@ def test_a_failed_run_reads_apart_from_one_that_ran_out_of_supported_time() -> N
 
     At the cap, the model has answered the question, and a longer run would not
     change the answer. In a failure, the model could not answer at all. Reporting
-    a failure as the cap would tell a learner that the mark lies beyond what the
+    a failure as the cap would tell a user that the mark lies beyond what the
     model supports. That is a claim about the model rather than about this run. A
     fresh run, started by the reset that the failure demands, would show the
     claim to be false.
@@ -956,7 +956,7 @@ def test_a_bookmark_at_the_end_of_the_run_length_waits_for_the_run_to_get_there(
     """The far end is markable and reachable, so nothing about it is decided early.
 
     A mark past the span was once given `NOT_REACHED_WITHIN_CAP` immediately, so
-    that a learner was not left waiting out a simulated day for it. Since
+    that a user was not left waiting out a simulated day for it. Since
     `PL-CN5S`, no such mark can be made, because the `CaseInstant` it would be
     built from is refused. So the mark left at the edge is the span's own end,
     which a run reaches and crosses like any other mark.
@@ -1059,7 +1059,7 @@ def test_a_target_halts_on_every_crossing_in_either_direction() -> None:
 
     This follows the decision of 2026-09-20: a target carries no crossing
     direction. So a case that passes through a marked height on the way up, and
-    again on the way down, has reached what the learner marked both times.
+    again on the way down, has reached what the user marked both times.
     Halting only once would make `MacTarget`'s own docstring false for the second
     crossing.
     """
@@ -1111,13 +1111,13 @@ def test_a_halt_lands_on_the_same_step_at_1x_and_at_300x() -> None:
 
 
 def test_a_halt_leaves_the_run_paused_on_the_crossing_step() -> None:
-    """A halt pauses the run, so a control change made then acts where the learner was looking.
+    """A halt pauses the run, so a control change made then acts where the user was looking.
 
     A setting changed while the run plays first takes effect at a tick boundary
     (`PL-NBWP`). At 300× that is up to 30 simulated seconds after the value on
     screen. No step is taken while the run is paused. So a halt that pauses makes
     the pause, change and resume route automatic, rather than something the
-    learner has to know.
+    user has to know.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))

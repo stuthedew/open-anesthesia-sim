@@ -3,7 +3,7 @@
 A run stores the state of every second it has reached
 (`core/stored_states.py`), but a stored state is a state vector rather than a
 running system. `resume_at()` turns the one into the other. It exists for
-`PL-J2TD`. A learner
+`PL-J2TD`. A user
 has to be able to *manage* a branch, which means advancing it, and advancing
 needs compartments rather than a curve.
 
@@ -237,7 +237,7 @@ def test_two_systems_resumed_at_one_state_step_identically() -> None:
 
     `docs/VERIFICATION.md` § "Deterministic replay test" requires element-for-element
     agreement rather than agreement within a tolerance. A fork is the most
-    likely place for two runs to acquire a difference that neither learner
+    likely place for two runs to acquire a difference that neither user
     caused.
     """
 

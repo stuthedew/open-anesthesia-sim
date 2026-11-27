@@ -673,7 +673,7 @@ def test_the_supported_run_length_is_twenty_four_hours() -> None:
 def test_the_last_step_a_run_may_take_lands_on_the_boundary_exactly() -> None:
     """The span is a whole number of one-second steps, and the last one lands on its end.
 
-    A learner watching a run to its limit therefore reads the limit itself. A
+    A user watching a run to its limit therefore reads the limit itself. A
     count one step to either side lands one second away, so this test pins
     the count as well. The count is whole, so no rounding decides where the
     last step lands. Until `PL-SZ6G` the count was worked out from a float

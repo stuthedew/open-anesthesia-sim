@@ -6,11 +6,11 @@
 
 # Open Anesthesia Simulator
 
-A deterministic simulator of inhaled-anesthetic uptake and distribution, built
-for teaching.
+A deterministic simulator of inhaled-anesthetic uptake and distribution. It is
+general-purpose simulation software, and teaching is one of its uses.
 
 > [!WARNING]
-> **This is a teaching simulator.** It is not intended for clinical
+> **This simulator is not a clinical tool.** It is not intended for clinical
 > prediction, dosing, monitoring a patient, or any other use as a medical
 > device, and nothing it displays should be used to guide the care of a real
 > patient. Every value on screen is a model output, never a measurement.
@@ -25,19 +25,19 @@ code after release 0.6.19. Every value shown is a model output. The script
 
 ## What it is for
 
-Uptake and distribution is taught from curves, and the curves are hard to
-watch. Six compartments move at once and none of them on a timescale that
-suits a teaching session: the circuit turns over in minutes, muscle in hours,
-fat over days, while the induction the learner is actually looking at is a few
-minutes long. The shape of any one curve depends on four settings that
+Uptake and distribution is usually read from curves, and the curves are hard
+to watch. Six compartments move at once, each on its own timescale: the
+circuit turns over in minutes, muscle in hours and fat over days, while an
+induction lasts a few minutes. The shape of any one curve depends on four settings that
 interact. A figure in a textbook shows one case and cannot answer the question
 that always follows it — *what if the fresh gas flow were lower?*
 
 This simulator answers that question by running the case. It is written for two
 readers:
 
-- **Educators and trainees** in anesthesiology and critical care, who want to
-  drive a case, change something mid-run, and see where the agent goes.
+- **Clinicians in anesthesiology and critical care**, who want to drive a case,
+  change something mid-run, and see where the agent goes, whether to study
+  uptake and distribution or to teach it.
 - **Contributors** with a foot in both anesthesiology and code, who want to
   extend a model whose every equation, constant and assumption is written down.
 

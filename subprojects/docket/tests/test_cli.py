@@ -1730,7 +1730,7 @@ A displayed clinical unit.
 
 ### Definition of done
 
-The learner can run one case.
+The user can run one case.
 
 ### Explicitly out of scope for v0.4.0
 
@@ -11861,7 +11861,7 @@ def test_a_read_hold_puts_a_decision_or_a_case_in_the_closing_block_line() -> No
         "only with something to decide",
         "A question whose answer is obvious is wrong",
         "#1516",
-        "what it changes for the owner or a learner",
+        "what it changes for the owner or a user",
         "recommend <option> - <why its gain is worth its cost>",
         "context - <what changed, or what the choice is about>",
         "why - <why the choice is the owner's rather than the session's>",
@@ -11904,20 +11904,20 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
     and reviews covered (`PL-BGN1`).
     """
     line, why = arming.parse_owner_ask(
-        "Should the table keep the 1 MAC figure? | Keep: learners still see 1 MAC; cost: the "
-        "row is longer | Drop: the row shows only the age-adjusted value; cost: learners lose "
+        "Should the table keep the 1 MAC figure? | Keep: users still see 1 MAC; cost: the "
+        "row is longer | Drop: the row shows only the age-adjusted value; cost: users lose "
         "the figure they are taught first | recommend Keep - it is the value "
-        "learners are taught first | context - the hazard table is reworded. | why - the "
+        "users are taught first | context - the hazard table is reworded. | why - the "
         "figure is a clinical value | checked - every figure still matches its source."
     )
     assert why == ""
     assert line == (
         "**Should the table keep the 1 MAC figure?**\n"
-        '- **I recommend "Keep":** it is the value learners are taught first.\n'
+        '- **I recommend "Keep":** it is the value users are taught first.\n'
         "- **Context:** the hazard table is reworded.\n"
-        '- **Option "Keep":** learners still see 1 MAC. **Costs and risks:** the row is longer.\n'
+        '- **Option "Keep":** users still see 1 MAC. **Costs and risks:** the row is longer.\n'
         '- **Option "Drop":** the row shows only the age-adjusted value. '
-        "**Costs and risks:** learners lose the "
+        "**Costs and risks:** users lose the "
         "figure they are taught first.\n"
         "- **Why it is yours:** the figure is a clinical value.\n"
         "- **Already checked:** every figure still matches its source."
@@ -11935,7 +11935,7 @@ def test_arm_ask_is_written_in_plain_words_for_the_owner() -> None:
     )
 
 
-def test_arm_read_ask_asks_in_learner_terms_with_screenshots() -> None:
+def test_arm_read_ask_asks_in_user_terms_with_screenshots() -> None:
     """The ask text asks for what the owner judges in plain terms, and for screenshots.
 
     On `#1650` the owner had to ask twice what they were judging: the ask named
@@ -11945,9 +11945,9 @@ def test_arm_read_ask_asks_in_learner_terms_with_screenshots() -> None:
     parts = (
         "recommend <option> - <why its gain is worth its cost>",
         "why the choice is the owner's",
-        "clinical or learner terms",
+        "clinical terms or in what a user sees",
         "what they are judging",
-        "what a learner sees",
+        "what a user sees",
         "one annotated screenshot per option",
         ".claude/skills/run-the-app/SKILL.md",
         "the question first and the recommendation second",
@@ -11971,10 +11971,10 @@ def _record_ask(git: Callable[..., str], value: str, when: str) -> None:
 
 
 ARM_DECISION = (
-    "Which view opens first? | Chooser: the learner picks a view each run; cost: one more "
+    "Which view opens first? | Chooser: the user picks a view each run; cost: one more "
     "click before every case | Last used: it opens where they left off; cost: it hides the "
-    "views a learner has not opened | recommend Chooser - it names every view | "
-    "context - the simulator now has three views | why - it decides what a learner sees first"
+    "views a user has not opened | recommend Chooser - it names every view | "
+    "context - the simulator now has three views | why - it decides what a user sees first"
 )
 
 
@@ -12007,13 +12007,13 @@ def test_arm_holds_for_the_owner_only_with_a_recorded_ask(
         "  **Which view opens first?**",
         '  - **I recommend "Chooser":** it names every view.',
         "  - **Context:** the simulator now has three views.",
-        '  - **Option "Chooser":** the learner picks a view each run. '
+        '  - **Option "Chooser":** the user picks a view each run. '
         "**Costs and risks:** one more "
         "click before every case.",
         '  - **Option "Last used":** it opens where they left off. '
         "**Costs and risks:** it hides the "
-        "views a learner has not opened.",
-        "  - **Why it is yours:** it decides what a learner sees first.",
+        "views a user has not opened.",
+        "  - **Why it is yours:** it decides what a user sees first.",
     ]
 
     closed = _item_document("PL-B1B1", "done")
@@ -12193,11 +12193,11 @@ def test_arm_owner_ask_prints_only_what_may_be_sent_to_the_owner(
         "**Which view opens first?**\n"
         '- **I recommend "Chooser":** it names every view.\n'
         "- **Context:** the simulator now has three views.\n"
-        '- **Option "Chooser":** the learner picks a view each run. **Costs and risks:** one more '
+        '- **Option "Chooser":** the user picks a view each run. **Costs and risks:** one more '
         "click before every case.\n"
         '- **Option "Last used":** it opens where they left off. **Costs and risks:** it hides the '
-        "views a learner has not opened.\n"
-        "- **Why it is yours:** it decides what a learner sees first.\n"
+        "views a user has not opened.\n"
+        "- **Why it is yours:** it decides what a user sees first.\n"
     )
 
     _claim_by_hand(git, "PL-B1B1", ARM_BRANCH, "2026-09-01T12:00:30+00:00")
@@ -12348,30 +12348,30 @@ ARM_REVIEW = (
             "**Which view opens first?**\n"
             '- **I recommend "Chooser":** it names every view.\n'
             "- **Context:** the simulator now has three views.\n"
-            '- **Option "Chooser":** the learner picks a view each run. '
+            '- **Option "Chooser":** the user picks a view each run. '
             "**Costs and risks:** one more "
             "click before every case.\n"
             '- **Option "Last used":** it opens where they left off. '
             "**Costs and risks:** it hides the "
-            "views a learner has not opened.\n"
-            "- **Why it is yours:** it decides what a learner sees first.",
+            "views a user has not opened.\n"
+            "- **Why it is yours:** it decides what a user sees first.",
             "",
         ),
         (
             "Should the infusion label show the rate per kilogram? | Per kilogram: the label "
             "reads mcg/kg/min; cost: the total rate needs a second look | Total: the label "
-            "reads mcg/min; cost: a learner divides by weight to compare it with a dosing "
-            "table | recommend Per kilogram - it matches the dosing tables learners use. | "
+            "reads mcg/min; cost: a user divides by weight to compare it with a dosing "
+            "table | recommend Per kilogram - it matches the dosing tables users use. | "
             "context - the infusion label now reads mcg/kg/min. | why - a dose unit is a "
             "clinical value. | checked - the label matches the unit stored.",
             "**Should the infusion label show the rate per kilogram?**\n"
-            '- **I recommend "Per kilogram":** it matches the dosing tables learners use.\n'
+            '- **I recommend "Per kilogram":** it matches the dosing tables users use.\n'
             "- **Context:** the infusion label now reads mcg/kg/min.\n"
             '- **Option "Per kilogram":** the label reads mcg/kg/min. '
             "**Costs and risks:** the total rate needs "
             "a second look.\n"
             '- **Option "Total":** the label reads mcg/min. '
-            "**Costs and risks:** a learner divides by weight to "
+            "**Costs and risks:** a user divides by weight to "
             "compare it with a dosing table.\n"
             "- **Why it is yours:** a dose unit is a clinical value.\n"
             "- **Already checked:** the label matches the unit stored.",

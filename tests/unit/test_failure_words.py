@@ -1,4 +1,4 @@
-"""What a failed run tells the learner, and what it keeps for a report of the fault (`PL-XWCH`).
+"""What a failed run tells the user, and what it keeps for a report of the fault (`PL-XWCH`).
 
 A run halts on any exception. Before `PL-XWCH`, every failure banner other
 than the accounting check's printed the exception's class name and its
@@ -152,7 +152,7 @@ def test_the_details_name_the_build_the_message_and_the_log(
     """The details hold what a report of the fault needs, one fact a line.
 
     The log's path is written from the home folder, because the report line
-    asks the learner to paste the details into a public issue and the full
+    asks the user to paste the details into a public issue and the full
     path holds their login name.
     """
 

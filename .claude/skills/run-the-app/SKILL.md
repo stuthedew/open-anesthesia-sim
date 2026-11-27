@@ -158,7 +158,7 @@ widget's class.
    one with `Read` before sending it. In a Projects thread, copy them under
    `/mnt/project-files/<release>/<item>-screens/` and list each one in the
    reply's `attached_outputs`, because a file in `out/` reaches nobody. The
-   reply then says, for each picture in turn, what the learner sees in it.
+   reply then says, for each picture in turn, what the user sees in it.
 
 ## What an offscreen frame cannot settle
 

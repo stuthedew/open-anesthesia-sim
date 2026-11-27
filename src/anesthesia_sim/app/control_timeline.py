@@ -16,7 +16,7 @@ This module is separate from the view for the same reason that
 presentation-correctness concern rather than a layout one. The record that
 the controller keeps is faithful to the run. It has one entry per setting
 the model integrated under, so re-applying it reproduces the run. That is
-not the same thing as a list a learner can read. A drag of one slider is
+not the same thing as a list a user can read. A drag of one slider is
 one act by the person but several settings to the model, and this module
 is where the model's several settings become the person's one act.
 
@@ -409,7 +409,7 @@ def longest_unbroken_parts() -> tuple[str, ...]:
     `wrapping_between_parts` lets a record line break only after the time
     and after the arrow. So the record column can be no narrower than the
     widest part between those breaks, or a part is cut off at its end and a
-    learner loses the arrow or the value after it (`PL-6XPZ`, `PL-92XM`).
+    user loses the arrow or the value after it (`PL-6XPZ`, `PL-92XM`).
     Each line here is rendered by `format_adjustment`, as a real entry is.
     It has every value at the control's largest recordable value, the
     interval at the end of the longest supported run, and the most settings

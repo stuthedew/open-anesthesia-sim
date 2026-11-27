@@ -99,7 +99,7 @@ def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QAp
     This is the one sequence that the interface could not complete: mark the
     decision point, watch the run stop there, and branch there. The branch
     opens at the instant on which the trunk halted. It does not open at the
-    nearest keyframe, which is what a learner used to have to settle for. It
+    nearest keyframe, which is what a user used to have to settle for. It
     arrives through the same panel from which a control-event fork is taken.
 
     The trunk is left on its halt, which makes this a comparison rather than
@@ -137,7 +137,7 @@ def test_the_fork_here_says_which_instant_it_will_open_the_branch_at(
     A bare "Branch here" beside the permanent button would leave two
     identical buttons doing different things. The instant is the one at which
     the branch opens. A mark is a whole second, so the run stops exactly on
-    the mark, and the label names the instant the learner marked (`PL-TYWQ`).
+    the mark, and the label names the instant the user marked (`PL-TYWQ`).
     """
 
     case, view = _halted_trunk_case(application)
@@ -162,7 +162,7 @@ def test_the_fork_here_is_on_the_panel_whenever_the_trunk_stops_and_off_it_while
     The control is there on the paused trunk and gone once the trunk starts.
     It comes back with the halt's own words when a mark stops the trunk, goes
     again on the next step, and comes back with the plain words when the
-    learner pauses. The selector does not follow it, which is the point of
+    user pauses. The selector does not follow it, which is the point of
     making this a second control. A list that gained and lost a row would
     change its entries under a reader who had looked away. A control that is
     either there or not can be noticed on sight. The mark the run stopped on
@@ -451,7 +451,7 @@ def test_a_failing_frame_withdraws_the_last_frames_bookmark_standings(
     The bookmark panel used to be redrawn only from the snapshots in a
     frame that drew. When every frame failed, the panel kept the standings from the last
     frame that drew. So a mark ahead of the clock was still listed as to come, beside
-    "Stopped - simulation error". That row tells a learner to wait for a mark that the
+    "Stopped - simulation error". That row tells a user to wait for a mark that the
     failed run will never reach (`PL-YHR3`). Now, when the run halts, the panel is redrawn
     from each run's own record of its marks. That redraw does not need a frame.
 
@@ -553,7 +553,7 @@ def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplicati
     """`PL-J12Z`: a chosen instant that stops being a keyframe clears the control.
 
     This state is reachable without a reset. A keyframe collapses when a setting is
-    returned to its previous value at the same instant, which is a learner
+    returned to its previous value at the same instant, which is a user
     changing their mind about a dial while paused. Falling back to the first
     entry would leave induction selected under a reader who had chosen a
     later decision point, and branch there on the next press.
@@ -674,7 +674,7 @@ def test_a_cleared_fork_selection_stays_cleared_when_the_list_next_changes(
 def test_a_mark_set_behind_the_trunk_s_clock_is_offered_and_branched_at(
     application: QApplication,
 ) -> None:
-    """`PL-W4XQ` end to end: paused past a mark, a learner branches there from the selector.
+    """`PL-W4XQ` end to end: paused past a mark, a user branches there from the selector.
 
     The mark was set after the clock had passed it. So no step crossed it,
     the trunk holds no keyframe there, and the trunk is not on a halt. The
@@ -744,15 +744,15 @@ def test_a_mark_still_ahead_of_the_trunk_s_clock_is_not_offered(application: QAp
     assert [point.bookmark for point in case.mark_fork_points] == [behind]
 
 
-def test_a_selected_mark_is_cleared_not_moved_when_the_learner_unmarks_it(
+def test_a_selected_mark_is_cleared_not_moved_when_the_user_unmarks_it(
     application: QApplication,
 ) -> None:
-    """`PL-J12Z` for marks: an entry the learner removes takes the selection with it.
+    """`PL-J12Z` for marks: an entry the user removes takes the selection with it.
 
     Unmarking is how a mark leaves the list, as a collapsed keyframe is how a
     control event leaves it. Moving the choice to a neighbour, such as
     induction or the other mark beside it, would make the next press branch
-    somewhere the learner did not choose. So the selector is left on nothing,
+    somewhere the user did not choose. So the selector is left on nothing,
     and the press says so.
     """
 

@@ -79,7 +79,7 @@ def test_a_preview_gives_the_settings_that_applying_its_value_would_give(
 ) -> None:
     """The settings a preview predicts under are the ones the run would step under once applied.
 
-    A learner dragging a slider sees the course the run would take at the
+    A user dragging a slider sees the course the run would take at the
     dragged value. The expected settings come from a twin run with the same
     history, which really applies the value through its setter. A cardiac
     output preview must also change every tissue blood flow, as applying it

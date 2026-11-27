@@ -9,7 +9,7 @@ feature: gas-man-open-source
 touches: tests/reference, docs/MODEL.md
 deferred-from: v0.7.0 - not live: checked 2026-11-22, the item adds a comparison and names no wrong value on screen; the six tensions are still held by the published-data tests in tests/reference/, and the known differences from Gas Man are deliberate
 added: 2026-11-14
-payoff: Each difference between our curves and Gas Man for the same case is either explained in the model specification or found and fixed, so a learner using both tools knows why they differ.
+payoff: Each difference between our curves and Gas Man for the same case is either explained in the model specification or found and fixed, so a user using both tools knows why they differ.
 ---
 
 **Problem.** Compare the simulator's output with Gas Man's own engine, now that its source is public (rasman/gasmanonline, GPL-3.0)
@@ -19,7 +19,7 @@ reference implementation, whose parameter set "defines Gas Man's behavior, so
 this simulator can be compared with it". No test makes that comparison. The
 independent-solution test cannot stand in for it, because the independent
 solver solves our own equations. A comparison with Gas Man's engine would catch
-a modelling difference, and would tell a learner who uses both tools why their
+a modelling difference, and would tell a user who uses both tools why their
 curves differ.
 
 **What is now available.** Gas Man's desktop source and a scripting port were

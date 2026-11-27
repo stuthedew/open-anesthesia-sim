@@ -588,7 +588,7 @@ class SimulationView(QWidget):
         # own copy of the marks, and this code is the only thing that writes
         # them, so the copies stay equal by construction. The arrangement exists
         # to make one failure impossible: two runs compared at two different
-        # heights because a learner typed one of them twice.
+        # heights because a user typed one of them twice.
         #
         # A bookmarks View shows the marks and the editor that changes them.
         # `_marks_shown` holds the lists that every tick hands each such View,
@@ -693,7 +693,7 @@ class SimulationView(QWidget):
 
         This method places no run. Instead, it keeps every layout that a run adds
         widgets to. `_place_run` then fills those layouts in the same order, both
-        at construction and when a learner takes a branch. A page laid out for
+        at construction and when a user takes a branch. A page laid out for
         the set of runs it was first built with could not gain a run without
         being rebuilt.
         """
@@ -1472,7 +1472,7 @@ class SimulationView(QWidget):
         """Create a branch where the trunk is paused, whether or not it stopped on a mark.
 
         This is the third way to start a branch (`PL-Y2SL`). It follows the sequence that
-        `docs/ARCHITECTURE.md` § "How a learner takes one" describes. A learner pauses at
+        `docs/ARCHITECTURE.md` § "How a user takes one" describes. A user pauses at
         the decision point, or a mark stops the run there, and this control branches at
         that point. The method passes no instant, because `BranchedCase.fork_here` forks
         wherever the trunk is. So a caller cannot pass a wrong instant, the one thing it
@@ -1519,7 +1519,7 @@ class SimulationView(QWidget):
 
         Both branch controls finish by calling this method. The new run's
         readouts are laid out above the chart. So without the scroll, most of
-        the chart that the learner branched in order to compare would fall
+        the chart that the user branched in order to compare would fall
         below the visible part of the page (`PL-562Z`).
         """
 
@@ -1680,7 +1680,7 @@ class SimulationView(QWidget):
 
     @halt_gate
     def _handle_branch_point_request(self, point: ForkPoint | None) -> None:
-        """Take the point a learner chose in one branch View, and show it in every other.
+        """Take the point a user chose in one branch View, and show it in every other.
 
         The View that asked already shows the point. Handing it the same offer
         and point changes nothing in it, because the control rebuilds its
@@ -1691,7 +1691,7 @@ class SimulationView(QWidget):
         self._show_case_views()
 
     def _branch_control_shown(self) -> bool:
-        """Whether a branch control is on screen, so that a banner may send a learner to it.
+        """Whether a branch control is on screen, so that a banner may send a user to it.
 
         A dashboard with no case has no control. A dashboard with a case has
         one only while an Area shows the branch View and draws it.

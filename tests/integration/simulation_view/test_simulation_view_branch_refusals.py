@@ -46,16 +46,16 @@ from tests.integration.simulation_view.simulation_view_support import (
 )
 
 
-def test_a_branch_rebuilt_on_changed_data_is_refused_in_the_learner_s_words(
+def test_a_branch_rebuilt_on_changed_data_is_refused_in_the_user_s_words(
     application: QApplication, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """A branch whose rebuilt values differ from its trunk's tells the learner what to do.
+    """A branch whose rebuilt values differ from its trunk's tells the user what to do.
 
     The agent's MAC is read again from its file when a branch is built, so a
     file edited after the trunk began gives the branch another MAC. The branch
     panel used to show the code's field names and each value's `repr`, such as
-    "agent_mac is 1.8 in this run and 1.9 on the branch", and nothing a learner
-    could do (`PL-72X2`). The panel now shows a sentence for the learner, and
+    "agent_mac is 1.8 in this run and 1.9 on the branch", and nothing a user
+    could do (`PL-72X2`). The panel now shows a sentence for the user, and
     the field-by-field detail goes to the failure log.
     """
 
@@ -194,7 +194,7 @@ def test_unmarking_the_mark_the_trunk_stopped_on_leaves_the_fork_here(
 ) -> None:
     """Unmarking ends the halt and not the pause, so the control stays and drops the mark.
 
-    The run stays where it stopped either way, and a learner who unmarks the
+    The run stays where it stopped either way, and a user who unmarks the
     instant they stopped on can still branch at it. What changes is that no
     mark stopped the run there any more, so the label stops saying one did.
     """
@@ -252,7 +252,7 @@ def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApp
     assert case.branches == ()
     notice = panel.notice.notice()
     assert notice is not None
-    # The refused instant is written as the entry the learner chose wrote it,
+    # The refused instant is written as the entry the user chose wrote it,
     # "1m30s", not in raw seconds (`PL-CCVP`).
     assert unreached.label == "1m30s"
     assert f"no state at {unreached.label} to branch from" in notice
@@ -319,7 +319,7 @@ def test_a_refused_branch_shows_its_reason_between_the_selector_and_the_here_but
 
     As the panel's last row, the reason fell below the fold of a short Area,
     under the "Branch here" row. A refused press then changed nothing that a
-    learner could see.
+    user could see.
     """
 
     view = _case_view(application, _branched_case())

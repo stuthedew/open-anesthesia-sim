@@ -113,7 +113,7 @@ ZERO_FLOW_ROUNDING_FRACTION = ulp(DRIVING_FRACTION)
 # that is at 1e-18 and 1e-19. From there, the amount moved grows in proportion
 # to the flow. It passes the rounding at 1e-12 L/min for the circuit (measured
 # 2026-10-11), 3e-12 for the tissue and 3e-13 for the venous pool. These flows
-# are far below any flow a learner can set, so an epsilon at any value a reader
+# are far below any flow a user can set, so an epsilon at any value a reader
 # might choose would freeze them.
 FIRST_DIVERGING_FLOW_L_MIN = 1e-11
 

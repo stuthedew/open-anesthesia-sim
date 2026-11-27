@@ -1,6 +1,6 @@
 ---
 id: PL-8Q1P
-title: Run the heuristic evaluation of the current interface: four learner tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
+title: Run the heuristic evaluation of the current interface: four user tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
 priority: P3
 effort: M
 status: ready
@@ -12,11 +12,11 @@ payoff: the interface pass starts from a ranked list of what stops a resident co
 not-delegable: the owner is one of the two evaluators
 ---
 
-**Problem.** Run the heuristic evaluation of the current interface: four learner tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
+**Problem.** Run the heuristic evaluation of the current interface: four user tasks against the 14 heuristics in Zhang et al. 2005, by a session and by the owner independently
 
 **Where this comes from.** `PL-HS9M` is the design round's record. The owner
 agreed its order of work on 2026-11-10, and this is the second step. The
-first step is settled: the learner is a resident early in training who works
+first step is settled: the user is a resident early in training who works
 through a case alone, and the tasks are:
 
 1. Induction: set 8% sevoflurane at 6 L/min and say when the alveolar
@@ -76,18 +76,18 @@ definitions on pp. 327-28, for the owner's independent pass.
 1. Consistency: the same word, mark or action means the same thing
    everywhere, and conventions are followed.
 2. Visibility: the screen always shows what state the simulation is in.
-3. Match: what the screen shows fits the model the learner already holds.
+3. Match: what the screen shows fits the model the user already holds.
 4. Minimalist: nothing on screen that the task does not need.
-5. Memory: the learner does not have to remember a value from one place to
+5. Memory: the user does not have to remember a value from one place to
    use it in another.
 6. Feedback: each action gets a prompt, informative response.
 7. Flexibility: shortcuts and customization exist for the practiced user.
 8. Message: an error message says what went wrong and how to recover.
 9. Error: the design prevents the mistake instead of reporting it.
-10. Closure: the learner is told when a task has finished.
+10. Closure: the user is told when a task has finished.
 11. Undo: an action can be reversed.
-12. Language: the words are the learner's own.
-13. Control: the learner, not the program, decides what happens next.
+12. Language: the words are the user's own.
+13. Control: the user, not the program, decides what happens next.
 14. Document: help is available where it is needed.
 
 For each violation, note four things: the task, what was seen, the heuristic

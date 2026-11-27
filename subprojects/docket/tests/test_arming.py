@@ -295,11 +295,11 @@ def test_a_blind_record_that_cannot_be_read_says_why(value: str, reason: str) ->
 
 
 ASK_VALUE = (
-    "Should learners read the shorter uptake step? | Shorter: the step is one paragraph; "
-    "cost: it drops the worked example | As it was: learners keep the worked example; cost: "
+    "Should users read the shorter uptake step? | Shorter: the step is one paragraph; "
+    "cost: it drops the worked example | As it was: users keep the worked example; cost: "
     "the step stays three paragraphs long | recommend Shorter - every figure is unchanged, "
     "and the example repeats the figure above it | context - the uptake step is reworded | "
-    "why - it changes what learners read about the uptake model, which only you approve | "
+    "why - it changes what users read about the uptake model, which only you approve | "
     "checked - every figure still matches its source"
 )
 
@@ -316,16 +316,16 @@ def test_a_review_question_prints_each_part_on_its_own_line() -> None:
 
     assert why == ""
     assert shown.splitlines() == [
-        "**Should learners read the shorter uptake step?**",
+        "**Should users read the shorter uptake step?**",
         '- **I recommend "Shorter":** every figure is unchanged, and the example repeats the '
         "figure above it.",
         "- **Context:** the uptake step is reworded.",
         '- **Option "Shorter":** the step is one paragraph. '
         "**Costs and risks:** it drops the worked example.",
-        '- **Option "As it was":** learners keep the worked example. '
+        '- **Option "As it was":** users keep the worked example. '
         "**Costs and risks:** the step stays three "
         "paragraphs long.",
-        "- **Why it is yours:** it changes what learners read about the uptake model, which only "
+        "- **Why it is yours:** it changes what users read about the uptake model, which only "
         "you approve.",
         "- **Already checked:** every figure still matches its source.",
     ]
@@ -365,11 +365,11 @@ def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
     offer one good and one bad: "why would I ever choose the bad".
     """
     shown, why = arming.parse_owner_ask(
-        "Which view opens first? | Chooser: the learner picks a view each run; cost: one "
+        "Which view opens first? | Chooser: the user picks a view each run; cost: one "
         "more click before every case | Last used: it opens where they left off; cost: it "
-        "hides the views a learner has not opened | recommend Chooser - one click is worth "
+        "hides the views a user has not opened | recommend Chooser - one click is worth "
         "showing every view | context - the simulator "
-        "now has three views | why - it decides what a learner sees first"
+        "now has three views | why - it decides what a user sees first"
     )
 
     assert why == ""
@@ -377,13 +377,13 @@ def test_every_question_to_the_owner_leads_with_its_recommendation() -> None:
         "**Which view opens first?**",
         '- **I recommend "Chooser":** one click is worth showing every view.',
         "- **Context:** the simulator now has three views.",
-        '- **Option "Chooser":** the learner picks a view each run. '
+        '- **Option "Chooser":** the user picks a view each run. '
         "**Costs and risks:** one more click before "
         "every case.",
         '- **Option "Last used":** it opens where they left off. '
         "**Costs and risks:** it hides the views a "
-        "learner has not opened.",
-        "- **Why it is yours:** it decides what a learner sees first.",
+        "user has not opened.",
+        "- **Why it is yours:** it decides what a user sees first.",
     ]
 
     missing = (

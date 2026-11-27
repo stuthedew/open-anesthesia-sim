@@ -966,7 +966,7 @@ the `windows` list in each Workspace's `layout`. This was decided on 2026-09-16,
 when the area model (roadmap
 item 34) was planned across two releases, with break-out into further windows in
 the second. The reason is that adding windows to the root later would mean
-migrating files in which learners have already saved their workspaces. Break-out
+migrating files in which users have already saved their workspaces. Break-out
 has not been planned for any release since 2026-09-26, but it is still wanted,
 only not soon, so the reason still applies.
 
@@ -990,7 +990,7 @@ cycling workspaces also wraps at both ends (`space_workspace_cycle_invoke` in
 sources were read on 2026-10-19.
 
 **Maximize Area is adopted and not yet built** (`PL-5XVQ`; project owner,
-2026-11-11, ratified, over leaving a learner to rearrange a Workspace in order
+2026-11-11, ratified, over leaving a user to rearrange a Workspace in order
 to study one View). In Blender, Maximize Area (Ctrl+Spacebar) expands one area
 to fill the window, and keeps the editor's menu bar and the status bar visible.
 The same shortcut, or Restore Area, returns the area to its size and restores

@@ -4,7 +4,7 @@
 measured on the model. Sevoflurane runs for 3 hours at the opening vaporizer
 dial setting of 1.80% and the default fresh gas flow of 4 L/min. Then the
 vaporizer is turned off and the fresh gas flow is raised to 10 L/min. The
-section prints figures from that run, and a learner takes them as what the
+section prints figures from that run, and a user takes them as what the
 model does. They depend on the partition coefficients, the volumes, the
 ventilation, the cardiac output and the protocol. Before `PL-PTDZ`, no test
 checked them. A parameter change would have left the specification teaching a

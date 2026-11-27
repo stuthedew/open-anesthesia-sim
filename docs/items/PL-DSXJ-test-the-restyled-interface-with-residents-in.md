@@ -27,7 +27,7 @@ design more than one study of 15.
 https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/
 The owner recruits the residents.
 
-**Why it matters.** A heuristic evaluation by two evaluators finds only part of the problems, and it cannot show what a learner misreads. Rounds with residents check both, and their score of values misread is the measure closest to the safety-critical standard.
+**Why it matters.** A heuristic evaluation by two evaluators finds only part of the problems, and it cannot show what a user misreads. Rounds with residents check both, and their score of values misread is the measure closest to the safety-critical standard.
 
 **Done when.** At least two rounds of five residents have done the four tasks, and this item records each round's tasks completed and values misread. Each problem found is filed as an item or names the open item that holds it.
 

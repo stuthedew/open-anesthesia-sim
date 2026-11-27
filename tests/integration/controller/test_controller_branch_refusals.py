@@ -1,6 +1,6 @@
 """The simulation controller, driven against real runs.
 
-These tests cover each branch refusal a learner can read, pinned whole (`PL-79PK`).
+These tests cover each branch refusal a user can read, pinned whole (`PL-79PK`).
 
 `controller_support.py` holds what several of these files share.
 """
@@ -19,7 +19,7 @@ from tests.integration.controller.controller_support import (
     _trunk_with_two_changes,
 )
 
-# --- Each branch refusal a learner can read, pinned whole (PL-79PK) -----------
+# --- Each branch refusal a user can read, pinned whole (PL-79PK) -----------
 #
 # `SimulationView` shows the message for a refused branch word for word after
 # "Branch not opened", and for a refused agent change in the "Setting refused"
@@ -112,7 +112,7 @@ def test_a_refused_branch_names_the_on_screen_control_and_a_formatted_instant() 
 
     The branch panel labels its instants with `format_elapsed`, such as "2m",
     and its controls "From", "Branch" and "Branch here". A refusal that named
-    the controller's methods or printed seconds as "120 s" gave a learner
+    the controller's methods or printed seconds as "120 s" gave a user
     nothing on screen to act on (`PL-3JTH`).
     """
 

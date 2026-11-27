@@ -697,7 +697,7 @@ def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
     circuit volume and fresh gas flow from the field defaults in
     `core/circuit.py`, and no provenance row could name where they came from.
     This test asserts the wash-in time constant as well as the two inputs. The
-    90 s machine lag is the quantity a learner reads off the early rise, and a
+    90 s machine lag is the quantity a user reads off the early rise, and a
     silent change to either value would move it.
 
     This test cannot show that the file was read for the flow, because the
@@ -758,7 +758,7 @@ def test_a_profile_omitting_the_default_fresh_gas_flow_falls_back_to_the_teachin
     shipped 6.0 L, to prove that the run came from this profile. The shipped
     profile states the same 4.0 L/min as the fallback, so the flow alone could
     not tell the two apart. The test also asserts the circuit time constant,
-    because that is the quantity a learner reads off the early rise. 8.0 L at
+    because that is the quantity a user reads off the early rise. 8.0 L at
     4.0 L/min gives 120 s.
     """
 
@@ -1047,7 +1047,7 @@ def test_the_accepted_range_is_exactly_the_flows_the_circuit_accepts(
 ) -> None:
     """Both ends are settings the circuit takes, and the flow past either is refused.
 
-    A control that the learner drags reads this property. So an end that the
+    A control that the user drags reads this property. So an end that the
     circuit refused would be a setting offered and then turned down. A range
     narrower than the circuit's would hide flows that the run supports.
     """

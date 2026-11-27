@@ -85,7 +85,7 @@ MUTED = "#59728A"
 # absent until something is wrong. Painting a permanent element in a high- or
 # medium-priority alarm colour would teach the opposite of the convention it
 # borrowed: an alarm colour that means nothing, from the moment the app opens.
-# The deliberate divergence also keeps a teaching tool from being mistaken for
+# The deliberate divergence also keeps the simulator from being mistaken for
 # a monitor, which is the reason the owner chose it.
 #
 # This rule applies to the Qt port as much as to this file. The port decides
@@ -561,7 +561,7 @@ MINIMUM_TRACE_STROKE_WIDTH = 2
 # How many display pixels thinner a preview curve is drawn than the run's own
 # curve of the same compartment. A preview is never drawn thinner than
 # `MINIMUM_TRACE_STROKE_WIDTH`. A preview is the trajectory a dragged control
-# *would* give, which the learner has not applied (`PL-5B1N`). Drawing it as
+# *would* give, which the user has not applied (`PL-5B1N`). Drawing it as
 # heavy as the run would give a prediction the visual weight of something
 # that happened. Width is only the backup cue. The region, its edge at the
 # run's reach and the label in the plot are what say "preview". So a preview

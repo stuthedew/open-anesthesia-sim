@@ -5,7 +5,7 @@ the documents split from it, such as `docs/INTERFACE.md`
 (`product_paths.SPECIFICATION_DOCS`). Every value under
 `src/anesthesia_sim/data/` is cited from it. A statement there that
 contradicts a stored value, another statement or its own units could mislead a
-learner, and no session has read the whole of it against the data in one
+user, and no session has read the whole of it against the data in one
 pass, because it does not fit in one session's budget (`PL-5S71`). This tool
 buys that reading on the owner's API credit.
 

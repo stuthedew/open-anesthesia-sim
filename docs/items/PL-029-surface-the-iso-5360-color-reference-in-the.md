@@ -33,7 +33,7 @@ indication that the color reproduces a cited standard rather than being
 decoration.
 **Why it matters.** Not a correctness defect — the provenance is recorded in
 `app/theme.py` and `docs/MODEL.md`. But a simulator that deliberately
-reproduces a real safety feature teaches more when it says so: a learner who
+reproduces a real safety feature teaches more when it says so: a user who
 does not already know the ISO 5360 color convention cannot learn it from an
 unlabeled colored badge.
 **Where.** `app/simulation_view.py` (header badge and dropdown),

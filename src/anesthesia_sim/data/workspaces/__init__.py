@@ -35,7 +35,7 @@ controls' Area holds a second row of controls, and neither lesson fits whole.
   parameter controls over the compartment schematic. During maintenance, the
   agent moves into muscle and fat while the tensions in those tissues stay
   low. Each container's label gives its share of all the agent, with a bar
-  under it, and that is where a learner sees it (`PL-PR1W`, `PL-8PL4`). The
+  under it, and that is where a user sees it (`PL-PR1W`, `PL-8PL4`). The
   containers, their labels and their bars are the schematic's first row under
   its name line, and the line that says what the shares are of comes next.
   Both stay on screen at 1366 by 768, and the scale caption under them

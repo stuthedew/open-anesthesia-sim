@@ -252,7 +252,7 @@ def test_the_cost_view_says_its_amount_and_cost_are_modelled(
 ) -> None:
     """The View's heading row says, in words, that its figures are model outputs (`PL-11Z9`).
 
-    A learner could otherwise read "Liquid used by the vaporizer" as the liquid a
+    A user could otherwise read "Liquid used by the vaporizer" as the liquid a
     real vaporizer used, and the cost beside it as a real cost. The statement is
     on the heading row, which stays on screen whatever unit or price is set, so
     it covers the amount and the cost alike. The expected text is typed here
@@ -579,7 +579,7 @@ def test_a_price_form_opened_after_an_agent_change_that_no_frame_draws_names_the
 ) -> None:
     """The price form starts on the agent the run holds, although no frame has drawn it.
 
-    The run opens on sevoflurane. While every frame fails, the learner changes
+    The run opens on sevoflurane. While every frame fails, the user changes
     it to desflurane, and then chooses the agent cost View for an Area. The
     form's selector lists sevoflurane first. A form that no tick has told of
     the run's agent would therefore name sevoflurane, which the run no longer
@@ -611,7 +611,7 @@ def test_an_open_price_form_follows_the_run_s_agent_until_the_reader_picks_one(
 ) -> None:
     """An open form that the reader has not touched names the agent the run holds now.
 
-    The form is open on sevoflurane, the agent the run opens on. The learner
+    The form is open on sevoflurane, the agent the run opens on. The user
     changes the run's agent to desflurane. A form that stayed on sevoflurane
     would save a price typed for the new agent under the agent the run no
     longer holds (`PL-FBKK`).

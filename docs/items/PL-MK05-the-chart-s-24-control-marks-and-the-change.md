@@ -8,7 +8,7 @@ classes: ux
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, docs/INTERFACE.md
 added: 2026-11-16
-payoff: The number of control changes a learner can see on the chart and in the change list is set by what fits at the reference window, not by an unexplained number.
+payoff: The number of control changes a user can see on the chart and in the change list is set by what fits at the reference window, not by an unexplained number.
 ---
 
 **Problem.** The chart's 24 control marks and the change list's 12 lines have no recorded reason (PL-N8G4's trace found none): measure what each limit shows at the 1366 by 700 reference window and record a reason, or a changed value, from that measurement
@@ -20,7 +20,7 @@ reason for the number, and what raising or lowering it would do. No
 measurement at the reference window is recorded.
 
 **Why it matters.** Past each limit the chart stops marking a control change
-and the panel stops listing one, and both count the rest instead. A learner
+and the panel stops listing one, and both count the rest instead. A user
 reviewing a busy case needs to see the changes that explain a trace. Whether 24
 marks and 12 lines show enough of them, at the 1366 by 700 window that
 everything must fit, has never been looked at.

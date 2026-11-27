@@ -298,7 +298,7 @@ number it holds, so moving to 0.5 L/min would relocate the problem rather than
 remove it, and would carry the same absent provenance this section objects to,
 since no source found gives a startup flow for any machine either. What 4 L/min buys is a
 $`\tau_C`$ near 90 s, which makes the machine's own lag a separable phase ahead
-of patient uptake inside a run a learner will sit through; at 0.5 L/min it is
+of patient uptake inside a run a user will sit through; at 0.5 L/min it is
 about 12 minutes and the demonstration no longer completes. What was wrong was
 the sentence, not the number.
 
@@ -306,7 +306,7 @@ the sentence, not the number.
 
 **Why it reaches a number.** $`F_D`$ enters the circuit equation as the
 concentration arriving with fresh gas, and the interface presents it as a set
-value a learner maps onto a real dial. A machine whose output differs from its
+value a user maps onto a real dial. A machine whose output differs from its
 dial by 20% is delivering a different $`F_D`$ than the model assumes, and the
 error is a function of agent, carrier gas and flow — all three of which the
 model either has or will have.
@@ -502,7 +502,7 @@ treats the circuit as a single well-mixed compartment, in which the inlet has no
 position. An "effective volume" calibrated to the observed kinetics would reproduce
 the curves, but it would attribute to volume a difference that volume did not
 cause. The comparison table between machines (`PL-WZVZ`) is a planned display
-that shows a learner which parameter makes two machines' results differ. It
+that shows a user which parameter makes two machines' results differ. It
 would then print a number that looks sourced but that no measurement supports.
 
 ### (b8) Flow bounds, minimum oxygen flow, and the hypoxic guard

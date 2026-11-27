@@ -107,7 +107,7 @@ def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> 
 def test_a_mark_added_behind_a_running_trunk_is_not_called_still_reachable() -> None:
     """Case D, with no branch in it at all.
 
-    A learner marks an instant the case has just run past when something
+    A user marks an instant the case has just run past when something
     interesting has already happened, and nothing refuses that. The instant
     can never enter the halt set, because the clock is already past it. So the
     halt set cannot decide the mark's standing.
@@ -337,7 +337,7 @@ def test_a_bookmark_halt_is_not_one_of_the_fork_points_the_case_offers() -> None
 def test_two_branches_may_be_taken_at_one_bookmark() -> None:
     """The comparison the milestone is named for: one decision point, two managements.
 
-    A learner marks the instant they want to decide at, the run stops there,
+    A user marks the instant they want to decide at, the run stops there,
     and both managements are taken from that one state. Nothing about a
     bookmark fork makes it unique, exactly as nothing about a control-event
     fork does.
@@ -383,7 +383,7 @@ def test_a_setting_changed_while_halted_is_carried_by_the_halt_fork_and_the_keyf
     """A branch at a halt and one at a control event agree after a change at that instant.
 
     A halt is an ordinary pause, and the setters apply unconditionally. So a
-    learner may stop on a mark and dial something before branching. The
+    user may stop on a mark and dial something before branching. The
     change starts a new stretch at the halt instant, so the halt is now a
     keyframe as well. Both ways of branching at that instant name the same
     stretch as their provenance. It is the stretch that the halting step ran
@@ -489,7 +489,7 @@ def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
     """Check the structure that the reset leaves, which is why the order does not matter.
 
     The parent's stretch, with its keyframe and its settings, stays the
-    parent's. What the learner has dialled is a change the branch made at its
+    parent's. What the user has dialled is a change the branch made at its
     own beginning. The keyframe that opens with that change is the fork's own
     state, so the trace starts where the readouts say the branch is.
     """
@@ -847,7 +847,7 @@ def test_a_mark_still_ahead_of_the_clock_cannot_be_returned_to() -> None:
 
 
 def test_an_instant_nobody_marked_cannot_be_returned_to_as_a_mark() -> None:
-    """The method takes a mark the run has, so the learner must mark the instant first."""
+    """The method takes a mark the run has, so the user must mark the instant first."""
 
     trunk = _trunk_paused_past_a_change()
 
@@ -982,7 +982,7 @@ def test_a_height_the_run_halted_on_stays_reached_after_it_halts_on_a_higher_one
     on a step that crosses neither height. A height has no clock time, so only
     the run's record of the heights it halted on can say that the first target
     was reached. A record that kept only the latest halt would show the first
-    target as one the run can still reach, which a learner would read as a
+    target as one the run can still reach, which a user would read as a
     level the patient has not yet been at.
 
     The expected standings come from an unmarked run of the same length. Its
@@ -1025,7 +1025,7 @@ def test_removing_one_mark_leaves_the_standing_of_every_other_mark_as_it_was() -
     and a 0.5 ×MAC fat target, and runs to 200 s. Then one more mark of each
     kind is removed. The removal must not turn a mark the run has not reached
     into one it has. A row that read passed or reached for a mark still ahead
-    would tell the learner that the patient had already been there.
+    would tell the user that the patient had already been there.
 
     The expected standings are worked out apart from the controller. The clock
     stands at 200 s, so the mark at 30 s is behind it and the mark at 600 s is
@@ -1131,7 +1131,7 @@ def test_a_height_crossed_by_the_last_step_reads_reached_only_while_the_run_is_s
     assert branch.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
 
 
-def test_a_mark_added_on_the_step_a_learner_paused_on_does_not_make_the_pause_a_halt() -> None:
+def test_a_mark_added_on_the_step_a_user_paused_on_does_not_make_the_pause_a_halt() -> None:
     """The halt record names a mark only where a run stopped on it, never where it was paused.
 
     A trunk is paused by hand on the step that crosses a 0.3 ×MAC alveolar
@@ -1139,7 +1139,7 @@ def test_a_mark_added_on_the_step_a_learner_paused_on_does_not_make_the_pause_a_
     because the run stands on the step that crossed it. But no mark stopped
     the run, so there is no halt record, and the place offered for a branch
     is not a stop on a mark. A banner that called the pause a halt would tell
-    the learner that the run had stopped itself at a height they marked.
+    the user that the run had stopped itself at a height they marked.
     """
 
     target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.3))

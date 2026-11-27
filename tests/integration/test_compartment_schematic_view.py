@@ -5,7 +5,7 @@ share bar assert" is the specification (`PL-2881`), and `PL-RNYV` built the
 View. These tests check two things. First, they check that a run's inputs reach
 the drawn labels through the model. The expected labels come from a closed form
 that is computed apart from the code under test. Second, they check the labels
-after each action by a learner that changes which state a run is in. The
+after each action by a user that changes which state a run is in. The
 actions are a reset, an agent change, a branch, a branch taken at a mark behind
 the clock, and opening and closing a comparison. After each one, every label
 matches the run's state at that moment, and each schematic is named the same
@@ -604,7 +604,7 @@ def test_a_container_cannot_be_read_against_the_chart(
 
     The Maintenance Workspace shows the concentration chart and the schematic
     side by side. A container is much shorter than the chart's plot, so one
-    tension stands at different screen heights in the two. A learner who read a
+    tension stands at different screen heights in the two. A user who read a
     fill level across to the chart's gridlines would read the wrong tension. So
     each container is marked inside both sides at the chart's gridlines, and the
     caption says what the marks stand for.

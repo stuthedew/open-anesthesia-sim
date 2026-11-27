@@ -8,7 +8,7 @@
     {"id": "note-bug", "should_start": true, "prompt": "Quick note so we don't lose it: on a narrow window the trend chart's y-axis label overlaps the legend. Not now, just make sure it's recorded."},
     {"id": "triage", "should_start": true, "prompt": "Triage what came in today."},
     {"id": "release", "should_start": true, "prompt": "Is there enough finished to cut a release?"},
-    {"id": "idea", "should_start": true, "prompt": "What if a learner could compare two patients side by side? Break that into pieces of work."},
+    {"id": "idea", "should_start": true, "prompt": "What if a user could compare two patients side by side? Break that into pieces of work."},
     {"id": "close-out", "should_start": true, "prompt": "PL-8YBS is finished. Wrap it up."},
     {"id": "mac-concept", "should_start": false, "prompt": "In one paragraph, what does MAC mean and how does this simulator use it?"},
     {"id": "solver", "should_start": false, "prompt": "Which numerical method does the uptake model use, and why?"},

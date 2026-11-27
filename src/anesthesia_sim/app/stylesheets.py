@@ -321,7 +321,7 @@ def transport_button_stylesheet() -> str:
 
     **A pressed button is drawn in reverse, its label in `PANEL` on an `INK`
     fill** (`PL-CXYV`). A sheet that declares no pressed state draws none, so
-    a learner who clicked Start saw no response from the button. A
+    a user who clicked Start saw no response from the button. A
     `BACKGROUND` fill was tried first, but it differs from `PANEL` by only
     about 1.07:1, too little to see. `RunView` also
     gives each button a `FocusRing`, because the mark that Fusion draws for the

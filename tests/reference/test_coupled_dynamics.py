@@ -1385,7 +1385,7 @@ def test_randomised_control_trajectories_keep_every_invariant(agent_id: str, see
     (`docs/VERIFICATION.md` § "Supported simulation step"). This test does not assume that
     property. It checks the property on trajectories that the hand-written gate tests never
     cover. So a later change that breaks the property is found here rather than by a
-    learner whose run stops. One such change is a model extension whose matrix is no longer
+    user whose run stops. One such change is a model extension whose matrix is no longer
     a pure transfer system.
     """
 

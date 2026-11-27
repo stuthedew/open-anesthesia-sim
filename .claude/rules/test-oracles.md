@@ -17,7 +17,7 @@ owner adopted the practice below on that audit's recommendation (project owner,
 2026-10-17, ratified, over leaving it as advice in one reply, `PL-3KMD`). The
 gaps themselves are the items of the `tests-detect-wrong-values` feature.
 
-It applies when you write or change a test of a value that a learner could
+It applies when you write or change a test of a value that a user could
 see: a concentration, a MAC fraction, a band, a time, a label or a message. A
 test that imports `anesthesia_sim` is the simulator's, which is the rule
 `tools/workflow_paths_check.py` applies. A tooling test is held to

@@ -136,7 +136,7 @@ SUITE = TESTS
 #: measured at the current limit, such as the length of a published-fit
 #: washout, and checks it against the limit read from the simulator. The other
 #: pins a refusal message whole, as `.claude/rules/test-oracles.md` asks of a
-#: message a learner sees, so its expected text is written out rather than
+#: message a user sees, so its expected text is written out rather than
 #: built from the limit. Either failure is the prompt to re-measure or rewrite,
 #: not a copy of the limit, so the report lists it and does not fail the run.
 _PINNED_MESSAGE = (

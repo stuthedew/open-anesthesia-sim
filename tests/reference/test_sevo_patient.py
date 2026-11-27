@@ -218,7 +218,7 @@ def _plotted_wash_in_ratio(system: AgentUptakeSystem) -> float:
     """Return the F_A / F_I that the wash-in curve plots for this state.
 
     The ratio comes from `read_wash_in`, the one function that computes the
-    plotted value, so this test checks the quotient a learner sees. The result
+    plotted value, so this test checks the quotient a user sees. The result
     of `read_wash_in` must lie in the wash-in domain, where agent has reached
     the circuit and F_A / F_I lies between 0 and 1. Outside that domain the
     curve plots nothing, and the lesson has nothing to compare.
@@ -248,7 +248,7 @@ def test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster() -> None
     the patient. So F_I rises more slowly at 8 L/min than at 2 L/min. On
     2026-11-01, F_I at 30 s measured 0.0047 at 8 L/min against 0.0053 at
     2 L/min. The final assertion keeps the older claim that F_A itself is
-    higher at 30 s in the 8 L/min run, because a learner reading the F_A trace
+    higher at 30 s in the 8 L/min run, because a user reading the F_A trace
     sees that too.
     """
 

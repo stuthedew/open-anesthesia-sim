@@ -294,7 +294,7 @@ conclusion from a correct number. The `docket` skill's close-out has the steps.
 
 ## Safety-critical clinical-output standard
 
-This application is intended as an educational/simulation tool and will carry appropriate disclaimers that it is not intended for clinical patient care. Nevertheless, assume that a clinician could use displayed values or model outputs to influence real-world patient management.
+This application is general-purpose simulation software, which can be used for teaching, and will carry appropriate disclaimers that it is not intended for clinical patient care. Nevertheless, assume that a clinician could use displayed values or model outputs to influence real-world patient management.
 
 Therefore, any code path or displayed information that could plausibly affect patient management must be treated as safety-critical. Examples include:
 

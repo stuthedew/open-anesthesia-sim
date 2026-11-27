@@ -4664,7 +4664,7 @@ INTERFACE_PROVENANCE = Path("docs/interface-provenance.md")
 # required invariants.
 #
 # `PL-B6YV` added the first section held by its numeric paragraphs, "Displayed
-# precision", whose numbers a learner reads directly. The other sections join
+# precision", whose numbers a user reads directly. The other sections join
 # with the passes the `model-claims-held-by-tests` feature files. `PL-19W8`
 # added the evidence behind the known limitations, and `PL-H94Q` the
 # mass-balance identity, the selected method, the concentrations and the agent

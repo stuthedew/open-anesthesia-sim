@@ -438,7 +438,7 @@ def test_a_view_that_raises_on_a_halt_leaves_no_dial_on_a_setting_the_run_refuse
     The run holds a fresh gas flow of 2.0 L/min, and a halted run refuses a
     dial. Every frame fails, and the concentration chart raises on the
     halt's tick. One setting controls View sits before the chart in reading
-    order and one after it. A learner drags the fresh gas flow dial to
+    order and one after it. A user drags the fresh gas flow dial to
     7.0 L/min in the second View. The halt that follows the refusal is the
     only thing that writes the dial back. When the Views after the chart
     were handed nothing, the dial's thumb stayed on 7.0 L/min beside a first
@@ -1020,11 +1020,11 @@ def _rebuild_the_branch_view(application: QApplication, view: SimulationView) ->
 def test_the_selected_branch_point_survives_the_branch_view_being_rebuilt(
     application: QApplication,
 ) -> None:
-    """A copy of the branch control built later shows the point the learner chose (`PL-9YPR`).
+    """A copy of the branch control built later shows the point the user chose (`PL-9YPR`).
 
     A blind review found that a new copy started on induction, as a control
     nobody had used does. A switch of Workspace rebuilds every View, so the
-    learner's choice of the setting change at 60 s became 0 s, and the next
+    user's choice of the setting change at 60 s became 0 s, and the next
     press opened the branch at induction.
     """
 
@@ -1049,7 +1049,7 @@ def test_a_cleared_branch_selection_stays_clear_when_the_branch_view_is_rebuilt(
 ) -> None:
     """A selection cleared because its mark was removed is still clear in a new copy (`PL-J12Z`).
 
-    The learner chooses the mark at 30 s and then removes the mark. Nothing
+    The user chooses the mark at 30 s and then removes the mark. Nothing
     is selected, and a copy built afterwards must not put induction in its
     place. A press there is refused and opens no branch.
     """
@@ -1080,11 +1080,11 @@ def test_a_cleared_branch_selection_stays_clear_when_the_branch_view_is_rebuilt(
 def test_a_stopped_run_names_a_branch_only_while_an_area_shows_the_branch_control(
     application: QApplication, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The banner sends a learner to the branch control only while it is on screen (`PL-9YPR`).
+    """The banner sends a user to the branch control only while it is on screen (`PL-9YPR`).
 
     A blind review found that the banner named a branch whenever the
     dashboard held a case. Since the branch control became a View, a
-    Workspace may show it in no Area, and the banner then sent the learner to
+    Workspace may show it in no Area, and the banner then sent the user to
     a control that was not there. The supported run length here ends at
     300 s, for the reason that `_a_dial_moved_at_the_supported_run_length`
     gives.
@@ -1208,7 +1208,7 @@ def _words_read_in(panel: QWidget) -> list[str]:
     """The text of each label, button and selector entry that a panel shows, in the panel's order.
 
     A widget that the panel hides is left out, so two panels give the same
-    list only when a learner reads the same words in both.
+    list only when a user reads the same words in both.
     """
 
     words: list[str] = []

@@ -177,7 +177,7 @@ def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
     application: QApplication,
 ) -> None:
     # The marks belong to the case. Writing to every run makes it impossible
-    # to compare two runs at two different heights because a learner typed
+    # to compare two runs at two different heights because a user typed
     # one of them twice.
     first = SimulationController()
     second = SimulationController()
@@ -583,7 +583,7 @@ def test_a_wrapped_mark_row_is_told_apart_from_the_row_below_it(application: QAp
 def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
     """`PL-LHBY`, the silent negative, end to end from the marks to the drawn row.
 
-    The branch stops itself on a height the learner marked. When the row was
+    The branch stops itself on a height the user marked. When the row was
     drawn from the reference run, it said nothing at all, because the trunk
     was still running for that target. So the one on-screen sign that a run
     stopped where it was asked to existed for a lone run. It vanished as soon

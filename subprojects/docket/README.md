@@ -2505,7 +2505,7 @@ classes: safety, ux
 feature: halted-step
 touches: src/app/simulation_view.py
 added: 2026-08-24
-payoff: a learner who pauses mid-induction stops seeing numbers that look live
+payoff: a user who pauses mid-induction stops seeing numbers that look live
 ---
 
 **Problem.** What is wrong or missing, concretely.

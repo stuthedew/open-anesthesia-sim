@@ -1,7 +1,7 @@
 """A failed run's banner in plain words, and the details under it for a report (`PL-XWCH`).
 
 A run halts on any exception. The banner names the kind of failure in words a
-learner reads, and the exception's own message, which is written for a
+user reads, and the exception's own message, which is written for a
 developer, is kept behind "Show details". The details can be copied, and the
 line under them links the project's issue page.
 """
@@ -46,7 +46,7 @@ _NUMERICAL_BANNER = (
 )
 
 
-def test_a_failed_step_is_worded_for_the_learner_and_its_message_kept_in_the_details(
+def test_a_failed_step_is_worded_for_the_user_and_its_message_kept_in_the_details(
     application: QApplication,
 ) -> None:
     """The banner gives the kind of failure, and only the details name the exception.
@@ -195,7 +195,7 @@ def test_a_halt_of_each_kind_is_worded_by_its_kind_and_named_in_the_details(
     """A real halt through the run's own path gives each kind's words, and the error's name below.
 
     The numerical and accounting kinds are halted by a real step above and in
-    `test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals`.
+    `test_an_accounting_halt_tells_the_user_in_words_and_logs_the_totals`.
     """
 
     controller = _StepFailingController(error)

@@ -145,7 +145,7 @@ DEFAULT_FRAMES = 20
 DEFAULT_WARM_UP_MINUTES = 60
 
 #: The number of runs drawn: the one run that the application opens with. A
-#: second run is the branch a learner takes, and `--runs` measures it, up to
+#: second run is the branch a user takes, and `--runs` measures it, up to
 #: `MAX_DISPLAYED_RUNS`.
 DEFAULT_RUNS = 1
 

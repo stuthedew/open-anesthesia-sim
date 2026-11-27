@@ -126,7 +126,7 @@ src/anesthesia_sim/
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_DISPLAY_UNITS and CONTROL_INPUT_UNITS, control_value (which settings field holds each control's value, PL-000W), ControlChange; toolkit-independent
 │   ├── display_units.py            # DisplayUnit: each unit the interface states, with its recorded spelling, the label beside a value and its chart axis title, so the record, the panel, the formatters and the chart read one member (PL-G84G); toolkit-independent
 │   ├── failures.py                 # FailureKind, the kind of failure an exception reports, which picks the halt banner's plain words, and the failure log a launch keeps in the reader's data directory; toolkit-independent (PL-TWZY, PL-XWCH)
-│   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed (§ "What a branch is, and what it shares with its parent")
+│   ├── bookmarks.py                # what a user marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects a crossing between two readings it is handed (§ "What a branch is, and what it shares with its parent")
 │   ├── branch_controls.py          # the words on the controls that open a branch, which the Branch View draws and the controller's refusals name; imports nothing
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the unconditional region above the layout container, which refuses a run lacking a declared value, the compartment selection every View is shown, the chart frame a tick assembles for each window a chart View asks for (PL-L59K), the case's bookmark standings and branch offer, worked out once a tick and handed to every View of the case as values (PL-9YPR, PL-RF2S), the render tick, and the Workspaces: the tab strip over the Areas switches among them, and a pinned Workspace's Views of the runs draw its run alone while its Views of the case still show the case (PL-2KXB, PL-1D3Z), and Tab's order through all of these in reading order, set again after a draw that changed which widgets it holds (PL-B45W); no domain logic
 │   ├── area_layout.py              # AreaLayout: the one module that builds QSplitters, every one from a layout.LayoutModel; a drag on a border becomes LayoutModel.resize and every splitter follows the new model (PL-W9P6), stopping in WARNING at an Area's least size, moving one border alone with Shift and undone by Escape; a border in the tab order moves one step per arrow key, and the Area menu's Resize entry gives one the focus (PL-M352); focus_order lists each Area's chooser and then its View's controls, in reading order (PL-B45W); a right-click on each Area's header opens an AreaMenu that splits, joins, swaps or closes it, and a corner drag splits or joins it, or with Ctrl swaps it, with a preview drawn over the Areas (PL-2KXB, PL-R5G4); each Area is an AreaFrame whose header holds a ViewChooser listing every registered kind, and a choice is LayoutModel.set_view (PL-50PZ); each Area's View is built by its registry entry's factory, saved when replaced, and drawn from each ViewTick (PL-TH35); an Area whose View kind is not registered, or whose factory fails, shows an AreaNotice instead (PL-R1WQ); no Area is drawn below its need, a View taller than its Area scrolls inside the Area's ViewScroll (PL-CBYS), and an Area that cannot be given its need shows the size it needs (PL-K285); load draws another Workspace from its layout and View state, and a pinned Workspace's run is named in the header of every Area that shows the runs, or stated absent in place of each View of the runs, while an Area showing a View of the case names no run (PL-2KXB, PL-1D3Z)
@@ -167,7 +167,7 @@ src/anesthesia_sim/
 │   ├── run_identity.py             # RunId, a run's identity as the session that placed it and its number there, and RunIdentities, the session's counter; what a run is called and what a Workspace pins (PL-7Z84)
 │   ├── migrations.py               # SchemaVersion, a version checked once when it is read (PL-8JV2); LAYOUT_SCHEMA_VERSION, and the steps that read a set document an older build wrote, each one version; version 2 added each Workspace's pinned run, and the chain is checked at import (PL-SSQW Q5, PL-7Z84)
 │   ├── store.py                    # WorkspaceStore: the reader's workspaces.json - the atomic save on "Save as default", and what a launch does with a file that is missing, older, newer, invalid or unreadable, none of it silent (PL-SSQW)
-│   ├── shipped.py                  # the shipped Workspaces read from data/workspaces/ by the reader the learner's file goes through, one file per Workspace, held to the current schema_version (PL-KXTL)
+│   ├── shipped.py                  # the shipped Workspaces read from data/workspaces/ by the reader the user's file goes through, one file per Workspace, held to the current schema_version (PL-KXTL)
 │   └── exceptions.py               # what the package refuses, and what each refusal means to a caller
 └── data/                 # versioned, cited parameter files, and the shipped Workspaces
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
@@ -505,7 +505,7 @@ Five things in `app/controller.py` implement a branch:
   stands, whether or not it stopped on a bookmark halt (`PL-Y2SL`). The two
   methods share `_branch_from`, so this method makes the branch that the bullet
   above describes, and only the place where the fork may be taken differs. So a
-  setting that the learner changed on the trunk while it stood there is on the
+  setting that the user changed on the trunk while it stood there is on the
   branch (`PL-HSP8`, `PL-ZR49`). The method deliberately takes no instant,
   because the fork is wherever the clock stands. So a caller has no value with
   which to name an instant the run has not reached.
@@ -522,7 +522,7 @@ Five things in `app/controller.py` implement a branch:
   on the trunk (`PL-2N43`, `PL-XV0D`).
 - `SimulationController.resumed_at_mark(bookmark)` makes a branch at a time
   bookmark that the trunk has passed. The run may have halted there, or the
-  learner may have marked the instant after the clock went past it (`PL-W4XQ`).
+  user may have marked the instant after the clock went past it (`PL-W4XQ`).
   It gives the branch that a halt on that mark would have given, taken late.
   The fork is the marked instant, which is the end of the step that reached the
   mark, and `TimeBookmark.steps_to_reach` gives the count of that step.
@@ -571,7 +571,7 @@ settings rather than trusted. The check covers every setting the stretch carries
 and the agent's displayed references, since the agent and patient are read again
 from their data files. A refusal names each setting or displayed reference that
 differs, with both of its values (`PL-NC62`). That list is for a developer, so
-it goes in the exception's note and the failure log, and the learner reads a
+it goes in the exception's note and the failure log, and the user reads a
 notice that names both possible causes, changed data or a fault, and what to do (`PL-72X2`). For every way of branching, one
 rule decides which stretch the branch names as its provenance: the stretch that
 the step reaching the fork ran under. After the case's opening, no later change
@@ -581,13 +581,13 @@ open at the fork, which is what the dial says there
 
 A branch inherits the bookmarks but not the trunk's control timeline, and one
 test settles both. A mark is a question about what is still to come, and a
-comparison is two managements answering one question. If a learner had to
+comparison is two managements answering one question. If a user had to
 re-enter the marks, two branches could be compared at two different heights
 with nothing saying so. The timeline is not inherited, because the branch's
-record is of what the learner does to *it*. The only entries that the branch's
+record is of what the user does to *it*. The only entries that the branch's
 timeline opens with are copies of the trunk's changes at the instant the
 branch was taken (`RunRecord.opened_with`). A reset keeps them, and records
-after them each setting that the learner changed and the reset kept.
+after them each setting that the user changed and the reset kept.
 
 `opened_from` records where the fork was taken. Read the fork instant only
 from `began_at_s`, which is zero on a trunk and the fork instant on a branch.
@@ -627,9 +627,9 @@ reproduces the trunk exactly, because every method opens from the trunk's
 stored states.
 
 The second is **where the paused trunk stands**, with `fork_here` (`PL-Y2SL`).
-A learner who pauses to think tries something else from that instant in one
+A user who pauses to think tries something else from that instant in one
 action, without marking it first (project owner, 2026-10-12). A bookmark halt is
-one such pause. `app/bookmarks.py` defines what a learner may mark (`PL-LPLD`).
+one such pause. `app/bookmarks.py` defines what a user may mark (`PL-LPLD`).
 `SimulationController.advance` halts a run on the step that crosses a mark
 (`PL-CTD7`). It reads every compartment on either side of each step, and pauses
 the run where a mark lies between the two readings.
@@ -653,7 +653,7 @@ then ask for a fork at an instant the run no longer stands on.
 
 The third is at any **time bookmark the trunk has passed**. These are listed by
 `BranchedCase.mark_fork_points` and taken with `fork_at_mark` (`PL-W4XQ`). This
-is what a learner paused at three hours does after marking the one-hour point.
+is what a user paused at three hours does after marking the one-hour point.
 The instant is behind the clock. The trunk holds no keyframe there and is not
 standing on it, and nothing in the bookmark fork's construction needed either.
 The branch opens on the step on which the mark is reached, which is the instant
@@ -661,13 +661,13 @@ a halt would have stopped the run on. The branch opens from the state the trunk
 stored for that second, so the branch is the one the halt would have given.
 Unlike the paused point, this list does not end at the next step. A mark joins
 the list when the clock reaches it, or when a mark is set behind the clock. It
-leaves the list when the learner unmarks it or the trunk starts over. Every
+leaves the list when the user unmarks it or the trunk starts over. Every
 mark leaves the list when the trunk's dashboard fails (§ "Failures and
 halts"). A MAC target is not on the
 list, because it has no instant. A fork at a height is taken through
 `fork_here`, where the height's halt stops the run.
 
-### How a learner takes one, and how a comparison ends
+### How a user takes one, and how a comparison ends
 
 `app/main.py` builds the `BranchedCase` and opens the dashboard over its
 trunk. So the application is a *case* from its first frame, not a run that
@@ -683,11 +683,11 @@ is a property of the display, not of the model:
   View builds and writes its own panel from them (`PL-9YPR`, `PL-RF2S`).
   A function decides what the control shows
   (`dashboard_frame.fork_offer`), and a widget draws it
-  (`qt_widgets.ForkPanel`). A learner pauses at the decision point, or marks it
+  (`qt_widgets.ForkPanel`). A user pauses at the decision point, or marks it
   and is stopped there, and then forks at that point, so the shipped
   Workspaces place the bookmarks before the branch control. Returning to a mark
   forks the run rather than truncating it. The trunk is kept, and the change is
-  made on a branch drawn beside it. A learner who wants to try something else
+  made on a branch drawn beside it. A user who wants to try something else
   from the same point uses the branch's own Reset (project owner, 2026-10-12,
   ratified, over truncating the run at the mark after a confirm as Gas Man
   does, `PL-ZW0J`).
@@ -711,7 +711,7 @@ is a property of the display, not of the model:
   Pausing records no keyframe, so the paused point adds nothing to
   `fork_points_s`. The selector therefore never loses a row as the run moves.
   It gains a row when a setting is changed and when the clock passes a mark.
-  It loses a row when the learner unmarks that mark, when the settings changed
+  It loses a row when the user unmarks that mark, when the settings changed
   at a keyframe are put back before the next step runs, or when the trunk
   starts over. It loses every row when the trunk's dashboard fails
   (§ "Failures and halts"). The project owner chose
@@ -759,7 +759,7 @@ is a property of the display, not of the model:
   `comparing_fork_lock_text` fills its sentence from the run's label and the
   Reset button's label, `run_label` and `RESET_LABEL`, so an instruction cannot
   name a control that is not there. An earlier lock that said "Reset the case"
-  failed because the Reset a learner reaches for is the branch's, on the run
+  failed because the Reset a user reaches for is the branch's, on the run
   they are trying to end. That press returns the branch to its fork, while the
   lock stays exactly where it was.
 
@@ -778,7 +778,7 @@ clause about the branches it would orphan). This follows the preference in
 one that reports it afterwards. The decision was ratified rather than
 specified, because the case put to the owner was a session's own
 recommendation. So ordinary evidence is enough to put it back to them: a
-learner who wants to change agent mid-comparison, a measurement, or a cost the
+user who wants to change agent mid-comparison, a measurement, or a cost the
 case did not carry. `dashboard_frame.transport` carries all three locks and
 names the longest-lasting one that applies, so the chip never sends a reader
 to Pause for a lock that Pause cannot lift.

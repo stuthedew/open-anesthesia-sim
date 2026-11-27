@@ -188,7 +188,7 @@ def test_a_second_build_of_the_record_panels_leaves_the_run_labels_on_screen(
     call and lay the run's own labels into them. A layout takes a widget from
     wherever it sits. So a second call moved the accounting status, its
     amounts and the control changes into panels with no parent, and they
-    vanished from the sidebar a learner was reading (`PL-N67T`). Each label
+    vanished from the sidebar a user was reading (`PL-N67T`). Each label
     must be on screen and in its shared column before the call as well as
     after it, so the test cannot pass on a column that never showed them. The
     overflow line is hidden while nothing overflows, so the test checks only

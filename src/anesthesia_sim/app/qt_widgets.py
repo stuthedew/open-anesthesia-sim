@@ -1899,7 +1899,7 @@ class NoticeLabel(QLabel):
 class FailureDetails(QWidget):
     """The details under a failed run's banner, for a report of the fault, and nothing otherwise.
 
-    The banner gives the learner plain words. The details, the build, the
+    The banner gives the user plain words. The details, the build, the
     exception's own message and the failure log's path, are written for a
     developer, so they stay behind "Show details" until asked for. "Copy
     details" puts them on the clipboard, and the line under them links the
@@ -2452,7 +2452,7 @@ class BookmarksPanel(QWidget):
 
 
 class ForkPanel(QWidget):
-    """Where a learner takes a branch: which point to open it at, and the two buttons.
+    """Where a user takes a branch: which point to open it at, and the two buttons.
 
     The dashboard builds the panel, as it builds the marks, and no `RunView`
     does. Each Area that holds a `views.BranchView` shows its own copy
@@ -2571,7 +2571,7 @@ class ForkPanel(QWidget):
         # The refusal sits directly under the selector's row and above the here
         # button. A review (`PL-9YPR`) found it below the fold of a short Area
         # when it was the panel's last row, so a refused press changed nothing
-        # a learner could see.
+        # a user could see.
         column.addWidget(self.notice)
         here_row = QHBoxLayout()
         here_row.setSpacing(CONTROL_ROW_SPACING)
@@ -2599,7 +2599,7 @@ class ForkPanel(QWidget):
         The dashboard owns the selection and passes it with every offer
         (`dashboard_frame.kept_fork_selection`). Every copy of the panel then
         shows the same point, and a copy that is built later shows the point
-        the learner chose (`PL-9YPR`). Where the offer does not hold
+        the user chose (`PL-9YPR`). Where the offer does not hold
         `selected`, and where `selected` is None, nothing is selected. So
         `selected_point` returns None, and a press is refused with a notice
         that says so (`PL-J12Z`). Qt selects the first entry whenever an

@@ -752,7 +752,7 @@ class RunPreview:
 
     **This is a prediction, a third kind of value beside a modelled state and
     a measurement** (`docs/INTERFACE.md` § "A preview of an unapplied setting").
-    It depends on a setting that the learner has not applied and may never
+    It depends on a setting that the user has not applied and may never
     apply. So everything that draws it marks it as a prediction. It lies in a
     region of its own, which the run that happened never enters. It is
     labelled in the plot, and it is drawn thinner than the run (`PL-5B1N`).

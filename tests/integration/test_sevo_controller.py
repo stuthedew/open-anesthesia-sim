@@ -236,7 +236,7 @@ def test_a_run_reaches_the_same_definition_at_every_playback_rate() -> None:
     test on the day it is added.
 
     The test compares the runs' definitions segment by segment, element for element, and
-    then compares their snapshots. Two learners comparing the same case at different speeds
+    then compares their snapshots. Two users comparing the same case at different speeds
     must be comparing the same arithmetic. A divergence in any segment would show on the
     chart drawn from it.
     """
