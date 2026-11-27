@@ -33,14 +33,13 @@ all.
    falls below one shown step during a washout, once the vaporizer is
    closed, while the patient still holds agent. Rather than treat $`0/0`$ as a
    special case, the rule forms the ratio exactly when the concentration
-   readout shows the inspired fraction as a number, `0.01%` or more. It forms
-   none when the readout shows `<0.01%` or `0.00%`. The rule reads the
-   readout's own rounding, so every inspired value the readout shows either
-   always gives a ratio or never does (`PL-FSXD`). A test result is compared
-   with a specification limit the same way in pharmaceutical and materials
-   testing, rounded to the limit's last decimal place first
-   (`docs/INTERFACE.md` § "F_A/F_I as a displayed ratio" cites the
-   sources).
+   readout shows the inspired fraction as `0.01%` or more. It forms none when
+   the readout shows `<0.01%` or `0.00%`. The rule asks the readout how it
+   rounds, so two inspired values that the readout shows the same always get
+   the same answer (`PL-FSXD`). Pharmaceutical and materials testing compare
+   a result with a limit the same way, after rounding the result to the
+   limit's last decimal place. `docs/INTERFACE.md` § "F_A/F_I as a displayed
+   ratio" cites the sources.
 2. *The quotient must not exceed one.* The condition $`F_A \le F_I`$ is
    exactly the uptake regime. Alveolar gas gives agent up to the blood, so the
    alveolar fraction stays below the inspired fraction and reaches it only at
@@ -166,9 +165,7 @@ def _smallest_fraction_shown_as_one_display_step() -> Fraction:
 #: the concentration readout shows as `0.01%` or more
 #: (`reaches_concentration_display_resolution`). So a change to the readout's
 #: resolution or its rounding moves this value with it, and no second constant
-#: is left behind to go stale. Until `PL-FSXD` the limit was one whole display
-#: step, 0.01%, so an inspired fraction from 0.005% up to 0.01% was shown as
-#: `0.01%` beside a plot that formed no ratio from it.
+#: is left behind to go stale.
 WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = _smallest_fraction_shown_as_one_display_step()
 
 #: The ratio at which $`F_A = F_I`$. With ventilation running, net uptake from
