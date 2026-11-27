@@ -6092,19 +6092,40 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     convention. A truncated clone declines rather than reporting, because a
     span this checkout cannot walk and one whose notes are genuinely short look
     identical from inside it. It declines when it finds nothing too, because a
-    closure past its history is in no span it can see (`PL-9GBS`). A span whose
+    closure past its history is in no span it can see, and when it holds no tag
+    at all, because a shallow clone fetches only the tags inside its depth
+    (`PL-9GBS`). A span whose
     notes carry a bullet on from the margin declines as well, because the
     bullet may name what reads as missing (`PL-CL8R`).
     """
     roadmap_name = roadmap_path(root)
-    held = tags(root)
-    if not held.known or not held.names:
-        return
     # A repository that writes no release notes has nothing for this rule to
     # hold, and is told so by silence rather than by a decline - the reasoning
     # `release.is_untagged` gives for the tag read, one document along:
     # adopting the practice is the project's decision and not this tool's.
     if not (root / NOTES_DIR).is_dir():
+        return
+    held = tags(root)
+    if not held.known:
+        return
+    if not held.names:
+        # A shallow clone fetches only the tags inside its depth, so a depth-1
+        # clone of an untagged commit holds none, and its empty tag set says
+        # nothing about the project's tags. It declines rather than passing,
+        # like a shallow clone that holds tags (`PL-9GBS`). A complete
+        # checkout with no tags belongs to a project that does not tag, and
+        # stays silent.
+        truncated = is_shallow(root)
+        if truncated is not False:
+            why = (
+                "the checkout is a shallow clone"
+                if truncated
+                else "git cannot say whether this checkout is complete"
+            )
+            report.declined.append(
+                f"{NOTES_DIR}: {why} and holds no release tag, so no tag span was compared "
+                "against its notes; `git fetch --unshallow --tags` makes the question answerable"
+            )
         return
     store = _read_store(root)
     if store is None:

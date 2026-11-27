@@ -23,8 +23,9 @@ understands only the expression forms the block actually uses and raises on
 anything else, deliberately: a rewrite into a shape this file cannot read is a
 failure to report, not a pass to hand out.
 
-The last test holds the two required checks that run only on pull requests,
-`merge-hold` and `pr-title`, to cancelling none of their runs (`PL-Q3DW`).
+The last tests hold the two required checks that run only on pull requests,
+`merge-hold` and `pr-title`, to cancelling none of their runs, and `pr-title` to
+checking the title the pull request holds when it runs (`PL-Q3DW`).
 """
 
 from __future__ import annotations
@@ -204,3 +205,22 @@ def test_a_required_check_on_a_pull_request_cancels_none_of_its_runs(name: str) 
 
     assert "cancel-in-progress" not in block, block
     assert block["queue"] == "max", block
+
+
+def test_the_title_check_reads_the_pull_request_s_title_rather_than_its_event_s() -> None:
+    """A run that finishes last checks the newest title, whatever its event carried (`PL-Q3DW`).
+
+    `pr-title` runs queue rather than cancel. A run whose event carried an
+    older title can finish after a title edit, or run after the edit's own run.
+    Checking its event's title, it would pass the old title last, and auto-merge
+    could land the new one unchecked. So the title step asks the pull request
+    for its title, and reads nothing about the title from the event.
+    """
+    workflow = yaml.safe_load((WORKFLOW.parent / "pr-title.yml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["pr-title"]["steps"]
+    (title_step,) = [step for step in steps if "pr_title_check.py" in step.get("run", "")]
+
+    assert "pull_request.title" not in str(title_step), title_step
+    assert "PR_TITLE" not in title_step.get("env", {}), title_step
+    assert 'gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq .title' in title_step["run"]
+    assert workflow["permissions"]["pull-requests"] == "read", workflow["permissions"]

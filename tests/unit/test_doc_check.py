@@ -9401,6 +9401,35 @@ def test_a_truncated_clone_with_no_finding_still_says_it_could_not_walk_its_span
     ]
 
 
+def test_a_truncated_clone_that_holds_no_tag_declines_rather_than_passing(tmp_path: Path) -> None:
+    """A depth-1 clone of an untagged commit fetches no tag, and still declines (`PL-9GBS`).
+
+    The full history finds `#11` missing from v0.2.4's notes. Cloned one commit
+    deep at a commit after v0.2.5, the checkout holds no tag at all, and the
+    check used to return before it asked whether the clone was shallow, so it
+    reported neither an error nor a decline.
+    """
+    history = (*SPAN_HISTORY, ("PL-8QW3: after the cut (#14)", {"work.txt": "c"}, ""))
+    origin = _span_repo(tmp_path, history, SPAN_ITEMS, name="origin")
+    clone = tmp_path / "shallow"
+    subprocess.run(
+        ("git", "clone", "-q", "--depth", "1", "--no-local", origin.as_uri(), str(clone)),
+        check=True,
+        capture_output=True,
+    )
+
+    report = _span_report(clone)
+
+    assert doc_check.tags(clone).names == frozenset(), "the fixture must fetch no tag"
+    assert _span_report(origin).errors, "the full history must find what the clone cannot"
+    assert report.errors == []
+    assert report.declined == [
+        "docs/releases: the checkout is a shallow clone and holds no release tag, so no tag "
+        "span was compared against its notes; `git fetch --unshallow --tags` makes the "
+        "question answerable"
+    ]
+
+
 def test_a_store_that_will_not_read_declines(tmp_path: Path) -> None:
     """A check that never ran is never reported as one that passed (`PL-XCYB`)."""
     root = _span_repo(tmp_path, SPAN_HISTORY, SPAN_ITEMS)

@@ -28,8 +28,9 @@ on:
 # run on the head commit, and GitHub does not guarantee the order of two runs
 # that start in the same second, so cancelling could leave that newest run
 # cancelled and the pull request blocked with every check green, as
-# `merge-hold` did on #2322. Each run reads the title from its own event, so the
-# newest run checks the newest title. `queue: max` lets up to 100 runs wait,
+# `merge-hold` did on #2322. Each run reads the title from the pull request when
+# its title step runs, not from its own event, so the run that finishes last
+# checked the newest title, whatever order the runs took. `queue: max` lets up to 100 runs wait,
 # and GitHub refuses it beside `cancel-in-progress: true` (its workflow syntax
 # page, `concurrency`, read 2026-11-27).
 concurrency:
@@ -38,6 +39,8 @@ concurrency:
 
 permissions:
   contents: read
+  # The title step reads the pull request's current title.
+  pull-requests: read
 
 jobs:
   # **This job's name is load-bearing outside the tree**, exactly as
@@ -104,11 +107,28 @@ jobs:
         with:
           python-version: '3.11'
 
+      #
+      # The title is the pull request's as this step reads it, not the one this
+      # run's event carried (`PL-Q3DW`). Runs queue rather than cancel, so a
+      # run whose event carried an older title can still be running when the
+      # title is edited, or can run after the edit's own run, because GitHub
+      # does not order runs that start in the same second. Checking its event's
+      # title, that run could pass an old title last, and auto-merge could land
+      # the new title unchecked. Reading the pull request, the run that
+      # finishes last checked the title the merge uses. The case left is an
+      # edit in the second or so between this read and the run's end. The
+      # edit's own run still checks it, but possibly after the merge. The title
+      # still reaches the script through the environment, never through the
+      # command line, so it is never run as shell text.
       - name: pull request title names the items it closes
         env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_BASE: origin/${{ github.event.pull_request.base.ref }}
-        run: python3 tools/pr_title_check.py
+        run: |
+          PR_TITLE="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq .title)"
+          export PR_TITLE
+          python3 tools/pr_title_check.py
 
       # The same two trees, asked the question provenance rests on (`PL-HMZZ`):
       # every item this pull request closes records `pr:` equal to its own

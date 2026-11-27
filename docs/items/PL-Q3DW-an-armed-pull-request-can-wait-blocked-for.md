@@ -12,7 +12,7 @@ added: 2026-11-25
 closed: 2026-11-27
 pr: 2340
 payoff: an armed pull request merges when its checks pass, instead of waiting for hours behind a cancelled run that nobody sees
-tests: tests/unit/test_ci_concurrency.py::test_a_required_check_on_a_pull_request_cancels_none_of_its_runs
+tests: tests/unit/test_ci_concurrency.py::test_a_required_check_on_a_pull_request_cancels_none_of_its_runs, tests/unit/test_ci_concurrency.py::test_the_title_check_reads_the_pull_request_s_title_rather_than_its_event_s
 ---
 
 **Problem.** An armed pull request can wait blocked for hours with every check green: merge-hold and pr-title cancel a run already in progress, two events on one commit in the same second can start in either order, and branch protection reads the newest run, which may be the cancelled one
@@ -74,8 +74,8 @@ run cancelled by a run of the same workflow on the same commit.
 
 The two points the brief left to settle:
 
-1. An invalid `merge-hold.yml` would block every merge, and a pull request cannot test its own change to it, because `pull_request_target` runs the default branch's copy. `pr-title.yml` runs on `pull_request`, which runs the pull request's own copy, and it carries the same `queue: max`. So this pull request's own `pr-title` run shows whether GitHub accepts the key before `merge-hold.yml` reaches `main`.
-2. `pr-title` reads the title from its own event's payload (`github.event.pull_request.title`), so each run checks the title as it was at that event. Without cancellation an older run that read an old title still finishes. Branch protection read the newest run on #2322, which is why a cancelled newest run blocked it, so the newest run, which read the newest title, is the one that counts. This is inferred from #2322 and not measured on a second pull request.
+1. An invalid `merge-hold.yml` would block every merge, and a pull request cannot test its own change to it, because `pull_request_target` runs the default branch's copy. `pr-title.yml` runs on `pull_request`, which runs the pull request's own copy, and it carries the same `queue: max`. So this pull request's own `pr-title` run shows whether GitHub accepts the key before `merge-hold.yml` reaches `main`. **Measured on #2340, 2026-11-27.** GitHub accepted `queue: max` in this pull request's own `pr-title.yml`: the push and the title edit that followed it started two `pr-title` runs on head `9be5a071`, and the second started at 23:23:42 UTC, two seconds after the first finished at 23:23:40. Both passed, and neither was cancelled.
+2. `pr-title` used to read the title from its own event's payload (`github.event.pull_request.title`), so each run checked the title as it was at that event. The first draft kept that and argued that the newest run, which read the newest title, is the one that counts. The pull request's blind review showed why that does not hold once runs queue. A run whose event carried an older title can still be running when the title is edited, and GitHub does not order two runs that start in the same second, so the old title's run can also run last. Either way the last result can be a pass on the old title, and auto-merge can then land the new title unchecked. So the title step now asks the pull request for its title with `gh api` when it runs, with `pull-requests: read` added to the workflow's permissions. The run that finishes last has then checked the title the merge uses. The one case left is an edit in the second or so between that read and the run's end. The edit's own run still checks it, but possibly after the merge. `tests/unit/test_ci_concurrency.py::test_the_title_check_reads_the_pull_request_s_title_rather_than_its_event_s` holds the step to it, and fails on the first draft.
 
 `tests/unit/test_ci_concurrency.py::test_a_required_check_on_a_pull_request_cancels_none_of_its_runs` holds both files to `queue: max` and no `cancel-in-progress`. It fails on both files at `8f404cfa`.
 
