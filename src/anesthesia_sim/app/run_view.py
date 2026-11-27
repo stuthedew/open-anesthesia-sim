@@ -860,14 +860,8 @@ class RunView(QWidget):
             branch_offered=self._branch_control()
             and not comparing
             and self.controller.fork_refusal is None,
-            # A refused preview is about the dial the user is holding now, so
-            # its notice takes the banner's place for a refused setting while
-            # the drag lasts. The release then reports its own setting.
-            rejected_setting_notice=(
-                self._rejected_setting_notice
-                if self._refused_preview_notice is None
-                else self._refused_preview_notice
-            ),
+            rejected_setting_notice=self._rejected_setting_notice,
+            refused_preview_notice=self._refused_preview_notice,
             refused_reset_notice=self._refused_reset_notice,
             refused_reset_reason=self._refused_reset_reason,
             pending_agent_name=(

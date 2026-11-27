@@ -177,8 +177,10 @@ class RunPanelState:
         comparing: As `dashboard_frame.transport` takes it.
         branch_offered: As `dashboard_frame.notice` takes it.
         rejected_setting_notice: The notice for a setting the run refused,
-            or for the preview of a held dial that it refused (`PL-412F`), or
-            None.
+            or None.
+        refused_preview_notice: The banner for the preview of a held dial
+            that the run refused, as `dashboard_frame.notice` takes it, or
+            None (`PL-412F`).
         refused_reset_notice: The notice for a Reset the run refused, or None.
         refused_reset_reason: The message of the error with which a Reset
             was refused, for the failure's details, or None.
@@ -205,6 +207,7 @@ class RunPanelState:
     comparing: bool
     branch_offered: bool
     rejected_setting_notice: str | None
+    refused_preview_notice: str | None
     refused_reset_notice: str | None
     refused_reset_reason: str | None
     pending_agent_name: str | None
@@ -355,6 +358,7 @@ def drawn_run(
             elapsed_s=snapshot.elapsed_s,
             refused_reset=state.refused_reset_notice,
             branch_offered=state.branch_offered,
+            refused_preview=state.refused_preview_notice,
         ),
         stopped_on_mark=snapshot.stopped_on_mark,
         standing=ValuesStanding.DRAWN,

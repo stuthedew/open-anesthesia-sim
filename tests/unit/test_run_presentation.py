@@ -96,6 +96,7 @@ def _state(**changes: object) -> RunPanelState:
         comparing=False,
         branch_offered=False,
         rejected_setting_notice=None,
+        refused_preview_notice=None,
         refused_reset_notice=None,
         refused_reset_reason=None,
         pending_agent_name=None,

@@ -62,6 +62,7 @@ from anesthesia_sim.app.controller import (
     CompartmentAgentAmounts,
     HereForkPoint,
     MarkForkPoint,
+    PreviewOfAnotherCase,
     ResumePoint,
     RunStatus,
     SettingPreview,
@@ -161,6 +162,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_row_width,
     readouts,
     refused_branch_notice,
+    refused_preview_notice,
     refused_reset_exit,
     refused_setting_notice,
     rejected_step_accounting,
@@ -1565,6 +1567,41 @@ def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
     for banner in (failure_banner, limit_banner):
         assert "Setting refused — a value the core refused. " in banner
         assert "still running its previous setting" not in banner
+
+
+def test_a_refused_preview_outranks_a_refused_setting_and_says_the_release_still_applies() -> None:
+    """A refused preview is about the dial held now, and its banner says what the release does.
+
+    The release of that dial applies the held value, so the banner must not
+    say, as a refused setting's banner does, that the run keeps its previous
+    setting (`PL-412F`). A setting refused before the drag returns to the
+    banner once the drag ends. A stopped run outranks both, and its banner
+    says nothing of the preview.
+    """
+
+    preview = refused_preview_notice(PreviewOfAnotherCase("the reason the preview gave"))
+    setting = refused_setting_notice(SimulationConfigurationError("a value the core refused"))
+    running = _snapshot(is_running=True)
+    at_limit = _snapshot(supported_limit_reason="this run has reached 86400 s of simulated time")
+
+    assert preview == (
+        "Preview not drawn — the reason the preview gave. "
+        "Releasing the dial still applies the new setting."
+    )
+    assert notice(running, setting, refused_preview=preview) == preview
+    assert run_notice(running, setting, elapsed_s=0, refused_preview=preview) == Notice(
+        preview, Emphasis.WARNING
+    )
+    assert notice(running, setting) == (
+        "Setting refused — a value the core refused. "
+        "The simulation is unchanged and still running its previous setting."
+    )
+    limit_banner = notice(at_limit, None, refused_preview=preview)
+    assert limit_banner is not None
+    assert limit_banner.startswith(
+        "Simulation stopped — this run reached the supported run length of "
+    )
+    assert "Preview not drawn" not in limit_banner
 
 
 def test_the_transport_is_enabled_by_state_in_all_four_states() -> None:

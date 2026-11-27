@@ -133,8 +133,8 @@ def test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_th
     while the thumb is held, and the failure log records each value that
     differs once for the drag, not on every move. The release applies the
     value through the run's own setter, which rebuilds nothing, so the value
-    is accepted and the notice ends with the drag. The banner's text is typed
-    by hand.
+    is accepted, the banner says so while the thumb is held, and the notice
+    ends with the drag. The banner's text is typed by hand.
     """
 
     controller = SimulationController()
@@ -166,7 +166,8 @@ def test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_th
         "this run holds, so it would predict a different case. The simulator's data may "
         "have changed since this run began, or the simulator may have a fault. Reopen the "
         "simulator and run the case again to preview a setting. If this notice comes back, "
-        f"the cause is a fault in the simulator. {_UNCHANGED}"
+        "the cause is a fault in the simulator. Releasing the dial still applies the new "
+        "setting."
     )
     (logged,) = caplog.records
     assert logged.levelno == logging.ERROR

@@ -1708,9 +1708,10 @@ def test_a_reference_the_layout_does_not_hold_is_refused() -> None:
 def test_split_at_returns_the_split_a_path_leads_to_and_refuses_any_other_path() -> None:
     """The interface reads the split a splitter draws through `split_at` (`PL-VW5V`).
 
-    A path past a split's last child, a path through an Area, a path to an
-    Area and a window the layout lacks are each a stale reference, which is the
-    caller's error, and each is refused as one.
+    A path past a split's last child, a negative index, a path through an
+    Area, a path to an Area and a window the layout lacks are each a stale
+    reference, which is the caller's error, and each is refused as one. A
+    negative index would otherwise count from the end and return another split.
     """
 
     inner = row((0.5, 0.5), area(1), area(2))
@@ -1720,7 +1721,7 @@ def test_split_at_returns_the_split_a_path_leads_to_and_refuses_any_other_path()
     assert model.split_at((0,)) == inner
     assert model.split_at((0,), window=0) == inner
 
-    for stale in ((2,), (0, 2), (1, 0), (0, 0, 0)):
+    for stale in ((2,), (0, 2), (1, 0), (0, 0, 0), (-1,), (-2,), (0, -1)):
         with pytest.raises(NotInLayout, match=re.escape(f"the path {stale} leads to no node")):
             model.split_at(stale)
 

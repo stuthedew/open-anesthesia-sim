@@ -6360,9 +6360,11 @@ the data files again. A data file changed after the run began gives the rebuilt
 run values that the run does not hold, so its future would be another case's.
 The run's notice banner then names the dial, says that the simulator's data may
 have changed or the simulator may have a fault, and says to reopen the
-simulator to preview a setting. The failure log records each value that
-differs. Releasing the handle still applies the value, because applying it
-rebuilds nothing, and the notice ends with the drag. Every other refusal of a
+simulator to preview a setting. It also says that releasing the dial still
+applies the new setting, because applying a value rebuilds nothing. So it is
+not worded as a refused setting, and it takes the place of an earlier refused
+setting's notice until the drag ends. The failure log records each value that
+differs. Every other refusal of a
 preview is also a refusal of the value itself, so the drag shows none of them
 and the release reports it in the banner.
 
@@ -6398,7 +6400,11 @@ value. The trial run then takes the new value through the same setter that
 applies a value to the run. A trial run that does not match raises
 `controller.PreviewOfAnotherCase`, which `RunView.request_preview` puts in the
 banner (`test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_the_release`
-in `tests/integration/simulation_view/test_simulation_view_refusals.py`). The centred time window comes from
+in `tests/integration/simulation_view/test_simulation_view_refusals.py`).
+`dashboard_frame.notice` ranks that banner below a stopped run and above a
+refused setting
+(`test_a_refused_preview_outranks_a_refused_setting_and_says_the_release_still_applies`
+in `tests/unit/test_dashboard_frame.py`). The centred time window comes from
 `chart_time_base.preview_window`, and the wording of the off-scale notice from
 `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
 
