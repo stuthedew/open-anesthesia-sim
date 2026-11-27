@@ -6091,18 +6091,41 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     recorded pull requests are, all of them numbered 3 to 105, from before the
     convention. A truncated clone declines rather than reporting, because a
     span this checkout cannot walk and one whose notes are genuinely short look
-    identical from inside it. So does a span whose notes carry a bullet on from
-    the margin, which may name what reads as missing (`PL-CL8R`).
+    identical from inside it. It declines when it finds nothing too, because a
+    closure past its history is in no span it can see, and when it holds no tag
+    at all, because a shallow clone fetches only the tags inside its depth
+    (`PL-9GBS`). A span whose
+    notes carry a bullet on from the margin declines as well, because the
+    bullet may name what reads as missing (`PL-CL8R`).
     """
     roadmap_name = roadmap_path(root)
-    held = tags(root)
-    if not held.known or not held.names:
-        return
     # A repository that writes no release notes has nothing for this rule to
     # hold, and is told so by silence rather than by a decline - the reasoning
     # `release.is_untagged` gives for the tag read, one document along:
     # adopting the practice is the project's decision and not this tool's.
     if not (root / NOTES_DIR).is_dir():
+        return
+    held = tags(root)
+    if not held.known:
+        return
+    if not held.names:
+        # A shallow clone fetches only the tags inside its depth, so a depth-1
+        # clone of an untagged commit holds none, and its empty tag set says
+        # nothing about the project's tags. It declines rather than passing,
+        # like a shallow clone that holds tags (`PL-9GBS`). A complete
+        # checkout with no tags belongs to a project that does not tag, and
+        # stays silent.
+        truncated = is_shallow(root)
+        if truncated is not False:
+            why = (
+                "the checkout is a shallow clone"
+                if truncated
+                else "git cannot say whether this checkout is complete"
+            )
+            report.declined.append(
+                f"{NOTES_DIR}: {why} and holds no release tag, so no tag span was compared "
+                "against its notes; `git fetch --unshallow --tags` makes the question answerable"
+            )
         return
     store = _read_store(root)
     if store is None:
@@ -6200,22 +6223,31 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
             '§ "Tags" is why the two records differ'
         )
 
-    # Only a finding a truncated checkout could have invented is withheld, and
-    # only when there is one - the shape `check_tags` settled on, for the same
-    # reason: declining on `is_shallow` alone would silence this everywhere it
-    # runs, including the clones that have since fetched and can answer.
+    # A truncated checkout declines whether or not it found anything
+    # (`PL-9GBS`). It walks only the commits it holds, so a closure past its
+    # boundary is in no span here and can be missing from its notes unseen. A
+    # clean result from it said nothing, and the v0.6.19 cut on a shallow
+    # checkout asked for no pointer line that v0.6.18's notes owed. A shallow
+    # clone stays shallow after `git fetch --tags`, so declining on
+    # `is_shallow` silences no clone that could answer, unlike `check_tags`,
+    # whose question fetching the tags does answer.
     truncated = is_shallow(root)
-    if findings and truncated is not False:
+    if truncated is not False:
+        why = (
+            "the checkout is a shallow clone"
+            if truncated
+            else "git cannot say whether this checkout is complete"
+        )
         report.declined.append(
-            f"{NOTES_DIR}: "
+            f"{NOTES_DIR}: {why}, so a closure older than its history holds may be missing "
+            "from its release's notes without this check seeing it"
             + (
-                "the checkout is a shallow clone"
-                if truncated
-                else "git cannot say whether this checkout is complete"
+                f", and the {_plural(len(findings), 'span', 'spans')} whose notes look short "
+                "here cannot be told from a span this clone cannot walk"
+                if findings
+                else ""
             )
-            + f", so the {_plural(len(findings), 'span', 'spans')} whose notes look short here "
-            "cannot be told from a span this clone cannot walk; "
-            "`git fetch --unshallow --tags` makes the question answerable"
+            + "; `git fetch --unshallow --tags` makes the question answerable"
         )
     else:
         report.errors.extend(findings)

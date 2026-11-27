@@ -44,12 +44,18 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
 
-# One lane per pull request. A later push makes the earlier answer irrelevant,
-# and this workflow never runs on `push`, so there is no `main` lane to
-# protect (`PL-QD9K`).
+# One lane per pull request, and every run in it finishes (`PL-Q3DW`). Branch
+# protection reads the newest run of a check on the head commit. A push and a
+# ready-for-review event in the same second start two runs on one commit, and
+# GitHub does not guarantee their order in the lane. With `cancel-in-progress`,
+# the newer run was cancelled on #2322, and the pull request stayed blocked for
+# six hours with every check green. `queue: max` lets up to 100 runs wait
+# instead of cancelling one, and GitHub refuses it beside `cancel-in-progress:
+# true` (its workflow syntax page, `concurrency`, read 2026-11-27). The job takes
+# under a minute, so a run on a superseded commit costs little.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  queue: max
 
 permissions:
   contents: read
