@@ -34,3 +34,13 @@ text and lines, and a fault there would reach a clinical value's label.
 exists if the comparison found a difference.
 
 **Generator check.** One-off: the first finding that no test renders at a ratio other than 1.
+
+**Measured 2026-11-27.** The three shipped Workspaces were rendered offscreen
+at 1366 by 768, at a device pixel ratio of 1 and of 2 (`QT_SCALE_FACTOR=2`),
+after 10 minutes of the default sevoflurane run. Every visible widget kept the
+same position and size: 260 in Default, 310 in Induction and 224 in
+Maintenance. No text, axis or required value moved or clipped. The lines
+painted inside the chart did change: each one, with its dashes and the legend
+swatches, is drawn at half its width and length at a ratio of 2. That is
+`PL-FSRR`, which carries the fix and the test at a ratio of 2. The pictures are
+in `/mnt/project-files/v0.7.0/pl-qcfc-screens/`.
