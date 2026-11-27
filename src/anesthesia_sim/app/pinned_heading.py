@@ -7,7 +7,7 @@ out of view while those rows stay in view. A reader would see values with
 nothing to say whose they are (`PL-3NGZ`). A `PinnedHeadingSection` keeps its
 heading at the top of the part of the section that is in view. This is how a
 list's section headers stay pinned while the list scrolls (Apple, SwiftUI
-documentation, "Grouping data with lazy stack views", § "Keep important
+documentation, "Grouping data with lazy stack views", section "Keep important
 information visible", read 2026-11-27).
 
 The heading is drawn over the section's rows, on the panel's colour. So a row

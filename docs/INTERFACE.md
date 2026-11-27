@@ -6791,7 +6791,11 @@ and the six compartments' names, each over its own container, form the run's
 heading. The heading stays at the top of the part of the schematic in view
 while the Area scrolls, as a list's section headers stay pinned while the list
 scrolls (Apple, SwiftUI documentation, "Grouping data with lazy stack views",
-§ "Keep important information visible", read 2026-11-27). So no tension,
+section "Keep important information visible", read 2026-11-27). NUREG-0700
+Rev. 3 asks the same of any scrollable display: "General labels and row and
+column labels should remain along the top (or bottom) and left (or right)
+edges of the display" (O'Hara, Brookhaven National Laboratory for the U.S.
+Nuclear Regulatory Commission, 2020, guideline 1.5-15, p. 1-59). So no tension,
 amount or share is in view without its run, its compartment and what its
 share is of. On a 1366 by 768 screen, the Maintenance Workspace gives the
 schematic an Area too short to hold even one run's schematic, and two
