@@ -35,8 +35,10 @@ page's widget into view without any such signal.
 **Fix.** `pin_on_scroll` in `app/pinned_heading.py` also moves the headings
 after each change of either scroll bar's range.
 `test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view`
-fails without the change and passes with it, with the container's font and
-with DejaVu Sans, which CI draws text in.
+passes with the change, with the container's font and with DejaVu Sans, which
+CI draws text in. With `bar.rangeChanged.connect(after_range)` taken out of
+`pin_on_scroll`, `.venv/bin/pytest -q` on that test fails with
+`AssertionError: Run 1, at 10m of simulated time`.
 
 **Gate.** Placed on v0.7.0's frozen list beside `PL-3NGZ`, which it completes:
 `PL-3NGZ` is done when no run's values are in view without its name, and this

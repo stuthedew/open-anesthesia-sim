@@ -18,8 +18,8 @@ from math import exp, floor, log10
 from typing import NoReturn
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, QRect, QRectF
-from PySide6.QtGui import QColor, QFontMetrics, QImage
+from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt
+from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
@@ -1023,11 +1023,28 @@ def _seen_without_heading(page: QScrollArea, run: RunSchematic, shown_part: QRec
     ]
 
 
-def _heading_in_view(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> bool:
-    """Return whether the run's heading lies wholly in `shown_part`."""
+def _qualifiers(run: RunSchematic) -> tuple[QWidget, ...]:
+    """Return the run's heading, and its run name, share caption and compartment names.
 
-    return shown_part.contains(
-        QRect(run.heading.mapTo(page.viewport(), QPoint(0, 0)), run.heading.size())
+    Each line must stand in the heading, which is drawn over the rows. A line
+    that left it would scroll with the rows and could be hidden under the
+    heading while a value under it is seen.
+    """
+
+    lines = (run.name_text, run.share_text, run.names)
+
+    for line in lines:
+        assert run.heading.isAncestorOf(line), line
+
+    return (run.heading, *lines)
+
+
+def _heading_in_view(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> bool:
+    """Return whether the run's heading, with each line it holds, lies wholly in `shown_part`."""
+
+    return all(
+        shown_part.contains(QRect(line.mapTo(page.viewport(), QPoint(0, 0)), line.size()))
+        for line in _qualifiers(run)
     )
 
 
@@ -1098,6 +1115,9 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
             # covers the other run's rows.
             assert run.rect().contains(run.heading.geometry()), position
             heading = _in_viewport(scroll, run.heading, QRectF(run.heading.rect()))
+            qualifiers = [
+                _in_viewport(scroll, line, QRectF(line.rect())) for line in _qualifiers(run)
+            ]
             canvas = run.canvas
             values = [
                 _in_viewport(scroll, canvas, drawn)
@@ -1115,7 +1135,8 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
             ]
 
             if seen:
-                assert viewport.contains(heading), (position, run.name_text.text())
+                for qualifier in qualifiers:
+                    assert viewport.contains(qualifier), (position, run.name_text.text())
 
 
 @pytest.mark.parametrize(
@@ -1156,6 +1177,74 @@ def test_each_compartment_name_stands_over_its_own_container(
             # Both centres are computed from one width divided by six, so they
             # agree to the half pixel by which a rectangle's centre is rounded.
             assert abs(cell.center().x() - container.center().x()) <= 0.5, name
+
+
+def _with_text_alone(widget: QWidget, painted: QImage, cell: QRectF, text: str) -> QImage:
+    """Return `painted` with `cell` cleared to its background and `text` painted alone in it.
+
+    The text is centred at the top of the cell, in `widget`'s font and in
+    `INK`, as `widget` paints each string. So the result is what `widget` would
+    show if `cell` held `text`. The cell's corner is clear of its text, so its
+    pixel is the background.
+    """
+
+    image = painted.copy()
+    area = cell.toAlignedRect().intersected(image.rect())
+    painter = QPainter(image)
+    painter.fillRect(area, image.pixelColor(area.topLeft()))
+    painter.setFont(widget.font())
+    painter.setPen(QColor(INK))
+    painter.drawText(cell, int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop), text)
+    painter.end()
+
+    return image
+
+
+def test_each_name_and_label_line_is_painted_in_its_own_container_s_column(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-Q740`: the pixels of each name and each label line are that string, in its own cell.
+
+    `test_each_compartment_name_stands_over_its_own_container` compares the
+    cells that `name_cell` and `container` return, and nothing there reads
+    where the strings are painted. So a name or a tension painted in another
+    container's cell would put "Fat", or another compartment's tension, over
+    the circuit with every rectangle still right. This test reads the painted
+    pixels of each cell. They must be the pixels of the same cell cleared and
+    painted with the string that belongs there and nothing else. Every string
+    shown here differs from the others in its row, so a string painted in
+    another container's cell changes the cell's pixels.
+    """
+
+    view = _paused_dashboard(
+        application, shown, _SCHEMATIC_ONLY, (_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX), branched=False
+    )
+    run = _schematic(view).schematics[0]
+    labels = run.canvas.painted_strings()
+    placed: list[tuple[QWidget, QRectF, str]] = [
+        (run.names, run.names.name_cell(index), name) for index, name in enumerate(_NAMES)
+    ]
+    placed += [
+        (run.canvas, run.canvas.label_line(index, line), labels[index * 3 + line])
+        for index in range(len(_NAMES))
+        for line in range(3)
+    ]
+    painted: dict[QWidget, QImage] = {
+        widget: widget.grab().toImage() for widget in (run.names, run.canvas)
+    }
+
+    # The premise: no two strings in a row are the same, so each cell's pixels
+    # tell its string from every other in the row.
+    for line in range(3):
+        row = [labels[index * 3 + line] for index in range(len(_NAMES))]
+        assert len(set(row)) == len(row), row
+
+    for widget, cell, text in placed:
+        image = painted[widget]
+        area = cell.toAlignedRect().intersected(image.rect())
+        expected = _with_text_alone(widget, image, cell, text)
+
+        assert image.copy(area) == expected.copy(area), text
 
 
 def test_a_run_heading_follows_a_scroll_of_the_page(
