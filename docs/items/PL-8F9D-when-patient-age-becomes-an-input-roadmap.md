@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: feature, safety
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md, docs/INTERFACE.md
-blocked-by: v0.8.0
+blocked-by: PL-R8JK
 deferred-from: v0.7.0 - not live: checked 2026-11-22, the tree has no patient age input, so no user can set an age and see a MAC that ignores it; the work waits on PL-LBVN and on planned-milestone item 30
 added: 2026-11-14
 payoff: once a user can set the patient age, every MAC figure on screen is the MAC for that age rather than for a 40-year-old

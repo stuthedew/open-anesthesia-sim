@@ -7,7 +7,7 @@ status: blocked
 classes: planning
 feature: interface-areas
 touches: docs/items
-blocked-by: v0.8.0
+blocked-by: 2027-02-27
 added: 2026-09-16
 ---
 
@@ -77,3 +77,5 @@ scoped, and v0.8.0 is the next release `ROADMAP.md` § "The timeline" names.
 > Queue item `PL-L6QR` is the queue audit that re-runs once item 36 is scoped.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. `ROADMAP.md` § "The timeline" row 11 still leaves v0.8.0 unscoped, and item 36 (the catalogue of Views) has no scoping round. Several of today's surfaces have become Views one at a time since this was filed. `src/anesthesia_sim/app/view_registry.py` now names eight View kinds, including bookmarks and branch, so the re-run audit will have fewer open questions than in 2026-09.
+
+**Checked 2026-11-27:** v0.8.0 was scoped (`PL-8NDZ`) without planned-milestone item 36, so this audit still waits. The roadmap places no milestone after v0.8.0 yet, so its blocker is now a date three months out, at which to re-read it. The scoping of the milestone after v0.8.0 is the next point at which item 36 can be taken.
