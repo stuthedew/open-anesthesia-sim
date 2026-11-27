@@ -22,14 +22,19 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
 
-# `synchronize` and `edited` both fire here, and a description edit made while
-# a push is still being checked would otherwise run this twice concurrently on
-# the same head. Unconditional `cancel-in-progress` is safe in a way it is not
-# in `quality.yml`: this workflow never runs on `push`, so there is no `main`
-# lane to protect. `PL-QD9K`.
+# `synchronize` and `edited` both fire here, so a description edit made while a
+# push is being checked starts a second run on the same head. The lane runs them
+# one at a time and cancels none (`PL-Q3DW`). Branch protection reads the newest
+# run on the head commit, and GitHub does not guarantee the order of two runs
+# that start in the same second, so cancelling could leave that newest run
+# cancelled and the pull request blocked with every check green, as
+# `merge-hold` did on #2322. Each run reads the title from its own event, so the
+# newest run checks the newest title. `queue: max` lets up to 100 runs wait,
+# and GitHub refuses it beside `cancel-in-progress: true` (its workflow syntax
+# page, `concurrency`, read 2026-11-27).
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  queue: max
 
 permissions:
   contents: read

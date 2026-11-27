@@ -186,7 +186,7 @@ from types import CodeType, ModuleType
 from typing import TYPE_CHECKING, Any, Protocol
 
 import pytest
-from _pytest.python_api import ApproxScalar
+from _pytest.approx import ApproxScalar
 from restated_constants import (
     PERTURBED_CONSTANT_VARIABLE,
     RANGES_MODULE,
