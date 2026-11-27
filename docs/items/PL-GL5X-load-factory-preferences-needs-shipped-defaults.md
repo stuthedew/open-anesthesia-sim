@@ -25,7 +25,7 @@ what the code already hardcodes.
 **The pattern already exists in this repository.** `PL-KXTL` ships the three
 default Workspaces "as validated versioned JSON beside the other shipped
 parameter files" under `src/anesthesia_sim/data/`, loading "through the same
-path a learner's own Workspaces do". Shipped default *preferences* want
+path a user's own Workspaces do". Shipped default *preferences* want
 exactly that treatment, and for the same reason: a default that loads by the
 reader's own path is a default whose behaviour is tested by the reader's own
 tests.
@@ -40,7 +40,7 @@ the file states the inputs, the code states the rule.
 **Why it matters, and what is uniquely this item's.** Most of the surrounding
 ground is already owed elsewhere, and this item is worth keeping only for the
 part that is not. `ROADMAP.md` v0.6.0 `Required scope` item 11 already obliges
-`PL-WV9K` to distinguish shipped defaults from the learner's own and to define
+`PL-WV9K` to distinguish shipped defaults from the user's own and to define
 "reset", and `PL-KXTL` already ships defaults through the reader's own load
 path. Three mechanisms nobody owns, all of them on the preferences side:
 

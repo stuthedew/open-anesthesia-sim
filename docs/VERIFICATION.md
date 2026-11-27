@@ -628,7 +628,7 @@ table.
 **An ordinary dial change is well below both the worst and the second-worst columns.** It is the
 case opening, a third manoeuvre, and its error is about 19 times smaller than the worst at 1× and
 5×. The ratio narrows to 17 times at 20×, 14 times at 60× and about 6 times at 300×, where the case
-opening reaches 1.7 pp. Use this comparison to judge what a learner's own actions cost. To see how
+opening reaches 1.7 pp. Use this comparison to judge what a user's own actions cost. To see how
 far the worst figure stands above the other abrupt manoeuvres, use the second-worst column. The
 tens of percentage points at 300× come from abrupt manoeuvres.
 
@@ -802,7 +802,7 @@ A model of hyperbaric or reduced pressure would keep the limit of 1 on a fractio
 The chart checks each fraction it computes before drawing it, so a chart that computes a fraction
 above 1 is refused rather than drawn. A chart opened from a state at 1 at the hardest corner
 computes one, and no supported setting produces that state. The refusal names the compartment, such as the muscle group, because
-a learner sees it as the banner that says why the run halted.
+a user sees it as the banner that says why the run halted.
 
 When the chart refuses a state at 1, it raises `SimulationNumericalError`.
 
@@ -1003,7 +1003,7 @@ the criterion allowed. The limits were kept on 2026-11-21 all the same, for four
    check halts a run at the hardest corner after 11 s.
 3. Raising the smallest volume to 0.1 L would bring the count back to 19. It would also refuse
    a volume only 12 times below the smallest shipped one.
-4. Nothing a learner sees depends on the choice.
+4. Nothing a user sees depends on the choice.
 <!-- provenance: core/supported_ranges.py MAXIMUM_ELAPSED_SIMULATION_TIME_S = 86400 -->
 
 **No stored state comes from a calculation that spans more than one second.** A run and a
@@ -1057,7 +1057,7 @@ blood:gas coefficient of 12, as high as any volatile agent's.
 <!-- provenance: core/numerical_envelope.py MINIMUM_VOLUME_L = 0.01 -->
 
 **The mass-balance tolerance stays fixed at one part in 10⁹.** A tolerance that grew with the
-number of squarings would end the halts above, but it would also loosen the check where learners
+number of squarings would end the halts above, but it would also loosen the check where users
 run. A shipped agent's step needs 2 squarings at its default flows and 3 at the widest supported
 flows. Over 24 h, a correct run's worst error was 9.8 parts in 10¹², about a hundredth of the
 tolerance. That run was sevoflurane at its highest dial setting, 8%, with 0.5 L/min of fresh
@@ -1090,7 +1090,7 @@ exactly $`10^{-9}`$ wherever $`s = 0`$.
 
 The tolerance was fixed on 2026-10-31, when a run could also take steps of 1 ms. The sum for
 24 h of those steps was 1.9 parts in 10⁷. That is about 190 times looser than one part in 10⁹,
-so a real accounting error could have passed on a long run that a learner could reach. A
+so a real accounting error could have passed on a long run that a user could reach. A
 tolerance widened only by what the squarings add would end the halts at the hardest corners. It
 has not been built (`PL-TLKY`).
 <!-- not-restated: 1 ms -->
@@ -1298,10 +1298,10 @@ to judge whether each test is any good.
 
 | A reader could be misled into | What stops it | Tested by |
 | --- | --- | --- |
-| reading a run as a prediction for a real patient whose data was entered into it | the use statement stays in view. It is the disclaimer at the foot of the window. The simulated patient is always the built-in reference adult. Cardiac output and ventilation are teaching controls, and a learner can set either one to a value measured in a patient. Only the use statement stops a learner reading that run as a prediction for that patient (§ "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
+| reading a run as a prediction for a real patient whose data was entered into it | the use statement stays in view. It is the disclaimer at the foot of the window. The simulated patient is always the built-in reference adult. Cardiac output and ventilation are teaching controls, and a user can set either one to a value measured in a patient. Only the use statement stops a user reading that run as a prediction for that patient (§ "What keeps a real patient's data out of a run") | `test_the_educational_disclaimer_says_what_the_tool_is_not`, `test_the_dashboard_carries_the_educational_disclaimer`, `test_the_region_and_the_use_disclaimer_stay_in_the_viewport`, `test_every_run_simulates_the_shipped_reference_adult` |
 | reading a correct concentration as belonging to a different agent | agent colour is never the only cue. The agent name is always visible in every top-level window, within the limit stated in `docs/INTERFACE.md` § "Minimum displayed outputs" -> "What this list requires once the layout is the reader's". A separate tool checks the ISO 5360 agent colours and the text colour that stays readable on each (`tools/contrast_check.py`, which reads the colours from `src/anesthesia_sim/app/theme.py`) | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt has its own status words, and the two failure modes have different words. The status word, the transport controls and the banner are set from the run's status alone, never from a compartment value. A halted run therefore still shows as stopped, and does not offer Pause, even when its values cannot be read. When a run halts before any of it has been drawn on screen, its banner says so, instead of claiming that a step was rolled back | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed`, `test_a_halt_is_shown_when_the_snapshot_itself_is_refused`, `test_a_halt_is_stated_from_the_run_status_alone`, `test_a_halt_no_frame_was_drawn_for_is_worded_as_one_rather_than_as_a_failed_step` |
-| reading a run that a mark stopped as one the learner paused, while two runs are compared | the status word reads "Paused — stopped on your mark". While two runs are compared, the branch control hides its own "stopped on your mark", so this status word is the only cue. A failure, or reaching the supported run length, overrides this word. A MAC target's row reads "reached" from its first crossing on. A new branch reads "Paused" at the instant it starts from its parent run, though it carries the parent's halt record, because no step of the branch stopped it | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_learner_s_own_pause` |
+| reading a run that a mark stopped as one the user paused, while two runs are compared | the status word reads "Paused — stopped on your mark". While two runs are compared, the branch control hides its own "stopped on your mark", so this status word is the only cue. A failure, or reaching the supported run length, overrides this word. A MAC target's row reads "reached" from its first crossing on. A new branch reads "Paused" at the instant it starts from its parent run, though it carries the parent's halt record, because no step of the branch stopped it | `test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison`, `test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it`, `test_a_run_a_mark_stopped_is_not_worded_as_the_user_s_own_pause` |
 | reading a run whose Reset the model refused as one still running, or as one that was reset | a refused Reset leaves the run exactly as it was, and the interface halts the run and states the halt (`docs/INTERFACE.md` § "Reset behavior") | `test_a_reset_the_core_refuses_halts_the_run_visibly`, `test_a_reset_the_core_refuses_leaves_the_run_exactly_as_it_was`, `test_a_refused_reset_names_the_way_out_in_the_banner`, `test_a_tissue_flow_mismatch_is_stated_in_litres_per_minute` |
 | comparing readouts with a chart that was drawn from different settings | the readouts come from the model's steps, and the chart from the recorded settings of the run. Before each step, the model's settings are compared with the recorded ones. If a setting reaches the model without being recorded, the run halts on the last step on which the two agree, and a banner says why. Reset then starts a new run from the model's settings. A change recorded after such an unrecorded one brings the record back into line with the model without halting the run. The interface never changes a setting without recording it | `test_a_setting_written_onto_the_core_past_the_controller_refuses_the_next_step`, `test_a_setting_written_onto_a_branch_s_core_past_its_controller_refuses_its_next_step`, `test_reset_after_a_setting_written_past_the_controller_runs_at_that_setting`, `test_a_run_whose_core_setting_moved_past_its_controller_halts_on_the_last_recorded_step` |
 | reading the agent selector or a slider as a control that took effect, when it was used on a run whose values cannot be read | if reading the run's values fails while the selector or a slider is in use, the run halts and the halt is stated from the run's record, so the failure cannot pass unseen. The selector goes back to the agent that record names. The banner still names Reset as the way to recover, unless a refused Reset has left its own instructions. The controls stay usable on a halted run, because locking them would show the agent selector as disabled. A slider moved on a run that has already stopped is refused, as the row on values from different steps says | `test_an_agent_change_on_a_halted_run_restates_the_halt`, `test_a_slider_moved_on_a_run_whose_snapshot_refuses_halts_it` |
@@ -1372,7 +1372,7 @@ The controls do only what they say:
   (`test_pause_stops_simulated_time_and_the_stored_state`);
 - Reset clears dynamic state while preserving settings
   (`test_reset_preserves_settings_and_clears_dynamic_state` for the simulation
-  state, and `test_reset_preserves_all_user_settings` for the Reset a learner
+  state, and `test_reset_preserves_all_user_settings` for the Reset a user
   presses); and
 - a delivered concentration above the agent's vaporizer maximum is refused, not
   capped (`test_a_run_cannot_open_or_change_under_a_dial_above_the_vaporizer_maximum`).
@@ -1711,7 +1711,7 @@ and lowest settings against the supported ranges.
 <!-- not-restated: 900 s -->
 
 **Random runs cover combinations of settings that nobody listed.** The five runs
-above change their settings once or never. A learner moves four sliders again and
+above change their settings once or never. A user moves four sliders again and
 again, in combinations that nobody listed. So the test also drives three random runs
 for each agent. Each lasts 600 s and moves the controls every 1 to 20 s, sometimes
 to the very end of a slider's range, so zero ventilation, zero perfusion and zero
@@ -2768,7 +2768,7 @@ run depends only on their product, the tissue's capacity.
   (`test_the_published_data_gate_passes_at_a_stated_perturbation`).
   That is expected of checks that cover 30 minutes of wash-in and 5 minutes of
   washout. Fat solubility and fat volume set the hours-long tail of washout,
-  from which a learner judges emergence. Nothing here checks them against a
+  from which a user judges emergence. Nothing here checks them against a
   measurement. § "The first 24 hours of elimination against the published
   mean curves" compares that tail with the published fits, but does not
   require the two to agree.
@@ -3084,7 +3084,7 @@ checked across the removals. The removals are recorded as exhausted agent, so
 that § "Mass-balance identity" remains true with the sink in place.
 <!-- not-restated: 5 %, 5.0 %, 1.3, 1.8 % -->
 
-**What a learner sees of it: nothing on screen, and the record gains the
+**What a user sees of it: nothing on screen, and the record gains the
 number.** The departures above are in $`F_A/F_{A0}`$. At the 1% dial of these runs,
 $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an atmosphere for sevoflurane,
 isoflurane and desflurane
@@ -3096,7 +3096,7 @@ mean. On the chart's linear axis at its standard 3 MAC top, the trace is a few
 pixels high well before that, and twice as high at the reader's 1.5 MAC top. A higher dial scales $`F_{A0}`$ with it, and
 keeps a number on the readout for longer. A 6%
 desflurane dial keeps a number on the readout until about 7.8 hours, which is inside
-desflurane's stretch. So a learner who runs a case long can reach the
+desflurane's stretch. So a user who runs a case long can reach the
 shortfall.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
@@ -3334,11 +3334,11 @@ Two safeguards protect against this misuse today:
    each built-in Workspace it stays in view, however the page scrolls.
 2. The simulated patient is always the same reference adult. No control accepts
    a weight, age, sex, height or body composition. Every run keeps that
-   patient's compartment volumes and perfusion fractions, whatever the learner
+   patient's compartment volumes and perfusion fractions, whatever the user
    sets. The planned patient factors (`ROADMAP.md` planned-milestone item 30)
    will remove this safeguard.
 
-A learner can still set cardiac output or alveolar ventilation to a value
+A user can still set cardiac output or alveolar ventilation to a value
 measured in a real patient, because changing them is a core teaching feature.
 The run then shows the reference adult at that flow, not a prediction for that
 patient. Only the use statement guards against reading the run as one.
@@ -3556,7 +3556,7 @@ where the other is wanted.
 **The vaporizer setting is stored as the percent dialled.** It is the only
 concentration that is set rather than computed. Converting a fraction back to a
 percent does not always return the setting, so a value kept as a fraction could
-not give back what a learner dialled. A new run starts the dial at the agent's
+not give back what a user dialled. A new run starts the dial at the agent's
 published percent, without converting it. An error message about a setting
 gives it in percent, beside the vaporizer maximum, which is also stored in
 percent. Like the vaporizer setting, the flows are stored as set (§ "Time").

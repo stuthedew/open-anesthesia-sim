@@ -90,7 +90,7 @@ that opens a run for an agent (`AgentUptakeSystem.for_agent()`) uses this flow
 when the profile gives none.
 
 No source is this value's authority. Its authority is a recorded reason: the
-value was chosen so that a learner sees the machine lag as a distinct phase of
+value was chosen so that a user sees the machine lag as a distinct phase of
 the early rise. The shipped machine file,
 `data/machines/reference_circle_system.json`, stores the same value and records
 that reason in its `provenance_gap`. This value's provenance row is in the

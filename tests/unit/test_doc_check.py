@@ -7406,7 +7406,7 @@ Make one case observable.
 
 ### Definition of done
 
-The learner can run one case.
+The user can run one case.
 
 ### Explicitly out of scope for v0.4.0
 

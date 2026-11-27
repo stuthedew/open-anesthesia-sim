@@ -98,7 +98,7 @@ instruction-staleness-audit = "Measuring the instructions loaded at launch on on
 interface-areas = "The Workspace, Area and View layout model adapted from Blender, including how Areas size, dock and behave when very narrow."
 interface-design-review = "Findings of the interface design review, such as notation, wording, keyboard focus, tab order and fit at 1366 by 768."
 interface-matches-its-spec = "Making the interface do what docs/INTERFACE.md requires."
-interface-pass-design-round = "The interface pass: learner tasks, heuristic evaluation, wireframes, style, resident testing, and the record of its placement decisions."
+interface-pass-design-round = "The interface pass: user tasks, heuristic evaluation, wireframes, style, resident testing, and the record of its placement decisions."
 interface-pass-narrative = { use = "interface-pass-design-round" }
 interface-provenance-adoptions = { use = "interface-areas" }
 interface-provenance-structure = "Structure, citations and claims of docs/interface-provenance.md."
@@ -202,7 +202,7 @@ stranded-report-fidelity = "Making bin/docket stranded and flight see all the wo
 stranded-triage-sweep = { use = "stranded-recovery" }
 supported-run-length-text = { use = "presentation-safety" }
 tag-error-names-its-cause = { use = "doc-consistency-checks" }
-teachable-case = "A teaching case the learner can run end to end, and the cost of keeping its history."
+teachable-case = "A teaching case the user can run end to end, and the cost of keeping its history."
 test-effectiveness-measurement = { use = "tests-detect-wrong-values" }
 tests-detect-wrong-values = "Tests that fail when a value is wrong, measured by mutation testing and replayed bug fixes, and test limits that can never decide a result."
 timeline-arrangement = "Reading the release train's order from ROADMAP.md's timeline rather than from version numbers."

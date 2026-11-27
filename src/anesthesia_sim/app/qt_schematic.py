@@ -3,7 +3,7 @@
 `SchematicCanvas` paints six containers and the lines that join them, from
 the readings that `app/compartment_schematic.py` computes. The canvas computes
 no value of its own. Each container fills from its bottom to the reading's
-`fill`, in the colour of its compartment's chart trace. So a learner who moves
+`fill`, in the colour of its compartment's chart trace. So a user who moves
 between the schematic and the chart finds each compartment in one colour. The
 compartment's name, tension, amount and share of all the agent are painted
 under its container, in text, so no value is carried by colour or height alone
@@ -11,7 +11,7 @@ under its container, in text, so no value is carried by colour or height alone
 and share bar assert").
 Short marks inside each container's two sides stand at the concentration
 chart's gridlines. A container is much shorter than the chart's plot, so a
-learner reads a fill level against these marks, never across to the chart
+user reads a fill level against these marks, never across to the chart
 (`PL-8W1B`).
 
 **How the containers are joined** (`PL-RNYV`). The containers stand in one row
@@ -32,7 +32,7 @@ agent that the six compartments hold. The six bars are one length, so they
 compare the shares on one scale, and each sits in its own container's column
 under the label that names it. The containers' heights are tensions, so fat's
 container stays nearly empty even while fat comes to hold a fifth of the agent.
-Fat's bar is where the learner sees that growing share.
+Fat's bar is where the user sees that growing share.
 
 Every size and colour choice here is a placeholder while the interface is being
 built (project owner, 2026-10-18). The parallel drawing of the tissues is not a

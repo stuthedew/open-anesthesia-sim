@@ -156,7 +156,7 @@ def test_a_halt_with_no_start_over_keeps_each_chart_s_frame(
 ) -> None:
     """A halt of the run the charts drew leaves both plots as the last frame drew them.
 
-    What a learner sees after a halt does not change: the plot keeps the
+    What a user sees after a halt does not change: the plot keeps the
     last frame, which is the same run and the same case as the readouts.
     """
 

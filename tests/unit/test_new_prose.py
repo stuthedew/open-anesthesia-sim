@@ -426,7 +426,7 @@ def test_a_python_file_is_compared_by_its_prose_alone(
 #: the string-unit tests (`PL-Q98K`).
 STRING_READERS = READERS.replace(
     "| Replies to the owner |",
-    "| String literals in `src/pkg/app/` | A learner | Anesthesia. | Code. | Act on a notice. |\n"
+    "| String literals in `src/pkg/app/` | A user | Anesthesia. | Code. | Act on a notice. |\n"
     "| Replies to the owner |",
 )
 

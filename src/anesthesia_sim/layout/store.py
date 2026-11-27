@@ -102,7 +102,7 @@ Workspace loads, and that Area shows the failure state from `PL-R1WQ`
 (`LayoutModel.unknown_kinds`).
 
 The shipped set comes from `PL-KXTL`. `layout/shipped.py` reads it from
-`data/workspaces/` with the same reader as a learner's file. The store is
+`data/workspaces/` with the same reader as a user's file. The store is
 handed the set and does not know where it came from. `app/main.py` resolves
 the directory and loads the set at launch, and the Layout menu in
 `app/workspace_tabs.py` saves it (`PL-DWHG`).

@@ -191,14 +191,14 @@ def _play_until_it_stops(view: SimulationView, trunk: SimulationController) -> N
 def test_a_halt_on_a_mark_is_told_apart_from_a_pause_during_a_comparison(
     application: QApplication,
 ) -> None:
-    """While two runs are compared, a run that a mark stopped is not shown as the learner's Pause.
+    """While two runs are compared, a run that a mark stopped is not shown as the user's Pause.
 
     The fork control's "stopped on your mark" is withdrawn while two runs are
     compared, and it was the only cue that a mark had stopped the run. A MAC
     target's row reads "reached" from its first crossing, so a later crossing
     changes nothing there either. So a run that a mark stopped read "Paused",
     like a pause that nobody made (`PL-QBQX`). Its status word now says that a
-    mark stopped it. The learner's own Pause, and the branch that never ran,
+    mark stopped it. The user's own Pause, and the branch that never ran,
     still read "Paused". The expected words are written here rather than read
     from the module, so a change to them fails this test.
     """
@@ -239,7 +239,7 @@ def test_a_branch_opened_on_a_mark_crossing_is_not_said_to_be_stopped_by_it(
     A branch opens standing on the step that reached its fork, so that
     step's crossing is the branch's halt record (`PL-3K9B`). The step was the
     trunk's, though. A status word that read the halt record alone told the
-    learner that a mark had stopped a run that never ran, which is the
+    user that a mark had stopped a run that never ran, which is the
     misreading `PL-QBQX` set out to remove. The expected words are written
     here rather than read from the module, so a change to them fails this
     test.
@@ -276,7 +276,7 @@ def test_a_run_that_halts_on_a_mark_under_its_own_timers_is_redrawn(
     The halt changes the run's record, and the tick compares that record with
     what the run's view last wrote (`PL-X7D5`). Before that change, the tick
     drew only while a run was running or a frame was owed. So until the
-    learner pressed something, the screen showed "Running" with Pause offered,
+    user pressed something, the screen showed "Running" with Pause offered,
     the clock one step short, and no offer to branch where the run stood
     (`PL-T995`).
     """
@@ -1549,7 +1549,7 @@ def test_a_halt_whose_dials_cannot_be_built_shows_no_earlier_setting(
 ) -> None:
     """After an agent change whose dials cannot be built, no earlier setting stays on screen.
 
-    The run held sevoflurane at 8.00%, which is 4.00 ×MAC. The learner changes
+    The run held sevoflurane at 8.00%, which is 4.00 ×MAC. The user changes
     to desflurane while every frame fails and no dial can be built. The dial
     row and the delivered line used to keep "8.00%" and "4.00 ×MAC", beside a
     1 MAC line that named desflurane (`PL-SV2Q`). The dashboard now holds no
@@ -1772,7 +1772,7 @@ def test_a_halt_that_no_frame_draws_after_the_run_started_over_says_its_readouts
 
 
 @pytest.mark.parametrize("scenario", ["accounting halt", "accounting halt, no frame drawn"])
-def test_an_accounting_halt_tells_the_learner_in_words_and_logs_the_totals(
+def test_an_accounting_halt_tells_the_user_in_words_and_logs_the_totals(
     application: QApplication,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,

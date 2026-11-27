@@ -130,7 +130,7 @@ _LOG: Final = logging.getLogger(__name__)
 
 # The way out that a refused branch names when an earlier point is still
 # open to it. It names the controls by their words on screen, because a
-# learner reads the refusal in the Branch View beside them (`PL-3JTH`).
+# user reads the refusal in the Branch View beside them (`PL-3JTH`).
 _BRANCH_AT_AN_EARLIER_POINT: Final = (
     f'an earlier setting change or mark can still be chosen under "{FORK_POINT_LABEL}" and '
     f'branched at with "{TAKE_FORK_LABEL}"'
@@ -234,7 +234,7 @@ class RunStatus:
     failure_kind: FailureKind | None = field(kw_only=True)
     """The kind of failure that halted the run, or `None` if it did not fail.
 
-    The banner tells the learner what kind of fault it was in plain words,
+    The banner tells the user what kind of fault it was in plain words,
     from this field, and `failure_reason` keeps the exception's own message
     for the details under the banner (`PL-XWCH`). The kind is recorded with
     the reason when the run halts, so it is never read back out of the
@@ -362,7 +362,7 @@ class RunRecord(RunSettings):
     For a fork at the case's opening, each copy records a setting that the
     parent changed before Start, as a change from the value that the
     parent's timeline starts from. A reset of the branch keeps these
-    entries. After them, the timeline records each setting that the learner
+    entries. After them, the timeline records each setting that the user
     has changed away from the value that the branch opened under.
     """
 
@@ -377,10 +377,10 @@ class RunRecord(RunSettings):
     `changes_since_opening` is the timeline without them.
 
     No later change merges into one of these entries or removes it. A change
-    that the learner makes at the fork is recorded as an entry of its own
+    that the user makes at the fork is recorded as an entry of its own
     after them (`_record_in_timeline`), and a reset of the branch keeps them.
     So the branch's "Control changes" panel always states the setting that
-    the branch opened under. A learner who sets a dial back to the parent's
+    the branch opened under. A user who sets a dial back to the parent's
     earlier value has made a change of their own, and it counts as work on
     the branch.
     """
@@ -391,14 +391,14 @@ class RunRecord(RunSettings):
 
         `SimulationSnapshot.has_recorded_run` reads this to decide whether a
         run holds anything that a reset would destroy (`PL-ZR49`). The trunk's
-        Reset asks the learner a question before it discards a branch. That
+        Reset asks the user a question before it discards a branch. That
         question counts every entry in the branch's timeline, not only the
         entries returned here, because the branch's "Control changes" panel
         lists every entry.
 
         Nothing changes an opened entry once it is recorded
         (`RunRecord.opened_with`). So the opened entries are found by plain
-        equality. Every other entry is a change that the learner made on this
+        equality. Every other entry is a change that the user made on this
         run and has kept. A change set back to the value it started from is
         removed (`_record_in_timeline`). So the sequences "change, reset,
         change back" and "change, change back, reset" leave the same timeline
@@ -663,10 +663,10 @@ class SimulationSnapshot(RunRecord):
     """Where the run stands on each mark in `bookmarks`, keyed by the mark.
 
     This is the other half of the question that `bookmarks` asks. That field
-    holds what the learner marked, and this one holds where the run stands
+    holds what the user marked, and this one holds where the run stands
     on each mark. There are six possible results rather than two. "Not
     reached", "not reached yet" and "already behind the clock" are different
-    claims, and a row that merged them would tell a learner to wait for
+    claims, and a row that merged them would tell a user to wait for
     something that cannot arrive. `bookmarks.MarkStanding` gives the argument
     for each result. It also explains why a marked instant and a marked height
     are described in different words.
@@ -697,7 +697,7 @@ class SimulationSnapshot(RunRecord):
         it has recorded a setting change since it opened. It is false for a run
         that has been built and not yet touched, such as a fresh session or a
         fresh branch. It is also false for a run after `reset()`, except for a
-        branch that keeps a setting the learner changed, as the last paragraph
+        branch that keeps a setting the user changed, as the last paragraph
         says.
 
         The interface uses it to tell a destructive act from a harmless one.
@@ -730,7 +730,7 @@ class SimulationSnapshot(RunRecord):
         the branch. On a branch, the only reader of this property is the
         question that the trunk's Reset asks before it discards the branch.
         That Reset discards the trunk's change anyway. A setting that the
-        learner kept through a reset of the branch is their work, so it still
+        user kept through a reset of the branch is their work, so it still
         counts. So does a change that sets a dial back to the value the trunk
         held before its change, because the branch opened at what the dial
         said. `RunRecord.changes_since_opening` returns the entries that count.
@@ -842,7 +842,7 @@ class MarkForkPoint:
     """A marked instant that a run has passed, and the instant where a branch taken there opens.
 
     These two instants are in general not equal, which is why this record
-    carries both (`PL-W4XQ`). `bookmark.instant_s` is where the learner placed
+    carries both (`PL-W4XQ`). `bookmark.instant_s` is where the user placed
     the mark, and `fork_s` is the end of the step that reaches it, where a
     branch opens. With a step of one second the two are equal, because a mark
     is a whole number of seconds (`PL-SZ6G`). Code that labels the offer to
@@ -965,7 +965,7 @@ class SimulationController:
         self._prediction_memo: tuple[_PredictionKey, DrawnWindow] | None = None
         # The fields below record what this run has done with the marks, as
         # opposed to what is marked. They are what the run produced, not what
-        # the learner asked about. So they are cleared wherever a new run
+        # the user asked about. So they are cleared wherever a new run
         # begins: in `_build_state`, which `set_agent` also calls, and in
         # `reset()`. `_bookmarks` below is kept through all of these.
         # `_open_at` sets `_stands_where_it_stopped` rather than clearing it,
@@ -985,11 +985,11 @@ class SimulationController:
         self._stands_where_it_stopped = False
         self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
         # `_bookmarks` is set here and not in `_build_state`, deliberately.
-        # `set_agent` also calls `_build_state`. A mark is the learner's question rather
+        # `set_agent` also calls `_build_state`. A mark is the user's question rather
         # than the run's product, so it outlives the run, as a setting does. A
         # MAC target is held as a multiple of whichever agent is running. So it
         # means the same thing after an agent change as before it, and that is
-        # the comparison a learner who changes agent is making.
+        # the comparison a user who changes agent is making.
         self._bookmarks = BookmarkSet()
         self._build_state(
             agent_id=agent_id,
@@ -1003,7 +1003,7 @@ class SimulationController:
     def _forget_reached_marks(self) -> None:
         """Clear what *this run* did with the marks, keeping the marks themselves.
 
-        Called wherever a new run begins. A mark is the learner's question,
+        Called wherever a new run begins. A mark is the user's question,
         and it survives. Whether a run halted on a mark is that run's product,
         and it does not survive. A mark's standing, carried across a reset,
         would report a crossing that the run now on screen never made.
@@ -1346,7 +1346,7 @@ class SimulationController:
         stored makes that safe. A target is held as a multiple of whichever
         agent is running. So 0.8 ×MAC stays 0.8 ×MAC of the new agent, rather
         than becoming the old agent's absolute concentration under a new
-        divisor. A learner who changes agent wants to see the same multiple
+        divisor. A user who changes agent wants to see the same multiple
         reached at a different time. So a target that survives the change is
         the comparison, not a leftover.
 
@@ -1376,7 +1376,7 @@ class SimulationController:
         it as a trunk, which would make a branch of a branch by an indirect
         route. A `BranchedCase` would go on listing it among the branches of a
         case it is no longer part of. Each of those is a mode change with
-        nothing on screen to say so. A learner who wants a different agent
+        nothing on screen to say so. A user who wants a different agent
         starts a new case, which is what `PL-R3KB` made that gesture mean.
 
         Raises:
@@ -1686,7 +1686,7 @@ class SimulationController:
                 self._reached_crossings |= {mark.crossing_key}
 
     def _forget_unmarked(self) -> None:
-        """Drop what the run did with targets that the learner has since removed.
+        """Drop what the run did with targets that the user has since removed.
 
         A target's standing is what the run did with it. A removed target has
         no row in the bookmark panel, so there is nowhere to show its standing.
@@ -1782,7 +1782,7 @@ class SimulationController:
     def resumed_at(self, instant_s: CaseInstant) -> SimulationController:
         """Open a second live run from the state that this run stored for `instant_s`.
 
-        This method makes a branch something a learner can *manage*, not just
+        This method makes a branch something a user can *manage*, not just
         a second curve (`PL-J2TD`). Managing a branch means advancing it. The
         method returns an ordinary paused `SimulationController`. It starts at
         the state that this run passed through at `instant_s`, and it advances
@@ -1797,7 +1797,7 @@ class SimulationController:
         `resumed_here` branches at the instant where a paused run has
         stopped. All three open the branch the same way (`_open_at`). The
         interface offers the control events, the passed marks and the place
-        where a paused run stands, so a learner who wants another second
+        where a paused run stands, so a user who wants another second
         marks it or pauses there.
 
         **The branch holds this run's stored states up to the fork, and steps
@@ -1910,8 +1910,8 @@ class SimulationController:
     def resumed_here(self) -> SimulationController:
         """Open a second live run where this paused run stands, whether or not a mark stopped it.
 
-        This method serves the decision point a learner is looking at
-        (`PL-Y2SL`). A learner who has paused to think can try something else
+        This method serves the decision point a user is looking at
+        (`PL-Y2SL`). A user who has paused to think can try something else
         from that instant in one action, without marking it first (project
         owner, 2026-10-12). It is also the way to branch at a bookmark halt,
         which is a pause that a mark caused. So it provides what `ROADMAP.md`'s
@@ -1966,7 +1966,7 @@ class SimulationController:
         stretch.
         So a branch taken here after such a change is the same branch that
         `resumed_at_mark` and `resumed_at` give at this instant. A branch
-        taken here before the learner makes the change runs under the earlier
+        taken here before the user makes the change runs under the earlier
         settings (project owner, 2026-10-26).
 
         **The branch's halt record is computed from the step it opens on**
@@ -1991,7 +1991,7 @@ class SimulationController:
                 branch of a branch is rejected rather than silently flattened.
                 Or the rebuilt branch holds an equation setting or agent
                 reference that this run did not hold at the fork. The error's
-                message is for the learner, and its note names each differing
+                message is for the user, and its note names each differing
                 setting or reference with both of its values.
         """
 
@@ -2018,7 +2018,7 @@ class SimulationController:
         """Open a second live run at the step that reached `bookmark`, stopped there or not.
 
         This is the third way to branch (`PL-W4XQ`), and it is the action that
-        time bookmarks were requested for. A learner paused at 3 h marks 1 h
+        time bookmarks were requested for. A user paused at 3 h marks 1 h
         and goes back to it to try something else there. The mark may have
         been set before the run passed it, so that it stopped the run. Or it
         may have been set after the clock was already past it, so that no step
@@ -2077,7 +2077,7 @@ class SimulationController:
                 branch, because a branch of a branch is rejected rather than
                 silently flattened. Or the rebuilt branch holds an equation
                 setting or agent reference that this run did not hold at the
-                fork. The error's message is for the learner, and its note
+                fork. The error's message is for the user, and its note
                 names each differing setting or reference with both of its
                 values.
         """
@@ -2141,7 +2141,7 @@ class SimulationController:
         Raises:
             SimulationConfigurationError: The branch was rebuilt with a value
                 that this run did not hold at the fork (`_disagreements_with`).
-                The message is written for a learner. Each value that differs
+                The message is written for a user. Each value that differs
                 is in the exception's note and in the failure log (`PL-72X2`).
         """
 
@@ -2162,7 +2162,7 @@ class SimulationController:
         disagreements = self._disagreements_with(branch, settings, "on the branch")
 
         if disagreements:
-            # The learner reads the first text in the branch panel. A developer
+            # The user reads the first text in the branch panel. A developer
             # needs each value that differs, written exactly, and reads it in
             # the failure log and in the exception's note (`PL-72X2`).
             detail = (
@@ -2186,9 +2186,9 @@ class SimulationController:
         # The branch inherits the marks but not the timeline. The two are
         # treated in opposite ways for the same reason. The timeline is this
         # run's record of what was done to *it*. Reproducing it on a branch
-        # would claim actions the learner never took on the branch. A mark is a
+        # would claim actions the user never took on the branch. A mark is a
         # question about what is still to come. A comparison shows two ways of
-        # managing the case answering that one question. If the learner had to
+        # managing the case answering that one question. If the user had to
         # enter the marks again, they might type 0.85 on one branch where the
         # other has 0.8. The two branches would then appear to be compared at
         # one height but would actually be compared at two, and nothing on
@@ -2221,7 +2221,7 @@ class SimulationController:
         Each copy is numbered from 1, in the order that this run recorded the
         changes. An adjustment number groups changes made within one run. So
         the branch counts its adjustments from its own opening, and the
-        learner's first change on the branch is numbered after every copy.
+        user's first change on the branch is numbered after every copy.
         """
 
         at_fork = (change for change in self._control_timeline if change.elapsed_s == fork_at_s)
@@ -2320,7 +2320,7 @@ class SimulationController:
 
         This method writes the run's state and never changes its live
         settings. A reset preserves settings by contract, so `reset()` can use
-        this method. A branch that is reset after its learner has dialled
+        this method. A branch that is reset after its user has dialled
         something new therefore returns to the fork state but keeps the new
         settings. A reset trunk does the same with its own initial state.
         `_branch_from` checks the rebuilt settings against the ones it read,
@@ -2359,7 +2359,7 @@ class SimulationController:
         no opened entry names the control, it is the stretch's value. Nothing
         follows the opened entries on a first opening, because the branch is
         built under the settings it opened under. After a reset, what follows
-        is each setting that the learner changed and kept.
+        is each setting that the user changed and kept.
 
         **Choosing where the run definition opens by looking at the settings
         would make the result depend on the order of two reversible actions.**
@@ -2372,7 +2372,7 @@ class SimulationController:
         change instead lets the collapse rules of
         `record_change` and `_record_in_timeline` detect the dial-back. The
         fork segment returns to the settings that the branch opened under, or
-        is removed where those match the stretch before it. The learner's
+        is removed where those match the stretch before it. The user's
         timeline entry is removed too. The two sequences then leave the same
         branch in every record, including `opened_with`.
         """
@@ -2431,7 +2431,7 @@ class SimulationController:
             if new_value != opened_value:
                 self._record_in_timeline(control, opened_value, new_value)
 
-        # The learner's first change after this starts an adjustment of its
+        # The user's first change after this starts an adjustment of its
         # own, rather than joining the last control recorded here.
         self.begin_control_adjustment()
         # A branch opens *standing on* the step that reached its fork. That
@@ -2458,7 +2458,7 @@ class SimulationController:
         self._require_forkable()
 
         # The stored state is read first, because a second the run has not
-        # reached is the reason a learner can act on. The stored record owns
+        # reached is the reason a user can act on. The stored record owns
         # the test of which seconds it holds (`StoredStates.state_at`). Its
         # refusal is worded here again in the branch panel's terms: the
         # instants as the panel writes them, and the controls by their labels
@@ -2752,7 +2752,7 @@ class SimulationController:
 
         **A fork that leaves no step to take is rejected here, for every
         branching method** (`PL-VHQX`). A branch opened on the supported run
-        length could never be run. Its banner sent the learner to Reset. A
+        length could never be run. Its banner sent the user to Reset. A
         branch's Reset returns it to its fork, so the only way out on screen
         led back to the same stop. `resumed_here` already refused to branch
         where a run stands at the limit. A mark on the limit was the one route
@@ -2883,7 +2883,7 @@ class SimulationController:
             # The axis and the run do not overlap. Two ordinary states cause
             # this, and neither is an error. One is an axis entirely ahead of
             # a run at the very start of the run. The other is an axis entirely
-            # to the left of a branch's fork, which a learner sees before the
+            # to the left of a branch's fork, which a user sees before the
             # branch point scrolls into view. An empty window draws nothing,
             # which is not the same as drawing a zero.
             return DrawnWindow(
@@ -3006,7 +3006,7 @@ class SimulationController:
         """Stop the run, clear any failure or limit, and clear dynamic state.
 
         Settings are preserved. So are the bookmarks, which record what the
-        learner asked about rather than what the run produced. A reset is for
+        user asked about rather than what the run produced. A reset is for
         running the same case again, and the bookmarks ask about that same
         case. This method and `set_agent` are the ways out of a failed
         session, and out of a session that has reached the supported run
@@ -3036,8 +3036,8 @@ class SimulationController:
         opens with the entries that the branch first opened with
         (`RunRecord.opened_with`). After them it records each setting that
         differs from the one the branch opened under. A reset branch whose
-        learner kept no change records nothing after them. A setting that the
-        learner changed and kept still counts as their work. So the trunk's
+        user kept no change records nothing after them. A setting that the
+        user changed and kept still counts as their work. So the trunk's
         Reset asks before it discards that work
         (`RunRecord.changes_since_opening`).
 
@@ -3198,7 +3198,7 @@ class SimulationController:
         `RunView._apply_setting` treats the error as a refused setting. The
         dial is written again from the run and springs back, and the banner
         names the stopped run's way out (`dashboard_frame.notice`). Reset
-        keeps every setting, so the learner sets the dial on the new run. At
+        keeps every setting, so the user sets the dial on the new run. At
         the supported run length a branch opened at an earlier instant also
         takes a new setting, and each of its dials starts at what it was set
         to at that instant (`_branch_from`). `set_agent` is not refused,
@@ -3535,7 +3535,7 @@ class SimulationController:
         `_record_control_change` records the whole settings record that the
         core holds. Without this check, a setting written to the core without
         going through this controller, such as a circuit volume, would be
-        recorded with the next control change as if the learner had made it,
+        recorded with the next control change as if the user had made it,
         and the run would go on under it (`PL-S8FM`). The circuit and
         alveolar gas volumes cannot be changed during a run (`docs/INTERFACE.md`
         § "What is not bounded this way"), and no control records a change to
@@ -3650,7 +3650,7 @@ class SimulationController:
     ) -> None:
         """Add one accepted setting change to the control timeline, at the run's clock.
 
-        `_record_control_change` calls this for a learner's change. `_open_at`
+        `_record_control_change` calls this for a user's change. `_open_at`
         calls it for each setting in force that differs from the one a branch
         opened under. Both have already recorded the settings in the run
         definition. The rules below for grouping and collapsing entries are
@@ -3688,7 +3688,7 @@ class SimulationController:
         # depend on order. The two records then disagreed about when the run
         # changed, which is the one thing they are supposed to agree about.
         # This case can happen while the run is paused,
-        # when `advance()` does nothing and every control a learner touches
+        # when `advance()` does nothing and every control a user touches
         # carries the same instant.
         for index in reversed(range(len(self._control_timeline))):
             entry = self._control_timeline[index]
@@ -3702,10 +3702,10 @@ class SimulationController:
             # An entry that the run opened with states where a branch began,
             # so a change at the fork is added after it rather than merged
             # into it (`PL-ZR49`). A dial set back to the parent's earlier
-            # value then stays on the record as the learner's change. If the
+            # value then stays on the record as the user's change. If the
             # change were merged, it would delete the opened entry. The trunk's
             # Reset would then discard, without asking, a branch that the
-            # learner had changed.
+            # user had changed.
             if entry in self._opened_with:
                 break
 
@@ -3743,7 +3743,7 @@ class SimulationController:
         Each compartment is converted once, through `formatting.mac_multiple`
         and this run's own `agent_mac_percent`. That is the same divisor
         through which the readout for that compartment is drawn. So a target and the number the
-        learner is looking at cannot come to mean different things.
+        user is looking at cannot come to mean different things.
 
         `COMPARTMENT_STATE_INDEX` pairs each quantity with its position, so no
         second list is written here. It is already the one place where a trace
@@ -3943,7 +3943,7 @@ class SimulationController:
         taken** (`PL-CTD7`). At a fast playback rate the interface takes
         several steps on one tick, which is 30 at 300x
         (`app/playback.py`). A test applied once per tick would place the halt
-        up to 30 simulated seconds past the value the learner marked at 300x,
+        up to 30 simulated seconds past the value the user marked at 300x,
         and on the marked step at 1x. The same bookmark would then silently
         stop the run at a different concentration depending on the playback
         speed. That is the
@@ -3957,14 +3957,14 @@ class SimulationController:
         **A crossing pauses the run**, and that makes the halt genuinely useful
         rather than a courtesy. No step is taken while paused, and the setters
         accept a change while the run is paused. So "halt at 0.8 xMAC, then
-        turn the vaporizer off" takes effect at the instant the learner was
+        turn the vaporizer off" takes effect at the instant the user was
         looking at. Without
         the pause, it would take effect at the next tick boundary, up to 30
         simulated seconds later. The pause is an ordinary one, and `start()`
         resumes the run. Resuming does not count the halt's crossing again,
         because the next step's `before` reading is the halting step's own
         reading (`MacTarget.crossed_between`). Nothing is armed or disarmed, so
-        there is no per-target state for a learner to get wrong.
+        there is no per-target state for a user to get wrong.
 
         The remaining steps of the tick that halted do nothing, because of the
         guard at the top of this method. So the burst of steps stops on the
@@ -4340,9 +4340,9 @@ class BranchedCase:
         """The branches taken from the trunk, in the order they were taken.
 
         They are listed oldest first, in the order of the actions rather than
-        of the fork instants. A learner may fork late, then go back and fork
+        of the fork instants. A user may fork late, then go back and fork
         early. A list sorted again by instant would renumber the branch the
-        learner was looking at. Two branches taken at one instant keep the
+        user was looking at. Two branches taken at one instant keep the
         order they were made in.
         """
 
@@ -4378,7 +4378,7 @@ class BranchedCase:
         `here_fork_point`.
 
         Induction is included rather than filtered out. A fork at zero is a
-        second management of the whole case, which is a comparison a learner
+        second management of the whole case, which is a comparison a user
         may legitimately want. It is a strange one to offer under a control
         labelled "branch here", but that is for the interface to judge, not
         for this list to decide in advance.
@@ -4412,7 +4412,7 @@ class BranchedCase:
         instant where a branch taken there opens (`PL-W4XQ`). It changes as
         the case does. A mark joins it when the trunk's clock reaches the
         mark, or when the mark is set behind the clock. A mark leaves it only
-        when the learner removes the mark or the trunk starts over. That is
+        when the user removes the mark or the trunk starts over. That is
         the same lifetime as the keyframes beside it. It is not the lifetime
         of `here_fork_point`, which ends when the trunk starts again. A mark
         on the supported run length is never listed, because a fork there has
@@ -4471,7 +4471,7 @@ class BranchedCase:
     def fork_here(self) -> SimulationController:
         """Take a branch from the trunk where it is paused, stopped on a mark or not, and keep it.
 
-        This branches at the decision point where a learner paused, in one
+        This branches at the decision point where a user paused, in one
         action (`PL-Y2SL`). On a bookmark halt, it is also the second half of
         `ROADMAP.md`'s v0.5.0 Definition of done, "a branch taken at any
         recorded control event **or bookmark**", where `fork_at` is the first
@@ -4499,7 +4499,7 @@ class BranchedCase:
         """Take a branch from the trunk at a time bookmark it has passed, and keep it.
 
         This is the return to a mark that the owner described (`PL-W4XQ`). A
-        learner paused at 3 h marks 1 h and goes back to try something else
+        user paused at 3 h marks 1 h and goes back to try something else
         there. It takes the mark from `mark_fork_points` rather than an
         instant. `SimulationController.resumed_at_mark` explains why. It also
         explains why the branch is the one that the halt would have given.

@@ -37,7 +37,7 @@ private references corpus, or on a route that reaches them.
   Central, and the publisher answered 403 on 2026-10-17.
 
 **Why it matters.** The maximum bounds the delivered-concentration control a
-learner turns. Two of the three pins repeat the data file's own quotation of
+user turns. Two of the three pins repeat the data file's own quotation of
 its source, and `.claude/rules/test-oracles.md` rule 3 says such a pin cannot
 catch a value that was wrong when it was stored. Nothing suggests either value
 is wrong; this is a gap in traceability, not a known error.

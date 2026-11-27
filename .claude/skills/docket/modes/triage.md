@@ -172,7 +172,7 @@ the third case, and it is the one taken by mistake, because the status looks
 like an invitation - and `bin/docket next` ranked it until `PL-JW39` named it
 apart instead. The owner's are the
 *consequential* questions - whether a feature enters `ROADMAP.md`, the order
-features come in, which of two defensible products this is, anything a learner
+features come in, which of two defensible products this is, anything a user
 would see or the safety-critical standard reaches. `CLAUDE.md` divides it in
 one sentence: "The division of labour is theirs to set direction and yours to
 make it real."

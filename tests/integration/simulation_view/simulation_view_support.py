@@ -468,7 +468,7 @@ def _setting_controls(view: SimulationView) -> ParameterControlsView:
 def _failure_details(run: RunView) -> str:
     """Return the details under a failed run's banner, which name the exception that stopped it.
 
-    The banner gives the learner plain words for the kind of failure, and the
+    The banner gives the user plain words for the kind of failure, and the
     exception's own message is shown only in these details (`PL-XWCH`).
     """
 
@@ -741,13 +741,13 @@ _TRUNK_STEP_BUDGET = 1000
 
 
 def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, SimulationView]:
-    """A case whose trunk ran onto a mark the learner set and is standing on it.
+    """A case whose trunk ran onto a mark the user set and is standing on it.
 
-    The sequence `docs/ARCHITECTURE.md` § "How a learner takes one" describes,
-    in the order a learner does it: the trunk has a recorded run and a keyframe
-    at 60 s, the learner marks a later instant, and the run is stepped until
+    The sequence `docs/ARCHITECTURE.md` § "How a user takes one" describes,
+    in the order a user does it: the trunk has a recorded run and a keyframe
+    at 60 s, the user marks a later instant, and the run is stepped until
     the mark halts it. The frame is drawn afterwards, so the panel under test
-    is the one a learner would be looking at.
+    is the one a user would be looking at.
     """
 
     case = _branched_case()
@@ -779,7 +779,7 @@ _REWIND_CHANGE_S = 30
 _REWIND_PAUSE_S = 120
 
 # The mark set behind that clock. A mark's instant is a whole second, so a
-# branch taken at the mark opens at the instant the learner typed.
+# branch taken at the mark opens at the instant the user typed.
 _BEHIND_MARK_S = 75
 
 # What the selector says for that mark, restated rather than built from
@@ -791,11 +791,11 @@ _BEHIND_MARK_LABEL = f"{format_elapsed(_BEHIND_MARK_S)}, on your mark"
 def _rewind_case(application: QApplication) -> tuple[BranchedCase, SimulationView, TimeBookmark]:
     """A case whose trunk is paused past a setting change, marked behind its clock.
 
-    This is the owner's sequence at the scale of minutes. A learner paused at
+    This is the owner's sequence at the scale of minutes. A user paused at
     3 h marks 1 h, to go back and try something else there. The mark is set
     after the clock has passed it, so no step crossed it and the trunk never
     halted on it. The frame is drawn afterwards, so the panel is the one a
-    learner would be looking at.
+    user would be looking at.
     """
 
     trunk = SimulationController()

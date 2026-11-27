@@ -1042,7 +1042,7 @@ SCOPED_PORT_ROADMAP = PORT_CUT_ROADMAP.replace(
 
 ### Definition of done
 
-Nothing a learner can do is lost.
+Nothing a user can do is lost.
 
 ### Explicitly out of scope for v0.2.6
 
@@ -1171,7 +1171,7 @@ One case.
 
 ### Definition of done
 
-The learner can run it.
+The user can run it.
 
 ### Explicitly out of scope for v0.4.0
 
@@ -1465,7 +1465,7 @@ Make the model teachable.
 
 ### Definition of done
 
-The learner can run it.
+The user can run it.
 
 ### Explicitly out of scope for v0.4.0
 
@@ -1653,7 +1653,7 @@ Make the model teachable.
 
 ### Definition of done
 
-The learner can run one case.
+The user can run one case.
 
 ### Explicitly out of scope for v0.4.0
 
@@ -1910,7 +1910,7 @@ def test_a_version_named_ahead_of_the_current_one_is_reserved() -> None:
 UNSCOPED_AHEAD_ROADMAP = GATED_SCOPE_ROADMAP.replace(
     "| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |",
     "| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |\n"
-    "| — | **MVP complete** | A learner can run one case. | — |\n"
+    "| — | **MVP complete** | A user can run one case. | — |\n"
     "| 3 | **v0.5.0 — the schematic** | Not scoped yet, and has no section. | — |",
 )
 

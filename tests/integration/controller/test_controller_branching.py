@@ -231,7 +231,7 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
     columns fell at `fork + m x spacing`, against the trunk's `m x spacing`.
     On this 13-column 120 s axis, with the fork deliberately off the grid at
     55 s, 2 of the branch's 8 columns landed where the trunk also drew. A
-    learner then could not read "at this instant the trunk was here and the
+    user then could not read "at this instant the trunk was here and the
     branch was there" from matched points. Any difference trace or shared
     tooltip built on that assumption would be wrong, not merely coarse.
 
@@ -278,7 +278,7 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
 
 
 def test_a_control_moved_before_a_branch_steps_replaces_the_stretch_at_its_fork() -> None:
-    """The learner's actual first act on a branch, which is to change something.
+    """The user's actual first act on a branch, which is to change something.
 
     When the run has not advanced past the open segment's own opening,
     `RunDefinition.record_change` replaces that segment's settings in place.
@@ -320,7 +320,7 @@ def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
 
     A branch that restarted them at zero would show a mass-balance readout
     that is correct for the branch and wrong for the patient. It would do so
-    at the moment a learner is most likely to compare two managements by how
+    at the moment a user is most likely to compare two managements by how
     much agent each used.
     """
 
@@ -347,7 +347,7 @@ def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
 
 
 def test_a_branch_opens_with_only_the_change_it_runs_under_in_its_timeline() -> None:
-    """A branch records the acts its own learner makes, not its parent's.
+    """A branch records the acts its own user makes, not its parent's.
 
     The history before the fork belongs to the trunk and is not reproduced
     here. What a branch carries forward is the *state* that history produced.
@@ -672,7 +672,7 @@ def test_forking_leaves_the_trunk_untouched() -> None:
 
 
 def test_a_branch_starts_paused() -> None:
-    """Opening a branch is not starting it: the learner decides when it runs."""
+    """Opening a branch is not starting it: the user decides when it runs."""
 
     trunk = _trunk_with_two_changes()
     trunk.start()
@@ -751,7 +751,7 @@ def test_a_branch_reset_the_core_refuses_leaves_the_branch_exactly_as_it_was() -
     assert branch.has_failed is False
     assert after.elapsed_s == before.elapsed_s > fork_s
     assert after.control_timeline == before.control_timeline
-    # The trunk's change the branch opened with, and the learner's change at 70 s.
+    # The trunk's change the branch opened with, and the user's change at 70 s.
     assert len(after.control_timeline) == 2
     assert branch.run_segments == segments
     for field in COMPARTMENT_SNAPSHOT_FIELDS:
@@ -980,7 +980,7 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
     an instant at which the run never changed, while the definition correctly
     had no keyframe there. The nested order collapsed to nothing. So the
     defect depended on order, and a test that moved two controls once each
-    could not see it. A learner meets it while paused, when `advance()` does
+    could not see it. A user meets it while paused, when `advance()` does
     nothing and every control they touch carries the same instant.
 
     The test asserts the property rather than the repair. Every time stamp the
@@ -1026,10 +1026,10 @@ def test_a_branch_opened_with_no_entries_numbers_adjustments_as_a_new_trunk_does
     """A branch that opens with no entries numbers its first adjustment as a new trunk does.
 
     An adjustment number groups the timeline entries that one act produced. A
-    branch numbers the parent's changes at its fork first, and the learner's
+    branch numbers the parent's changes at its fork first, and the user's
     adjustments after them, so that no later entry can share an opened
     entry's number. A branch taken where its trunk is paused between two
-    changes opens with no entries. Its learner's adjustments are then the
+    changes opens with no entries. Its user's adjustments are then the
     first on the branch, so they are numbered from 1, as on a new trunk.
 
     The expected numbers come from a new trunk given the same two

@@ -81,7 +81,7 @@ class SettingOutsideRange(SimulationConfigurationError):
 
     The message is written for a developer. It names the value by its field
     name in the code and says where the limit is documented. The interface
-    shows a learner a sentence of its own instead, which names the control by
+    shows a user a sentence of its own instead, which names the control by
     its label on screen. So the field refused, the value, the limit and which
     limit refused it travel with the error as fields, and the interface builds
     that sentence from them rather than from the message (`PL-8QFW`).

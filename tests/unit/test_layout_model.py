@@ -1744,7 +1744,7 @@ def test_a_bare_value_is_refused_where_a_checked_type_is_required() -> None:
 
 
 def test_the_serialized_root_holds_a_window_set_at_version_one() -> None:
-    """`PL-HJPY`: adding a window set to the root later would mean migrating learners' files."""
+    """`PL-HJPY`: adding a window set to the root later would mean migrating users' files."""
 
     written = layout_to_dict(LayoutModel.single_area(CHART))
 

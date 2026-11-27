@@ -5,9 +5,9 @@ paths:
 
 # Who reads this screen
 
-**An anesthesia clinician.** The teaching target is the resident
+**An anesthesia clinician.** The user is an anesthesia clinician
 (`docs/consultant-brief.md`), so the floor of assumed knowledge is what a
-first-year resident already has: MAC, MAC-awake and the endpoint difference
+first-year anesthesia resident already has: MAC, MAC-awake and the endpoint difference
 between them, what a tissue compartment is, what a partition coefficient does,
 why a vessel-rich group fills before fat. The owner has ruled on this twice —
 "the audience is an anesthesia provider, not a lay reader" (2026-09-05), and
@@ -17,7 +17,7 @@ explains those terms.
 **So do not explain the domain on screen.** Explaining fundamentals to a
 specialist is not caution, it is talking down to the reader, and it costs the
 thing the chart is for: a panel that has to be read before the plot can be seen
-is a worse teaching instrument than a clean one, however correct each sentence
+is a worse instrument than a clean one, however correct each sentence
 in it is. `PL-6580` (strip the concentration chart's explanatory prose) is the
 item that says so; `PL-B89V` is why this file exists.
 

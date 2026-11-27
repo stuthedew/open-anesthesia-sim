@@ -343,7 +343,7 @@ def test_every_tick_label_is_painted_whole_inside_the_chart(
 ) -> None:
     """The top label of each axis sits on the plot's top edge, and was cut in half (`PL-571L`).
 
-    The lower half of a "6" can read as a "0", so a learner could misjudge the scale.
+    The lower half of a "6" can read as a "0", so a user could misjudge the scale.
     """
 
     frame = _frame(_run_with_a_dial_change(), span_s=900.0)

@@ -237,7 +237,7 @@ def test_a_faster_rate_takes_more_steps_and_never_a_longer_one() -> None:
 
     This assertion carries the item's safety argument. A run played at 60x
     takes sixty one-second steps for each real second, never six 10 s steps.
-    So two learners comparing the same case at different speeds are comparing
+    So two users comparing the same case at different speeds are comparing
     the same arithmetic.
     """
 
@@ -334,7 +334,7 @@ def test_the_most_steps_one_tick_may_take_covers_every_rate() -> None:
     """Every offered rate plays at the shipped tick, and the fastest takes 30 steps per tick.
 
     If a faster rate would need more steps than the bound, this test fails.
-    The bound can then be reconsidered before a learner ever meets the
+    The bound can then be reconsidered before a user ever meets the
     refusal.
     """
 

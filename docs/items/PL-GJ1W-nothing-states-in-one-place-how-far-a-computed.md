@@ -7,9 +7,9 @@ status: ready
 classes: safety
 feature: floating-point-domain
 touches: src/anesthesia_sim/core, tests/unit, docs/MODEL.md
-deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer. Hazard not live, checked 2026-11-16 at 68fc719a: every item it cites is closed, so no rounding error it reports still reaches a learner; the item prevents the next instance, and open pull request #2121 builds its rounding bounds
+deferred-from: v0.7.0 - filed 2026-11-11, after the gate froze; a large structural change whose design waits on the owner's answer. Hazard not live, checked 2026-11-16 at 68fc719a: every item it cites is closed, so no rounding error it reports still reaches a user; the item prevents the next instance, and open pull request #2121 builds its rounding bounds
 added: 2026-11-11
-payoff: a learner is not shown a run that halts, a trend labelled the wrong way or two readings that disagree because of rounding in the last digits
+payoff: a user is not shown a run that halts, a trend labelled the wrong way or two readings that disagree because of rounding in the last digits
 not-delegable: a root cause built in several pull requests that change core/ signatures or comparison allowances, each read by the project owner, and run at extra-high effort
 root-cause-of: PL-D88N, PL-XST1, PL-9B1M, PL-81Q2, PL-N559, PL-9SL5, PL-QVBR
 generator: live - each of the seven was fixed at its own comparison with its own allowance, and nothing states the rounding a computed value carries or tests generated settings over many steps, so the next exact comparison of a rounded result is found by a reviewer
@@ -51,13 +51,13 @@ must hold after every step.
 This is a second cause, separate from `PL-LHCL`'s. `PL-LHCL` is about a
 number that came in outside its range. Every input here was inside its range.
 
-**Why it matters.** A learner reads the label "elimination", the word
+**Why it matters.** A user reads the label "elimination", the word
 "reached" and the last column of a chart. Each of these was wrong, or halted
 a correct run, because of rounding in the last digits.
 
 **Decided 2026-11-11: build the design below** (project owner, 2026-11-11,
 ratified, over building the range part alone and over building neither).
-It was the owner's because it changes the allowance of comparisons a learner's readings depend on, and adds test time to every run of the suite.
+It was the owner's because it changes the allowance of comparisons a user's readings depend on, and adds test time to every run of the suite.
 
 1. One module in `core/` states the rounding a computed value can carry: for
    one propagator, for one step, and for a run of n steps. Each figure is
@@ -326,7 +326,7 @@ Each was checked against the code before it was fixed.
 test that measures it again", and the margin of 3 was that. It was set from a
 shipped agent's sweep (0.6 to 2.7, 2026-10-03) and the envelope's corners
 (2.5, 2026-10-26), and neither covers the inside of the envelope. No simulator
-code reads the bound, so the change moves no learner-visible comparison. It
+code reads the bound, so the change moves no user-visible comparison. It
 moves the allowances of `tests/unit/test_generated_runs.py`,
 `tests/unit/test_numerical_envelope_sweep.py` and `tests/unit/test_rounding.py`,
 and the figures in `docs/MODEL.md`. What was measured, all in leading terms,

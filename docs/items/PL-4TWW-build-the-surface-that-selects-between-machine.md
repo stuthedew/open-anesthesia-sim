@@ -9,7 +9,7 @@ feature: machine-profile-framework
 touches: src/anesthesia_sim/app
 blocked-by: PL-TH35, PL-R1WQ, PL-TBMK
 added: 2026-09-21
-payoff: makes the machine a thing a learner can choose, which is what turns PL-WZVZ's attribution requirement from a table nobody reaches into the explanation beside the choice
+payoff: makes the machine a thing a user can choose, which is what turns PL-WZVZ's attribution requirement from a table nobody reaches into the explanation beside the choice
 ---
 
 **Problem.** Build the surface that selects between machine profiles, which planned-milestone item 40 deliberately omits and item 1 does not schedule
@@ -41,7 +41,7 @@ filing the explanation.
 **`anticipated`** because no machine is selectable today, so no trade name is
 displayed and nothing is being misattributed.
 
-**Done when.** A learner can choose between the machine profiles the build
+**Done when.** A user can choose between the machine profiles the build
 carries; the choice names the parameters that differ rather than only the
 machines; and the surface states once that these are the parameters the model
 uses, not the whole difference between the machines.

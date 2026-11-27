@@ -121,7 +121,7 @@ A displayed clinical unit (queue item PL-MNPQ).
 
 ### Definition of done
 
-The learner can run one case.
+The user can run one case.
 
 ### Explicitly out of scope for v0.4.0
 
@@ -1438,7 +1438,7 @@ Validation against a published measurement (queue item PL-WXYZ).
 
 ### Definition of done
 
-The learner can branch a case.
+The user can branch a case.
 
 ### Explicitly out of scope for v0.5.0
 

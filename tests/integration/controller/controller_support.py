@@ -177,7 +177,7 @@ def _trunk_paused_past_a_change(past_s: int = 180) -> SimulationController:
     """The item's case at a minute's scale: a setting change at 30 s, then on to `past_s`.
 
     The run has keyframes at 0 s and 30 s and nowhere else. So the trunk has
-    no keyframe at an instant past 30 s that a learner marks, and no step
+    no keyframe at an instant past 30 s that a user marks, and no step
     crossed that instant while it was marked. Both earlier fork methods refuse
     that case.
     """

@@ -132,7 +132,7 @@ def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> N
 def test_a_refused_branch_does_not_survive_a_one_run_reset(application: QApplication) -> None:
     """`PL-75P5`: a refusal names an instant of the run the trunk's Reset has just ended.
 
-    The one-run case is every case before a learner branches. The guard that
+    The one-run case is every case before a user branches. The guard that
     spares a one-run dashboard its layout work once returned before the
     refusal was cleared. So the banner went on reporting an instant that the
     restarted run does not hold, since that run is back at induction.
@@ -194,7 +194,7 @@ def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplica
     """A branch's Reset returns it to its fork, and only the trunk's Reset starts a new case.
 
     The test checks that the lock is still there, because that is the part
-    that surprises a learner (`PL-WG73`). The run they were trying to end has
+    that surprises a user (`PL-WG73`). The run they were trying to end has
     lost four steps of simulated case, and the control they were sent to
     press is still refused, under the same sentence.
     """
@@ -259,7 +259,7 @@ def _branch_holding_work(view: SimulationView, application: QApplication, work: 
 def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     application: QApplication, work: str, warning: str, listed: int
 ) -> None:
-    """Reset on Run 1 does not discard Run 2's work until the learner agrees (`PL-W5WX`).
+    """Reset on Run 1 does not discard Run 2's work until the user agrees (`PL-W5WX`).
 
     The `work` parameter takes the values `elapsed` and `change`, one for each
     condition that `has_recorded_run` checks. A question that checked only one
@@ -267,7 +267,7 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
     Four steps of one second from the fork at 60 s reach 1m4s on the case clock.
     In both cases the branch's "Control changes" panel lists the trunk's
     change at 1m, which the branch opened with. For `change`, it also lists
-    the learner's change, recorded after the opened entry. The question
+    the user's change, recorded after the opened entry. The question
     counts what the panel lists (`PL-ZR49`).
     """
 
@@ -294,14 +294,14 @@ def test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_work(
 def test_resetting_the_trunk_asks_before_dropping_a_branch_set_back_to_the_earlier_flow(
     application: QApplication,
 ) -> None:
-    """A branch that the learner set back to the trunk's earlier flow holds work (`PL-ZR49`).
+    """A branch that the user set back to the trunk's earlier flow holds work (`PL-ZR49`).
 
     The trunk's fresh gas flow went from 4 to 2 L/min at 1m, and a branch is
     taken there. The branch opens at 2 L/min, which is what the dial said.
-    The learner sets it back to 4 L/min at the fork. The branch's "Control
-    changes" panel lists the trunk's change and then the learner's, and the
+    The user sets it back to 4 L/min at the fork. The branch's "Control
+    changes" panel lists the trunk's change and then the user's, and the
     trunk's Reset asks before it discards the branch. Both blind review
-    passes of the rework found that the learner's change deleted the opened
+    passes of the rework found that the user's change deleted the opened
     entry instead. The panel was then empty, and the trunk's Reset discarded
     the branch without asking.
     """
@@ -591,7 +591,7 @@ def _chart_span_in_viewport(view: SimulationView) -> tuple[int, int, int]:
 def test_taking_a_branch_leaves_the_concentration_chart_in_view(
     application: QApplication, door: str
 ) -> None:
-    """`PL-562Z`: the chart the learner branched to compare on is wholly on screen afterwards.
+    """`PL-562Z`: the chart the user branched to compare on is wholly on screen afterwards.
 
     At 1600 x 1000 the branch's readouts push the chart down to about
     y 869-1229 of a 1000 px viewport, measured with this scroll removed on
@@ -644,7 +644,7 @@ def test_the_page_stops_holding_the_chart_once_the_reader_scrolls(
 def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApplication) -> None:
     """`PL-WG73` end to end: the words in the lock are on screen, on the button that works.
 
-    `test_the_comparison_lock_names_a_control_the_learner_can_press` checks
+    `test_the_comparison_lock_names_a_control_the_user_can_press` checks
     the sentence against what `run_label` and `RESET_LABEL` say. This test
     checks that the runs those names refer to are the ones drawn, and that
     each carries its name where a reader meets its Reset. It also checks that
@@ -668,7 +668,7 @@ def test_the_comparison_lock_names_the_run_whose_reset_ends_it(application: QApp
         assert run._reset_button.isHidden() is False
 
     # Find the run that the way out is about by reading the sentence as a
-    # learner reads it, not by looking it up by position. A lock that named
+    # user reads it, not by looking it up by position. A lock that named
     # both runs correctly but paired each with the other's outcome would pass
     # every assertion above. It would still send the reader to the button
     # that keeps the mode.
@@ -692,7 +692,7 @@ def test_a_branch_added_while_the_dashboard_runs_gets_its_own_step_timer(
     """`start_simulation_timer` started the runs that existed then, and this one did not exist.
 
     Without its own timer a branch would sit at its fork however often the
-    learner pressed Start.
+    user pressed Start.
     """
 
     view = _case_view(application, _branched_case())

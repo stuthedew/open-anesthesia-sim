@@ -23,8 +23,9 @@ continuing anyone's work, and nothing here is yours to defend.
 
 ## What this is and what I am worried about
 
-The simulator models anesthetic uptake and distribution, and it exists to teach.
-The audience is anesthesia residents; I am a practising cardiothoracic
+The simulator models anesthetic uptake and distribution. It is general-purpose
+simulation software for anesthesia clinicians, and teaching residents is one of
+its uses. I am a practising cardiothoracic
 anesthesiologist and intensivist, and I write curriculum. The asymmetry that
 governs everything: a plausible-looking wrong number is worse than an obvious
 failure, because a plausible number gets believed.
@@ -138,7 +139,7 @@ Not a checklist — the ones that have teeth. The simulator is the subject.
   one you are asserting.
 - **Can this architecture carry what the roadmap describes**, or is it
   accumulating structure that will have to be undone to get there?
-- **The chart and the interaction.** Does what a learner sees support correct
+- **The chart and the interaction.** Does what a user sees support correct
   inference? Axis choice, scale, what is modeled versus what would be measured,
   false precision, what the visual encoding implies that the model does not
   support.

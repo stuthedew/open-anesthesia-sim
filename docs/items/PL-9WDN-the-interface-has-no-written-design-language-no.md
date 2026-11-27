@@ -9,7 +9,7 @@ feature: interface-design-review
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/stylesheets.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - filed on 2026-11-26, after the gate froze; the owner placed it first in the interface pass that follows v0.7.0 (item 33), so it waits for the cut
 added: 2026-11-26
-payoff: a learner meets one consistent screen, where size, spacing and colour each mean one thing, instead of surfaces styled one at a time
+payoff: a user meets one consistent screen, where size, spacing and colour each mean one thing, instead of surfaces styled one at a time
 ---
 
 **Problem.** The interface has no written design language: no type scale, spacing scale or rule for surfaces, colour and standing text, so each View is styled on its own and the whole reads as unprofessional

@@ -7,13 +7,13 @@ status: ready
 classes: ux
 touches: src/anesthesia_sim/app, tests/unit, tests/integration, docs/MODEL.md, docs/INTERFACE.md, README.md
 added: 2026-11-09
-payoff: A learner sees one spelling across the interface and the documents that quote it, so a label quoted in docs/MODEL.md still matches the screen once PL-SRXT moves that document to US spelling
+payoff: A user sees one spelling across the interface and the documents that quote it, so a label quoted in docs/MODEL.md still matches the screen once PL-SRXT moves that document to US spelling
 verify: ! grep -qF '"Modelled concentrations' src/anesthesia_sim/app/dashboard_frame.py && ! grep -qF '"litres of vapour"' src/anesthesia_sim/app/formatting.py
 ---
 
 **Problem.** The interface's labels spell modelled, vapour, litres and millilitres the British way, while PL-XF89 settled the tree on US spelling and PL-SRXT moves docs/MODEL.md's own prose to it
 
-**What a learner sees.** The interface's text spells these words the British
+**What a user sees.** The interface's text spells these words the British
 way, and no interface string uses the US form. Counted on 2026-11-09 over the
 string literals in `src/anesthesia_sim/app/` that are not docstrings: vapour
 14, litres 8, millilitres 7, modelled 6 and millilitre 3, against none for
@@ -29,11 +29,11 @@ already mixes the two spellings. The code's own docstrings write "modeled".
 the tree's US spelling (closed 2026-09-13), and `PL-SRXT` moves
 `docs/MODEL.md`'s own prose to it. `PL-SRXT` keeps every quoted interface
 label exactly as the screen shows it, so while the interface stays British the
-specification must keep two spellings side by side. A learner who sees
+specification must keep two spellings side by side. A user who sees
 "vapour" on screen and "vapor" in the document may wonder whether they name
 two different things.
 
-**Done when.** Every string in `src/anesthesia_sim/app/` that a learner can
+**Done when.** Every string in `src/anesthesia_sim/app/` that a user can
 read uses US spelling: modeled, vapor, liter and milliliter. The tests that
 assert those strings, and every quotation of them in `docs/MODEL.md`,
 `docs/INTERFACE.md` and `README.md`, change in the same branch, so a quoted label still matches the

@@ -215,7 +215,7 @@ depends on the arterial partial pressure, which through the tail equals the
 alveolar partial pressure. It never depends on the tissue stores that feed the
 alveolar partial pressure.
 
-**What a learner sees of this.** The departures above are in $`F_A/F_{A0}`$.
+**What a user sees of this.** The departures above are in $`F_A/F_{A0}`$.
 At the gate's 1% dial setting, $`F_{A0}`$ is 0.805, 0.672 and 0.876% of an
 atmosphere for sevoflurane, isoflurane and desflurane. So the shipped alveolar
 readout changes from a number to `<0.01%` (`docs/INTERFACE.md` § "Displayed

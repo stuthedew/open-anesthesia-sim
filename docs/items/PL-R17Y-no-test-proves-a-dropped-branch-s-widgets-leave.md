@@ -32,7 +32,7 @@ It checks `len(view.runs) == 1`, that a new `case` was built with no branches,
 panel's controls. A dropped branch whose header badge, transport row, notice,
 sidebar panels, off-scale line, wash-in line, readouts and parameter section all
 stayed parented in their shared layouts would satisfy every one of those
-assertions, and the learner would see a second run's chrome around a run that no
+assertions, and the user would see a second run's chrome around a run that no
 longer exists.
 
 **The title overstates one clause and the correction matters for whoever takes

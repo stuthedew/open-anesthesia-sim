@@ -458,7 +458,7 @@ MAX_MAC_AXIS_INTERVALS: Final = 10
 # and that is its whole purpose. Until PL-CC23 the top was the agent's
 # vaporizer dial maximum: 3.00 MAC of desflurane, 4.00 of sevoflurane and 4.17
 # of isoflurane. So the same case plotted under two agents was drawn at two
-# scales: sevoflurane's was 1.33x desflurane's (4.00 / 3.00). A learner
+# scales: sevoflurane's was 1.33x desflurane's (4.00 / 3.00). A user
 # comparing desflurane's wash-in with sevoflurane's was comparing shapes that
 # had been silently rescaled. No label prevents that misreading.
 #
@@ -1504,7 +1504,7 @@ def format_delivered_label(agent_display_name: str) -> str:
     """Build the vaporizer slider's label, which names the agent it delivers.
 
     The slider, the record of control changes and the run's readout all name
-    the control as the vaporizer, so a learner reads one control under one name
+    the control as the vaporizer, so a user reads one control under one name
     (`PL-XZKW`).
     """
 

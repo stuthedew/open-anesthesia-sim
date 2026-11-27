@@ -7,7 +7,7 @@ status: ready
 classes: defect
 feature: doc-consistency-checks
 touches: tools/model_rewrite.py, tests/unit/test_model_rewrite.py
-deferred-from: v0.7.0 - present at the freeze, not safety or science, and no learner sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
+deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-22
 payoff: a session that re-points citations after a section rewrite gets correct citations and passing fixture tests, with nothing to revert by hand
 ---

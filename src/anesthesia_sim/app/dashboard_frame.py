@@ -220,7 +220,7 @@ MIN_DELIVERED_CONCENTRATION_PERCENT: Final = 0.0
 # the model reached the end of what it is claimed to represent, having done
 # everything right.
 STATUS_PAUSED_TEXT: Final = "Paused"
-# The status word of a run that a mark paused, as opposed to the learner's own
+# The status word of a run that a mark paused, as opposed to the user's own
 # Pause (`PL-QBQX`). The fork control's "stopped on your mark" was the only cue,
 # and the fork control is withdrawn while two runs are compared. A MAC target's
 # row reads "reached" from its first crossing, so it does not change on a later
@@ -281,7 +281,7 @@ REJECTED_ACCOUNTING_NOTICE_TEMPLATE: Final = (
 # total in e-notation under its code name, such as
 # `absolute_error=1.000000e+00 L`. So that message goes to the failure
 # log (`run_view.log_failure`) and to the details under the banner
-# (`failure_details`), and the learner gets plain words. Each says what
+# (`failure_details`), and the user gets plain words. Each says what
 # happened, as far as the kind shows it, and that it is a fault in the
 # simulator and not a change in the patient. The banner's own exit says what to
 # do next. An unexpected error says plainly that its cause is not known, rather
@@ -304,7 +304,7 @@ REPORT_FAULT_TEMPLATE: Final = (
 REPORT_FAULT_NO_PAGE_TEXT: Final = (
     "To report this fault, copy the details and send them to the project's maintainers."
 )
-# What each kind of failure is, in the words a learner reads. The banner adds
+# What each kind of failure is, in the words a user reads. The banner adds
 # `FAULT_NOT_PATIENT_TEXT` after it (`shown_failure_reason`). A refused Reset on
 # a run that had already failed names its own kind without that sentence,
 # because its way out already says that only a fault causes it
@@ -407,14 +407,14 @@ REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 # A refused branch changed no setting, so its notice does not say "Setting
 # refused" (`PL-3JTH`).
 REFUSED_BRANCH_TEMPLATE: Final = "Branch not opened — {error}"
-# A setting refused for lying outside a limit is named to the learner by its control's
+# A setting refused for lying outside a limit is named to the user by its control's
 # label, with the value asked for and the limit, as the stopped run's refusal names
 # its control (`SimulationController._refuse_a_setting_on_a_stopped_run`). The core's
 # own message names the setting's field in the code, for a developer (`PL-8QFW`).
 REFUSED_SETTING_OUTSIDE_RANGE_TEMPLATE: Final = (
     "the {setting} setting cannot be {requested}, because {reason}"
 )
-#: Why each limit refused the setting, in the learner's words. `lowest` and `highest`
+#: Why each limit refused the setting, in the user's words. `lowest` and `highest`
 #: are the limit's two ends, written exactly (`_exact_setting`).
 SETTING_LIMIT_REASONS: Final[Mapping[SettingLimit, str]] = MappingProxyType(
     {
@@ -587,7 +587,7 @@ MAC_TARGET_HEADING: Final = "MAC targets"
 NO_TIME_BOOKMARKS_TEXT: Final = "None marked"
 NO_MAC_TARGETS_TEXT: Final = "None set"
 
-# The separator between a mark's value and the name the learner gave it. An
+# The separator between a mark's value and the name the user gave it. An
 # en dash, which `tools/glyph_check.py` records as rendered.
 MARK_LABEL_JOINER: Final = " – "
 
@@ -598,7 +598,7 @@ MARK_LABEL_JOINER: Final = " – "
 # rows whose state a reader would otherwise have to infer from silence.
 #
 # **The three negative answers are worded differently on purpose.** "Not
-# reached" alone would be true of all three. It would tell a learner that a
+# reached" alone would be true of all three. It would tell a user that a
 # bookmark before this branch's fork might still arrive if they kept running,
 # which it cannot. `bookmarks.MarkStanding` gives the argument, and
 # `CLAUDE.md`'s safety-critical standard is what rules out that
@@ -624,7 +624,7 @@ MARK_LABEL_JOINER: Final = " – "
 # true across anything that moves the clock. "Reached" says what the run did
 # at a marked height, which no clock orders. Wording them alike would put the
 # same word on a row that a rewind can revoke and on a row that it cannot.
-# That is the plausible-looking answer again, and a learner reading two
+# That is the plausible-looking answer again, and a user reading two
 # branches side by side is reading exactly that difference.
 MARK_STANDING_JOINER: Final = " · "
 MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
@@ -664,7 +664,7 @@ MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
 # `STATUS_PAUSED_TEXT` and `STATUS_FAILED_TEXT` are a few lines above, and
 # `REFUSED_SETTING_NOTICE_TEMPLATE` uses the phrase in exactly that sense. So
 # `Run 2 still running` contradicted the word on Run 2's own panel whenever
-# that run was paused, which is most of the time a learner reads this row. It
+# that run was paused, which is most of the time a user reads this row. It
 # also claimed something that `MarkStanding.STILL_RUNNING` does not support.
 # That standing says the run *can still reach* the mark and has not yet, which
 # is a statement about the mark rather than about the clock. "Not yet" is that
@@ -714,13 +714,13 @@ NO_CASE_TO_BRANCH_TEXT: Final = "These runs belong to no case, so no branch can 
 # not have. A comparison draws two Reset buttons, one per run, and they do
 # opposite things. The trunk's Reset rebuilds the case. The branch's Reset
 # returns that run to its own fork and leaves this lock in place, and it is
-# the one a learner reaches for, because the branch is the run they are trying
+# the one a user reaches for, because the branch is the run they are trying
 # to end. So the sentence names both. `comparing_fork_lock_text` fills it from
 # the runs' names and `RESET_LABEL`, which stops an instruction and the
 # control it names from drifting apart again.
 #
 # The text states what the trunk's Reset costs as well as what it ends.
-# Sending a learner to a control that discards every run, without saying so,
+# Sending a user to a control that discards every run, without saying so,
 # would be the same defect with the consequence hidden instead of the label.
 COMPARING_FORK_LOCK_TEMPLATE: Final = (
     "One comparison at a time. {trunk}'s {reset} ends it and starts the case over; "
@@ -731,7 +731,7 @@ COMPARING_FORK_LOCK_TEMPLATE: Final = (
 # taken there opens in no Area of it, so the lock caption, which is the text
 # the Branch View shows at once in place of the control that was pressed,
 # also says why the comparison is not drawn and how to draw it (`PL-YQ5J`).
-# It reports the result of the press without moving the learner, which WCAG
+# It reports the result of the press without moving the user, which WCAG
 # 2.2 Success Criterion 4.1.3 calls a status message. Nothing announces it to
 # a screen reader yet: screen-reader support is planned and not yet built
 # (`docs/INTERFACE.md`), so the caption meets the criterion's intent for a
@@ -740,7 +740,7 @@ COMPARING_FORK_LOCK_TEMPLATE: Final = (
 # Workspace, and the WCAG Understanding document for Success Criterion 3.2.2
 # holds a change of context appropriate "only when it is clear that such a
 # change will happen in response to the user's action". The sentence is
-# worked out from the pin on every tick, so it goes as soon as the learner
+# worked out from the pin on every tick, so it goes as soon as the user
 # unpins the Workspace or switches to another one.
 COMPARISON_PINNED_AWAY_TEMPLATE: Final = (
     "This Workspace is pinned to {pinned}, so it does not draw this comparison. "
@@ -763,10 +763,10 @@ PINNED_FORK_NOTICE_TEMPLATE: Final = (
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 
 # The fork where the paused trunk stands. It is a second control rather than
-# a row in the selector above. A learner who pauses can branch there, and that
+# a row in the selector above. A user who pauses can branch there, and that
 # is the default action (project owner, 2026-10-12: "if I pause I should be
 # able to branch from there too"), because it is the one control labelled with
-# the instant the learner is looking at. The selector remains the way to
+# the instant the user is looking at. The selector remains the way to
 # branch anywhere else. The fork is a button rather than an entry selected by
 # default (project owner, 2026-10-12, ratified, over a row at the top of the
 # selector selected by default, `PL-Y2SL`; and `PL-TYWQ`, project owner
@@ -791,7 +791,7 @@ HERE_FORK_LABEL_TEMPLATE: Final = f"{HERE_FORK_NAME}: {{instant}}"
 #
 # **The instant is the halt's, not the mark's, and the wording keeps the two
 # apart.** A mark that lies inside a step halts the run at the end of that
-# step. So the instant a learner marked and the instant at which the branch
+# step. So the instant a user marked and the instant at which the branch
 # opens are, in general, not the same number
 # (`SimulationController.resumed_here`). The label therefore attaches its
 # instant to "Branch here", which is what this control will do. It applies
@@ -809,7 +809,7 @@ HERE_FORK_LABEL_TEMPLATE: Final = f"{HERE_FORK_NAME}: {{instant}}"
 # own illustrative "Branch at your mark - 0:45", which asserts where the mark
 # *is* and so is wrong whenever a mark lies inside a step). The decision was
 # ratified rather than specified, so ordinary evidence can reopen it, such as
-# a learner who misreads it or a measurement. But a rewrite must not
+# a user who misreads it or a measurement. But a rewrite must not
 # reintroduce the wording it was chosen over.
 HALT_FORK_LABEL_TEMPLATE: Final = f"{HERE_FORK_NAME}: {{instant}}, stopped on your mark"
 # A time bookmark that the trunk has passed, as an entry in the selector beside
@@ -973,7 +973,7 @@ COMPARTMENT_SUBSTANCE_TEMPLATE: Final = "Modelled concentrations: {agent}"
 
 # The delivered dial's setting on the transport row, in the two units that the
 # dial prints it in. It says that the value is the vaporizer's setting, so a
-# learner cannot read it as a modelled concentration, or as the inspired one
+# user cannot read it as a modelled concentration, or as the inspired one
 # at low fresh gas flow (`PL-NWTM`, `PL-M4WT`).
 DELIVERED_LINE_TEMPLATE: Final = f"{VAPORIZER_LABEL} {{value}} ({{secondary}})"
 
@@ -1347,7 +1347,7 @@ def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
     such a run did not reach reports the run length, which is why the mark was
     not reached (`bookmarks._mac_target_standing`, `PL-3DHK`). The word for a
     paused run that a mark stopped says that a mark stopped it, so that the
-    stop is not mistaken for the learner's own Pause
+    stop is not mistaken for the user's own Pause
     (`STATUS_MARK_HALT_TEXT`, `PL-QBQX`).
 
     Args:
@@ -1863,7 +1863,7 @@ def preview_label(
 ) -> str:
     """Return the label a preview's region carries in the plot.
 
-    A preview is a trajectory the run would take under a setting the learner
+    A preview is a trajectory the run would take under a setting the user
     is dragging and has not applied (`PL-5B1N`). A screenshot taken during the
     drag must not be mistaken for a run that happened. So the plot says in
     words that it is a preview, as well as through the region and the thinner
@@ -2237,7 +2237,7 @@ def transport(status: RunStatus, *, is_branch: bool = False, comparing: bool = F
 
 
 def shown_failure_reason(status: RunStatus) -> str | None:
-    """Return the reason that a failure banner shows the learner, or None if the run has not failed.
+    """Return the reason that a failure banner shows the user, or None if the run has not failed.
 
     The banner gives the plain words for the kind of failure that the run
     recorded (`FAILURE_CAUSE_TEXTS`), never the exception's own message,
@@ -2266,7 +2266,7 @@ def failure_details(
 ) -> str | None:
     """Return the details that a failed run shows under its banner, or None if it has not failed.
 
-    The banner gives the learner plain words (`shown_failure_reason`). These
+    The banner gives the user plain words (`shown_failure_reason`). These
     details are for a report of the fault: the build, the run while two are
     drawn, the exception's type and message as the run recorded it, a refused
     Reset's own message, and the file that holds the traceback. Microsoft's
@@ -2276,7 +2276,7 @@ def failure_details(
     fail, and has no details.
 
     The log's path is given from the home folder, as `~/...`. The report line
-    asks the learner to paste the details into a public issue, and the full
+    asks the user to paste the details into a public issue, and the full
     path usually holds their login name.
 
     Args:
@@ -2324,7 +2324,7 @@ def _from_home(path: Path) -> str:
 def report_fault_text(issues_url: str | None, *, link_colour: str) -> str:
     """Return the line under a failure's details that says how to report the fault, as rich text.
 
-    A learner cannot repair a fault in the simulator, so the useful next step
+    A user cannot repair a fault in the simulator, so the useful next step
     is to report it (`PL-XWCH`). The line links the project's issue page where
     the installed metadata names one (`app_metadata.APP_ISSUES_URL`).
 
@@ -2363,10 +2363,10 @@ def refused_setting_notice(error: SimulationConfigurationError) -> str:
     return REFUSED_SETTING_TEMPLATE.format(error=error)
 
 
-def setting_refusal_for_a_learner(
+def setting_refusal_for_a_user(
     control: ControlInput, error: SimulationConfigurationError
 ) -> SimulationConfigurationError:
-    """Return a refused setting's error, worded for the learner who moved the control.
+    """Return a refused setting's error, worded for the user who moved the control.
 
     A `SettingOutsideRange` is written for a developer, so it names the value
     by its field name in the code, such as `delivered_concentration_percent`.
@@ -2379,7 +2379,7 @@ def setting_refusal_for_a_learner(
     (`SimulationController._branch_from`, `PL-72X2`).
 
     Any other refusal is returned as it is. The controller words those for the
-    learner itself, as it does a setting on a stopped run. So is a range
+    user itself, as it does a setting on a stopped run. So is a range
     refusal of another control's field, which the settings record can raise
     while it checks every field after one control moves. Reworded for this
     control, it would name the wrong control and the wrong unit.
@@ -3082,7 +3082,7 @@ class RunMarks:
     run's snapshot (`PL-LHBY`, `PL-4KZD`). A standing is computed from the
     run's own clock, its own opening instant and its own set of halts. So
     using one run's standings for every run's rows stated one management's
-    answer as the case's answer while two runs were on screen. A learner
+    answer as the case's answer while two runs were on screen. A user
     comparing two managements is reading exactly the quantity that differs.
 
     Attributes:
@@ -3187,7 +3187,7 @@ def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
     """Return a marked instant's own words: the time, and the name if it was given one.
 
     Every drawn row puts the time first and the name after it. The time is
-    what the row asserts, and the name is what the learner chose to call it.
+    what the row asserts, and the name is what the user chose to call it.
     A reader comparing two rows reads down their first column. The time is
     rendered by `format_elapsed`, so a bookmark and the run clock beside it
     state one quantity in one way.
@@ -3241,7 +3241,7 @@ def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> Bookmark
     standings. So a row states the answer unattributed only where the runs
     agree, and names each run where they do not. Using `snapshots[0]` for
     every row instead put one management's answer on the other's mark, in
-    both directions. A branch that halted on a learner's mark reported
+    both directions. A branch that halted on a user's mark reported
     nothing, because the trunk had not yet reached that mark. And an
     inherited bookmark that the branch could never reach was shown with the
     trunk's standing for it.
@@ -3408,7 +3408,7 @@ class ForkPoint:
 
     **A mark's entry carries the mark, not an instant to branch at.** A branch
     at a mark opens at the end of the step that reaches the mark. In general,
-    that is not the instant the learner typed (`MarkForkPoint`). A caller
+    that is not the instant the user typed (`MarkForkPoint`). A caller
     taking the entry passes `mark` back to `BranchedCase.fork_at_mark`, which
     finds that step itself. So there is no float here for a caller to get
     wrong. The entry is labelled and ordered by `instant_s`, but a mark's
@@ -3444,7 +3444,7 @@ class ForkOffer:
             case rejects a branch anywhere else rather than approximating it.
             So the control offers this list and never a free choice of
             instant. Each instant is rendered by `format_elapsed`, the form
-            that the run clock and every bookmark row use, so a learner reads
+            that the run clock and every bookmark row use, so a user reads
             one quantity in one way wherever it appears. The list is empty
             once the trunk's frame has failed, and the panel then withdraws
             the selector (`PL-T2Q2`).
@@ -3573,7 +3573,7 @@ def fork_offer(
 
     **The passed marks last as long as the keyframes, and the paused point
     does not.** A mark joins the list when the trunk's clock reaches it, or
-    when a mark is set behind the clock. It leaves only when the learner
+    when a mark is set behind the clock. It leaves only when the user
     removes it or the trunk starts over, just as a keyframe stays until the
     case changes. So the marks belong in the selector. The paused point ends
     when the trunk starts, so it stays a control of its own. A row that
@@ -3589,7 +3589,7 @@ def fork_offer(
     kept by a stable sort, so one case is always listed in the same way.
 
     Induction is offered rather than filtered out. A branch at zero is a
-    second management of the whole case, which is a comparison a learner may
+    second management of the whole case, which is a comparison a user may
     legitimately want. Filtering it out would leave a case that has recorded
     nothing with no instant to offer at all. That would be a control with an
     empty list and a live button, which is worse than an odd-looking entry.
@@ -3682,11 +3682,11 @@ def kept_fork_selection(
 
     The dashboard keeps one selection for the case, and every copy of the
     branch control shows it. So a copy that is built later, such as after a
-    switch of Workspace, shows the point the learner chose (`PL-9YPR`).
+    switch of Workspace, shows the point the user chose (`PL-9YPR`).
 
     **A selection whose point is no longer offered is cleared, and a cleared
     selection stays clear** (`PL-J12Z`). Falling back to the first entry would
-    put induction under a learner who had chosen a later decision point, and
+    put induction under a user who had chosen a later decision point, and
     the next press would branch there. A point can leave the offer without a
     reset: a keyframe collapses when a dial is returned to its previous value
     at the same instant, and a mark leaves when it is unmarked.
@@ -4255,7 +4255,7 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
     Neither line used to say which run it belonged to, and stacking order is
     not an attribution. The order is explained nowhere on screen, and the run
     names are in a different splitter section. Read as the other run's, the
-    first line inverts the comparison that a branch exists to teach. The
+    first line inverts the comparison that a branch exists to show. The
     second reports a clipped trace on a run that has none (`PL-25DD`).
 
     The name is added here rather than built into either line, following
@@ -4375,7 +4375,7 @@ def compared_panel_heading(heading: str, run: str | None) -> str:
     control-change panel gives a list of settings under the words "What was
     changed during this run". Read as the other run's, that list says the
     trunk received an intervention it never got. That inverts the comparison
-    a branch exists to teach, rather than merely blurring it (`PL-C3GS`).
+    a branch exists to show, rather than merely blurring it (`PL-C3GS`).
 
     The name goes in the heading rather than on each line beneath it, which is
     what makes this different from `compared_run_line`. The chart column holds

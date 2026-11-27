@@ -23,7 +23,7 @@ differently from a twenty-minute one, cannot be reached at all
 **The step never changes, and it is not this module's to choose.** A run
 steps by `SIMULATION_STEP_S`, one second, at every rate
 (`core/simulation_step.py`). A larger step at a faster rate would let a
-*view* control alter the numbers. Two learners comparing the same case at
+*view* control alter the numbers. Two users comparing the same case at
 different speeds would then see different values. The number of steps taken
 per tick is the only quantity here that varies.
 

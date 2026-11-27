@@ -7,7 +7,7 @@ status: ready
 classes: planning
 feature: hotspot-review
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py
-deferred-from: v0.7.0 - filed after the gate froze; a design review, which changes nothing a learner sees until a change it recommends is built
+deferred-from: v0.7.0 - filed after the gate froze; a design review, which changes nothing a user sees until a change it recommends is built
 added: 2026-11-24
 filed-pr: 2317
 payoff: the interface files where most simulator defects land get a design change that prevents a group of them, instead of one fix per defect

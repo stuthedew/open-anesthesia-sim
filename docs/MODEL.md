@@ -21,10 +21,10 @@ supported agent shares them.
 
 ## What the simulator is for
 
-The simulator is a teaching model of how a volatile anesthetic moves between
-the breathing circuit, alveolar gas, blood and the tissues, under management
-that the learner chooses. It is intended for anesthesia clinicians, trainees
-and students. It shows the compartments that no clinical monitor displays:
+The simulator models how a volatile anesthetic moves between the breathing
+circuit, alveolar gas, blood and the tissues, under management that the user
+chooses. It is general-purpose simulation software for anesthesia clinicians,
+and teaching is one of its uses. It shows the compartments that no clinical monitor displays:
 vessel-rich, muscle, fat and mixed venous.
 
 It is not intended for clinical prediction, dosing, monitoring a patient, or
@@ -38,7 +38,7 @@ simulator open on a computer during a case is ordinary teaching use. A run
 built from a particular patient's weight, age and cardiac output is a
 prediction about that patient, whatever the window is labeled.
 
-A learner can still set cardiac output or alveolar ventilation to a value
+A user can still set cardiac output or alveolar ventilation to a value
 measured in a real patient, because changing them is a core teaching feature.
 The run then shows the reference adult at that flow. It is not a prediction
 for that patient, and only this statement of intended use guards against
@@ -656,7 +656,7 @@ value, the paper's mean ± SD, and the difference in SDs.
 <!-- not-restated: 0.05 -->
 
 The vessel-rich coefficient is Yasuda's *brain* value (isoflurane's stored 2.1
-against 2.09, desflurane's 0.54 against 0.54). A learner reading the
+against 2.09, desflurane's 0.54 against 0.54). A user reading the
 vessel-rich trace is reading a brain trace. Yasuda's paper measured no
 blood:gas coefficient. Its tissue:blood figures divide the tissue:gas values
 by published blood:gas values adjusted for the cohort's age.
@@ -822,7 +822,7 @@ constant is 14.7 s, against 12.0 s at 1.0 L.
 give 8.0 L. No record gives a reason for 6.0 L. At the default flow the
 circuit time constant, $`V_C/\dot V_F`$, is 90 s here and 120 s at 8.0 L, so
 the apparatus lag is 25% shorter. That lag is the part of the inspired curve
-that a learner is most likely to attribute to uptake. A run meant to reproduce
+that a user is most likely to attribute to uptake. A run meant to reproduce
 a published Gas Man trajectory has to set the volume to 8.0 L. The 6.0 L is an
 assembled total, and no source divides it between apparatus and patient
 circuit.
@@ -833,7 +833,7 @@ of 4.7 L for a Dräger Primus, 2.1 L for a Perseus A500 and 2.0 L for a Zeus IE.
 With the 1.2 L patient circuit they used, the assembled totals are 5.9, 3.3 and
 3.2 L, without the 3 L reservoir bag. At the default flow the circuit time
 constant therefore runs from 89 s to about 50 s, a factor of about 1.8 across
-machines that a learner could meet in one department.
+machines that a user could meet in one department.
 
 Volume is not the whole difference between machines. Fukuda et al. (2006)
 moved the fresh gas inlet from beside the absorber to beside the patient.
@@ -1119,7 +1119,7 @@ says:**
 3. dividing a published MAC-awake percent by a MAC other than the one its
    population was measured against.
 
-A learner who takes away any of these carries into practice the belief that a
+A user who takes away any of these carries into practice the belief that a
 patient is more awake than they are.
 
 **The stored MAC is a fourth source of error in the band's height.** The
@@ -1359,7 +1359,7 @@ validates the elimination that a user watches, which is the rebreathing one.
 
 **Desflurane then washes out 2.33 SD too fast.** This is the one comparison
 against a human measurement that fails in the direction that overstates
-recovery. A learner who took desflurane's early washout as a physiologic
+recovery. A user who took desflurane's early washout as a physiologic
 prediction would expect a faster fall than Yasuda's volunteers showed. No
 parameter value that the human measurements support closes the gap. Raising
 blood:gas to 0.57 moves it only from −2.33 SD to −1.97 SD. The cause is not
@@ -1419,7 +1419,7 @@ on screen as a prediction of how fast a patient recovers.**
   sevoflurane.
 - **They detect no change at all in fat for sevoflurane or isoflurane.** Fat
   solubility and fat volume set the hours-long tail of washout, from which a
-  learner judges emergence, and nothing checks them against a measurement.
+  user judges emergence, and nothing checks them against a measurement.
 - They constrain muscle only loosely.
 - They do not detect a smaller circuit for sevoflurane or isoflurane, down to
   a tenth of the stored value.
@@ -1463,12 +1463,12 @@ Two limits apply to those figures:
    of the volunteers' own curves. The direction is settled, and the size is
    known to about a factor of two.
 
-**What a learner sees of this.** At a 1% dial, the alveolar readout changes
+**What a user sees of this.** At a 1% dial, the alveolar readout changes
 from a number to `<0.01%` at 4.9, 6.6 and 3.1 hours for sevoflurane,
 isoflurane and desflurane, before the stretch over which the trace runs below
 the measured mean. A higher dial keeps a number on the readout for longer. A
 6% desflurane dial keeps one there until about 7.8 hours, which is inside
-desflurane's stretch. So a learner who runs a case long can reach the
+desflurane's stretch. So a user who runs a case long can reach the
 shortfall.
 
 ### Gas Man in patients
@@ -1663,7 +1663,7 @@ Cardiac output is a control, and nothing else changes it. The three perfusion
 fractions are constant for a whole run. A volatile anesthetic is itself a
 cardiovascular depressant, so the model holds fixed the quantities its own
 subject acts on. A flow that fell under anesthesia would lengthen every
-tissue's time constant, $`\tau_i = V_i\lambda_{i:b}/Q_i`$. The learner can
+tissue's time constant, $`\tau_i = V_i\lambda_{i:b}/Q_i`$. The user can
 move cardiac output and watch: a higher output carries more agent away from
 the lung, stores more of it and slows the rise of $`F_A`$. The automatic
 coupling from the agent to the flow is absent, and the reader has to supply
@@ -1704,7 +1704,7 @@ The fat group's time constant is long compared with any simulated case
 whichever is right, so no displayed curve reaches a wrong endpoint. What moves
 with the flow is how much agent fat has taken up by the end of a case, which
 sets the slow tail of washout, and it moves by up to about a factor of two. **A
-learner who reads the fat trace as a physiologic prediction should treat its
+user who reads the fat trace as a physiologic prediction should treat its
 fat loading as uncertain by about that much, in an unsettled direction.**
 
 ### Intertissue diffusion: the missing fourth compartment
