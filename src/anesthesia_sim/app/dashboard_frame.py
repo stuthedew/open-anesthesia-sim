@@ -1267,18 +1267,19 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # concentration also falls that low during a washout, while the patient still
 # holds agent (`PL-P3ZL`). The sentence for a ratio above 1 does not say that
 # the patient returns agent or that the run is past equilibrium, for the same
-# reason (`PL-7PBB`). The sentence for zero ventilation names the setting the
-# reader can see on its control. At zero ventilation no agent moves between
-# the circuit and the lungs, so the ratio is not a wash-in fraction on either
-# side of 1, and the plot draws nothing (rule 3 of `app/wash_in.py`,
-# `PL-49D5`).
+# reason (`PL-7PBB`). At zero ventilation no agent moves between the circuit
+# and the lungs, so the ratio is not a wash-in fraction on either side of 1,
+# and the plot draws nothing (rule 3 of `app/wash_in.py`, `PL-49D5`). The
+# sentence for zero ventilation speaks of the state shown, not of the setting.
+# A paused run can stand on a state reached during apnoea while its control
+# already shows ventilation restored, and both stay true until the next step.
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
 WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
 WASH_IN_ELIMINATION_TEXT: Final = (
     "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
 )
 WASH_IN_VENTILATION_STOPPED_TEXT: Final = (
-    "Alveolar ventilation is zero, so the ratio is not a wash-in fraction."
+    "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction."
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 

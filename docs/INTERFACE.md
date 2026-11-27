@@ -4134,7 +4134,9 @@ though no agent reaches them. So a column is outside the plot's domain when
 the step that reached it ran at zero alveolar ventilation, whichever side of 1
 its ratio is on. The column at the second ventilation is stopped was reached
 with ventilation running, so the trace ends at that second. The caption beside
-the plot says that alveolar ventilation is zero.
+the plot says that the ratio was reached with alveolar ventilation at zero. It
+speaks of the state shown and not of the setting, so it stays true on a paused
+run whose ventilation has been restored but which has not yet taken a step.
 
 Outside the boundaries nothing is drawn, so the trace breaks into separate
 stretches. No value is pinned to the edge of the axis or replaced by a

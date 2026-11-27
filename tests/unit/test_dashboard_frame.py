@@ -3161,7 +3161,7 @@ def test_a_ratio_above_one_with_ventilation_stopped_names_no_elimination() -> No
     assert snapshot.alveolar_partial_pressure_fraction > snapshot.inspired_partial_pressure_fraction
     assert _reading(snapshot).plotted_ratio is None
     assert wash_in_state_lines(_frame(controller)) == (
-        "Alveolar ventilation is zero, so the ratio is not a wash-in fraction.",
+        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction.",
     )
 
 
@@ -3203,7 +3203,7 @@ def test_no_wash_in_point_is_drawn_while_alveolar_ventilation_is_zero(
     stopped_frame = _frame(controller)
 
     assert wash_in_state_lines(stopped_frame) == (
-        "Alveolar ventilation is zero, so the ratio is not a wash-in fraction.",
+        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction.",
     )
 
     drawn_s = _drawn_wash_in_seconds(stopped_frame)
@@ -3245,8 +3245,42 @@ def test_the_caption_reads_the_ventilation_that_reached_the_state_not_the_one_ju
     _advance_to(controller, 601)
 
     assert wash_in_state_lines(_frame(controller)) == (
-        "Alveolar ventilation is zero, so the ratio is not a wash-in fraction.",
+        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in fraction.",
     )
+
+
+def test_restoring_ventilation_on_a_paused_run_keeps_the_caption_true_of_the_state_shown() -> None:
+    """A paused run standing on an apnoeic state keeps its caption until a step is taken.
+
+    The caption speaks of the state the run stands on, which was reached at
+    zero ventilation, so it stays true while the control already shows
+    ventilation restored (blind review of `PL-49D5`, pass 1). One step later
+    the state was reached with ventilation running, and its ratio is drawn.
+    """
+
+    stopped_caption = (
+        "The ratio was reached with alveolar ventilation at zero, so it is not a wash-in "
+        "fraction.",
+    )
+    controller = SimulationController(agent_id="sevoflurane")
+    controller.set_delivered_concentration_percent(Percent(4.0))
+    controller.start()
+    _advance_to(controller, 600)
+    controller.set_alveolar_ventilation(AlveolarVentilation(0.0))
+    _advance_to(controller, 700)
+    controller.pause()
+    controller.set_alveolar_ventilation(AlveolarVentilation(5.0))
+    paused_frame = _frame(controller)
+
+    assert wash_in_state_lines(paused_frame) == stopped_caption
+    assert max(_drawn_wash_in_seconds(paused_frame)) == 600
+
+    controller.start()
+    _advance_to(controller, 701)
+    stepped_frame = _frame(controller)
+
+    assert wash_in_state_lines(stepped_frame)[0].startswith("Now: F<sub>A</sub>/F<sub>I</sub> = ")
+    assert max(_drawn_wash_in_seconds(stepped_frame)) == 701
 
 
 def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:
