@@ -905,6 +905,20 @@ class SettingPreview:
     value: float
 
 
+class PreviewOfAnotherCase(SimulationConfigurationError):
+    """A preview refused because the trial run it was rebuilt as differs from this run.
+
+    The trial run reads the agent, the patient and the circuit from the data
+    files again, so a file edited after this run began gives the trial values
+    that this run does not hold. Its future would then belong to another case.
+    The message is written for the user who holds the dial, and a note on the
+    exception names each value that differs, for a developer. `RunView` puts
+    this refusal in the banner while the dial is held. It reports no other
+    refusal of a preview there, because the release reports those
+    (`PL-412F`).
+    """
+
+
 def _unrecorded_setting_error() -> SimulationExecutionError:
     """Return the error for a setting written to the core without the controller recording it."""
 
@@ -2890,13 +2904,10 @@ class SimulationController:
                 substance_id=self._agent_id, times_s=(), states=(), alveolar_ventilations_l_min=()
             )
 
-        # An axis of zero width is one instant, and it is still drawn. Both
-        # bounds coincide, so no grid column can fall strictly between them,
-        # and the spacing substituted here cannot place one there.
         times_s = drawn_seconds(
             first_s,
             last_s,
-            max(spacing_s, 1),
+            spacing_s,
             events_s=tuple(segment.opened_at_s for segment in self._run_definition.segments),
         )
         stored_states = self._state.stored_states
@@ -3267,9 +3278,11 @@ class SimulationController:
             The settings record the run would continue under.
 
         Raises:
-            SimulationConfigurationError: If this run has stopped, if the
-                core refuses the value, or if the trial run was rebuilt with a
-                value this run does not have.
+            PreviewOfAnotherCase: If the trial run was rebuilt with a value
+                this run does not have. Its message names the dial, and its
+                note names each value that differs.
+            SimulationConfigurationError: If this run has stopped, or if the
+                core refuses the value.
             SimulationExecutionError: If the core holds a setting this
                 controller did not record, so applying the value would be
                 refused too (`_refuse_a_setting_after_an_unrecorded_one`).
@@ -3294,10 +3307,23 @@ class SimulationController:
         disagreements = self._disagreements_with(trial, in_force, "in the preview")
 
         if disagreements:
-            raise SimulationConfigurationError(
+            # The user reads the first text in the banner, as for a refused
+            # branch (`_branch_from`). A developer reads each value that
+            # differs in the note. The note is not logged here, because a drag
+            # asks for a preview on every frame (`RunView.request_preview`).
+            refusal = PreviewOfAnotherCase(
+                f"the {CONTROL_INPUT_LABELS[preview.control].lower()} preview would not start "
+                "from the values this run holds, so it would predict a different case. The "
+                "simulator's data may have changed since this run began, or the simulator may "
+                "have a fault. Reopen the simulator and run the case again to preview a "
+                "setting. If this notice comes back, the cause is a fault in the simulator"
+            )
+            refusal.add_note(
                 "a preview would be drawn from values this run does not hold, so it would "
                 f"predict a different case: {'; '.join(disagreements)}"
             )
+
+            raise refusal
 
         match preview.control:
             case ControlInput.FRESH_GAS_FLOW:
@@ -3397,7 +3423,6 @@ class SimulationController:
         if self._prediction_memo is not None and self._prediction_memo[0] == key:
             return self._prediction_memo[1]
 
-        grid_s = max(spacing_s, 1)
         exact_s = min(horizon_s, reached_s + PREVIEW_EXACT_S)
         predicted = predicted_states(settings, reached_state, reached_s, CaseInstant(exact_s))
         fractions = tuple(zip(*predicted, strict=True))
@@ -3408,7 +3433,7 @@ class SimulationController:
         exact_times_s = _with_extremes(
             reached_s,
             exact_s,
-            drawn_seconds(reached_s, exact_s, grid_s, events_s=()),
+            drawn_seconds(reached_s, exact_s, spacing_s, events_s=()),
             tuple(fractions[index] for index, _ in FRACTION_STATE_NAMES),
             (
                 is_ventilated(reach_ventilation_l_min),
@@ -3417,7 +3442,7 @@ class SimulationController:
         )
         later_times_s = tuple(
             second
-            for second in drawn_seconds(exact_s, horizon_s, grid_s, events_s=())
+            for second in drawn_seconds(exact_s, horizon_s, spacing_s, events_s=())
             if second > exact_s
         )
         # One name for the state at the end of the exact hour, so that the
@@ -4087,10 +4112,10 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> int:
     `drawn_window` and `preview_window` both draw on this grid, so a
     prediction is drawn at the run's own resolution. The spacing is rounded
     down onto whole seconds, and is never less than one second, because a run
-    stands only on whole seconds (`chart_time_base.grid_spacing_s`). It is
-    zero for an axis of zero width. The chart never asks for such an axis, but
-    `drawn_window` and `preview_window` accept one from any caller, and both
-    then space their columns one second apart.
+    stands only on whole seconds (`chart_time_base.grid_spacing_s`). An axis
+    of zero width is given the spacing of one step, so neither caller sets a
+    minimum of its own (`PL-WZDM`). The chart never asks for such an axis,
+    but `drawn_window` and `preview_window` accept one from any caller.
 
     Raises:
         SimulationConfigurationError: If `columns` is fewer than two, either
@@ -4114,7 +4139,12 @@ def _axis_spacing_s(start_s: float, stop_s: float, columns: int) -> int:
 
     span_s = stop_s - start_s
 
-    return grid_spacing_s(span_s / (columns - 1)) if span_s > 0.0 else 0
+    if span_s == 0.0:
+        # `grid_spacing_s` refuses a spacing of zero, and an axis of zero width
+        # is one instant, so no column can fall between its two bounds.
+        return SIMULATION_STEP_S
+
+    return grid_spacing_s(span_s / (columns - 1))
 
 
 #: Where the inspired and the alveolar fraction stand among the series that
