@@ -3,11 +3,10 @@ id: PL-9WDN
 title: The interface has no written design language: no type scale, spacing scale or rule for surfaces, colour and standing text, so each View is styled on its own and the whole reads as unprofessional
 priority: P2
 effort: M
-status: blocked
+status: needs-decision
 classes: ux, planning
 feature: interface-design-review
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/stylesheets.py, docs/INTERFACE.md
-blocked-by: v0.7.0
 deferred-from: v0.7.0 - filed on 2026-11-26, after the gate froze; the owner placed it first in the interface pass that follows v0.7.0 (item 33), so it waits for the cut
 added: 2026-11-26
 payoff: a learner meets one consistent screen, where size, spacing and colour each mean one thing, instead of surfaces styled one at a time
@@ -124,6 +123,13 @@ The seven rules above are the starting draft for item 33's design round, not
 decided values: the round settles the sizes, the spacing steps and the
 colours, then writes them as tokens and a check before any surface is
 restyled.
+
+**Decision needed.** Item 33's design round, after the v0.7.0 cut: the type
+sizes, spacing steps, container rule and colour meanings of the design
+language, drafted from the seven rules above and shown as one annotated screen
+before any token is written. `blocked-by` cannot say "after a release is cut",
+because a version there waits only for the milestone to be scoped, so the wait
+is stated here and in `ROADMAP.md` item 33.
 
 **Generator check.** None recorded. The open `interface-design-review` items
 each fix one surface's own fault. Whether the missing design language caused
