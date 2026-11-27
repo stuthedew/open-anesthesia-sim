@@ -12,8 +12,8 @@
             "tree": {
               "split": "row",
               "sizes": [
-                0.7,
-                0.3
+                0.6,
+                0.4
               ],
               "children": [
                 {

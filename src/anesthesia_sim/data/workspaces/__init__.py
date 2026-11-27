@@ -6,31 +6,42 @@ reads it with the same function that `layout/store.py` uses (`PL-KXTL`). A file'
 is the shipped Workspace's id, and the Workspace in it names that id as its
 origin.
 
-Each Workspace shows its own lesson whole in a 1366 by 768 window, the size its
-pixel budget was set for (`ROADMAP.md` v0.6.0 Required scope entry 20,
-`PL-84QX`, `PL-D5J4`). Each gives the Parameters View a small share, so its
-Area stays at the View's least height at every window size and the Views around
-it take the rest (`PL-4JCC`). The shares are placeholders.
+Every Workspace puts the concentration chart on the left at the window's full
+height, and a column on its right whose first Area holds the parameter
+controls. The row is split at the same shares in all three, so the controls
+stay where they were when the reader switches tabs (project owner,
+2026-11-26, `PL-YS8M`). On a wide screen the controls' Area is then the same
+in every Workspace. On a 1366 by 768 laptop screen the column is as wide as
+the widest View in it needs, so the Area keeps its top and right edges and is
+wider in Induction and Maintenance. Each gives the Parameters View a small
+share, so its Area stays at the View's least height at every window size and
+the Views around it take the rest (`PL-4JCC`). The shares are placeholders.
 
-- `default.json` - the concentration chart at the window's full height, with
-  a column on the right that holds the parameter controls over the bookmarks
-  and the branch control. At 1366 by 768 the chart keeps every row above its
-  plot on screen.
-- `induction.json` - the concentration chart over the parameter controls on
-  the left half, and the wash-in chart over the bookmarks and the branch
-  control on the right half. The wash-in curve shows the alveolar
+With one run, Maintenance shows its lesson whole in a 1366 by 768 window, the
+size its pixel budget was set for (`ROADMAP.md` v0.6.0 Required scope entry
+20, `PL-84QX`, `PL-D5J4`). Induction's wash-in plot needs a 1440 by 900
+window, and scrolls inside its Area on a smaller one. With a branch open, the
+controls' Area holds a second row of controls, and neither lesson fits whole.
+
+- `default.json` - the concentration chart, and a column that holds the
+  parameter controls over the bookmarks and the branch control. At 1366 by
+  768 the chart keeps every row above its plot on screen.
+- `induction.json` - the concentration chart, and a column that holds the
+  parameter controls over the wash-in chart and, under that, the bookmarks
+  beside the branch control. The wash-in curve shows the alveolar
   concentration as a fraction of the circuit concentration. It changes fastest
   in the first minutes.
-- `maintenance.json` - the concentration chart over the parameter controls on
-  the left half, and the compartment schematic on the right half at full
-  height. During maintenance, the agent moves into muscle and fat while the
-  tensions in those tissues stay low. The schematic's share bar, and the lines
-  under it that name each segment's share, are where a learner sees that
-  (`PL-PR1W`). They need nearly all of a 768 px window's height, so this
-  Workspace leaves out the bookmarks and the branch control. A reader brings
-  either back with the View chooser. The wash-in chart, whose
-  lesson is the first minutes, stays in Induction. The choice of which
-  Workspace holds the schematic is a placeholder.
+- `maintenance.json` - the concentration chart, and a column that holds the
+  parameter controls over the compartment schematic. During maintenance, the
+  agent moves into muscle and fat while the tensions in those tissues stay
+  low. The schematic's share bar, and the lines under it that name each
+  segment's share, are where a learner sees that (`PL-PR1W`). They are the
+  schematic's first rows under its name line, so they stay on screen where
+  the containers scroll. The schematic needs nearly all of the column's height
+  on a laptop screen, so this Workspace leaves out the bookmarks and the
+  branch control. A reader brings either back with the View chooser. The
+  wash-in chart, whose lesson is the first minutes, stays in Induction. The
+  choice of which Workspace holds the schematic is a placeholder.
 
 None of the three contains the agent accounting View (project owner,
 2026-09-16). `docs/INTERFACE.md` § "Values that must stay reachable" puts the
