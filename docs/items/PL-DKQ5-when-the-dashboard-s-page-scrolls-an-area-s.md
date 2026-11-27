@@ -5,7 +5,7 @@ status: untriaged
 classes: defect, safety
 feature: interface-areas
 touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/pinned_heading.py
-deferred-from: v0.7.0 - measured 2026-11-27 under PL-3NGZ: in every shipped Workspace at 1366 by 768, 1440 by 900 and 1920 by 1080, with one run or two, the page never scrolls an Area's pinned row or header out of view, so no shipped layout shows a value without them. It takes a layout the user arranged or a smaller window, and there each value still prints its own unit symbol with its run's and compartment's names in view. Deferral put to the owner through the coordinator on 2026-11-27, pending his answer
+deferred-from: v0.7.0 - measured 2026-11-27 under PL-3NGZ: in every shipped Workspace at 1366 by 768, 1440 by 900 and 1920 by 1080, with one run or two, the page never scrolls an Area's pinned row or header out of view, so no shipped layout shows a value without them. It takes a layout the user arranged or a smaller window, and there each value still prints its own unit symbol with its run's and compartment's names in view. Deferred on that measurement on 2026-11-27 (ROADMAP.md § "Deferring to the next gate": the hazard is not live in any shipped Workspace); the coordinator did not put it to the owner, whose rule is that threads apply a sourced recommendation themselves
 added: 2026-11-27
 filed-pr: 2331
 ---
