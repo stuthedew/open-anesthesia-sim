@@ -47,15 +47,19 @@ splits a document.
   citation of a moved section, as `repoint` does. Exits 2, changing nothing,
   when a heading names no one section.
 - `repoint --to DOCUMENT` re-points citations after a move, in every tracked
-  text file but a closed item and a release note. A citation that names the
-  old document and quotes a heading or a sentence that only the new one holds
-  gets the new document's path. Inside the two documents, a section mark with
-  no document before it gets the other document's path where its section is
-  now there. It prints each file it changed, and each citation whose words
-  neither document holds, which a person reads. It also prints each quotation
-  that follows a mention of one document and names a section only the other
-  has, because one path before two section names is right for the first
-  alone. Running it twice changes nothing more.
+  text file but a closed item and a release note. In a test tree it reads only
+  a Python file's comments and docstrings, because a string literal there is a
+  test's input. A citation that names the old document and quotes a heading or
+  a sentence that only the new one holds gets the new document's path. A
+  quotation after a section mark names a heading, so it is re-pointed only
+  where the new document holds that heading. Inside the two documents, a
+  section mark with no document before it gets the other document's path
+  where its section is now there. It prints each file it changed, each
+  citation whose words neither document holds, and each test file Python
+  cannot read, for a person to read. It also prints each quotation that
+  follows a mention of one document and names a section only the other has,
+  because one path before two section names is right for the first alone.
+  Running it twice changes nothing more.
 
 The pull request of each section part accounts for every line `lost` prints.
 When each line is history or a kept duplicate and nothing was added, no value,
@@ -67,9 +71,12 @@ merges on green unless a sentence's meaning needs the owner's judgment
 from __future__ import annotations
 
 import argparse
+import ast
+import io
 import math
 import re
 import sys
+import tokenize
 from collections import Counter
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, replace
@@ -83,12 +90,17 @@ from docket.fences import blocks, without_fences  # noqa: E402
 from docket.instructions import ISO_DATE_RE  # noqa: E402
 from docket.lines import split_lines  # noqa: E402
 from docket.markdown import PROSE, Heading, headings, unmarked  # noqa: E402
+from docket.python import SOURCE_SUFFIXES, UNPARSABLE, UNTOKENIZABLE, docstrings, refusal  # noqa: E402
 from docket.release import code_spans  # noqa: E402
 from docket.store import CITED_ID_RE  # noqa: E402
 from docket.vcs import RECORDS, GitUnanswered, default_base, listed_paths, read_git, resolved  # noqa: E402
 
 import doc_check  # noqa: E402
 from product_paths import MODEL_DOC, SPECIFICATION_DOCS  # noqa: E402
+
+#: What reading a test file's comments and docstrings raises where Python cannot
+#: read it: the parser's errors and the tokenizer's.
+UNREADABLE = (*UNPARSABLE, *UNTOKENIZABLE)
 
 #: The opening line of a display equation's fence, its trailing blanks removed.
 MATH_FENCE_OPENING = "```math"
@@ -638,6 +650,8 @@ class Repointed:
     changed: dict[str, int]
     #: Each citation of the source whose quotation neither document holds.
     unplaced: list[str]
+    #: Each test file that Python cannot read, so its citations were not read.
+    unread: list[str]
 
 
 def _tracked_texts(root: Path) -> Iterator[str]:
@@ -654,6 +668,55 @@ def _tracked_texts(root: Path) -> Iterator[str]:
             yield path
 
 
+def _citing_spans(path: str, text: str, trees: Sequence[str]) -> list[tuple[int, int]] | None:
+    """The spans of `text` that may hold a citation, as offsets, or `None` where all of it may.
+
+    A file in a test tree quotes a document in two ways. Its comments and
+    docstrings cite the document, as any other file's do. A string literal in
+    a test's body is input for the test, and re-pointing it changed what the
+    test checks (`PL-1SL4`). So in a test tree only the comments and
+    docstrings of a Python file are read, and no other file is read at all.
+    `trees` is the test trees, as `docket.toml`'s `collected_test_paths` lists
+    them.
+
+    Raises: one of `UNREADABLE`: `path` is a Python file in a test tree, and
+    Python cannot parse or tokenize it.
+    """
+    name = PurePosixPath(path)
+    if not any(name.is_relative_to(tree) for tree in trees):
+        return None
+    if name.suffix not in SOURCE_SUFFIXES:
+        return []
+    rows = split_lines(text, keepends=True)
+    starts = [0]
+    for row in rows:
+        starts.append(starts[-1] + len(row))
+
+    def offset(row: int, byte_column: int) -> int:
+        """The offset of a position that `ast` gives as a row and a column in UTF-8 bytes."""
+        return starts[row - 1] + len(rows[row - 1].encode()[:byte_column].decode())
+
+    spans = [
+        (
+            offset(node.lineno, node.col_offset),
+            offset(node.end_lineno or node.lineno, node.end_col_offset or node.col_offset),
+        )
+        for node in docstrings(ast.parse(text))
+    ]
+    # The tokenizer's columns count characters, so they need no conversion.
+    spans += [
+        (starts[token.start[0] - 1] + token.start[1], starts[token.end[0] - 1] + token.end[1])
+        for token in tokenize.generate_tokens(io.StringIO(text).readline)
+        if token.type == tokenize.COMMENT
+    ]
+    return spans
+
+
+def _within(position: int, spans: list[tuple[int, int]] | None) -> bool:
+    """Whether `position` lies in one of `spans`, where `None` stands for the whole file."""
+    return spans is None or any(start <= position < end for start, end in spans)
+
+
 def repoint(
     root: Path, source: str, destination: str, paths: Iterable[str] | None = None
 ) -> Repointed:
@@ -665,10 +728,13 @@ def repoint(
     A citation that names `source` and then quotes it is re-pointed in two
     cases. The first is when the quotation names a heading of `destination`
     and no heading of `source`. The second is when it names no heading of
-    either, `destination` holds its words and `source` does not. A quotation
-    that neither document holds, and that follows `source` directly or after a
-    section mark, a possessive or a comma, is returned as unplaced, for a
-    person to read.
+    either, no section mark stands before it, `destination` holds its words and
+    `source` does not. A section mark says the quotation names a heading, so a
+    heading that neither document holds is not re-pointed by words the
+    destination happens to hold. Such a heading was rewritten in place, not
+    moved (`PL-1SL4`). A quotation that neither document holds, and that
+    follows `source` directly or after a section mark, a possessive or a
+    comma, is returned as unplaced, for a person to read.
 
     Inside the two documents, a section mark with no document before it used
     to name a section of the same file. Where the section is now a heading of
@@ -676,17 +742,25 @@ def repoint(
     loses a following "above" or "below".
 
     `paths` is the files to read, and every tracked text file by default. A
-    closed item and a release note are records, and are not read.
+    closed item and a release note are records, and are not read. In a test
+    tree, only a Python file's comments and docstrings are read, as
+    `_citing_spans` says. A test file that Python cannot read is returned as
+    unread.
     """
+    trees = load(root).collected_test_paths
     texts = {name: (root / name).read_text(encoding="utf-8") for name in (source, destination)}
     heads = {name: doc_check._headings(text) for name, text in texts.items()}
     bodies = {name: doc_check._comparable_statements(text) for name, text in texts.items()}
     changed: dict[str, int] = {}
     unplaced: list[str] = []
+    unread: list[str] = []
     pattern = citation_after(source)
 
-    def moved(quoted: str) -> bool | None:
-        """Whether the quotation's home is now `destination`; `None` when it has none."""
+    def moved(quoted: str, *, marked: bool) -> bool | None:
+        """Whether the quotation's home is now `destination`; `None` when it has none.
+
+        `marked` is whether a section mark stands before the quotation.
+        """
         term = doc_check._normalized(WRAP_RE.sub(" ", quoted))
         if "..." in term or "…" in term:
             return False
@@ -694,6 +768,8 @@ def repoint(
             return False
         if doc_check._cites_heading(term, heads[destination]):
             return True
+        if marked:
+            return None
         words = doc_check._comparable(doc_check._without_emphasis(term)).rstrip(" .,;:")
         if words in bodies[source]:
             return False
@@ -726,10 +802,17 @@ def repoint(
             text = (root / path).read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
+        try:
+            spans = _citing_spans(path, text, trees)
+        except UNREADABLE as error:
+            unread.append(f"{path}: {refusal(error)}")
+            continue
         edits: list[tuple[int, int, str]] = []
         for match in pattern.finditer(text):
+            if not _within(match.start(), spans):
+                continue
             quoted = match["double"] or match["single"]
-            home = moved(quoted)
+            home = moved(quoted, marked="§" in match["gap"])
             if home:
                 edits.append((match.start("document"), match.end("document"), destination))
             elif home is None and CLAIMING_GAP_RE.fullmatch(match["gap"]) and len(quoted) < 120:
@@ -746,7 +829,7 @@ def repoint(
             text = text[:start] + new + text[end:]
         (root / path).write_text(text, encoding="utf-8")
         changed[path] = count
-    return Repointed(changed, unplaced)
+    return Repointed(changed, unplaced, unread)
 
 
 #: A quotation that may name a section, in double or single quotation marks.
@@ -791,20 +874,26 @@ def misattributed(
     parted them (`PL-CTXZ`, found by both blind review passes). No rule says
     where the second path belongs in the sentence, so each is listed for a
     person to read. A mark with no document before it, inside the two
-    documents, is listed too where it follows a mention of the other one.
+    documents, is listed too where it follows a mention of the other one. A
+    test tree is read as `repoint` reads it. A test file that Python cannot
+    read is skipped here, because `repoint` returns it as unread.
     """
     documents = (source, destination)
     heads = {
         name: doc_check._headings((root / name).read_text(encoding="utf-8")) for name in documents
     }
+    trees = load(root).collected_test_paths
     found: list[str] = []
     for path in _tracked_texts(root) if paths is None else paths:
         try:
             text = (root / path).read_text(encoding="utf-8")
-        except UnicodeDecodeError:
+            spans = _citing_spans(path, text, trees)
+        except (UnicodeDecodeError, *UNREADABLE):
             continue
         mentions = _mentions(text, documents)
         for index, (start, own) in enumerate(mentions):
+            if not _within(start, spans):
+                continue
             after = start + len(own)
             end = mentions[index + 1][0] if index + 1 < len(mentions) else len(text)
             span = _to_paragraph_end(text[after : min(end, after + 500)])
@@ -882,6 +971,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "document holds. Read each:"
             )
             print("\n".join(f"  {line}" for line in done.unplaced))
+        if done.unread:
+            print(
+                f"\n{len(done.unread)} test files could not be read as Python, so their "
+                "citations were not re-pointed. Read each:"
+            )
+            print("\n".join(f"  {line}" for line in done.unread))
         later = misattributed(root, args.source, args.destination)
         if later:
             print(

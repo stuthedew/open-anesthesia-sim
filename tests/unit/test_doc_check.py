@@ -13584,6 +13584,8 @@ RENAMED_NOTES = "# Notes\n\n## New title\n\nThe body names the old title words.\
         '"""See § "Old title"."""\n',
         '"""See `docs/notes.md`, § "Old title"."""\n',
         '# The rest is `docs/notes.md` (§ "Old title").\nVALUE = 1\n',
+        '# See `docs/notes.md` § "Old\n# title".\nVALUE = 1\n',
+        '#: See `docs/notes.md` § "Old\n#: title".\nVALUE = 1\n',
     ],
     ids=[
         "comment",
@@ -13595,6 +13597,8 @@ RENAMED_NOTES = "# Notes\n\n## New title\n\nThe body names the old title words.\
         "bare mark naming no document",
         "mark after a comma",
         "mark in parentheses",
+        "quotation wrapped across two comment lines",
+        "quotation wrapped across two attribute comment lines",
     ],
 )
 def test_a_section_mark_in_python_is_refused_once_its_heading_is_renamed(
@@ -13604,7 +13608,8 @@ def test_a_section_mark_in_python_is_refused_once_its_heading_is_renamed(
 
     A comment, a possessive and a bare mark were read by nothing, so a section
     move stranded them without a word (`PL-LPCB`). Each passes while the
-    heading stands and is refused once it is renamed.
+    heading stands and is refused once it is renamed. A quotation wrapped onto
+    a second comment line is read as one (`PL-N321`).
     """
     root = _repo(tmp_path)
     (root / "docs" / "notes.md").write_text(NOTES, encoding="utf-8")
@@ -13810,3 +13815,104 @@ def test_a_decision_record_split_by_a_line_wrap_is_refused(tmp_path: Path, wrapp
 
     assert len(errors) == 1
     assert errors[0].startswith("docs/MODEL.md:4 records a decision, `(project")
+
+
+#: A module whose docstring has one section, which `MODULE_SECTION_RE` cites.
+SECTIONED_MODULE = '"""What the module does.\n\n## The state vector\n\nSix fractions.\n"""\n'
+
+
+@pytest.mark.parametrize(
+    "citation",
+    [
+        '# See `core/thing.py` § "The state vector".\nVALUE = 1\n',
+        '"""See `core/thing.py`\'s § "The state vector"."""\n',
+    ],
+    ids=["mark", "possessive"],
+)
+def test_a_section_mark_after_a_module_is_held_to_its_docstring_headings(
+    tmp_path: Path, citation: str
+) -> None:
+    """A module's docstring is cited by its Markdown headings, so a rename is refused (`PL-MWL0`).
+
+    A mark after a code-spanned Python file was read by nothing, so renaming the
+    heading left the citation pointing at nothing without a word.
+    """
+    root = _repo(tmp_path)
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text(SECTIONED_MODULE, encoding="utf-8")
+    (root / "tools" / "cites.py").write_text(citation, encoding="utf-8")
+
+    assert [error for error in _errors(root) if error.startswith("tools/cites.py")] == []
+
+    module.write_text(SECTIONED_MODULE.replace("The state vector", "The state"), encoding="utf-8")
+    assert [error for error in _errors(root) if error.startswith("tools/cites.py")] == [
+        'tools/cites.py:1: quotes core/thing.py § "The state vector", which is no heading of '
+        "its module docstring"
+    ]
+
+
+def test_a_mark_after_a_module_that_is_absent_unparsable_or_quoted_as_an_example(
+    tmp_path: Path,
+) -> None:
+    """An absent module is refused, one Python cannot parse is declined, and an example is not read.
+
+    The example is a citation written out inside a code span, as a brief
+    describing the form writes one.
+    """
+    root = _repo(tmp_path)
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text("def (:\n", encoding="utf-8")
+    (root / "tools" / "cites.py").write_text(
+        '# See `core/thing.py` § "The state vector".\n'
+        '# See `core/absent.py` § "The state vector".\n'
+        '# Write `` `core/absent.py` § "Any heading" `` to cite one.\n'
+        "VALUE = 1\n",
+        encoding="utf-8",
+    )
+
+    report = doc_check.analyze(root)
+
+    assert [error for error in report.errors if error.startswith("tools/cites.py")] == [
+        "tools/cites.py:2: quotes core/absent.py, which does not exist"
+    ]
+    assert [line for line in report.declined if line.startswith("tools/cites.py")] == [
+        'tools/cites.py:1: cites core/thing.py § "The state vector", but Python cannot parse '
+        "core/thing.py (invalid syntax, line 1), so its docstring's headings were not read"
+    ]
+
+
+@pytest.mark.parametrize(
+    "citation",
+    [
+        'Gate 1 places `PL-T3ST` under § "{title}".',
+        'The decision (`PL-T3ST`, § "{title}") holds.',
+        'It stops at the cap (`SimulationView._halt`, § "{title}").',
+        'The check keeps numpy out (`core/thing.py` (§ "{title}")).',
+    ],
+    ids=[
+        "item, then under",
+        "item, then a comma",
+        "symbol, then a comma",
+        "module, then a parenthesis",
+    ],
+)
+def test_a_mark_after_a_connective_that_claims_nothing_names_a_section_of_its_document(
+    tmp_path: Path, citation: str
+) -> None:
+    """After an item, a module or any other code span and a connective, the mark is the text's own.
+
+    Every such mark in the tree on 2026-11-27 named a section of the document
+    around it, as `ROADMAP.md`'s `` `PL-B9PY` under § "Cleared by v0.5.0
+    itself" `` does. While any code span before the mark handed it on to a
+    reader of that source, none of them was read (`PL-MWL0`).
+    """
+    readme = f"# Demo\n\n## Known limitations\n\n{citation.format(title='Known limitations')}\n"
+    root = _repo(tmp_path, readme=readme)
+
+    assert [error for error in _errors(root) if error.startswith("README.md")] == []
+
+    stale = f"# Demo\n\n## Known limitations\n\n{citation.format(title='Unknown limits')}\n"
+    root = _repo(tmp_path / "stale", readme=stale)
+    assert [error for error in _errors(root) if error.startswith("README.md")] == [
+        'README.md:5: cites section "Unknown limits", which no documentation file has (§ names a '
+        "section of these documents; write an outside source's section without the mark)"
+    ]

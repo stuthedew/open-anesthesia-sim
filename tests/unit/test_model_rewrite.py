@@ -470,3 +470,76 @@ def test_move_refuses_a_heading_the_document_does_not_hold(
 
     assert 'docs/MODEL.md: no one section reads "Absent"' in capsys.readouterr().out
     assert (root / "docs/MODEL.md").read_text(encoding="utf-8") == SPLIT_DOCUMENT
+
+
+#: A test module under a test tree. Its docstring and its comment cite the
+#: document. Its string literal is input for a test that happens to quote it.
+TEST_MODULE = '''\
+"""A test of the wash-in, as `docs/MODEL.md` § "Wash-in" describes it."""
+
+# See `docs/MODEL.md` § "Wash-in".
+FIXTURE = 'See `docs/MODEL.md` § "Wash-in".'
+'''
+
+
+def test_repoint_reads_only_the_comments_and_docstrings_of_a_test_tree(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A test's input is not a citation, so a move leaves it as it was (`PL-1SL4`)."""
+    root = _split_repository(tmp_path)
+    (root / "docket.toml").write_text(
+        '[docket]\ncollected_test_paths = ["tests"]\n', encoding="utf-8"
+    )
+    (root / "tests").mkdir()
+    (root / "tests/test_wash_in.py").write_text(TEST_MODULE, encoding="utf-8")
+    (root / "tests/strings.json").write_text(
+        '{"text": "See `docs/MODEL.md` § \\"Wash-in\\"."}\n', encoding="utf-8"
+    )
+    broken = 'def (:\n    """See `docs/MODEL.md` § "Wash-in"."""\n'
+    (root / "tests/test_broken.py").write_text(broken, encoding="utf-8")
+    _git(root, "add", "-A")
+
+    assert main(["--root", str(root), "move", "--to", "docs/INTERFACE.md", "Equations"]) == 0
+
+    out = capsys.readouterr().out
+    assert (root / "tests/test_wash_in.py").read_text(encoding="utf-8") == TEST_MODULE.replace(
+        '`docs/MODEL.md` § "Wash-in" describes', '`docs/INTERFACE.md` § "Wash-in" describes'
+    ).replace("# See `docs/MODEL.md`", "# See `docs/INTERFACE.md`")
+    assert "docs/MODEL.md" in (root / "tests/strings.json").read_text(encoding="utf-8")
+    # A test file Python cannot read is left alone and named, not passed over in silence.
+    assert (root / "tests/test_broken.py").read_text(encoding="utf-8") == broken
+    assert "tests/test_broken.py: invalid syntax, line 1" in out
+
+
+def test_a_section_mark_before_a_heading_neither_document_holds_is_unplaced(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A heading rewritten in place is not re-pointed by the words another document holds.
+
+    The section mark says the quotation names a heading, so neither document
+    holding that heading leaves it for a person to read. The same words without
+    the mark are a quotation of the text, and they still follow the document
+    that holds them.
+    """
+    root = _split_repository(tmp_path)
+    (root / "docs/MODEL.md").write_text(
+        "# Model\n\n## Governing balance\n\nThe circuit gains agent from the fresh gas.\n",
+        encoding="utf-8",
+    )
+    (root / "docs/INTERFACE.md").write_text(
+        "# Interface\n\n## Solving\n\nThe governing equations are solved each second.\n",
+        encoding="utf-8",
+    )
+    citing = (
+        '"""See `docs/MODEL.md` § "Governing equations".\n\n'
+        'The text says `docs/MODEL.md` "The governing equations are solved each second".\n"""\n'
+    )
+    (root / "src/citing.py").write_text(citing, encoding="utf-8")
+
+    assert main(["--root", str(root), "repoint", "--to", "docs/INTERFACE.md"]) == 0
+
+    out = capsys.readouterr().out
+    assert (root / "src/citing.py").read_text(encoding="utf-8") == citing.replace(
+        '`docs/MODEL.md` "The governing', '`docs/INTERFACE.md` "The governing'
+    )
+    assert "src/citing.py:1: Governing equations" in out
