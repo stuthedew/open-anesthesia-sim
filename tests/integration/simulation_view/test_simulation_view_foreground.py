@@ -130,17 +130,13 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
     ),
     "SchematicCanvas": (
         "the compartment schematic's drawing (`qt_schematic.SchematicCanvas`, "
-        "PL-RNYV). It paints each container's name, tension and amount with a "
-        "pen it sets to INK, the outlines in INK, the flow lines and scale "
-        "marks in MUTED and the off-scale bar in WARNING, and never reads its "
-        "foreground role. `tools/contrast_check.py` measures each of those "
-        "colours against PANEL, and each container's fill as a trace colour."
-    ),
-    "ShareBar": (
-        "the bar under the schematic that shows each compartment's share of "
-        "the agent in the body (`qt_schematic.ShareBar`, PL-RNYV). It draws no "
-        "text: segments in the trace colours, dividers in PANEL and an outline "
-        "in INK, each from a pen or brush it sets itself."
+        "PL-RNYV). It paints each container's name, tension, amount and share "
+        "with a pen it sets to INK, the outlines of the containers and share "
+        "bars in INK, the flow lines and scale marks in MUTED and the "
+        "off-scale bar in WARNING, and never reads its foreground role. "
+        "`tools/contrast_check.py` measures each of those colours against "
+        "PANEL, and each container's fill and share bar's fill as a trace "
+        "colour (PL-8PL4)."
     ),
 }
 

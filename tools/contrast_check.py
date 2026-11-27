@@ -585,10 +585,12 @@ class Exemption:
 #: minimum as well, so the exception is not claimed anywhere in this
 #: interface.
 #: What each compartment colour marks: its chart trace, and the fill of its
-#: container on the compartment schematic (`SchematicCanvas`, PL-RNYV). A
-#: fill's edge against the empty part of its container is the PANEL pair.
+#: container and of the share bar under its label on the compartment schematic
+#: (`SchematicCanvas`, PL-RNYV, PL-8PL4). A fill's edge against the empty part
+#: of its container or bar is the PANEL pair.
 _COMPARTMENT_MARK = (
-    "a plotted compartment trace, the fill of its schematic container, and its share-bar segment"
+    "a plotted compartment trace, the fill of its schematic container, "
+    "and the fill of its share bar"
 )
 
 #: What each trace is against inside the MAC-awake band: the adjacent colour

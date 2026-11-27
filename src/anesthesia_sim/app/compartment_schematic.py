@@ -16,10 +16,12 @@ tension above the top of that scale fills the container, and the container is
 marked as off the scale. Its label still prints the tension. Each container
 carries a mark at each MAC value that the chart's MAC axis labels at that
 top, so a fill level is read against the container's own marks. Each label gives
-the compartment's name, its tension as its readout prints it, and its amount.
-The amount comes from the snapshot's record of the agent in each compartment
-(`PL-KFTM`). So a label cannot disagree with its readout, and the schematic
-computes no amount of its own.
+the compartment's name, its tension as its readout prints it, its amount, and
+its share of all the agent that the six compartments hold. The amount comes
+from the snapshot's record of the agent in each compartment (`PL-KFTM`). So a
+label cannot disagree with its readout, and the schematic computes no amount of
+its own. A short bar under each label draws its share, on one scale for all six
+bars (`PL-8PL4`).
 """
 
 from __future__ import annotations
@@ -59,27 +61,26 @@ __all__ = [
     "COMPARED_INSTANT_LINE_TEMPLATE",
     "CONTAINER_ORDER",
     "INSTANT_LINE_TEMPLATE",
+    "NO_AGENT_SHARE_CAPTION",
+    "NO_SHARE_TEXT",
     "OFF_SCALE_LINE_TEMPLATE",
     "AMOUNT_CONDITION_LINES",
     "SCALE_CAPTION_TEMPLATE",
     "SCHEMATIC_HEADING",
-    "SHARE_LINE_TEMPLATE",
-    "SHARE_SEGMENT_TEMPLATE",
-    "NO_AGENT_SHARE_LINE",
+    "SHARE_CAPTION",
+    "SHARE_TEMPLATE",
     "WIDEST_LABELS",
     "WITHHELD_AMOUNT_TEXT",
     "WITHHELD_SCHEMATIC",
     "ContainerReading",
     "SchematicShown",
-    "ShareSegment",
     "container_readings",
     "instant_line",
     "schematic_shown",
     "off_scale_line",
     "scale_caption",
     "scale_marks",
-    "share_line",
-    "share_segments",
+    "share_caption",
 ]
 
 #: The compartments the schematic draws, in the order its containers stand:
@@ -139,17 +140,59 @@ OFF_SCALE_LINE_TEMPLATE: Final = (
     "Each is drawn full, and its label gives its tension."
 )
 
+#: Each container's label ends with this line, which gives the compartment's
+#: share of all the agent that the six containers hold at the instant shown
+#: (`PL-8PL4`). Each share sits in the label of its own container, so no share
+#: is told apart by colour and no key is needed to name it. The line is kept no
+#: wider than a compartment's name or amount, so it adds no width to a column.
+#: Worded "of the agent", it was the widest label, and under the font that CI
+#: draws in, the Maintenance Workspace then scrolled sideways at 1366 by 768.
+#: The wording is a placeholder.
+SHARE_TEMPLATE: Final = "{share} of agent"
+
+#: The share line shows this text while no share exists, which is while the run
+#: holds no agent and while its values are withheld. The line stays, so the
+#: labels keep their height when the first agent arrives. The dash is the mark
+#: the readouts use for a value they do not show. The wording is a placeholder.
+NO_SHARE_TEXT: Final = "\u2014 of agent"
+
+#: This caption line says what every share is a part of, which is the agent that
+#: the six containers hold at the instant shown. The project owner first read the
+#: old single bar's heading, "Share of the agent the run holds", as agent counted
+#: over the whole run (`PL-8PL4`), so the line names the instant. It names the six
+#: containers rather than the circuit and body, because the model leaves out lung
+#: tissue, a vessel-poor group and the circuit's plastics. A patient's body holds
+#: agent there that no share counts (`docs/MODEL.md` § "What the model does not
+#: represent", `PL-KQ0S`). The wording is a placeholder, but the instant and the
+#: six containers as the whole must be on screen.
+SHARE_CAPTION: Final = "Shares are of all the agent in the six containers at this instant."
+
+#: The caption line shows this text while the run holds no agent. No share
+#: exists then, so each label shows `NO_SHARE_TEXT`, and this line says why,
+#: rather than the labels showing six zeros as if they were shares. It is one
+#: line, as `SHARE_CAPTION` is, so the schematic keeps its height when the first
+#: agent arrives. The wording is a placeholder.
+NO_AGENT_SHARE_CAPTION: Final = "No shares yet: the six containers hold no agent."
+
 #: The label texts that set the width of each container's column, so that a
 #: column does not widen while a run fills. Room for a tension is reserved in the
 #: same way as the readouts reserve it. Room for an amount is reserved for two
 #: texts: an amount below the display floor, and a five-figure amount. The
-#: formatter that prints amounts writes both texts. The View also widens a
-#: column for any label wider than these, so that no label is clipped.
+#: formatter that prints amounts writes both texts. Room for a share is reserved
+#: for the share below 1%, the share just below the whole, the whole, and the
+#: text shown while no share exists. The View also widens a column for any label
+#: wider than these, so that no label is clipped. Each share bar is as long as
+#: the widest label its column reserves or shows (`SchematicCanvas.share_bar`).
 WIDEST_LABELS: Final[tuple[str, ...]] = (
     *(panel.name for panel in COMPARTMENT_PANELS),
     WIDEST_COMPARTMENT_VALUE,
     format_compartment_amount(1e-9),
     format_compartment_amount(88.0),
+    *(
+        SHARE_TEMPLATE.format(share=format_compartment_share(share))
+        for share in (1e-9, 1.0 - 1e-9, 1.0)
+    ),
+    NO_SHARE_TEXT,
 )
 
 
@@ -172,6 +215,11 @@ class ContainerReading:
         tension: The tension, written as the compartment's readout writes it.
         amount: The amount of agent in the compartment, written in millilitres
             of vapour.
+        share: The compartment's amount divided by `stored_agent_l`, all the
+            agent that the six compartments hold, from 0 through 1. The
+            container's share bar is filled to this share of its length. It is
+            None while the run holds no agent, because no share exists then,
+            and while the values are withheld.
     """
 
     quantity: RecordedQuantity
@@ -180,6 +228,19 @@ class ContainerReading:
     off_scale: bool
     tension: str
     amount: str
+    share: float | None
+
+    @property
+    def share_text(self) -> str:
+        """Return the share as the label's last line prints it.
+
+        It is `SHARE_TEMPLATE` with the share in whole percent, as
+        `format_compartment_share` writes it, or `NO_SHARE_TEXT` while `share`
+        is None. It is worked out from `share` each time, so the label and the
+        bar under it cannot disagree.
+        """
+
+        return _share_text(self.share)
 
 
 def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, ...]:
@@ -189,7 +250,12 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
     schematic and the readout row list the six compartments in the same way.
     Every container of the run fills against one top of scale. The top is
     computed once from this snapshot's MAC, so no two containers can be drawn
-    against two different agents' scales.
+    against two different agents' scales. Each share is the compartment's
+    amount divided by the snapshot's `stored_agent_l`. The six amounts sum to
+    that total exactly, so the six shares make up the whole
+    (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
+    and share bar assert"). While the run holds no agent, no share exists, and
+    each reading's share is None, rather than a division by zero or six zeros.
 
     Args:
         snapshot: The run's state at the instant drawn.
@@ -202,16 +268,29 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
         TypeError: If the snapshot's `agent_mac_percent` was not built as a
             `MacPercent`. `chart_axis_top_percent` raises it.
         ValueError: If a compartment's recorded amount is negative or not
-            finite. `format_compartment_amount` raises it.
+            finite, which `format_compartment_amount` raises. If
+            `stored_agent_l` is negative or not finite, or if a share falls
+            outside 0 through 1, which `format_compartment_share` rejects.
+            Either of the last two faults means that the amounts and their
+            total disagree.
     """
 
     top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ChartCeiling.STANDARD)
+    total_l = snapshot.stored_agent_l
+
+    if not isfinite(total_l) or total_l < 0.0:
+        raise ValueError(
+            f"the run's stored agent must be finite and not negative, not {total_l!r} L"
+        )
+
     readings: list[ContainerReading] = []
 
     for panel in COMPARTMENT_PANELS:
         quantity = panel.compartment()
         fraction = compartment_fraction(snapshot, quantity)
         percent = percent_from_fraction(fraction)
+        amount_l = snapshot.compartment_agent_amounts.of(quantity)
+        share = None if total_l == 0.0 else amount_l / total_l
         readings.append(
             ContainerReading(
                 quantity=quantity,
@@ -219,11 +298,21 @@ def container_readings(snapshot: SimulationSnapshot) -> tuple[ContainerReading, 
                 fill=min(percent / top_percent, 1.0),
                 off_scale=above_the_axis_top(percent, top_percent),
                 tension=format_percent(fraction),
-                amount=format_compartment_amount(snapshot.compartment_agent_amounts.of(quantity)),
+                amount=format_compartment_amount(amount_l),
+                share=share,
             )
         )
 
     return tuple(readings)
+
+
+def _share_text(share: float | None) -> str:
+    """Return the label's share line for `share`, or `NO_SHARE_TEXT` when no share exists."""
+
+    if share is None:
+        return NO_SHARE_TEXT
+
+    return SHARE_TEMPLATE.format(share=format_compartment_share(share))
 
 
 def _scale_ticks(snapshot: SimulationSnapshot) -> tuple[tuple[float, str], ...]:
@@ -303,95 +392,13 @@ def off_scale_line(readings: tuple[ContainerReading, ...]) -> str | None:
     return OFF_SCALE_LINE_TEMPLATE.format(compartments=", ".join(above))
 
 
-#: The lines under the share bar. They name every segment in text, so no compartment
-#: is told apart by colour alone. There are always three lines. The first is the
-#: heading, and each of the other two names three segments. The count is fixed
-#: because Qt leaves a wrapped label's extra lines out of a View's minimum size,
-#: as the scale caption's comment explains. The wording is a placeholder.
-SHARE_LINE_TEMPLATE: Final = "Share of the agent the run holds:\n{first},\n{second}."
-SHARE_SEGMENT_TEMPLATE: Final = "{name} {share}"
+def share_caption(readings: tuple[ContainerReading, ...]) -> str:
+    """Return the caption line that says what the shares are of, or why there are none."""
 
-#: The lines under the share bar while the run holds no agent. No share exists
-#: then, so the bar is drawn empty, and the lines say why rather than showing
-#: six zeros as if they were shares. They are three lines, as many as the
-#: shares take, so the schematic keeps its size when the first agent arrives.
-#: The wording is a placeholder.
-NO_AGENT_SHARE_LINE: Final = (
-    "Share of the agent the run holds:\nnone yet, because the run holds no agent,\n"
-    "so the bar is empty."
-)
+    if any(reading.share is None for reading in readings):
+        return NO_AGENT_SHARE_CAPTION
 
-
-@dataclass(frozen=True, slots=True)
-class ShareSegment:
-    """One compartment's segment of the share bar, sized and labelled from one snapshot.
-
-    Attributes:
-        quantity: The compartment that the segment stands for.
-        name: The compartment's name, as its readout panel names it.
-        share: The compartment's amount divided by `stored_agent_l`, all the
-            agent that the run holds. It runs from 0 through 1. The segment's
-            length is this share of the bar's length.
-        text: The share in whole percent, as `format_compartment_share`
-            writes it.
-    """
-
-    quantity: RecordedQuantity
-    name: str
-    share: float
-    text: str
-
-
-def share_segments(snapshot: SimulationSnapshot) -> tuple[ShareSegment, ...] | None:
-    """Return the share bar's six segments, or None while the run holds no agent.
-
-    The segments are in the same order as the containers. Each share is the
-    compartment's amount from the snapshot's per-compartment record
-    (`PL-KFTM`), divided by the snapshot's `stored_agent_l`. The six
-    amounts sum to that total exactly, so the six shares fill the bar
-    (`docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts
-    and share bar assert"). When the run holds no agent, no share exists. The
-    function then returns None, rather than dividing by zero or returning six
-    zeros.
-
-    Raises:
-        ValueError: If `stored_agent_l` is negative or not finite, or if a
-            share falls outside 0 through 1, which `format_compartment_share`
-            rejects. Either fault means that the amounts and their total
-            disagree.
-    """
-
-    total = snapshot.stored_agent_l
-
-    if not isfinite(total) or total < 0.0:
-        raise ValueError(f"the run's stored agent must be finite and not negative, not {total!r} L")
-
-    if total == 0.0:
-        return None
-
-    return tuple(
-        ShareSegment(
-            quantity=panel.compartment(),
-            name=panel.name,
-            share=(share := snapshot.compartment_agent_amounts.of(panel.compartment()) / total),
-            text=format_compartment_share(share),
-        )
-        for panel in COMPARTMENT_PANELS
-    )
-
-
-def share_line(segments: tuple[ShareSegment, ...] | None) -> str:
-    """Return the lines that name every segment of the share bar, or say the run holds no agent."""
-
-    if segments is None:
-        return NO_AGENT_SHARE_LINE
-
-    named = [
-        SHARE_SEGMENT_TEMPLATE.format(name=segment.name, share=segment.text) for segment in segments
-    ]
-    half = len(named) // 2
-
-    return SHARE_LINE_TEMPLATE.format(first=", ".join(named[:half]), second=", ".join(named[half:]))
+    return SHARE_CAPTION
 
 
 @dataclass(frozen=True, slots=True)
@@ -412,10 +419,9 @@ class SchematicShown:
         off_scale_line: The lines naming each container that is above the
             scale. It is None when no container is above the scale or the values
             are withheld.
-        shares: The share bar's segments, or None while the run holds no
-            agent or the values are withheld. The bar is then drawn empty.
-        share_line: The line naming each segment, or saying that the run holds
-            no agent, or None while the values are withheld.
+        share_caption: The line saying what the shares are of, or that the
+            run holds no agent yet (`share_caption`), or None while the values
+            are withheld.
     """
 
     instant: str
@@ -423,8 +429,7 @@ class SchematicShown:
     marks: tuple[float, ...]
     scale_caption: str | None
     off_scale_line: str | None
-    shares: tuple[ShareSegment, ...] | None
-    share_line: str | None
+    share_caption: str | None
 
 
 def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
@@ -432,11 +437,10 @@ def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
 
     Raises:
         TypeError: As `container_readings`, `scale_marks` and `scale_caption` raise it.
-        ValueError: As `container_readings` and `share_segments` raise it.
+        ValueError: As `container_readings` raises it.
     """
 
     readings = container_readings(snapshot)
-    segments = share_segments(snapshot)
 
     return SchematicShown(
         format_elapsed(snapshot.elapsed_s),
@@ -444,8 +448,7 @@ def schematic_shown(snapshot: SimulationSnapshot) -> SchematicShown:
         scale_marks(snapshot),
         scale_caption(snapshot),
         off_scale_line(readings),
-        segments,
-        share_line(segments),
+        share_caption(readings),
     )
 
 
@@ -456,8 +459,9 @@ WITHHELD_AMOUNT_TEXT: Final = f"\u2014 {DisplayUnit.AGENT_VAPOUR_MILLILITRES.lab
 #: after a Reset or an agent change, until a frame has been drawn. The readouts
 #: are withheld at the same moments, with the same mark (`RunView`). Every
 #: container is drawn empty, with no marks and no caption, because the marks and
-#: the caption's scale may belong to the agent that was discarded. The share bar is drawn empty with
-#: no line under it, because its shares would be the discarded run's.
+#: the caption's scale may belong to the agent that was discarded. Every share
+#: bar is drawn empty and every share line shows the dash, because the shares
+#: would be the discarded run's.
 WITHHELD_SCHEMATIC: Final = SchematicShown(
     WITHHELD_ELAPSED_TIME_TEXT,
     tuple(
@@ -468,11 +472,11 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
             off_scale=False,
             tension=WITHHELD_CONCENTRATION_TEXT,
             amount=WITHHELD_AMOUNT_TEXT,
+            share=None,
         )
         for panel in COMPARTMENT_PANELS
     ),
     (),
-    None,
     None,
     None,
     None,

@@ -18,15 +18,15 @@ from math import exp
 import pytest
 
 from anesthesia_sim.app.compartment_schematic import (
-    NO_AGENT_SHARE_LINE,
+    NO_AGENT_SHARE_CAPTION,
+    NO_SHARE_TEXT,
+    SHARE_CAPTION,
     WITHHELD_SCHEMATIC,
     container_readings,
     instant_line,
     scale_caption,
     scale_marks,
     schematic_shown,
-    share_line,
-    share_segments,
 )
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import readouts
@@ -176,13 +176,13 @@ def _run(agent_id: str, seconds: int) -> SimulationController:
 
 
 @pytest.mark.parametrize("agent_id", ["sevoflurane", "desflurane", "isoflurane"])
-def test_the_share_bar_shares_add_up_to_the_whole(agent_id: str) -> None:
-    """At every instant tested, the six shares fill the bar, and each is its amount over the total.
+def test_the_six_shares_add_up_to_the_whole(agent_id: str) -> None:
+    """At every instant tested, the six shares make up the whole, each its amount over the total.
 
     The test sums the six amounts itself, independently of the snapshot's own
-    total. So the test also checks that the bar divides by all the agent the
-    run holds, circuit included (`docs/INTERFACE.md` § "The compartment schematic:
-    what its heights, amounts and share bar assert").
+    total. So the test also checks that each share divides by all the agent
+    the run holds, circuit included (`docs/INTERFACE.md` § "The compartment
+    schematic: what its heights, amounts and share bar assert").
     """
 
     controller = _run(agent_id, 0)
@@ -193,74 +193,115 @@ def test_the_share_bar_shares_add_up_to_the_whole(agent_id: str) -> None:
             controller.advance()
         elapsed_s = until_s
         snapshot = controller.snapshot()
-        segments = share_segments(snapshot)
-        assert segments is not None
+        readings = container_readings(snapshot)
         amounts = snapshot.compartment_agent_amounts
         total = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
+        shares = [reading.share for reading in readings]
 
-        assert [segment.quantity for segment in segments] == list(COMPARTMENT_QUANTITIES)
-        assert sum(segment.share for segment in segments) == pytest.approx(1.0, rel=1e-12)
-        for segment in segments:
-            assert segment.share == pytest.approx(amounts.of(segment.quantity) / total, rel=1e-12)
+        assert [reading.quantity for reading in readings] == list(COMPARTMENT_QUANTITIES)
+        assert None not in shares
+        # Both limits are numerical. Each share rounds once in its division and
+        # the sum rounds five more times, so the error is a few times 1.1e-16.
+        # 1e-12 is far above that, and far below the 0.5% a printed share hides.
+        assert sum(share for share in shares if share is not None) == pytest.approx(1.0, rel=1e-12)
+        for reading in readings:
+            assert reading.share == pytest.approx(amounts.of(reading.quantity) / total, rel=1e-12)
 
 
 def test_with_no_ventilation_the_circuit_holds_the_whole_share() -> None:
     """With no alveolar ventilation, no agent leaves the circuit, which then holds the whole share.
 
     This is the closed form that the module's docstring describes. Every other compartment
-    holds nothing, so its share is exactly zero and is shown as `0%`.
+    holds nothing, so its share is exactly zero and its label prints `0%`.
     """
 
-    segments = share_segments(_run_with_no_ventilation(8.0, 90).snapshot())
-    assert segments is not None
+    readings = container_readings(_run_with_no_ventilation(8.0, 90).snapshot())
 
-    assert [(segment.share, segment.text) for segment in segments] == [(1.0, "100%")] + [
-        (0.0, "0%")
-    ] * 5
+    assert [(reading.share, reading.share_text) for reading in readings] == [
+        (1.0, "100% of agent")
+    ] + [(0.0, "0% of agent")] * 5
 
 
-def test_a_run_that_holds_no_agent_draws_an_empty_bar_and_prints_no_share() -> None:
+def test_a_run_that_holds_no_agent_prints_no_share_and_says_why() -> None:
     """Before any agent is delivered, no share exists, so none is printed, not six zeros."""
 
     snapshot = SimulationController(agent_id="sevoflurane").snapshot()
     shown = schematic_shown(snapshot)
 
     assert snapshot.stored_agent_l == 0.0
-    assert share_segments(snapshot) is None
-    assert shown.shares is None
-    assert shown.share_line == NO_AGENT_SHARE_LINE
-    assert "%" not in NO_AGENT_SHARE_LINE
+    assert [reading.share for reading in shown.readings] == [None] * 6
+    assert [reading.share_text for reading in shown.readings] == [NO_SHARE_TEXT] * 6
+    assert shown.share_caption == NO_AGENT_SHARE_CAPTION
+    assert "%" not in NO_SHARE_TEXT
+    assert "%" not in NO_AGENT_SHARE_CAPTION
+    assert "the six containers hold no agent" in NO_AGENT_SHARE_CAPTION
 
 
-def test_the_share_lines_keep_their_count_when_the_first_agent_arrives() -> None:
-    """The empty bar has as many lines as the shares, so the schematic keeps its size at Start.
+def test_the_share_caption_keeps_its_height_when_the_first_agent_arrives() -> None:
+    """The caption is one line before the first agent and after it, so nothing below it moves.
 
-    The blind review of `PL-S79P` found that the empty bar's one line grew to
+    The blind review of `PL-S79P` found that the old bar's one line grew to
     three when the first agent arrived, which moved everything below it.
     """
 
-    segments = share_segments(_run("sevoflurane", 1).snapshot())
+    before = schematic_shown(SimulationController(agent_id="sevoflurane").snapshot())
+    after = schematic_shown(_run("sevoflurane", 1).snapshot())
 
-    assert len(NO_AGENT_SHARE_LINE.splitlines()) == len(share_line(segments).splitlines())
+    assert before.share_caption is not None
+    assert after.share_caption is not None
+    assert len(before.share_caption.splitlines()) == len(after.share_caption.splitlines()) == 1
 
 
-def test_the_share_lines_name_every_segment_with_its_share_in_text() -> None:
-    """The segments are named in text, never by colour alone, in the containers' order."""
+def test_the_share_caption_says_the_shares_are_of_the_agent_held_at_this_instant() -> None:
+    """`PL-8PL4`, `PL-KQ0S`: the caption says the whole is the agent in the six containers now.
 
-    segments = share_segments(_run("sevoflurane", 60 * SECONDS_PER_MINUTE).snapshot())
-    assert segments is not None
-    text = share_line(segments)
-    names = ["Circuit", "Alveolar", "Mixed venous", "Vessel-rich group", "Muscle", "Fat"]
-    positions = [
-        text.index(f"{name} {segment.text}") for name, segment in zip(names, segments, strict=True)
-    ]
+    The project owner read the old bar's heading, "Share of the agent the run
+    holds", as agent counted over the whole run. So the caption must name the
+    instant. The share is computed over the six containers drawn, and the model
+    leaves out stores that a patient's body holds agent in (`docs/MODEL.md`
+    § "What the model does not represent"). So the caption names the six
+    containers, and must not claim the whole body. The count in the caption is
+    checked against the number of containers the schematic shows.
+    """
 
-    assert text.splitlines()[0] == "Share of the agent the run holds:"
-    assert positions == sorted(positions)
+    shown = schematic_shown(_run("sevoflurane", 60 * SECONDS_PER_MINUTE).snapshot())
+
+    assert shown.share_caption == SHARE_CAPTION
+    assert len(shown.readings) == 6
+    assert "in the six containers at this instant" in SHARE_CAPTION
+    assert "body" not in SHARE_CAPTION
+
+
+def test_each_label_prints_its_own_compartment_s_share_in_whole_percent() -> None:
+    """Each container's label prints the share of its own compartment, never a neighbour's.
+
+    The expected text is worked out here from the six amounts, rounded to the
+    nearest whole percent, with `<1%` for a share that rounds to 0 but is above
+    it (`docs/INTERFACE.md` § "Displayed precision"). The test reads the run at
+    ten minutes, when no two of the six shares print the same, so a share
+    printed under the wrong container would show. It checks that they differ,
+    so a change to the model cannot leave two equal texts that a swap would not
+    change.
+    """
+
+    snapshot = _run("sevoflurane", 10 * SECONDS_PER_MINUTE).snapshot()
+    readings = container_readings(snapshot)
+    amounts = snapshot.compartment_agent_amounts
+    total = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
+    expected_texts = []
+
+    for reading in readings:
+        percent = 100.0 * amounts.of(reading.quantity) / total
+        whole = round(percent)
+        expected = "<1%" if whole == 0 and percent > 0.0 else f"{whole}%"
+        expected_texts.append(f"{expected} of agent")
+
+    assert len(set(expected_texts)) == len(expected_texts), expected_texts
+    assert [reading.share_text for reading in readings] == expected_texts
 
 
 def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_nearly_empty() -> None:
-    """The bar shows fat's share growing while fat's tension stays near zero.
+    """Fat's share grows while fat's tension stays near zero.
 
     The containers' heights are tensions, so the heights cannot show this
     growth. `docs/INTERFACE.md` § "The compartment schematic: what its heights,
@@ -269,19 +310,17 @@ def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_near
     """
 
     controller = _run("sevoflurane", 10 * SECONDS_PER_MINUTE)
-    early = share_segments(controller.snapshot())
+    early = container_readings(controller.snapshot())[-1]
     for _ in range(50 * SECONDS_PER_MINUTE // SIMULATION_STEP_S):
         controller.advance()
-    snapshot = controller.snapshot()
-    late = share_segments(snapshot)
-    assert early is not None
-    assert late is not None
-    fat_reading = container_readings(snapshot)[-1]
+    late = container_readings(controller.snapshot())[-1]
+    assert early.share is not None
+    assert late.share is not None
 
-    assert late[-1].quantity is RecordedQuantity.FAT
-    assert late[-1].share > early[-1].share
-    assert 0.15 < late[-1].share < 0.25
-    assert fat_reading.fill < 0.01
+    assert late.quantity is RecordedQuantity.FAT
+    assert late.share > early.share
+    assert 0.15 < late.share < 0.25
+    assert late.fill < 0.01
 
 
 @pytest.mark.parametrize("agent_id", ["sevoflurane", "desflurane", "isoflurane"])
@@ -309,34 +348,14 @@ def test_withheld_values_draw_no_marks() -> None:
     assert WITHHELD_SCHEMATIC.marks == ()
 
 
-def test_withheld_values_draw_an_empty_bar_with_no_lines() -> None:
-    assert WITHHELD_SCHEMATIC.shares is None
-    assert WITHHELD_SCHEMATIC.share_line is None
+def test_withheld_values_draw_empty_share_bars_with_no_share_and_no_caption() -> None:
+    assert [reading.share for reading in WITHHELD_SCHEMATIC.readings] == [None] * 6
+    assert [reading.share_text for reading in WITHHELD_SCHEMATIC.readings] == [NO_SHARE_TEXT] * 6
+    assert WITHHELD_SCHEMATIC.share_caption is None
 
-
-#: The two lines under the share bar's heading when the circuit holds all of the
-#: agent, as it does with no ventilation. Each line names three compartments in
-#: the containers' order, with the circuit at 100% and the rest at 0%.
-_WHOLE_SHARE_IN_THE_CIRCUIT_LINES = [
-    "Circuit 100%, Alveolar 0%, Mixed venous 0%,",
-    "Vessel-rich group 0%, Muscle 0%, Fat 0%.",
-]
 
 #: The containers' names, as the readout panels name them.
 _CONTAINER_NAMES = ["Circuit", "Alveolar", "Mixed venous", "Vessel-rich group", "Muscle", "Fat"]
-
-
-def test_the_share_lines_name_the_first_three_segments_and_then_the_last_three() -> None:
-    """Each of the two lines under the heading names three compartments, in the containers' order.
-
-    The number of lines is fixed, so that the View's minimum size has room for
-    every line (the comment on `SHARE_LINE_TEMPLATE` says why). With no ventilation,
-    the circuit holds the whole share, so every share is known exactly.
-    """
-
-    segments = share_segments(_run_with_no_ventilation(8.0, 90).snapshot())
-
-    assert share_line(segments).splitlines()[1:] == _WHOLE_SHARE_IN_THE_CIRCUIT_LINES
 
 
 def test_the_schematic_shows_every_part_from_one_snapshot() -> None:
@@ -346,7 +365,7 @@ def test_the_schematic_shows_every_part_from_one_snapshot() -> None:
     above the 3 MAC top, so it is drawn full and named in words as above the
     scale, and no other container is named. The marks stand at each sixth of
     the height below the top, and the caption names that top. No agent leaves
-    the circuit, so the share bar gives the circuit the whole share. A
+    the circuit, so the circuit's label gives it the whole share. A
     schematic that left out a part would hide that a container is off the
     scale, or show a run that holds agent as if it held none.
     """
@@ -367,17 +386,15 @@ def test_the_schematic_shows_every_part_from_one_snapshot() -> None:
     assert shown.marks == pytest.approx([sixth / 6 for sixth in range(1, 6)])
     assert shown.scale_caption is not None
     assert f"0 to {AXIS_TOP_PERCENT:g}% of 1 atm (3 ×MAC)" in shown.scale_caption
-    assert shown.shares is not None
-    assert [(segment.share, segment.text) for segment in shown.shares] == [(1.0, "100%")] + [
-        (0.0, "0%")
-    ] * 5
-    assert shown.share_line is not None
-    assert shown.share_line.splitlines()[1:] == _WHOLE_SHARE_IN_THE_CIRCUIT_LINES
+    assert [(reading.share, reading.share_text) for reading in shown.readings] == [
+        (1.0, "100% of agent")
+    ] + [(0.0, "0% of agent")] * 5
+    assert shown.share_caption == SHARE_CAPTION
 
 
 @pytest.mark.parametrize("total_l", [-1.0, math.inf, math.nan])
 def test_a_stored_total_that_is_negative_or_not_finite_is_refused_by_name(total_l: float) -> None:
-    """The share bar is refused, with the total named, rather than drawn from such a total.
+    """The shares are refused, with the total named, rather than drawn from such a total.
 
     A run that has not started holds no agent in any compartment. Divided by
     an infinite or a negative total, its six amounts would give six shares of
@@ -391,7 +408,7 @@ def test_a_stored_total_that_is_negative_or_not_finite_is_refused_by_name(total_
     message = f"the run's stored agent must be finite and not negative, not {total_l!r} L"
 
     with pytest.raises(ValueError, match=re.escape(message)):
-        share_segments(snapshot)
+        container_readings(snapshot)
 
 
 def test_the_line_over_a_schematic_names_the_run_only_while_runs_are_compared() -> None:

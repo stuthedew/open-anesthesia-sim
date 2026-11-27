@@ -5723,7 +5723,8 @@ The readouts' uniform resolution does not carry over to the amounts either,
 because neither of its two reasons applies to them. The uncertainty that the
 parameters cause in an amount is relative, not absolute. And the amounts are not
 a row read as one set. They are labels on separate containers, each followed by
-its unit, and the schematic compares them on one scale, in the share bar.
+its unit, and the schematic compares them on one scale, in the share bars under
+the labels.
 
 No single number of decimals suits every amount. The shift from one SD in the
 runs above ran from almost nothing, in the circuit in the first seconds, to
@@ -6630,8 +6631,9 @@ The compartment schematic draws six compartments as containers: the circuit,
 the alveoli, venous blood, the vessel-rich group, muscle and fat, in the
 readout row's order (`PL-RNYV`). Like Gas Man's Picture, it shows where the
 tension is. It also shows where the agent is, which neither the readouts nor
-the concentration chart does. It prints the amount of agent each container
-holds, and its share bar gives each compartment's part of all the agent.
+the concentration chart does. Each container's label prints the amount of
+agent the container holds and its share of all the agent, and a bar under the
+label draws that share.
 
 **Every height, amount and share on the schematic is a model output.** The
 schematic therefore prints "Model outputs — not measurements." once, in its
@@ -6681,7 +6683,7 @@ reference condition of 20 °C and 760 mmHg, dry, shown in millilitres ($`M_x`$ i
 `docs/MODEL.md` § "Agent amount"). The agent in blood and fat is dissolved, so the volume
 expresses an amount of agent, not gas present in the body. This subsection's
 rules for an agent amount also apply to every other View that shows one,
-including the share bar (`PL-S79P`) and the agent cost View (`PL-B396`).
+such as the agent cost View (`PL-B396`).
 § "Displayed precision" derives the precision at which amounts are shown. The
 label names the reference condition
 (`test_the_reference_condition_label_names_the_conversions_temperature_and_pressure`
@@ -6707,19 +6709,36 @@ in `tests/reference/test_interface_figures.py` computes the factors, and
 `test_each_unit_has_the_spellings_a_reader_meets` in
 `tests/unit/test_display_units.py` checks the spellings.
 
-**The share bar shows each compartment's share of all the agent the run holds,
-circuit included.** The bar is divided into six segments, in the containers'
-order. Each segment's length is that compartment's amount divided by the sum of
-the six amounts:
+**Each container's label gives its compartment's share of all the agent that
+the six containers hold at the instant shown, and a bar under the label draws
+it.** The share is the compartment's amount divided by the sum of the six
+amounts:
 
 ```math
 s_x = \frac{M_x}{\sum_y M_y}
 ```
 
-The six segments therefore fill the whole bar. Each segment is named in text,
-never by colour alone. A share printed in text is shown in whole percent
-(§ "Displayed precision"). A run holds no agent when it starts, so the bar is
-then drawn empty and prints no share.
+The six shares therefore add up to the whole. The label's last line prints the
+share in whole percent, as "38% of agent" (§ "Displayed precision",
+`test_each_label_prints_its_own_compartment_s_share_in_whole_percent` in
+`tests/unit/test_compartment_schematic.py`). Each share is rounded on its own,
+so the six printed shares need not add up to 100%. The
+six bars are one length, and each is filled from its left end to its share, so
+equal lengths of fill are equal shares. Each bar stands in its own container's
+column, under the label that names it, so no share is told apart by colour. One
+caption line says that the shares are of all the agent in the six containers
+at this instant (`PL-S79P`, `PL-8PL4`). It names the six containers, not the
+circuit and body, because the model leaves out three stores that a patient's
+body and circuit hold: lung tissue and pulmonary blood, a vessel-poor group,
+and the circuit's plastics (`docs/MODEL.md` § "What the model does not
+represent", `PL-KQ0S`). It stands just under the containers,
+so on a 1366 by 768 screen it stays in view with the bars while the scale
+caption below it scrolls. The line naming a container above the scale comes
+before it, because that line warns that a container's fill is cut off. While
+that line shows on a 1366 by 768 screen, the share caption can scroll too. A
+run holds no agent when it starts, so no share exists then: each bar is drawn
+empty, each label prints a dash where its share would be, and the caption line
+says that the six containers hold no agent.
 
 **Lines between the containers show ventilation and blood flow.** The
 containers stand in one row. A line joins the circuit to the alveoli for
@@ -6779,16 +6798,42 @@ its own (`test_no_agent_amount_unit_is_spelled_outside_the_units_module` in `tes
 agent-accounting panel's caption and the "L" beside each of its amounts are
 one member of that file.
 
-The empty bar at a run's start is there because computing a share would then
+`test_the_six_shares_add_up_to_the_whole` and
+`test_each_label_prints_its_own_compartment_s_share_in_whole_percent` in
+`tests/unit/test_compartment_schematic.py` check the shares against the
+amounts. `test_each_share_bar_is_painted_to_its_share_on_one_scale_under_its_own_label`
+in `tests/integration/test_compartment_schematic_view.py` checks that each bar is
+painted to its share, at one length for all six, in its own container's column.
+`test_the_share_line_adds_no_width_to_a_column` in the same file checks that no
+share line is wider than the widest name or amount, so the share lines leave the
+schematic's width as it was.
+`test_each_shipped_workspace_shows_its_lesson_whole_with_one_run` in
+`tests/integration/simulation_view/test_simulation_view_page.py` checks that
+the containers and the share caption are wholly in view in the Maintenance
+Workspace at 1366 by 768 and three larger screen sizes.
+
+The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.
 
-Shares are shown on a bar rather than by the containers' areas because a
-position along a common scale is judged more accurately than an area
-(Cleveland WS, McGill R, "Graphical perception: theory, experimentation, and
-application to the development of graphical methods", *J Am Stat Assoc*
-1984;79(387):531-554, https://doi.org/10.1080/01621459.1984.10478080). Only the
-first segment starts at the bar's baseline, but each of the others is judged by
-its length, which Cleveland and McGill's ranking still places above area.
+Shares are drawn as lengths rather than by the containers' areas because a
+position along a common scale, and a length, are judged more accurately than an
+area (Cleveland WS, McGill R, "Graphical perception: theory, experimentation,
+and application to the development of graphical methods", *J Am Stat Assoc*
+1984;79(387):531-554, https://doi.org/10.1080/01621459.1984.10478080).
+
+The shares are six bars, one under each label, rather than one bar divided into
+six. Wilke's table of part-to-whole charts marks a single divided bar as poor at
+comparing the parts and poor when the whole is broken into many pieces, and
+prefers separate bars "when we want to directly compare the individual
+fractions" (Wilke CO, *Fundamentals of Data Visualization*, O'Reilly, 2019,
+chapter 10 and its Table 10.1,
+https://clauswilke.com/dataviz/visualizing-proportions.html). Separate bars
+alone do not show each part against the whole, so each bar's full length stands
+for the whole. That is the form Wilke gives for showing each part separately
+against the total, in the same chapter's section 10.4. Each share is printed in
+its own container's label rather than in a key under one bar, because "legends
+always put an extra mental burden on the reader" (Wilke, chapter 20,
+https://clauswilke.com/dataviz/redundant-coding.html).
 
 The hazard table requires the run's name in the line above the schematic, in
 its row on taking one run's value for the other's.

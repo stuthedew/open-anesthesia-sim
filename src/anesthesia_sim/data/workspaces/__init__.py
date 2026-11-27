@@ -34,14 +34,18 @@ controls' Area holds a second row of controls, and neither lesson fits whole.
 - `maintenance.json` - the concentration chart, and a column that holds the
   parameter controls over the compartment schematic. During maintenance, the
   agent moves into muscle and fat while the tensions in those tissues stay
-  low. The schematic's share bar, and the lines under it that name each
-  segment's share, are where a learner sees that (`PL-PR1W`). They are the
-  schematic's first rows under its name line, so they stay on screen where
-  the containers scroll. The schematic needs nearly all of the column's height
-  on a laptop screen, so this Workspace leaves out the bookmarks and the
-  branch control. A reader brings either back with the View chooser. The
-  wash-in chart, whose lesson is the first minutes, stays in Induction. The
-  choice of which Workspace holds the schematic is a placeholder.
+  low. Each container's label gives its share of all the agent, with a bar
+  under it, and that is where a learner sees it (`PL-PR1W`, `PL-8PL4`). The
+  containers, their labels and their bars are the schematic's first row under
+  its name line, and the line that says what the shares are of comes next.
+  Both stay on screen at 1366 by 768, and the scale caption under them
+  scrolls. While a container is above the scale, the line that names it comes
+  first, and the share line can then scroll too. The schematic needs nearly
+  all of the column's height on a laptop screen, so this Workspace leaves out
+  the bookmarks and the branch control. A reader brings either back with the
+  View chooser. The wash-in chart, whose lesson is the first minutes, stays in
+  Induction. The choice of which Workspace holds the schematic is a
+  placeholder.
 
 None of the three contains the agent accounting View (project owner,
 2026-09-16). `docs/INTERFACE.md` § "Values that must stay reachable" puts the

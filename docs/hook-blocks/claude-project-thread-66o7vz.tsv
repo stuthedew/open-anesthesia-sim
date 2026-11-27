@@ -1,0 +1,13 @@
+time	session	guard	rule
+2026-11-26T22:05:41.126568+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:pytest
+2026-11-26T22:12:53.590406+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:make docket
+2026-11-27T04:21:02.022874+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:ruff
+2026-11-27T04:21:56.885463+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:tools/doc_check.py
+2026-11-27T04:22:57.087847+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	arm-piped
+2026-11-27T04:25:21.823359+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:pytest
+2026-11-27T04:32:42.454076+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:pytest
+2026-11-27T04:36:28.916310+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:ruff
+2026-11-27T04:45:20.042165+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:tools/contrast_check.py
+2026-11-27T04:45:35.613638+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	floor-interpreter-guard	floor-interpreter
+2026-11-27T05:17:47.325241+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:bin/docket check
+2026-11-27T05:24:59.463149+00:00	a7891de6-a667-55b9-b18a-6ce326e3efde	gate-status-guard	status-swallowed:pytest

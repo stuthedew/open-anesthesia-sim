@@ -760,8 +760,8 @@ def test_each_compared_value_is_shown_under_its_own_run(application: QApplicatio
 def _painted_amounts(view: SimulationView) -> tuple[str, ...]:
     """The text that every compartment schematic in the dashboard paints, in reading order.
 
-    The schematic paints each container's name, tension and amount without a
-    label, so the walk of a dashboard's labels cannot read them. Each canvas
+    The schematic paints each container's name, tension, amount and share
+    without a label, so the walk of a dashboard's labels cannot read them. Each canvas
     returns the strings that it paints (`SchematicCanvas.painted_strings`).
     """
 
