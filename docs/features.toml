@@ -141,6 +141,7 @@ owner-rules-in-repo = "Moving rules the owner set in Project settings into the r
 parallel-builders = "Several builder subagents in one session sharing a scratchpad and a machine."
 parallel-sessions = "Several sessions working at once, an area name retired because it never completes."
 parse-dont-validate = "Checked types for simulator quantities, so a value is checked once when it is built."
+patient-model = "Age and weight as patient inputs, on Eger's five-compartment body model, the v0.8.0 release."
 planning-cadence = "How the roadmap, the gate and bin/docket next decide what to work on next."
 platform-palette = { use = "chrome-colour-audit" }
 pr-body-integrity = "Keeping each pull request's body as the squash commit's message on main."
