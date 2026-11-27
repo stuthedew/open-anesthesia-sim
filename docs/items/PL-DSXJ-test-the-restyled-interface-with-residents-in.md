@@ -32,3 +32,13 @@ The owner recruits the residents.
 **Done when.** At least two rounds of five residents have done the four tasks, and this item records each round's tasks completed and values misread. Each problem found is filed as an item or names the open item that holds it.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Its blocker `PL-MF90` (the token and component set) is open and blocked, and no resident round is recorded here.
+
+**Added 2026-11-27: each resident thinks aloud** (project owner, 2026-11-27,
+ratified, `PL-HWZK`). Ask each participant to say what they look for and
+expect while doing each task, and record it beside the tasks completed and the
+values misread. Nielsen describes the method as asking "test participants to
+use the system while continuously thinking out loud", and lists its limits:
+the situation is unnatural, and participants filter what they say (Nielsen J.
+Thinking aloud: the #1 usability tool. Nielsen Norman Group, 2012,
+https://www.nngroup.com/articles/thinking-aloud-the-1-usability-tool/, read
+2026-11-27). The tasks come from the checks in the user stories (`PL-TJM4`).

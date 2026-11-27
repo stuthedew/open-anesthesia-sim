@@ -3,11 +3,14 @@ id: PL-HWZK
 title: Adopt the lessons from the owner's machine-control dashboard project that he approved on 2026-11-27: closest analog first, sourced look and wording, error messages that say what to do next, and four interface-pass method changes
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, ux
 touches: .claude/rules/instruction-writing.md, .claude/rules/expert-review.md, .claude/rules/sources-and-docstrings.md
 added: 2026-11-27
+closed: 2026-11-27
+pr: 2330
 payoff: sessions choose look and wording from cited sources, error messages say what to do next, and the interface pass starts from user stories the owner corrected
+verify: grep -qF 'they are decided from a source' .claude/rules/instruction-writing.md
 ---
 
 **Problem.** Adopt the lessons from the owner's machine-control dashboard project that he approved on 2026-11-27: closest analog first, sourced look and wording, error messages that say what to do next, and four interface-pass method changes
@@ -104,3 +107,14 @@ from tasks written for a learner, a framing the owner retired on 2026-11-27.
 `PL-2V6V` carry what each adoption gives them.
 
 **Generator check.** One-off: the owner asked for these lessons to be adopted, and no earlier item records the same gap.
+
+**Done 2026-11-27.** Rule 14's placeholder clause now says to decide look,
+wording and placement from a cited source and to ask where none settles it.
+The coordinator's line on styling calls says the same. Docs swept for another
+live copy of the old rule: `CLAUDE.md`, `docs/maintainer.md`, `docs/worker.md`,
+every `.claude/skills/*/SKILL.md`, every file in
+`.claude/skills/docket/modes/` and every file in `.claude/rules/`. The only
+other copy is the dated history in `docs/resident-instructions.md` § "The sort
+of 2026-11-21, and the history it moved here", which is a record and was left
+as written. `PL-VT87` checks the existing refusal messages against the new
+error-message rule.

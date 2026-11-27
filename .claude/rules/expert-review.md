@@ -60,6 +60,16 @@ code:
   exactly why a model, equation, constant, UI convention, or design decision
   exists.
 
+## Search the closest analog first
+
+Before a design choice rests on how another product does it, rank the
+candidates by how close each is: the same quantity or signal first, then the
+same class of product, then the same pattern of use. Say why the one you cite
+fits (project owner, 2026-11-27, `PL-HWZK`). For how a clinical value is drawn,
+anesthesia workstations, patient monitors and Gas Man rank above Blender.
+Blender stays the model for how Workspaces and Areas behave, because that is
+the pattern of use it shares with this interface.
+
 ## Name the number that would change your mind, then go and count it
 
 Before proposing to tighten anything — a bar, a filter, a threshold, a scope

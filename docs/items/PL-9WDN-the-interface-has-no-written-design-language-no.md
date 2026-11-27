@@ -142,3 +142,20 @@ may mean, how charts label their lines, and where standing text goes. Its
 values are tokens in `app/theme.py`, and a check refuses a size, colour or
 radius in `app/` that is not one of them. Restyling each surface against it is
 item 33's later work, filed as items in its design round.
+
+**Added 2026-11-27: two more draft rules for item 33's design round**
+(`PL-HWZK`). They join the seven above as a starting draft.
+
+8. A label is a noun of one to three words in sentence case, with no full
+   stop. Siemens iX, form-field labels
+   (https://ix.siemens.io/docs/guidelines/language/forms-and-form-fields/form-field-labels,
+   read 2026-11-27): "Use short labels, ideally 1-3 words", "Use nouns, not
+   verbs, for labels whenever possible", and "Use sentence casing for all
+   labels without periods".
+9. Every control is either a setting or an action. A control that describes
+   something the user did is neither (project owner, 2026-11-27; the owner's
+   own rule, with no published source).
+
+The design round also settles look, wording and placement from cited sources,
+under the rule that replaced the placeholder rule on 2026-11-27
+(`.claude/rules/instruction-writing.md` rule 14).

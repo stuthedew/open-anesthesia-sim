@@ -87,6 +87,14 @@ message naming only the parameter leaves a rejected setting untraceable to the
 input that produced it, which `CLAUDE.md`'s safety-critical standard treats as
 part of the value rather than as presentation.
 
+**A refusal a user reads also says what to do next**, such as the range a
+setting must fall in, or the action that clears the state. NUREG-0700 Rev. 3
+(US Nuclear Regulatory Commission, 2020), guideline 2.7.3-1: "an error message
+should state the error and possible subsequent operations." The Siemens iX
+guidance on error messages asks the same: "Explain how users can move forward,
+resolve issues, or take action" (project owner, 2026-11-27, ratified, over
+naming the condition and the value alone, `PL-HWZK`).
+
 **Both are facts, not a license for commentary.** Each obligation above puts
 something in the docstring or the message that a reader cannot get anywhere
 else — which condition is refused, which value failed it. Neither is served by

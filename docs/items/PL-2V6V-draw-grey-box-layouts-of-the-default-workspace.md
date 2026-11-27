@@ -30,3 +30,8 @@ and needs the owner's approval as a feature before a layout relies on it.
 **Done when.** Each of the four tasks in `PL-8Q1P` has a grey-box layout of the Default Workspace, recorded in this item beside the heuristic-evaluation findings it answers.
 
 **Checked 2026-11-22** against `d4e8200`: still applies, and still blocked. Its blocker `PL-8Q1P` (the heuristic evaluation) is open and blocked itself, and no grey-box layout is recorded here.
+
+**Added 2026-11-27: the layouts answer the user stories** (`PL-HWZK`). Draw
+each layout for the stories and checks that `PL-TJM4` records, as well as for
+the heuristic-evaluation findings. A layout stays open until the owner's
+walk-through of the clickable mock-up in `PL-MF90`.
