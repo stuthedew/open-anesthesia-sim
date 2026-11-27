@@ -1099,7 +1099,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a user cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 210 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 211 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1299,6 +1299,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-FLXP (S) The release tool let a patch be cut while a milestone was ready and waiting on the owner's test drive, shipping the milestone's work under another number, and a ready milestone with no item finished since the last tag could not be cut
 - PL-49D5 (S) With ventilation stopped and the dial lowered, the F_A/F_I trace climbs toward 1 because the circuit washes out, and the plot draws that climb as wash-in ending at equilibrium
 - PL-3NGZ (M) On a laptop screen the compartment schematic's labels can be in view while the lines that qualify them have scrolled away: the run's name while two runs are compared, the line saying what the shares are of while a container is above the scale, and the tension's unit
+- PL-FSRR (M) On any screen whose scale is not 100%, such as a Retina screen or a Windows laptop at 125%, every chart line, dash and legend swatch is drawn thinner and shorter than docs/INTERFACE.md specifies
 - PL-DKQ5 (M) When the dashboard's page scrolls, an Area's header and the row a View keeps above its scroll box move out of view while the View's values below them stay in view
 - PL-H55Q (S) When a taller window brings the compartment schematic's rows into view without a scroll, each run's name stays where it was, so that run's values can show with no name over them
 - PL-Q740 (S) The schematic's tests still pass if the compartment names leave the run's heading, a name or value is painted over another compartment's container, or the heading stops hiding the rows under it or stops moving with its section
@@ -1525,6 +1526,15 @@ schematic's run name, share caption and tension unit in view with the values
 they qualify, which on a laptop screen can scroll away from them. The same pass
 deferred the other debt it triaged to the next gate, each with its reason in
 `deferred-from`.
+
+**`PL-FSRR` joined the frozen list on 2026-11-27, after the freeze.** Its
+problem was present at the freeze, because the chart already drew every line
+with the charting library's pens at `817a4d88`. On any screen whose scale is
+not 100%, every chart line and dash is drawn thinner and shorter than
+`docs/INTERFACE.md` specifies: at half its size on a Retina screen and at 80%
+on a Windows laptop at 125%. The dash pattern is what separates the six
+compartment traces for a reader with a colour-vision deficiency. This milestone
+clears it (project owner, 2026-11-27).
 
 **`PL-DKQ5` (`safety`) joined the frozen list on 2026-11-27 and is deferred to
 the next gate.** `PL-3NGZ`'s review found it. A scroll of the whole dashboard

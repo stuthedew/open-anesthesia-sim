@@ -211,6 +211,7 @@ __all__ = [
     "WashInChart",
     "WashInLegend",
     "dashed_pen",
+    "on_screen",
     "preview_trace_pen",
     "run_trace_pen",
     "trace_pen",
@@ -372,6 +373,146 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
     return pen
 
 
+def on_screen(pen: QPen, device_pixel_ratio: float) -> QPen:
+    """Return a copy of a chart pen that draws at its width on a screen of this pixel ratio.
+
+    Every width and dash length in this module is in device-independent
+    pixels, the unit that `docs/INTERFACE.md` tabulates and that Qt lays out
+    every widget in. Every pen here is cosmetic, because the curves are drawn
+    in data coordinates whose two axes scale differently. Qt draws a cosmetic
+    pen's width in device pixels, after the scaling to the screen. So on a
+    screen at 200% a 3 px pen drew 1.5 px wide, and at 125% it drew 2.4 px
+    wide. Multiplying the width by the device pixel ratio undoes that. Qt
+    states a dash pattern in units of the pen's width, so the dashes scale
+    with it.
+
+    This is the one place that conversion is made. `_ScreenPens` applies it to
+    every chart item, and the legend swatches apply it when they paint.
+
+    A non-cosmetic pen is returned unchanged, because Qt already scales its
+    width to the screen, and multiplying it here would draw it too wide.
+
+    Args:
+        pen: The pen as specified, in device-independent pixels.
+        device_pixel_ratio: Device pixels per device-independent pixel on the
+            screen the pen will draw on, such as 1.0, 1.25 or 2.0.
+
+    Returns:
+        A copy of the pen, with a cosmetic pen's width in device pixels.
+
+    Raises:
+        ValueError: If the ratio is not a finite number above zero.
+    """
+
+    if not np.isfinite(device_pixel_ratio) or device_pixel_ratio <= 0:
+        raise ValueError(
+            f"a device pixel ratio is a finite number above zero, not {device_pixel_ratio}"
+        )
+
+    drawn = QPen(pen)
+
+    if not pen.isCosmetic():
+        return drawn
+
+    drawn.setWidthF(pen.widthF() * device_pixel_ratio)
+
+    return drawn
+
+
+def _set_drawn_pen(item: Any, pen: QPen) -> None:
+    """Give one pyqtgraph item a pen, through whichever setter its type has.
+
+    An axis's `setPen` also sets its title's colour to the pen's colour, and the
+    title is drawn in `MUTED` while the axis line is drawn in `GRIDLINE`. So the
+    title's style is put back after the pen is set.
+    """
+
+    if isinstance(item, pg.LinearRegionItem):
+        for line in item.lines:
+            line.setPen(pen)
+    elif isinstance(item, pg.TextItem):
+        item.border = pen
+        item.update()
+    elif isinstance(item, pg.AxisItem):
+        title_style = dict(item.labelStyle)
+        item.setPen(pen)
+        item.labelStyle = title_style
+        item._updateLabel()  # pyqtgraph's own refresh of the title, as setLabel calls it.
+    else:
+        item.setPen(pen)
+
+
+class _ScreenPens(QObject):
+    """Every line pen of one plot, drawn at its specified width on the screen the plot is on.
+
+    An item is given its pen through `hold`, which keeps the pen as specified
+    and gives the item `on_screen`'s copy for the widget's current device pixel
+    ratio. When the window moves to a screen with another ratio, Qt sends each
+    widget a `DevicePixelRatioChange` event, and every held item is given its
+    pen again at the new ratio. The ratio is read again when the widget is
+    shown, because a widget built before `main()` places its window can be
+    shown on a screen other than the one it was built for.
+
+    Items here are built once and moved, never rebuilt, so the record grows
+    only while a plot builds items for a new run.
+    """
+
+    def __init__(self, widget: QWidget) -> None:
+        super().__init__(widget)
+        self._widget = widget
+        self._ratio = widget.devicePixelRatioF()
+        self._held: dict[int, tuple[Any, QPen]] = {}
+        widget.installEventFilter(self)
+
+    def hold(self, item: Any, pen: QPen) -> None:
+        """Draw this item with this pen, given in device-independent pixels, on every screen."""
+
+        self._held[id(item)] = (item, QPen(pen))
+        _set_drawn_pen(item, on_screen(pen, self._ratio))
+
+    def specified(self, item: Any) -> QPen:
+        """The pen this item was given, in device-independent pixels.
+
+        Raises:
+            KeyError: If the item was never given a pen through `hold`.
+        """
+
+        return QPen(self._held[id(item)][1])
+
+    def holds(self, item: Any) -> bool:
+        """Whether this item's pen is kept at its width on every screen."""
+
+        return id(item) in self._held
+
+    @property
+    def device_pixel_ratio(self) -> float:
+        """The ratio the held items' pens were last drawn for."""
+
+        return self._ratio
+
+    def follow_screen(self) -> None:
+        """Draw every held pen again if the widget's device pixel ratio has changed."""
+
+        ratio = self._widget.devicePixelRatioF()
+
+        if ratio == self._ratio:
+            return
+
+        self._ratio = ratio
+
+        for item, pen in self._held.values():
+            _set_drawn_pen(item, on_screen(pen, ratio))
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # Qt spells this in camelCase.
+        if watched is self._widget and event.type() in (
+            QEvent.Type.DevicePixelRatioChange,
+            QEvent.Type.Show,
+        ):
+            self.follow_screen()
+
+        return False
+
+
 def run_trace_pen(quantity: RecordedQuantity, run_index: RunIndex, run_count: RunCount) -> QPen:
     """The pen one run draws a compartment with, on the chart and in the legend.
 
@@ -503,8 +644,11 @@ def _control_mark_pen() -> QPen:
     return dashed_pen(CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN)
 
 
-def _plot(background: str) -> Any:
-    """One plot widget, with the interaction and the furniture every plot here shares.
+def _plot(background: str) -> tuple[Any, _ScreenPens]:
+    """One plot widget, and the record of its line pens, with the furniture every plot shares.
+
+    Every line the plot draws is given its pen through the returned
+    `_ScreenPens`, so that each line keeps its specified width on any screen.
 
     A reader cannot pan, zoom or open a menu on the plot. The time base sets
     the window and the axis sets the range. A plot that a reader could drag
@@ -517,6 +661,7 @@ def _plot(background: str) -> Any:
     """
 
     plot = pg.PlotWidget(background=background)
+    pens = _ScreenPens(plot)
     plot.setFocusPolicy(Qt.FocusPolicy.NoFocus)
     plot.viewport().setFocusPolicy(Qt.FocusPolicy.NoFocus)
     item = plot.getPlotItem()
@@ -536,7 +681,7 @@ def _plot(background: str) -> Any:
     # at exactly the ticks at which each axis is labelled.
     for name in ("left", "bottom", "right"):
         axis = item.getAxis(name)
-        axis.setPen(pg.mkPen(GRIDLINE))
+        pens.hold(axis, pg.mkPen(GRIDLINE))
         axis.setTextPen(pg.mkPen(MUTED))
 
     # Each axis's range ends at a labelled tick, and a label is centred on its
@@ -546,16 +691,29 @@ def _plot(background: str) -> Any:
     top_px = ceil(QFontMetrics(plot.font()).height() / 2)
     item.layout.setContentsMargins(1, max(1, top_px), 1, 1)
 
-    return plot
+    return plot, pens
+
+
+def _text_box_pen() -> QPen:
+    """The pen that outlines the hover's text box and a preview's label."""
+
+    pen: QPen = pg.mkPen(MUTED)
+
+    return pen
 
 
 def _hover_items() -> tuple[Any, Any]:
-    """The dot and the text box that a hover shows, hidden until there is a readout."""
+    """The dot and the text box that a hover shows, hidden until there is a readout.
+
+    The box's outline is drawn with `_text_box_pen` as specified. The hover
+    that shows the box gives it that pen again through its `_ScreenPens`, so it
+    keeps its width on any screen.
+    """
 
     dot = pg.ScatterPlotItem(size=_HOVER_DOT_DIAMETER, pen=None, brush=pg.mkBrush(INK))
     dot.setZValue(_Z_HOVER)
     dot.hide()
-    text = pg.TextItem(color=INK, fill=pg.mkBrush(PANEL), border=pg.mkPen(MUTED), anchor=(0, 0))
+    text = pg.TextItem(color=INK, fill=pg.mkBrush(PANEL), border=_text_box_pen(), anchor=(0, 0))
     text.setZValue(_Z_HOVER)
     text.hide()
 
@@ -572,8 +730,9 @@ class _GridLines:
     unused line is hidden.
     """
 
-    def __init__(self, item: Any) -> None:
+    def __init__(self, item: Any, pens: _ScreenPens) -> None:
         self._item = item
+        self._pens = pens
         self._pen = pg.mkPen(GRIDLINE, width=1)
         self._vertical: list[Any] = []
         self._horizontal: list[Any] = []
@@ -586,7 +745,8 @@ class _GridLines:
 
     def _rule(self, pool: list[Any], angle: int, positions: Sequence[float]) -> None:
         while len(pool) < len(positions):
-            line = pg.InfiniteLine(pos=0.0, angle=angle, pen=self._pen, movable=False)
+            line = pg.InfiniteLine(pos=0.0, angle=angle, movable=False)
+            self._pens.hold(line, self._pen)
             line.setZValue(_Z_GRIDLINE)
             self._item.addItem(line, ignoreBounds=True)
             pool.append(line)
@@ -676,11 +836,12 @@ class _HoverReadout:
     that shows no readout (`PL-LTKL`).
     """
 
-    def __init__(self, plot: Any, least_height_px: int, most_lines: int) -> None:
+    def __init__(self, plot: Any, pens: _ScreenPens, least_height_px: int, most_lines: int) -> None:
         self._plot = plot
         self._least_height_px = least_height_px
         self._most_lines = most_lines
         self._dot, self._text = _hover_items()
+        pens.hold(self._text, _text_box_pen())
         plot.getPlotItem().addItem(self._dot, ignoreBounds=True)
         # The box belongs to the scene, not to the view box. A view box clips
         # what it holds to the plot inside the axes, so a box taller than
@@ -922,7 +1083,7 @@ class _RunPens:
         return self._pens[key]
 
 
-def _branch_point_mark(item: Any) -> Any:
+def _branch_point_mark(item: Any, pens: _ScreenPens) -> Any:
     """One run's fork mark: hidden, full height, and drawn over the gridlines.
 
     There is one mark per run rather than one per plot, because a fork
@@ -930,9 +1091,8 @@ def _branch_point_mark(item: Any) -> Any:
     at a fork, simply never shows its mark.
     """
 
-    mark = pg.InfiniteLine(
-        pos=0.0, angle=_VERTICAL_LINE_ANGLE_DEG, pen=_branch_point_pen(), movable=False
-    )
+    mark = pg.InfiniteLine(pos=0.0, angle=_VERTICAL_LINE_ANGLE_DEG, movable=False)
+    pens.hold(mark, _branch_point_pen())
     mark.setZValue(_Z_CONTROL_MARK)
     mark.hide()
     item.addItem(mark, ignoreBounds=True)
@@ -963,22 +1123,20 @@ class _PreviewMarks:
     (`PL-5B1N`).
     """
 
-    def __init__(self, item: Any) -> None:
+    def __init__(self, item: Any, pens: _ScreenPens) -> None:
         fill = QColor(PREVIEW_REGION_COLOR)
         fill.setAlphaF(PREVIEW_REGION_FILL_OPACITY)
         self.region = pg.LinearRegionItem(
-            values=(0.0, 0.0),
-            orientation="vertical",
-            movable=False,
-            brush=pg.mkBrush(fill),
-            pen=pg.mkPen(PREVIEW_REGION_COLOR, width=PREVIEW_REGION_EDGE_STROKE_WIDTH),
+            values=(0.0, 0.0), orientation="vertical", movable=False, brush=pg.mkBrush(fill)
+        )
+        pens.hold(
+            self.region, pg.mkPen(PREVIEW_REGION_COLOR, width=PREVIEW_REGION_EDGE_STROKE_WIDTH)
         )
         self.region.setZValue(_Z_REFERENCE_BAND)
         self.region.hide()
         item.addItem(self.region, ignoreBounds=True)
-        self.label = pg.TextItem(
-            color=INK, fill=pg.mkBrush(PANEL), border=pg.mkPen(MUTED), anchor=(0, 0)
-        )
+        self.label = pg.TextItem(color=INK, fill=pg.mkBrush(PANEL), anchor=(0, 0))
+        pens.hold(self.label, _text_box_pen())
         self.label.setZValue(_Z_PREVIEW_LABEL)
         self.label.hide()
         item.addItem(self.label, ignoreBounds=True)
@@ -1023,32 +1181,38 @@ class _PreviewMarks:
 class _RunItems:
     """One run's items on the concentration chart: its curves, its fork, its marks, its preview."""
 
-    def __init__(self, item: Any, run_index: RunIndex) -> None:
+    def __init__(self, item: Any, run_index: RunIndex, screen_pens: _ScreenPens) -> None:
         self._run_index = run_index
+        self._screen_pens = screen_pens
         self.pens = _RunPens(run_index)
         self.curves: dict[RecordedQuantity, Any] = {}
         self.preview_curves: dict[RecordedQuantity, Any] = {}
 
         for style in COMPARTMENT_TRACES:
-            curve = pg.PlotCurveItem(pen=trace_pen(style), antialias=True)
+            curve = pg.PlotCurveItem(antialias=True)
+            screen_pens.hold(curve, trace_pen(style))
             item.addItem(curve)
             self.curves[style.quantity] = curve
 
         for style in COMPARTMENT_TRACES:
-            curve = pg.PlotCurveItem(pen=trace_pen(style), antialias=True)
+            curve = pg.PlotCurveItem(antialias=True)
+            screen_pens.hold(curve, trace_pen(style))
             curve.hide()
             item.addItem(curve)
             self.preview_curves[style.quantity] = curve
 
-        self.preview = _PreviewMarks(item)
-        self.branch_point = _branch_point_mark(item)
-        self.marks = _control_mark_pool(item)
+        self.preview = _PreviewMarks(item, screen_pens)
+        self.branch_point = _branch_point_mark(item, screen_pens)
+        self.marks = _control_mark_pool(item, screen_pens)
 
-    def repen_preview(self, run_count: RunCount) -> None:
-        """Give every preview curve the preview pen for this many runs."""
+    def repen(self, run_count: RunCount) -> None:
+        """Give every curve and preview curve its pen for this many runs."""
+
+        for quantity, curve in self.curves.items():
+            self._screen_pens.hold(curve, self.pens.of(quantity, run_count))
 
         for quantity, curve in self.preview_curves.items():
-            curve.setPen(preview_trace_pen(quantity, self._run_index, run_count))
+            self._screen_pens.hold(curve, preview_trace_pen(quantity, self._run_index, run_count))
 
     def hide(self) -> None:
         for curve in (*self.curves.values(), *self.preview_curves.values()):
@@ -1061,7 +1225,7 @@ class _RunItems:
             mark.hide()
 
 
-def _control_mark_pool(item: Any) -> list[Any]:
+def _control_mark_pool(item: Any, pens: _ScreenPens) -> list[Any]:
     """A fixed pool of vertical marks, all hidden, for one run on one plot.
 
     Being vertical is what identifies the mark, because no trace or
@@ -1078,7 +1242,8 @@ def _control_mark_pool(item: Any) -> list[Any]:
     marks = []
 
     for _ in range(MAX_CHART_CONTROL_MARKS):
-        mark = pg.InfiniteLine(pos=0.0, angle=_VERTICAL_LINE_ANGLE_DEG, pen=pen, movable=False)
+        mark = pg.InfiniteLine(pos=0.0, angle=_VERTICAL_LINE_ANGLE_DEG, movable=False)
+        pens.hold(mark, pen)
         mark.setZValue(_Z_CONTROL_MARK)
         mark.hide()
         item.addItem(mark, ignoreBounds=True)
@@ -1194,7 +1359,7 @@ class ConcentrationChart(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         _install_concentration_chart_accessibility()
-        self._plot = _plot(PANEL)
+        self._plot, self._pens = _plot(PANEL)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1216,25 +1381,23 @@ class ConcentrationChart(QWidget):
         band_color = QColor(MAC_AWAKE_BAND_COLOR)
         band_color.setAlphaF(MAC_AWAKE_BAND_FILL_OPACITY)
         self._band = pg.LinearRegionItem(
-            values=(0.0, 0.0),
-            orientation="horizontal",
-            movable=False,
-            brush=pg.mkBrush(band_color),
-            pen=pg.mkPen(MAC_AWAKE_BAND_COLOR, width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH),
+            values=(0.0, 0.0), orientation="horizontal", movable=False, brush=pg.mkBrush(band_color)
+        )
+        self._pens.hold(
+            self._band, pg.mkPen(MAC_AWAKE_BAND_COLOR, width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH)
         )
         self._band.setZValue(_Z_REFERENCE_BAND)
         item.addItem(self._band, ignoreBounds=True)
         self._one_mac_line = pg.InfiniteLine(
-            pos=0.0,
-            angle=_HORIZONTAL_LINE_ANGLE_DEG,
-            pen=dashed_pen(
-                ONE_MAC_LINE_COLOR, ONE_MAC_LINE_STROKE_WIDTH, ONE_MAC_LINE_DASH_PATTERN
-            ),
-            movable=False,
+            pos=0.0, angle=_HORIZONTAL_LINE_ANGLE_DEG, movable=False
+        )
+        self._pens.hold(
+            self._one_mac_line,
+            dashed_pen(ONE_MAC_LINE_COLOR, ONE_MAC_LINE_STROKE_WIDTH, ONE_MAC_LINE_DASH_PATTERN),
         )
         self._one_mac_line.setZValue(_Z_REFERENCE_LINE)
         item.addItem(self._one_mac_line, ignoreBounds=True)
-        self._grid = _GridLines(item)
+        self._grid = _GridLines(item, self._pens)
 
         self._runs: list[_RunItems] = []
         self._frame: ChartFrame | None = None
@@ -1243,7 +1406,9 @@ class ConcentrationChart(QWidget):
             concentration_chart_name(None),
             concentration_chart_description(None),
         )
-        self._hover = _HoverReadout(self._plot, CHART_LEAST_HEIGHT, _TRACE_HOVER_MOST_LINES)
+        self._hover = _HoverReadout(
+            self._plot, self._pens, CHART_LEAST_HEIGHT, _TRACE_HOVER_MOST_LINES
+        )
         self._hover.moved.connect(self._on_pointer)
         # Whether the box goes above or below its point depends on the plot's
         # height in pixels. So a resize places the box again, even while the
@@ -1278,7 +1443,7 @@ class ConcentrationChart(QWidget):
         self._band.show()
 
         while len(self._runs) < len(frame.runs):
-            self._runs.append(_RunItems(item, RunIndex(len(self._runs))))
+            self._runs.append(_RunItems(item, RunIndex(len(self._runs)), self._pens))
 
         # Each run's items are added to the plot in turn, so a later run is
         # drawn over an earlier one. That order matters and is not
@@ -1289,15 +1454,10 @@ class ConcentrationChart(QWidget):
         run_count = frame.run_count
 
         for items, run in zip(self._runs, frame.runs, strict=False):
-            repen = items.pens.changed_for(run_count)
-
-            if repen:
-                items.repen_preview(run_count)
+            if items.pens.changed_for(run_count):
+                items.repen(run_count)
 
             for quantity, curve in items.curves.items():
-                if repen:
-                    curve.setPen(items.pens.of(quantity, run_count))
-
                 if quantity in frame.visible:
                     # Only the traces that the reader has left shown are
                     # written. A hidden trace costs nothing per frame and
@@ -1398,11 +1558,13 @@ class ConcentrationChart(QWidget):
         return tuple(float(t) for t in times), tuple(float(v) for v in values)
 
     def preview_pen(self, run: int, quantity: RecordedQuantity) -> QPen:
-        """The pen one run's preview of a compartment is drawn with, read from the plot item."""
+        """The pen one run's preview of a compartment is drawn with, as specified.
 
-        pen: QPen = self._runs[run].preview_curves[quantity].opts["pen"]
+        The width is in device-independent pixels. The curve draws it at that
+        width on any screen, through `on_screen`.
+        """
 
-        return pen
+        return self._pens.specified(self._runs[run].preview_curves[quantity])
 
     def preview_region(self, run: int) -> tuple[float, float] | None:
         """Where one run's preview region is drawn, in simulated seconds, or None if hidden."""
@@ -1488,16 +1650,16 @@ class ConcentrationChart(QWidget):
         return tuple(float(t) for t in times), tuple(float(v) for v in values)
 
     def drawn_pen(self, run: int, quantity: RecordedQuantity) -> QPen:
-        """The pen one run's curve for a compartment is drawn with.
+        """The pen one run's curve for a compartment is drawn with, as specified.
 
-        The pen is read from the curve item rather than recomputed. So a test
-        can compare what the toolkit is painting with what `chart_frame` said
-        it should paint.
+        The pen is the one the curve item was last given, rather than one
+        recomputed here. So a test can compare what the chart is drawing with
+        what `chart_frame` said it should draw. Its width is in
+        device-independent pixels, and the curve draws it at that width on any
+        screen, through `on_screen`.
         """
 
-        pen: QPen = self._runs[run].curves[quantity].opts["pen"]
-
-        return pen
+        return self._pens.specified(self._runs[run].curves[quantity])
 
     def branch_point_time(self, run: int) -> float | None:
         """Where one run's fork is marked, in simulated seconds, or None if unmarked."""
@@ -1658,14 +1820,16 @@ class ConcentrationChart(QWidget):
 class _WashInRunItems:
     """One run's items on the wash-in plot: its stretches, their ends, its fork, its marks."""
 
-    def __init__(self, item: Any, run_index: RunIndex) -> None:
+    def __init__(self, item: Any, run_index: RunIndex, pens: _ScreenPens) -> None:
         self._run_index = run_index
+        self._pens = pens
         self._penned_for: RunCount | None = None
         pen = _wash_in_pen()
         self.stretches = []
 
         for _ in range(MAX_CHART_WASH_IN_SEGMENTS):
-            stretch = pg.PlotCurveItem(pen=pen, antialias=True)
+            stretch = pg.PlotCurveItem(antialias=True)
+            pens.hold(stretch, pen)
             stretch.hide()
             item.addItem(stretch)
             self.stretches.append(stretch)
@@ -1682,7 +1846,8 @@ class _WashInRunItems:
         self.preview_stretches = []
 
         for _ in range(MAX_CHART_WASH_IN_SEGMENTS):
-            stretch = pg.PlotCurveItem(pen=pen, antialias=True)
+            stretch = pg.PlotCurveItem(antialias=True)
+            pens.hold(stretch, pen)
             stretch.hide()
             item.addItem(stretch)
             self.preview_stretches.append(stretch)
@@ -1693,9 +1858,9 @@ class _WashInRunItems:
             size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
         )
         item.addItem(self.preview_termini, ignoreBounds=True)
-        self.preview = _PreviewMarks(item)
-        self.branch_point = _branch_point_mark(item)
-        self.marks = _control_mark_pool(item)
+        self.preview = _PreviewMarks(item, pens)
+        self.branch_point = _branch_point_mark(item, pens)
+        self.marks = _control_mark_pool(item, pens)
 
     def repen(self, run_count: RunCount) -> None:
         """Give every stretch a new pen when the number of runs on the plot has changed."""
@@ -1708,10 +1873,10 @@ class _WashInRunItems:
         preview_pen = _wash_in_preview_pen(self._run_index, run_count)
 
         for stretch in self.stretches:
-            stretch.setPen(pen)
+            self._pens.hold(stretch, pen)
 
         for stretch in self.preview_stretches:
-            stretch.setPen(preview_pen)
+            self._pens.hold(stretch, preview_pen)
 
     def hide(self) -> None:
         for stretch in (*self.stretches, *self.preview_stretches):
@@ -1738,7 +1903,7 @@ class WashInChart(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self._plot = _plot(PANEL)
+        self._plot, self._pens = _plot(PANEL)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1758,21 +1923,22 @@ class WashInChart(QWidget):
         # F_A = F_I is a property of the ratio. So there is one line,
         # whatever the plot holds.
         self._equilibrium_line = pg.InfiniteLine(
-            pos=WASH_IN_EQUILIBRIUM_RATIO,
-            angle=_HORIZONTAL_LINE_ANGLE_DEG,
-            pen=dashed_pen(
+            pos=WASH_IN_EQUILIBRIUM_RATIO, angle=_HORIZONTAL_LINE_ANGLE_DEG, movable=False
+        )
+        self._pens.hold(
+            self._equilibrium_line,
+            dashed_pen(
                 EQUILIBRIUM_LINE_COLOR, EQUILIBRIUM_LINE_STROKE_WIDTH, EQUILIBRIUM_LINE_DASH_PATTERN
             ),
-            movable=False,
         )
         self._equilibrium_line.setZValue(_Z_REFERENCE_LINE)
         item.addItem(self._equilibrium_line, ignoreBounds=True)
-        self._grid = _GridLines(item)
+        self._grid = _GridLines(item, self._pens)
 
         self._runs: list[_WashInRunItems] = []
         self._frame: ChartFrame | None = None
         self._hover = _HoverReadout(
-            self._plot, WASH_IN_CHART_LEAST_HEIGHT, _WASH_IN_HOVER_MOST_LINES
+            self._plot, self._pens, WASH_IN_CHART_LEAST_HEIGHT, _WASH_IN_HOVER_MOST_LINES
         )
         self._hover.moved.connect(self._on_pointer)
         # Whether the box goes above or below its point depends on the plot's
@@ -1794,7 +1960,7 @@ class WashInChart(QWidget):
         self._grid.place(frame.tick_times_s, [position for position, _ in wash_in_axis_ticks()])
 
         while len(self._runs) < len(frame.runs):
-            self._runs.append(_WashInRunItems(item, RunIndex(len(self._runs))))
+            self._runs.append(_WashInRunItems(item, RunIndex(len(self._runs)), self._pens))
 
         for items, run in zip(self._runs, frame.runs, strict=False):
             items.repen(frame.run_count)
@@ -1937,11 +2103,9 @@ class WashInChart(QWidget):
         return tuple(drawn)
 
     def preview_pen(self, run: int) -> QPen:
-        """The pen one run's predicted stretches are drawn with, read from the plot item."""
+        """The pen one run's predicted stretches are drawn with, as specified (see `drawn_pen`)."""
 
-        pen: QPen = self._runs[run].preview_stretches[0].opts["pen"]
-
-        return pen
+        return self._pens.specified(self._runs[run].preview_stretches[0])
 
     def preview_region(self, run: int) -> tuple[float, float] | None:
         """Where one run's preview region is drawn, in simulated seconds, or None if hidden."""
@@ -1968,11 +2132,14 @@ class WashInChart(QWidget):
         return tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True))
 
     def drawn_pen(self, run: int) -> QPen:
-        """The pen one run's stretches are drawn with, read from the plot item."""
+        """The pen one run's stretches are drawn with, as specified.
 
-        pen: QPen = self._runs[run].stretches[0].opts["pen"]
+        The pen is the one the first stretch was last given. Its width is in
+        device-independent pixels, and the stretch draws it at that width on
+        any screen, through `on_screen`.
+        """
 
-        return pen
+        return self._pens.specified(self._runs[run].stretches[0])
 
     def branch_point_time(self, run: int) -> float | None:
         """Where one run's fork is marked, in simulated seconds, or None if unmarked."""
@@ -2378,7 +2545,13 @@ class _LineSwatch(QWidget):
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setPen(self._pen)
+        # The ratio is read from the device the paint engine draws on, which
+        # is the screen's backing store or, for a grab, the image. The
+        # painter's own `device()` is this widget even during a grab, so it
+        # would give the screen's ratio for an image at another ratio.
+        painter.setPen(
+            on_screen(self._pen, painter.paintEngine().paintDevice().devicePixelRatioF())
+        )
 
         if self._vertical:
             x = self.width() / 2.0
@@ -2426,7 +2599,9 @@ class _BandSwatch(QWidget):
 
         painter = QPainter(self)
         painter.fillRect(self.rect(), self._fill)
-        painter.setPen(self._edge_pen)
+        painter.setPen(
+            on_screen(self._edge_pen, painter.paintEngine().paintDevice().devicePixelRatioF())
+        )
         width = float(self.width())
         inset = MAC_AWAKE_BAND_EDGE_STROKE_WIDTH / 2.0
         painter.drawLine(QPointF(0.0, inset), QPointF(width, inset))
