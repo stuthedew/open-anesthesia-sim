@@ -128,3 +128,20 @@ its definition of done and item 33), `src/anesthesia_sim/data/workspaces/__init_
 `tools/contrast_check.py`. `tests/reference/test_compartment_amounts_against_oracles.py`
 says the schematic draws "its share bar" from the amounts, which is still true
 of the six bars, so it is unchanged.
+
+**Reviews, 2026-11-27.** Both blind review passes named the same should-fix
+finding: at 1366×768 the share caption sat under the scale line, below the
+fold. `311d8fe6` moved it under the containers, and the Maintenance lesson test
+now fails on the old order. A code review followed, and `73b28e92` takes its
+fixes. The share text is now worked out from the share each time, so a label
+and its bar cannot disagree. Each bar's fill starts inside its outline, and the
+documents' wording was corrected. Two of its findings are not this item's
+work, and are filed: `PL-3NGZ` (a label's run name, tension unit or the share
+caption can scroll away from it at 1366×768) and `PL-KQ0S` (the caption says
+the shares are of all the agent in the body, which the six containers do not
+hold). Its request to make the `docs/INTERFACE.md` heading say "share bars" was
+declined, because 13 references cite the heading as it is. A test review
+followed, and `380b0c71` takes its fixes: four mutants of the share-bar code
+that the tests had let through now fail them. `bin/docket verify --self
+PL-8PL4 PL-P83G` accepted both items, with 31 mutants caught and none missed on
+a changed line.
