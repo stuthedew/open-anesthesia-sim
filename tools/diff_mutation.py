@@ -42,11 +42,10 @@ the pull request that adds a test which would stop every mutation run there
 
 `--sample-run` runs mutmut the whole way on one small function, through the
 same `run` and `statuses` that `--verdict` uses, and fails unless the
-function's tests catch at least one of its mutants. It is the part of a
-mutation run that `--first-step` leaves out, at about 8 seconds where the full
-run costs minutes, so CI fails the pull request whose upgrade of pytest or
-mutmut would stop every mutation run (`PL-NZ0R`). `sample_run` says why one
-caught mutant is enough.
+function's tests catch at least one of its mutants. It runs the two parts of a
+mutation run that `--first-step` leaves out, in about 8 seconds, so CI fails
+the pull request whose upgrade of pytest or mutmut would stop every mutation
+run (`PL-NZ0R`). `sample_run` says why one caught mutant is enough.
 
 `--all` runs every mutant instead and prints the kill rate of each module.
 `docs/mutation-testing.md` records the baseline that such a run measured, and
@@ -252,8 +251,8 @@ CLEAN_TIMEOUT_S = 900
 #: tests catch at least one of its mutants. This one is a small step of the
 #: first-order approach with ten fast unit tests. On 2026-11-28 its tests
 #: caught 12 of its 13 mutants, and the whole run took 8 seconds on four
-#: cores. A change that renames or moves the function makes the run refuse,
-#: and the refusal names these constants.
+#: cores. A change that renames or moves the function makes the run refuse
+#: and a unit test fail, and the refusal names these constants.
 SAMPLE_SOURCE = "src/anesthesia_sim/core/exponential_approach.py"
 SAMPLE_FUNCTION = "exponential_approach_in_time_constants"
 SAMPLE_TESTS = ("tests/unit/test_exponential_approach.py",)
