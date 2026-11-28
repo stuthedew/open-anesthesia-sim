@@ -21,17 +21,36 @@ Every box that scrolls a section moves the heading again after each scroll,
 and after each change of what it can scroll (`pin_on_scroll`). That includes
 the dashboard's page, which scrolls every Area in a window too small for
 them.
+
+Sections nest. Each Area's header and the row its View keeps above its scroll
+box are the heading of a section that holds the View (`AreaFrame` in
+`app/area_layout.py`). So while the page carries an Area's top above the
+window's edge, the header and the row stand at the top of the Area's part in
+view, over the View's top (`PL-DKQ5`). A heading inside the View then stands
+under them, because the part of a widget in view leaves out what any heading
+around it covers (`in_view`). NUREG-0700 Rev. 3 (U.S. Nuclear Regulatory
+Commission, 2020), guideline 1.5-15, p. 1-59, asks for this: "General labels
+and row and column labels should remain along the top (or bottom) and left (or
+right) edges of the display." So a heading's general label, such as a run's
+name, also starts at the left edge of the part in view while the page is
+scrolled sideways (`follows_left`). Its column labels stay over their columns.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, QRect, Qt
+from PySide6.QtCore import QEvent, QObject, QPoint, QRect, Qt
 from PySide6.QtGui import QMoveEvent, QResizeEvent, QShowEvent
-from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.stylesheets import heading_surface_stylesheet
 
-__all__ = ["PinnedHeadingSection", "in_view", "pin_headings", "pin_on_scroll"]
+__all__ = [
+    "PinnedHeadingSection",
+    "in_view",
+    "pin_headings",
+    "pin_on_scroll",
+    "scroll_clear_into_view",
+]
 
 
 def in_view(widget: QWidget) -> QRect:
@@ -39,9 +58,13 @@ def in_view(widget: QWidget) -> QRect:
 
     Each ancestor clips what it holds to its own rectangle, so a widget inside
     a box that scrolls is in view only where it lies within the box's
-    viewport. The result is empty for a widget that is not visible. Only the
+    viewport. A `PinnedHeadingSection` around the widget also covers the
+    widget's part above its heading's lower edge, unless the widget is in
+    that heading. The result leaves that part out, so it is the part a reader
+    can see. The result is empty for a widget that is not visible. Only the
     ancestors' geometry is read, which is what Qt reads to clip a widget's
-    painting.
+    painting. Each heading's place is worked out from that geometry too, so
+    the result does not depend on which heading was moved last.
     """
 
     if not widget.isVisible():
@@ -52,9 +75,14 @@ def in_view(widget: QWidget) -> QRect:
 
     while ancestor is not None and not shown.isEmpty():
         shown = shown.intersected(QRect(widget.mapFrom(ancestor, QPoint(0, 0)), ancestor.size()))
+
+        if isinstance(ancestor, PinnedHeadingSection) and not ancestor.heading.isAncestorOf(widget):
+            covered_bottom = ancestor.heading_place().bottom() + 1
+            shown.setTop(max(shown.top(), widget.mapFrom(ancestor, QPoint(0, covered_bottom)).y()))
+
         ancestor = ancestor.parentWidget()
 
-    return shown
+    return shown if shown.height() > 0 and shown.width() > 0 else QRect()
 
 
 def pin_headings(root: QWidget) -> None:
@@ -102,6 +130,51 @@ def pin_on_scroll(box: QScrollArea) -> None:
         bar.rangeChanged.connect(after_range)
 
 
+def scroll_clear_into_view(box: QScrollArea, widget: QWidget) -> None:
+    """Scroll `box` as little as it takes to show `widget` whole and clear of every heading.
+
+    `widget` is in the widget that `box` scrolls. A heading around `widget`
+    stands over the top of the part in view once its section's top has
+    scrolled out of view (`PinnedHeadingSection`). So `widget` is scrolled to
+    stand at least that heading's height below the box's top, where no
+    heading covers it. Qt's `ensureWidgetVisible` would put `widget` at the
+    box's top edge, under the headings. Where `widget` is already in view and
+    clear, nothing moves. Where it is taller than the box can show, its top
+    is shown.
+    """
+
+    held = box.widget()
+
+    if held is None or not held.isAncestorOf(widget):
+        return
+
+    corner = widget.mapTo(held, QPoint(0, 0))
+    covered = 0
+    ancestor = widget.parentWidget()
+
+    while ancestor is not None and ancestor is not held:
+        if isinstance(ancestor, PinnedHeadingSection) and not ancestor.heading.isAncestorOf(widget):
+            covered += ancestor.heading.sizeHint().height()
+
+        ancestor = ancestor.parentWidget()
+
+    viewport = box.viewport().size()
+
+    for bar, start, length, room, lead in (
+        (box.horizontalScrollBar(), corner.x(), widget.width(), viewport.width(), 0),
+        (box.verticalScrollBar(), corner.y(), widget.height(), viewport.height(), covered),
+    ):
+        position = bar.value()
+
+        if start + length > position + room:
+            position = start + length - room
+
+        if start - lead < position:
+            position = start - lead
+
+        bar.setValue(position)
+
+
 class PinnedHeadingSection(QWidget):
     """A column of rows under a heading that stays at the top of the column's part in view.
 
@@ -119,6 +192,16 @@ class PinnedHeadingSection(QWidget):
         heading: The heading. The section takes it as its child.
         object_name: The heading's object name, which scopes its surface's
             stylesheet to it.
+        follows_left: A layout in the heading that holds the heading's general
+            label, or None. While the section's left part is out of view, this
+            layout's left margin grows by that part's width, so the label
+            starts at the left edge of the part in view. The heading's other
+            rows, such as column labels, stay over their columns.
+        surface_at_home: Whether the heading is drawn on the panel's colour
+            while it stands in its own space, above the column and at its left
+            end. A heading whose own rows draw their surfaces passes False, so
+            it looks the same as a heading laid out above the column until it
+            moves over the rows.
 
     Attributes:
         heading: The heading.
@@ -126,13 +209,25 @@ class PinnedHeadingSection(QWidget):
             heading's space. A subclass sets its spacing.
     """
 
-    def __init__(self, heading: QWidget, object_name: str) -> None:
+    def __init__(
+        self,
+        heading: QWidget,
+        object_name: str,
+        *,
+        follows_left: QBoxLayout | None = None,
+        surface_at_home: bool = True,
+    ) -> None:
         super().__init__()
         self.heading = heading
         heading.setParent(self)
         heading.setObjectName(object_name)
         heading.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        heading.setStyleSheet(heading_surface_stylesheet(object_name))
+        self._surface_at_home = surface_at_home
+        self._surface_drawn = surface_at_home
+        heading.setStyleSheet(heading_surface_stylesheet(object_name, drawn=surface_at_home))
+        self._follows_left = follows_left
+        self._left_margin = 0 if follows_left is None else follows_left.contentsMargins().left()
+        self._inset = 0
         self._room = QWidget()
         self._room.setFixedHeight(heading.sizeHint().height())
         self._room.setMinimumWidth(heading.minimumSizeHint().width())
@@ -143,32 +238,64 @@ class PinnedHeadingSection(QWidget):
         self.column = QVBoxLayout()
         self.column.setContentsMargins(0, 0, 0, 0)
         outer.addLayout(self.column)
+        # A row of the heading shown, hidden or changed in size changes the
+        # heading's height, and only the heading learns of it.
+        heading.installEventFilter(self)
 
     def clear_of_heading(self, row: QWidget) -> QRect:
         """Return the part of `row` that is in view and not under the heading, in `row`'s pixels.
 
         `row` is a widget in this section's column. The result is empty where
-        none of `row` is in view or all of it is under the heading. Its top is
-        the heading's lower edge, or the top of `row`'s part in view where that
-        is lower. A heading laid out in its own space covers no row, so the
-        result is then `row`'s part in view.
+        none of `row` is in view or all of it is under the heading. It is
+        `in_view(row)`, which leaves out the part under this heading and
+        under every heading around this section.
         """
 
-        shown = in_view(row)
+        return in_view(row)
 
-        if shown.isEmpty():
-            return shown
+    def heading_place(self) -> QRect:
+        """Return where the heading stands for the part in view, in the section's pixels.
 
-        heading_bottom = row.mapFrom(self, QPoint(0, self.heading.geometry().bottom() + 1)).y()
-        shown.setTop(max(shown.top(), heading_bottom))
+        The heading stands at the top of the part in view, and never lower
+        than the section's lower edge allows. Where none of the section is in
+        view, it stands in its own space.
+        """
 
-        return shown if shown.height() > 0 else QRect()
+        height = self.heading.sizeHint().height()
+        shown = in_view(self)
+        top = 0 if shown.isEmpty() else min(max(shown.top(), 0), max(self.height() - height, 0))
+
+        return QRect(0, top, self.width(), height)
+
+    def _left_inset(self) -> int:
+        """Return how far the general label is moved right, to the left edge of the part in view.
+
+        Where the part in view is narrower than the label's row, the row runs
+        past the section's right edge, and its end is cut there rather than
+        its start. A label read from its start names what it labels, and one
+        cut at its start may not.
+        """
+
+        if self._follows_left is None:
+            return 0
+
+        shown = in_view(self)
+
+        return 0 if shown.isEmpty() else max(shown.left(), 0)
 
     def pin_heading(self) -> None:
         """Place the heading at the top of the section's part in view, over the rows there."""
 
+        inset = self._left_inset()
+
+        if self._follows_left is not None and inset != self._inset:
+            margins = self._follows_left.contentsMargins()
+            margins.setLeft(self._left_margin + inset)
+            self._follows_left.setContentsMargins(margins)
+            self._inset = inset
+
         height = self.heading.sizeHint().height()
-        least_width = self.heading.minimumSizeHint().width()
+        least_width = self.heading.minimumSizeHint().width() - self._inset
 
         # The space under the heading holds the section to the heading's
         # height and least width, so the section's layout makes room for a
@@ -179,10 +306,24 @@ class PinnedHeadingSection(QWidget):
         if self._room.minimumWidth() != least_width:
             self._room.setMinimumWidth(least_width)
 
-        shown = in_view(self)
-        top = 0 if shown.isEmpty() else min(max(shown.top(), 0), max(self.height() - height, 0))
-        self.heading.setGeometry(0, top, self.width(), height)
+        place = self.heading_place()
+        self.heading.setGeometry(place)
+
+        drawn = self._surface_at_home or place.top() > 0 or self._inset > 0
+
+        if drawn != self._surface_drawn:
+            self._surface_drawn = drawn
+            self.heading.setStyleSheet(
+                heading_surface_stylesheet(self.heading.objectName(), drawn=drawn)
+            )
+
         self.heading.raise_()
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # Qt spells this in camelCase.
+        if watched is self.heading and event.type() == QEvent.Type.LayoutRequest:
+            self.pin_heading()
+
+        return super().eventFilter(watched, event)
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
         super().resizeEvent(event)

@@ -725,7 +725,8 @@ class RunSchematic(PinnedHeadingSection):
     the top of the part of the schematic in view while the Area scrolls
     (`PinnedHeadingSection`). So on a laptop screen no label or share bar is
     in view without the run's name, its compartment's name or what its share
-    is of (`PL-3NGZ`).
+    is of (`PL-3NGZ`). While the page is scrolled sideways, the line that names
+    the run starts at the left edge of the part in view (`PL-DKQ5`).
 
     Args:
         shown: The schematic to draw first.
@@ -762,7 +763,10 @@ class RunSchematic(PinnedHeadingSection):
         line.addStretch(1)
         rows.addLayout(line)
         rows.addWidget(names)
-        super().__init__(heading, _RUN_HEADING_NAME)
+        # The line that names the run is the heading's general label, so it
+        # starts at the left edge of the part in view while the page scrolls
+        # sideways. The names stay over their containers (`PL-DKQ5`).
+        super().__init__(heading, _RUN_HEADING_NAME, follows_left=line)
         self.name_text = name_text
         self.share_text = share_text
         self.names = names
