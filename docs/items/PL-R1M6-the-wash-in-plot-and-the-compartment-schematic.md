@@ -3,14 +3,17 @@ id: PL-R1M6
 title: The wash-in plot and the compartment schematic give a screen reader no text alternative, as the concentration chart did before PL-T9RB
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: presentation-safety
-touches: src/anesthesia_sim/app/qt_chart.py
+touches: docs/ARCHITECTURE.md, docs/INTERFACE.md, docs/items/PL-96MX-the-approved-on-screen-wording-test-leaves-out.md, docs/items/PL-MP1X-the-concentration-chart-s-and-the-wash-in-plot.md, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_schematic.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/simulation_view/test_simulation_view_charts.py, tests/integration/test_compartment_schematic_view.py, tests/unit/test_chart_frame.py, tests/unit/test_compartment_schematic.py
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it; PL-T9RB, which it follows, was deferred from the same gate (filed 2026-11-27)
 added: 2026-11-27
+closed: 2026-11-28
+pr: 2357
 filed-pr: 2333
 payoff: a screen-reader user can learn what the wash-in plot and the compartment schematic draw
+tests: tests/unit/test_compartment_schematic.py::test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instant, tests/unit/test_compartment_schematic.py::test_the_schematic_s_description_gives_every_container_s_values_with_their_units, tests/unit/test_compartment_schematic.py::test_the_schematic_s_description_names_a_container_above_the_scale, tests/unit/test_compartment_schematic.py::test_a_withheld_schematic_s_text_alternative_says_in_words_that_no_value_is_shown, tests/unit/test_compartment_schematic.py::test_a_run_with_no_agent_says_in_words_that_no_share_is_shown, tests/unit/test_chart_frame.py::test_the_wash_in_plot_s_text_alternative_gives_each_run_s_last_drawn_point, tests/integration/simulation_view/test_simulation_view_charts.py::test_the_wash_in_plot_tells_a_screen_reader_what_it_plots_and_each_run_s_ratio, tests/integration/simulation_view/test_simulation_view_charts.py::test_a_held_wash_in_plot_tells_a_screen_reader_the_ratio_at_its_right_edge, tests/integration/simulation_view/test_simulation_view_charts.py::test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values, tests/integration/simulation_view/test_simulation_view_charts.py::test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes, tests/integration/simulation_view/test_simulation_view_charts.py::test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image
 recurrences: 2026-11-28 PL-MP1X
 ---
 
