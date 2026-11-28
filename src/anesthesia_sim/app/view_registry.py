@@ -65,6 +65,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.dashboard_frame import (
+    AGENT_COST_VIEW_TITLE,
     CONCENTRATION_VIEW_TITLE,
     FORK_HEADING,
     SCHEMATIC_VIEW_TITLE,
@@ -445,7 +446,7 @@ REGISTERED: Final = registry(
         minimum=PixelSize(480, _LEAST_HEIGHT_PX),
     ),
     RegisteredView(
-        AGENT_COST, "Agent cost", AgentCostView, minimum=PixelSize(320, _LEAST_HEIGHT_PX)
+        AGENT_COST, AGENT_COST_VIEW_TITLE, AgentCostView, minimum=PixelSize(320, _LEAST_HEIGHT_PX)
     ),
     RegisteredView(BOOKMARKS, "Bookmarks", BookmarksView, minimum=PixelSize(220, _LEAST_HEIGHT_PX)),
     RegisteredView(

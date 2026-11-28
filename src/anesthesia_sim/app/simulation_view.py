@@ -484,6 +484,17 @@ class _RunSlots:
     placed: tuple[QWidget, ...]
 
 
+def _chart_ceiling_kept_by(preferences: Preferences) -> tuple[ChartCeiling, bool]:
+    """Return the axis top that `preferences` hold, and whether they hold no refused top.
+
+    A launch opens at that top when these preferences are the ones in the
+    file. A refused top in the file is named again at the next launch, so the
+    pair differs from the one a reader's pick leaves (`PL-GWSY`).
+    """
+
+    return preferences.chart_ceiling, preferences.refused_chart_ceiling is None
+
+
 class SimulationView(QWidget):
     """The dashboard over one or two runs on one agent.
 
@@ -611,6 +622,16 @@ class SimulationView(QWidget):
         self._preferences = loaded.preferences
         self._preferences_notice = loaded.notice
         self._preferences_store = preferences_store
+        # The axis top that the next launch will open at, and whether the file
+        # holds no refused top: the one loaded, and then the one last saved.
+        # While the top in force differs from it and the notice says why,
+        # every chart and schematic says the top could not be saved
+        # (`PL-GWSY`). A top picked and then picked back is the kept one, so
+        # nothing is said about it.
+        self._kept_chart_ceiling = _chart_ceiling_kept_by(loaded.preferences)
+        # Whether the launch could not use the preferences file, so a top saved
+        # in it is not in force. Every chart and schematic says that too.
+        self._preferences_file_unused = preferences_store is not None and not loaded.writable
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
         # Why the branch last asked for was not taken, or None. It is kept
@@ -2124,7 +2145,7 @@ class SimulationView(QWidget):
             self._show_fork_offer(offer_now)
 
         drawn = self._runs_the_views_show()
-        preferences = PreferencesInForce(self._preferences, self._preferences_notice)
+        preferences = self._preferences_in_force()
 
         if drawn is None:
             self._kept_frames = None
@@ -2269,7 +2290,7 @@ class SimulationView(QWidget):
 
         drawn = self._runs_the_views_show()
         selection = self._compartment_selection
-        preferences = PreferencesInForce(self._preferences, self._preferences_notice)
+        preferences = self._preferences_in_force()
 
         if drawn is None:
             self._areas.refresh(
@@ -2763,8 +2784,11 @@ class SimulationView(QWidget):
 
         The preferences are saved when there is a store. If the save fails, or
         saving is off for the session, the change still applies until the
-        application closes, and the View says why it will not be kept. The
-        notice also names any refused entry that is still in the file.
+        application closes, and the agent cost View says why it will not be
+        kept. The notice also names any refused entry that is still in the
+        file. With no store, nothing is saved, and the launch's notice already
+        says so. A save that succeeds writes the axis top in force, so it
+        becomes the one the next launch opens at (`PL-GWSY`).
         """
 
         self._preferences = preferences
@@ -2777,11 +2801,33 @@ class SimulationView(QWidget):
                 refusals = refusals_notice(self._preferences_store.path, self._preferences)
                 self._preferences_notice = unsaved if refusals is None else f"{unsaved}. {refusals}"
             else:
+                self._kept_chart_ceiling = _chart_ceiling_kept_by(self._preferences)
                 self._preferences_notice = refusals_notice(
                     self._preferences_store.path, self._preferences
                 )
 
         self.present(False)
+
+    def _preferences_in_force(self) -> PreferencesInForce:
+        """Return the preferences every View is drawn with on this tick.
+
+        The axis top counts as unsaved only while there is a notice, because
+        the line under the axis top control points at it. There is no notice
+        only for a dashboard that a test builds with no store, which saves
+        nothing and says nothing (`PL-GWSY`).
+        """
+
+        unsaved = (
+            self._preferences_notice is not None
+            and _chart_ceiling_kept_by(self._preferences) != self._kept_chart_ceiling
+        )
+
+        return PreferencesInForce(
+            self._preferences,
+            self._preferences_notice,
+            chart_ceiling_unsaved=unsaved,
+            preferences_file_unused=self._preferences_file_unused,
+        )
 
     @halt_gate
     def _handle_compartment_request(self, quantity: RecordedQuantity, shown: bool) -> None:

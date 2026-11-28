@@ -3645,7 +3645,24 @@ a layout opens at 3 ×MAC, without a notice. A saved top that is not one of the
 three is not used either. Every chart and schematic is then drawn at 3 ×MAC,
 and each says under its "Axis top" control which saved top was refused and
 asks the reader to choose a top. Choosing any top clears the line, 3 ×MAC
-included.
+included. When the application cannot save a top that the reader chooses,
+because saving is off for the session or the save fails, the same line says
+"The application could not save this axis top, so it lasts only until the
+application closes. The Agent cost View says why." (`PL-GWSY`). It says so
+only while the top in force differs from the one the next launch opens at, so
+choosing that top again clears the line. A later save that succeeds also saves
+the top, and clears the line. When the launch cannot use the preferences file
+at all, because a newer version wrote it, or because the application cannot
+read it or cannot use what it holds, a top saved in it is not in force. From launch, the line then says "The
+application could not use your preferences file, so any axis top saved in it
+is not in use. The Agent cost View says why." While a chosen top differs from
+3 ×MAC, the line about a top that could not be saved takes its place. The line
+sits under each "Axis top" control, because a Workspace may show no agent cost
+View and Nielsen Norman Group's error-message guidelines ask for a message
+"close to the error's source" (nngroup.com/articles/error-message-guidelines,
+read 2026-11-28). The agent cost View's notice holds the reason, which can
+include the file's whole problem and its path, too long for a line under a
+control.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
@@ -3807,7 +3824,23 @@ chart and schematic until a top is chosen
 `test_a_refused_saved_top_is_named_on_every_chart_and_schematic_until_a_top_is_picked`
 in `tests/integration/test_view_contract.py`). The "Axis top" control reads a
 choice from Qt's `activated` signal, which a choice of the top already shown
-also sends, so a reader can clear that line by keeping 3 ×MAC.
+also sends, so a reader can clear that line by keeping 3 ×MAC. A top that
+could not be saved is named on every chart and schematic of a Workspace with
+no agent cost View. The line goes when the reader chooses the top that the
+next launch opens at, or when a save succeeds
+(`test_a_top_that_could_not_be_saved_is_named_on_every_chart_and_schematic` in
+`tests/integration/test_view_contract.py`). A file that the launch could not
+use is named on them from launch, and a chosen top that differs from 3 ×MAC
+is named as one that could not be saved
+(`test_a_file_the_launch_could_not_use_is_named_on_every_chart_and_schematic`
+in the same file). The dashboard compares the top in force with the one it
+loaded or last saved, and records the result in
+`PreferencesInForce.chart_ceiling_unsaved`. It records a file the launch could
+not use in `PreferencesInForce.preferences_file_unused`.
+`dashboard_frame.chart_ceiling_line` writes the line, and a refused saved top
+comes first
+(`test_the_line_under_an_axis_top_control_names_the_first_problem_that_holds`
+in `tests/unit/test_dashboard_frame.py`).
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 ### The chart's time base

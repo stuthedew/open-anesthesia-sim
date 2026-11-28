@@ -118,6 +118,7 @@ from anesthesia_sim.app.formatting import (
     render_mac_multiple,
 )
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
+from anesthesia_sim.app.preferences import Preferences, chart_ceiling_notice
 from anesthesia_sim.app.run_series import COMPARTMENT_GLOSSES, COMPARTMENT_NAMES, RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, WashInReading
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
@@ -1175,6 +1176,9 @@ CHART_HEADING: Final = "Agent concentration and relative partial pressure over t
 CONCENTRATION_VIEW_TITLE: Final = "Concentrations"
 WASH_IN_VIEW_TITLE: Final = "Wash-in"
 SCHEMATIC_VIEW_TITLE: Final = "Compartment schematic"
+# The name the View chooser gives the View that shows the preferences notice,
+# which the line under a chart's axis top control points at (`PL-GWSY`).
+AGENT_COST_VIEW_TITLE: Final = "Agent cost"
 # What the chart's long description opens with. The W3C example of a chart's
 # text alternative "identifies the type of chart" first (Understanding WCAG
 # 2.2 SC 1.1.1, `PL-T9RB`).
@@ -1433,6 +1437,53 @@ INTERPRETATION_DISCLAIMER_TEXT: Final = "Model outputs — not measurements."
 # it actually renders with. So no pixel figure is asserted here that a
 # different font or a HiDPI scale would make wrong.
 READOUT_ROW_LADDER: Final[tuple[int, ...]] = (7, 4, 2, 1)
+
+# What every chart and schematic says under its axis top control while the
+# top in force is one the next launch will not open at, because the
+# application could not save it (`PL-GWSY`). The reason is in the agent cost
+# View's notice. It may hold the whole preferences file's problem and its
+# path, which is too long for a line under a control.
+UNSAVED_CHART_CEILING_TEXT: Final = (
+    "The application could not save this axis top, so it lasts only until the application "
+    f"closes. The {AGENT_COST_VIEW_TITLE} View says why."
+)
+# What they say while the application could not use the preferences file at
+# launch, so a top saved in it is not in force. The file may be unreadable, so
+# whether it holds a top at all is not known.
+UNUSED_PREFERENCES_CHART_CEILING_TEXT: Final = (
+    "The application could not use your preferences file, so any axis top saved in it is not "
+    f"in use. The {AGENT_COST_VIEW_TITLE} View says why."
+)
+
+
+def chart_ceiling_line(preferences: Preferences, *, unsaved: bool, file_unused: bool) -> str | None:
+    """Return the line that every chart and schematic shows under its axis top control, or None.
+
+    The line stands beside the control, because Nielsen Norman Group's
+    error-message guidelines ask for a message close to its source, and a
+    Workspace may show no agent cost View (`PL-GWSY` records the source).
+    A refused saved top is named first, because its notice says what to
+    choose (`preferences.chart_ceiling_notice`). Then a top that could not be
+    saved, and then a file the launch could not use.
+
+    Args:
+        preferences: The preferences in force.
+        unsaved: Whether the top in force differs from the one the next launch
+            will open at, because a save failed or saving is off
+            (`PreferencesInForce.chart_ceiling_unsaved`).
+        file_unused: Whether the launch could not use the preferences file
+            (`PreferencesInForce.preferences_file_unused`).
+    """
+
+    refused = chart_ceiling_notice(preferences)
+
+    if refused is not None:
+        return refused
+
+    if unsaved:
+        return UNSAVED_CHART_CEILING_TEXT
+
+    return UNUSED_PREFERENCES_CHART_CEILING_TEXT if file_unused else None
 
 
 class Emphasis(StrEnum):

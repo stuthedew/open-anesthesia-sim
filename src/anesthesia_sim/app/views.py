@@ -102,6 +102,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WITHHELD_FRAME_TEXT,
     WITHHELD_REFERENCE_TEXT,
     SettingReadout,
+    chart_ceiling_line,
     compared_panel_heading,
     compartment_cap_notice,
     control_name,
@@ -117,7 +118,7 @@ from anesthesia_sim.app.dashboard_frame import (
     wash_in_state_lines,
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
-from anesthesia_sim.app.preferences import Preferences, chart_ceiling_notice
+from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.qt_agent_cost import RunAgentCost
 from anesthesia_sim.app.qt_agent_price import PriceEntry, RefusedEntriesDiscard
 from anesthesia_sim.app.qt_chart import (
@@ -682,6 +683,23 @@ def _state_notice(text: str | None) -> QLabel:
     return notice
 
 
+def _show_ceiling_notice(notice: QLabel, tick: ViewTick) -> None:
+    """Write the line under a chart's or schematic's axis top control.
+
+    `dashboard_frame.chart_ceiling_line` decides the text. The line is hidden when there is none.
+    """
+
+    in_force = tick.preferences
+    _show_notice(
+        notice,
+        chart_ceiling_line(
+            in_force.preferences,
+            unsaved=in_force.chart_ceiling_unsaved,
+            file_unused=in_force.preferences_file_unused,
+        ),
+    )
+
+
 def _show_notice(notice: QLabel, text: str | None) -> None:
     """Write a conditional line built by `_state_notice`, and hide it while `text` is None."""
 
@@ -942,11 +960,12 @@ class ConcentrationView(QWidget):
         (`run_presentation.shown_without_a_frame`). A kept frame is withheld
         in the same way in the cases that `_withholds` names.
 
-        While the saved axis top was refused, a line under the controls says
-        so, on every tick (`preferences.chart_ceiling_notice`).
+        While the saved axis top was refused, could not be saved or could not
+        be read, a line under the controls says so, on every tick
+        (`dashboard_frame.chart_ceiling_line`).
         """
 
-        _show_notice(self.ceiling_notice, chart_ceiling_notice(tick.preferences.preferences))
+        _show_ceiling_notice(self.ceiling_notice, tick)
         shown = tick.frame
 
         if _withholds(shown, self._source, self.chart.plot_width_px()):
@@ -1749,11 +1768,12 @@ class CompartmentSchematicView(QWidget):
         counts as drawn after either. The axis-top control names the top that
         the first drawn schematic is filled against. While every schematic is
         withheld, it names the reader's top, which the next drawn frame uses.
-        While the saved axis top was refused, a line under the control says
-        so (`preferences.chart_ceiling_notice`).
+        While the saved axis top was refused, could not be saved or could not
+        be read, a line under the control says so
+        (`dashboard_frame.chart_ceiling_line`).
         """
 
-        _show_notice(self.ceiling_notice, chart_ceiling_notice(tick.preferences.preferences))
+        _show_ceiling_notice(self.ceiling_notice, tick)
         self._schematics.follow(tick.runs)
 
         for schematic, run in zip(self._schematics.widgets, tick.runs, strict=True):

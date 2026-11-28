@@ -215,6 +215,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
+from anesthesia_sim.app.preferences import Preferences, RefusedEntry
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
@@ -5506,3 +5507,47 @@ def test_the_case_s_marks_name_each_run_whose_standing_differs() -> None:
     (row,) = shown.panel.times.rows
     assert "Run 1" in row
     assert "Run 2" in row
+
+
+@pytest.mark.parametrize(
+    ("refused", "unsaved", "file_unused", "expected"),
+    [
+        (True, True, True, "the written reason"),
+        (
+            False,
+            True,
+            True,
+            (
+                "The application could not save this axis top, so it lasts only until the "
+                "application closes. The Agent cost View says why."
+            ),
+        ),
+        (
+            False,
+            False,
+            True,
+            (
+                "The application could not use your preferences file, so any axis top saved in it "
+                "is not in use. The Agent cost View says why."
+            ),
+        ),
+        (False, False, False, None),
+    ],
+)
+def test_the_line_under_an_axis_top_control_names_the_first_problem_that_holds(
+    refused: bool, unsaved: bool, file_unused: bool, expected: str | None
+) -> None:
+    """`PL-GWSY`: a refused saved top comes first, then a top not saved, then an unused file.
+
+    The refused top's notice says what to choose, so it is shown whatever else
+    holds. The other two lines are written out by hand.
+    """
+
+    preferences = Preferences(
+        refused_chart_ceiling=RefusedEntry(7, "the written reason", None) if refused else None
+    )
+
+    assert (
+        dashboard_frame.chart_ceiling_line(preferences, unsaved=unsaved, file_unused=file_unused)
+        == expected
+    )
