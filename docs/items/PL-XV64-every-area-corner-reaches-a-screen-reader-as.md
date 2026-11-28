@@ -3,10 +3,10 @@ id: PL-XV64
 title: Every Area corner reaches a screen reader as 'Area corner', every Area border as 'Area border', and the plot controls of two Areas that show the same kind of View share their names, so a screen-reader user cannot tell which Area a control acts on
 priority: P3
 effort: S
-status: untriaged
+status: ready
 classes: defect
 feature: interface-areas
-touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_agent_price.py, docs/INTERFACE.md, tests/integration/test_layout_adapter.py, tests/integration/test_view_contract.py
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it: the Area menu each corner opens names its Area, so the release waits only on the owner test drive (filed 2026-11-28)
 added: 2026-11-28
 payoff: a screen-reader user who reaches an Area corner or border hears which Area it acts on
@@ -103,14 +103,60 @@ So the names are these:
 each change, and keeps each View that stays. So `_build` works out every
 Area's name from the model's tree, names each frame's corners and each
 splitter's handles, and then gives each View its Area's name through a new
-member of the View contract (`view_contract.View`), such as
-`name_area(name)`. A View with no plot controls does nothing with it. All
-names are written through `dashboard_frame.control_name`.
+member of the View contract (`view_contract.View.name_controls`). A View
+with no plot controls does nothing with it. All names are written through
+`dashboard_frame.control_name`.
 
 **Done when.** The two entries of `SHARED_PURPOSES` in
 `tests/integration/test_keyboard_focus.py` are gone, and the test that reads
 it still passes, with every kind of View on screen and again after the Area
 menu splits an Area of each kind that draws against an axis.
+
+**Generator check.** An instance of the open head `PL-9XGQ` (the
+screen-reader walk checks only that each control has a name), whose misread
+fact is what a screen reader is told about each element: its role, and a name
+unique in its window. The walk that head widens is the test this item
+extends, and its brief already names this item among the cases it waits on.
+
+**Built 2026-11-28.** `area_layout._area_names` works out each Area's name
+from the tree on every `_build`, as a `view_contract.AreaName`, which refuses
+an empty title and a number less than 1. `AreaFrame.name_area` names the
+Area's View chooser, its scroll box and its four corners, and `_widget_for`
+names each splitter handle after the Areas before it. A pane of three or more
+Areas is listed with a comma before the "and", as the Google developer
+documentation style guide asks in "Serial commas"
+(https://developers.google.com/style/commas, read 2026-11-28). The View
+contract's new member is `name_controls(area)` rather than `name_area`,
+because a View names its own controls with the Area's name and not the Area.
+
+Walking every control a screen reader reaches after a split of each plot Area
+found four more names that repeat, beyond those the brief listed. They are
+the View chooser and the scroll box of each half, the concentration chart's
+legend box and its six check boxes, and the wash-in legend's scroll box. All
+are now named with the Area. The legend's boxes add the Area's name only while
+two Areas show the chart, through `AreaName.among_copies`, because no other
+kind of View shows a legend.
+
+The brief said a split Agent cost or Bookmarks Area repeats its names too.
+Splitting every kind found that the copies of the Parameters, Agent
+accounting, Branch and Bookmarks Views, and the Agent cost View's unit
+selector and its offer to discard refused entries, act on state that all
+copies share. So each pair is identical in the Authoring Practices Guide's
+sense, as its example of two links to the same place is, and each keeps one
+name. The Agent cost View's price form is the exception, because each copy
+keeps the agent picked and the price typed in it. Its fields and buttons now
+add the Area's name while two Areas show the View (`PriceEntry.name_for`).
+
+Against the code before the change (a worktree at `48942cbc` with only
+`tests/integration/test_keyboard_focus.py` copied in, and that worktree's
+`src/` first on `PYTHONPATH`), 6 of the selected tests fail. The shared-name
+test fails with "Left contains 2 more items, first extra item: ('Client',
+'Area corner')" for each View once, and with 24 more items, the first ('Button',
+'Show a later part of the run, Concentrations'), after the split. The split
+test fails with "'Time base, Concentrations' != 'Time base, Concentrations
+1'", and the price form test with "'Agent, price' != 'Agent, price, Agent
+cost 1'". The four tests in `tests/integration/test_layout_adapter.py` need
+`AreaName`, which the change adds, so the keyboard tests are their variant.
 
 **How it was found.** Building `PL-YSFX`, 2026-11-28: its test that no two
 reachable controls share a name found the corners and borders beside the run

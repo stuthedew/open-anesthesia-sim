@@ -70,6 +70,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
+    AreaName,
     CasePresentation,
     FrameRequest,
     MarksPresentation,
@@ -140,6 +141,8 @@ class _TestView(QWidget):
         self.setting = 0
         # What the View shows. A test of a View of the case sets it.
         self.scope = ViewScope.RUNS
+        # Each name the View was told its Area has, in the order it was told.
+        self.area_names: list[AreaName] = []
         # Small enough that Qt's own minimum never stops a drag here.
         self.setMinimumSize(10, 10)
         _BUILT.append(self)
@@ -168,6 +171,9 @@ class _TestView(QWidget):
 
     def painted_strings(self) -> tuple[str, ...]:
         return (f"painted {self.setting}",)
+
+    def name_controls(self, area: AreaName) -> None:
+        self.area_names.append(area)
 
 
 class _OtherView(_TestView):
@@ -966,6 +972,154 @@ def test_two_areas_of_one_kind_each_get_a_view_of_their_own(
     assert first is not second
     assert container.findChildren(AreaNotice) == []
     assert first.isVisible() and second.isVisible()
+
+
+def _area_widget_names(frame: AreaFrame) -> tuple[str, ...]:
+    """Return what a screen reader calls an Area's chooser, its scroll box and its four corners."""
+
+    assert frame.view_scroll is not None
+
+    return (
+        frame.chooser.accessibleName(),
+        frame.view_scroll.accessibleName(),
+        *(zone.accessibleName() for zone in frame.corners),
+    )
+
+
+def _named(title: str) -> tuple[str, ...]:
+    """The names `_area_widget_names` returns for an Area called `title`, written out here."""
+
+    return (
+        title,
+        title,
+        f"Area corner, {title}, top left",
+        f"Area corner, {title}, top right",
+        f"Area corner, {title}, bottom left",
+        f"Area corner, {title}, bottom right",
+    )
+
+
+def _border_names(container: AreaLayout) -> dict[tuple[int, ...], list[str]]:
+    """Return what a screen reader calls each border, keyed by the path of its splitter."""
+
+    return {
+        path: [splitter.handle(index).accessibleName() for index in range(1, splitter.count())]
+        for path, splitter in _splitters(container).items()
+    }
+
+
+def test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kind(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-XV64`: two Areas of one kind are told apart, and each border names the pane before it.
+
+    The Areas are numbered in reading order, and an Area alone of its kind has
+    no number. The W3C's "Window Splitter" pattern names a border by the pane
+    whose size it sets, which here is the pane before it. A pane of two Areas
+    is named by both.
+    """
+
+    model = _layout(
+        _row((0.5, 0.5), _area(1), _column((0.5, 0.5), Area(AreaId(2), _OTHER), _area(3))), 4
+    )
+    container = _show_with(application, shown, model)
+    first, second, third = (container.frame(AreaId(number)) for number in (1, 2, 3))
+
+    assert _area_widget_names(first) == _named("Test view 1")
+    assert _area_widget_names(second) == _named("Other view")
+    assert _area_widget_names(third) == _named("Test view 2")
+    assert _border_names(container) == {
+        (): ["Area border, Test view 1"],
+        (1,): ["Area border, Other view"],
+    }
+
+    for frame, name in ((first, AreaName("Test view", 1)), (third, AreaName("Test view", 2))):
+        assert isinstance(frame.content, _TestView)
+        assert frame.content.area_names[-1] == name
+
+
+def test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A change of View renumbers the Areas, and a kept View is told its Area's new name.
+
+    The Area that keeps its View is told it is "Test view" once no other Area
+    shows that kind, and the two Areas that now show "Other view" are
+    numbered. Closing one of those leaves the other with no number again.
+    """
+
+    model = _layout(_row((0.5, 0.5), _area(1), _area(2)), 3)
+    container = _show_with(application, shown, model)
+    kept = container.frame(AreaId(1)).content
+    assert isinstance(kept, _TestView)
+    assert kept.area_names[-1] == AreaName("Test view", 1)
+
+    container.choose_view(AreaId(2), _OTHER)
+    application.processEvents()
+
+    assert container.frame(AreaId(1)).content is kept
+    assert kept.area_names[-1] == AreaName("Test view")
+    assert _area_widget_names(container.frame(AreaId(1))) == _named("Test view")
+    assert _area_widget_names(container.frame(AreaId(2))) == _named("Other view")
+    assert _border_names(container) == {(): ["Area border, Test view"]}
+
+    container.set_model(
+        _layout(
+            _row((1 / 3, 1 / 3, 1 / 3), _area(1), *(Area(AreaId(n), _OTHER) for n in (2, 3))), 4
+        )
+    )
+    application.processEvents()
+
+    assert [container.frame(AreaId(n)).chooser.accessibleName() for n in (1, 2, 3)] == [
+        "Test view",
+        "Other view 1",
+        "Other view 2",
+    ]
+    assert _border_names(container) == {(): ["Area border, Test view", "Area border, Other view 1"]}
+
+    (close,) = [
+        operation
+        for operation in container.operations(AreaId(3))
+        if operation.label == CLOSE_AREA_LABEL
+    ]
+    container.perform(close)
+    application.processEvents()
+
+    assert [container.frame(AreaId(n)).chooser.accessibleName() for n in (1, 2)] == [
+        "Test view",
+        "Other view",
+    ]
+
+
+def test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A pane of three or more Areas is named as a list, with a comma before its last "and"."""
+
+    pane = _column(
+        (1 / 3, 1 / 3, 1 / 3), _area(1), Area(AreaId(2), _OTHER), Area(AreaId(3), _THIRD)
+    )
+    container = _show_with(application, shown, _layout(_row((0.5, 0.5), pane, _area(4)), 5))
+
+    assert _border_names(container)[()] == ["Area border, Test view 1, Other view, and Third view"]
+
+
+def test_an_area_s_name_counts_from_one_and_needs_a_title() -> None:
+    """An Area's name refuses a number below 1, a number that is not a whole number, or no title."""
+
+    assert AreaName("Wash-in").text == "Wash-in"
+    assert AreaName("Wash-in").among_copies is None
+    assert AreaName("Wash-in", 2).text == "Wash-in 2"
+    assert AreaName("Wash-in", 2).among_copies == "Wash-in 2"
+
+    with pytest.raises(ValueError, match="counts from 1, and 0 was given"):
+        AreaName("Wash-in", 0)
+
+    with pytest.raises(TypeError, match="not bool"):
+        AreaName("Wash-in", True)
+
+    with pytest.raises(ValueError, match="title given is empty"):
+        AreaName("")
 
 
 def test_a_view_replaced_and_chosen_again_comes_back_with_its_state(

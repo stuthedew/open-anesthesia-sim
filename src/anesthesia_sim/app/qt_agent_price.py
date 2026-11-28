@@ -28,7 +28,15 @@ from functools import partial
 from typing import Final
 
 from PySide6.QtCore import QDate, QSignalBlocker
-from PySide6.QtWidgets import QFormLayout, QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from anesthesia_sim.app.agent_cost import (
     DISCARD_REFUSED_CONFIRM_LABEL,
@@ -191,6 +199,10 @@ class PriceEntry(QWidget):
 
         form = QFormLayout()
         form.setSpacing(VIEW_ROW_SPACING)
+        # Each field's label, the field, the label's text, and what tells the
+        # field from another control with the same label. `name_for` names
+        # each field from these.
+        self._fields: list[tuple[QLabel, QWidget, str, str | None]] = []
 
         for label, field, which in (
             (AGENT_FIELD_LABEL, self.agent_selector, PRICE_FORM_KIND),
@@ -203,8 +215,10 @@ class PriceEntry(QWidget):
             # width rather than stretching across a wide Area (`PL-PZD9`).
             field.setMaximumWidth(PRICE_FIELD_MAX_WIDTH)
             name = styled_label(label, color=MUTED, wrap=True)
-            label_control(name, field, control_name(label, which))
+            self._fields.append((name, field, label, which))
             form.addRow(name, field)
+
+        self.name_for(None)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(VIEW_HEADING_SPACING)
@@ -220,6 +234,34 @@ class PriceEntry(QWidget):
         column.addLayout(buttons)
         column.addWidget(self.refusal)
         self._fill(self.agent_id)
+
+    def name_for(self, area: str | None) -> None:
+        """Name each field and button of the form with `area`, the name of the Area that holds it.
+
+        Two Areas that show the agent cost View show two forms, and each form
+        keeps the agent picked and the price typed in it. So while another
+        Area shows the View too, each control's name ends with its Area's
+        name, such as "Bottle price, Agent cost 2" (`control_name`,
+        `PL-XV64`). Only a name that differs is written, so a name written
+        again sends a screen reader no change.
+
+        Args:
+            area: The name of the Area that holds the form, or None while no
+                other Area shows the View. Each name is then its label alone,
+                apart from the agent field's (`PRICE_FORM_KIND`).
+        """
+
+        for label, field, text, which in self._fields:
+            label_control(label, field, control_name(text, _joined(which, area)))
+
+        for button, text in (
+            (self.set_button, SET_PRICE_LABEL),
+            (self.remove_button, REMOVE_PRICE_LABEL),
+        ):
+            name = control_name(text, area)
+
+            if button.accessibleName() != name:
+                button.setAccessibleName(name)
 
     @property
     def agent_id(self) -> str:
@@ -459,3 +501,11 @@ def _fill_key(preferences: Preferences, agent_id: str) -> tuple[str, AgentPrice 
     refused = any(entry.agent_id == agent_id for entry in preferences.refused_prices)
 
     return agent_id, preferences.price_for(agent_id), refused
+
+
+def _joined(which: str | None, area: str | None) -> str | None:
+    """Return what tells a field from the others with its label: `which`, then `area`, or None."""
+
+    parts = [part for part in (which, area) if part is not None]
+
+    return ", ".join(parts) if parts else None

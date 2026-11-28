@@ -24,8 +24,19 @@ from PySide6.QtGui import QAccessible, QAccessibleInterface, QColor, QImage
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QScrollArea, QSlider, QWidget
 
+from anesthesia_sim.app.agent_cost import UNIT_CHOICE_LABEL
+from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import AGENT_SELECTOR_LABEL, control_name, new_case_question
+from anesthesia_sim.app.qt_agent_price import (
+    AGENT_FIELD_LABEL,
+    APPLIES_ON_FIELD_LABEL,
+    BOTTLE_PRICE_FIELD_LABEL,
+    BOTTLE_VOLUME_FIELD_LABEL,
+    CURRENCY_FIELD_LABEL,
+    PRICE_FORM_KIND,
+    SET_PRICE_LABEL,
+)
 from anesthesia_sim.app.qt_widgets import FocusRing, NewCaseDialog, SelectorComboBox, label_control
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
@@ -36,7 +47,15 @@ from anesthesia_sim.app.theme import (
     PANEL,
     PANEL_RADIUS,
 )
-from anesthesia_sim.app.view_registry import REGISTERED
+from anesthesia_sim.app.view_registry import (
+    AGENT_COST,
+    COMPARTMENT_SCHEMATIC,
+    CONCENTRATION_CHART,
+    REGISTERED,
+    WASH_IN,
+)
+from anesthesia_sim.layout.model import MAIN_WINDOW
+from anesthesia_sim.layout.tree import ViewKind, areas_in
 from tests.integration.simulation_view.simulation_view_support import (
     EVERY_REGISTERED_VIEW_SIZE_PX,
     _branched_case,
@@ -277,17 +296,48 @@ def test_each_selector_is_named_by_its_shown_label_on_every_platform(
 #: The controls a reader can reach that a screen reader is told are for the
 #: same thing, each against its reason. The test below checks the table in both
 #: directions: a shared name that no entry lists fails, and so does an entry
-#: that no two controls share any more.
-SHARED_PURPOSES: Final[dict[tuple[str, str], str]] = {
-    ("Client", "Area corner"): (
-        "each Area's corners are named alike, and the Area menu each one opens names its "
-        "Area; naming each corner with its Area is PL-XV64's work"
-    ),
-    ("Grip", "Area border"): (
-        "each border between two Areas is named alike; naming each with the Areas it "
-        "divides is PL-XV64's work"
-    ),
-}
+#: that no two controls share any more. It is empty since `PL-XV64` named each
+#: Area's corners and borders with the Area.
+SHARED_PURPOSES: Final[dict[tuple[str, str], str]] = {}
+
+#: The kinds of View that draw against an axis, whose controls each name their
+#: plot. A split Area of one of these shows two plots with the same controls.
+#: A copy of any other kind shows the same shared state as the original, so its
+#: controls are "actually identical", which the ARIA Authoring Practices Guide
+#: lets share a name (`PL-XV64`).
+PLOT_KINDS: Final = (CONCENTRATION_CHART, WASH_IN, COMPARTMENT_SCHEMATIC)
+
+
+def _split_each_area_of(
+    view: SimulationView, application: QApplication, kinds: tuple[ViewKind, ...]
+) -> None:
+    """Split each Area that shows one of `kinds` from its Area menu, as a reader does.
+
+    Each half is checked to draw its View, because a View that its Area is too
+    small for is hidden, and the walk would then not reach its controls.
+    """
+
+    layout = view.layout_container
+    split = [
+        area for area in areas_in(layout.model.windows[MAIN_WINDOW].tree) if area.view in kinds
+    ]
+    assert sorted(area.view for area in split) == sorted(kinds)
+
+    for area in split:
+        (operation,) = [
+            entry for entry in layout.operations(area.id) if entry.label == SPLIT_SIDE_BY_SIDE_LABEL
+        ]
+        layout.perform(operation)
+        _settle(application)
+
+    view.present(False)
+    _settle(application)
+    shown = [area for area in areas_in(layout.model.windows[MAIN_WINDOW].tree)]
+
+    assert len(shown) == len(REGISTERED) + len(kinds)
+    for area in shown:
+        frame = layout.frame(area.id)
+        assert frame.content.isVisible(), f"{area.view} in Area {area.id} is not drawn"
 
 
 def _compared_dashboard(application: QApplication, runs: int) -> SimulationView:
@@ -329,9 +379,10 @@ def _reachable_purposes(window: QWidget) -> list[tuple[str, str]]:
     ]
 
 
+@pytest.mark.parametrize("split", [False, True], ids=["each View once", "each plot split"])
 @pytest.mark.parametrize("runs", [1, 2], ids=["one run", "two runs compared"])
 def test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing(
-    application: QApplication, runs: int
+    application: QApplication, runs: int, split: bool
 ) -> None:
     """`PL-YSFX`: each control a screen reader reaches has a name no other control of its role has.
 
@@ -343,9 +394,18 @@ def test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing(
     runs gave two selectors called "Playback" and two Start buttons, and the
     two plots gave two selectors called "Time base". The walk covers every kind
     of View, so a control added later that repeats another's name fails here.
+
+    The walk is taken again after each Area that draws a plot is split, so
+    that two copies of each plot are on screen. Before `PL-XV64`, the 32
+    corners were each "Area corner", the 7 borders each "Area border", and a
+    split Area's two halves gave two "Time base, Concentrations" selectors.
     """
 
     view = _compared_dashboard(application, runs)
+
+    if split:
+        _split_each_area_of(view, application, PLOT_KINDS)
+
     counts = Counter(_reachable_purposes(view))
     shared = {purpose for purpose, count in counts.items() if count > 1}
     view.close()
@@ -382,6 +442,87 @@ def test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot(
         "Show an earlier part of the run, Concentrations",
         "Show an earlier part of the run, Wash-in",
     ]
+
+
+def test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number(
+    application: QApplication,
+) -> None:
+    """`PL-XV64`: a split Area's halves name themselves, their corners and plot controls by number.
+
+    The Areas showing one kind are numbered in reading order, as VS Code
+    numbers its editor groups. Each name still starts with the label shown,
+    and the legend's boxes add the number only while two concentration
+    charts are on screen.
+    """
+
+    view = _compared_dashboard(application, 1)
+    _split_each_area_of(view, application, PLOT_KINDS)
+    purposes = [purpose for _, purpose in _reachable_purposes(view)]
+    view.close()
+
+    def starting(label: str) -> list[str]:
+        return sorted(purpose for purpose in purposes if purpose.startswith(label))
+
+    assert starting("Time base") == [
+        "Time base, Concentrations 1",
+        "Time base, Concentrations 2",
+        "Time base, Wash-in 1",
+        "Time base, Wash-in 2",
+    ]
+    assert starting("Axis top") == [
+        "Axis top, Compartment schematic 1",
+        "Axis top, Compartment schematic 2",
+        "Axis top, Concentrations 1",
+        "Axis top, Concentrations 2",
+    ]
+    assert starting("Draw the Alveolar compartment") == [
+        "Draw the Alveolar compartment on the chart, Concentrations 1",
+        "Draw the Alveolar compartment on the chart, Concentrations 2",
+    ]
+    assert starting("Concentration chart legend") == [
+        "Concentration chart legend, Concentrations 1",
+        "Concentration chart legend, Concentrations 2",
+    ]
+    assert starting("Area corner, Wash-in 2") == [
+        "Area corner, Wash-in 2, bottom left",
+        "Area corner, Wash-in 2, bottom right",
+        "Area corner, Wash-in 2, top left",
+        "Area corner, Wash-in 2, top right",
+    ]
+    assert "Area border, Concentrations 1" in purposes
+    assert {"Concentrations 1", "Concentrations 2", "Parameters"} <= set(purposes)
+
+
+def test_each_half_of_a_split_agent_cost_area_names_its_own_price_form(
+    application: QApplication,
+) -> None:
+    """`PL-XV64`: each copy of the price form holds what was typed in it, so each is named apart.
+
+    The unit selector acts on the reader's one set of preferences, so its two
+    copies are the same control twice and keep one name. Before this, both
+    forms' fields and buttons had the same names, such as two "Bottle price"
+    fields and two "Set price" buttons.
+    """
+
+    view = _compared_dashboard(application, 1)
+    _split_each_area_of(view, application, (AGENT_COST,))
+    purposes = [purpose for _, purpose in _reachable_purposes(view)]
+    view.close()
+
+    for label in (
+        f"{AGENT_FIELD_LABEL}, {PRICE_FORM_KIND}",
+        BOTTLE_PRICE_FIELD_LABEL,
+        BOTTLE_VOLUME_FIELD_LABEL,
+        CURRENCY_FIELD_LABEL,
+        APPLIES_ON_FIELD_LABEL,
+        SET_PRICE_LABEL,
+    ):
+        assert sorted(purpose for purpose in purposes if purpose.startswith(label)) == [
+            f"{label}, Agent cost 1",
+            f"{label}, Agent cost 2",
+        ]
+
+    assert purposes.count(UNIT_CHOICE_LABEL) == 2
 
 
 def test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn(

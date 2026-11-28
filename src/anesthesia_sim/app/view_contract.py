@@ -134,6 +134,18 @@ in its rectangle that states what is absent, and never leave it blank. The
 charts' advisories, such as `dashboard_frame.NO_TRACES_SHOWN_TEXT`, are the
 pattern.
 
+**A View is told the name of the Area that holds it** (`PL-XV64`). A
+screen-reader user hears only a control's name, so two copies of one View
+would otherwise offer two controls with the same name. The container works
+out each Area's name, an `AreaName`, after every change of the layout, and
+hands it to the View through `View.name_controls`. A View names each control
+beside its plot with that name, such as "Time base, Concentrations 2". A form
+whose copies each keep what was typed in them is named in the same way, such
+as the agent cost View's price form. Every other control keeps its name,
+because each of its copies acts on the same shared state, and the W3C's ARIA
+Authoring Practices Guide lets controls that are "actually identical" share a
+name.
+
 **What is not the View's.** The container draws the Area's header, with the
 View's title and the chooser (Q11, `app/area_layout.py`). No View is barred
 from an Area that a reader can close, because the values that must always be
@@ -173,6 +185,7 @@ from anesthesia_sim.layout.run_identity import RunId
 __all__ = [
     "STATE_VERSION_KEY",
     "UNREADABLE_STATE_TEXT",
+    "AreaName",
     "BranchPresentation",
     "CasePresentation",
     "FrameRequest",
@@ -207,6 +220,60 @@ class ViewScope(Enum):
 
     RUNS = "runs"
     CASE = "case"
+
+
+@dataclass(frozen=True, slots=True)
+class AreaName:
+    """What a screen reader calls an Area: its View's title, and its number where the title repeats.
+
+    Where two or more Areas in the window show the same kind of View, each is
+    numbered among them, counted in reading order through the layout, as VS
+    Code numbers its editor groups: "Concentrations 1" and "Concentrations 2"
+    (`PL-XV64`). An Area that is the only one of its kind has no number, and
+    its name is the title alone.
+
+    Attributes:
+        title: The View's title, as the Area's View chooser shows it.
+        number: The Area's place among the Areas that show the same kind of
+            View, counted from 1, or None where no other Area shows that kind.
+
+    Raises:
+        ValueError: `title` is empty, or `number` is less than 1.
+        TypeError: `number` is not an `int`, or is a `bool`.
+    """
+
+    title: str
+    number: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.title:
+            raise ValueError("an Area's name needs its View's title, and the title given is empty")
+
+        if self.number is None:
+            return
+
+        if isinstance(self.number, bool) or not isinstance(self.number, int):
+            raise TypeError(f"an Area's number is an int, not {type(self.number).__name__}")
+
+        if self.number < 1:
+            raise ValueError(f"an Area's number counts from 1, and {self.number} was given")
+
+    @property
+    def text(self) -> str:
+        """The name a screen reader says, such as "Concentrations 2" or "Wash-in"."""
+
+        return self.title if self.number is None else f"{self.title} {self.number}"
+
+    @property
+    def among_copies(self) -> str | None:
+        """The name where another Area shows the same kind of View, or None where none does.
+
+        A control whose label no other kind of View shows adds this to its
+        name, so that it is told apart from the same control in a copy of its
+        View, and keeps its own name while its View is drawn once.
+        """
+
+        return None if self.number is None else self.text
 
 
 @dataclass(frozen=True, slots=True)
@@ -451,6 +518,17 @@ class View(Protocol):
 
         A whole-interface test reads every label and button from the widget
         tree, so this is the text such a walk cannot find.
+        """
+        ...
+
+    def name_controls(self, area: AreaName) -> None:
+        """Name with `area` each control that two copies of this View would otherwise share.
+
+        `area` is the name of the Area that holds the View. The adapter calls
+        this method after every change of the layout, because a split, a join,
+        a swap, a close or a change of View can change an Area's number
+        (`PL-XV64`). A View whose controls all act on shared state does
+        nothing, because two copies of such a control are the same control.
         """
         ...
 

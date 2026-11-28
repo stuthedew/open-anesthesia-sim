@@ -142,6 +142,7 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_trace_legend_label,
     concentration_chart_description,
     concentration_chart_name,
+    control_name,
     trace_legend_label,
 )
 from anesthesia_sim.app.display_units import DisplayUnit
@@ -2866,7 +2867,6 @@ class TraceLegend(QWidget):
                 max(LEGEND_SWATCH_HEIGHT, ceil(style.stroke_width)),
             )
             box = QCheckBox(trace_legend_label(style))
-            box.setAccessibleName(TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label))
             box.setChecked(True)
             box.setStyleSheet(foreground_stylesheet(INK))
             # The stylesheet sets the label's colour. The *indicator* is drawn
@@ -2972,7 +2972,26 @@ class TraceLegend(QWidget):
         self._showing = False
         # What each drawn run is called, from the last `show_run_names`.
         self._run_names: tuple[str, ...] = ()
+        self.name_boxes(None)
         self.show_selection(INITIAL_COMPARTMENT_SELECTION)
+
+    def name_boxes(self, which: str | None) -> None:
+        """Name each compartment's box for a screen reader, adding `which` where it is not None.
+
+        `which` names the Area that holds the chart, where another Area shows
+        a concentration chart too, such as "Concentrations 2" (`PL-XV64`).
+        Only a name that differs is written, so a screen reader is sent no
+        change while the Area keeps its name.
+        """
+
+        for style in COMPARTMENT_TRACES:
+            box = self._boxes[style.quantity]
+            name = control_name(
+                TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label), which
+            )
+
+            if box.accessibleName() != name:
+                box.setAccessibleName(name)
 
     @property
     def shown(self) -> tuple[RecordedQuantity, ...]:
