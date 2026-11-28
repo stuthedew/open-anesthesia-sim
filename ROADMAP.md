@@ -1099,7 +1099,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a user cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 211 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 212 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1312,6 +1312,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-R8JK (M) Make patient age an input for adults, 18 years and older, refusing any age outside its sourced range with a notice that names the limit and the value
 - PL-XXWY (M) Re-run the wash-in, elimination and 24-hour washout comparisons with measured human data on the five-compartment model, beside the four-compartment results, and check the new equations against an independent calculation
 - PL-Z2L5 (M) Show the intertissue compartment the way Eger and Saidman draw it, and label its tension and amount apart from bulk fat
+- PL-H100 (M) On a Mac, the Maintenance Workspace at 1366 by 768 leaves each container's share line cut through at the schematic's lower edge and its share bar out of view
 
 ### Captures after the cut
 
@@ -1561,6 +1562,14 @@ whatever its date, and a deferred one stays written on the list. They are
 `PL-XXWY` and `PL-Z2L5`. Each describes work not yet built, so no user sees a
 wrong value from it now, and each item's `deferred-from` records that check,
 made against `009da829`.
+
+**`PL-H100` (`safety`) joined the frozen list on 2026-11-28, after the
+freeze.** The owner's test drive found it, run on a GitHub macOS runner in
+macOS's own style and font. At 1366 by 768 the Maintenance Workspace leaves
+each container's share line cut through at the schematic's lower edge, so a
+value there can look like another. The project owner chose to fix it before
+v0.7.0 is cut (project owner, 2026-11-28, over cutting now and fixing it in a
+later release).
 
 ### Required scope
 
