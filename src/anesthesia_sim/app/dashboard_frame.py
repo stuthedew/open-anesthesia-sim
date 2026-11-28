@@ -494,6 +494,16 @@ RESET_SETTING_WAY_OUT_TEXT: Final = "Reset to start a new run, which keeps every
 # a refusal that a setting can repair is ever added to that record, this text
 # must change with it.
 #
+# Closing the application can clear what Copy details copied. On X11 an
+# application serves the clipboard it owns (Qt 6, `QClipboard`, "Notes for X11
+# Users"), and an owner that exits with no clipboard manager running "should
+# simply exit" (freedesktop.org, Clipboard Manager Specification, section
+# "Responsibilities of clipboard owners"; both read 2026-11-27). So the text
+# says to paste the details before closing, as NUREG-0700 Rev. 3 guideline
+# 2.7.5-2, p. 2-89, asks: "For conditions that may require special user
+# attention to protect against information loss, an explicit alert or advisory
+# message, or both, should prompt appropriate user action" (`PL-PYWF`).
+#
 # Which wording states the refusal depends on the banner's reason. On a run
 # that had not failed, or whose recorded failure is this same refusal, the
 # halt's reason is the refusal, so the exit refers to it. On a run that had
@@ -502,9 +512,16 @@ RESET_SETTING_WAY_OUT_TEXT: Final = "Reset to start a new run, which keeps every
 # the form in which the failure line gives a reason (`PL-M4M0`).
 REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {way_out}"
 REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {reason}. {way_out}"
+# The way out names the two buttons in the order the user presses them,
+# because the copy button stays hidden until the details are shown
+# (`FailureDetails` in `app/qt_widgets.py`). It reads their labels, so a
+# renamed button renames them here too.
 REFUSED_RESET_WAY_OUT_TEXT: Final = (
     "No setting can repair this, because only a fault in the simulator causes it. "
-    "Close and reopen the application to start a new run."
+    f"To keep the failure details, use {SHOW_FAILURE_DETAILS_LABEL}, then "
+    f"{COPY_FAILURE_DETAILS_LABEL}, and paste them elsewhere before closing, "
+    "because closing the application can clear the copy. "
+    "Then close and reopen the application to start a new run."
 )
 
 # What the chart says when a reader has unchecked every compartment. A plot
@@ -1306,7 +1323,9 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # to say which condition stopped it: an inspired concentration too low to
 # divide by, alveolar ventilation at zero, or an alveolar concentration above
 # the inspired. A reader shown only an empty plot could not tell them apart.
-# Each sentence names the condition and not a cause. The inspired
+# Each sentence names the condition and not a cause, and all three use one
+# construction, the condition and then "so" and the verdict (NUREG-0700 Rev. 3,
+# guideline 2.7.1-2, p. 2-85, `PL-8R2Y`). The inspired
 # concentration also falls that low during a washout, while the patient still
 # holds agent (`PL-P3ZL`). The sentence for a ratio above 1 does not say that
 # the patient returns agent or that the run is past equilibrium, for the same
@@ -1317,7 +1336,9 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # A paused run can stand on a state reached during apnoea while its control
 # already shows ventilation restored, and both stay true until the next step.
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
-WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
+WASH_IN_NOT_DEFINED_TEXT: Final = (
+    "The inspired concentration is too low to divide by, so the ratio is not defined."
+)
 WASH_IN_ELIMINATION_TEXT: Final = (
     "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
 )

@@ -79,6 +79,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
+    COMPARTMENT_NAMES,
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
     DrawnWindow,
@@ -3251,3 +3252,9 @@ def test_a_compared_run_previews_from_its_own_reach_and_the_window_centres_on_it
     assert preview.region_s[0] == pytest.approx(360.0)
     assert preview.times_s[0] == pytest.approx(360.0)
     assert (frame.start_s, frame.stop_s) == pytest.approx((0.0, 1800.0))
+
+
+def test_each_trace_is_named_as_the_one_record_of_compartment_names_names_it() -> None:
+    """`PL-5867`: the legend's names are the ones a refused mark's notice reads."""
+
+    assert {style.quantity: style.label for style in COMPARTMENT_TRACES} == dict(COMPARTMENT_NAMES)

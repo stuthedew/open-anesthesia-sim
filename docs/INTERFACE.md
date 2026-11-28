@@ -1551,7 +1551,12 @@ failures, the banner names Reset as the way to recover. For a refused Reset, it
 says instead that Reset was refused, and that no setting can repair the run,
 because only a fault in the simulator causes the refusal. A new cardiac output
 cannot repair it, because it scales every flow by one factor. The banner also
-says that closing and reopening the application starts a new run (`PL-01GY`).
+says that closing and reopening the application starts a new run (`PL-01GY`),
+and to keep the failure details first: Show details, then Copy details, then
+paste them elsewhere. It names both buttons, in the order they are pressed,
+because Copy details is hidden until the details are shown. On X11 with no
+clipboard manager running, closing the application clears what it copied
+(`PL-PYWF`).
 It names neither Reset nor a dial as the way to recover. If the run had already
 failed from another cause, the interface
 keeps that earlier failure as the reason, and the banner's advice on recovery
