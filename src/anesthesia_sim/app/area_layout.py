@@ -110,6 +110,7 @@ for v0.6.0").
 from __future__ import annotations
 
 import math
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
@@ -149,6 +150,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
+from anesthesia_sim.app.dashboard_frame import control_name
 from anesthesia_sim.app.pinned_heading import (
     HeadingScroll,
     PinnedHeadingSection,
@@ -183,6 +185,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app.view_contract import (
+    AreaName,
     CasePresentation,
     PreferencesInForce,
     SavedState,
@@ -502,6 +505,8 @@ class AreaLayout(QWidget):
         # width at which an Area is drawn.
         self._notice_probe = AreaNotice("", "")
         self._frames: dict[AreaId, AreaFrame] = {}
+        # Each Area's name for a screen reader, as the last build worked it out.
+        self._names: dict[AreaId, AreaName] = {}
         self._splitters: dict[tuple[int, ...], _AreaSplitter] = {}
         self._hovered: _AreaHandle | None = None
         self._border_drag: _BorderDrag | None = None
@@ -775,6 +780,9 @@ class AreaLayout(QWidget):
 
         model = self._model
         model.area(area_id)
+        # Each other Area is named as the screen reader hears it, so two Areas
+        # that show one kind of View are told apart here too (`PL-XV64`).
+        names = _area_names(model.windows[MAIN_WINDOW].tree, self._title_of)
         entries = [
             self._split_operation(area_id, Orientation.ROW, SPLIT_SIDE_BY_SIDE_LABEL),
             self._split_operation(area_id, Orientation.COLUMN, SPLIT_STACKED_LABEL),
@@ -782,7 +790,7 @@ class AreaLayout(QWidget):
         neighbours = model.neighbours(area_id)
 
         for neighbour in neighbours:
-            label = f"{self._title(neighbour.area_id)}, {_SIDE_WORDS[neighbour.side]}"
+            label = f"{names[neighbour.area_id].text}, {_SIDE_WORDS[neighbour.side]}"
             entries.append(
                 _attempt(label, JOIN_WITH_LABEL, partial(model.join, area_id, neighbour.area_id))
                 if neighbour.whole_edge
@@ -795,7 +803,7 @@ class AreaLayout(QWidget):
             if area.id == area_id:
                 continue
 
-            label = f"{self._title(area.id)}, {_relative_place(own, model.rectangle(area.id))}"
+            label = f"{names[area.id].text}, {_relative_place(own, model.rectangle(area.id))}"
             entries.append(_attempt(label, SWAP_WITH_LABEL, partial(model.swap, area_id, area.id)))
 
         entries.append(self._close_operation(area_id, neighbours))
@@ -1075,10 +1083,9 @@ class AreaLayout(QWidget):
 
         return SplitPreview(area_id, orientation, at, split if held else None)
 
-    def _title(self, area_id: AreaId) -> str:
-        """Name the View an Area shows by its registry title, or by its tag if no entry has it."""
+    def _title_of(self, view: ViewKind) -> str:
+        """Name a kind of View by its registry title, or by its tag if no entry has it."""
 
-        view = self._model.area(area_id).view
         entry = self._registered.get(view)
 
         return view if entry is None else entry.title
@@ -1300,7 +1307,9 @@ class AreaLayout(QWidget):
         self._border_drag = None
         self._keyed = None
         self._at_minimum = False
-        root = self._widget_for(self._model.windows[MAIN_WINDOW].tree, ())
+        tree = self._model.windows[MAIN_WINDOW].tree
+        self._names = _area_names(tree, self._title_of)
+        root = self._widget_for(tree, ())
 
         for area_id, (kind, view) in self._previous_views.items():
             if not any(view is kept for _, kept in self._views.values()):
@@ -1343,8 +1352,15 @@ class AreaLayout(QWidget):
                 borders=self.borders,
                 focus_border=self.focus_border,
             )
-            frame = AreaFrame(node.id, chooser, self._content_for(node), menu=menu, drags=self)
+            name = self._names[node.id]
+            frame = AreaFrame(
+                node.id, chooser, self._content_for(node), name=name, menu=menu, drags=self
+            )
             self._frames[node.id] = frame
+            drawn = self._views.get(node.id)
+
+            if drawn is not None:
+                drawn[1].name_controls(name)
 
             return frame
 
@@ -1353,6 +1369,20 @@ class AreaLayout(QWidget):
 
         for index, child in enumerate(node.children):
             splitter.addWidget(self._widget_for(child, path + (index,)))
+
+        # Qt keeps a handle before every child and hides the first one, so the
+        # handle at `index` is the border after the child before it. That
+        # child is the pane whose size the border sets, which the W3C's
+        # "Window Splitter" pattern calls the primary pane and names the
+        # border after. The name says which side of the pane the border lies
+        # on, so a border after a pane of two Areas is not taken for the
+        # border between them (`PL-XV64`).
+        for index in range(1, splitter.count()):
+            pane = _listed(
+                [self._names[area.id].text for area in areas_in(node.children[index - 1])]
+            )
+            place = f"{_BORDER_PLACE_WORDS[node.orientation]} {pane}"
+            splitter.handle(index).setAccessibleName(control_name(_BORDER_ACCESSIBLE_NAME, place))
 
         return splitter
 
@@ -2381,6 +2411,7 @@ class AreaFrame(QFrame):
         content: QWidget,
         parent: QWidget | None = None,
         *,
+        name: AreaName,
         menu: AreaMenu | None = None,
         drags: AreaLayout | None = None,
     ) -> None:
@@ -2435,11 +2466,6 @@ class AreaFrame(QFrame):
         outer.setSpacing(0)
         outer.addWidget(self.body)
         self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
-
-        if self.view_scroll is not None:
-            # The box takes the focus so the keyboard can scroll it, so a
-            # screen reader names it by the View it holds (`PL-RK9Z`).
-            self.view_scroll.setAccessibleName(chooser.text())
         # A row that the View must keep on screen wherever any of the View is,
         # such as the wash-in plot's statement that it is modelled, sits above the
         # scroll box rather than in it (`PL-26BZ`).
@@ -2464,6 +2490,26 @@ class AreaFrame(QFrame):
 
         if drags is not None:
             self.corners = tuple(_CornerZone(self, drags, corner) for corner in _Corner)
+
+        self._name_area(name)
+
+    def _name_area(self, name: AreaName) -> None:
+        """Name this Area's View chooser, its View's scroll box and its corners with `name`.
+
+        The chooser shows the View's title, and its name adds the Area's
+        number where another Area shows the same kind of View, so the name
+        still starts with the text shown (`PL-XV64`). The scroll box takes
+        the focus so the keyboard can scroll it, so a screen reader names it
+        by its Area too (`PL-RK9Z`).
+        """
+
+        self.chooser.setAccessibleName(name.text)
+
+        if self.view_scroll is not None:
+            self.view_scroll.setAccessibleName(name.text)
+
+        for zone in self.corners:
+            zone.name_for(name)
 
     def _open_menu(self, at: QPoint) -> None:
         """Open the Area menu at `at`, in the header's coordinates."""
@@ -2849,14 +2895,22 @@ def _handle_layout_requests() -> None:
 
 
 # What assistive technology says a border is, and how the keyboard moves it.
+# The name is followed by where the border lies against the pane before it,
+# as `_widget_for` writes it, such as "Area border, right of Parameters" or
+# "Area border, below Concentrations 1" (`PL-XV64`). The words "Area border"
+# come first, because Qt reports a border with the role Grip, and that role
+# does not say that the border resizes Areas.
 _BORDER_ACCESSIBLE_NAME: Final = "Area border"
+# Where a border lies against the pane before it, for each way a split divides.
+_BORDER_PLACE_WORDS: Final = {Orientation.ROW: "right of", Orientation.COLUMN: "below"}
 _BORDER_ACCESSIBLE_DESCRIPTION: Final = (
     "The arrow keys move it. Shift moves it alone. Escape puts it back."
 )
 # What assistive technology says a corner is, and the keyboard's way to do
 # what dragging it does. A press on a corner gives it the focus, so Escape
 # can cancel the drag, and a screen reader then names what has the focus
-# (`PL-RK9Z`).
+# (`PL-RK9Z`). The name is followed by the Area's name and the corner's
+# place, such as "Area corner, Concentrations 2, top left" (`PL-XV64`).
 _CORNER_ACCESSIBLE_NAME: Final = "Area corner"
 _CORNER_ACCESSIBLE_DESCRIPTION: Final = (
     "Drag it to split or join the Area. "
@@ -3137,6 +3191,12 @@ class _Corner(Enum):
     def bottom(self) -> bool:
         return self.value[1]
 
+    @property
+    def place(self) -> str:
+        """Where the corner lies, in the words a screen reader says, such as "top left"."""
+
+        return f"{'bottom' if self.bottom else 'top'} {'right' if self.right else 'left'}"
+
 
 class _CornerZone(QWidget):
     """A corner of an Area that a reader drags to split or join it (`PL-30L5` Q1).
@@ -3158,7 +3218,7 @@ class _CornerZone(QWidget):
         self.setFixedSize(AREA_CORNER_ZONE, AREA_CORNER_ZONE)
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
-        self.setAccessibleName(_CORNER_ACCESSIBLE_NAME)
+        # The frame names the corner once it is built (`name_for`).
         self.setAccessibleDescription(_CORNER_ACCESSIBLE_DESCRIPTION)
         self.place()
         self.raise_()
@@ -3166,6 +3226,18 @@ class _CornerZone(QWidget):
     @property
     def grip_shown(self) -> bool:
         return self._grip_shown
+
+    def name_for(self, area: AreaName) -> None:
+        """Name this corner with its Area's name and its place: "Area corner, Wash-in, top left".
+
+        The four corners of one Area are not the same control, because a
+        drag from each joins toward different neighbours, so each says where
+        it lies.
+        """
+
+        self.setAccessibleName(
+            control_name(_CORNER_ACCESSIBLE_NAME, f"{area.text}, {self.corner.place}")
+        )
 
     def set_grip_shown(self, shown: bool) -> None:
         if shown != self._grip_shown:
@@ -3352,6 +3424,47 @@ def _drawable(model: LayoutModel) -> LayoutModel:
         )
 
     return model
+
+
+def _area_names(tree: Node, title: Callable[[ViewKind], str]) -> dict[AreaId, AreaName]:
+    """Return each Area's name for a screen reader, keyed by its id (`PL-XV64`).
+
+    An Area is named by the title of its View, which `title` returns for the
+    View's kind. Where two or more Areas show the same kind of View, each is
+    numbered among them in the order `areas_in` walks the tree: the left or
+    upper part of each split, with every Area inside it, before the next part.
+    VS Code numbers its editor groups by the same walk of its grid. So the
+    numbers follow the layout rather than the Areas' ids, and every split,
+    join, swap, close and change of View works them out again.
+    """
+
+    areas = tuple(areas_in(tree))
+    shown = Counter(area.view for area in areas)
+    counted: Counter[ViewKind] = Counter()
+    names: dict[AreaId, AreaName] = {}
+
+    for area in areas:
+        if shown[area.view] == 1:
+            names[area.id] = AreaName(title(area.view))
+        else:
+            counted[area.view] += 1
+            names[area.id] = AreaName(title(area.view), counted[area.view])
+
+    return names
+
+
+def _listed(names: Sequence[str]) -> str:
+    """Join `names` as a list in words: "Parameters and Bookmarks", or "A, B, and C".
+
+    A list of three or more takes a comma before its last "and", as the
+    Google developer documentation style guide asks ("Commas", section
+    "Serial commas").
+    """
+
+    if len(names) <= 2:
+        return " and ".join(names)
+
+    return f"{', '.join(names[:-1])}, and {names[-1]}"
 
 
 def _shape(node: Node) -> tuple[object, ...]:

@@ -4524,17 +4524,13 @@ add the run while two runs are compared, such as "Playback, Run 2" and
 reader while it still shows its own text, because Linux and macOS take what a
 selector is for from that label. Each name starts with the label shown, which
 the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
-The W3C's ARIA Authoring Practices Guide asks that controls with the same
-role have different names unless they are identical. So no two controls or
-pictures that a reader can reach share a name, in any shipped Workspace, with
-one run or with two compared (`PL-9XGQ`), apart from three cases that are
-still to be named apart (`PL-XV64`): the Area corners, the Area borders, and the controls
-of two Areas that show the same kind of View, such as the two halves of a
-split Concentrations Area. A scroll box that
-takes the focus so that the keyboard can scroll it is named by the heading
-above it, or by what it holds, such as "Concentration chart legend". An Area's
-corner is named "Area corner", and its description says that the Area menu
-does from the keyboard what a drag on the corner does
+The W3C's ARIA Authoring Practices Guide asks for "unique names for elements
+with the same role unless the elements are actually identical". So no two
+controls or pictures that a reader can reach share a name, in any shipped
+Workspace, with one run or with two compared (`PL-9XGQ`), apart from the
+identical copies that the next paragraph describes. A scroll box that takes
+the focus so that the keyboard can scroll it is named by the heading above
+it, or by what it holds, such as "Concentration chart legend"
 (`test_every_control_a_reader_can_reach_says_what_it_is_for`,
 `test_each_selector_is_named_by_its_shown_label_on_every_platform`,
 `test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
@@ -4542,6 +4538,76 @@ does from the keyboard what a drag on the corner does
 `test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`
 and `test_a_name_that_does_not_start_with_the_shown_label_is_refused` in
 `tests/integration/test_keyboard_focus.py`).
+
+**Each Area, and each control that belongs to one Area, is named with the
+Area** (`PL-XV64`). An Area's name is the title of the View it shows, such as
+"Concentrations". Where two or more Areas show the same kind of View, each
+name adds the Area's number among them, such as "Concentrations 1" and
+"Concentrations 2". The Areas are counted through the layout's splits: the
+left or upper part of each split, with every Area inside it, is counted before
+the next part. VS Code numbers its editor groups in the same way. The names
+are worked out again after every change to the layout.
+
+1. The View chooser and the scroll box of each Area carry the Area's name.
+2. Each corner is named "Area corner", then the Area and the corner's place,
+   such as "Area corner, Wash-in 2, top left". Its description says that the
+   Area menu does from the keyboard what a drag on the corner does. Qt gives
+   a corner the generic Client role, so its name is what tells a screen-reader
+   user that it is a corner.
+3. Each border between two Areas is named "Area border", then where it lies
+   against the Areas before it, such as "Area border, right of Parameters",
+   or "Area border, below Concentrations and Wash-in" where the pane above it
+   holds two Areas. The place word keeps a border after a pane of two Areas
+   from being taken for the border between them. Three or more Areas are
+   listed with a comma before the "and", as the Google developer
+   documentation style guide asks. The W3C's window splitter pattern gives a
+   splitter "an accessible name that matches the name of the primary pane",
+   the pane whose size it sets.
+4. Each control beside a plot adds the Area's name, so the two halves of a
+   split Concentrations Area show "Time base, Concentrations 1" and "Time
+   base, Concentrations 2". The name tells a screen-reader user which plot a
+   control sits beside, as its place on screen tells a sighted user. So the
+   axis top adds it too, and so do the legend's boxes while two Areas show
+   the chart, although both act on state that every chart shares: a change
+   to either in one half changes the other half too.
+5. Each legend appears in one kind of View only. So the concentration
+   chart's legend boxes, and the scroll box of each legend, add the Area's
+   name only while two Areas show that View, such as "Concentration chart
+   legend, Concentrations 2".
+6. Each plot, and each run's schematic, is named by what it shows, so two
+   copies of one picture would have one name. So the picture's name adds the
+   Area's name while two Areas show that kind of View, such as "Compartment
+   schematic, Run 2, at 10m of simulated time, Compartment schematic 2".
+7. Each copy of the agent cost View's price form keeps the agent picked and
+   the price typed in it. So while two Areas show that View, each form's
+   fields and buttons add the Area's name, such as "Bottle price, Agent cost
+   2".
+8. The Area menu's "Join with" and "Swap with" entries name each other Area
+   by its Area name, so two neighbours that show one kind of View are told
+   apart, such as "Concentrations 2, on the right".
+
+The other controls of the Views without a plot act on state that all copies
+of the View share, such as a setting's slider or the unit the agent cost is
+shown in. So two copies of one of those controls do the same thing, as two
+links to one place do, and they keep one name. The Authoring Practices Guide
+gives two such links as its example of identical elements
+(`test_no_two_controls_or_pictures_share_a_name_after_each_plot_area_is_split`,
+`test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number`,
+`test_each_half_of_a_split_agent_cost_area_names_its_own_price_form`,
+`test_an_area_alone_of_its_kind_adds_no_name_to_its_legends_pictures_or_price_form`
+and
+`test_the_schematic_view_renames_the_schematics_it_has_drawn_as_soon_as_it_is_told_its_area`
+in `tests/integration/test_keyboard_focus.py`,
+`test_the_concentration_chart_reports_its_new_name_when_its_area_gains_or_loses_a_number`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`, and
+`test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kind`,
+`test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids`,
+`test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed`,
+`test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma`,
+`test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone`
+and
+`test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make`
+in `tests/integration/test_layout_adapter.py`, and `tests/unit/test_area_name.py`).
 
 **A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
 reader says nothing when a label's text changes, and SC 4.1.3 (Status
