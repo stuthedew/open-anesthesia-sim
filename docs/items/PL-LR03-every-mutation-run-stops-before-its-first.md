@@ -9,6 +9,7 @@ feature: verify-false-reject
 touches: pyproject.toml, uv.lock, docs/mutation-testing.md, tools/diff_mutation.py
 added: 2026-11-28
 closed: 2026-11-28
+pr: 2346
 filed-pr: 2346
 payoff: a session's close-out audit can again say whether the tests catch a mutation of each changed line, instead of rejecting every branch with no answer
 ---
