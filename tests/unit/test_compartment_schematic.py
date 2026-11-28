@@ -26,6 +26,8 @@ from anesthesia_sim.app.compartment_schematic import (
     instant_line,
     scale_caption,
     scale_marks,
+    schematic_description,
+    schematic_name,
     schematic_shown,
 )
 from anesthesia_sim.app.controller import SimulationController
@@ -481,3 +483,106 @@ def test_the_line_over_a_schematic_names_the_run_only_while_runs_are_compared() 
 
     assert instant_line("10m", None) == "At 10m of simulated time"
     assert instant_line("10m", "Run 2") == "Run 2, at 10m of simulated time"
+
+
+def test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instant() -> None:
+    """The name says what the line over the schematic says, after the View's title (`PL-R1M6`)."""
+
+    assert schematic_name("10m", None) == "Compartment schematic, at 10m of simulated time"
+    assert schematic_name("10m", "Run 2") == (
+        "Compartment schematic, Run 2, at 10m of simulated time"
+    )
+
+
+def test_the_schematic_s_description_gives_every_container_s_values_with_their_units() -> None:
+    """At a 4% dial with no ventilation for 30 s, the description gives each container's values.
+
+    Each compartment's amount and share appear nowhere else in text, so a
+    screen reader learns them only here (`PL-R1M6`). The expected circuit
+    tension and amount are the closed form of the module's docstring, and
+    every other container holds nothing, so its share is exactly zero. The
+    units are stated before the values, because each label prints its tension
+    with "%" alone. The circuit is below the 3 MAC top, so no line names a
+    container above the scale.
+    """
+
+    seconds = 30
+    snapshot = _run_with_no_ventilation(4.0, seconds).snapshot()
+    volume_l = float(snapshot.circuit_volume_l)
+    percent = _circuit_percent(4.0, seconds, volume_l)
+    millilitres = volume_l * percent / 100.0 * 1000.0
+    shown = schematic_shown(snapshot, ChartCeiling.STANDARD)
+    lines = schematic_description(shown).splitlines()
+
+    assert lines[:4] == [
+        "Diagram of the six compartments. Ventilation joins the circuit and the alveoli. "
+        "Arterial blood runs from the alveoli to the three tissue groups side by side, their "
+        "venous blood joins in mixed venous blood, and mixed venous blood returns to the "
+        "alveoli.",
+        "Model outputs — not measurements.",
+        "Tensions are in % of 1 atm.",
+        "Amounts are millilitres of vapour at 20 °C and 1 atm.",
+    ]
+    assert lines[4] == SHARE_CAPTION
+    assert lines[5:11] == [
+        f"Circuit: {percent:.2f}%, {round(millilitres, -1):.0f} mL vapour, 100% of agent",
+        *(f"{name}: 0.00%, 0 mL vapour, 0% of agent" for name in _CONTAINER_NAMES[1:]),
+    ]
+    assert shown.scale_caption is not None
+    assert lines[11:] == [" ".join(shown.scale_caption.splitlines())]
+
+
+def test_the_schematic_s_description_names_a_container_above_the_scale() -> None:
+    """At an 8% dial with no ventilation for 10 min, the circuit's line is followed by the warning.
+
+    The circuit is above the 3 MAC top there, as
+    `test_the_schematic_shows_every_part_from_one_snapshot` works out, so the
+    picture draws it full and the description says why. The warning is given
+    on one line, as each caption is.
+    """
+
+    shown = schematic_shown(
+        _run_with_no_ventilation(8.0, 10 * SECONDS_PER_MINUTE).snapshot(), ChartCeiling.STANDARD
+    )
+    lines = schematic_description(shown).splitlines()
+
+    assert lines[5 + len(_CONTAINER_NAMES)] == (
+        "Above the top of the scale: Circuit. Each is drawn full, and its label gives its tension."
+    )
+
+
+def test_a_withheld_schematic_s_text_alternative_says_in_words_that_no_value_is_shown() -> None:
+    """While the values are withheld, each dash the screen shows is said in words.
+
+    On screen a dash says by how it looks that a value is withheld, and a
+    screen reader would read it as a bare dash or as nothing, so the text
+    alternative says it in words, as the readouts do (`PL-R1M6`).
+    """
+
+    lines = schematic_description(WITHHELD_SCHEMATIC).splitlines()
+
+    assert lines[4:] == [
+        f"{name}: percent not shown, amount not shown, share not shown" for name in _CONTAINER_NAMES
+    ]
+    assert schematic_name(WITHHELD_SCHEMATIC.instant, None) == (
+        "Compartment schematic, simulated time not shown"
+    )
+    assert schematic_name(WITHHELD_SCHEMATIC.instant, "Run 2") == (
+        "Compartment schematic, Run 2, simulated time not shown"
+    )
+
+
+def test_a_run_with_no_agent_says_in_words_that_no_share_is_shown() -> None:
+    """With the dial at zero no container holds agent, so each share line says so in words.
+
+    The share caption names the reason, as it does on screen. The tensions and
+    amounts are real zeros and are given as numbers.
+    """
+
+    shown = schematic_shown(_run_with_no_ventilation(0.0, 30).snapshot(), ChartCeiling.STANDARD)
+    lines = schematic_description(shown).splitlines()
+
+    assert lines[4] == NO_AGENT_SHARE_CAPTION
+    assert lines[5:11] == [
+        f"{name}: 0.00%, 0 mL vapour, share not shown" for name in _CONTAINER_NAMES
+    ]

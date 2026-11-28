@@ -1407,9 +1407,12 @@ def test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole(
     every_line = frozenset((index, line) for index in range(6) for line in range(3))
     every_bar = frozenset(range(6))
 
+    source_shown = source.shown
+    assert source_shown is not None
+
     def measured(clear: QRect | None) -> CanvasParts:
         canvas = SchematicCanvas()
-        canvas.show_readings(source.readings, source.marks)
+        canvas.show_schematic(source_shown, None)
         canvas.resize(source.size())
 
         if clear is not None:

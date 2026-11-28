@@ -67,6 +67,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import (
     QAccessible,
     QAccessibleAnnouncementEvent,
+    QAccessibleEvent,
     QAccessibleValueInterface,
     QColor,
     QFont,
@@ -3423,6 +3424,121 @@ def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -
     top = available.y() + (available.height() - height) // 2
 
     return QRect(left, top, width, height)
+
+
+class DescribedGraphic(QWidget):
+    """A widget that draws a picture of values, and gives a screen reader a text alternative for it.
+
+    Qt describes a plain widget as a client area, which VoiceOver on macOS
+    passes over, and nothing a widget paints reaches assistive technology. So
+    each such widget reports the role of a graphic, which AT-SPI, UI
+    Automation and macOS each report as an image, with a short name and a long
+    description. That pair is the text alternative that WCAG 2.2 SC 1.1.1 asks
+    of a chart or a diagram (`PL-T9RB`, `PL-R1M6`). A subclass writes both from
+    what it last drew, in `graphic_name` and `graphic_description`, and both
+    are read when a screen reader asks for them.
+
+    A screen reader that keeps the texts it has read, as the AT-SPI client
+    library on Linux does, reads them again only when told that they changed.
+    So a subclass calls `report_text_changes` once at the end of its own
+    `__init__`, and again after each draw.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        _install_graphic_accessibility()
+        # The name and description last reported, or None before the first.
+        self._reported_texts: tuple[str, str] | None = None
+
+    def graphic_name(self) -> str:
+        """Return the short text alternative, which says what the picture shows.
+
+        Raises:
+            NotImplementedError: The subclass does not define its name.
+        """
+
+        raise NotImplementedError
+
+    def graphic_description(self) -> str:
+        """Return the long text alternative, which gives the values the picture shows.
+
+        Raises:
+            NotImplementedError: The subclass does not define its description.
+        """
+
+        raise NotImplementedError
+
+    def report_text_changes(self) -> None:
+        """Tell assistive technology that the name or the description changed, if either did.
+
+        Qt sends these events for its own widgets when their text changes, as
+        `QLabel.setText` does. The first call only records the texts, because
+        it comes before any screen reader can have read them.
+        """
+
+        texts = (self.graphic_name(), self.graphic_description())
+        events = (QAccessible.Event.NameChanged, QAccessible.Event.DescriptionChanged)
+
+        if self._reported_texts is not None:
+            for event, before, now in zip(events, self._reported_texts, texts, strict=True):
+                if now != before:
+                    QAccessible.updateAccessibility(QAccessibleEvent(self, event))
+
+        self._reported_texts = texts
+
+
+class _DescribedGraphicAccessible(QAccessibleWidget):
+    """Describe a `DescribedGraphic` to a screen reader as an image with its text alternative."""
+
+    def __init__(self, graphic: DescribedGraphic) -> None:
+        super().__init__(graphic, QAccessible.Role.Graphic)
+        self._graphic = graphic
+
+    def text(self, kind: QAccessible.Text) -> str:
+        """Return the graphic's name or long description, or Qt's own text for anything else."""
+
+        if kind is QAccessible.Text.Name:
+            return self._graphic.graphic_name()
+
+        if kind is QAccessible.Text.Description:
+            return self._graphic.graphic_description()
+
+        return QAccessibleWidget.text(self, kind)
+
+
+def _described_graphic_accessible(key: str, widget: QObject) -> _DescribedGraphicAccessible | None:
+    """Return the accessible interface for a `DescribedGraphic`, and nothing for any other object.
+
+    Qt asks each installed factory as `_setting_slider_accessible` describes,
+    and keeps the first interface returned.
+    """
+
+    if isinstance(widget, DescribedGraphic):
+        return _DescribedGraphicAccessible(widget)
+
+    return None
+
+
+# Whether `_described_graphic_accessible` is installed. Qt keeps one list of
+# factories for the process, so one installation serves every graphic.
+_graphic_accessibility_installed = False
+
+
+def _install_graphic_accessibility() -> None:
+    """Install `_described_graphic_accessible` the first time a graphic is built.
+
+    PySide6 installs a factory only once a `QApplication` exists, as
+    `_install_setting_slider_accessibility` records, and a widget cannot be
+    built before one.
+    """
+
+    global _graphic_accessibility_installed
+
+    if _graphic_accessibility_installed:
+        return
+
+    QAccessible.installFactory(_described_graphic_accessible)
+    _graphic_accessibility_installed = True
 
 
 class FocusRing(QWidget):

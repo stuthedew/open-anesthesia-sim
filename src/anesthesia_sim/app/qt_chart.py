@@ -70,8 +70,6 @@ from PySide6.QtCore import (
     SignalInstance,
 )
 from PySide6.QtGui import (
-    QAccessible,
-    QAccessibleEvent,
     QBrush,
     QColor,
     QFontMetrics,
@@ -82,7 +80,6 @@ from PySide6.QtGui import (
     QPen,
 )
 from PySide6.QtWidgets import (
-    QAccessibleWidget,
     QCheckBox,
     QGraphicsView,
     QHBoxLayout,
@@ -144,11 +141,14 @@ from anesthesia_sim.app.dashboard_frame import (
     concentration_chart_name,
     control_name,
     trace_legend_label,
+    wash_in_plot_description,
+    wash_in_plot_name,
 )
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import ChartCeiling, format_chart_time_label, format_time_base
 from anesthesia_sim.app.qt_widgets import (
     ClauseWrappingLabel,
+    DescribedGraphic,
     FlowLayout,
     SelectorComboBox,
     clause_lines,
@@ -1282,84 +1282,17 @@ def _set_time_axis(item: Any, frame: ChartFrame) -> None:
     )
 
 
-class _ConcentrationChartAccessible(QAccessibleWidget):
-    """Describe the concentration chart to a screen reader, as an image with a text alternative.
-
-    Qt describes a plain widget as a client area, which VoiceOver on macOS
-    passes over, and pyqtgraph gives none of its plot items to assistive
-    technology. So the chart reports the role of a graphic, which AT-SPI, UI
-    Automation and macOS each report as an image. Its name and long
-    description are `dashboard_frame`'s, written from the frame the chart
-    last drew (`PL-T9RB`). Both are written when a screen reader asks for
-    them. A screen reader that keeps the texts it has read, as the AT-SPI
-    client library on Linux does, reads them again when told that they
-    changed, so the chart reports each change (`ConcentrationChart.draw`).
-    """
-
-    def __init__(self, chart: ConcentrationChart) -> None:
-        super().__init__(chart, QAccessible.Role.Graphic)
-        self._chart = chart
-
-    def text(self, kind: QAccessible.Text) -> str:
-        """Return the chart's name or long description, or Qt's own text for anything else."""
-
-        if kind is QAccessible.Text.Name:
-            return concentration_chart_name(self._chart.frame)
-
-        if kind is QAccessible.Text.Description:
-            return concentration_chart_description(self._chart.frame)
-
-        return QAccessibleWidget.text(self, kind)
-
-
-def _concentration_chart_accessible(
-    key: str, widget: QObject
-) -> _ConcentrationChartAccessible | None:
-    """Return the accessible interface for a concentration chart, and nothing for any other object.
-
-    Qt asks each installed factory as `qt_widgets._setting_slider_accessible`
-    describes, and keeps the first interface returned.
-    """
-
-    if isinstance(widget, ConcentrationChart):
-        return _ConcentrationChartAccessible(widget)
-
-    return None
-
-
-# Whether `_concentration_chart_accessible` is installed. Qt keeps one list of
-# factories for the process, so one installation serves every chart.
-_chart_accessibility_installed = False
-
-
-def _install_concentration_chart_accessibility() -> None:
-    """Install `_concentration_chart_accessible` the first time a chart is built.
-
-    PySide6 installs a factory only once a `QApplication` exists, as
-    `qt_widgets._install_setting_slider_accessibility` records, and a chart
-    cannot be built before one.
-    """
-
-    global _chart_accessibility_installed
-
-    if _chart_accessibility_installed:
-        return
-
-    QAccessible.installFactory(_concentration_chart_accessible)
-    _chart_accessibility_installed = True
-
-
-class ConcentrationChart(QWidget):
+class ConcentrationChart(DescribedGraphic):
     """The six compartment traces, both clinical references, both axes, and the marks.
 
     The chart is built once, and `draw` redraws it on each frame from a
     `ChartFrame` that the dashboard assembles. It keeps nothing about the run
-    except the last frame it drew, which the hover reads.
+    except the last frame it drew, which the hover and the text alternative
+    read (`DescribedGraphic`, `PL-T9RB`).
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        _install_concentration_chart_accessibility()
         self._plot, self._pens = _plot(PANEL)
         self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
@@ -1402,11 +1335,6 @@ class ConcentrationChart(QWidget):
 
         self._runs: list[_RunItems] = []
         self._frame: ChartFrame | None = None
-        # The name and description last reported to assistive technology.
-        self._accessible_texts = (
-            concentration_chart_name(None),
-            concentration_chart_description(None),
-        )
         self._hover = _HoverReadout(
             self._plot, self._pens, CHART_LEAST_HEIGHT, _TRACE_HOVER_MOST_LINES
         )
@@ -1415,6 +1343,7 @@ class ConcentrationChart(QWidget):
         # height in pixels. So a resize places the box again, even while the
         # pointer rests and no frame is drawn (`PL-9BVQ`).
         item.getViewBox().sigResized.connect(self._refresh_hover)
+        self.report_text_changes()
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.
@@ -1487,29 +1416,18 @@ class ConcentrationChart(QWidget):
             items.hide()
 
         self._frame = frame
-        self._report_text_changes()
+        self.report_text_changes()
         self._refresh_hover()
 
-    def _report_text_changes(self) -> None:
-        """Tell assistive technology that the chart's name or description changed, if either did.
+    def graphic_name(self) -> str:
+        """Return what a screen reader calls the chart (`concentration_chart_name`)."""
 
-        Qt sends these events for its own widgets when their text changes, as
-        `QLabel.setText` does. A screen reader that keeps the texts it has
-        read reads them again on these events. Without them it would go on
-        reading the values of an earlier frame (`PL-T9RB`).
-        """
+        return concentration_chart_name(self._frame)
 
-        texts = (
-            concentration_chart_name(self._frame),
-            concentration_chart_description(self._frame),
-        )
-        events = (QAccessible.Event.NameChanged, QAccessible.Event.DescriptionChanged)
+    def graphic_description(self) -> str:
+        """Return the chart's long description (`concentration_chart_description`)."""
 
-        for event, before, now in zip(events, self._accessible_texts, texts, strict=True):
-            if now != before:
-                QAccessible.updateAccessibility(QAccessibleEvent(self, event))
-
-        self._accessible_texts = texts
+        return concentration_chart_description(self._frame)
 
     def withhold(self) -> None:
         """Empty the plot: no trace, no mark and no clinical reference, until the next frame.
@@ -1530,7 +1448,7 @@ class ConcentrationChart(QWidget):
         self._band.hide()
         _clear_axes(self._plot.getPlotItem(), self._grid, self._time_title, ("left", "right"), ())
         self._frame = None
-        self._report_text_changes()
+        self.report_text_changes()
         self._refresh_hover()
 
     @property
@@ -1892,14 +1810,16 @@ class _WashInRunItems:
             mark.hide()
 
 
-class WashInChart(QWidget):
+class WashInChart(DescribedGraphic):
     """The F_A/F_I plot: the stretches, the equilibrium line, the marks, and its axis.
 
     The plot is a View of its own, and it keeps its own time window
     (`PL-L59K`). It shows the compartment chart's alveolar and circuit traces
     as one number, so the Induction Workspace places it beside that chart.
     While the two plots show the same window, they draw the same `ChartFrame`
-    (`AreaLayout.frame_requests`), so they show the same instants.
+    (`AreaLayout.frame_requests`), so they show the same instants. A screen
+    reader reads the plot's text alternative from the frame it last drew
+    (`DescribedGraphic`, `PL-R1M6`).
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -1946,6 +1866,7 @@ class WashInChart(QWidget):
         # height in pixels. So a resize places the box again, even while the
         # pointer rests and no frame is drawn (`PL-9BVQ`).
         item.getViewBox().sigResized.connect(self._refresh_hover)
+        self.report_text_changes()
 
     def draw(self, frame: ChartFrame) -> None:
         """Move every item to match one frame.
@@ -2004,6 +1925,7 @@ class WashInChart(QWidget):
             items.hide()
 
         self._frame = frame
+        self.report_text_changes()
         self._refresh_hover()
 
     def withhold(self) -> None:
@@ -2025,7 +1947,18 @@ class WashInChart(QWidget):
             [position for position, _ in wash_in_axis_ticks()],
         )
         self._frame = None
+        self.report_text_changes()
         self._refresh_hover()
+
+    def graphic_name(self) -> str:
+        """Return what a screen reader calls the plot (`wash_in_plot_name`)."""
+
+        return wash_in_plot_name(self._frame)
+
+    def graphic_description(self) -> str:
+        """Return the plot's long description (`wash_in_plot_description`)."""
+
+        return wash_in_plot_description(self._frame)
 
     @property
     def frame(self) -> ChartFrame | None:
