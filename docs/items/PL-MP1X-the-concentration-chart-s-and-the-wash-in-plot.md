@@ -2,12 +2,14 @@
 id: PL-MP1X
 title: The concentration chart's and the wash-in plot's text alternatives leave out the predicted curve a held drag draws, so a screen reader is not told what the preview shows
 priority: P3
-status: untriaged
+effort: S
+status: ready
 classes: defect
 feature: presentation-safety
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it; a preview needs a pointer drag, so the release waits only on the owner test drive (filed 2026-11-28)
 added: 2026-11-28
+payoff: a screen-reader user who drags a setting hears that a preview is drawn, and of which setting and value, as the plot's label tells a sighted user
 ---
 
 **Problem.** While a reader holds a drag on a setting, the concentration chart and the wash-in plot draw the run's predicted curve under the new setting as a preview (`chart_frame.RunFrame.preview`). Neither chart's text alternative mentions it. `chart_frame.latest_values_lines` and `chart_frame.latest_wash_in_lines` read only the drawn run, so a screen-reader user hears the same description during a drag as before it.
@@ -21,3 +23,7 @@ added: 2026-11-28
 **How it was found.** The second blind review of `PL-R1M6`, 2026-11-28, noted that the wash-in description says nothing during a preview. The concentration chart's description, which `PL-T9RB` built, leaves it out in the same way.
 
 **Generator check.** No head states the fact misread here, which is what a chart's text alternative has to cover: every curve the chart draws, a preview among them. `PL-T9RB` and `PL-R1M6` built the two descriptions from the drawn run alone, and this is the first item to name the gap.
+
+**Checked 2026-11-28: only a pointer drag shows a preview.** A key press, a wheel step, a click on the track and a screen reader's own command to set the value each apply the setting at once and draw no preview. In `src/anesthesia_sim/app/qt_widgets.py`, `ParameterSlider` starts a preview only when its handle is pressed or dragged (`_on_thumb_pressed` and `_on_thumb_moved`), and `_SettingSlider.apply_from_assistive_technology` applies a screen reader's value as one input, like a key press. `test_a_key_step_applies_at_once_and_previews_nothing` in `tests/integration/test_qt_widgets.py` and `test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview` in `tests/integration/simulation_view/test_simulation_view_controls.py` hold that a key and a click draw no preview. So a keyboard user never meets a preview, and a screen-reader user meets one only while dragging with a pointer. That user still hears only the drawn run, so this item's gap stands. The check found a second gap: the preview has no keyboard route at all, which WCAG 2.2 SC 2.1.1 asks for at Level A. `PL-LS34` records it.
+
+**Checked 2026-11-28: the hover never words a preview point.** `chart_frame.RunPreview`'s docstring says the hover reads only `RunFrame.times_s` and `RunFrame.wash_in`, so the approach's "worded as the hover words a preview point" has nothing to copy. The only words the screen gives a preview are its label, such as "Preview: Fresh gas flow 6.0 L/min, not applied" (`dashboard_frame.preview_label`), and the off-scale notice's peak for a clipped preview. A text alternative states no value the screen does not show, as `chart_frame.latest_values_lines` says. So each description gains the preview's label as one line, after the run's values, and states no predicted value.

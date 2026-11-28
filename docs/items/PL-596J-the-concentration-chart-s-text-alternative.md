@@ -1,11 +1,15 @@
 ---
 id: PL-596J
 title: The concentration chart's text alternative gives the MAC-awake band without the legend's words population, read against vessel-rich group trace, so a screen-reader user is not told which trace the band is read against
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: defect, safety
 feature: presentation-safety
 touches: src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_chart_frame.py, tests/integration/approved_interface_strings.json
 added: 2026-11-28
 filed-pr: 2360
+payoff: a screen-reader user hears which trace the MAC-awake band is read against, as the legend tells a sighted user
 ---
 
 **Problem.** The concentration chart's legend labels the MAC-awake band "MAC-awake sevoflurane = 0.34 ×MAC (0.61%), band ±1 SD 0.52–0.70%; population, read against vessel-rich group trace" (`dashboard_frame.MAC_AWAKE_BAND_LEGEND_TEMPLATE`, drawn by `qt_chart`). The chart's text alternative, which a screen reader reads in place of the picture, ends with the same reference but without "; population, read against vessel-rich group trace", because `dashboard_frame.concentration_chart_description` takes `mac_awake_caption(frame)` alone. Before the band, the description gives each run's value on every trace shown, the alveolar (end-tidal-equivalent) value among them, and then the 1 MAC line.
@@ -19,3 +23,5 @@ filed-pr: 2360
 **How it was found.** The first blind review of `PL-96MX`, 2026-11-28, read the approved strings it adds and found the description's line shorter than the legend's.
 
 **Generator check.** No head states the fact misread here, which is that a text alternative must carry each qualifier its picture's labels carry. `PL-T9RB` built the description from the reference's caption rather than from the legend's text, and this is the first item to name it.
+
+**Generator check.** No head states the fact misread here, which is that a text alternative names a chart reference in the same words as its legend entry. `PL-9XGQ`'s head is about each element's role and a name unique in its window, not about what a description says. The fix builds the description's two reference lines from the legend's own words, so the two cannot differ again.
