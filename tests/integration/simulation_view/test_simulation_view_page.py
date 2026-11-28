@@ -698,7 +698,7 @@ def test_no_view_paints_narrower_than_its_least_width_after_a_workspace_switch(
 
 
 def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
-    """`PL-CBYS`: a compartment schematic taller than its Area is shown whole, by scrolling the Area.
+    """`PL-CBYS`: a compartment schematic taller than its Area is shown by scrolling the Area.
 
     In the Maintenance Workspace at 1920 by 1080, with a branch open, the
     schematic shows one drawing for each run, and the two are taller than its
