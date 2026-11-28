@@ -408,6 +408,7 @@ def test_the_run_does_not_advance_while_a_reset_question_is_open(
     trunk._reset_button.click()
     dialog = trunk._reset_dialog
     assert dialog is not None
+    assert dialog.isModal()
     held_at = [run.snapshot().elapsed_s for run in view.runs]
 
     for run in view.runs:
@@ -436,6 +437,7 @@ def test_a_running_run_holds_while_its_new_case_question_is_open(application: QA
     _select_agent(run, "desflurane")
     dialog = run._new_case_dialog
     assert dialog is not None
+    assert dialog.isModal()
     held_at = run.snapshot().elapsed_s
     _steps(run, 10)
 
@@ -464,6 +466,7 @@ def test_a_running_run_holds_while_a_workspace_question_is_open(application: QAp
     strip.choose(reset_all)
     question = strip.question
     assert question is not None
+    assert question.isModal()
     held_at = run.snapshot().elapsed_s
     _steps(run, 10)
 

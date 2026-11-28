@@ -1,10 +1,14 @@
 ---
 id: PL-H100
 title: On a Mac, the Maintenance Workspace at 1366 by 768 leaves each container's share line cut through at the schematic's lower edge and its share bar out of view, because macOS's system font draws taller lines than the Linux fonts the tests use; the values show whole only from a 788 px tall window
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/data/workspaces/maintenance.json, src/anesthesia_sim/app/qt_schematic.py, tests/integration/simulation_view/test_simulation_view_page.py, docs/INTERFACE.md
 added: 2026-11-28
+payoff: A user on a Mac with a 1366 by 768 window sees each container's tension, amount and share whole in the Maintenance Workspace, never a value cut through at the schematic's edge.
 ---
 
 **Problem.** On a Mac, the Maintenance Workspace at 1366 by 768 leaves each container's share line cut through at the schematic's lower edge and its share bar out of view, because macOS's system font draws taller lines than the Linux fonts the tests use; the values show whole only from a 788 px tall window
@@ -29,4 +33,10 @@ scrolled, so the Workspace still fails `docs/INTERFACE.md`'s requirement on a
 Mac, and this item's fix is still needed.
 
 **Where to start.** The fix needs about 20 px of height at 1366 by 768 in the macOS font, taken from the schematic's own rows or given by the Workspace's shares, without breaking the concentration chart's least height. Prove it on macOS, which needs `PL-2Y1L` (a macOS test job) or the same throwaway probe, because the Linux tests cannot see this.
+
+**Decided 2026-11-28.** Fix it before v0.7.0 is cut (project owner, 2026-11-28, over the session's recommendation to cut now and fix it in a later release). The owner chose on a decision card in the test-drive thread, after seeing both Mac screenshots.
+
+**Generator check.** The cause is that every layout test runs in a Linux font and style, so a fit that holds there is never checked in macOS's system font. `PL-2Y1L` records that cause. This is the first item on it, and one item is not a generator.
+
+**Done when.** In the Maintenance Workspace at 1366 by 768 with one run, the schematic's canvas and its share caption are wholly in view under Qt's `cocoa` platform on a GitHub macOS runner, as well as on Linux CI, and `docs/INTERFACE.md` says the fit was checked in macOS's system font.
 

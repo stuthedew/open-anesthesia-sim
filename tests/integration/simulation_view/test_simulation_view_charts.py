@@ -26,7 +26,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
-from anesthesia_sim.app.wash_in import read_wash_in
+from anesthesia_sim.app.wash_in import read_wash_in_with_ventilation
 from anesthesia_sim.core.concentration import MacPercent
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
@@ -490,8 +490,10 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments(
     _advance(controller, 60)
     view = _shown_view(application, controller)
     snapshot = controller.snapshot()
-    reading = read_wash_in(
-        snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
+    reading = read_wash_in_with_ventilation(
+        snapshot.alveolar_partial_pressure_fraction,
+        snapshot.inspired_partial_pressure_fraction,
+        snapshot.reaching_alveolar_ventilation_l_min,
     )
     assert reading.plotted_ratio is not None
 

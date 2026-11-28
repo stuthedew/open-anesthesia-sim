@@ -324,6 +324,7 @@ from itertools import pairwise
 
 import pytest
 
+from anesthesia_sim.app import wash_in
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
 from anesthesia_sim.core.concentration import Fraction, Percent, fraction_from_percent
@@ -1961,6 +1962,18 @@ def test_the_displayed_ratio_is_the_quantity_this_file_validates(agent_id: str) 
 
     assert reading.domain is WashInDomain.WASH_IN
     assert reading.plotted_ratio == pytest.approx(_wash_in_ratio(agent_id))
+    # `read_wash_in` applies only the rules on the inspired concentration and on
+    # the ratio. The plot also applies its rule on ventilation (`PL-ZZLW`). The
+    # run keeps one ventilation throughout, so the system's ventilation is that
+    # of the step that reached this state, and the plotted reading is the same.
+    assert (
+        wash_in.read_wash_in_with_ventilation(
+            system.alveoli.partial_pressure_fraction,
+            system.circuit.inspired_partial_pressure_fraction,
+            system.alveoli.alveolar_ventilation_l_min,
+        )
+        == reading
+    )
 
 
 def test_published_agents_are_ordered_by_solubility() -> None:
@@ -2615,6 +2628,14 @@ def test_the_elimination_run_is_outside_the_displayed_wash_in_domain(agent_id: s
 
     assert displayed.domain is WashInDomain.ELIMINATION
     assert displayed.plotted_ratio is None
+    # `read_wash_in` does not apply the plot's rule on ventilation (`PL-ZZLW`).
+    # The elimination keeps the reference patient's ventilation, so the
+    # plotted reading, which applies all three rules, is elimination too.
+    assert wash_in.read_wash_in_with_ventilation(
+        reading.alveolar_fraction,
+        reading.inspired_fraction,
+        AlveolarVentilation(load_reference_adult_parameters().default_alveolar_ventilation_l_min),
+    ) == wash_in.WashInReading(WashInDomain.ELIMINATION, None)
 
 
 @pytest.mark.parametrize(
