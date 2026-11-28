@@ -7069,14 +7069,21 @@ file writes it, in quotes. Next comes "None of your saved settings is in use,
 and the application does not save changes you make now, so the file stays as
 it is." Then the notice says what the reader can do. The application reads its
 preferences only when it starts, so each way out ends in a restart: correct the
-file or move it out of its folder, or, for a file that a newer version saved,
-open that version. The file's path comes last, as Microsoft's Windows
+file, or open the newer version that saved it. Moving the file out of its
+folder is named as the way to start again without the saved settings. A file
+whose text is not JSON is named by the line and column of its first fault,
+because the decoder's own message names a part of the JSON grammar. The file's
+path comes last, as Microsoft's Windows
 error-message guidelines ask of a full path
 (https://learn.microsoft.com/en-us/windows/win32/uxguide/mess-error, read
 2026-11-28). For developers:
 `test_a_document_that_cannot_be_checked_entry_by_entry_turns_saving_off` and
 `test_a_file_from_a_newer_build_is_not_read_and_never_overwritten` in
 `tests/unit/test_preferences.py` check each notice.
+`test_a_file_that_holds_only_its_version_names_every_setting_it_lacks`, in the
+same file, checks that every setting of every version has the words that name
+it, and `test_a_choice_that_cannot_be_saved_lasts_the_session_and_says_so` in
+`tests/integration/test_agent_cost_view.py` checks the notice in the View.
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
 it show a cost left over from an earlier instant, another agent or an earlier

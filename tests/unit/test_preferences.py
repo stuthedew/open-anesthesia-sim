@@ -15,6 +15,7 @@ from test_user_files import make_the_platform_encoding_ascii
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.preferences import (
     PREFERENCES_FILE_NAME,
+    PREFERENCES_SCHEMA_VERSION,
     AgentPrice,
     Preferences,
     PreferencesFileError,
@@ -302,8 +303,8 @@ _UNUSABLE_EFFECT = (
     "make now, so the file stays as it is."
 )
 _UNUSABLE_NEXT_STEP = (
-    "To use your saved settings again, correct the file or move it out of its folder, then "
-    "restart the application."
+    "To use your saved settings again, correct the file, then restart the application. To "
+    "start again without them, move the file out of its folder, then restart the application."
 )
 
 
@@ -312,8 +313,17 @@ _UNUSABLE_NEXT_STEP = (
     [
         (
             "{not json",
-            "the file's contents are not in the format that the application saves (Expecting "
-            "property name enclosed in double quotes: line 1 column 2 (char 1))",
+            "the file's text at line 1, column 2 is not in the format that the application saves",
+        ),
+        (
+            '{"schema_version": 2,\n "agent_cost_unit": "millilitres of liquid",\n "agent_prices"',
+            "the file's text at line 3, column 16 is not in the format that the application saves",
+        ),
+        ("", "the file is empty"),
+        (" \n\t", "the file is empty"),
+        (
+            "[" * 100_000 + "]" * 100_000,
+            "the file's entries are nested too deeply for the application to read them",
         ),
         (
             "[]",
@@ -322,6 +332,18 @@ _UNUSABLE_NEXT_STEP = (
         ),
         ('{"schema_version": 0}', "the file's version, 0, is not a whole number from 1 up"),
         ('{"schema_version": true}', "the file's version, true, is not a whole number from 1 up"),
+        ('{"schema_version": 1.5}', "the file's version, 1.5, is not a whole number from 1 up"),
+        ('{"schema_version": 0.0}', "the file's version, 0.0, is not a whole number from 1 up"),
+        (
+            '{"schema_version": 2.0}',
+            "the file's version, 2.0, is written with a decimal point, and the application reads "
+            "a version only as a whole number written without one, such as 2",
+        ),
+        (
+            '{"schema_version": 1.0}',
+            "the file's version, 1.0, is written with a decimal point, and the application reads "
+            "a version only as a whole number written without one, such as 1",
+        ),
         ('{"agent_cost_unit": "millilitres of liquid"}', "the file gives no version"),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid"}',
@@ -349,8 +371,7 @@ _UNUSABLE_NEXT_STEP = (
         (
             '{"schema_version": 1, "schema_version": 1, '
             '"agent_cost_unit": "millilitres of liquid", "agent_prices": []}',
-            "the file's contents are not in the format that the application saves (the setting "
-            "'schema_version' is written twice in one place)",
+            "the file writes the setting 'schema_version' twice in one place",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", "agent_prices": {}}',
@@ -361,15 +382,21 @@ _UNUSABLE_NEXT_STEP = (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [{"agent": "isoflurane", "bottle_price": NaN, '
             '"bottle_volume_ml": 100, "currency": "USD", "applies_on": "2008-03-05"}]}',
-            "the file's contents are not in the format that the application saves (NaN is not "
-            "a number a preference can hold)",
+            "the file holds NaN, which is not a number a preference can hold",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [{"agent": "isoflurane", "bottle_price": 20.47, '
             '"bottle_volume_ml": 1e400, "currency": "USD", "applies_on": "2008-03-05"}]}',
-            "the file's contents are not in the format that the application saves (1e400 is too "
-            "large to be a number a preference can hold)",
+            "the file holds 1e400, which is too large to be a number a preference can hold",
+        ),
+        (
+            '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
+            '"agent_prices": [{"agent": "isoflurane", "bottle_price": 20.47, '
+            '"bottle_volume_ml": -' + "1" * 5000 + ', "currency": "USD", '
+            '"applies_on": "2008-03-05"}]}',
+            "the file holds a whole number 5,000 digits long, which is too long to be a number a "
+            "preference can hold",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
@@ -386,9 +413,17 @@ _UNUSABLE_NEXT_STEP = (
     ],
     ids=[
         "not JSON",
+        "cut off on line 3",
+        "empty",
+        "only blank space",
+        "nested too deeply to read",
         "not an object",
         "version 0",
         "version true",
+        "version 1.5",
+        "version 0.0",
+        "version 2.0",
+        "version 1.0",
         "no version",
         "a key missing",
         "an unknown key",
@@ -399,6 +434,7 @@ _UNUSABLE_NEXT_STEP = (
         "prices not a list",
         "NaN",
         "a number too large for a float",
+        "a whole number too long to read",
         "a lone surrogate, which no UTF-8 file can hold",
         "a refused entry nested past the limit",
     ],
@@ -426,6 +462,42 @@ def test_a_document_that_cannot_be_checked_entry_by_entry_turns_saving_off(
     )
     assert "[" not in loaded.notice
     assert path.read_text(encoding="utf-8") == text
+
+
+#: What the notice says is missing from a file that holds only its version, for
+#: each version this build reads, in the words the Views use (`PL-W312`).
+_EVERY_SETTING_MISSING = {
+    1: "no agent prices and no choice of how agent amounts are shown",
+    2: "no agent prices, no axis top and no choice of how agent amounts are shown",
+}
+
+
+def test_every_version_this_build_reads_has_a_case_of_every_setting_missing() -> None:
+    """A version added without a case below fails here, so its settings are checked too."""
+
+    assert sorted(_EVERY_SETTING_MISSING) == list(range(1, PREFERENCES_SCHEMA_VERSION + 1))
+
+
+@pytest.mark.parametrize(("version", "missing"), _EVERY_SETTING_MISSING.items())
+def test_a_file_that_holds_only_its_version_names_every_setting_it_lacks(
+    tmp_path: Path, version: int, missing: str
+) -> None:
+    """Each setting of each version has words for the notice that names it as missing.
+
+    A setting added to a version without its words would make the store raise
+    on such a file, although a load never raises because of what the file
+    holds (blind review of `PL-W312`).
+    """
+
+    path = _write(tmp_path, {"schema_version": version})
+
+    loaded = PreferencesStore(tmp_path).load()
+
+    assert not loaded.writable
+    assert loaded.notice == (
+        f"The application could not use your preferences file, because the file has {missing}. "
+        f"{_UNUSABLE_EFFECT} {_UNUSABLE_NEXT_STEP} The file is {path}."
+    )
 
 
 def test_two_prices_for_one_agent_turn_saving_off(tmp_path: Path) -> None:

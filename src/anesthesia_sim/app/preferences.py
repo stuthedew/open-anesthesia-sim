@@ -488,10 +488,12 @@ UNUSABLE_PREFERENCES_FILE_EFFECT: Final = (
     "make now, so the file stays as it is."
 )
 #: What a reader can do about a file that cannot be used at all. Preferences
-#: are read only at launch, so each way out ends in a restart.
+#: are read only at launch, so each way out ends in a restart. Moving the file
+#: away starts the application with no saved settings, so it is named apart
+#: from correcting the file, as `NEWER_PREFERENCES_FILE_NEXT_STEP` names it.
 UNUSABLE_PREFERENCES_FILE_NEXT_STEP: Final = (
-    "To use your saved settings again, correct the file or move it out of its folder, then "
-    "restart the application."
+    "To use your saved settings again, correct the file, then restart the application. To "
+    "start again without them, move the file out of its folder, then restart the application."
 )
 #: What a reader can do about a file that a newer version of the application
 #: saved. This version cannot read it, so correcting it is not a way out.
@@ -600,10 +602,15 @@ class PreferencesStore:
                 object_pairs_hook=_refuse_repeated_keys,
                 parse_constant=_refuse_constant,
                 parse_float=_finite_float,
+                parse_int=_whole_number,
             )
-        except (ValueError, RecursionError) as error:
+        except _InvalidDocument as invalid:
+            return self._read_only(str(invalid))
+        except json.JSONDecodeError as error:
+            return self._read_only(_undecodable(text, error))
+        except RecursionError:
             return self._read_only(
-                f"the file's contents are not in the format that the application saves ({error})"
+                "the file's entries are nested too deeply for the application to read them"
             )
 
         try:
@@ -730,13 +737,15 @@ def _refuse_repeated_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
     repeated = sorted({key for key in keys if keys.count(key) > 1})
 
     if repeated:
-        raise ValueError(f"the setting {repeated[0]!r} is written twice in one place")
+        raise _InvalidDocument(f"the file writes the setting {repeated[0]!r} twice in one place")
 
     return dict(pairs)
 
 
 def _refuse_constant(constant: str) -> float:
-    raise ValueError(f"{constant} is not a number a preference can hold")
+    raise _InvalidDocument(
+        f"the file holds {constant}, which is not a number a preference can hold"
+    )
 
 
 def _finite_float(literal: str) -> float:
@@ -748,9 +757,41 @@ def _finite_float(literal: str) -> float:
     value = float(literal)
 
     if not isfinite(value):
-        raise ValueError(f"{literal} is too large to be a number a preference can hold")
+        raise _InvalidDocument(
+            f"the file holds {literal}, which is too large to be a number a preference can hold"
+        )
 
     return value
+
+
+def _whole_number(literal: str) -> int:
+    # Python refuses to convert a whole number longer than
+    # `sys.get_int_max_str_digits()` digits, 4,300 by default, as a guard
+    # against slow conversion. No preference is a number that long.
+    try:
+        return int(literal)
+    except ValueError:
+        raise _InvalidDocument(
+            f"the file holds a whole number {len(literal.lstrip('-')):,} digits long, which is too "
+            "long to be a number a preference can hold"
+        ) from None
+
+
+def _undecodable(text: str, error: json.JSONDecodeError) -> str:
+    """Return why the file's text is not JSON, by where the first fault is, in the reader's words.
+
+    The decoder's own message, such as "Expecting value", names a part of the
+    JSON grammar, which the reader does not know. The line and column lead the
+    reader to the fault in any text editor.
+    """
+
+    if not text.strip():
+        return "the file is empty"
+
+    return (
+        f"the file's text at line {error.lineno}, column {error.colno} is not in the format "
+        "that the application saves"
+    )
 
 
 #: The deepest nesting of lists and objects that a document may hold. A price
@@ -813,8 +854,15 @@ def _from_document(document: object) -> Preferences:
 
     version = document[_SCHEMA_VERSION_KEY]
 
+    shown = json.dumps(version, ensure_ascii=False)
+
+    if isinstance(version, float) and version.is_integer() and version >= 1:
+        raise _InvalidDocument(
+            f"the file's version, {shown}, is written with a decimal point, and the application "
+            f"reads a version only as a whole number written without one, such as {int(version)}"
+        )
+
     if isinstance(version, bool) or not isinstance(version, int) or version < 1:
-        shown = json.dumps(version, ensure_ascii=False)
         raise _InvalidDocument(f"the file's version, {shown}, is not a whole number from 1 up")
 
     if version > PREFERENCES_SCHEMA_VERSION:
