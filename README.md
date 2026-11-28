@@ -19,8 +19,8 @@ general-purpose simulation software, and teaching is one of its uses.
 <!-- provenance: data/agents/sevoflurane.json mac_at_age_40_percent = 1.8 -->
 <!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4 -->
 
-*The default case after ten simulated minutes, rendered on 2026-11-22 from the
-code after release 0.6.19. Every value shown is a model output. The script
+*The default case after ten simulated minutes, rendered on 2026-11-28 from the
+code after release 0.6.24. Every value shown is a model output. The script
 `tests/benchmarks/readme_screenshot.py` retakes the image.*
 
 ## What it is for
