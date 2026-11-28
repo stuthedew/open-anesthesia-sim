@@ -2759,12 +2759,21 @@ class TimeBaseSelector(SelectorComboBox):
 
 
 class ChartCeilingSelector(SelectorComboBox):
-    """The control that sets the top of the compartment chart's axis, from `ChartCeiling`.
+    """The control that sets the top of the MAC axis, from `ChartCeiling`.
 
-    It works as `TimeBaseSelector` does. The top belongs to the chart View
-    that holds this control, which hands the control the top it drew through
-    `show_ceiling`. A reader's pick is asked for through `ceiling_requested`.
-    So when a frame fails, the control still names the top that is on the plot.
+    It works as `TimeBaseSelector` does. Every concentration chart View and
+    the compartment schematic View holds one. The top is the reader's
+    preference, shared by all of them (`PL-7LZ7`). The View hands the control
+    the top it drew through `show_ceiling`, and a reader's pick is asked for
+    through `ceiling_requested`. So when a frame fails, the control still names
+    the top that is on the plot.
+
+    A pick is read from Qt's `activated` signal, which a reader's choice sends
+    even when it is the top already shown, and which `setCurrentIndex` never
+    sends. So a reader who is told that a saved top was refused can keep
+    3 xMAC by picking it (`preferences.chart_ceiling_notice`). The time base
+    selector reads `currentIndexChanged`, because picking its shown base
+    again has nothing to replace.
 
     Attributes:
         ceiling_requested: Emitted with the `ChartCeiling` a reader picked.
@@ -2781,23 +2790,17 @@ class ChartCeilingSelector(SelectorComboBox):
         for ceiling in ChartCeiling:
             self.addItem(ceiling.label, userData=ceiling.name)
 
-        self._showing = False
-        self.currentIndexChanged.connect(self._handle_pick)
+        self.activated.connect(self._handle_pick)
 
     def show_ceiling(self, ceiling: ChartCeiling) -> None:
         """Show this top without treating it as a request."""
 
-        self._showing = True
-
-        try:
-            self.setCurrentIndex(self.findData(ceiling.name))
-        finally:
-            self._showing = False
+        self.setCurrentIndex(self.findData(ceiling.name))
 
     def _handle_pick(self, index: int) -> None:
         key = self.itemData(index)
 
-        if self._showing or key is None:
+        if key is None:
             return
 
         self.ceiling_requested.emit(ChartCeiling[key])

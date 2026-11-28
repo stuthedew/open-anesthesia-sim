@@ -3567,7 +3567,13 @@ tops would each be labelled correctly, but a reader comparing graphic data
 across displays "may overlook differences in labeling and assume that the
 same scale has been used" (NUREG-0700 Rev. 3, guideline 1.3.6-8, p. 1-43).
 The top is one of the reader's preferences, so it is kept when the
-application is closed and opened again (`app/preferences.py`).
+application is closed and opened again (`app/preferences.py`). A layout saved
+by v0.6.22 to v0.6.24 kept a top for each chart. That top is not read, so such
+a layout opens at 3 ×MAC, without a notice. A saved top that is not one of the
+three is not used either. Every chart and schematic is then drawn at 3 ×MAC,
+and each says under its "Axis top" control which saved top was refused and
+asks the reader to choose a top. Choosing any top clears the line, 3 ×MAC
+included.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 **Every gridline stands at a MAC multiple that the right axis labels.** The
@@ -3717,7 +3723,17 @@ top survives a restart (`test_a_top_picked_before_a_restart_is_the_top_after_it`
 in `tests/integration/test_view_contract.py`), and an old chart state opens
 without a notice
 (`test_a_concentration_chart_saved_with_a_top_of_its_own_opens_without_a_notice`
-in the same file).
+in the same file). The preferences file holds the top's MAC multiple from
+version 2 of its schema, and a version 1 file opens at 3 ×MAC
+(`test_a_version_1_file_opens_at_the_standard_top_and_its_next_save_writes_version_2`
+in `tests/unit/test_preferences.py`). A refused saved top is named on every
+chart and schematic until a top is chosen
+(`test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept` in
+`tests/unit/test_preferences.py`;
+`test_a_refused_saved_top_is_named_on_every_chart_and_schematic_until_a_top_is_picked`
+in `tests/integration/test_view_contract.py`). The "Axis top" control reads a
+choice from Qt's `activated` signal, which a choice of the top already shown
+also sends, so a reader can clear that line by keeping 3 ×MAC.
 
 ### The chart's time base
 
@@ -6843,7 +6859,12 @@ schematic therefore prints "Model outputs — not measurements." once, as the
 readout section does, followed by the tensions' unit. The line under it names
 the amounts' unit and the condition they are stated at. Both lines stand in a
 row above the part of the View that scrolls, so they stay in view whatever part
-of the schematic the Area shows (`PL-3NGZ`). No amount is a prediction about a
+of the schematic the Area shows (`PL-3NGZ`). The "Axis top" control stands at
+the right end of that row. The scale's top is read together with the tensions'
+unit, and "information that must be compared or mentally integrated should be
+presented in close spatial proximity" (NUREG-0700 Rev. 3, guideline 1.1-26,
+p. 1-11). In that row the control also adds no height above the containers
+(`PL-7LZ7`). No amount is a prediction about a
 patient to its last digit, for the reason § "Displayed precision" gives for
 the readouts.
 

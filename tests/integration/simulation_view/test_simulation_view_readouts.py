@@ -598,7 +598,9 @@ def _off_scale_compartments(
 
 def _pick_chart_ceiling(view: SimulationView, ceiling: ChartCeiling) -> None:
     selector = _concentration(view).ceiling_selector
-    selector.setCurrentIndex(selector.findData(ceiling.name))
+    index = selector.findData(ceiling.name)
+    selector.setCurrentIndex(index)
+    selector.activated.emit(index)
 
 
 def test_the_schematic_marks_off_the_scale_what_the_chart_names_at_the_top_picked(

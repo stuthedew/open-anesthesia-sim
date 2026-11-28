@@ -381,9 +381,16 @@ def test_a_chart_whose_saved_window_cannot_be_read_fits_the_run_and_says_so(
 def _pick_ceiling(
     view: ConcentrationView | CompartmentSchematicView, ceiling: ChartCeiling
 ) -> None:
+    """Pick `ceiling` on `view`'s axis-top control, sending the signals a reader's choice sends.
+
+    Qt sets the index and then sends `activated`, which `setCurrentIndex` alone
+    never sends.
+    """
+
     index = view.ceiling_selector.findData(ceiling.name)
     assert index >= 0, f"the axis-top control does not offer {ceiling!r}"
     view.ceiling_selector.setCurrentIndex(index)
+    view.ceiling_selector.activated.emit(index)
 
 
 @pytest.mark.parametrize("kind", [CONCENTRATION_CHART, COMPARTMENT_SCHEMATIC])
@@ -555,6 +562,70 @@ def test_a_top_picked_before_a_restart_is_the_top_after_it(
             view.close()
             view.deleteLater()
 
+        application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        application.processEvents()
+
+
+def test_a_refused_saved_top_is_named_on_every_chart_and_schematic_until_a_top_is_picked(
+    application: QApplication, tmp_path: Path
+) -> None:
+    """`PL-7LZ7`: a saved top off the choices is drawn at 3 xMAC, and every View says so.
+
+    The file is one that a reader edited by hand. The notice is written out by
+    hand. Picking 3 xMAC on the schematic, the top already shown, keeps it and
+    clears the notice on every View at once. A control that asked only when
+    the shown top changed left the notice in place for a reader who wanted
+    3 xMAC.
+    """
+
+    directory = tmp_path / "user"
+    directory.mkdir()
+    (directory / WORKSPACES_FILE_NAME).write_text(
+        workspace_set_to_json(_EVERY_VIEW), encoding="utf-8"
+    )
+    (directory / PREFERENCES_FILE_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "agent_cost_unit": "millilitres of liquid",
+                "agent_prices": [],
+                "chart_axis_top_mac": 7,
+            }
+        ),
+        encoding="utf-8",
+    )
+    view = open_dashboard(
+        BranchedCase(SimulationController()), "", {USER_DIRECTORY_VARIABLE: str(directory)}
+    )
+
+    try:
+        view.resize(1600, 1000)
+        view.show()
+        application.processEvents()
+        view.present(False)
+        views = view.layout_container.views()
+        charts = [shown for shown in views if isinstance(shown, ConcentrationView)]
+        (schematic,) = [shown for shown in views if isinstance(shown, CompartmentSchematicView)]
+        mac_percent = view.runs[0].controller.snapshot().agent_mac_percent
+
+        _assert_every_view_at(charts, schematic, "3 ×MAC", 3 * mac_percent, _marks_every(0.5, 3))
+        for shown in [*charts, schematic]:
+            assert not shown.ceiling_notice.isHidden()
+            assert shown.ceiling_notice.text() == (
+                "The saved axis top, 7, is not one of the choices, 1.5, 3 or 4.5 ×MAC, so every "
+                "chart and schematic shows 3 ×MAC. Choose a top to replace it."
+            )
+
+        _pick_ceiling(schematic, ChartCeiling.STANDARD)
+
+        for shown in [*charts, schematic]:
+            assert shown.ceiling_notice.isHidden()
+        saved = json.loads((directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
+        assert saved["chart_axis_top_mac"] == 3.0
+    finally:
+        view.stop_timers()
+        view.close()
+        view.deleteLater()
         application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         application.processEvents()
 

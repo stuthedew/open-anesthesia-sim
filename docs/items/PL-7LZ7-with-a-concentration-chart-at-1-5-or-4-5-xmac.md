@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect, ux
 feature: chart-readout
-touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/qt_schematic.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/preferences.py, docs/INTERFACE.md, tests/integration/test_view_contract.py
+touches: src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/preferences.py, src/anesthesia_sim/app/run_presentation.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/view_contract.py, docs/INTERFACE.md, tests/integration/test_view_contract.py, tests/integration/simulation_view/test_simulation_view_readouts.py, tests/unit/test_preferences.py
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-23
 filed-pr: 2270
@@ -70,3 +70,31 @@ Choosing 1.5, 3 or 4.5 ×MAC on any "Axis top" control redraws every concentrati
 2. A test shows that choosing a top on one chart redraws every chart and every schematic at it, and that choosing it on the schematic does the same.
 3. A test shows that the top survives closing and reopening the application, and that a layout saved with a chart's own top opens without the notice for an unreadable state.
 4. `docs/INTERFACE.md` § "The chart's fixed MAC axis" and § "The compartment schematic: what its heights, amounts and share bar assert" describe the one shared top. The sentences "Each chart View keeps its own top and saves it with its layout" and "The schematic keeps that scale when a reader gives the chart another top" are replaced.
+
+## Build, 2026-11-28
+
+**How the top reaches each View.** The one record is `Preferences.chart_ceiling` in `app/preferences.py`. The dashboard passes it to `assemble_chart_frame` for every chart frame, and records it in each run's `RunPanelState`, from which `drawn_values` builds the run's schematic. A View asks for another top through `ViewRequests.chart_ceiling`, which the dashboard's halt-gated `_handle_chart_ceiling_request` saves and draws at once. No View saves a top of its own.
+
+**Where the schematic's control sits, and what was measured.** In the Maintenance Workspace at 1366 by 768, with one run:
+
+| Placement | Container's default font | DejaVu Sans 9 |
+| --- | --- | --- |
+| A row of its own under the heading | containers 33 px below the Area | 18 px below |
+| At the right end of the pinned row, beside the units line | 0 px to spare | 14 px to spare |
+
+The page did not scroll in either placement. A row of its own failed `test_each_shipped_workspace_shows_its_lesson_whole_with_one_run[Maintenance-1366-768]`, so the control sits in the pinned row, which keeps it on screen while the schematic scrolls. The source for the placement is NUREG-0700 Rev. 3, guideline 1.1-26, p. 1-11, "Information that must be compared or mentally integrated should be presented in close spatial proximity", read in this session from https://www.osti.gov/servlets/purl/1644018: the scale's top is read together with the tensions' unit beside it. The 0 px in the container's font is main's own margin, because the pinned row's two text lines are taller than the control. Measured with the page, schematic, layout, keyboard, Workspace-tab, View-chooser and chart test files under both fonts, all passing.
+
+**How the saved value migrates.** A chart state saved by v0.6.22 to v0.6.24 holds `ceiling_mac`, that chart's own top (`git tag --contains e75ec4d3`). The chart reads its time window from that state and passes over the old top without a notice, so such a layout opens at 3 ×MAC once. Carrying an old top over was set aside, because a Workspace could hold several charts at different tops and no rule picks one of them. The preferences file moves to version 2, which adds `chart_axis_top_mac`. A version 1 file opens at 3 ×MAC without a notice, and its next save writes version 2. An older build that meets a version 2 file uses no preferences for that session and says so, the rule `PL-SSQW` set for every newer file.
+
+**A refused saved top.** A version 2 file whose top is not 1.5, 3 or 4.5 is treated as a refused unit is: the top is not used, every chart and schematic is drawn at 3 ×MAC, and the value is kept and written back until the reader picks a top. Each chart and the schematic say so in a line under the "Axis top" control. The agent cost View's notice and its offer to discard refused entries leave the top out, because the top is not set there. The control reads a pick from Qt's `activated` signal rather than `currentIndexChanged`, so choosing 3 ×MAC, the top already shown, clears the line. Qt's documentation says that `activated` "is sent when the user chooses an item in the combobox ... even when the choice is not changed" and that `currentIndexChanged` is sent "either through user interaction or programmatically" (https://doc.qt.io/qt-6/qcombobox.html, read 2026-11-28). A probe under PySide6 6.12.0 offscreen showed that an arrow key on a closed combo box sends both signals, and `setCurrentIndex` sends only `currentIndexChanged`.
+
+**Wording.** The only new on-screen text is the refused-top line: "The saved axis top, 7, is not one of the choices, 1.5, 3 or 4.5 ×MAC, so every chart and schematic shows 3 ×MAC. Choose a top to replace it." It follows the form of `PL-VT87`'s refused-unit line. It was checked against the Nielsen Norman Group's "Error-Message Guidelines" (use human-readable language, describe the issue precisely, offer constructive advice, do not blame the user) and the GOV.UK Design System's "Error message" ("Describe what has happened and tell them how to fix it. The message must be in plain English"), both read 2026-11-28 from https://www.nngroup.com/articles/error-message-guidelines/ and https://design-system.service.gov.uk/components/error-message/. It names the value, the choices, what the Views did, and the next step. The "Axis top" label and the schematic's caption format are unchanged.
+
+**Run against the code before the change** (`d796aa75`, main with `#2332`):
+
+1. `uv run pytest -q "tests/integration/simulation_view/test_simulation_view_readouts.py::test_the_schematic_marks_off_the_scale_what_the_chart_names_at_the_top_picked"` fails with `AssertionError: at 4.5 ×MAC` and `assert {<RecordedQuantity.CIRCUIT: 'circuit'>} == set()`: the schematic marked the circuit off its scale while the chart named nothing.
+2. Done-when 2's tests need `ViewRequests.chart_ceiling`, which the change added. A variant that needs nothing new picks 4.5 ×MAC on the Maintenance Workspace's chart and checks the schematic's caption. On the old code it fails with the caption still reading "0 to 5.4% of 1 atm (3 ×MAC)", and it passes on the branch.
+3. Done-when 3's restart is not a regression: the old code kept a chart's top with its layout. Its test of an old layout needs the new request too, and was not run on the old code.
+
+A gap found and not fixed here is `PL-GWSY`: a top chosen while the preferences cannot be saved is said to be unsaved only in the agent cost View.
+

@@ -647,12 +647,14 @@ def _labelled_control(label: str, control: QWidget, named: QWidget | None = None
     return item
 
 
-def _panel_row(label: QLabel, object_name: str) -> QWidget:
+def _panel_row(label: QLabel, object_name: str, control: QWidget | None = None) -> QWidget:
     """Return a row that holds `label` on the panel surface, inset by the panel's padding.
 
     A View's pinned row sits outside the View's own panel, between the Area's
     header and the box that scrolls the View. This gives the row the same
-    surface and the same left edge as the panel's text below it.
+    surface and the same left edge as the panel's text below it. A `control`
+    stands at the row's right end, level with the label's first line, so it
+    stays on screen while the View scrolls.
     """
 
     row = QWidget()
@@ -662,6 +664,10 @@ def _panel_row(label: QLabel, object_name: str) -> QWidget:
     line = QHBoxLayout(row)
     line.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, 0)
     line.addWidget(label)
+
+    if control is not None:
+        line.addStretch(1)
+        line.addWidget(control, 0, Qt.AlignmentFlag.AlignTop)
 
     return row
 
@@ -1566,8 +1572,9 @@ class CompartmentSchematicView(QWidget):
     Attributes:
         qualifier_label: The lines that say the values are model outputs,
             and name the units of every tension and every amount.
-        pinned_row: The row that holds `qualifier_label`, which the View's
-            Area keeps on screen above the View's scroll box.
+        pinned_row: The row that holds `qualifier_label`, and the axis-top
+            control at its right end, which the View's Area keeps on screen
+            above the View's scroll box.
         ceiling_selector: The control that sets the top of the scale, for
             every concentration chart and schematic at once.
     """
@@ -1591,14 +1598,14 @@ class CompartmentSchematicView(QWidget):
         self.qualifier_label = styled_label(
             f"{INTERPRETATION_DISCLAIMER_TEXT} {TENSION_UNIT_TEXT}\n{AMOUNT_UNIT_TEXT}", color=MUTED
         )
-        self.pinned_row = _panel_row(self.qualifier_label, _SCHEMATIC_PINNED_ROW_NAME)
+        self.pinned_row = _panel_row(
+            self.qualifier_label,
+            _SCHEMATIC_PINNED_ROW_NAME,
+            _labelled_control(CHART_CEILING_LABEL, self.ceiling_selector),
+        )
         column.addWidget(self.state_notice)
-        column.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True))
-        controls = QHBoxLayout()
-        controls.addWidget(_labelled_control(CHART_CEILING_LABEL, self.ceiling_selector))
-        controls.addStretch(1)
-        column.addLayout(controls)
         column.addWidget(self.ceiling_notice)
+        column.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True))
         column.addWidget(self._schematics.holder)
         column.addStretch(1)
 

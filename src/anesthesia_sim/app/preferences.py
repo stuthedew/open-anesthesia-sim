@@ -1,11 +1,11 @@
-"""Read and write the file that holds the reader's agent prices and the agent cost View's unit.
+"""Read and write the file that holds the reader's agent prices, units and axis top.
 
 A preference belongs to the reader, not to a layout. So preferences are kept
 in `preferences.json`, beside the Workspaces' `workspaces.json` in the same
 directory but never inside it (`PL-MQHN`, `PL-93B3`). This module is the only
 code that reads and writes the file. Nothing in it imports Qt.
 
-**What is stored.** Two kinds of preference are stored, and nothing else:
+**What is stored.** Three kinds of preference are stored, and nothing else:
 
 - At most one `AgentPrice` for each shipped agent. `docs/INTERFACE.md` § "A cost
   at the reader's price" specifies its fields and what is refused. The reader
@@ -17,9 +17,14 @@ code that reads and writes the file. Nothing in it imports Qt.
   schematic", entry 8). The unit is stored as an `AgentAmountUnit` member.
   `app/formatting.py` keys its precision table by the same members, so a
   stored unit and a formatted value cannot name a unit in two different ways.
+- The top of the MAC axis that every concentration chart and every compartment
+  schematic is drawn to, a `ChartCeiling` (`docs/INTERFACE.md` § "The chart's
+  fixed MAC axis", `PL-7LZ7`). The file stores the top's MAC multiple, such as
+  3.0. Version 1 of the document had no top, so a version 1 file opens at the
+  standard top, without a notice, and its next save writes version 2.
 
-The project ships no price. A reader with no file has no prices and the
-default unit.
+The project ships no price. A reader with no file has no prices, the default
+unit and the standard top.
 
 **Two choices that `docs/INTERFACE.md` § "Setting a price" left to this module**
 (`PL-93B3`, 2026-11-01):
@@ -42,16 +47,18 @@ default unit.
 `LoadedPreferences`, which says whether saving is allowed and carries any
 notice for the reader. No problem with the file passes without a notice:
 
-- *No file.* The session has no prices and the default unit, and there is no
-  notice. Saving is on.
-- *A file that this build can read.* Each price and the unit are checked one
-  by one. A refused price is not used, and it is never replaced by a default.
-  The reader is told which price was refused and why, and that agent then has
-  no valid price. When the unit is refused, the default unit is used, with a
-  notice. Each refused entry is kept exactly as it was written and is written
-  back on the next save. That stops when the reader sets a new value in its
-  place or discards it (`Preferences.without_refused_entries`). So a save
-  never deletes something the reader wrote without the reader asking.
+- *No file.* The session has no prices, the default unit and the standard
+  top, and there is no notice. Saving is on.
+- *A file that this build can read.* Each price, the unit and the top are
+  checked one by one. A refused price is not used, and it is never replaced by
+  a default. The reader is told which price was refused and why, and that
+  agent then has no valid price. When the unit is refused, the default unit is
+  used, with a notice. When the top is refused, the standard top is used, and
+  every chart and schematic says so (`chart_ceiling_notice`). Each refused
+  entry is kept exactly as it was written and is written back on the next
+  save. That stops when the reader sets a new value in its place, or discards
+  the refused prices and unit (`Preferences.without_refused_entries`). So a
+  save never deletes something the reader wrote without the reader asking.
 - *A file that a newer build wrote.* It is not read. Saving is off for the
   session, so the file is never overwritten. The notice names the file, its
   version and this build's version. The Workspaces file follows the same rule
@@ -86,7 +93,7 @@ from typing import Final
 
 from anesthesia_sim.app.currency_code import is_currency_code
 from anesthesia_sim.app.display_units import DisplayUnit
-from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.formatting import MAC_UNIT_SUFFIX, AgentAmountUnit, ChartCeiling
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES
 from anesthesia_sim.core.validation import require_positive_finite
@@ -103,6 +110,7 @@ __all__ = [
     "PreferencesFileError",
     "PreferencesStore",
     "RefusedEntry",
+    "chart_ceiling_notice",
     "refusals_notice",
     "unsaved_preferences_notice",
 ]
@@ -111,7 +119,8 @@ PREFERENCES_FILE_NAME: Final = "preferences.json"
 _PENDING_FILE_NAME: Final = f"{PREFERENCES_FILE_NAME}.tmp"
 
 #: The version of the document that this build writes, and the newest it reads.
-PREFERENCES_SCHEMA_VERSION: Final = 1
+#: Version 2 added the axis top (`PL-7LZ7`).
+PREFERENCES_SCHEMA_VERSION: Final = 2
 
 #: The units that the agent cost View can show the delivered agent in, the
 #: default first (`ROADMAP.md` § "v0.7.0 - the schematic", entry 8).
@@ -125,7 +134,14 @@ DEFAULT_AGENT_COST_VIEW_UNIT: Final = AGENT_COST_VIEW_UNITS[0]
 _SCHEMA_VERSION_KEY: Final = "schema_version"
 _UNIT_KEY: Final = "agent_cost_unit"
 _PRICES_KEY: Final = "agent_prices"
-_DOCUMENT_KEYS: Final = frozenset({_SCHEMA_VERSION_KEY, _UNIT_KEY, _PRICES_KEY})
+_CHART_CEILING_KEY: Final = "chart_axis_top_mac"
+#: The keys that a document of each version holds, every one of them required.
+_DOCUMENT_KEYS: Final = MappingProxyType(
+    {
+        1: frozenset({_SCHEMA_VERSION_KEY, _UNIT_KEY, _PRICES_KEY}),
+        2: frozenset({_SCHEMA_VERSION_KEY, _UNIT_KEY, _PRICES_KEY, _CHART_CEILING_KEY}),
+    }
+)
 _AGENT_KEY: Final = "agent"
 _BOTTLE_PRICE_KEY: Final = "bottle_price"
 _BOTTLE_VOLUME_KEY: Final = "bottle_volume_ml"
@@ -282,11 +298,12 @@ class RefusedEntry:
     back rather than deleting it.
 
     Attributes:
-        raw: The entry as the file held it: one price object, or the unit's
-            value.
+        raw: The entry as the file held it: one price object, or the value
+            of the unit or of the top.
         reason: Why it was refused, as the notice states it.
         agent_id: The agent that a refused price names, or `None` for the
-            unit, or for a price that does not give its agent as a string.
+            unit, for the top, or for a price that does not give its agent as
+            a string.
     """
 
     raw: object
@@ -296,7 +313,7 @@ class RefusedEntry:
 
 @dataclass(frozen=True, slots=True)
 class Preferences:
-    """Hold the reader's settings, which are a price per agent and the agent cost View's unit.
+    """Hold the reader's settings: a price per agent, the agent cost View's unit, and the axis top.
 
     It is immutable. Each `with_` method returns a new record. Setting a
     value drops any refused entry that the value replaces, because the reader
@@ -310,21 +327,28 @@ class Preferences:
             the file's order. None of them is used.
         refused_unit: The unit entry refused when the file was read, or
             `None`.
+        chart_ceiling: The top of the MAC axis that every concentration
+            chart and every compartment schematic is drawn to.
+        refused_chart_ceiling: The top entry refused when the file was read,
+            or `None`.
     """
 
     agent_prices: Mapping[str, AgentPrice] = field(default_factory=lambda: MappingProxyType({}))
     agent_cost_unit: AgentAmountUnit = DEFAULT_AGENT_COST_VIEW_UNIT
     refused_prices: tuple[RefusedEntry, ...] = ()
     refused_unit: RefusedEntry | None = None
+    chart_ceiling: ChartCeiling = ChartCeiling.STANDARD
+    refused_chart_ceiling: RefusedEntry | None = None
 
     def __post_init__(self) -> None:
-        """Refuse a record whose prices or unit break the rules listed under Raises.
+        """Refuse a record whose prices, unit or top break the rules listed under Raises.
 
         Raises:
             SimulationConfigurationError: If a price is keyed by an agent
                 other than its own, or if the unit is not one of
                 `AGENT_COST_VIEW_UNITS`.
-            TypeError: If a price is not an `AgentPrice`.
+            TypeError: If a price is not an `AgentPrice`, or the top is not a
+                `ChartCeiling`.
         """
 
         for agent_id, price in self.agent_prices.items():
@@ -337,6 +361,12 @@ class Preferences:
                 )
 
         _require_cost_view_unit(self.agent_cost_unit)
+
+        if not isinstance(self.chart_ceiling, ChartCeiling):
+            raise TypeError(
+                f"the axis top is a ChartCeiling, not {type(self.chart_ceiling).__name__}"
+            )
+
         object.__setattr__(self, "agent_prices", MappingProxyType(dict(self.agent_prices)))
 
     def price_for(self, agent_id: str) -> AgentPrice | None:
@@ -378,18 +408,25 @@ class Preferences:
 
     @property
     def holds_refused_entries(self) -> bool:
-        """Whether any entry refused when the file was read is still kept."""
+        """Whether a refused price or a refused unit is still kept.
+
+        These are the entries that `refusals_notice` names and the agent cost
+        View offers to discard. A refused top is named on the charts and
+        schematics instead (`chart_ceiling_notice`), so it is not counted here.
+        """
 
         return bool(self.refused_prices) or self.refused_unit is not None
 
     def without_refused_entries(self) -> Preferences:
-        """Return these preferences with every refused entry discarded.
+        """Return these preferences with every refused price and the refused unit discarded.
 
         The agent cost View offers this beside the notice that names the
         refused entries, and asks the reader to confirm it (`PL-7KXN`). It lets
         the reader clear a refused entry that no new value replaces, such as a
         price entry that names no agent. Without it, such an entry would be
         written back at every save and named in the notice at every launch.
+        A refused top is kept. A top picked on any chart or schematic replaces
+        it (`with_chart_ceiling`).
         """
 
         return replace(self, refused_prices=(), refused_unit=None)
@@ -403,6 +440,15 @@ class Preferences:
         """
 
         return replace(self, agent_cost_unit=unit, refused_unit=None)
+
+    def with_chart_ceiling(self, ceiling: ChartCeiling) -> Preferences:
+        """Return these preferences with every chart and schematic drawn to `ceiling`.
+
+        Raises:
+            TypeError: If `ceiling` is not a `ChartCeiling`.
+        """
+
+        return replace(self, chart_ceiling=ceiling, refused_chart_ceiling=None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -593,6 +639,18 @@ REFUSED_PREFERENCES_NEXT_STEP: Final = (
 )
 
 
+def chart_ceiling_notice(preferences: Preferences) -> str | None:
+    """Return the notice that every chart and schematic shows for a refused top, or None.
+
+    The notice is shown under each View's axis top control, which is where the
+    reader picks a top to replace the refused one.
+    """
+
+    refused = preferences.refused_chart_ceiling
+
+    return None if refused is None else refused.reason
+
+
 def unsaved_preferences_notice(error: PreferencesFileError) -> str:
     """Return what the reader is told when a change of preference could not be saved.
 
@@ -709,9 +767,10 @@ def _from_document(document: object) -> Preferences:
         raise _NewerFile(version)
 
     keys = set(document)
-    if keys != _DOCUMENT_KEYS:
-        missing = sorted(_DOCUMENT_KEYS - keys)
-        unknown = sorted(keys - _DOCUMENT_KEYS)
+    expected = _DOCUMENT_KEYS[version]
+    if keys != expected:
+        missing = sorted(expected - keys)
+        unknown = sorted(keys - expected)
         raise _InvalidDocument(f"its keys are wrong: missing {missing}, not known {unknown}")
 
     raw_prices = document[_PRICES_KEY]
@@ -765,12 +824,45 @@ def _from_document(document: object) -> Preferences:
     else:
         unit = unit_member
 
+    ceiling, refused_ceiling = (
+        (ChartCeiling.STANDARD, None)
+        if version == 1
+        else _chart_ceiling_from(document[_CHART_CEILING_KEY])
+    )
+
     return Preferences(
         agent_prices=prices,
         agent_cost_unit=unit,
         refused_prices=tuple(refused),
         refused_unit=refused_unit,
+        chart_ceiling=ceiling,
+        refused_chart_ceiling=refused_ceiling,
     )
+
+
+def _chart_ceiling_from(raw: object) -> tuple[ChartCeiling, RefusedEntry | None]:
+    """Return the top that a document's entry names, or the standard top and the refused entry.
+
+    The entry must be a number equal to one of `ChartCeiling`'s MAC multiples.
+    """
+
+    # `type` rather than `isinstance`, so that True does not pass for 1.
+    ceiling = next(
+        (member for member in ChartCeiling if type(raw) in (int, float) and raw == member.value),
+        None,
+    )
+
+    if ceiling is not None:
+        return ceiling, None
+
+    values = [f"{member.value:g}" for member in ChartCeiling]
+    offered = f"{', '.join(values[:-1])} or {values[-1]}{MAC_UNIT_SUFFIX}"
+    reason = (
+        f"The saved axis top, {raw!r}, is not one of the choices, {offered}, so every "
+        f"chart and schematic shows {ChartCeiling.STANDARD.label}. Choose a top to replace it."
+    )
+
+    return ChartCeiling.STANDARD, RefusedEntry(raw, reason, None)
 
 
 def _price_from_entry(raw: object) -> AgentPrice:
@@ -830,6 +922,11 @@ def _to_json(preferences: Preferences) -> str:
         if preferences.refused_unit is None
         else preferences.refused_unit.raw
     )
+    ceiling = (
+        preferences.chart_ceiling.value
+        if preferences.refused_chart_ceiling is None
+        else preferences.refused_chart_ceiling.raw
+    )
 
     return (
         json.dumps(
@@ -837,6 +934,7 @@ def _to_json(preferences: Preferences) -> str:
                 _SCHEMA_VERSION_KEY: PREFERENCES_SCHEMA_VERSION,
                 _UNIT_KEY: unit,
                 _PRICES_KEY: entries,
+                _CHART_CEILING_KEY: ceiling,
             },
             indent=2,
             ensure_ascii=False,
