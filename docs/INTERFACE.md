@@ -4504,15 +4504,31 @@ accessible name instead, so each control has one as well. The run's agent
 selector had no label on screen, so the word "Agent" now stands before it, in
 the muted style of "Playback" before the playback rate. Where two controls
 share a label, the name adds which one it is: "Name, time bookmark" and "Name,
-MAC target", "Add, time bookmark" and "Add, MAC target", and "From, branch
-point". Each name starts with the label shown, which the Understanding
-document for SC 2.5.3 (Label in Name) calls best practice. A scroll box that
+MAC target", "Add, time bookmark" and "Add, MAC target", "From, branch
+point", and "Agent, price" for the price form's agent. Each run's controls
+add the run while two runs are compared, such as "Playback, Run 2" and
+"Start, Run 2". Each plot's window and axis controls add the plot, such as
+"Time base, Wash-in" and "Show an earlier part of the run, Concentrations"
+(`PL-YSFX`). The label tied to a selector carries the same name for a screen
+reader while it still shows its own text, because Linux and macOS take what a
+selector is for from that label. Each name starts with the label shown, which
+the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
+The W3C's ARIA Authoring Practices Guide asks that controls with the same
+role have different names unless they are identical. So no two controls that
+a reader can reach share a name, apart from three cases that are still to be
+named apart (`PL-XV64`): the Area corners, the Area borders, and the controls
+of two Areas that show the same kind of View, such as the two halves of a
+split Concentrations Area. A scroll box that
 takes the focus so that the keyboard can scroll it is named by the heading
 above it, or by what it holds, such as "Concentration chart legend". An Area's
 corner is named "Area corner", and its description says that the Area menu
 does from the keyboard what a drag on the corner does
-(`test_every_control_a_reader_can_reach_says_what_it_is_for` and
-`test_each_selector_is_named_by_its_shown_label_on_every_platform` in
+(`test_every_control_a_reader_can_reach_says_what_it_is_for`,
+`test_each_selector_is_named_by_its_shown_label_on_every_platform`,
+`test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
+`test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot`,
+`test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`
+and `test_a_name_that_does_not_start_with_the_shown_label_is_refused` in
 `tests/integration/test_keyboard_focus.py`).
 
 **A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
@@ -4534,13 +4550,28 @@ reads out a refusal under a bookmark form or the branch control, and the
 caption. So two Areas that show the same refusal read it once, and a View
 built again after a Workspace switch shows it without reading it again. Each
 refused press is read, even where the refusal is already shown, so that a
-second press is not met with silence
-(`test_each_new_banner_is_read_out_once_and_a_warning_interrupts` and
-`test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends` in
+second press is not met with silence. Everything that the window asks a
+screen reader to read in one action is read as one announcement, which
+interrupts if any part of it does. WAI-ARIA 1.2's definition of `aria-live`
+lets a screen reader drop what it has queued when an interrupting
+announcement arrives. So when every run halts at once, a user would otherwise
+hear only the last compared run's halt (`PL-MP92`). The parts that interrupt
+are read first, so a request to act is heard even if a later announcement
+cuts this one short. The other parts follow in the order they were asked for.
+Each part but the last ends with a full stop, so the screen reader pauses
+between two parts
+(`test_each_new_banner_is_read_out_once_and_a_warning_interrupts`,
+`test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends`,
+`test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement`,
+`test_a_message_asked_for_twice_in_one_action_is_read_once`,
+`test_each_message_read_before_another_in_one_announcement_ends_a_sentence`,
+`test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read` and
+`test_each_window_reads_its_own_announcements` in
 `tests/integration/test_qt_widgets.py`,
 `test_a_countdown_keeps_one_topic_while_its_time_left_changes` in
 `tests/unit/test_dashboard_frame.py`,
-`test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` in
+`test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` and
+`test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement` in
 `tests/integration/simulation_view/test_simulation_view_refusals.py`,
 `test_the_countdown_and_the_stop_at_the_supported_run_length_are_each_read_out_once`
 in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`,

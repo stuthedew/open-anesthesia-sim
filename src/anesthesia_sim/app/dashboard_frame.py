@@ -952,16 +952,29 @@ HEIGHT_FIELD_LABEL: Final = "Height"
 MARK_NAME_FIELD_LABEL: Final = "Name"
 
 
-def form_control_name(label: str, kind: str) -> str:
-    """Return what a screen reader calls a control of one of the marks editor's two forms.
+def control_name(label: str, which: str | None) -> str:
+    """Return what a screen reader calls a control whose label is shown on another control too.
 
-    Both forms have a "Name" field and an "Add" button. Each is named with its
-    form's kind of mark as well, such as "Name, MAC target", so the two are
-    not heard as the same control (`PL-RK9Z`). The name starts with the
-    label, as the Understanding document for WCAG 2.2 SC 2.5.3 recommends.
+    The name is the label, then which control it is, such as "Name, MAC target"
+    for one of the marks editor's two "Name" fields (`PL-RK9Z`), or "Playback,
+    Run 2" while two runs are compared (`PL-YSFX`). The W3C's ARIA Authoring
+    Practices Guide asks for "unique names for elements with the same role
+    unless the elements are actually identical", and for names that are concise
+    (in its section "Composing Effective and User-friendly Accessible Names"). The name
+    starts with the label, which the Understanding document for WCAG 2.2 SC
+    2.5.3 (Label in Name) calls best practice.
+
+    Args:
+        label: The label shown beside or on the control.
+        which: What tells this control from the others that show the same
+            label, such as a run's name or a View's title, or None where no
+            other control shows it.
+
+    Returns:
+        The label alone when `which` is None.
     """
 
-    return f"{label}, {kind}"
+    return label if which is None else f"{label}, {which}"
 
 
 MARK_NAME_PLACEHOLDER: Final = "Optional"
@@ -1152,6 +1165,13 @@ FIT_RUN_LABEL: Final = "Fit run"
 # names the resulting width. The caption is written into the time axis's
 # title.
 CHART_HEADING: Final = "Agent concentration and relative partial pressure over time"
+# The names the View chooser gives the three Views that draw against an axis
+# (`view_registry.REGISTERED`). Each one's axis controls are named with its
+# View's name too, because the others have controls with the same labels
+# (`control_name`, `PL-YSFX`).
+CONCENTRATION_VIEW_TITLE: Final = "Concentrations"
+WASH_IN_VIEW_TITLE: Final = "Wash-in"
+SCHEMATIC_VIEW_TITLE: Final = "Compartment schematic"
 # What the chart's long description opens with. The W3C example of a chart's
 # text alternative "identifies the type of chart" first (Understanding WCAG
 # 2.2 SC 1.1.1, `PL-T9RB`).

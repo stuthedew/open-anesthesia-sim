@@ -44,7 +44,7 @@ can reach is declared on the palette instead, by
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from enum import Enum
 from functools import partial
@@ -106,13 +106,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from shiboken6 import isValid
 
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
-from anesthesia_sim.app.branch_controls import (
-    FORK_POINT_ACCESSIBLE_NAME,
-    FORK_POINT_LABEL,
-    TAKE_FORK_LABEL,
-)
+from anesthesia_sim.app.branch_controls import FORK_POINT_KIND, FORK_POINT_LABEL, TAKE_FORK_LABEL
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import (
@@ -142,7 +139,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NewCaseQuestion,
     Readout,
     SettingReadout,
-    form_control_name,
+    control_name,
     height_entry_maximum_mac,
     readout_columns,
     readout_row_width,
@@ -1943,7 +1940,9 @@ class NoticeLabel(QLabel):
     The banner is announced once control returns to the event loop, as it
     stands then. So a banner written twice in one action is read once. A halt
     writes its banner before its frame is drawn and again from the frame, and
-    only the second is read.
+    only the second is read. Banners that change in one action in the same
+    window are read as one announcement (`announce`), so a halt of every run
+    reads each run's banner rather than only the last (`PL-MP92`).
 
     A label in a View that the dashboard builds again on each Workspace
     switch, or holds in two Areas at once, is built with `announces` False.
@@ -1969,10 +1968,6 @@ class NoticeLabel(QLabel):
         # Each is None while the banner is hidden.
         self._topic: str | None = None
         self._announced_topic: str | None = None
-        self._announcement = QTimer(self)
-        self._announcement.setSingleShot(True)
-        self._announcement.setInterval(0)
-        self._announcement.timeout.connect(self._announce)
         self.set_notice(None)
 
     def set_notice(
@@ -2003,34 +1998,165 @@ class NoticeLabel(QLabel):
         self.setHidden(text is None)
 
         if self._announces and self._topic != self._announced_topic:
-            self._announcement.start()
+            _announcements_of(self).add(self, self, self._take_announcement)
 
     def notice(self) -> str | None:
         """The banner's text, or None while it is hidden."""
 
         return self._notice
 
-    def _announce(self) -> None:
-        """Announce the banner on screen, if its topic is not the one last announced."""
+    def _take_announcement(self) -> tuple[str, bool] | None:
+        """Return the banner on screen and whether it interrupts, if its topic is new.
 
-        if self._notice is not None and self._topic != self._announced_topic:
-            announce(self, self._notice, interrupt=self._color == WARNING)
+        It returns None while the banner is hidden, or while its topic is the
+        one last announced. Either way the topic on screen becomes the one
+        last announced.
+        """
 
+        announcement = (
+            (self._notice, self._color == WARNING)
+            if self._notice is not None and self._topic != self._announced_topic
+            else None
+        )
         self._announced_topic = self._topic
+
+        return announcement
+
+
+#: A request for one announcement: it returns the message and whether it
+#: interrupts, or None when there is nothing to read by then.
+_AnnouncementRequest = Callable[[], tuple[str, bool] | None]
+
+
+class _WindowAnnouncements(QObject):
+    """The announcements one window asks for before control returns to the event loop.
+
+    They are sent as one announcement. WAI-ARIA 1.2's definition of `aria-live`
+    says that a screen reader given an assertive update "could potentially clear
+    the speech queue of previous updates", and that it "MAY choose to clear
+    queued changes when an assertive change occurs". So two announcements sent
+    in one action can leave a screen-reader user hearing only the second. When
+    every run halts at once, that was each compared run's halt but the last
+    (`PL-MP92`). The one announcement interrupts what is being read if any of
+    the messages in it does, and it repeats no message. The messages that
+    interrupt come first, so the ones that ask the reader to act are heard even
+    if a later announcement cuts this one short. Within each group, the messages
+    keep the order they were asked for. Each message but the last ends with a
+    full stop, so a screen reader pauses between two messages.
+
+    Each request is read when the announcement is sent, so a banner written twice
+    in one action is read as the action leaves it. A request from a widget that
+    has been deleted by then is dropped. The object is a child of its window, so
+    a window that is closed and deleted takes its unsent requests with it, and two
+    windows never share one.
+
+    Args:
+        window: The window whose announcements this sends.
+    """
+
+    def __init__(self, window: QWidget) -> None:
+        super().__init__(window)
+        self._requests: dict[object, tuple[QWidget, _AnnouncementRequest]] = {}
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(0)
+        self._timer.timeout.connect(self._send)
+
+    def add(self, key: object, source: QWidget, request: _AnnouncementRequest) -> None:
+        """Ask for `request` to be read with the window's other announcements.
+
+        Args:
+            key: What the request is for. A second request under the same key
+                before the announcement is sent keeps the first one's place.
+            source: The widget that shows the message.
+            request: Returns the message and whether it interrupts, or None.
+        """
+
+        self._requests.setdefault(key, (source, request))
+        self._timer.start()
+
+    def _send(self) -> None:
+        """Send every request that still has a message, as one announcement."""
+
+        requests, self._requests = self._requests, {}
+        readings: dict[str, tuple[QWidget, bool]] = {}
+
+        for source, request in requests.values():
+            if not isValid(source):
+                continue
+
+            reading = request()
+
+            if reading is None:
+                continue
+
+            message, interrupts = reading
+            earlier = readings.get(message)
+
+            if earlier is None:
+                readings[message] = (source, interrupts)
+            elif interrupts:
+                readings[message] = (earlier[0], True)
+
+        if not readings:
+            return
+
+        # sorted() keeps the order asked for among messages with the same key.
+        ordered = sorted(readings.items(), key=lambda reading: not reading[1][1])
+        messages = [_ended_as_sentence(message) for message, _ in ordered[:-1]]
+        messages.append(ordered[-1][0])
+        source, interrupt = ordered[0][1]
+        _send_announcement(source, " ".join(messages), interrupt=interrupt)
+
+
+#: The marks that end a sentence, after which a screen reader pauses.
+_SENTENCE_ENDS: Final = (".", "!", "?")
+
+
+def _ended_as_sentence(message: str) -> str:
+    """Return `message` with a full stop added where it ends with no mark that ends a sentence.
+
+    Some messages are shown without one, such as "Select an instant to branch
+    at". Read before another message in one announcement, such a message would
+    run into the next with no pause (`PL-MP92`).
+    """
+
+    return message if message.endswith(_SENTENCE_ENDS) else f"{message}."
+
+
+def _announcements_of(widget: QWidget) -> _WindowAnnouncements:
+    """Return the announcements of `widget`'s window, made the first time they are asked for."""
+
+    window = widget.window()
+    announcements = window.findChild(
+        _WindowAnnouncements, "", Qt.FindChildOption.FindDirectChildrenOnly
+    )
+
+    return _WindowAnnouncements(window) if announcements is None else announcements
 
 
 def announce(source: QWidget, message: str, *, interrupt: bool) -> None:
-    """Ask assistive technology to read `message` now, without moving the focus.
+    """Ask assistive technology to read `message` once control returns to the event loop.
 
-    Qt passes the request to each platform's screen reader interface: AT-SPI
-    on Linux, UI Automation on Windows and the accessibility notifications on
-    macOS. It does nothing where no screen reader is running.
+    The focus does not move. Every announcement that `source`'s window asks for
+    in the same action is read as one (`_WindowAnnouncements`, `PL-MP92`).
 
     Args:
         source: The widget that shows the message.
         message: What to read, which is the text the widget shows.
         interrupt: True to interrupt what is being read, for a message that
             asks the reader to act. False to wait until speech pauses.
+    """
+
+    _announcements_of(source).add(object(), source, lambda: (message, interrupt))
+
+
+def _send_announcement(source: QWidget, message: str, *, interrupt: bool) -> None:
+    """Ask assistive technology to read `message` now, without moving the focus.
+
+    Qt passes the request to each platform's screen reader interface: AT-SPI
+    on Linux, UI Automation on Windows and the accessibility notifications on
+    macOS. It does nothing where no screen reader is running.
     """
 
     announcement = QAccessibleAnnouncementEvent(source, message)
@@ -2694,7 +2820,9 @@ class ForkPanel(QWidget):
         self.pin_text.setHidden(True)
         self.notice = NoticeLabel(self, announces=False)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
-        label_control(self._point_label, self.point_selector, FORK_POINT_ACCESSIBLE_NAME)
+        label_control(
+            self._point_label, self.point_selector, control_name(FORK_POINT_LABEL, FORK_POINT_KIND)
+        )
         # The points behind the selector's entries, one per entry, in the
         # selector's order. `selected_point` returns one of them, and
         # `set_offer` rebuilds the entries when a new offer differs from them.
@@ -3131,9 +3259,9 @@ class MarkEditor(QWidget):
         )
 
         # Both forms have a "Name" field and an "Add" button, so each is named
-        # with its form's kind of mark as well (`form_control_name`).
-        time_name = form_control_name(MARK_NAME_FIELD_LABEL, TIME_MARK_KIND)
-        target_name = form_control_name(MARK_NAME_FIELD_LABEL, TARGET_MARK_KIND)
+        # with its form's kind of mark as well (`control_name`).
+        time_name = control_name(MARK_NAME_FIELD_LABEL, TIME_MARK_KIND)
+        target_name = control_name(MARK_NAME_FIELD_LABEL, TARGET_MARK_KIND)
 
         for label, control, name in (
             (instant_name, self.instant_spin, None),
@@ -3144,10 +3272,8 @@ class MarkEditor(QWidget):
         ):
             label_control(label, control, name)
 
-        self.add_time_button.setAccessibleName(form_control_name(ADD_MARK_LABEL, TIME_MARK_KIND))
-        self.add_target_button.setAccessibleName(
-            form_control_name(ADD_MARK_LABEL, TARGET_MARK_KIND)
-        )
+        self.add_time_button.setAccessibleName(control_name(ADD_MARK_LABEL, TIME_MARK_KIND))
+        self.add_target_button.setAccessibleName(control_name(ADD_MARK_LABEL, TARGET_MARK_KIND))
 
         # Both forms give their field names the width of the widest name, so
         # the fields of the two forms start at one edge and read as one column.
@@ -3500,18 +3626,44 @@ def label_control(label: QLabel, control: QWidget, name: str | None = None) -> N
     selector by its accessible name, so the control is given one as well. A
     spin box or an entry field takes the name on every platform.
 
+    A `name` is given to the label as well as to the control, while the label
+    still shows its own text. Qt reports a label by its accessible name where
+    it has one. So on Linux and macOS a selector is said to be for "Playback,
+    Run 2" and not for "Playback" alone (`PL-YSFX`). A caller whose name
+    changes calls this again with the new name. Only a name that differs is
+    written, so a name written again on each frame sends a screen reader no
+    change.
+
     Args:
         label: The label shown beside the control.
         control: The control the label names.
         name: The name for a screen reader, where the label's text alone does
             not say which control it is, such as one of two fields called
-            "Name". It starts with the label's text, which W3C's
-            Understanding document for WCAG 2.2 SC 2.5.3 (Label in Name)
-            calls best practice. It is the label's text by default.
+            "Name" (`dashboard_frame.control_name`). It is the label's text by
+            default.
+
+    Raises:
+        ValueError: `name` does not start with the label's text. A name that
+            starts with the label shown is what WCAG 2.2's Understanding
+            document for SC 2.5.3 (Label in Name) calls best practice, and it
+            lets a user of speech input say the label they see.
     """
 
+    if name is not None and not name.startswith(label.text()):
+        raise ValueError(
+            f"The name {name!r} for a screen reader does not start with the label "
+            f"shown beside its control, {label.text()!r}. Start the name with the "
+            "label, as dashboard_frame.control_name does."
+        )
+
     label.setBuddy(control)
-    control.setAccessibleName(label.text() if name is None else name)
+    spoken = label.text() if name is None else name
+
+    if control.accessibleName() != spoken:
+        control.setAccessibleName(spoken)
+
+    if label.accessibleName() != ("" if name is None else name):
+        label.setAccessibleName("" if name is None else name)
 
 
 class FocusedComboBox(SelectorComboBox):

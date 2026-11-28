@@ -64,7 +64,12 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final
 
-from anesthesia_sim.app.dashboard_frame import FORK_HEADING
+from anesthesia_sim.app.dashboard_frame import (
+    CONCENTRATION_VIEW_TITLE,
+    FORK_HEADING,
+    SCHEMATIC_VIEW_TITLE,
+    WASH_IN_VIEW_TITLE,
+)
 from anesthesia_sim.app.theme import CHART_LEAST_HEIGHT
 from anesthesia_sim.app.view_contract import ViewFactory
 from anesthesia_sim.app.views import (
@@ -411,12 +416,14 @@ _CONTROLS_LEAST_HEIGHT_PX: Final = 110
 REGISTERED: Final = registry(
     RegisteredView(
         CONCENTRATION_CHART,
-        "Concentrations",
+        CONCENTRATION_VIEW_TITLE,
         ConcentrationView,
         minimum=PixelSize(420, CHART_LEAST_HEIGHT),
         whole=True,
     ),
-    RegisteredView(WASH_IN, "Wash-in", WashInView, minimum=PixelSize(300, _LEAST_HEIGHT_PX)),
+    RegisteredView(
+        WASH_IN, WASH_IN_VIEW_TITLE, WashInView, minimum=PixelSize(300, _LEAST_HEIGHT_PX)
+    ),
     RegisteredView(
         PARAMETER_CONTROLS,
         "Parameters",
@@ -433,7 +440,7 @@ REGISTERED: Final = registry(
     ),
     RegisteredView(
         COMPARTMENT_SCHEMATIC,
-        "Compartment schematic",
+        SCHEMATIC_VIEW_TITLE,
         CompartmentSchematicView,
         minimum=PixelSize(480, _LEAST_HEIGHT_PX),
     ),

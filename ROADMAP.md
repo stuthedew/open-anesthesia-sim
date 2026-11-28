@@ -2728,7 +2728,7 @@ different ways within a single chapter. That is why the naming rule for
 ratios is worth enforcing mechanically rather than leaving to a reader's
 recall (`PL-212V`).
 
-### Items added later (items 30-44)
+### Items added later (items 30-45)
 
 #### 30. Patient factors
 
@@ -3567,6 +3567,20 @@ a switch off no longer models a patient, so the display must say which
 mechanisms are off wherever it shows a value.
 Wanted after v0.7.0 (project owner, 2026-11-14, ratified, from the Gas
 Man comparison). `PL-84CV` has the source.
+
+#### 45. Undo a discarded run
+
+Let a user undo a Reset, an agent change or a Workspace change. Each of
+these now discards the run on screen, after a question that asks the user
+to confirm. The discarded run would be kept, with its stored states, its
+control changes and the runs compared with it, until the user starts
+something new. Undo would then put the same screen back, and the three
+questions would go. The GNOME design guide calls an undo typically a
+better option than a confirmation, and the Apple and Microsoft guides ask
+for a confirmation where an action cannot be undone. Gas Man and Blender
+confirm before such a discard, and the interface does the same until this
+is built. Wanted after v0.8.0 (project owner, 2026-11-28,
+ratified, over leaving it off the roadmap). `PL-V6NL` has the sources.
 
 ## Completed: v0.1.0 - first patient sevo model
 
