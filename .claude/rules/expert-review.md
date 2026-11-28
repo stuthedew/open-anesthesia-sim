@@ -62,13 +62,14 @@ code:
 
 ## Search the closest analog first
 
-Before a design choice rests on how another product does it, rank the
-candidates by how close each is: the same quantity or signal first, then the
-same class of product, then the same pattern of use. Say why the one you cite
-fits (project owner, 2026-11-27, `PL-HWZK`). For how a clinical value is drawn,
-anesthesia workstations, patient monitors and Gas Man rank above Blender.
-Blender stays the model for how Workspaces and Areas behave, because that is
-the pattern of use it shares with this interface.
+Before a design choice rests on how another product does it, compare it with
+simulation software, because that is what this is. Cite Gas Man or another
+anesthesia or physiology simulator first, then Blender for how Workspaces,
+Areas and Views behave, then the Apple, GNOME and Microsoft platform guides
+for windows, dialogs and controls, and say why the one you cite fits. Never
+use a patient monitor or an anesthesia workstation as the precedent (project
+owner, 2026-11-28, `PL-HCHG`). `.claude/skills/docket/modes/design.md` step 3
+says what a monitor may still be named for.
 
 ## Name the number that would change your mind, then go and count it
 

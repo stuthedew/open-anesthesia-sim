@@ -45,6 +45,20 @@ The procedure, in the order it runs:
    and `bin/docket check` advises where a `needs-decision` brief marks
    neither. The reply dies with its session; the item is the carrier the
    owner's answer will land beside (`PL-KQHN`).
+
+   **Where the research compares with another product, it compares with
+   simulation software**, in the order `.claude/rules/expert-review.md` §
+   "Search the closest analog first" gives (`PL-HCHG`). Among simulators, one
+   that shows the same quantity ranks first. A guideline or paper about
+   displays in general, such as NUREG-0700 or a study of linked views, is a
+   source rather than a product, and can still be cited. Where one of its
+   rules protects a live value that changes behind the display, check that
+   the reason applies here, where every value is modelled and a run waits
+   while a question is open (`PL-JV5H`). A patient monitor or an anesthesia
+   workstation may still be named for two things that are not a design
+   precedent: as what a user compares a modelled value with, which is why the
+   alveolar readout says "end-tidal-equivalent", and as the source of a
+   machine's physical data, as in `docs/machine-survey.md`.
 4. **Decide the obvious calls in the round, and put to the owner only what is
    theirs.** Where one option is clearly correct - a measurement, a check, a
    rule this repository already states, or the research of step 3 settles it -
