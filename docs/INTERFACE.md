@@ -4737,9 +4737,22 @@ in `tests/unit/test_chart_frame.py`).
 
 A schematic's name is the View's title, the run while runs are compared, and
 the instant, such as "Compartment schematic, Run 2, at 10m of simulated time".
-Its description names the picture and how its containers are joined, says
-that the values are modelled, and gives the tensions' unit and the amounts'
-unit. Then it takes the schematic's lines in the order a reader meets them:
+Its description opens with the same run and instant, such as "Run 2, at 10m of
+simulated time.". On macOS, Qt 6.12 hands a widget's description to VoiceOver
+as the element's label and its name as the title, and VoiceOver reads the
+label in place of the title. So without that line, a Mac user comparing two
+runs could hear one run's values with no word of which run they are
+(`PL-2XRN`). The sources are Qt's `qcocoaaccessibilityelement.mm` at tag
+v6.12.0, Apple's "Accessibility Programming Guide for OS X", which says a
+screen reader asks each element, such as a button, for its label, and Qt's
+bug report QTBUG-140871, which records VoiceOver reading a description in
+place of the name, all read 2026-11-28. The two plots' descriptions have no
+such line, because each of their value lines names its run while runs are
+compared, and its instant. Their names also give the window and whether it is
+held, and the Area's name while another Area shows a copy, which a Mac user
+does not hear (`PL-26K2`). After that line, the schematic's description names
+the picture and how its containers are joined, says that the values are
+modelled, and gives the tensions' unit and the amounts' unit. Then it takes the schematic's lines in the order a reader meets them:
 what the shares are of, one line for each container, such as "Fat: 0.03%,
 140 mL vapour, 20% of agent", the line that names any container above the
 scale, and the caption that names the scale. Each caption is one line, because
@@ -4748,7 +4761,7 @@ narrow. Each compartment's amount and share appear nowhere else in text, so
 the description gives every one, wherever the canvas is scrolled. A dash that
 the screen shows in place of a value is said in words, as the readouts say
 it: "percent not shown", "amount not shown", "share not shown", and
-"simulated time not shown" in the name. The W3C's
+"simulated time not shown" in the name and in the first line. The W3C's
 tutorial on complex images warns that a description is read as one block of
 text, without a table's headings or its reading cell by cell
 (https://www.w3.org/WAI/tutorials/images/complex/, read 2026-11-28). Each
@@ -4757,10 +4770,12 @@ each change to their texts, as the concentration chart does
 (`test_the_schematic_s_description_gives_every_container_s_values_with_their_units`,
 `test_the_schematic_s_description_names_a_container_above_the_scale`,
 `test_a_withheld_schematic_s_text_alternative_says_in_words_that_no_value_is_shown`,
-`test_a_run_with_no_agent_says_in_words_that_no_share_is_shown` and
-`test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instant`
+`test_a_run_with_no_agent_says_in_words_that_no_share_is_shown`,
+`test_the_schematic_s_description_opens_with_its_run_and_instant`
+and `test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instant`
 in `tests/unit/test_compartment_schematic.py`, and
 `test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values`,
+`test_each_compared_schematic_s_description_starts_with_its_own_run_and_instant`,
 `test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes`
 and `test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).

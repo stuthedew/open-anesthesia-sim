@@ -311,16 +311,72 @@ def test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values
     assert described.text(QAccessible.Text.Name) == (
         "Compartment schematic, at 10m of simulated time"
     )
-    assert any(
-        line.startswith(alveolar_line)
-        for line in described.text(QAccessible.Text.Description).splitlines()
-    )
+    lines = described.text(QAccessible.Text.Description).splitlines()
+    assert lines[0] == "At 10m of simulated time."
+    assert any(line.startswith(alveolar_line) for line in lines)
 
     schematic.show_name("Run 2")
 
     assert described.text(QAccessible.Text.Name) == (
         "Compartment schematic, Run 2, at 10m of simulated time"
     )
+    assert described.text(QAccessible.Text.Description).splitlines()[0] == (
+        "Run 2, at 10m of simulated time."
+    )
+
+
+def test_each_compared_schematic_s_description_starts_with_its_own_run_and_instant(
+    application: QApplication,
+) -> None:
+    """While two runs are compared, each schematic's description names its run and instant first.
+
+    On macOS, VoiceOver reads a picture's description in place of its name,
+    so the description must say itself which run and which instant its
+    values are for (`PL-2XRN`). The two runs stand at different instants, so
+    a description that gave the other run's instant fails too. Each expected
+    alveolar line is read from a separate run built with the same settings
+    and advanced as far, not from the run the schematic draws.
+    """
+
+    alveolar_lines = {}
+    controllers = []
+
+    for name, seconds in (("Run 1", 600), ("Run 2", 300)):
+        controller = SimulationController()
+        controller.start()
+        _advance(controller, seconds)
+        controllers.append(controller)
+        fresh = SimulationController()
+        fresh.start()
+        _advance(fresh, seconds)
+        snapshot = fresh.snapshot()
+        amount = snapshot.compartment_agent_amounts.of(RecordedQuantity.ALVEOLAR)
+        alveolar_lines[name] = (
+            f"Alveolar: {format_percent(snapshot.alveolar_partial_pressure_fraction)}, "
+            f"{format_compartment_amount(amount)}, "
+        )
+
+    view = _shown_view(application, *controllers)
+    told = {
+        described.text(QAccessible.Text.Name): described.text(
+            QAccessible.Text.Description
+        ).splitlines()
+        for described in (
+            QAccessible.queryAccessibleInterface(schematic.canvas)
+            for schematic in view.findChildren(RunSchematic)
+        )
+    }
+
+    assert sorted(told) == [
+        "Compartment schematic, Run 1, at 10m of simulated time",
+        "Compartment schematic, Run 2, at 5m of simulated time",
+    ]
+    first = told["Compartment schematic, Run 1, at 10m of simulated time"]
+    second = told["Compartment schematic, Run 2, at 5m of simulated time"]
+    assert first[0] == "Run 1, at 10m of simulated time."
+    assert second[0] == "Run 2, at 5m of simulated time."
+    assert any(line.startswith(alveolar_lines["Run 1"]) for line in first)
+    assert any(line.startswith(alveolar_lines["Run 2"]) for line in second)
 
 
 def test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes(
