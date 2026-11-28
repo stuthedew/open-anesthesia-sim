@@ -339,8 +339,11 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
     controller = SimulationController()
     controller.start()
     _advance(controller, 600)
-    strings = _interface_strings(_shown_view(application, controller))
-    prose = " ".join(strings).lower()
+    view = _shown_view(application, controller)
+    strings = _interface_strings(view)
+    # The band's spread is checked on screen: the chart's description, which
+    # only a screen reader hears, states it too (`PL-96MX`).
+    prose = " ".join(_visible_strings(view)).lower()
 
     # regex: a duration can appear anywhere in the interface's free text, in
     # any of several unit spellings, which only a search through the text finds.

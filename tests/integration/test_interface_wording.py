@@ -10,7 +10,10 @@ this file. The simulation is deterministic, so the strings at a fixed
 simulated time are too. Hidden strings are included, because a hidden string
 can be shown at any moment. So is what a screen reader is told and the screen
 does not show, such as a chart's long description, one string for each line,
-because a screen-reader user reads it in place of the picture (`PL-96MX`).
+because a screen-reader user reads it in place of the picture. Each such line
+is listed after the widget's text that says it, such as "Description of
+ConcentrationChart", so a line dropped from a description fails here even
+where the screen shows the same words (`PL-96MX`).
 
 Each digit is replaced by `#`, and each superscript digit by `^`, before the
 comparison. The test is about wording, and the numbers are the model's, which
@@ -73,10 +76,11 @@ from anesthesia_sim.app import dashboard_frame as dashboard_frame_module
 from anesthesia_sim.app.area_layout import AreaNotice
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.dashboard_frame import INTERPRETATION_DISCLAIMER_TEXT
 from anesthesia_sim.app.preferences import AgentPrice, LoadedPreferences, Preferences
-from anesthesia_sim.app.qt_chart import ConcentrationChart
+from anesthesia_sim.app.qt_chart import ConcentrationChart, WashInChart
 from anesthesia_sim.app.run_series import RecordedQuantity
-from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.simulation_view import InterfaceText, SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
 from anesthesia_sim.app.views import ConcentrationView
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION
@@ -210,11 +214,27 @@ def _run_until_it_stops(controller: SimulationController) -> None:
 
 
 def _strings_of(application: QApplication, view: SimulationView) -> list[str]:
-    """Every string `view` holds now, masked and sorted."""
+    """Every string `view` holds now, masked and sorted.
+
+    A string only a screen reader is told is written after which text it is
+    and the kind of widget that says it, such as "Description of
+    ConcentrationChart: Line chart.". So a line that a chart's description
+    drops is gone from the list even where the screen still shows the same
+    words (`PL-96MX`).
+    """
 
     application.processEvents()
 
-    return sorted({_masked(text) for text in view.interface_strings()})
+    return sorted({_listed(text) for text in view.interface_texts()})
+
+
+def _listed(text: InterfaceText) -> str:
+    """`text` masked, and after the widget's text that says it where only a screen reader does."""
+
+    if text.spoken_as is None:
+        return _masked(text.text)
+
+    return f"{text.spoken_as}: {_masked(text.text)}"
 
 
 def _strings_but_area_notices(application: QApplication, view: SimulationView) -> list[str]:
@@ -652,12 +672,46 @@ def test_a_changed_line_that_only_a_screen_reader_hears_differs_from_the_approve
     differences = _differences(
         {"10 min": approved["10 min"]}, {"10 min": _strings_at(application, agent_id, seconds)}
     )
-    gone = [line for line in differences if line.startswith("  10 min, gone: 'Modelled ")]
-    new = [line for line in differences if line.startswith("  10 min, new: 'Measured ")]
+    said = "Description of ConcentrationChart: "
+    gone = [line for line in differences if line.startswith(f"  10 min, gone: '{said}Modelled ")]
+    new = [line for line in differences if line.startswith(f"  10 min, new: '{said}Measured ")]
 
     assert gone, differences
     assert len(gone) + len(new) == len(differences), differences
-    assert [line.replace("new: 'Measured ", "gone: 'Modelled ") for line in new] == gone
+    assert [
+        line.replace("new: ", "gone: ").replace("Measured ", "Modelled ") for line in new
+    ] == gone
+
+
+def test_a_line_dropped_from_a_description_differs_where_the_screen_shows_the_same_words(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The wash-in plot's description without its "not measurements" line fails the comparison.
+
+    The screen shows the same words beside the plot, so a list that held each
+    line as bare words would still hold them, and the dropped hedge would pass
+    unread. Each line the screen does not show is held with the widget that
+    says it, so the line is gone from the wash-in plot's description alone
+    (`PL-96MX`).
+    """
+
+    describe = WashInChart.graphic_description
+    monkeypatch.setattr(
+        WashInChart,
+        "graphic_description",
+        lambda plot: "\n".join(
+            line for line in describe(plot).splitlines() if line != INTERPRETATION_DISCLAIMER_TEXT
+        ),
+    )
+    approved = json.loads(APPROVED_FILE.read_text(encoding="utf-8"))
+    agent_id, seconds = RECORDED_POINTS["10 min"]
+    differences = _differences(
+        {"10 min": approved["10 min"]}, {"10 min": _strings_at(application, agent_id, seconds)}
+    )
+    dropped = f"Description of WashInChart: {INTERPRETATION_DISCLAIMER_TEXT}"
+
+    assert INTERPRETATION_DISCLAIMER_TEXT in approved["10 min"], "the screen no longer shows it"
+    assert differences == [f"  10 min, gone: {dropped!r}"]
 
 
 def test_a_changed_string_is_reported_as_one_gone_and_one_new() -> None:
