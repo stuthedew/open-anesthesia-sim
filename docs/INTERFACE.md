@@ -4166,15 +4166,19 @@ one on the ratio.** The plot samples the run at a series of instants, called
 columns. A column is inside the boundaries when both of these conditions are
 true:
 
-1. $`F_I \geq 10^{-4}`$ (0.01%), the smallest step of the concentration
-   display. $`F_I`$ is exactly zero until agent reaches the circuit: at the
-   start of every run, and throughout a run whose vaporizer is never opened.
-   There the ratio is $`0/0`$. With this limit, the ratio is never formed
-   from an inspired concentration that the display shows as `0.00%`. $`F_I`$
-   also falls below the limit during a washout, once the vaporizer is closed,
-   while the patient still holds agent. So the caption beside the plot names
-   the condition, an inspired concentration too low to divide by, and not a
-   cause.
+1. The Circuit readout shows $`F_I`$ as `0.01%` or more. The readout
+   rounds to two decimals, so this is true from $`F_I = 5 \times 10^{-5}`$
+   (0.005%) up. Below that, the readout shows `<0.01%`, or `0.00%` at
+   exactly zero, and the plot forms no ratio. Two inspired values that the
+   readout shows the same, such as two readings of `0.01%`, therefore always
+   get the same answer.
+
+   $`F_I`$ is exactly zero until agent reaches the circuit: at the start of
+   every run, and throughout a run whose vaporizer is never opened. There the
+   ratio would be $`0/0`$. $`F_I`$ also falls below the limit during a
+   washout, after the vaporizer is closed, while the patient still holds
+   agent. So the caption beside the plot names the condition, an inspired
+   concentration too low to divide by, rather than a cause.
 2. $`F_A/F_I \leq 1`$, which is the uptake regime. Alveolar gas gives up agent
    to blood, so the alveolar fraction stays below the inspired one and reaches
    it only at equilibrium. Above 1, the alveolar fraction exceeds the inspired
@@ -4281,11 +4285,20 @@ changes. The marks are computed once for each time window
 window draw the same marks. A plot with a window of its own marks the changes
 inside that window.
 
-The 0.01% limit on $`F_I`$ is derived from the concentration display's
-resolution (`CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`), so it follows that
-resolution if the display changes
-(`test_the_denominator_floor_is_the_displayed_resolution` in
-`tests/unit/test_wash_in.py`).
+The plot finds the limit on $`F_I`$ by asking the readout how it rounds
+(`reaches_concentration_display_resolution` in `app/formatting.py`). So the
+limit moves with the readout if its resolution or rounding changes. The plot
+compares the rounded value with the limit, which is the standard way to test
+a result against a specification limit. The United States Pharmacopeia
+requires it: USP General Notices 7.20, quoted in Burgess C, "Rounding results
+for comparison with specification", *Pharm Technol* 2013;37(4). ASTM E29
+calls it the rounding method: Fortini P, Carson J, *ASTM Standardization
+News*, November/December 2023. Two tests in `tests/unit/test_wash_in.py`
+check the limit.
+`test_the_denominator_floor_is_where_the_readout_first_shows_one_step` checks
+where it falls, and
+`test_each_inspired_value_the_readout_shows_gives_a_ratio_always_or_never`
+checks that each value the readout shows gets one answer.
 
 The rounding allowance of 1e-6 (`WASH_IN_ROUNDING_ALLOWANCE`, `PL-N559`) is
 there because, at zero cardiac output, the stepped run settles on a
@@ -5614,8 +5627,9 @@ Those steps come from the number of decimals displayed for concentration and
 for flow (`CONCENTRATION_DISPLAY_DECIMALS` and `FLOW_DISPLAY_DECIMALS`), so
 those two counts decide which settings can reach the model. A change to either
 decimal count is therefore derived in this section first. The code in
-`app/wash_in.py` computes a limit from the concentration resolution: the
-smallest inspired fraction from which an F_A/F_I ratio may be formed
+`app/wash_in.py` computes one limit from the concentration readout. It is the
+smallest inspired fraction from which an F_A/F_I ratio may be formed, and the
+smallest that the readout shows as `0.01%`
 (`WASH_IN_DENOMINATOR_FLOOR_FRACTION`, § "F_A/F_I as a displayed ratio").
 Because the limit follows from that resolution, each extra decimal of
 concentration moves it down tenfold.

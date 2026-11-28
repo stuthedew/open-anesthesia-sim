@@ -69,6 +69,7 @@ from anesthesia_sim.app.formatting import (
     mac_awake_band_percent,
     mac_axis_ticks,
     mac_multiple,
+    reaches_concentration_display_resolution,
 )
 from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION
 from anesthesia_sim.core.concentration import (
@@ -193,6 +194,23 @@ def test_format_percent_marks_a_value_below_the_resolution() -> None:
     # Either side of the rounding threshold, at half the resolution.
     assert format_percent(Fraction(4.9e-5)) == "<0.01%"
     assert format_percent(Fraction(5.1e-5)) == "0.01%"
+
+
+def test_the_readout_reaches_its_resolution_exactly_where_it_shows_a_number() -> None:
+    """The predicate is true exactly where `format_percent` shows `0.01%` or more.
+
+    The F_A/F_I plot forms a ratio only from an inspired fraction for which it
+    is true, so it must agree with the readout on each side of the rounding
+    threshold, at half the resolution (`PL-FSXD`). The expected answers follow
+    from the two-decimal resolution that `docs/INTERFACE.md` § "Displayed
+    precision" specifies, as in the test above.
+    """
+
+    assert reaches_concentration_display_resolution(Fraction(0.0)) is False
+    assert reaches_concentration_display_resolution(Fraction(4.9e-5)) is False
+    assert reaches_concentration_display_resolution(Fraction(5.1e-5)) is True
+    assert reaches_concentration_display_resolution(Fraction(1e-4)) is True
+    assert reaches_concentration_display_resolution(Fraction(1.0)) is True
 
 
 def _displayed_value(reading: str) -> float:
