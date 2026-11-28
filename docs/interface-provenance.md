@@ -1052,7 +1052,8 @@ Blender makes it disappear (§ "An editor cannot refuse a size, and there is no
 minimum-size contract at all"). That is a defensible answer for a 3D content
 tool, where a hidden sidebar costs a user one keystroke. In this project it is
 directly unsafe. A set of displayed values is unconditional: no Workspace may
-remove them, and nothing may cover them (`docs/INTERFACE.md` § "Minimum displayed
+remove them, and nothing may cover them except a question that blocks input to
+the application while every run waits (`docs/INTERFACE.md` § "Minimum displayed
 outputs"). Silently collapsing one of those values is exactly the failure that
 the unconditional set exists to prevent. Where any other display cannot fit, the
 interface must say so rather than quietly shrink it away. `layout/sizing.py`

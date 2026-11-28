@@ -6,13 +6,13 @@ effort: S
 status: done
 classes: defect
 feature: interface-matches-its-spec
-touches: docs/INTERFACE.md
+touches: docs/INTERFACE.md, docs/interface-provenance.md, ROADMAP.md, tests/integration/simulation_view/test_simulation_view_comparison.py
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; the gate is otherwise clear and the release waits on the owner test drive, so it is deferred rather than holding the release (triage 2026-11-23)
 added: 2026-11-22
 closed: 2026-11-28
 pr: 2344
 payoff: the interface specification says when a question may cover a required readout, so the code and the rule no longer read as in conflict
-verify: grep -qF 'A question that blocks the window may cover a required value' docs/INTERFACE.md
+verify: grep -qF 'A question that blocks input to the application may cover a required value,' docs/INTERFACE.md
 ---
 
 **Problem.** The Reset, new-case and Workspace questions are windows that cover required readouts while open, with every run waiting, and docs/INTERFACE.md's occlusion rule has no sentence that allows it (found while building PL-CHX0)
@@ -54,9 +54,9 @@ So every analog of the same class or pattern asks in a window over the applicati
 
 The platform guides and both articles prefer undo to a confirmation where undo can be offered. The interface has none for a discarded run (§ "Discarding a run, and the questions that guard it": "there is no undo"). Keeping a discarded run so that Reset can be undone would remove the question altogether. It is outside this decision and is recorded as its own item, `PL-V6NL`.
 
-**Decision, 2026-11-28: option 2** (project owner, 2026-11-28, ratified, over showing each question inside the window so that it covers nothing). Asked for each option again, the owner answered "Whatever is best practice", and the research of 2026-11-28 above found option 2 to be it. `docs/INTERFACE.md` § "No required value may be covered" now carries the exception, conditioned on the question blocking the rest of the window while every run waits, and it says that each question must name in its own text what it would discard, because the user cannot compare it with the readouts it covers. § "Discarding a run, and the questions that guard it" now names all three tests that every run waits while each kind of question is open, and points to the exception as theirs. No code changes.
+**Decision, 2026-11-28: option 2** (project owner, 2026-11-28, ratified, over showing each question inside the window so that it covers nothing). Given the research of 2026-11-28 above, the owner answered "Whatever is best practice", and that research found option 2 to be it. `docs/INTERFACE.md` § "No required value may be covered" now carries the exception. Its condition is that the question blocks input to every window of the application while every run waits, so that a window broken out of the main one later cannot take a dial change under an open question. It also says that each question must name in its own text what it would discard, because the user cannot compare it with the readouts it covers. § "Discarding a run, and the questions that guard it" now names all three tests that hold the wait, and each of the three now also checks that its question is modal. No code changes.
 
-**Docs swept 2026-11-28.** A search for the occlusion rule and for a covered required value across `docs/*.md`, `README.md`, `ROADMAP.md` and `src/anesthesia_sim/app/*.py` found no other statement that the exception makes untrue. `ROADMAP.md`'s sentence that "no reader can close, replace or cover a required value" until the docking operations are built is about the layout, not the questions, and stays. `docs/interface-provenance.md` § "This project's occlusion rule does not rest on Blender's reason for a tiled interface" stays true.
+**Docs swept 2026-11-28.** A search for the occlusion rule, for "nothing may cover" and for a covered required value across `docs/*.md`, `README.md`, `ROADMAP.md` and `src/anesthesia_sim/app/*.py` found four statements that the exception made untrue, and the two blind review passes named the same ones. Each now names the exception: `docs/INTERFACE.md` § "The unconditional values" ("Nothing may cover such a value"), `docs/INTERFACE.md` § "Discarding a run, and the questions that guard it" (the question named what will be lost "so that the user can check it against the readouts"), `docs/interface-provenance.md` § "Diverged, and each divergence has a specific cause" ("nothing may cover them") and `ROADMAP.md` planned-milestone item 34 ("It is settled", pointing at the occlusion rule). Three statements stay as they are. `ROADMAP.md`'s sentence that "no reader can close, replace or cover a required value" until the docking operations are built is about the layout, not the questions. `docs/interface-provenance.md` § "What this project adopts, diverges from, and refuses" says that a floating mechanism must obey the rule, which the exception does not reach. The docstrings of `format_case_discard_warning` and `format_branch_discard_warning` in `src/anesthesia_sim/app/formatting.py` say the warning uses the display's terms and the "Control changes" panel's count, which stays true.
 
 **Done when.** The decision is recorded here, and either `docs/INTERFACE.md` carries the exception with a test that every run waits while each question is open, or the questions no longer cover a required value.
 

@@ -1631,7 +1631,9 @@ interface must follow these rules:
 - Before the interface discards a run that has any elapsed simulated time or
   any recorded control change, it must say so and ask the user to confirm.
 - The question must name what will be lost in the terms that the display
-  already uses, so that the user can check it against the readouts.
+  already uses, so that the user can match it with the readouts they have
+  read. The question may cover some of those readouts while it is open
+  (§ "No required value may be covered"), so it must state each value itself.
 - Declining must leave the run, its definition, its timeline and the control
   that offered the change exactly as they were.
 - Choosing the agent that is already running is not a change of agent, so it
@@ -1689,9 +1691,10 @@ The wait works by skipping ticks of the step timer. Three tests in
 the wait, one for each kind of question:
 `test_the_run_does_not_advance_while_a_reset_question_is_open`,
 `test_a_running_run_holds_while_its_new_case_question_is_open` and
-`test_a_running_run_holds_while_a_workspace_question_is_open`. They are also the
-tests for the exception that lets these questions cover a required value
-(§ "No required value may be covered").
+`test_a_running_run_holds_while_a_workspace_question_is_open`. Each also checks
+that its question is modal, so together they test both conditions of the
+exception that lets these questions cover a required value (§ "No required
+value may be covered").
 
 ## What a branch comparison asserts, and what it does not
 
@@ -3055,7 +3058,9 @@ behaved exactly as documented.
 #### The unconditional values
 
 **A value is unconditional when a reader could misread the run's other
-displayed numbers without it.** Nothing may cover such a value. The set is
+displayed numbers without it.** Nothing may cover such a value, except a
+question that blocks input to the application while every run waits (§ "No
+required value may be covered"). The set is
 defined by this criterion, not by a fixed list, and the criterion gives two
 tiers.
 
@@ -3178,17 +3183,18 @@ its windows is minimized or hidden, but it has no reliable signal that a window
 is covered. It must never go on treating a value as shown once it can see that
 the value's window is minimized or hidden.
 
-**A question that blocks the window may cover a required value, because every
-run waits while it is open** (project owner, 2026-11-28, ratified, over showing
-each question inside the window so that it covers nothing, `PL-JV5H`). The
-exception applies to the trunk's Reset question, to the question asked before a
-change of agent starts a new case, and to each question from the Workspace
-strip. Each one opens as a window over the dashboard. While it is open, it
-blocks the rest of the window and every run waits (§ "Discarding a run, and the
-questions that guard it"), so no value it covers can change. The user cannot
-compare the question with the readouts it covers, so each question must name in
-its own text what it would discard. The exception does not apply to a question
-or panel during which a run can step.
+**A question that blocks input to the application may cover a required value,
+because every run waits while it is open** (project owner, 2026-11-28,
+ratified, over showing each question inside the window so that it covers
+nothing, `PL-JV5H`). The exception applies to the trunk's Reset question, to
+the question asked before a change of agent starts a new case, and to each
+question from the Workspace strip. Each one opens as a window over the
+dashboard. While it is open, it blocks input to every window of the application
+and every run waits (§ "Discarding a run, and the questions that guard it"), so
+no value it covers can change. The user cannot compare the question with the
+readouts it covers, so each question must name in its own text what it would
+discard. The exception does not apply to a question or panel during which a run
+can step.
 
 **The marks are edited in a view, not in a window of their own** (project
 owner, 2026-11-21, ratified, over a window kept off the readouts, an exemption
