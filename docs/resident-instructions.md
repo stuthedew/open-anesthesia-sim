@@ -3008,3 +3008,20 @@ domain best practices" says to consult the source before forming a
 recommendation. It does not say that a question waits for the research, or
 that research which settles a question means it is not asked. Rule 10 points
 at that section for the standard of the research rather than repeating it.
+
+
+## The closest analog, reworded 2026-11-28
+
+The project owner asked that no session compare a design choice with a patient
+monitor, because this is simulation software (`PL-HCHG`). The section of
+`.claude/rules/expert-review.md` that `PL-HWZK` added on 2026-11-27 ranked the
+same quantity first and named monitors and workstations above Blender, so it
+sent design rounds to a monitor. The section now names simulation programs,
+Blender and the desktop platform guides in that order, and refuses a monitor or
+a workstation as the precedent. It grew by 72 characters.
+
+**The carrier test.** It is the test that `PL-WWDT` applied to the whole file:
+an approach is chosen in a reply, and no read precedes that, so the refusal has
+to be resident. What is needed only once a design round is under way moved to
+`.claude/skills/docket/modes/design.md` step 3: which guidelines and papers
+stay citable as sources, and the two things a monitor may still be named for.
