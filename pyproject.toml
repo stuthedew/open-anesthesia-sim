@@ -198,8 +198,11 @@ dev = [
 # mutmut, for `make mutate` and nothing else, so `uv sync` leaves it out and no
 # test or check depends on it (`PL-Y1PS`). Pinned exactly, because
 # `tools/diff_mutation.py` builds mutmut's mutant names and reads the output of
-# `mutmut results`, and a new release may change either.
-mutation = ["mutmut==3.8.0"]
+# `mutmut results`, and a new release may change either. 3.8.1 reads a test's
+# id through pytest's public `nodeid`. 3.8.0 read the private `_nodeid`, which
+# pytest 9.2.0 no longer has, so every mutation run stopped at its first step
+# (`PL-LR03`).
+mutation = ["mutmut==3.8.1"]
 
 # uv resolves `.python-version` against the interpreter list baked into the
 # binary at build time, so an older uv silently maps a bare `3.14` onto the
