@@ -43,11 +43,14 @@ each View draws all it can show.
    shipped Workspace with one Area would have no border to share a name.
 2. `test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named`
    fails on a control a reader can reach that has no name, and on a picture
-   that does not report itself as an image with a name and a description. A
-   picture is any graphics view, which every plot is drawn in, or any widget
-   that a class of this program paints for itself. It is found among the
-   widgets shown, not from a list of known classes, so a diagram added later
-   on a new canvas class is in the walk.
+   that does not sit in an image with a name and a description of its own. A
+   picture is any graphics view, which every plot is drawn in, an SVG widget,
+   a label that shows only an image, a recorded picture or a movie, or any
+   widget that a class of this program paints for itself. It is found among
+   the widgets shown, not from a list of known classes, so a diagram added
+   later on a new canvas class is in the walk. Two pictures in one image fail
+   it, and so does a hidden image, an image node with no name or description,
+   and an Area whose View failed to build.
 3. `PAINTED_NOT_PICTURES` lists the eight classes that paint themselves but
    draw no picture, each with its reason: the Area border and corner, the
    drag preview, the two legend samples, the compartment names over the
@@ -79,3 +82,25 @@ pictures share a name in any shipped Workspace, and a new paragraph after the
 schematic's says that every picture has a text alternative and lists the two
 new tests. `docs/ARCHITECTURE.md` and `docs/VERIFICATION.md` say nothing of
 this walk.
+
+**Blind review, 2026-11-28.** Two passes, on the change alone. All findings
+were fixed:
+
+1. Pass 1, should-fix: a View that failed to build shows a notice in its
+   Area, so its pictures were never walked and the test passed. The test now
+   requires one built View for each Area of the layout, and at least one
+   picture. With the wash-in View's constructor made to raise, the induction
+   Workspace fails it.
+2. Pass 1, optional, and pass 2, optional, repeated: a picture drawn by Qt's
+   own widgets, such as a label given an image or an SVG widget, was not
+   counted. Both are counted now, and so is every image node the accessible
+   tree holds. A picture drawn onto another widget from outside it is still
+   not found, and `docs/INTERFACE.md` says so.
+3. Pass 1, optional, and pass 2, optional, repeated: a second picture inside
+   a described image passed on that image's text. Each image may now cover
+   one picture. With a second plot added inside the concentration chart, the
+   default Workspace fails it with "ConcentrationChart that holds 2
+   pictures".
+4. Pass 2, optional: an image that takes the focus would be counted twice in
+   the shared-name test and reported as sharing its name with itself. Images
+   that take the focus are now counted once, as controls.

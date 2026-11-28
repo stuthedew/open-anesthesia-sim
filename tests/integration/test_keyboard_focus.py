@@ -22,6 +22,7 @@ import pytest
 from pyqtgraph import PlotWidget
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QAccessible, QAccessibleInterface, QColor, QImage
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QApplication,
@@ -372,9 +373,10 @@ def _reachable_purposes(window: QWidget) -> list[tuple[str, str]]:
 def _told_names(window: QWidget) -> list[tuple[str, str]]:
     """Return the role and the name a screen reader is told for each control and picture shown.
 
-    The controls are those `_reachable_purposes` returns. A picture takes no
-    focus, and a screen reader reaches it by moving through the window's
-    objects. Static text is left out: its name is the text the screen shows
+    The controls are those `_reachable_purposes` returns. A picture that takes
+    no focus is added, because a screen reader reaches it by moving through
+    the window's objects. A picture that takes the focus is a control already,
+    so it is not counted twice. Static text is left out: its name is the text the screen shows
     in that place, so the same words shown twice are told as the screen
     shows them.
     """
@@ -382,7 +384,9 @@ def _told_names(window: QWidget) -> list[tuple[str, str]]:
     pictures = [
         (node.role().name, node.text(QAccessible.Text.Name))
         for node in _accessible_tree(QAccessible.queryAccessibleInterface(window))
-        if node.role() is QAccessible.Role.Graphic and not node.state().invisible
+        if node.role() is QAccessible.Role.Graphic
+        and not node.state().invisible
+        and not node.state().focusable
     ]
 
     return [*_reachable_purposes(window), *pictures]
@@ -474,24 +478,58 @@ def _painter(widget: QWidget) -> str | None:
     return f"{painter.__module__}.{painter.__qualname__}"
 
 
-def _undescribed_pictures(window: QWidget) -> list[str]:
-    """Return each picture shown in `window` that a screen reader gets no name or description for.
+def _is_picture(widget: QWidget) -> bool:
+    """Return whether `widget` draws a picture.
 
-    A picture is a graphics view, which every plot is drawn in, or a widget
-    that a class of this program paints and `PAINTED_NOT_PICTURES` does not
-    list. Each must sit in a `DescribedGraphic` that reports itself as an image
-    with a name and a description.
+    A picture is a graphics view, which every plot is drawn in, an SVG
+    widget, a label that shows an image, a recorded picture or a movie and no
+    text, or a widget that a class of this program paints and
+    `PAINTED_NOT_PICTURES` does not list. A picture drawn some
+    other way, such as from an event filter, is not found here, which is why
+    each `DescribedGraphic` and each node that reports itself as an image is
+    checked as well.
+    """
+
+    if isinstance(widget, (QGraphicsView, QSvgWidget)):
+        return True
+
+    if isinstance(widget, QLabel):
+        shows = not widget.pixmap().isNull() or not widget.picture().isNull()
+
+        return not widget.text() and (shows or widget.movie() is not None)
+
+    painter = _painter(widget)
+
+    return painter is not None and painter not in PAINTED_NOT_PICTURES
+
+
+def _described(node: QAccessibleInterface) -> bool:
+    """Return whether `node` reports itself as an image with a name and a description."""
+
+    return (
+        node.role() is QAccessible.Role.Graphic
+        and bool(node.text(QAccessible.Text.Name))
+        and bool(node.text(QAccessible.Text.Description))
+    )
+
+
+def _undescribed_pictures(window: QWidget) -> list[str]:
+    """Return each picture shown in `window` that a screen reader is not told about on its own.
+
+    Each picture must sit in a `DescribedGraphic` that reports itself as an
+    image with a name and a description, and no two pictures may share one,
+    because one text alternative would then be read for two pictures. Each
+    `DescribedGraphic` must be shown, since the window is large enough for
+    every View to draw all it can. Each other node that reports itself as an
+    image needs a name and a description too.
     """
 
     undescribed = []
+    covered: Counter[int] = Counter()
+    graphics = window.findChildren(DescribedGraphic)
 
     for widget in window.findChildren(QWidget):
-        painter = _painter(widget)
-        drawn = isinstance(widget, QGraphicsView) or (
-            painter is not None and painter not in PAINTED_NOT_PICTURES
-        )
-
-        if not widget.isVisible() or not drawn:
+        if not widget.isVisible() or not _is_picture(widget):
             continue
 
         graphic: QWidget | None = widget
@@ -499,15 +537,26 @@ def _undescribed_pictures(window: QWidget) -> list[str]:
         while graphic is not None and not isinstance(graphic, DescribedGraphic):
             graphic = graphic.parentWidget()
 
-        node = None if graphic is None else QAccessible.queryAccessibleInterface(graphic)
-
-        if (
-            node is None
-            or node.role() is not QAccessible.Role.Graphic
-            or not node.text(QAccessible.Text.Name)
-            or not node.text(QAccessible.Text.Description)
-        ):
+        if graphic is None or not _described(QAccessible.queryAccessibleInterface(graphic)):
             undescribed.append(type(widget).__name__)
+        else:
+            covered[id(graphic)] += 1
+
+    undescribed.extend(
+        f"{type(graphic).__name__} that holds {covered[id(graphic)]} pictures"
+        for graphic in graphics
+        if covered[id(graphic)] > 1
+    )
+    undescribed.extend(
+        f"hidden {type(graphic).__name__}" for graphic in graphics if not graphic.isVisible()
+    )
+    undescribed.extend(
+        f"{node.role().name} {type(node.object()).__name__}"
+        for node in _accessible_tree(QAccessible.queryAccessibleInterface(window))
+        if node.role() is QAccessible.Role.Graphic
+        and not node.state().invisible
+        and not _described(node)
+    )
 
     return undescribed
 
@@ -528,10 +577,17 @@ def test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_na
     """
 
     view = _compared_dashboard(application, runs, shipped)
+    areas = len(view.layout_container.model.areas())
+    built = len(view.layout_container.views())
+    pictures = [widget for widget in view.findChildren(DescribedGraphic) if widget.isVisible()]
     unnamed = _unnamed(view)
     undescribed = _undescribed_pictures(view)
     view.close()
 
+    # An Area whose View failed to build shows a notice instead, and would
+    # hide that View's pictures from the walk.
+    assert built == areas
+    assert pictures
     assert unnamed == []
     assert undescribed == []
 

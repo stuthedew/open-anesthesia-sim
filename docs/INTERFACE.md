@@ -4638,14 +4638,18 @@ and `test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
 
 **Every picture in every shipped Workspace has a text alternative**
-(`PL-9XGQ`). A test finds each picture among the widgets shown, in each shipped
-Workspace and in one that shows every kind of View, with one run and with two
-compared. A picture is a plot, or any widget that this program paints for
-itself, apart from a short list of painted widgets that draw no picture, such
-as a legend's sample of a line beside the check box that names the line. Each
-picture must report itself as an image with a name and a description. So a
-plot, a diagram or a painted widget added later to any View fails the test
-until it has a text alternative or joins that list with its reason
+(`PL-9XGQ`). A test finds each picture among the widgets shown, in each
+shipped Workspace and in one that shows every kind of View, with one run and
+with two compared. A picture is a plot, an SVG drawing, a label that shows
+only an image, or any widget that this program paints for itself, apart from a
+short list of painted widgets that draw no picture, such as a legend's sample
+of a line beside the check box that names the line. Each picture must sit in
+an image with a name and a description of its own, which it shares with no
+other picture. So a plot or a painted widget added later to any View fails the
+test until it has a text alternative or joins that list with its reason. A
+picture drawn some other way, such as onto another widget from outside it, is
+not found by the test, so the test also checks that every image the screen
+reader is told about has a name and a description
 (`test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named`
 and `test_each_painted_widget_that_draws_no_picture_still_paints` in
 `tests/integration/test_keyboard_focus.py`).
