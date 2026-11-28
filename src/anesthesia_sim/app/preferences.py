@@ -692,16 +692,40 @@ REFUSED_PREFERENCES_NEXT_STEP: Final = (
 )
 
 
-def chart_ceiling_notice(preferences: Preferences) -> str | None:
-    """Return the notice that every chart and schematic shows for a refused top, or None.
+#: What every chart and schematic says under its axis top control while the
+#: top the reader picked could not be saved (`PL-GWSY`). The reason is in the
+#: agent cost View's notice, which may hold the whole preferences file's
+#: problem and its path, and is too long for a line under a control. The View
+#: is named as the View chooser names it, because Microsoft's style guide asks
+#: for a reference to the interface to match its capitalization.
+UNSAVED_CHART_CEILING_TEXT: Final = (
+    "The application could not save this axis top, so it lasts only until the application "
+    "closes. The Agent cost View says why."
+)
 
-    The notice is shown under each View's axis top control, which is where the
-    reader picks a top to replace the refused one.
+
+def chart_ceiling_notice(preferences: Preferences, *, unsaved: bool) -> str | None:
+    """Return the notice that every chart and schematic shows about its top, or None.
+
+    The notice is shown under each View's axis top control. Nielsen Norman
+    Group's error-message guidelines ask for a message beside the control it
+    concerns (`PL-GWSY` records the source). That control is where the reader
+    picks a top to replace a refused one. It is also where a reader who picked
+    a top learns that the top could not be saved, whether or not the
+    Workspace shows the agent cost View, which says why.
+
+    Args:
+        preferences: The preferences in force.
+        unsaved: Whether the reader picked the top in force this session and
+            the application could not save it (`PreferencesInForce`).
     """
 
     refused = preferences.refused_chart_ceiling
 
-    return None if refused is None else refused.reason
+    if refused is not None:
+        return refused.reason
+
+    return UNSAVED_CHART_CEILING_TEXT if unsaved else None
 
 
 def unsaved_preferences_notice(error: PreferencesFileError) -> str:

@@ -3645,7 +3645,16 @@ a layout opens at 3 ×MAC, without a notice. A saved top that is not one of the
 three is not used either. Every chart and schematic is then drawn at 3 ×MAC,
 and each says under its "Axis top" control which saved top was refused and
 asks the reader to choose a top. Choosing any top clears the line, 3 ×MAC
-included.
+included. When the application cannot save a top that the reader chooses,
+because saving is off for the session or the save fails, the same line says
+"The application could not save this axis top, so it lasts only until the
+application closes. The Agent cost View says why." (`PL-GWSY`). The line sits
+under each "Axis top" control, because a Workspace may show no agent cost View
+and Nielsen Norman Group's error-message guidelines ask for a message "close
+to the error's source" (nngroup.com/articles/error-message-guidelines, read
+2026-11-28). The agent cost View's notice holds the reason, which can include
+the file's whole problem and its path, too long for a line under a control. A later save that succeeds also saves the top, and clears
+the line.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 <!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
@@ -3807,7 +3816,16 @@ chart and schematic until a top is chosen
 `test_a_refused_saved_top_is_named_on_every_chart_and_schematic_until_a_top_is_picked`
 in `tests/integration/test_view_contract.py`). The "Axis top" control reads a
 choice from Qt's `activated` signal, which a choice of the top already shown
-also sends, so a reader can clear that line by keeping 3 ×MAC.
+also sends, so a reader can clear that line by keeping 3 ×MAC. A top that
+could not be saved is named on every chart and schematic of a Workspace with
+no agent cost View, whether saving is off or the save fails, until a save
+succeeds
+(`test_a_picked_top_that_could_not_be_saved_is_named_on_the_charts` in
+`tests/unit/test_preferences.py`;
+`test_a_top_that_could_not_be_saved_is_named_on_every_chart_and_schematic` in
+`tests/integration/test_view_contract.py`). The dashboard records the unsaved
+top in `PreferencesInForce.chart_ceiling_unsaved`, and
+`preferences.chart_ceiling_notice` writes the line.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 ### The chart's time base

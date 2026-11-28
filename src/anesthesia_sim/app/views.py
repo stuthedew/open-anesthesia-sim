@@ -682,6 +682,18 @@ def _state_notice(text: str | None) -> QLabel:
     return notice
 
 
+def _show_ceiling_notice(notice: QLabel, tick: ViewTick) -> None:
+    """Write the line under a chart's or schematic's axis top control.
+
+    `preferences.chart_ceiling_notice` decides the text. The line is hidden when there is none.
+    """
+
+    in_force = tick.preferences
+    _show_notice(
+        notice, chart_ceiling_notice(in_force.preferences, unsaved=in_force.chart_ceiling_unsaved)
+    )
+
+
 def _show_notice(notice: QLabel, text: str | None) -> None:
     """Write a conditional line built by `_state_notice`, and hide it while `text` is None."""
 
@@ -946,7 +958,7 @@ class ConcentrationView(QWidget):
         so, on every tick (`preferences.chart_ceiling_notice`).
         """
 
-        _show_notice(self.ceiling_notice, chart_ceiling_notice(tick.preferences.preferences))
+        _show_ceiling_notice(self.ceiling_notice, tick)
         shown = tick.frame
 
         if _withholds(shown, self._source, self.chart.plot_width_px()):
@@ -1753,7 +1765,7 @@ class CompartmentSchematicView(QWidget):
         so (`preferences.chart_ceiling_notice`).
         """
 
-        _show_notice(self.ceiling_notice, chart_ceiling_notice(tick.preferences.preferences))
+        _show_ceiling_notice(self.ceiling_notice, tick)
         self._schematics.follow(tick.runs)
 
         for schematic, run in zip(self._schematics.widgets, tick.runs, strict=True):

@@ -32,7 +32,12 @@ from anesthesia_sim.app.chart_time_base import FIT_RUN_KEY, ChartWindow, time_ba
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.main import open_dashboard
-from anesthesia_sim.app.preferences import PREFERENCES_FILE_NAME
+from anesthesia_sim.app.preferences import (
+    PREFERENCES_FILE_NAME,
+    Preferences,
+    PreferencesFileError,
+    PreferencesStore,
+)
 from anesthesia_sim.app.qt_chart import _LineSwatch
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
@@ -56,11 +61,18 @@ from anesthesia_sim.app.view_registry import (
 )
 from anesthesia_sim.app.views import CompartmentSchematicView, ConcentrationView, WashInView
 from anesthesia_sim.core.supported_ranges import CaseInstant
+from anesthesia_sim.layout.model import LayoutModel
 from anesthesia_sim.layout.serialization import workspace_set_to_json
 from anesthesia_sim.layout.shipped import shipped_workspace
 from anesthesia_sim.layout.store import USER_DIRECTORY_VARIABLE, WORKSPACES_FILE_NAME
-from anesthesia_sim.layout.tree import AreaId
-from anesthesia_sim.layout.workspace import ShippedWorkspaceId
+from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, Window
+from anesthesia_sim.layout.workspace import (
+    Origin,
+    ShippedWorkspaceId,
+    Workspace,
+    WorkspaceName,
+    WorkspaceSet,
+)
 from tests.integration.simulation_view.simulation_view_support import (
     _EVERY_VIEW,
     _advance,
@@ -623,6 +635,107 @@ def test_a_refused_saved_top_is_named_on_every_chart_and_schematic_until_a_top_i
             assert shown.ceiling_notice.isHidden()
         saved = json.loads((directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
         assert saved["chart_axis_top_mac"] == 3.0
+    finally:
+        view.stop_timers()
+        view.close()
+        view.deleteLater()
+        application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        application.processEvents()
+
+
+#: A Workspace with a concentration chart and a compartment schematic, and no
+#: agent cost View, which is the one View that shows the preferences notice.
+_NO_AGENT_COST_VIEW: Final = WorkspaceSet(
+    (
+        Workspace(
+            WorkspaceName("Charts"),
+            Origin.mine(),
+            LayoutModel(
+                (
+                    Window(
+                        Split(
+                            Orientation.ROW,
+                            (0.5, 0.5),
+                            (
+                                Area(AreaId(1), CONCENTRATION_CHART),
+                                Area(AreaId(2), COMPARTMENT_SCHEMATIC),
+                            ),
+                        )
+                    ),
+                ),
+                AreaId(3),
+            ),
+        ),
+    ),
+    0,
+)
+
+
+@pytest.mark.parametrize("cause", ["a file from a newer version", "a save that fails"])
+def test_a_top_that_could_not_be_saved_is_named_on_every_chart_and_schematic(
+    application: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cause: str
+) -> None:
+    """`PL-GWSY`: a Workspace with no agent cost View still says that a picked top is not kept.
+
+    Saving is off for a file that a newer version wrote, and a save can fail
+    for a reason of the file system's. Either way, the picked top applies
+    until the application closes, and every chart and schematic says so under
+    its axis top control. The line is written out by hand. A later save that
+    succeeds writes the top in force too, so it clears the line.
+    """
+
+    directory = tmp_path / "user"
+    directory.mkdir()
+    (directory / WORKSPACES_FILE_NAME).write_text(
+        workspace_set_to_json(_NO_AGENT_COST_VIEW), encoding="utf-8"
+    )
+    newer = json.dumps({"schema_version": 3})
+
+    if cause == "a file from a newer version":
+        (directory / PREFERENCES_FILE_NAME).write_text(newer, encoding="utf-8")
+    else:
+
+        def refuse(store: PreferencesStore, preferences: Preferences) -> Path:
+            raise PreferencesFileError(f"the preferences could not be saved to {store.path}")
+
+        monkeypatch.setattr(PreferencesStore, "save", refuse)
+
+    view = open_dashboard(
+        BranchedCase(SimulationController()), "", {USER_DIRECTORY_VARIABLE: str(directory)}
+    )
+
+    try:
+        view.resize(1600, 1000)
+        view.show()
+        application.processEvents()
+        view.present(False)
+        views = view.layout_container.views()
+        (chart,) = [shown for shown in views if isinstance(shown, ConcentrationView)]
+        (schematic,) = [shown for shown in views if isinstance(shown, CompartmentSchematicView)]
+        assert len(views) == 2
+        assert chart.ceiling_notice.isHidden()
+        assert schematic.ceiling_notice.isHidden()
+
+        _pick_ceiling(chart, ChartCeiling.HIGH)
+
+        for shown in (chart, schematic):
+            assert shown.ceiling_selector.currentData() == ChartCeiling.HIGH.name
+            assert not shown.ceiling_notice.isHidden()
+            assert shown.ceiling_notice.text() == (
+                "The application could not save this axis top, so it lasts only until the "
+                "application closes. The Agent cost View says why."
+            )
+
+        if cause == "a file from a newer version":
+            assert (directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8") == newer
+        else:
+            monkeypatch.undo()
+            _pick_ceiling(schematic, ChartCeiling.STANDARD)
+
+            for shown in (chart, schematic):
+                assert shown.ceiling_notice.isHidden()
+            saved = json.loads((directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
+            assert saved["chart_axis_top_mac"] == 3.0
     finally:
         view.stop_timers()
         view.close()

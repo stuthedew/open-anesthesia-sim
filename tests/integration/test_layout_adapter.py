@@ -117,7 +117,7 @@ _REQUESTS = ViewRequests(
     branch=lambda: None,
     branch_here=lambda: None,
 )
-_PREFERENCES = PreferencesInForce(Preferences(), None)
+_PREFERENCES = PreferencesInForce(Preferences(), None, chart_ceiling_unsaved=False)
 
 
 #: The case's panels for a tick here: no marks listed yet, and no case to branch.

@@ -437,10 +437,15 @@ class PreferencesInForce:
         preferences: The preferences every View is drawn with.
         notice: Why a preference was refused, could not be read or will not
             be saved, or None when there is nothing to tell the reader.
+        chart_ceiling_unsaved: Whether the reader picked the axis top in force
+            this session and the application could not save it. Every chart
+            and schematic then says so under its axis top control
+            (`preferences.chart_ceiling_notice`, `PL-GWSY`).
     """
 
     preferences: Preferences
     notice: str | None
+    chart_ceiling_unsaved: bool
 
 
 @dataclass(frozen=True, slots=True)

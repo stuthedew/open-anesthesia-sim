@@ -611,6 +611,9 @@ class SimulationView(QWidget):
         self._preferences = loaded.preferences
         self._preferences_notice = loaded.notice
         self._preferences_store = preferences_store
+        # Whether the axis top in force was picked this session and could not
+        # be saved, which every chart and schematic says (`PL-GWSY`).
+        self._chart_ceiling_unsaved = False
         self._runs: tuple[RunView, ...] = ()
         self._slots: tuple[_RunSlots, ...] = ()
         # Why the branch last asked for was not taken, or None. It is kept
@@ -2124,7 +2127,9 @@ class SimulationView(QWidget):
             self._show_fork_offer(offer_now)
 
         drawn = self._runs_the_views_show()
-        preferences = PreferencesInForce(self._preferences, self._preferences_notice)
+        preferences = PreferencesInForce(
+            self._preferences, self._preferences_notice, self._chart_ceiling_unsaved
+        )
 
         if drawn is None:
             self._kept_frames = None
@@ -2269,7 +2274,9 @@ class SimulationView(QWidget):
 
         drawn = self._runs_the_views_show()
         selection = self._compartment_selection
-        preferences = PreferencesInForce(self._preferences, self._preferences_notice)
+        preferences = PreferencesInForce(
+            self._preferences, self._preferences_notice, self._chart_ceiling_unsaved
+        )
 
         if drawn is None:
             self._areas.refresh(
@@ -2718,7 +2725,7 @@ class SimulationView(QWidget):
                 disagrees with the preferences store.
         """
 
-        self._change_preferences(self._preferences.with_chart_ceiling(ceiling))
+        self._change_preferences(self._preferences.with_chart_ceiling(ceiling), ceiling_picked=True)
 
     @halt_gate
     def _handle_agent_price_request(self, agent_id: str, price: AgentPrice | None) -> None:
@@ -2758,16 +2765,33 @@ class SimulationView(QWidget):
 
         self._change_preferences(self._preferences.without_refused_entries())
 
-    def _change_preferences(self, preferences: Preferences) -> None:
+    def _change_preferences(
+        self, preferences: Preferences, *, ceiling_picked: bool = False
+    ) -> None:
         """Put `preferences` in force, save them, and draw at once.
 
         The preferences are saved when there is a store. If the save fails, or
         saving is off for the session, the change still applies until the
-        application closes, and the View says why it will not be kept. The
-        notice also names any refused entry that is still in the file.
+        application closes, and the agent cost View says why it will not be
+        kept. The notice also names any refused entry that is still in the
+        file. With no store, nothing is saved, and the launch's notice already
+        says so.
+
+        Where the change is the reader's pick of an axis top and it was not
+        saved, every chart and schematic says so under its axis top control,
+        because a Workspace may show no agent cost View (`PL-GWSY`). That line
+        points at the notice, so it is not shown while there is no notice,
+        which happens only for a dashboard a test builds with no store. A
+        later save writes the top in force too, so it clears that line.
+
+        Args:
+            preferences: The preferences to put in force.
+            ceiling_picked: Whether the change is the reader's pick of an
+                axis top.
         """
 
         self._preferences = preferences
+        saved = False
 
         if self._preferences_store is not None:
             try:
@@ -2777,9 +2801,15 @@ class SimulationView(QWidget):
                 refusals = refusals_notice(self._preferences_store.path, self._preferences)
                 self._preferences_notice = unsaved if refusals is None else f"{unsaved}. {refusals}"
             else:
+                saved = True
                 self._preferences_notice = refusals_notice(
                     self._preferences_store.path, self._preferences
                 )
+
+        if saved:
+            self._chart_ceiling_unsaved = False
+        elif ceiling_picked and self._preferences_notice is not None:
+            self._chart_ceiling_unsaved = True
 
         self.present(False)
 
