@@ -2114,7 +2114,7 @@ class _WindowAnnouncements(QObject):
 
 
 #: The marks that end a sentence, after which a screen reader pauses.
-_SENTENCE_ENDS: Final = (".", "!", "?", "…")
+_SENTENCE_ENDS: Final = (".", "!", "?")
 
 
 def _ended_as_sentence(message: str) -> str:
