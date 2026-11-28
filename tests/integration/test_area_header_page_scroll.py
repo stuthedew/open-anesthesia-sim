@@ -24,13 +24,16 @@ that places the header. The tests render under the `offscreen` platform that
 from collections.abc import Callable, Iterator
 
 import pytest
-from PySide6.QtCore import QEvent, QPoint, QRect
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt
+from PySide6.QtGui import QImage
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QAbstractButton, QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app.area_layout import AreaFrame
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.qt_schematic import RunSchematic
 from anesthesia_sim.app.simulation_view import SimulationView
+from anesthesia_sim.app.theme import VIEW_HEADING_SPACING
 from anesthesia_sim.app.view_registry import (
     AGENT_ACCOUNTING,
     AGENT_COST,
@@ -164,6 +167,59 @@ def test_a_page_scrolled_sideways_starts_each_area_s_header_and_pinned_row_in_vi
     assert seen_anywhere, kind
 
 
+@pytest.mark.parametrize("kind", _KINDS, ids=str)
+def test_shift_tab_up_a_scrolled_page_never_leaves_the_focus_under_an_area_s_header(
+    application: QApplication, shown: list[SimulationView], kind: ViewKind
+) -> None:
+    """`PL-DKQ5`: a control given the focus by the keyboard stands clear of its Area's header.
+
+    The View is in the top Area of a column over the parameter controls, in
+    a window 1400 by 400, and the page is scrolled to its foot. The focus
+    then moves back through every control with Shift+Tab. Each control that
+    takes it in an Area must be in view, and its part in view clear of the
+    header and pinned row that stand over the top of the Area's part in view. Qt's own
+    scroll box stops 50 px inside its edge, which a header and a pinned row
+    of two lines are taller than.
+    """
+
+    view = _paused_dashboard(application, shown, _column_of(kind), _SHORT_WINDOW_PX)
+    page = view._page_scroll
+    page.verticalScrollBar().setValue(page.verticalScrollBar().maximum())
+    application.processEvents()
+    areas = view.layout_container
+    frames = [areas.frame(area.id) for area in areas.model.areas()]
+    focusable = [
+        widget
+        for frame in frames
+        for widget in frame.body.findChildren(QWidget)
+        if widget.focusPolicy() & Qt.FocusPolicy.TabFocus and widget.isVisible()
+    ]
+    assert focusable, kind
+    focusable[-1].setFocus(Qt.FocusReason.TabFocusReason)
+    application.processEvents()
+    checked = 0
+
+    for _ in range(3 * len(focusable)):
+        QTest.keyClick(application.focusWidget(), Qt.Key.Key_Backtab)
+        application.processEvents()
+        focused = application.focusWidget()
+        holder = next((frame for frame in frames if frame.body.isAncestorOf(focused)), None)
+
+        if holder is None or holder.chrome.isAncestorOf(focused):
+            continue
+
+        checked += 1
+        label = focused.text() if isinstance(focused, QAbstractButton) else ""
+        name = f"{kind}: {type(focused).__name__} {focused.accessibleName() or label!r}"
+        shown = _part_on_page(page, focused)
+        assert not shown.isEmpty(), f"{name} is not in view"
+        assert not shown.intersects(_on_page(page, holder.chrome)), (
+            f"{name} is under its Area's header"
+        )
+
+    assert checked, kind
+
+
 def _check_every_area(
     view: SimulationView, where: str, in_view: Callable[[QScrollArea, QWidget], bool]
 ) -> bool:
@@ -205,13 +261,42 @@ def _check_every_area(
             text = qualifier.text()
             assert in_view(page, qualifier), f"{where}: {text!r} is not in view"
             assert _on_page(page, qualifier).bottom() < highest, f"{where}: {text!r} is below"
+            # A line squeezed below its least width is cut inside the Area,
+            # beside a control, where it reads as a whole line.
+            least = qualifier.minimumSizeHint().width()
+            assert qualifier.width() >= least, f"{where}: {text!r} is {qualifier.width()} px"
 
         for run in frame.content.findChildren(RunSchematic):
             if any(run.isAncestorOf(value) for value in seen):
                 left = run.name_text.mapTo(page.viewport(), QPoint(0, 0)).x()
                 assert left >= 0, f"{where}: {run.name_text.text()!r} starts {-left} px left"
+                # The name is whole wherever the part of its run in view is
+                # wide enough to hold it, beside the share caption's least
+                # width and the gap before it. Where it is not, its end is cut
+                # at the run's edge (`PL-BQB6`).
+                least = run.name_text.minimumSizeHint().width()
+                beside = VIEW_HEADING_SPACING + run.share_text.minimumSizeHint().width()
+
+                if least + beside <= _part_on_page(page, run).width():
+                    assert run.name_text.width() >= least, (
+                        f"{where}: {run.name_text.text()!r} is cut to {run.name_text.width()} px"
+                    )
+
+                if not run.share_text_whole():
+                    caption = run.share_text.grab().toImage()
+                    assert caption.isNull() or _blank(caption), f"{where}: a cut share caption"
 
     return seen_anywhere
+
+
+def _blank(image: QImage) -> bool:
+    """Return whether every pixel of `image` is the same, so nothing is drawn on it."""
+
+    first = image.pixel(0, 0)
+
+    return all(
+        image.pixel(x, y) == first for x in range(image.width()) for y in range(image.height())
+    )
 
 
 def _values(frame: AreaFrame) -> list[QWidget]:
@@ -240,6 +325,18 @@ def _labels_in(row: QWidget | None) -> list[QLabel]:
         return []
 
     return [label for label in row.findChildren(QLabel) if label.isVisible() and label.text()]
+
+
+def _part_on_page(page: QScrollArea, widget: QWidget) -> QRect:
+    """Return the part of `widget` inside the viewport of each scroll box around it, on the page."""
+
+    part = _on_page(page, widget)
+
+    for box in [page, *page.findChildren(QScrollArea)]:
+        if box.isAncestorOf(widget):
+            part = part.intersected(_on_page(page, box.viewport()))
+
+    return part
 
 
 def _on_page(page: QScrollArea, widget: QWidget) -> QRect:

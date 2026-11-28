@@ -3166,7 +3166,11 @@ right) edges of the display" while it scrolls, and a Blender area keeps its
 header at the area's edge ("A header is a small horizontal strip, which sits
 either at the top or bottom of an area", Blender Manual, "Regions"). A long
 line can still run past the window's right edge where that edge cuts across
-an area (`PL-BQB6`).
+an area (`PL-BQB6`). A control that Tab or Shift+Tab moves the focus to is
+scrolled into view below the header and the pinned row, never under them.
+WCAG 2.2, success criterion 2.4.11, "Focus Not Obscured (Minimum)", asks that
+a control taking the focus is "not entirely hidden due to author-created
+content", and names sticky headers as the usual cause.
 
 **For developers.** The header, the rule under it and the pinned row are the
 heading of a `PinnedHeadingSection` (`AreaFrame.chrome` in
@@ -3174,9 +3178,12 @@ heading of a `PinnedHeadingSection` (`AreaFrame.chrome` in
 leaves out what any heading around it covers (`in_view`), so a heading inside
 the view pins under the area's. The dashboard scrolls the page to the
 concentration chart only as far as it takes to show the chart clear of its
-area's header (`scroll_clear_into_view`). Every registered view is checked in
-an area at the window's top, at every position of the page's scroll down and
-sideways (`tests/integration/test_area_header_page_scroll.py`).
+area's header (`scroll_clear_into_view`). The page and each view's scroll box
+are a `HeadingScroll`, which scrolls a control that takes the focus clear of
+the headings, through every box around it from the innermost out. Every
+registered view is checked in an area at the window's top, at every position
+of the page's scroll down and sideways, and with the focus moved back through
+its controls (`tests/integration/test_area_header_page_scroll.py`).
 
 #### Values required only with their chart
 

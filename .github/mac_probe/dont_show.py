@@ -1,4 +1,4 @@
-"""A throwaway pytest plugin for a Mac runner: keep each window off the screen at the size asked for.
+"""Throwaway pytest plugin: keep the Mac runner's windows off its small screen (PL-DKQ5).
 
 The runner's screen is 1024 by 768, and macOS shrinks a shown window to fit it.
 """

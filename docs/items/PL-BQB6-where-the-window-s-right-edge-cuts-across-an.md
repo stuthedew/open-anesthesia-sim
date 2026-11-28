@@ -14,4 +14,6 @@ filed-pr: 2355
 
 **Direction.** The safety standard asks that a value not be shown cut where the cut part could be misread (the schematic paints a label only while whole, `PL-GWTR`). Three routes to weigh, each with a source to find first: elide a cut line with an ellipsis at the part's right edge, so the reader sees it continues; let the heading span only the part in view and wrap its lines there, which makes it taller while scrolled; or hide a line cut at its end, as the canvas does. Whether a required unit line may be shown elided is the owner's call (`PL-KBBJ`), so research the platform guides first and put the choice to the owner through the coordinator.
 
+**Two more lines that are cut the same way** (`PL-DKQ5`'s review, 2026-11-28). A run's name in the compartment schematic is cut at its end where the part of its run in view is narrower than the name, because the name line keeps a margin rather than sliding whole, so that the compartments' names stay over their containers. The share caption beside the name is not drawn while it is cut, so it is never shown in part; whichever route this item takes should treat the caption the same way.
+
 **Done when** `tests/integration/test_area_header_page_scroll.py`'s sideways test checks that each line is wholly in view, or shown with a visible sign that it continues, wherever a value of its Area is.

@@ -40,17 +40,23 @@ from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QObject, QPoint, QRect, Qt
 from PySide6.QtGui import QMoveEvent, QResizeEvent, QShowEvent
-from PySide6.QtWidgets import QBoxLayout, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QAbstractScrollArea, QBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.stylesheets import heading_surface_stylesheet
 
 __all__ = [
+    "HeadingScroll",
     "PinnedHeadingSection",
     "in_view",
     "pin_headings",
     "pin_on_scroll",
     "scroll_clear_into_view",
 ]
+
+# How far inside a box's edge, below any heading, a widget that takes the
+# keyboard focus is scrolled to. It is the margin Qt's own scroll box keeps
+# (`QScrollArea.ensureWidgetVisible`, whose margins default to 50 px).
+_FOCUS_MARGIN_PX = 50
 
 
 def in_view(widget: QWidget) -> QRect:
@@ -130,7 +136,7 @@ def pin_on_scroll(box: QScrollArea) -> None:
         bar.rangeChanged.connect(after_range)
 
 
-def scroll_clear_into_view(box: QScrollArea, widget: QWidget) -> None:
+def scroll_clear_into_view(box: QScrollArea, widget: QWidget, margin: int = 0) -> None:
     """Scroll `box` as little as it takes to show `widget` whole and clear of every heading.
 
     `widget` is in the widget that `box` scrolls. A heading around `widget`
@@ -138,9 +144,11 @@ def scroll_clear_into_view(box: QScrollArea, widget: QWidget) -> None:
     scrolled out of view (`PinnedHeadingSection`). So `widget` is scrolled to
     stand at least that heading's height below the box's top, where no
     heading covers it. Qt's `ensureWidgetVisible` would put `widget` at the
-    box's top edge, under the headings. Where `widget` is already in view and
-    clear, nothing moves. Where it is taller than the box can show, its top
-    is shown.
+    box's top edge, under the headings. Up to `margin` pixels more are kept
+    clear on each side, as Qt keeps 50 for a widget that takes the keyboard
+    focus, where the box has room for them.
+    Where `widget` is already in view and clear, nothing moves. Where it is
+    taller than the box can show, its top is shown.
     """
 
     held = box.widget()
@@ -165,14 +173,62 @@ def scroll_clear_into_view(box: QScrollArea, widget: QWidget) -> None:
         (box.verticalScrollBar(), corner.y(), widget.height(), viewport.height(), covered),
     ):
         position = bar.value()
+        # A box too short for the margins keeps only what room it has left
+        # on each side, so the widget is never scrolled out of view for them.
+        kept = min(margin, max((room - lead - length) // 2, 0))
 
-        if start + length > position + room:
-            position = start + length - room
+        if start + length + kept > position + room:
+            position = start + length + kept - room
 
-        if start - lead < position:
-            position = start - lead
+        if start - lead - kept < position:
+            position = start - lead - kept
 
         bar.setValue(position)
+
+
+class HeadingScroll(QScrollArea):
+    """A scroll box that brings a widget taking the keyboard focus into view clear of the headings.
+
+    Qt's own box scrolls a widget that Tab or Shift+Tab gives the focus to
+    until it stands 50 px inside the box's edge. A heading pinned over the top
+    of the part in view can be taller than that, so the widget could take the
+    focus under it, with its focus ring hidden (`PL-DKQ5`). This box keeps
+    the same 50 px below the headings instead (`scroll_clear_into_view`).
+
+    One box can hold another, as the page holds each Area's View. Qt asks the
+    box nearest the focused widget first, and that box asks the box around it
+    before it scrolls. So the outer box would scroll first, to where the
+    widget stood before the inner box moved it. The outermost box therefore
+    scrolls every box around the widget, from the innermost out, and the
+    boxes inside it leave the scroll to it.
+    """
+
+    def focusNextPrevChild(self, next: bool) -> bool:  # Qt spells this in camelCase.
+        # The scroll area's base class moves the focus without scrolling, so
+        # the scrolls below are the only ones.
+        moved = QAbstractScrollArea.focusNextPrevChild(self, next)
+        focused = self.focusWidget()
+
+        if moved and focused is not None and _boxes_around(self) == []:
+            for box in _boxes_around(focused):
+                scroll_clear_into_view(box, focused, _FOCUS_MARGIN_PX)
+
+        return moved
+
+
+def _boxes_around(widget: QWidget) -> list[HeadingScroll]:
+    """Return each `HeadingScroll` that holds `widget`, from the innermost out."""
+
+    boxes: list[HeadingScroll] = []
+    holder = widget.parentWidget()
+
+    while holder is not None:
+        if isinstance(holder, HeadingScroll):
+            boxes.append(holder)
+
+        holder = holder.parentWidget()
+
+    return boxes
 
 
 class PinnedHeadingSection(QWidget):
@@ -197,6 +253,11 @@ class PinnedHeadingSection(QWidget):
             layout's left margin grows by that part's width, so the label
             starts at the left edge of the part in view. The heading's other
             rows, such as column labels, stay over their columns.
+        slides_left: Whether the whole heading moves right by the width of
+            the section's part out of view on the left, so every line of it
+            starts at the left edge of the part in view. A heading whose
+            every line is a general label, such as an Area's header and
+            pinned row, slides.
         surface_at_home: Whether the heading is drawn on the panel's colour
             while it stands in its own space, above the column and at its left
             end. A heading whose own rows draw their surfaces passes False, so
@@ -215,6 +276,7 @@ class PinnedHeadingSection(QWidget):
         object_name: str,
         *,
         follows_left: QBoxLayout | None = None,
+        slides_left: bool = False,
         surface_at_home: bool = True,
     ) -> None:
         super().__init__()
@@ -226,6 +288,7 @@ class PinnedHeadingSection(QWidget):
         self._surface_drawn = surface_at_home
         heading.setStyleSheet(heading_surface_stylesheet(object_name, drawn=surface_at_home))
         self._follows_left = follows_left
+        self._slides_left = slides_left
         self._left_margin = 0 if follows_left is None else follows_left.contentsMargins().left()
         self._inset = 0
         self._room = QWidget()
@@ -264,19 +327,23 @@ class PinnedHeadingSection(QWidget):
         height = self.heading.sizeHint().height()
         shown = in_view(self)
         top = 0 if shown.isEmpty() else min(max(shown.top(), 0), max(self.height() - height, 0))
+        # A heading that slides keeps the width it has in its own space, so
+        # each of its lines and controls keeps its place within it, and the
+        # section's right edge cuts what runs past it.
+        left = self._inset if self._slides_left else 0
 
-        return QRect(0, top, self.width(), height)
+        return QRect(left, top, self.width(), height)
 
     def _left_inset(self) -> int:
-        """Return how far the general label is moved right, to the left edge of the part in view.
+        """Return how far the heading's start moves right, to the left edge of the part in view.
 
-        Where the part in view is narrower than the label's row, the row runs
-        past the section's right edge, and its end is cut there rather than
-        its start. A label read from its start names what it labels, and one
-        cut at its start may not.
+        Where the part in view is narrower than a line of the heading, the
+        line's end is cut at the section's right edge rather than its start.
+        A line read from its start names what it labels, and one cut at its
+        start may not.
         """
 
-        if self._follows_left is None:
+        if self._follows_left is None and not self._slides_left:
             return 0
 
         shown = in_view(self)
@@ -292,10 +359,13 @@ class PinnedHeadingSection(QWidget):
             margins = self._follows_left.contentsMargins()
             margins.setLeft(self._left_margin + inset)
             self._follows_left.setContentsMargins(margins)
-            self._inset = inset
+
+        self._inset = inset
 
         height = self.heading.sizeHint().height()
-        least_width = self.heading.minimumSizeHint().width() - self._inset
+        least_width = self.heading.minimumSizeHint().width() - (
+            0 if self._follows_left is None else self._inset
+        )
 
         # The space under the heading holds the section to the heading's
         # height and least width, so the section's layout makes room for a

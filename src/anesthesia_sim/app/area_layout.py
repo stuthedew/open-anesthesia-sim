@@ -139,7 +139,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QMenu,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSplitter,
     QSplitterHandle,
@@ -150,7 +149,12 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
-from anesthesia_sim.app.pinned_heading import PinnedHeadingSection, pin_headings, pin_on_scroll
+from anesthesia_sim.app.pinned_heading import (
+    HeadingScroll,
+    PinnedHeadingSection,
+    pin_headings,
+    pin_on_scroll,
+)
 from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.stylesheets import (
@@ -2423,7 +2427,7 @@ class AreaFrame(QFrame):
         chrome_rows.addWidget(self.header)
         chrome_rows.addWidget(rule)
         self.body = PinnedHeadingSection(
-            self.chrome, _AREA_CHROME_NAME, follows_left=chrome_rows, surface_at_home=False
+            self.chrome, _AREA_CHROME_NAME, slides_left=True, surface_at_home=False
         )
         self._column = self.body.column
         outer = QVBoxLayout(self)
@@ -2628,7 +2632,7 @@ def pinned_row(view: QWidget) -> QWidget | None:
     return row if isinstance(row, QWidget) else None
 
 
-class ViewScroll(QScrollArea):
+class ViewScroll(HeadingScroll):
     """Holds an Area's View under the header, and scrolls it where the Area is smaller than it.
 
     The box gives the View all the room the Area has. It never draws the View

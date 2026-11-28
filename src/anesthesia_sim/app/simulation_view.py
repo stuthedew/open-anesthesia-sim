@@ -101,7 +101,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QScrollArea,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -154,7 +153,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.halt_gate import halt_gate
-from anesthesia_sim.app.pinned_heading import pin_on_scroll, scroll_clear_into_view
+from anesthesia_sim.app.pinned_heading import HeadingScroll, pin_on_scroll, scroll_clear_into_view
 from anesthesia_sim.app.preferences import (
     AgentPrice,
     LoadedPreferences,
@@ -755,7 +754,7 @@ class SimulationView(QWidget):
         middle_column.addWidget(self._tabs)
         middle_column.addWidget(self._areas, 1)
 
-        scroll = QScrollArea()
+        scroll = HeadingScroll()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
