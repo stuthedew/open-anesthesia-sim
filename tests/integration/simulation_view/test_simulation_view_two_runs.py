@@ -299,9 +299,12 @@ def test_the_interface_walk_reaches_the_axis_titles_and_the_accessible_names(
     """The whole-interface walk covers what the Flet walk covered: axis titles too.
 
     The hedge and wake-time tests guarantee only what the walk reaches. The
-    plots' axis titles and the legend boxes' accessible names are standing
-    text that a reader or a screen reader meets, so both are on the walk
-    (`PL-25KS`). Each box's name is the words it shows (`PL-PN2C`).
+    plots' axis titles and the accessible names are standing text that a
+    reader or a screen reader meets, so both are on the walk (`PL-25KS`).
+    Each legend box's name is the words it shows (`PL-PN2C`), so the walk
+    yields it as shown text. The legend's scroll box has a name that only a
+    screen reader is told, "Concentration chart legend", so that name shows
+    that the walk still reads accessible names.
     """
 
     from anesthesia_sim.app.chart_frame import COMPARTMENT_TRACES
@@ -313,6 +316,7 @@ def test_the_interface_walk_reaches_the_axis_titles_and_the_accessible_names(
     assert {"% of 1 atm", "×MAC", "F<sub>A</sub>/F<sub>I</sub>"} <= strings
     assert any(string.startswith("simulated time") for string in strings)
     assert {trace_legend_label(style) for style in COMPARTMENT_TRACES} <= strings
+    assert "Concentration chart legend" in strings
 
 
 def test_the_dashboard_carries_the_educational_disclaimer(application: QApplication) -> None:
