@@ -63,6 +63,7 @@ from anesthesia_sim.app.controller import (
     _with_later_crossings,
 )
 from anesthesia_sim.app.dashboard_frame import (
+    NO_TRACES_SHOWN_TEXT,
     concentration_chart_description,
     concentration_chart_name,
     run_label,
@@ -1046,6 +1047,9 @@ _THREE_SHOWN = (RecordedQuantity.ALVEOLAR, RecordedQuantity.MUSCLE, RecordedQuan
 def test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value() -> None:
     """A screen reader hears each shown trace's last drawn value, in both units (`PL-T9RB`).
 
+    It hears the 1 MAC line as its legend entry says it, without how the line
+    is drawn (`PL-596J`).
+
     Each expected value is worked out by hand from the fractions below and
     sevoflurane's 1 MAC of 1.8% at age 40. 1.12% is 0.622 of 1 MAC, which
     shows as 0.62. 0.06% is 0.033 of 1 MAC, which shows as 0.03. 0.002% is
@@ -1067,17 +1071,32 @@ def test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value() ->
         "Line chart.",
         "Modelled sevoflurane at 10m: Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC; "
         "Muscle 0.06%, 0.03 ×MAC; Fat <0.01%, <0.01 ×MAC.",
-        "1 MAC sevoflurane (age 40) = 1.8%",
+        "1 MAC sevoflurane (age 40) = 1.8%, reference adult (alveolar).",
     ]
-    assert (
-        concentration_chart_description(frame)
-        .splitlines()[3]
-        .startswith("MAC-awake sevoflurane = 0.34 ×MAC")
-    )
     assert concentration_chart_name(frame) == (
         "Agent concentration and relative partial pressure over time, whole run so far, "
         "1 hour shown"
     )
+
+
+def test_the_chart_s_text_alternative_says_which_trace_the_mac_awake_band_is_read_against() -> None:
+    """A screen reader hears the band's legend words, after the run's values (`PL-596J`).
+
+    `docs/INTERFACE.md` § "MAC-awake as a chart reference" names reading the
+    band against the alveolar trace as the first misreading to prevent. The
+    legend prevents it with the words "population, read against vessel-rich
+    group trace", so the text alternative must say them too. 0.34 ×MAC is the
+    MAC-awake fraction stored in `data/agents/sevoflurane.json`, and 0.34 of
+    1.8% is 0.61%.
+    """
+
+    run = _run_frame((0.0, 600.0), alveolar=(0.0, 0.0112))
+    band = concentration_chart_description(
+        _frame(run, visible=(RecordedQuantity.ALVEOLAR,))
+    ).splitlines()[-1]
+
+    assert band.startswith("MAC-awake sevoflurane = 0.34 ×MAC (0.61%)")
+    assert band.endswith("; population, read against vessel-rich group trace.")
 
 
 def test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn() -> None:
@@ -1103,7 +1122,10 @@ def test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_dr
     )
     assert concentration_chart_description(
         _frame(replace(trunk, times_s=()), visible=(RecordedQuantity.ALVEOLAR,))
-    ).splitlines()[:2] == ["Line chart.", "1 MAC sevoflurane (age 40) = 1.8%"]
+    ).splitlines()[:2] == [
+        "Line chart.",
+        "1 MAC sevoflurane (age 40) = 1.8%, reference adult (alveolar).",
+    ]
     assert concentration_chart_name(None) == (
         "Agent concentration and relative partial pressure over time"
     )
@@ -3187,6 +3209,53 @@ def test_a_preview_is_drawn_only_inside_its_region_and_carries_its_label() -> No
     assert preview.fractions[RecordedQuantity.ALVEOLAR][0] == pytest.approx(
         run.fractions[RecordedQuantity.ALVEOLAR][-1], rel=1e-12
     )
+
+
+def test_each_chart_s_text_alternative_names_a_preview_while_a_drag_draws_one() -> None:
+    """A screen reader hears a preview's label, after the run's values, and no predicted value.
+
+    The label is the one the plot draws in the preview's region, with a full
+    stop, so a user who drags a setting hears that a preview is drawn and of
+    which setting and value (`PL-MP1X`). The hover never shows a preview's
+    values, so neither description gives one. The same frame without the
+    preview gives each description without the line.
+    """
+
+    controller = _run(300)
+
+    def frame_for(run_input: RunInput) -> ChartFrame:
+        return assemble_chart_frame(
+            [run_input],
+            time_base_for_span(1800.0),
+            COMPARTMENT_QUANTITIES,
+            plot_width_px=_PLOT_WIDTH_PX,
+            held_start_s=None,
+            ceiling=ChartCeiling.STANDARD,
+        )
+
+    previewing = frame_for(_previewing(controller, ControlInput.FRESH_GAS_FLOW, 6.0))
+    still = frame_for(_input(controller))
+    label = "Preview: Fresh gas flow 6.0 L/min, not applied."
+
+    chart = concentration_chart_description(previewing).splitlines()
+    plot = wash_in_plot_description(previewing).splitlines()
+
+    assert chart == [
+        *concentration_chart_description(still).splitlines()[:2],
+        label,
+        *concentration_chart_description(still).splitlines()[2:],
+    ]
+    assert plot == [
+        *wash_in_plot_description(still).splitlines()[:3],
+        label,
+        *wash_in_plot_description(still).splitlines()[3:],
+    ]
+    # With every compartment unchecked the plot still draws the preview's
+    # region and label, so the description still names it.
+    assert concentration_chart_description(replace(previewing, visible=())).splitlines()[1:3] == [
+        NO_TRACES_SHOWN_TEXT,
+        label,
+    ]
 
 
 def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:

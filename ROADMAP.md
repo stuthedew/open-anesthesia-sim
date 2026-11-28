@@ -1099,7 +1099,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a user cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 213 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 215 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1314,6 +1314,8 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-Z2L5 (M) Show the intertissue compartment the way Eger and Saidman draw it, and label its tension and amount apart from bulk fat
 - PL-GWTR (M) A schematic container that stands across a pinned run heading's lower edge shows only its lower part, so its fill can look like that of a container at or over the scale's top
 - PL-H100 (M) On a Mac, the Maintenance Workspace at 1366 by 768 leaves each container's share line cut through at the schematic's lower edge and its share bar out of view
+- PL-2Y1L (M) No test runs on macOS, so a layout that fits the Linux test fonts but not macOS's system font passes every check
+- PL-596J (S) The concentration chart's text alternative gives the MAC-awake band without the legend's words "population, read against vessel-rich group trace", so a screen-reader user is not told which trace the band is read against
 
 ### Captures after the cut
 
@@ -1582,6 +1584,24 @@ each container's share line cut through at the schematic's lower edge, so a
 value there can look like another. The project owner chose to fix it before
 v0.7.0 is cut (project owner, 2026-11-28, over cutting now and fixing it in a
 later release).
+
+**`PL-2Y1L` (`safety`) joined the frozen list on 2026-11-28 and is deferred to
+the next gate.** The macOS runs that found `PL-H100` found it. No test runs on
+macOS, so a layout that fits the Linux test fonts but not macOS's system font
+passes every check. Its hazard is not live. After `PL-H100` closed in #2350, a
+macOS run left four failures. They move the parameter controls 7 px on a tab
+switch, or size an Area or its scroll box 1 px larger than its bound, and none
+hides a value. The item's `deferred-from` records the run.
+
+**`PL-596J` (`safety`) joined the frozen list on 2026-11-28, after the freeze,
+and closes in the pull request that places it.** `PL-96MX`'s review found it.
+The concentration chart's text alternative, which a screen reader reads in
+place of the picture, gave the MAC-awake band without the legend's
+"population, read against vessel-rich group trace". So a screen-reader user
+was not told which trace to read the band against, and reading it against the
+alveolar trace is the first misreading that `docs/INTERFACE.md` § "MAC-awake
+as a chart reference" names. The text alternative now words the 1 MAC line and
+the band as their legend entries do.
 
 ### Required scope
 
