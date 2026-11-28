@@ -3,16 +3,19 @@ id: PL-9XGQ
 title: The screen-reader walk checks only that each control a reader can reach has a name, so a plot with no name or description and two controls with one name both pass it, and each is found by reading one widget (PL-T9RB, PL-R1M6, PL-YSFX)
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect
 feature: presentation-safety
-touches: tests/integration/test_keyboard_focus.py
+touches: tests/integration/test_keyboard_focus.py, docs/INTERFACE.md
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it; its members are deferred from the same gate, and the release waits only on the owner's test drive (triage 2026-11-28)
 added: 2026-11-28
+closed: 2026-11-28
+pr: 2359
 filed-pr: 2353
 payoff: a plot, a schematic or a control added later fails a test when a screen reader would get no name for it, or a name it shares with another, instead of waiting for someone to read that widget
+tests: tests/integration/test_keyboard_focus.py::test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing, tests/integration/test_keyboard_focus.py::test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named, tests/integration/test_keyboard_focus.py::test_each_painted_widget_that_draws_no_picture_still_paints
 root-cause-of: PL-RK9Z, PL-T9RB, PL-R1M6, PL-YSFX
-generator: live - the walk PL-RK9Z built checks only that a node which takes the focus has a name, so PL-R1M6 and PL-YSFX were found the day it closed and PL-XV64 the day after; nothing checks a plot or compares two names
+generator: spent - check: test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named and test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing in tests/integration/test_keyboard_focus.py walk every shipped Workspace and the one with every kind of View, with one run and two, and fail on an unnamed control, a picture with no name or description of its own, an Area whose View did not build, and two controls or pictures of one role that share a name, so a View, plot or painted widget added later fails before it merges
 misread: What a screen reader is told about each element: its role, and a name unique in its window
 ---
 
