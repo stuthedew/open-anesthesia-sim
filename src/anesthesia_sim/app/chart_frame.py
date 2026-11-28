@@ -161,6 +161,7 @@ __all__ = [
     "nearest_trace_point",
     "nearest_wash_in_point",
     "percent_axis_ticks",
+    "plain_text",
     "preview_stroke_width",
     "preview_trace_style",
     "resample_owed",
@@ -282,10 +283,23 @@ ALVEOLAR_FRACTION_NAME: Final = "F<sub>A</sub>"
 INSPIRED_FRACTION_NAME: Final = "F<sub>I</sub>"
 WASH_IN_RATIO_NAME: Final = f"{ALVEOLAR_FRACTION_NAME}/{INSPIRED_FRACTION_NAME}"
 
+
+def plain_text(text: str) -> str:
+    """Return `text` without the subscript markup that a label or an axis title renders.
+
+    A screen reader and the hover readout take text without markup. Qt reads
+    a label's rich text to a screen reader the same way, with each tag
+    dropped and the subscript left in line, so "F<sub>A</sub>" is read as
+    "FA".
+    """
+
+    return text.replace("<sub>", "").replace("</sub>", "")
+
+
 # The ratio's name where text is drawn without markup, as in the hover readout.
 # It is "FA/FI", as the abstract of Yasuda et al. 1991 writes it
 # (doi:10.1097/00000542-199103000-00017).
-WASH_IN_RATIO_PLAIN_NAME: Final = WASH_IN_RATIO_NAME.replace("<sub>", "").replace("</sub>", "")
+WASH_IN_RATIO_PLAIN_NAME: Final = plain_text(WASH_IN_RATIO_NAME)
 
 # The second line of the wash-in trace's hover readout, which says what the
 # value is. The parenthesis repeats the caption that `app/wash_in.py` already

@@ -68,9 +68,11 @@ from anesthesia_sim.app.compartment_schematic import (
     ContainerReading,
     SchematicShown,
     instant_line,
+    schematic_description,
+    schematic_name,
 )
 from anesthesia_sim.app.pinned_heading import PinnedHeadingSection
-from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.qt_widgets import DescribedGraphic, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.theme import (
     INK,
@@ -148,7 +150,7 @@ class CanvasParts:
     cut_notice: QRectF | None
 
 
-class SchematicCanvas(QWidget):
+class SchematicCanvas(DescribedGraphic):
     """One run's six containers, joined as the circulation joins them, each labelled in text.
 
     `show_readings` gives the canvas the readings of one snapshot, and the
@@ -158,6 +160,12 @@ class SchematicCanvas(QWidget):
     (`shown_parts`). The run that holds the canvas says where that part is,
     through `measure_clear_part`. A canvas that nobody measures paints every
     part.
+
+    A screen reader reads the canvas as an image with a text alternative
+    (`DescribedGraphic`, `PL-R1M6`). The run that holds the canvas gives it
+    what it shows and the run's name, through `describe`. The text
+    alternative gives every value whatever part of the canvas is in view,
+    because a screen reader reads no pixels.
     """
 
     def __init__(self) -> None:
@@ -165,7 +173,27 @@ class SchematicCanvas(QWidget):
         self._readings: tuple[ContainerReading, ...] = ()
         self._marks: tuple[float, ...] = ()
         self._clear_part: Callable[[], QRect] | None = None
+        self._described: tuple[SchematicShown, str | None] = (WITHHELD_SCHEMATIC, None)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.report_text_changes()
+
+    def describe(self, shown: SchematicShown, run_name: str | None) -> None:
+        """Write the text alternative from `shown` and the run's name, and report a change."""
+
+        self._described = (shown, run_name)
+        self.report_text_changes()
+
+    def graphic_name(self) -> str:
+        """Return what a screen reader calls the schematic (`schematic_name`)."""
+
+        shown, run_name = self._described
+
+        return schematic_name(shown.instant, run_name)
+
+    def graphic_description(self) -> str:
+        """Return the schematic's long description (`schematic_description`)."""
+
+        return schematic_description(self._described[0])
 
     def measure_clear_part(self, clear_part: Callable[[], QRect]) -> None:
         """Read the canvas's clear part from `clear_part` each time the canvas paints.
@@ -285,8 +313,9 @@ class SchematicCanvas(QWidget):
     def painted_strings(self) -> tuple[str, ...]:
         """Every label the canvas paints: each container's tension, amount and share, in order.
 
-        `paintEvent` paints each of these strings, read through `_labels`, so a
-        test that reads them reads what the reader sees (`PL-0G2P`). A line is
+        `paintEvent` paints each of these strings, read through
+        `ContainerReading.label_lines`, so a test that reads them reads what the
+        reader sees (`PL-0G2P`). A line is
         listed at every scroll position, though it is painted only while it is
         whole in the clear part (`shown_parts`), as a widget scrolled out of
         view still counts as seen. The containers' names are painted in the
@@ -295,7 +324,7 @@ class SchematicCanvas(QWidget):
         `RunSchematic.painted_strings` instead.
         """
 
-        return tuple(text for reading in self._readings for text in _labels(reading))
+        return tuple(text for reading in self._readings for text in reading.label_lines)
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         return self.minimumSizeHint()
@@ -357,10 +386,11 @@ class SchematicCanvas(QWidget):
     def label_line(self, index: int, line: int) -> QRectF:
         """Return where line `line` of container `index`'s label is painted, in the canvas's pixels.
 
-        The lines are counted from 0 at the top, in the order `_labels` gives
-        them: the tension, the amount and the share. Each line is as
-        wide as its container's column. `paintEvent` paints each line here, so
-        a test that finds a line finds what the reader sees.
+        The lines are counted from 0 at the top, in the order
+        `ContainerReading.label_lines` gives them: the tension, the amount and
+        the share. Each line is as wide as its container's column. `paintEvent`
+        paints each line here, so a test that finds a line finds what the
+        reader sees.
 
         Raises:
             IndexError: If `index` does not name one of the containers, or
@@ -523,7 +553,7 @@ class SchematicCanvas(QWidget):
 
         painter.setPen(QColor(INK))
 
-        for line, text in enumerate(_labels(reading)):
+        for line, text in enumerate(reading.label_lines):
             if (index, line) not in shown:
                 continue
 
@@ -686,19 +716,10 @@ def _column_width(metrics: QFontMetrics, shown: tuple[str, ...]) -> int:
     return max(widest, _CONTAINER_WIDTH) + _COLUMN_GAP
 
 
-def _labels(reading: ContainerReading) -> tuple[str, str, str]:
-    """The lines painted under one container, from the top: its tension, amount and share.
-
-    The painting and `SchematicCanvas.painted_strings` both read this one
-    function, so no painted line can be left out of what a test reads.
-    """
-
-    return (reading.tension, reading.amount, reading.share_text)
-
-
-#: How many lines `_labels` paints under each container. It is counted from
-#: `_labels` itself, so a line added there moves the share bars down with it.
-_LABEL_LINES: Final = len(_labels(WITHHELD_SCHEMATIC.readings[0]))
+#: How many lines are painted under each container. It is counted from
+#: `ContainerReading.label_lines` itself, so a line added there moves the share
+#: bars down with it.
+_LABEL_LINES: Final = len(WITHHELD_SCHEMATIC.readings[0].label_lines)
 
 
 #: The object name of each run's heading, which scopes its surface's stylesheet.
@@ -835,12 +856,14 @@ class RunSchematic(PinnedHeadingSection):
 
         self._name = name
         self.name_text.setText(instant_line(self._shown.instant, name))
+        self.canvas.describe(self._shown, name)
         self.pin_heading()
 
     def show_schematic(self, shown: SchematicShown) -> None:
         """Draw `shown`: the instant it is read at, its containers, and each of its other lines."""
 
         self.canvas.show_readings(shown.readings, shown.marks)
+        self.canvas.describe(shown, self._name)
         self.names.show_names(shown.readings)
         self._shown = shown
         self.name_text.setText(instant_line(shown.instant, self._name))

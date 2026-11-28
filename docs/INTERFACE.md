@@ -4576,13 +4576,49 @@ AT-SPI client library on Linux keeps the texts it has read until told they
 changed, so without these reports it would go on reading an earlier frame's.
 The chart gives no table of its values. The Understanding document for SC 1.1.1
 provides one "where possible and practical", and the readouts already give
-each compartment's current value in text. The wash-in plot and the compartment
-schematic have no text alternative yet (`PL-R1M6`)
+each compartment's current value in text
 (`test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value` and
 `test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn`
 in `tests/unit/test_chart_frame.py`, and
 `test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends`
 and `test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+
+**The wash-in plot and each run's compartment schematic have a text
+alternative too** (`PL-R1M6`). Each reports itself as an image in the same
+way. The wash-in plot's name is its heading and the time axis's caption, such
+as "Wash-in: FA/FI, alveolar as a fraction of the modelled circuit, whole run
+so far, 15 minutes shown". The subscripts are dropped, as Qt drops them when
+it reads the heading's label. Its description opens "Line chart." and "Model
+outputs — not measurements.", then gives each run's line from the row above
+the plot, such as "Now: FA/FI = 0.85", and ends with the equilibrium line,
+"Equilibrium, FA = FI".
+
+A schematic's name is the View's title, the run while runs are compared, and
+the instant, such as "Compartment schematic, Run 2, at 10m of simulated time".
+Its description names the picture and how its containers are joined, says
+that the values are modelled, and gives the tensions' unit and the amounts'
+unit. Then it takes the schematic's lines in the order a reader meets them:
+what the shares are of, one line for each container, such as "Fat: 0.03%,
+140 mL vapour, 20% of agent", the line that names any container above the
+scale, and the caption that names the scale. Each caption is one line, because
+the screen breaks a caption in the middle of a sentence where its column is
+narrow. Each compartment's amount and share appear nowhere else in text, so
+the description gives every one, wherever the canvas is scrolled. The W3C's
+tutorial on complex images warns that a description is read as one block of
+text, without a table's headings or its reading cell by cell
+(https://www.w3.org/WAI/tutorials/images/complex/, read 2026-11-28). Each
+container's line names its own compartment, so it needs neither. Both report
+each change to their texts, as the concentration chart does
+(`test_the_schematic_s_description_gives_every_container_s_values_with_their_units`,
+`test_the_schematic_s_description_names_a_container_above_the_scale`,
+`test_a_withheld_schematic_s_description_gives_the_dashes_the_screen_shows` and
+`test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instant`
+in `tests/unit/test_compartment_schematic.py`, and
+`test_the_wash_in_plot_tells_a_screen_reader_what_it_plots_and_each_run_s_ratio`,
+`test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values`,
+`test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes`
+and `test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
 <!-- not-restated: 15 minutes -->
 

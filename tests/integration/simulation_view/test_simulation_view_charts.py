@@ -6,8 +6,9 @@ These tests cover the charts.
 """
 
 import pytest
+from pyqtgraph import PlotWidget
 from PySide6.QtGui import QAccessible
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.chart_time_base import (
@@ -16,7 +17,9 @@ from anesthesia_sim.app.chart_time_base import (
     time_base_for_span,
 )
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.dashboard_frame import WASH_IN_HEADING
 from anesthesia_sim.app.formatting import (
+    format_compartment_amount,
     format_elapsed,
     format_mac_awake_reference,
     format_mac_multiple,
@@ -24,6 +27,8 @@ from anesthesia_sim.app.formatting import (
     format_time_base,
     format_wash_in_ratio,
 )
+from anesthesia_sim.app.qt_schematic import RunSchematic, SchematicCanvas
+from anesthesia_sim.app.qt_widgets import DescribedGraphic
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
 from anesthesia_sim.app.wash_in import read_wash_in_with_ventilation
@@ -123,19 +128,189 @@ def test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes(
     _advance(controller, 60)
     view.present(False)
 
-    assert recorded == [TextChange(chart, QAccessible.Event.DescriptionChanged)]
+    assert _changes_of(chart, recorded) == [TextChange(chart, QAccessible.Event.DescriptionChanged)]
 
     recorded.clear()
     view.present(False)
 
-    assert recorded == []
+    assert _changes_of(chart, recorded) == []
 
     chart.withhold()
 
-    assert recorded == [
+    assert _changes_of(chart, recorded) == [
         TextChange(chart, QAccessible.Event.NameChanged),
         TextChange(chart, QAccessible.Event.DescriptionChanged),
     ]
+
+
+def _changes_of(source: QWidget, recorded: list[TextChange]) -> list[TextChange]:
+    """Return the reports of `source`'s changed texts, leaving out every other graphic's."""
+
+    return [change for change in recorded if change.source is source]
+
+
+def test_the_wash_in_plot_tells_a_screen_reader_what_it_plots_and_each_run_s_ratio(
+    application: QApplication,
+) -> None:
+    """The plot reports itself as an image, with a name and the ratio now (`PL-R1M6`).
+
+    Before `PL-R1M6` the plot reached a screen reader as an unnamed client
+    area. The expected ratio is read from a second run built with the same
+    settings, through the wash-in rules, not from the run the plot draws. The
+    name starts with the heading as Qt reads the heading's label to a screen
+    reader, so the subscripts are dropped in the same way in both.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600)
+    fresh = SimulationController()
+    fresh.start()
+    _advance(fresh, 600)
+    snapshot = fresh.snapshot()
+    reading = read_wash_in_with_ventilation(
+        snapshot.alveolar_partial_pressure_fraction,
+        snapshot.inspired_partial_pressure_fraction,
+        snapshot.reaching_alveolar_ventilation_l_min,
+    )
+    assert reading.plotted_ratio is not None
+    view = _shown_view(application, controller)
+    plot = _wash_in(view).chart
+    heading = next(
+        label for label in _wash_in(view).findChildren(QLabel) if label.text() == WASH_IN_HEADING
+    )
+    described = QAccessible.queryAccessibleInterface(plot)
+    heading_name = QAccessible.queryAccessibleInterface(heading).text(QAccessible.Text.Name)
+
+    assert described.role() is QAccessible.Role.Graphic
+    assert heading_name == "Wash-in: FA/FI, alveolar as a fraction of the modelled circuit"
+    assert described.text(QAccessible.Text.Name) == (
+        f"{heading_name}, whole run so far, 15 minutes shown"
+    )
+    assert described.text(QAccessible.Text.Description).splitlines() == [
+        "Line chart.",
+        "Model outputs — not measurements.",
+        f"Now: FA/FI = {format_wash_in_ratio(reading.plotted_ratio)}",
+        "Equilibrium, FA = FI",
+    ]
+
+    plot.withhold()
+
+    assert described.text(QAccessible.Text.Name) == heading_name
+    assert described.text(QAccessible.Text.Description) == (
+        "Nothing is plotted, because no frame could be drawn for this chart."
+    )
+
+
+def test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values(
+    application: QApplication,
+) -> None:
+    """Each run's schematic reports itself as an image, with its run, instant and values (`PL-R1M6`).
+
+    The expected alveolar tension and amount are read from a second run built
+    with the same settings, not from the run the schematic draws. The name
+    adds the run once runs are compared, as the line over the schematic does.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600)
+    fresh = SimulationController()
+    fresh.start()
+    _advance(fresh, 600)
+    snapshot = fresh.snapshot()
+    alveolar_amount = snapshot.compartment_agent_amounts.of(RecordedQuantity.ALVEOLAR)
+    alveolar_line = (
+        f"Alveolar: {format_percent(snapshot.alveolar_partial_pressure_fraction)}, "
+        f"{format_compartment_amount(alveolar_amount)}, "
+    )
+    view = _shown_view(application, controller)
+    (schematic,) = view.findChildren(RunSchematic)
+    described = QAccessible.queryAccessibleInterface(schematic.canvas)
+
+    assert described.role() is QAccessible.Role.Graphic
+    assert described.text(QAccessible.Text.Name) == (
+        "Compartment schematic, at 10m of simulated time"
+    )
+    assert any(
+        line.startswith(alveolar_line)
+        for line in described.text(QAccessible.Text.Description).splitlines()
+    )
+
+    schematic.show_name("Run 2")
+
+    assert described.text(QAccessible.Text.Name) == (
+        "Compartment schematic, Run 2, at 10m of simulated time"
+    )
+
+
+def test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A later frame reports each changed text, and a frame that changes none reports nothing.
+
+    A screen reader that keeps the texts it has read, as the AT-SPI client
+    library on Linux does, would otherwise go on reading an earlier frame's
+    values (`PL-R1M6`). The wash-in plot's name stays the same from 10 to 11
+    minutes, because the whole run so far still fits in the 15 minutes shown.
+    The schematic's name gives the instant, so it changes too.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600)
+    view = _shown_view(application, controller)
+    plot = _wash_in(view).chart
+    (canvas,) = view.findChildren(SchematicCanvas)
+    recorded = record_text_changes(monkeypatch)
+
+    _advance(controller, 60)
+    view.present(False)
+
+    assert _changes_of(plot, recorded) == [TextChange(plot, QAccessible.Event.DescriptionChanged)]
+    assert _changes_of(canvas, recorded) == [
+        TextChange(canvas, QAccessible.Event.NameChanged),
+        TextChange(canvas, QAccessible.Event.DescriptionChanged),
+    ]
+
+    recorded.clear()
+    view.present(False)
+
+    assert _changes_of(plot, recorded) == []
+    assert _changes_of(canvas, recorded) == []
+
+
+def test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image(
+    application: QApplication,
+) -> None:
+    """Each plot, and each run's schematic, sits in a graphic with a name and a description.
+
+    Qt describes a plain widget as an unnamed client area, which VoiceOver on
+    macOS passes over, and nothing a widget paints reaches assistive
+    technology. The dashboard here shows every registered kind of View, so a
+    plot or a schematic added to any View is in this walk, and fails it until
+    it gives a text alternative (`PL-R1M6`).
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 60)
+    view = _shown_view(application, controller)
+    pictures: list[QWidget] = [*view.findChildren(PlotWidget), *view.findChildren(SchematicCanvas)]
+
+    assert len(pictures) >= 3
+
+    for picture in pictures:
+        graphic: QWidget | None = picture
+
+        while graphic is not None and not isinstance(graphic, DescribedGraphic):
+            graphic = graphic.parentWidget()
+
+        assert graphic is not None, type(picture).__name__
+        described = QAccessible.queryAccessibleInterface(graphic)
+        assert described.role() is QAccessible.Role.Graphic, type(graphic).__name__
+        assert described.text(QAccessible.Text.Name), type(graphic).__name__
+        assert described.text(QAccessible.Text.Description), type(graphic).__name__
 
 
 def test_the_chart_defaults_to_fitting_the_whole_run(application: QApplication) -> None:
