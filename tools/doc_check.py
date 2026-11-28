@@ -9466,6 +9466,12 @@ GATE_ONLY: dict[str, tuple[str, str]] = {
         "while a session reaches the same step through `make mutate` whenever it runs "
         "the mutation check (`PL-PG0S`)",
     ),
+    "tools/diff_mutation.py --sample-run": (
+        "ci",
+        "it needs the `mutation` dependency group too, which `make check`'s environment "
+        "does not install, and every mutation run that a session starts goes through "
+        "the same stages on more functions (`PL-NZ0R`)",
+    ),
     "tools/github_refusals_check.py": (
         "ci",
         "its answer is not in the tree either: it reads the rules GitHub holds for "

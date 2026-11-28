@@ -1916,3 +1916,131 @@ def test_first_step_refuses_when_the_copy_cannot_be_built(
     monkeypatch.setattr(diff_mutation, "COPY_SCRIPT", "raise SystemExit(3)")
     assert main(["--root", str(copyable), "--first-step"]) == 1
     assert "no answer: mutmut could not build mutants/ (exit 3)" in capsys.readouterr().err
+
+
+#: What mutmut printed on 2026-11-28 when its pytest plugin raised in every
+#: test's teardown under pytest 9.2.0 (`PL-LR03`).
+_PLUGIN_FAILED = "⠧ Running stats\nfailed to collect stats. runner returned 1\n"
+
+
+@dataclass
+class _SampleRun:
+    """A stubbed mutmut run for `--sample-run`: what it returns, and what it was asked."""
+
+    code: int
+    found: dict[str, str]
+    log_text: str = "done\n"
+    calls: list[tuple[list[str], list[str] | None, list[str] | None]] = field(default_factory=list)
+
+
+@pytest.fixture
+def sampled(repo: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """`repo` with a `[tool.mutmut]` table, and `outer` in its model as the sample function."""
+    _write(repo, "pyproject.toml", TABLE_TOML)
+    monkeypatch.setattr(diff_mutation, "SAMPLE_SOURCE", "src/pkg/core/model.py")
+    monkeypatch.setattr(diff_mutation, "SAMPLE_FUNCTION", "outer")
+    monkeypatch.setattr(diff_mutation, "SAMPLE_TESTS", ("tests/unit/test_model.py",))
+    return repo
+
+
+def _stub_sample_run(monkeypatch: pytest.MonkeyPatch, root: Path, stub: _SampleRun) -> None:
+    log = root / "run.log"
+    log.write_text(stub.log_text, encoding="utf-8")
+
+    def run(
+        root: Path,
+        patterns: list[str],
+        table: object,
+        tests: list[str] | None = None,
+        only: list[str] | None = None,
+    ) -> tuple[int, Path]:
+        stub.calls.append((list(patterns), tests, only))
+        return stub.code, log
+
+    monkeypatch.setattr(diff_mutation, "run", run)
+    monkeypatch.setattr(diff_mutation, "statuses", lambda root: dict(stub.found))
+
+
+def test_sample_run_passes_when_a_mutant_of_the_function_is_killed(
+    sampled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """It asks mutmut for the sample function alone, in its file alone, against its tests."""
+    stub = _SampleRun(
+        0,
+        {
+            "pkg.core.model.x_outer__mutmut_1": "killed",
+            "pkg.core.model.x_outer__mutmut_2": "survived",
+            "pkg.core.model.xǁModelǁstep__mutmut_1": "not checked",
+        },
+    )
+    _stub_sample_run(monkeypatch, sampled, stub)
+    assert main(["--root", str(sampled), "--sample-run"]) == 0
+    assert stub.calls == [
+        (
+            ["pkg.core.model.x_outer__mutmut_*"],
+            ["tests/unit/test_model.py"],
+            ["src/pkg/core/model.py"],
+        )
+    ]
+    assert capsys.readouterr().out == (
+        "mutmut ran the whole way on pkg.core.model.outer: 1 killed, 1 survived.\n"
+    )
+
+
+def test_sample_run_fails_when_mutmut_stops_as_it_did_under_a_broken_plugin(
+    sampled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The case `PL-LR03` found: mutmut stops before its first mutant, and the run fails."""
+    _stub_sample_run(monkeypatch, sampled, _SampleRun(1, {}, _PLUGIN_FAILED))
+    assert main(["--root", str(sampled), "--sample-run"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "no answer: mutmut exited 1 on the mutants of pkg.core.model.outer" in captured.err
+    assert "failed to collect stats. runner returned 1" in captured.err
+
+
+def test_sample_run_fails_when_no_mutant_of_the_function_was_killed(
+    sampled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """mutmut finished, but no test was recorded as calling the function, so none was killed."""
+    found = {
+        "pkg.core.model.x_outer__mutmut_1": "no tests",
+        "pkg.core.model.x_outer__mutmut_2": "no tests",
+        "pkg.other.x_f__mutmut_1": "killed",
+    }
+    _stub_sample_run(monkeypatch, sampled, _SampleRun(0, found))
+    assert main(["--root", str(sampled), "--sample-run"]) == 1
+    assert (
+        "mutmut ran the 2 mutants of pkg.core.model.outer against tests/unit/test_model.py, "
+        "and it killed none (2 no tests)."
+    ) in capsys.readouterr().err
+
+
+def test_sample_run_fails_when_the_results_list_no_mutant_of_the_function(
+    sampled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _stub_sample_run(monkeypatch, sampled, _SampleRun(0, {"pkg.other.x_f__mutmut_1": "killed"}))
+    assert main(["--root", str(sampled), "--sample-run"]) == 1
+    assert "listed no mutant of pkg.core.model.outer" in capsys.readouterr().err
+
+
+def test_sample_run_refuses_a_function_that_is_not_in_its_file(
+    sampled: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A method of that name does not count, because the pattern would not match its mutants."""
+    monkeypatch.setattr(diff_mutation, "SAMPLE_FUNCTION", "step")
+    stub = _SampleRun(0, {})
+    _stub_sample_run(monkeypatch, sampled, stub)
+    assert main(["--root", str(sampled), "--sample-run"]) == 1
+    assert stub.calls == []
+    assert "src/pkg/core/model.py has no top-level function step." in capsys.readouterr().err
+
+
+def test_the_sample_function_is_in_its_file_and_its_tests_exist() -> None:
+    """The real constants name a function and a test file the tree holds."""
+    source = (REPO_ROOT / diff_mutation.SAMPLE_SOURCE).read_text(encoding="utf-8")
+    names = {u.name for u in units(diff_mutation.SAMPLE_SOURCE, source) if u.cls is None}
+    assert diff_mutation.SAMPLE_FUNCTION in names
+    assert is_mutated(diff_mutation.SAMPLE_SOURCE, mutmut_table(REPO_ROOT))
+    for test in diff_mutation.SAMPLE_TESTS:
+        assert (REPO_ROOT / test).is_file()
