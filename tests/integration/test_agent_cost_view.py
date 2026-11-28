@@ -316,7 +316,11 @@ def test_a_unit_picked_in_one_view_reaches_every_view_and_survives_a_restart(
 def test_a_choice_that_cannot_be_saved_lasts_the_session_and_says_so(
     application: QApplication, shown: list[SimulationView], tmp_path: Path
 ) -> None:
-    """A preferences file from a newer build turns saving off, and the View says so."""
+    """A preferences file from a newer version turns saving off, and the View says so.
+
+    The notice is written out by hand. It says why, what that means and what
+    the reader can do, with the file's path last (`PL-W312`).
+    """
 
     path = tmp_path / PREFERENCES_FILE_NAME
     newer = json.dumps({"schema_version": 99})
@@ -325,7 +329,14 @@ def test_a_choice_that_cannot_be_saved_lasts_the_session_and_says_so(
     (cost_view,) = _cost_views(view)
 
     assert not cost_view.preferences_notice.isHidden()
-    assert "newer build" in cost_view.preferences_notice.text()
+    assert cost_view.preferences_notice.text() == (
+        "The application could not use your preferences file, because a newer version of the "
+        "application saved the file as version 99, and this version reads files up to version 2. "
+        "None of your saved settings is in use, and the application does not save changes you "
+        "make now, so the file stays as it is. To use your saved settings, open the newer "
+        "version of the application. To start again without them, move the file out of its "
+        f"folder, then restart this version. The file is {path}."
+    )
 
     _pick(cost_view, AgentAmountUnit.LITRES_OF_VAPOUR)
 
