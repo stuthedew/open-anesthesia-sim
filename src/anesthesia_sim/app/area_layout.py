@@ -1344,10 +1344,11 @@ class AreaLayout(QWidget):
                 borders=self.borders,
                 focus_border=self.focus_border,
             )
-            frame = AreaFrame(node.id, chooser, self._content_for(node), menu=menu, drags=self)
-            self._frames[node.id] = frame
             name = self._names[node.id]
-            frame.name_area(name)
+            frame = AreaFrame(
+                node.id, chooser, self._content_for(node), name=name, menu=menu, drags=self
+            )
+            self._frames[node.id] = frame
             drawn = self._views.get(node.id)
 
             if drawn is not None:
@@ -2389,6 +2390,7 @@ class AreaFrame(QFrame):
         content: QWidget,
         parent: QWidget | None = None,
         *,
+        name: AreaName,
         menu: AreaMenu | None = None,
         drags: AreaLayout | None = None,
     ) -> None:
@@ -2430,11 +2432,6 @@ class AreaFrame(QFrame):
         self._column.addWidget(self.header)
         self._column.addWidget(rule)
         self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
-
-        if self.view_scroll is not None:
-            # The box takes the focus so the keyboard can scroll it, so a
-            # screen reader names it by the View it holds (`PL-RK9Z`).
-            self.view_scroll.setAccessibleName(chooser.text())
         # A row that the View must keep on screen wherever any of the View is,
         # such as the wash-in plot's statement that it is modelled, sits above the
         # scroll box rather than in it (`PL-26BZ`).
@@ -2460,12 +2457,16 @@ class AreaFrame(QFrame):
         if drags is not None:
             self.corners = tuple(_CornerZone(self, drags, corner) for corner in _Corner)
 
-    def name_area(self, name: AreaName) -> None:
+        self._name_area(name)
+
+    def _name_area(self, name: AreaName) -> None:
         """Name this Area's View chooser, its View's scroll box and its corners with `name`.
 
         The chooser shows the View's title, and its name adds the Area's
         number where another Area shows the same kind of View, so the name
-        still starts with the text shown (`PL-XV64`).
+        still starts with the text shown (`PL-XV64`). The scroll box takes
+        the focus so the keyboard can scroll it, so a screen reader names it
+        by its Area too (`PL-RK9Z`).
         """
 
         self.chooser.setAccessibleName(name.text)
@@ -3183,7 +3184,7 @@ class _CornerZone(QWidget):
         self.setFixedSize(AREA_CORNER_ZONE, AREA_CORNER_ZONE)
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
-        self.setAccessibleName(_CORNER_ACCESSIBLE_NAME)
+        # The frame names the corner once it is built (`name_for`).
         self.setAccessibleDescription(_CORNER_ACCESSIBLE_DESCRIPTION)
         self.place()
         self.raise_()

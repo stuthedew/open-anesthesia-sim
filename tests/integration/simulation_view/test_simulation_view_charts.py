@@ -143,6 +143,46 @@ def test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes(
     ]
 
 
+def test_the_concentration_chart_reports_its_new_name_when_its_area_gains_or_loses_a_number(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-XV64`: the chart's name adds its Area's name, loses it again, and reports each change.
+
+    A screen reader that keeps the names it has read, as the AT-SPI client
+    library on Linux does, would otherwise go on calling the chart by its old
+    name once a second Area shows the chart, or once that Area is closed.
+    Telling the chart the Area it is already in reports nothing.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 600)
+    view = _shown_view(application, controller)
+    chart = _concentration(view).chart
+    described = QAccessible.queryAccessibleInterface(chart)
+    alone = (
+        "Agent concentration and relative partial pressure over time, whole run so far, "
+        "15 minutes shown"
+    )
+    assert described.text(QAccessible.Text.Name) == alone
+    recorded = record_text_changes(monkeypatch)
+
+    chart.name_among_copies("Concentrations 2")
+
+    assert described.text(QAccessible.Text.Name) == f"{alone}, Concentrations 2"
+    assert _changes_of(chart, recorded) == [TextChange(chart, QAccessible.Event.NameChanged)]
+
+    recorded.clear()
+    chart.name_among_copies("Concentrations 2")
+
+    assert _changes_of(chart, recorded) == []
+
+    chart.name_among_copies(None)
+
+    assert described.text(QAccessible.Text.Name) == alone
+    assert _changes_of(chart, recorded) == [TextChange(chart, QAccessible.Event.NameChanged)]
+
+
 def _changes_of(source: QWidget, recorded: list[TextChange]) -> list[TextChange]:
     """Return the reports of `source`'s changed texts, leaving out every other graphic's."""
 

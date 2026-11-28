@@ -46,6 +46,7 @@ from anesthesia_sim.app.qt_agent_price import (
     CURRENCY_FIELD_LABEL,
     PRICE_FORM_KIND,
     SET_PRICE_LABEL,
+    PriceEntry,
 )
 from anesthesia_sim.app.qt_widgets import (
     DescribedGraphic,
@@ -63,6 +64,7 @@ from anesthesia_sim.app.theme import (
     PANEL,
     PANEL_RADIUS,
 )
+from anesthesia_sim.app.view_contract import AreaName
 from anesthesia_sim.app.view_registry import (
     AGENT_COST,
     COMPARTMENT_SCHEMATIC,
@@ -710,6 +712,76 @@ def test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot(
     ]
 
 
+def test_an_area_alone_of_its_kind_adds_no_name_to_its_legends_pictures_or_price_form(
+    application: QApplication,
+) -> None:
+    """`PL-XV64`: a legend, a picture or the price form adds its Area's name only among copies.
+
+    The Workspace shows each kind of View once, so no legend box, plot or
+    schematic picture, or price form field ends with its Area's name.
+    The controls beside a plot are the exception, because their names carry
+    the Area's name in place of the View's title whether or not it repeats.
+    """
+
+    view = _compared_dashboard(application, 1)
+    _settle(application)
+    purposes = [purpose for _, purpose in _reachable_purposes(view)]
+    pictures = [
+        QAccessible.queryAccessibleInterface(picture).text(QAccessible.Text.Name)
+        for picture in view.findChildren(DescribedGraphic)
+        if picture.isVisible()
+    ]
+    removes = [form.remove_button.accessibleName() for form in view.findChildren(PriceEntry)]
+    view.close()
+
+    assert "Concentration chart legend" in purposes
+    assert "Draw the Alveolar compartment on the chart" in purposes
+    assert "Bottle price" in purposes
+    assert removes == ["Remove price"]
+    assert len(pictures) == 3
+    for name in pictures:
+        assert not name.endswith((", Concentrations", ", Wash-in", ", Compartment schematic"))
+
+
+def test_the_schematic_view_renames_the_schematics_it_has_drawn_as_soon_as_it_is_told_its_area(
+    application: QApplication,
+) -> None:
+    """`PL-XV64`: a schematic already drawn takes its Area's new name at once, not a frame later.
+
+    The layout tells a View its Area's name each time it builds the Areas
+    again, and the View draws a new frame only when the dashboard next
+    presents one.
+    """
+
+    view = _compared_dashboard(application, 1)
+    layout = view.layout_container
+    (area,) = [
+        area
+        for area in areas_in(layout.model.windows[MAIN_WINDOW].tree)
+        if area.view == COMPARTMENT_SCHEMATIC
+    ]
+    schematics = layout.frame(area.id).content
+
+    def names() -> list[str]:
+        return [
+            QAccessible.queryAccessibleInterface(picture).text(QAccessible.Text.Name)
+            for picture in schematics.findChildren(DescribedGraphic)
+        ]
+
+    assert len(names()) == 1
+    alone = names()[0]
+    assert alone.startswith("Compartment schematic, at ")
+
+    schematics.name_controls(AreaName("Compartment schematic", 2))
+    copied = names()
+    schematics.name_controls(AreaName("Compartment schematic"))
+    restored = names()
+    view.close()
+
+    assert copied == [f"{alone}, Compartment schematic 2"]
+    assert restored == [alone]
+
+
 def test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number(
     application: QApplication,
 ) -> None:
@@ -717,9 +789,9 @@ def test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number(
 
     The Areas showing one kind are numbered through the layout's splits, the
     left or upper part first, as VS Code numbers its editor groups. Each name
-    still starts with the label shown.
-    The legend's boxes, and each plot and schematic picture, add the number
-    only while two Areas of their kind are on screen.
+    still starts with the label shown. The legend's boxes, and each plot and
+    schematic picture, add the number only while two Areas of their kind are
+    on screen.
     """
 
     view = _compared_dashboard(application, 1)
@@ -781,13 +853,18 @@ def test_each_half_of_a_split_agent_cost_area_names_its_own_price_form(
     The unit selector acts on the reader's one set of preferences, so its two
     copies are the same control twice and keep one name. Before this, both
     forms' fields and buttons had the same names, such as two "Bottle price"
-    fields and two "Set price" buttons.
+    fields and two "Set price" buttons. Each form's Remove button is
+    unavailable until a price is stored, so a keyboard walk passes over it, and
+    its name is read from the button itself.
     """
 
     view = _compared_dashboard(application, 1)
     _split_each_area_of(view, application, (AGENT_COST,))
     purposes = [purpose for _, purpose in _reachable_purposes(view)]
+    removes = [form.remove_button.accessibleName() for form in view.findChildren(PriceEntry)]
     view.close()
+
+    assert sorted(removes) == ["Remove price, Agent cost 1", "Remove price, Agent cost 2"]
 
     for label in (
         f"{AGENT_FIELD_LABEL}, {PRICE_FORM_KIND}",

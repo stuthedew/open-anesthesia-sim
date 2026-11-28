@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: interface-areas
-touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_agent_price.py, src/anesthesia_sim/app/qt_widgets.py, docs/INTERFACE.md, tests/integration/test_layout_adapter.py, tests/integration/test_view_contract.py
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_agent_price.py, src/anesthesia_sim/app/qt_widgets.py, docs/INTERFACE.md, tests/integration/test_layout_adapter.py, tests/integration/test_view_contract.py, tests/integration/simulation_view/test_simulation_view_charts.py
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it: the Area menu each corner opens names its Area, so the release waits only on the owner test drive (filed 2026-11-28)
 added: 2026-11-28
 payoff: a screen-reader user who reaches an Area corner or border hears which Area it acts on
@@ -120,14 +120,15 @@ extends, and its brief already names this item among the cases it waits on.
 
 **Built 2026-11-28.** `area_layout._area_names` works out each Area's name
 from the tree on every `_build`, as a `view_contract.AreaName`, which refuses
-an empty title and a number less than 1. `AreaFrame.name_area` names the
-Area's View chooser, its scroll box and its four corners, and `_widget_for`
+an empty title and a number less than 1. `AreaFrame` is built with that name,
+and names the Area's View chooser, its scroll box and its four corners from
+it, which is the one place those names are written. `_widget_for`
 names each splitter handle after the Areas before it. A pane of three or more
 Areas is listed with a comma before the "and", as the Google developer
 documentation style guide asks in "Serial commas"
 (https://developers.google.com/style/commas, read 2026-11-28). The View
-contract's new member is `name_controls(area)` rather than `name_area`,
-because a View names its own controls with the Area's name and not the Area.
+contract's new member is `name_controls(area)`, because a View names its own
+controls with the Area's name and not the Area itself.
 
 Walking every control a screen reader reaches after a split of each plot Area
 found four more names that repeat, beyond those the brief listed. They are
@@ -168,6 +169,62 @@ control sits beside, as its place tells a sighted user, and a sighted user
 who changes either in one half sees both halves change too.
 `docs/INTERFACE.md` now says so, where it had said that every control acting
 on shared state keeps one name.
+
+Three adversarial reviews, 2026-11-28, each looked for one kind of fault.
+The review of state through splits, joins, swaps, closes and Workspace
+switches found the names right after every sequence it tried. It found that
+items 4 and 5 of the `docs/INTERFACE.md` passage disagreed about the legend
+boxes, and item 5 now says only which legends add the Area's name. It also
+found that the adapter calls `name_controls` outside the guard that catches a
+View's failure, so the View contract now says that the method must raise
+nothing. The review of what a screen-reader user hears found that the
+documents said the Areas are numbered "in reading order", which a reader takes
+to mean left to right and top to bottom. The numbers follow the walk through
+the layout's splits that VS Code uses, so the documents now say that. It also
+found that a legend box's name does not contain the words the box shows. That
+is older than this item, and is `PL-PN2C`. It found the names long, such as
+"Draw the Alveolar compartment on the chart, Concentrations 2", which is not
+changed, because each name starts with its label and ends with its Area, as
+every other control's name does.
+
+The review of the tests planted 17 faults, one at a time, and ran the eight
+test modules that the change reaches against each. Eight faults passed every
+test, and each now has a test that fails on it:
+
+1. Numbering the Areas by id rather than by place passed, because a split
+   always gives the new Area the next id after the one it came from.
+   `test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids`
+   swaps the outer two of three Areas, and fails on it with "'Test view 3' !=
+   'Test view 1'".
+2. A price form's Remove button left unnamed passed, because the keyboard
+   walk passes over an unavailable button. The price form test now reads both
+   buttons' names, and fails on it with "[''] == ['Remove price']".
+3. A picture whose new name is not reported to the screen reader passed.
+   `test_the_concentration_chart_reports_its_new_name_when_its_area_gains_or_loses_a_number`
+   fails on it with "[] == [TextChange(...NameChanged...)]".
+4. A pane of two Areas joined with a comma, as "Test view 1, and Other view",
+   passed. `test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone`
+   fails on it.
+5. The concentration legend's scroll box and the price form, each given its
+   Area's name while its Area was the only one of its kind, passed.
+   `test_an_area_alone_of_its_kind_adds_no_name_to_its_legends_pictures_or_price_form`
+   fails on each, and on the concentration chart's picture given its Area's
+   name too, which an older chart test already caught.
+6. The schematic View leaving the schematics it has drawn unrenamed when it
+   is told its Area passed, because the dashboard draws a new frame right
+   after each change of layout, and that frame renames them.
+   `test_the_schematic_view_renames_the_schematics_it_has_drawn_as_soon_as_it_is_told_its_area`
+   fails on it, and the View contract now says that a View names its
+   controls at once.
+7. An Area number given as 1.5 passed, because the refusal test gave no
+   number that is not an int. It now gives 1.5, and fails on it with "DID NOT
+   RAISE TypeError".
+
+The same review found that the frame and each corner wrote a name when they
+were built, which the Area's name then replaced. The frame is now built with
+the Area's name, so each of those names is written in one place. The border
+handles still take "Area border" when Qt makes them, because Qt makes a
+handle before the splitter holds the pane it is named for.
 
 Against the code before the change (a worktree at `48942cbc` with only
 `tests/integration/test_keyboard_focus.py` copied in, and that worktree's

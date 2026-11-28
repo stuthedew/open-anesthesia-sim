@@ -4555,13 +4555,19 @@ shown in. So two copies of one of those controls do the same thing, as two
 links to one place do, and they keep one name. The Authoring Practices Guide
 gives two such links as its example of identical elements
 (`test_no_two_controls_or_pictures_share_a_name_after_each_plot_area_is_split`,
-`test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number` and
-`test_each_half_of_a_split_agent_cost_area_names_its_own_price_form` in
-`tests/integration/test_keyboard_focus.py`, and
+`test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number`,
+`test_each_half_of_a_split_agent_cost_area_names_its_own_price_form`,
+`test_an_area_alone_of_its_kind_adds_no_name_to_its_legends_pictures_or_price_form`
+and
+`test_the_schematic_view_renames_the_schematics_it_has_drawn_as_soon_as_it_is_told_its_area`
+in `tests/integration/test_keyboard_focus.py`,
+`test_the_concentration_chart_reports_its_new_name_when_its_area_gains_or_loses_a_number`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`, and
 `test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kind`,
 `test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids`,
 `test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed`,
 `test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma`,
+`test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone`,
 `test_an_area_s_name_counts_from_one_and_needs_a_title` and
 `test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make`
 in `tests/integration/test_layout_adapter.py`).

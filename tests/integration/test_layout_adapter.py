@@ -1147,6 +1147,20 @@ def test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comm
     }
 
 
+def test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """A pane of two Areas is named "Test view 1 and Other view", with no comma before the "and"."""
+
+    pane = _column((0.5, 0.5), _area(1), Area(AreaId(2), _OTHER))
+    container = _show_with(application, shown, _layout(_row((0.5, 0.5), pane, _area(3)), 4))
+
+    assert _border_names(container) == {
+        (): ["Area border, right of Test view 1 and Other view"],
+        (0,): ["Area border, below Test view 1"],
+    }
+
+
 def test_an_area_s_name_counts_from_one_and_needs_a_title() -> None:
     """An Area's name refuses a number below 1, a number that is not a whole number, or no title."""
 
@@ -1160,6 +1174,9 @@ def test_an_area_s_name_counts_from_one_and_needs_a_title() -> None:
 
     with pytest.raises(TypeError, match="not bool"):
         AreaName("Wash-in", True)
+
+    with pytest.raises(TypeError, match="not float"):
+        AreaName("Wash-in", 1.5)  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="title given is empty"):
         AreaName("")

@@ -527,9 +527,10 @@ class View(Protocol):
         """Name with `area` each control that two copies of this View would otherwise share.
 
         `area` is the name of the Area that holds the View. The adapter calls
-        this method after every change of the layout, because a split, a join,
-        a swap, a close or a change of View can change an Area's number
-        (`PL-XV64`). A View whose controls all act on shared state does
+        this method each time it builds the Areas again, which is after every
+        split, join, swap, close or change of View, because each can change an
+        Area's number (`PL-XV64`). The View names its controls at once, rather
+        than at its next frame. A View whose controls all act on shared state does
         nothing, because two copies of such a control are the same control.
         The method only writes names and must raise nothing: the adapter calls
         it outside the guard that keeps a View that fails to build inside its
