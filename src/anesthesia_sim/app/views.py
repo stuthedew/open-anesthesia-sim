@@ -724,27 +724,40 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
     return column
 
 
-def _panel_row(label: QLabel, object_name: str, control: QWidget | None = None) -> QWidget:
+def _panel_row(
+    label: QLabel, object_name: str, control: QWidget | None = None, notice: QLabel | None = None
+) -> QWidget:
     """Return a row that holds `label` on the panel surface, inset by the panel's padding.
 
     A View's pinned row sits outside the View's own panel, between the Area's
     header and the box that scrolls the View. This gives the row the same
     surface and the same left edge as the panel's text below it. A `control`
     stands at the row's right end, level with the label's first line, so it
-    stays on screen while the View scrolls.
+    stays on screen while the View scrolls. A `notice` is a conditional line
+    about the control, such as `_show_ceiling_notice` writes. It stands under
+    the label and the control, across the row's width, so it stays on screen
+    beside the control it is about (`PL-B3M6`).
     """
 
     row = QWidget()
     row.setObjectName(object_name)
     row.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
     row.setStyleSheet(panel_stylesheet(object_name))
-    line = QHBoxLayout(row)
-    line.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, 0)
+    column = QVBoxLayout(row)
+    column.setContentsMargins(PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, 0)
+    column.setSpacing(VIEW_ROW_SPACING)
+    line = QHBoxLayout()
+    line.setContentsMargins(0, 0, 0, 0)
     line.addWidget(label)
 
     if control is not None:
         line.addStretch(1)
         line.addWidget(control, 0, Qt.AlignmentFlag.AlignTop)
+
+    column.addLayout(line)
+
+    if notice is not None:
+        column.addWidget(notice)
 
     return row
 
@@ -1733,9 +1746,9 @@ class CompartmentSchematicView(QWidget):
             self.qualifier_label,
             _SCHEMATIC_PINNED_ROW_NAME,
             self._plot_controls.labelled(CHART_CEILING_LABEL, self.ceiling_selector),
+            self.ceiling_notice,
         )
         column.addWidget(self.state_notice)
-        column.addWidget(self.ceiling_notice)
         column.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True))
         column.addWidget(self._schematics.holder)
         column.addStretch(1)

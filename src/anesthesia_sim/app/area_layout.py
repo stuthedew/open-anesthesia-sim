@@ -1696,8 +1696,13 @@ class AreaLayout(QWidget):
             return None
 
         frame = self._frames[area_id]
-        row = 0 if frame.pinned_row is None else frame.pinned_row.sizeHint().height()
         need = self._view_need(area_id)
+        # A row that wraps is measured at the width the last settle draws the
+        # Area, as `_floor` and `_narrowed` are, and not at the width the frame
+        # had before a resize reached the splitters.
+        drawn = None if self._fit is None else self._fit.apportionment.areas.get(area_id)
+        width = frame.width() if drawn is None else drawn.width_px
+        row = 0 if frame.pinned_row is None else _row_height(frame.pinned_row, width)
 
         return PixelSize(need.width_px, max(need.height_px, row + height))
 
@@ -3532,6 +3537,21 @@ def _least_size(widget: QWidget) -> tuple[int, int]:
     hint = widget.minimumSizeHint()
 
     return (widget.minimumWidth() or hint.width(), widget.minimumHeight() or hint.height())
+
+
+def _row_height(row: QWidget, width_px: int) -> int:
+    """Return the height that `row` takes when it is drawn `width_px` wide.
+
+    A row that holds a line that wraps, such as the line under the
+    compartment schematic's axis top control, takes more rows of text in a
+    narrower width (`PL-B3M6`). Any other row's height is its size hint's. The
+    row is never drawn narrower than its least width.
+    """
+
+    if not row.hasHeightForWidth():
+        return row.sizeHint().height()
+
+    return row.heightForWidth(max(width_px, row.minimumSizeHint().width()))
 
 
 def _least_height_at(widget: QWidget, width_px: int) -> int:

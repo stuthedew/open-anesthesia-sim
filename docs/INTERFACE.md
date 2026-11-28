@@ -7279,7 +7279,19 @@ the right end of that row. The scale's top is read together with the tensions'
 unit, and "information that must be compared or mentally integrated should be
 presented in close spatial proximity" (NUREG-0700 Rev. 3, guideline 1.1-26,
 p. 1-11). In that row the control also adds no height above the containers
-(`PL-7LZ7`). No amount is a prediction about a
+(`PL-7LZ7`). The line that says the saved top was refused or that a top will
+not be kept (§ "The chart's fixed MAC axis") stands in the same row, under the
+control, so it stays beside the control wherever the schematic is scrolled.
+While the line shows, the Area counts it in the height the schematic needs, so
+an Area too short for the line and a whole row of containers shows the
+too-small notice instead. That notice takes the place of the whole View, the
+row with the control and the line included, until the Area is made taller or
+a top clears the line (`PL-B3M6`,
+`test_the_line_under_the_axis_top_control_is_in_view_at_any_scroll_position`,
+`test_an_area_too_short_for_the_line_under_the_axis_top_control_shows_the_too_small_notice`
+and
+`test_a_narrower_window_counts_the_rows_the_line_under_the_axis_top_control_takes_there`
+in `tests/integration/test_compartment_schematic_view.py`). No amount is a prediction about a
 patient to its last digit, for the reason § "Displayed precision" gives for
 the readouts.
 <!-- not-restated: 1.1 -->

@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/pinned_he
 added: 2026-11-28
 filed-pr: 2355
 payoff: a user who arranges Areas wider than the window reads each header line, unit lines included, whole or marked as continuing
+recurrences: 2026-11-28 PL-WV2L
 ---
 
 **Problem.** A window narrower than the Areas' least widths scrolls the page sideways. Where the window's right edge then cuts across an Area, a line of the Area's header or of its View's pinned row runs past that edge and is cut mid-sentence, while a short value at the Area's left stays wholly in view. The schematic's pinned row can read "Tensions are in % of 1" with " atm." cut off, which could be read as a different unit. `PL-DKQ5` made each line start at the left edge of the part in view, so a line is now always read from its start; its end can still be cut.
