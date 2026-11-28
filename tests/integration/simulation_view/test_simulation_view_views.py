@@ -9,6 +9,7 @@ from collections.abc import Callable, Mapping
 from typing import Final, NoReturn
 
 import pytest
+from PySide6.QtGui import QAccessible
 from PySide6.QtWidgets import QAbstractButton, QApplication, QComboBox, QLabel, QWidget
 
 from anesthesia_sim.app import run_presentation as run_presentation_module
@@ -666,6 +667,40 @@ def test_a_held_thumb_previews_the_setting_without_applying_it(application: QApp
         assert plot.preview_region(0) is None
         assert plot.preview_label(0) is None
     assert concentration.preview_points(0, RecordedQuantity.ALVEOLAR) == ((), ())
+
+
+def test_a_held_thumb_at_zero_ventilation_says_on_the_f_a_f_i_plot_why_it_draws_no_ratio(
+    application: QApplication,
+) -> None:
+    """The F_A/F_I plot's preview label says why its region is empty, and the chart's does not.
+
+    At zero alveolar ventilation the ratio is not a wash-in fraction, so the
+    plot draws none past the reach (rule 3 of `app/wash_in.py`). Its label
+    adds two lines that say so, and its description for a screen reader adds
+    the same sentence (`PL-PJWT`). The concentration chart still draws the
+    predicted traces, so its label is the preview's own.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300)
+    controller.pause()
+    view = _shown_view(application, controller)
+    concentration, wash_in = _concentration(view).chart, _wash_in(view).chart
+    label = "Preview: Alveolar ventilation 0.0 L/min, not applied"
+    why = (
+        "Alveolar ventilation would be zero, so the ratio",
+        "would not be a wash-in fraction and is not drawn.",
+    )
+
+    _hold_thumb(_dials(view.runs[0])._alveolar_ventilation_slider, 0.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+
+    assert concentration.preview_label(0) == label
+    assert wash_in.preview_label(0) == "\n".join((label, *why))
+    assert concentration.preview_points(0, RecordedQuantity.ALVEOLAR)[0]
+    described = QAccessible.queryAccessibleInterface(wash_in).text(QAccessible.Text.Description)
+    assert f"{label}.\n{' '.join(why)}\n" in described
 
 
 def test_a_preview_is_drawn_only_inside_its_region_with_its_label(

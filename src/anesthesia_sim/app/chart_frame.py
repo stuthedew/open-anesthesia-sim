@@ -116,6 +116,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import (
     WASH_IN_EQUILIBRIUM_RATIO,
     WashInReading,
+    is_ventilated,
     is_wash_in,
     read_wash_in_with_ventilation,
 )
@@ -159,6 +160,7 @@ __all__ = [
     "latest_values_lines",
     "latest_wash_in_lines",
     "preview_label_lines",
+    "preview_sentence",
     "format_wash_in_hover",
     "nearest_trace_point",
     "nearest_wash_in_point",
@@ -805,6 +807,10 @@ class RunPreview:
             labelled with its compartment's name, as in `RunFrame.fractions`.
         wash_in: The predicted F_A/F_I stretches, oldest first. They are the
             most recent stretches that fit the pool.
+        ventilation_stopped: Whether a step at zero alveolar ventilation
+            reached every predicted state after the reach. The F_A/F_I plot
+            then draws no ratio past the reach, by rule 3 of `app/wash_in.py`,
+            and its label says why (`PL-PJWT`).
     """
 
     label: str
@@ -812,6 +818,7 @@ class RunPreview:
     times_s: tuple[float, ...]
     fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]]
     wash_in: tuple[WashInStretch, ...]
+    ventilation_stopped: bool
 
     def percents(self, quantity: RecordedQuantity) -> tuple[float, ...]:
         """Return one predicted trace in percent, by the conversion `RunFrame.percents` makes."""
@@ -1419,12 +1426,18 @@ def _run_preview(
     # Any other run's preview window is at least a minute wide and puts the
     # reach at or left of its middle (`chart_time_base.preview_window`). So
     # the window ends after the reach.
+    # The first instant is the reach, which the run's own last step reached.
+    # Every later one is predicted under the setting tried, and the predicate
+    # is the one the stretches were cut by (`wash_in.is_ventilated`).
     return RunPreview(
         label=request.label,
         region_s=(reached_s, window.times_s[-1]),
         times_s=window.times_s,
         fractions=MappingProxyType(fractions),
         wash_in=stretches[-MAX_CHART_WASH_IN_SEGMENTS:],
+        ventilation_stopped=not any(
+            is_ventilated(ventilation) for ventilation in window.alveolar_ventilations_l_min[1:]
+        ),
     )
 
 
@@ -1806,7 +1819,13 @@ def preview_label_lines(frame: ChartFrame) -> tuple[str, ...]:
         The sentences, in the frame's run order.
     """
 
-    return tuple(f"{run.preview.label}." for run in frame.runs if run.preview is not None)
+    return tuple(preview_sentence(run.preview) for run in frame.runs if run.preview is not None)
+
+
+def preview_sentence(preview: RunPreview) -> str:
+    """Return a preview's label as a sentence, as a screen reader is given it."""
+
+    return f"{preview.label}."
 
 
 def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_count: int) -> str:

@@ -4742,7 +4742,9 @@ in `tests/integration/simulation_view/test_simulation_view_charts.py`).
 
 **While a drag draws a preview, both descriptions name it** (`PL-MP1X`). After
 the run's values, each gives the preview's label as the plot draws it, with a
-full stop, such as "Preview: Fresh gas flow 6.0 L/min, not applied.". The
+full stop, such as "Preview: Fresh gas flow 6.0 L/min, not applied.". Where
+the F_A/F_I plot's label adds why it draws no ratio, its description gives
+that sentence too, on one line (`PL-PJWT`). The
 concentration chart draws the label even with every compartment unchecked, so
 its description gives it then too. Neither
 gives a predicted value, because no value on a preview curve is printed as a
@@ -6758,7 +6760,24 @@ pattern, because those tell the six compartments apart.
    slider's own words, such as "Preview: Fresh gas flow 6.0 L/min, not applied".
    It is drawn inside the region, so a screenshot taken during a drag includes
    it. Each compared run has its own controls, so only the run whose slider
-   handle is held shows a preview. The label names that run.
+   handle is held shows a preview. The label names that run. Where a step at
+   zero alveolar ventilation would reach every predicted state, the F_A/F_I
+   plot draws no ratio past the run's current time, because the ratio is then
+   not a wash-in fraction (rule 3 of `app/wash_in.py`). Its label adds two
+   lines that say so: "Alveolar ventilation would be zero, so the ratio would
+   not be a wash-in fraction and is not drawn." This holds for a preview of
+   any slider on a run whose ventilation is already zero. The concentration
+   chart's label stays the preview's own, because that chart still draws the
+   predicted curves. Nielsen Norman Group's guidance on empty states asks for
+   a brief message inside the area that shows nothing, saying why (Kaplan,
+   "Designing Empty States in Complex Applications: 3 Guidelines", 2021,
+   https://www.nngroup.com/articles/empty-state-interface-design/, read
+   2026-11-28), so the empty region is not taken for a drawing that failed
+   (`PL-PJWT`,
+   `test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation`
+   in `tests/unit/test_chart_frame.py` and
+   `test_a_held_thumb_at_zero_ventilation_says_on_the_f_a_f_i_plot_why_it_draws_no_ratio`
+   in `tests/integration/simulation_view/test_simulation_view_views.py`).
 3. **Width.** Each preview curve is one pixel thinner than the same compartment's
    curve in a run shown alone, but never thinner than 2 px. The two compartments
    drawn at 3 px therefore have 2 px preview curves, and so do the four drawn at
