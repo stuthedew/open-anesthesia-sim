@@ -68,9 +68,11 @@ from anesthesia_sim.app.compartment_schematic import (
     ContainerReading,
     SchematicShown,
     instant_line,
+    schematic_description,
+    schematic_name,
 )
 from anesthesia_sim.app.pinned_heading import PinnedHeadingSection
-from anesthesia_sim.app.qt_widgets import styled_label
+from anesthesia_sim.app.qt_widgets import DescribedGraphic, styled_label
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.theme import (
     INK,
@@ -148,24 +150,50 @@ class CanvasParts:
     cut_notice: QRectF | None
 
 
-class SchematicCanvas(QWidget):
+class SchematicCanvas(DescribedGraphic):
     """One run's six containers, joined as the circulation joins them, each labelled in text.
 
-    `show_readings` gives the canvas the readings of one snapshot, and the
-    canvas paints exactly those. It keeps no reading of an earlier snapshot.
+    `show_schematic` gives the canvas what one run's schematic shows for one snapshot,
+    with the run's name. The canvas paints exactly those readings, and its
+    text alternative describes the same ones, so the picture and the text
+    cannot come from two snapshots. It keeps no reading of an earlier
+    snapshot.
 
     The canvas paints only the parts that are whole in its clear part
     (`shown_parts`). The run that holds the canvas says where that part is,
     through `measure_clear_part`. A canvas that nobody measures paints every
     part.
+
+    A screen reader reads the canvas as an image with a text alternative
+    (`DescribedGraphic`, `PL-R1M6`). The text alternative gives every value
+    whatever part of the canvas is in view, because a screen reader reads no
+    pixels. Until the first `show_schematic`, the canvas paints nothing and its text
+    alternative is the withheld schematic's.
     """
 
     def __init__(self) -> None:
         super().__init__()
-        self._readings: tuple[ContainerReading, ...] = ()
-        self._marks: tuple[float, ...] = ()
+        self._shown: SchematicShown | None = None
+        self._run_name: str | None = None
         self._clear_part: Callable[[], QRect] | None = None
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.report_text_changes()
+
+    def graphic_name(self) -> str:
+        """Return what a screen reader calls the schematic (`schematic_name`)."""
+
+        return schematic_name(self._described.instant, self._run_name)
+
+    def graphic_description(self) -> str:
+        """Return the schematic's long description (`schematic_description`)."""
+
+        return schematic_description(self._described)
+
+    @property
+    def _described(self) -> SchematicShown:
+        """What the text alternative describes: what was last shown, or the withheld schematic."""
+
+        return WITHHELD_SCHEMATIC if self._shown is None else self._shown
 
     def measure_clear_part(self, clear_part: Callable[[], QRect]) -> None:
         """Read the canvas's clear part from `clear_part` each time the canvas paints.
@@ -193,7 +221,7 @@ class SchematicCanvas(QWidget):
         the labels, where that space holds all of it.
         """
 
-        if not self._readings:
+        if not self.readings:
             return CanvasParts(False, frozenset(), frozenset(), None)
 
         clear = None if self._clear_part is None else self._clear_part()
@@ -253,21 +281,31 @@ class SchematicCanvas(QWidget):
         return QRectF(0.0, float(top), float(self.width()), float(needed.height()))
 
     @property
+    def shown(self) -> SchematicShown | None:
+        """What the canvas shows now, or None before the first `show_schematic`."""
+
+        return self._shown
+
+    @property
     def readings(self) -> tuple[ContainerReading, ...]:
         """The readings painted now, one per container."""
 
-        return self._readings
+        return () if self._shown is None else self._shown.readings
 
     @property
     def marks(self) -> tuple[float, ...]:
         """The height of each mark painted now, as a share of a container's height."""
 
-        return self._marks
+        return () if self._shown is None else self._shown.marks
 
-    def show_readings(
-        self, readings: tuple[ContainerReading, ...], marks: tuple[float, ...]
-    ) -> None:
-        """Paint `readings`, one per container, in `CONTAINER_ORDER`, each marked at `marks`.
+    def show_schematic(self, shown: SchematicShown, run_name: str | None) -> None:
+        """Paint `shown`'s readings and marks, and describe them under the run's name.
+
+        `shown.readings` holds one reading per container in `CONTAINER_ORDER`,
+        and each container is marked at `shown.marks`. `run_name` is the run's
+        name while runs are compared, or None for a lone run. The text
+        alternative is written from the same `shown`, and a change to it is
+        reported to assistive technology (`DescribedGraphic.report_text_changes`).
 
         Raises:
             ValueError: If the readings are not one per container in
@@ -276,17 +314,19 @@ class SchematicCanvas(QWidget):
                 the wrong name.
         """
 
-        _check_order(readings)
-        self._readings = readings
-        self._marks = marks
+        _check_order(shown.readings)
+        self._shown = shown
+        self._run_name = run_name
         self.updateGeometry()
         self.update()
+        self.report_text_changes()
 
     def painted_strings(self) -> tuple[str, ...]:
         """Every label the canvas paints: each container's tension, amount and share, in order.
 
-        `paintEvent` paints each of these strings, read through `_labels`, so a
-        test that reads them reads what the reader sees (`PL-0G2P`). A line is
+        `paintEvent` paints each of these strings, read through
+        `ContainerReading.label_lines`, so a test that reads them reads what the
+        reader sees (`PL-0G2P`). A line is
         listed at every scroll position, though it is painted only while it is
         whole in the clear part (`shown_parts`), as a widget scrolled out of
         view still counts as seen. The containers' names are painted in the
@@ -295,7 +335,7 @@ class SchematicCanvas(QWidget):
         `RunSchematic.painted_strings` instead.
         """
 
-        return tuple(text for reading in self._readings for text in _labels(reading))
+        return tuple(text for reading in self.readings for text in reading.label_lines)
 
     def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
         return self.minimumSizeHint()
@@ -357,10 +397,11 @@ class SchematicCanvas(QWidget):
     def label_line(self, index: int, line: int) -> QRectF:
         """Return where line `line` of container `index`'s label is painted, in the canvas's pixels.
 
-        The lines are counted from 0 at the top, in the order `_labels` gives
-        them: the tension, the amount and the share. Each line is as
-        wide as its container's column. `paintEvent` paints each line here, so
-        a test that finds a line finds what the reader sees.
+        The lines are counted from 0 at the top, in the order
+        `ContainerReading.label_lines` gives them: the tension, the amount and
+        the share. Each line is as wide as its container's column. `paintEvent`
+        paints each line here, so a test that finds a line finds what the
+        reader sees.
 
         Raises:
             IndexError: If `index` does not name one of the containers, or
@@ -382,7 +423,7 @@ class SchematicCanvas(QWidget):
     def paintEvent(self, event: QPaintEvent) -> None:  # Qt spells this in camelCase.
         del event
 
-        if not self._readings:
+        if not self.readings:
             return
 
         parts = self.shown_parts()
@@ -393,7 +434,7 @@ class SchematicCanvas(QWidget):
         if parts.containers:
             self._paint_connections(painter, rectangles)
 
-        for index, (reading, rectangle) in enumerate(zip(self._readings, rectangles, strict=True)):
+        for index, (reading, rectangle) in enumerate(zip(self.readings, rectangles, strict=True)):
             if parts.containers:
                 self._paint_container(painter, reading, rectangle)
                 self._paint_marks(painter, rectangle)
@@ -501,7 +542,7 @@ class SchematicCanvas(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         painter.setPen(QPen(QColor(MUTED), _OUTLINE_WIDTH))
 
-        for mark in self._marks:
+        for mark in self.marks:
             y = rectangle.bottom() - rectangle.height() * mark
             painter.drawLine(
                 QPointF(rectangle.left(), y), QPointF(rectangle.left() + _MARK_LENGTH, y)
@@ -523,7 +564,7 @@ class SchematicCanvas(QWidget):
 
         painter.setPen(QColor(INK))
 
-        for line, text in enumerate(_labels(reading)):
+        for line, text in enumerate(reading.label_lines):
             if (index, line) not in shown:
                 continue
 
@@ -584,7 +625,7 @@ class ContainerNames(QWidget):
 
         Raises:
             ValueError: If the readings are not one per container in
-                `CONTAINER_ORDER`, as `SchematicCanvas.show_readings` says.
+                `CONTAINER_ORDER`, as `SchematicCanvas.show` says.
         """
 
         _check_order(readings)
@@ -686,19 +727,10 @@ def _column_width(metrics: QFontMetrics, shown: tuple[str, ...]) -> int:
     return max(widest, _CONTAINER_WIDTH) + _COLUMN_GAP
 
 
-def _labels(reading: ContainerReading) -> tuple[str, str, str]:
-    """The lines painted under one container, from the top: its tension, amount and share.
-
-    The painting and `SchematicCanvas.painted_strings` both read this one
-    function, so no painted line can be left out of what a test reads.
-    """
-
-    return (reading.tension, reading.amount, reading.share_text)
-
-
-#: How many lines `_labels` paints under each container. It is counted from
-#: `_labels` itself, so a line added there moves the share bars down with it.
-_LABEL_LINES: Final = len(_labels(WITHHELD_SCHEMATIC.readings[0]))
+#: How many lines are painted under each container. It is counted from
+#: `ContainerReading.label_lines` itself, so a line added there moves the share
+#: bars down with it.
+_LABEL_LINES: Final = len(WITHHELD_SCHEMATIC.readings[0].label_lines)
 
 
 #: The object name of each run's heading, which scopes its surface's stylesheet.
@@ -856,12 +888,13 @@ class RunSchematic(PinnedHeadingSection):
 
         self._name = name
         self.name_text.setText(instant_line(self._shown.instant, name))
+        self.canvas.show_schematic(self._shown, name)
         self.pin_heading()
 
     def show_schematic(self, shown: SchematicShown) -> None:
         """Draw `shown`: the instant it is read at, its containers, and each of its other lines."""
 
-        self.canvas.show_readings(shown.readings, shown.marks)
+        self.canvas.show_schematic(shown, self._name)
         self.names.show_names(shown.readings)
         self._shown = shown
         self.name_text.setText(instant_line(shown.instant, self._name))

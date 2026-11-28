@@ -31,13 +31,18 @@ bars (`PL-8PL4`).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite
+from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     COMPARTMENT_PANELS,
+    INTERPRETATION_DISCLAIMER_TEXT,
+    SCHEMATIC_VIEW_TITLE,
+    SPOKEN_WITHHELD_READINGS,
     WIDEST_COMPARTMENT_VALUE,
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_ELAPSED_TIME_TEXT,
@@ -68,14 +73,19 @@ __all__ = [
     "CONTAINER_ORDER",
     "CUT_CONTAINERS_TEXT",
     "INSTANT_LINE_TEMPLATE",
+    "INSTANT_PHRASE_TEMPLATE",
     "NO_AGENT_SHARE_CAPTION",
     "NO_SHARE_TEXT",
     "OFF_SCALE_LINE_TEMPLATE",
     "AMOUNT_UNIT_TEXT",
     "SCALE_CAPTION_TEMPLATE",
+    "SCHEMATIC_CONTAINER_LINE_TEMPLATE",
     "SCHEMATIC_HEADING",
+    "SCHEMATIC_TYPE_TEXT",
     "SHARE_CAPTION",
     "SHARE_TEMPLATE",
+    "SPOKEN_LABEL_DASHES",
+    "SPOKEN_WITHHELD_INSTANT_TEXT",
     "TENSION_UNIT_TEXT",
     "WIDEST_LABELS",
     "WITHHELD_AMOUNT_TEXT",
@@ -84,6 +94,8 @@ __all__ = [
     "SchematicShown",
     "container_readings",
     "instant_line",
+    "schematic_description",
+    "schematic_name",
     "schematic_shown",
     "off_scale_line",
     "scale_caption",
@@ -100,8 +112,11 @@ CONTAINER_ORDER: Final[tuple[RecordedQuantity, ...]] = tuple(
 
 #: The line over each run's schematic: the run's name while runs are compared,
 #: and the instant it shows. The wording is a placeholder.
-INSTANT_LINE_TEMPLATE: Final = "At {instant} of simulated time"
-COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, at {instant} of simulated time"
+#: The phrase that names the instant opens the line for a lone run, and follows
+#: the run's name while runs are compared.
+INSTANT_PHRASE_TEMPLATE: Final = "at {instant} of simulated time"
+INSTANT_LINE_TEMPLATE: Final = INSTANT_PHRASE_TEMPLATE.capitalize()
+COMPARED_INSTANT_LINE_TEMPLATE: Final = "{run}, " + INSTANT_PHRASE_TEMPLATE
 
 #: The line that names the unit of every tension a container's label prints.
 #: Each label prints its tension with "%" alone, because the full unit would
@@ -173,6 +188,20 @@ OFF_SCALE_LINE_TEMPLATE: Final = (
 CUT_CONTAINERS_TEXT: Final = (
     "The containers are not wholly in view, so the schematic hides them. Scroll to see them."
 )
+
+#: What the schematic's text alternative says the picture is, and how its
+#: containers are joined. The joins are the model's own claim that the tissue
+#: groups are perfused side by side, not one after another (`PL-RNYV`,
+#: `PL-R1M6`).
+SCHEMATIC_TYPE_TEXT: Final = (
+    "Diagram of the six compartments. Ventilation joins the circuit and the alveoli. "
+    "Arterial blood runs from the alveoli to the three tissue groups side by side, their "
+    "venous blood joins in mixed venous blood, and mixed venous blood returns to the alveoli."
+)
+
+#: One container's line in the text alternative: its name, then the lines
+#: painted under it, joined by commas.
+SCHEMATIC_CONTAINER_LINE_TEMPLATE: Final = "{name}: {lines}"
 
 #: Each container's label ends with this line, which gives the compartment's
 #: share of all the agent that the six containers hold at the instant shown
@@ -275,6 +304,17 @@ class ContainerReading:
         """
 
         return _share_text(self.share)
+
+    @property
+    def label_lines(self) -> tuple[str, str, str]:
+        """Return the lines painted under the container, from the top: tension, amount, share.
+
+        The painting, the painted strings that a test reads and the
+        schematic's text alternative all read this one property, so none of
+        them can leave out a line that another shows.
+        """
+
+        return (self.tension, self.amount, self.share_text)
 
 
 def container_readings(
@@ -534,6 +574,25 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
     None,
 )
 
+#: What the text alternative says in place of each dash that a container's label
+#: shows (`schematic_description`). On screen the dash says by how it looks
+#: that no value is shown, so a screen reader is told in words, as the readouts
+#: tell it (`SPOKEN_WITHHELD_READINGS`, `PL-R1M6`). The share line shows its
+#: dash while the run holds no agent too, and the share caption then says why.
+#: The wording is a placeholder.
+SPOKEN_LABEL_DASHES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        WITHHELD_CONCENTRATION_TEXT: SPOKEN_WITHHELD_READINGS[WITHHELD_CONCENTRATION_TEXT],
+        WITHHELD_AMOUNT_TEXT: "amount not shown",
+        NO_SHARE_TEXT: "share not shown",
+    }
+)
+
+#: What the schematic's name says in place of the instant while the instant is
+#: withheld, where the line over the schematic shows a dash (`schematic_name`).
+#: The wording is a placeholder.
+SPOKEN_WITHHELD_INSTANT_TEXT: Final = "simulated time not shown"
+
 
 def instant_line(instant: str, run_name: str | None) -> str:
     """Return the line above one run's schematic.
@@ -548,3 +607,66 @@ def instant_line(instant: str, run_name: str | None) -> str:
         return INSTANT_LINE_TEMPLATE.format(instant=instant)
 
     return COMPARED_INSTANT_LINE_TEMPLATE.format(run=run_name, instant=instant)
+
+
+def schematic_name(instant: str, run_name: str | None) -> str:
+    """Return what a screen reader calls one run's schematic: the View, the run and the instant.
+
+    This is the schematic's short text alternative, which WCAG 2.2 SC 1.1.1
+    asks of a diagram (`PL-R1M6`). It names the View, then the run while runs
+    are compared, then the instant, so it says what the line above the
+    schematic says, such as "Compartment schematic, Run 2, at 10m of
+    simulated time". While the instant is withheld, the line shows a dash,
+    and the name says so in words (`SPOKEN_WITHHELD_INSTANT_TEXT`).
+    """
+
+    phrase = (
+        SPOKEN_WITHHELD_INSTANT_TEXT
+        if instant == WITHHELD_ELAPSED_TIME_TEXT
+        else INSTANT_PHRASE_TEMPLATE.format(instant=instant)
+    )
+
+    return ", ".join(part for part in (SCHEMATIC_VIEW_TITLE, run_name, phrase) if part is not None)
+
+
+def schematic_description(shown: SchematicShown) -> str:
+    """Return one run's schematic as a long description, for a screen reader.
+
+    The W3C's tutorial on complex images asks a diagram's long description
+    for the essential information the picture conveys, its scales and values
+    among them (https://www.w3.org/WAI/tutorials/images/complex/, `PL-R1M6`).
+    So the description names the kind of picture and how its containers are
+    joined, says that the values are modelled and gives the two units, then
+    takes the schematic's lines in the order a reader meets them on screen:
+    what the shares are of, one line for each container with its name and
+    the lines under it (`ContainerReading.label_lines`), the containers above
+    the scale, and the caption that names the scale. A line the schematic
+    does not show, such as the off-scale line while no container is above
+    the scale, is left out. Each compartment's amount and share appear
+    nowhere else in text, so the description gives every one of them. A
+    label line that shows a dash is said in words (`SPOKEN_LABEL_DASHES`).
+
+    Each caption is given on one line. The screen breaks a caption where its
+    column is narrow, in the middle of a sentence too, and a screen reader
+    would pause at each break.
+    """
+
+    containers = (
+        SCHEMATIC_CONTAINER_LINE_TEMPLATE.format(
+            name=reading.name,
+            lines=", ".join(SPOKEN_LABEL_DASHES.get(line, line) for line in reading.label_lines),
+        )
+        for reading in shown.readings
+    )
+    lines = (
+        SCHEMATIC_TYPE_TEXT,
+        INTERPRETATION_DISCLAIMER_TEXT,
+        TENSION_UNIT_TEXT,
+        AMOUNT_UNIT_TEXT,
+        shown.share_caption,
+        *containers,
+        shown.off_scale_line,
+        shown.scale_caption,
+    )
+
+    return "\n".join(" ".join(line.splitlines()) for line in lines if line is not None)

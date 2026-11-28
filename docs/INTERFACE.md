@@ -4525,9 +4525,10 @@ reader while it still shows its own text, because Linux and macOS take what a
 selector is for from that label. Each name starts with the label shown, which
 the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
 The W3C's ARIA Authoring Practices Guide asks that controls with the same
-role have different names unless they are identical. So no two controls that
-a reader can reach share a name, apart from three cases that are still to be
-named apart (`PL-XV64`): the Area corners, the Area borders, and the controls
+role have different names unless they are identical. So no two controls or
+pictures that a reader can reach share a name, in any shipped Workspace, with
+one run or with two compared (`PL-9XGQ`), apart from three cases that are
+still to be named apart (`PL-XV64`): the Area corners, the Area borders, and the controls
 of two Areas that show the same kind of View, such as the two halves of a
 split Concentrations Area. A scroll box that
 takes the focus so that the keyboard can scroll it is named by the heading
@@ -4613,8 +4614,7 @@ AT-SPI client library on Linux keeps the texts it has read until told they
 changed, so without these reports it would go on reading an earlier frame's.
 The chart gives no table of its values. The Understanding document for SC 1.1.1
 provides one "where possible and practical", and the readouts already give
-each compartment's current value in text. The wash-in plot and the compartment
-schematic have no text alternative yet (`PL-R1M6`)
+each compartment's current value in text
 (`test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value` and
 `test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn`
 in `tests/unit/test_chart_frame.py`, and
@@ -4622,6 +4622,74 @@ in `tests/unit/test_chart_frame.py`, and
 and `test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
 <!-- not-restated: 15 minutes -->
+
+**The wash-in plot and each run's compartment schematic have a text
+alternative too** (`PL-R1M6`). Each reports itself as an image in the same
+way. The wash-in plot's name is its heading and the time axis's caption, such
+as "Wash-in: FA/FI, alveolar as a fraction of the modelled circuit, whole run
+so far, 15 minutes shown". The subscripts are dropped, as Qt drops them when
+it reads the heading's label. Its description opens "Line chart." and "Model
+outputs — not measurements.". Then it gives the last point each run's trace
+draws, worded as the hover words it, such as "Modelled sevoflurane at 10m:
+Wash-in FA/FI (alveolar / modelled circuit), 0.85.". As in the concentration
+chart's description, the instant is that of the last drawn point, so a held
+window gives the ratio at its right edge. It ends with the equilibrium line,
+"Equilibrium, FA = FI". It leaves out the row above the plot, which a screen
+reader already reads as text, and whose reading at the run's present instant
+lies outside a held window
+(`test_the_wash_in_plot_s_text_alternative_gives_each_run_s_last_drawn_point`
+in `tests/unit/test_chart_frame.py`, and
+`test_the_wash_in_plot_tells_a_screen_reader_what_it_plots_and_each_run_s_ratio`
+and `test_a_held_wash_in_plot_tells_a_screen_reader_the_ratio_at_its_right_edge`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+<!-- not-restated: 15 minutes -->
+
+A schematic's name is the View's title, the run while runs are compared, and
+the instant, such as "Compartment schematic, Run 2, at 10m of simulated time".
+Its description names the picture and how its containers are joined, says
+that the values are modelled, and gives the tensions' unit and the amounts'
+unit. Then it takes the schematic's lines in the order a reader meets them:
+what the shares are of, one line for each container, such as "Fat: 0.03%,
+140 mL vapour, 20% of agent", the line that names any container above the
+scale, and the caption that names the scale. Each caption is one line, because
+the screen breaks a caption in the middle of a sentence where its column is
+narrow. Each compartment's amount and share appear nowhere else in text, so
+the description gives every one, wherever the canvas is scrolled. A dash that
+the screen shows in place of a value is said in words, as the readouts say
+it: "percent not shown", "amount not shown", "share not shown", and
+"simulated time not shown" in the name. The W3C's
+tutorial on complex images warns that a description is read as one block of
+text, without a table's headings or its reading cell by cell
+(https://www.w3.org/WAI/tutorials/images/complex/, read 2026-11-28). Each
+container's line names its own compartment, so it needs neither. Both report
+each change to their texts, as the concentration chart does
+(`test_the_schematic_s_description_gives_every_container_s_values_with_their_units`,
+`test_the_schematic_s_description_names_a_container_above_the_scale`,
+`test_a_withheld_schematic_s_text_alternative_says_in_words_that_no_value_is_shown`,
+`test_a_run_with_no_agent_says_in_words_that_no_share_is_shown` and
+`test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instant`
+in `tests/unit/test_compartment_schematic.py`, and
+`test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values`,
+`test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes`
+and `test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+
+**Every picture in every shipped Workspace has a text alternative**
+(`PL-9XGQ`). A test finds each picture among the widgets shown, in each
+shipped Workspace and in one that shows every kind of View, with one run and
+with two compared. A picture is a plot, an SVG drawing, a label that shows
+only an image, or any widget that this program paints for itself, apart from a
+short list of painted widgets that draw no picture, such as a legend's sample
+of a line beside the check box that names the line. Each picture must sit in
+an image with a name and a description of its own, which it shares with no
+other picture. So a plot or a painted widget added later to any View fails the
+test until it has a text alternative or joins that list with its reason. A
+picture drawn some other way, such as onto another widget from outside it, is
+not found by the test, so the test also checks that every image the screen
+reader is told about has a name and a description
+(`test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named`
+and `test_each_painted_widget_that_draws_no_picture_still_paints` in
+`tests/integration/test_keyboard_focus.py`).
 
 #### Minimum contrast for text and graphics
 
