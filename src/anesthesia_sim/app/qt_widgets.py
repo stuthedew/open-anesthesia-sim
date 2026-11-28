@@ -3482,6 +3482,22 @@ class DescribedGraphic(QWidget):
 
         return control_name(self.graphic_name(), self._area)
 
+    def accessible_description(self) -> str:
+        """Return the long description a screen reader is given, opening with the name on macOS.
+
+        VoiceOver reads the description in place of the name
+        (`description_is_read_as_the_name`). The name carries what a value
+        line does not: the window and whether it is held, and the Area's name
+        while another Area shows a copy. So on macOS the description opens
+        with the name and a full stop, and elsewhere it is the subclass's
+        description alone (`PL-26K2`).
+        """
+
+        if description_is_read_as_the_name():
+            return f"{self.accessible_name()}.\n{self.graphic_description()}"
+
+        return self.graphic_description()
+
     def name_among_copies(self, area: str | None) -> None:
         """Add `area` to the picture's name, such as "Concentrations 2", or remove it when None.
 
@@ -3501,7 +3517,7 @@ class DescribedGraphic(QWidget):
         it comes before any screen reader can have read them.
         """
 
-        texts = (self.accessible_name(), self.graphic_description())
+        texts = (self.accessible_name(), self.accessible_description())
         events = (QAccessible.Event.NameChanged, QAccessible.Event.DescriptionChanged)
 
         if self._reported_texts is not None:
@@ -3526,7 +3542,7 @@ class _DescribedGraphicAccessible(QAccessibleWidget):
             return self._graphic.accessible_name()
 
         if kind is QAccessible.Text.Description:
-            return self._graphic.graphic_description()
+            return self._graphic.accessible_description()
 
         return QAccessibleWidget.text(self, kind)
 
@@ -3755,6 +3771,67 @@ def wheel_only_with_focus(widget: QWidget) -> None:
     widget.installEventFilter(_WheelOnlyWithFocus(widget))
 
 
+def description_is_read_as_the_name() -> bool:
+    """Return whether the screen reader here reads a widget's description in place of its name.
+
+    It is true on macOS alone. Qt 6.12's macOS bridge hands a widget's
+    accessible description to VoiceOver as the element's label and its name as
+    the element's title (`qcocoaaccessibilityelement.mm` at tag v6.12.0 of
+    `qt/qtbase`). Apple's "Accessibility Programming Guide for OS X" says a
+    screen reader asks a button for its label, which defaults to the title,
+    and Qt's open bug report QTBUG-140871 records VoiceOver reading a
+    description in place of the name, on macOS only. The Windows and Linux
+    bridges hand the name over as the name, and the description as a
+    description read after it (`PL-26K2`).
+    """
+
+    return QApplication.platformName() == "cocoa"
+
+
+def name_control(control: QWidget, name: str, hint: str = "") -> None:
+    """Give a control its name for a screen reader, and a hint of how to use it where it has one.
+
+    On Windows and Linux, the hint is the control's description, which a
+    screen reader reads after the name. Where there is no hint, Qt describes
+    the control by its tool tip, or an entry field by its placeholder. On
+    macOS, VoiceOver reads the description in place of the name
+    (`description_is_read_as_the_name`). So there, a control that has a hint,
+    a tool tip or a placeholder is described by its name, and the hint goes in
+    the help text, which the macOS bridge hands to VoiceOver as the element's
+    help (`PL-26K2`). A control with none of the three keeps no description on
+    macOS, as before. A help text also shows as a "What's This?" box when the
+    user presses Shift+F1 on the focused control, which Qt does for any
+    widget that has one.
+
+    Set a control's tool tip and placeholder before naming it, because this
+    reads them. This writes the control's name, description and help text, so
+    it replaces any written before. Only a text that differs is written, so a
+    name written again on each frame sends a screen reader no change.
+
+    Args:
+        control: The control to name.
+        name: What a screen reader calls the control.
+        hint: What the control does or how to use it, such as "The arrow keys
+            move it.", or "" where the name says enough.
+    """
+
+    if description_is_read_as_the_name():
+        placeholder = control.placeholderText() if isinstance(control, QLineEdit) else ""
+        stands_in = bool(hint or control.toolTip() or placeholder)
+        description, help_text = (name if stands_in else ""), hint
+    else:
+        description, help_text = hint, ""
+
+    if control.accessibleName() != name:
+        control.setAccessibleName(name)
+
+    if control.accessibleDescription() != description:
+        control.setAccessibleDescription(description)
+
+    if control.whatsThis() != help_text:
+        control.setWhatsThis(help_text)
+
+
 def label_control(label: QLabel, control: QWidget, name: str | None = None) -> None:
     """Make `label` the label that assistive technology gives `control`, and name the control.
 
@@ -3799,9 +3876,16 @@ def label_control(label: QLabel, control: QWidget, name: str | None = None) -> N
 
     label.setBuddy(control)
     spoken = label.text() if name is None else name
-
-    if control.accessibleName() != spoken:
-        control.setAccessibleName(spoken)
+    # On macOS an entry field's placeholder, such as "Optional", becomes its
+    # hint, because its description must be its name there (`name_control`).
+    # Elsewhere Qt reads the placeholder as the description itself, so a
+    # placeholder changed later is still the one read.
+    hint = (
+        control.placeholderText()
+        if description_is_read_as_the_name() and isinstance(control, QLineEdit)
+        else ""
+    )
+    name_control(control, spoken, hint)
 
     if label.accessibleName() != ("" if name is None else name):
         label.setAccessibleName("" if name is None else name)

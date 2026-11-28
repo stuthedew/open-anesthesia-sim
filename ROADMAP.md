@@ -1318,7 +1318,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-596J (S) The concentration chart's text alternative gives the MAC-awake band without the legend's words "population, read against vessel-rich group trace", so a screen-reader user is not told which trace the band is read against
 - PL-BQB6 (M) Where the window's edge cuts across an Area while the page scrolls sideways, a line of the Area's header or its View's pinned row is cut mid-sentence, such as the schematic's "Tensions are in % of 1 atm."
 - PL-2XRN (M) On macOS, VoiceOver may read the compartment schematic's description without the run and instant its name gives
-- PL-26K2 (M) On macOS, VoiceOver reads a widget's description in place of its name, so seven controls and the two plots are announced without the Area, corner, plot or window their name gives
+- PL-26K2 (M) On macOS, VoiceOver reads a widget's description in place of its name, so controls and the two plots are announced without what their names say
 
 ### Captures after the cut
 

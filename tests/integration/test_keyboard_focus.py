@@ -29,12 +29,15 @@ from PySide6.QtWidgets import (
     QApplication,
     QGraphicsView,
     QLabel,
+    QLineEdit,
+    QMenu,
     QPushButton,
     QScrollArea,
     QSlider,
     QWidget,
 )
 
+from anesthesia_sim.app import qt_widgets
 from anesthesia_sim.app.agent_cost import UNIT_CHOICE_LABEL
 from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -56,6 +59,7 @@ from anesthesia_sim.app.qt_widgets import (
     NewCaseDialog,
     SelectorComboBox,
     label_control,
+    name_control,
 )
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
@@ -993,6 +997,136 @@ def test_a_name_that_does_not_start_with_the_shown_label_is_refused(
         label_control(label, selector, "Rate of playback")
 
     assert (selector.accessibleName(), label.accessibleName()) == ("Playback", "")
+
+
+def _texts(widget: QWidget) -> tuple[str, str, str]:
+    """The name, description and help text that Qt hands a screen reader for `widget`."""
+
+    node = QAccessible.queryAccessibleInterface(widget)
+
+    return (
+        node.text(QAccessible.Text.Name),
+        node.text(QAccessible.Text.Description),
+        node.text(QAccessible.Text.Help),
+    )
+
+
+@pytest.mark.parametrize("on_macos", [False, True], ids=["Windows and Linux", "macOS"])
+def test_a_control_s_hint_is_its_description_except_on_macos_where_it_is_its_help(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, on_macos: bool
+) -> None:
+    """`PL-26K2`: on macOS a control is described by its name, and its hint is its help text.
+
+    VoiceOver reads a widget's description in place of its name
+    (`qt_widgets.description_is_read_as_the_name`). Three controls are
+    written out: a corner with a hint, a button whose tool tip Qt would read
+    as its description, and an entry field whose placeholder Qt would read
+    as its description. A selector with none of the three keeps no
+    description on either platform.
+    """
+
+    monkeypatch.setattr(qt_widgets, "description_is_read_as_the_name", lambda: on_macos)
+    window = QWidget()
+    corner = QWidget(window)
+    name_control(corner, "Area corner, Wash-in, top left", "Drag it to split or join the Area.")
+    button = QPushButton("‹", window)
+    button.setToolTip("Show an earlier part of the run")
+    name_control(button, "Show an earlier part of the run, Wash-in")
+    label = QLabel("Name", window)
+    entry = QLineEdit(window)
+    entry.setPlaceholderText("Optional")
+    label_control(label, entry, "Name, MAC target")
+    agent = QLabel("Agent", window)
+    selector = SelectorComboBox(window)
+    selector.addItem("Sevoflurane")
+    label_control(agent, selector)
+
+    if on_macos:
+        assert _texts(corner) == (
+            "Area corner, Wash-in, top left",
+            "Area corner, Wash-in, top left",
+            "Drag it to split or join the Area.",
+        )
+        assert _texts(button) == (
+            "Show an earlier part of the run, Wash-in",
+            "Show an earlier part of the run, Wash-in",
+            "",
+        )
+        assert _texts(entry) == ("Name, MAC target", "Name, MAC target", "Optional")
+    else:
+        assert _texts(corner) == (
+            "Area corner, Wash-in, top left",
+            "Drag it to split or join the Area.",
+            "",
+        )
+        assert _texts(button) == (
+            "Show an earlier part of the run, Wash-in",
+            "Show an earlier part of the run",
+            "",
+        )
+        assert _texts(entry) == ("Name, MAC target", "Optional", "")
+        # Qt reads the placeholder itself, so a placeholder changed later is
+        # the one a screen reader hears.
+        entry.setPlaceholderText("Required")
+        assert _texts(entry)[1] == "Required"
+
+    assert _texts(selector)[1:] == ("", "")
+
+
+def _described_in_place_of_their_names(window: QWidget) -> list[str]:
+    """Each widget whose description a Mac user would hear without what its name says.
+
+    A control passes with no description, or with its name as its
+    description. A picture passes when its description opens with its name
+    and a full stop. A menu has no name on any platform, so its description is
+    all a screen reader says of it there as everywhere, and it is skipped.
+    """
+
+    found = []
+
+    for widget in [window, *window.findChildren(QWidget)]:
+        node = QAccessible.queryAccessibleInterface(widget)
+
+        if node is None or isinstance(widget, QMenu):
+            continue
+
+        name = node.text(QAccessible.Text.Name)
+        description = node.text(QAccessible.Text.Description)
+
+        if isinstance(widget, DescribedGraphic):
+            if not description.startswith(f"{name}.\n"):
+                found.append(f"{type(widget).__name__} {name!r} opens with {description[:40]!r}")
+        elif description not in ("", name):
+            found.append(f"{type(widget).__name__} {name!r} is described as {description!r}")
+
+    return found
+
+
+@pytest.mark.parametrize("runs", [1, 2], ids=["one run", "two runs compared"])
+@pytest.mark.parametrize("shipped", WALKED, ids=WALKED_IDS)
+def test_on_macos_no_widget_is_described_by_less_than_its_name(
+    application: QApplication,
+    monkeypatch: pytest.MonkeyPatch,
+    shipped: ShippedWorkspaceId | None,
+    runs: int,
+) -> None:
+    """`PL-26K2`: VoiceOver never reads a description that leaves out what a widget's name says.
+
+    On macOS, VoiceOver reads a widget's description in place of its name
+    (`qt_widgets.description_is_read_as_the_name`). Before `PL-26K2`, a Mac
+    user heard an Area border as "The arrow keys move it.", each plot's
+    earlier and later buttons without the plot's name, a mark's name field as
+    "Optional", and each plot without its window or whether it is held. The
+    walk covers what each shipped Workspace shows, with one run and with two
+    compared, with the platform rule set as it is on macOS.
+    """
+
+    monkeypatch.setattr(qt_widgets, "description_is_read_as_the_name", lambda: True)
+    view = _compared_dashboard(application, runs, shipped)
+    found = _described_in_place_of_their_names(view)
+    view.close()
+
+    assert found == []
 
 
 def test_a_plot_is_not_a_tab_stop(dashboard: SimulationView) -> None:

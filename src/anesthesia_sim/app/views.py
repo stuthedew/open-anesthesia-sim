@@ -137,6 +137,7 @@ from anesthesia_sim.app.qt_widgets import (
     MarkButton,
     MarkEntry,
     label_control,
+    name_control,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -432,12 +433,15 @@ class _PlotControls:
         a dark host appearance and when it is unavailable (`PL-DHBX`), and it
         shows a ring while it has the keyboard focus (`PL-63FQ`). Its name
         adds the Area's name. Its tooltip shows `name` alone, because the
-        button is drawn beside the chart it moves.
+        button is drawn beside the chart it moves. Qt describes a button by its
+        tooltip, and VoiceOver on macOS reads that description in place of the
+        name, so `name_control` describes it by its whole name there
+        (`PL-26K2`).
         """
 
         button = QPushButton(text)
-        button.setAccessibleName(control_name(name, self._area.text))
         button.setToolTip(name)
+        name_control(button, control_name(name, self._area.text))
         button.setStyleSheet(transport_button_stylesheet())
         FocusRing(button, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH)
         self._buttons.append((button, name))
@@ -457,10 +461,7 @@ class _PlotControls:
             label_control(label, control, control_name(text, area.text))
 
         for button, name in self._buttons:
-            spoken = control_name(name, area.text)
-
-            if button.accessibleName() != spoken:
-                button.setAccessibleName(spoken)
+            name_control(button, control_name(name, area.text))
 
 
 class _TimeWindow:

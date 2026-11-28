@@ -4548,6 +4548,22 @@ it, or by what it holds, such as "Concentration chart legend"
 `test_each_compartment_box_is_named_by_the_words_it_shows`
 in `tests/integration/test_qt_chart.py`).
 
+**On macOS, a control's description is its name wherever Qt would read
+something else in its place** (`PL-26K2`). VoiceOver reads a widget's
+description in place of its name, and Qt describes a widget that has no
+description by its tool tip, or an entry field by its placeholder. So on
+macOS, a control that has a hint, a tool tip or a placeholder is described by
+its own name. Its hint, such as "The arrow keys move it. Shift moves it alone.
+Escape puts it back." for an Area border, or "Optional" for a mark's name
+field, goes in its help text, which the macOS bridge hands to VoiceOver as the
+element's help. On Windows and Linux, the hint stays the description, which a
+screen reader reads after the name. The Area menu and the Workspace menu have
+no name on any platform, so a screen reader says only their description
+everywhere
+(`test_a_control_s_hint_is_its_description_except_on_macos_where_it_is_its_help`
+and `test_on_macos_no_widget_is_described_by_less_than_its_name` in
+`tests/integration/test_keyboard_focus.py`).
+
 **Each Area, and each control that belongs to one Area, is named with the
 Area** (`PL-XV64`). An Area's name is the title of the View it shows, such as
 "Concentrations". Where two or more Areas show the same kind of View, each
@@ -4737,22 +4753,21 @@ in `tests/unit/test_chart_frame.py`).
 
 A schematic's name is the View's title, the run while runs are compared, and
 the instant, such as "Compartment schematic, Run 2, at 10m of simulated time".
-Its description opens with the same run and instant, such as "Run 2, at 10m of
-simulated time.". On macOS, Qt 6.12 hands a widget's description to VoiceOver
-as the element's label and its name as the title, and VoiceOver reads the
-label in place of the title. So without that line, a Mac user comparing two
-runs could hear one run's values with no word of which run they are
-(`PL-2XRN`). The sources are Qt's `qcocoaaccessibilityelement.mm` at tag
-v6.12.0, Apple's "Accessibility Programming Guide for OS X", which says a
-screen reader asks each element, such as a button, for its label, and Qt's
-bug report QTBUG-140871, which records VoiceOver reading a description in
-place of the name, all read 2026-11-28. The two plots' descriptions have no
-such line, because each of their value lines names its run while runs are
-compared, and its instant. Their names also give the window and whether it is
-held, and the Area's name while another Area shows a copy, which a Mac user
-does not hear (`PL-26K2`). After that line, the schematic's description names
-the picture and how its containers are joined, says that the values are
-modelled, and gives the tensions' unit and the amounts' unit. Then it takes the schematic's lines in the order a reader meets them:
+The two plots' names give the window and whether it is held, and each
+picture's name gives the Area's name while another Area shows a copy. On
+macOS, Qt 6.12 hands a widget's description to VoiceOver as the element's
+label and its name as the title, and VoiceOver reads the label in place of
+the title. So on macOS every picture's description opens with its name and a
+full stop, and a Mac user comparing two runs hears which run each
+schematic's values belong to (`PL-2XRN`, `PL-26K2`). Elsewhere it does not,
+because a screen reader there reads the name first. The sources are Qt's
+`qcocoaaccessibilityelement.mm` at tag v6.12.0, Apple's "Accessibility
+Programming Guide for OS X", which says a screen reader asks each element,
+such as a button, for its label, and Qt's bug report QTBUG-140871, which
+records VoiceOver reading a description in place of the name, all read
+2026-11-28. The schematic's description names the picture and how its
+containers are joined, says that the values are modelled, and gives the
+tensions' unit and the amounts' unit. Then it takes the schematic's lines in the order a reader meets them:
 what the shares are of, one line for each container, such as "Fat: 0.03%,
 140 mL vapour, 20% of agent", the line that names any container above the
 scale, and the caption that names the scale. Each caption is one line, because
@@ -4761,7 +4776,7 @@ narrow. Each compartment's amount and share appear nowhere else in text, so
 the description gives every one, wherever the canvas is scrolled. A dash that
 the screen shows in place of a value is said in words, as the readouts say
 it: "percent not shown", "amount not shown", "share not shown", and
-"simulated time not shown" in the name and in the first line. The W3C's
+"simulated time not shown" in the name. The W3C's
 tutorial on complex images warns that a description is read as one block of
 text, without a table's headings or its reading cell by cell
 (https://www.w3.org/WAI/tutorials/images/complex/, read 2026-11-28). Each
@@ -4770,12 +4785,11 @@ each change to their texts, as the concentration chart does
 (`test_the_schematic_s_description_gives_every_container_s_values_with_their_units`,
 `test_the_schematic_s_description_names_a_container_above_the_scale`,
 `test_a_withheld_schematic_s_text_alternative_says_in_words_that_no_value_is_shown`,
-`test_a_run_with_no_agent_says_in_words_that_no_share_is_shown`,
-`test_the_schematic_s_description_opens_with_its_run_and_instant`
+`test_a_run_with_no_agent_says_in_words_that_no_share_is_shown`
 and `test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instant`
 in `tests/unit/test_compartment_schematic.py`, and
 `test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values`,
-`test_each_compared_schematic_s_description_starts_with_its_own_run_and_instant`,
+`test_on_macos_each_compared_schematic_s_description_opens_with_its_own_run_and_instant`,
 `test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes`
 and `test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
