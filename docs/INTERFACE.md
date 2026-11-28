@@ -4757,6 +4757,28 @@ reader is told about has a name and a description
 and `test_each_painted_widget_that_draws_no_picture_still_paints` in
 `tests/integration/test_keyboard_focus.py`).
 
+**What a screen reader is told is checked by hand, as the screen's wording
+is** (`PL-96MX`). The interface's wording test holds each string the
+dashboard shows to a list that was read by hand. It also holds the name and
+the description that a screen reader is told for each widget, where they are
+not the text the widget shows. These are a chart's or a diagram's text
+alternative, one string for each line, and the names that a readout, a
+button, a selector or a border gives a screen reader. Each such string is
+listed after which text it is and the kind of widget that says it, such as
+"Description of WashInChart: Model outputs — not measurements.". So a line
+that is changed or dropped fails the test until someone reads it, even where
+the screen shows the same words. None of these strings counts as seen, so a
+test that a user is told something cannot pass on a sentence only a screen
+reader hears. The test also holds the unit drawn beside an entered value,
+such as " ×MAC" beside a MAC target's height, and an empty field's
+placeholder
+(`test_a_changed_line_that_only_a_screen_reader_hears_differs_from_the_approved_list`
+and
+`test_a_line_dropped_from_a_description_differs_where_the_screen_shows_the_same_words`
+in `tests/integration/test_interface_wording.py`, and
+`test_what_a_screen_reader_alone_is_told_is_held_but_not_seen` in
+`tests/integration/simulation_view/test_simulation_view_whole_interface.py`).
+
 #### Minimum contrast for text and graphics
 
 Two criteria carry most of the weight:

@@ -92,16 +92,19 @@ from time import perf_counter
 from typing import Final
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QShowEvent
+from PySide6.QtGui import QAccessible, QShowEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
     QBoxLayout,
     QComboBox,
     QDialog,
+    QDoubleSpinBox,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QSizePolicy,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -239,10 +242,21 @@ def _within(widget: QWidget, ancestor: QWidget) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class InterfaceText:
-    """One string the dashboard holds, and whether a reader can see it now (`PL-904Y`)."""
+    """One string the dashboard holds, and whether a reader can see it now (`PL-904Y`).
+
+    Attributes:
+        text: The string.
+        visible: Whether a reader can see it now. A string only a screen
+            reader is told is never visible.
+        spoken_as: For a string only a screen reader is told, which of the
+            widget's texts it is and what kind of widget says it, such as
+            "Description of ConcentrationChart" (`PL-96MX`). It is `None` for
+            a string the screen shows.
+    """
 
     text: str
     visible: bool
+    spoken_as: str | None = None
 
 
 def _seen_by_reader(widget: QWidget) -> bool:
@@ -276,13 +290,62 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
     elif isinstance(widget, QLabel | QAbstractButton):
         yield InterfaceText(widget.text(), seen)
 
-    if isinstance(widget, QAbstractButton) and widget.accessibleName():
-        yield InterfaceText(widget.accessibleName(), seen)
-    elif isinstance(widget, QComboBox):
+    if isinstance(widget, QComboBox):
         current = widget.currentIndex()
 
         for index in range(widget.count()):
             yield InterfaceText(widget.itemText(index), seen and index == current)
+    elif isinstance(widget, QSpinBox | QDoubleSpinBox):
+        # The unit beside an entered value, such as " ×MAC" on a MAC
+        # target's height, is drawn in the field.
+        for text in (widget.prefix(), widget.suffix()):
+            if text:
+                yield InterfaceText(text, seen)
+    elif isinstance(widget, QLineEdit) and widget.placeholderText():
+        yield InterfaceText(widget.placeholderText(), seen and not widget.text())
+
+
+#: How `_spoken_text` names each of the two texts it reads.
+_SPOKEN_TEXT_KINDS: Final = (
+    (QAccessible.Text.Name, "Name"),
+    (QAccessible.Text.Description, "Description"),
+)
+
+
+def _spoken_text(widget: QWidget) -> Iterator[InterfaceText]:
+    """The name and the description a screen reader is told for `widget`, line by line.
+
+    A screen reader reads both from the widget's accessible interface. Qt
+    writes them from the accessible name and description set on the widget,
+    from its tool tip or from the label it is named by. A chart or a diagram
+    writes them from what it last drew (`qt_widgets.DescribedGraphic`). A text
+    that the widget itself shows, or its window title, is left out, because
+    `_widget_text` already yields it. A description of several lines yields
+    one string for each line.
+
+    None of these strings counts as seen, because a screen reader says them
+    and the screen does not show them. Each carries which text it is and the
+    kind of widget that says it (`InterfaceText.spoken_as`). So a line that a
+    chart's description drops still differs from the approved list where the
+    screen, or another kind of widget, says the same words (`PL-96MX`).
+    """
+
+    shown = {widget.windowTitle(), *(text.text for text in _widget_text(widget))}
+
+    if isinstance(widget, QLabel | QAbstractButton):
+        shown.add(widget.text())
+
+    node = QAccessible.queryAccessibleInterface(widget)
+
+    if node is None:
+        return
+
+    for kind, label in _SPOKEN_TEXT_KINDS:
+        spoken = node.text(kind)
+
+        if spoken not in shown:
+            for line in spoken.splitlines():
+                yield InterfaceText(line, False, f"{label} of {type(widget).__name__}")
 
 
 #: The Qt property that `SimulationView._order_focus` sets on each widget it
@@ -2951,18 +3014,29 @@ class SimulationView(QWidget):
     def interface_strings(self) -> tuple[str, ...]:
         """Every string the dashboard holds, whether or not a reader can see it now.
 
-        Use it to show that something is never said anywhere, since a hidden
-        string can be shown at any moment. To show that a reader is told
-        something, use `visible_strings`.
+        The strings include what a screen reader is told and the screen does
+        not show, such as a chart's description (`_spoken_text`). Use it to
+        show that something is never said anywhere, since a hidden string can
+        be shown at any moment. To show that a reader is told something, use
+        `visible_strings`.
         """
 
         return tuple(text.text for text in self._interface_text())
+
+    def interface_texts(self) -> tuple[InterfaceText, ...]:
+        """Every string `interface_strings` returns, with whether it is seen and who says it.
+
+        The interface's wording test reads it, to tell a line only a screen
+        reader is told from the same words on screen (`PL-96MX`).
+        """
+
+        return tuple(self._interface_text())
 
     def visible_strings(self) -> tuple[str, ...]:
         """The strings a reader can see now, in every window the dashboard owns.
 
         Use it to show that a reader is told something. A string in a hidden
-        widget is not among them.
+        widget is not among them, and nor is one only a screen reader is told.
         """
 
         return tuple(text.text for text in self._interface_text() if text.visible)
@@ -2976,3 +3050,4 @@ class SimulationView(QWidget):
 
         for widget in (self, *self.findChildren(QWidget)):
             yield from _widget_text(widget)
+            yield from _spoken_text(widget)
