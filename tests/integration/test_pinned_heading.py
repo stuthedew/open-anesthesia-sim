@@ -185,3 +185,35 @@ def test_a_section_moved_inside_its_box_moves_its_own_heading(
     assert below.height() == below_height
     assert bar.value() - below.y() == 2 * _ROW_HEIGHT_PX
     assert below.heading.y() == 2 * _ROW_HEIGHT_PX
+
+
+def test_a_row_s_clear_part_is_its_part_in_view_below_the_heading(
+    application: QApplication, boxes: list[QScrollArea]
+) -> None:
+    """`PL-GWTR`: `clear_of_heading` returns the part of a row that is in view and not under it.
+
+    A row that could be misread when cut paints only what this part holds
+    whole. With the section's top in view, the heading stands in its own space
+    over the rows, so the first row is clear whole. Scrolled 110 px, the
+    heading covers the section from 110 px down by its own height. The sixth
+    row starts 100 px below the heading's space, so its top 10 px are under the
+    heading and the rest is clear. The fifth row is in view only under the
+    heading, and the last row is below the box, so neither has a clear part.
+    """
+
+    section = _section(rows=20)
+    box, _ = _shown_box(application, boxes, section)
+    pin_on_scroll(box)
+    rows = [section.column.itemAt(index).widget() for index in range(section.column.count())]
+    width = rows[0].width()
+
+    assert section.clear_of_heading(rows[0]) == QRect(0, 0, width, _ROW_HEIGHT_PX)
+
+    box.verticalScrollBar().setValue(110)
+    application.processEvents()
+
+    # The premise: the heading has moved down to the top of the box's view.
+    assert section.heading.y() == 110
+    assert section.clear_of_heading(rows[5]) == QRect(0, 10, width, _ROW_HEIGHT_PX - 10)
+    assert section.clear_of_heading(rows[4]).isEmpty()
+    assert section.clear_of_heading(rows[19]).isEmpty()

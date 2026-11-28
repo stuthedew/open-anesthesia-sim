@@ -16,6 +16,13 @@ chart's gridlines. A container is much shorter than the chart's plot, so a
 user reads a fill level against these marks, never across to the chart
 (`PL-8W1B`).
 
+**Nothing is drawn in part** (`PL-GWTR`). A container shows its tension as the
+height of its fill, so one shown in part could look full, or empty, at a
+tension it does not hold. A label line shown in part could be read as other
+digits. So the canvas draws its containers only while all of them are whole in
+view and clear of the run's heading, and each label line and share bar only
+while it is. In place of the containers it paints `CUT_CONTAINERS_TEXT`.
+
 **How the containers are joined** (`PL-RNYV`). The containers stand in one row
 in the order the readout row lists them: the circuit, the alveoli, venous
 blood, the vessel-rich group, muscle and fat. A line joins the circuit to the
@@ -43,15 +50,19 @@ placeholder, because it is what the model asserts.
 
 from __future__ import annotations
 
+import math
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Final
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt
+from PySide6.QtCore import QPointF, QRect, QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QFontMetrics, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
     CONTAINER_ORDER,
+    CUT_CONTAINERS_TEXT,
     WIDEST_LABELS,
     WITHHELD_SCHEMATIC,
     ContainerReading,
@@ -70,7 +81,7 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 
-__all__ = ["ContainerNames", "RunSchematic", "SchematicCanvas"]
+__all__ = ["CanvasParts", "ContainerNames", "RunSchematic", "SchematicCanvas"]
 
 _TISSUES: Final = frozenset(
     {RecordedQuantity.VESSEL_RICH, RecordedQuantity.MUSCLE, RecordedQuantity.FAT}
@@ -109,6 +120,32 @@ _COLUMN_CENTRE: Final = 0.5
 # Half a pixel, by which a share bar's 1 px outline is inset so that it is drawn
 # on whole pixels, inside the bar.
 _HALF_PIXEL: Final = 0.5
+# How the cut-containers line is placed: at the top left of its space, wrapped
+# where the canvas is narrower than the line.
+_CUT_NOTICE_FLAGS: Final = int(
+    Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap
+)
+
+
+@dataclass(frozen=True)
+class CanvasParts:
+    """The parts of a run's schematic that its canvas paints now.
+
+    Attributes:
+        containers: Whether the containers are painted, with the lines that
+            join them and the marks inside them. They are painted only while
+            every container is whole in the canvas's clear part.
+        lines: Each label line painted, as a pair of the container's index
+            and the line's index under it (`SchematicCanvas.label_line`).
+        bars: The index of each container whose share bar is painted.
+        cut_notice: Where `CUT_CONTAINERS_TEXT` is painted in place of the
+            containers, or None where it is not painted.
+    """
+
+    containers: bool
+    lines: frozenset[tuple[int, int]]
+    bars: frozenset[int]
+    cut_notice: QRectF | None
 
 
 class SchematicCanvas(QWidget):
@@ -116,13 +153,104 @@ class SchematicCanvas(QWidget):
 
     `show_readings` gives the canvas the readings of one snapshot, and the
     canvas paints exactly those. It keeps no reading of an earlier snapshot.
+
+    The canvas paints only the parts that are whole in its clear part
+    (`shown_parts`). The run that holds the canvas says where that part is,
+    through `measure_clear_part`. A canvas that nobody measures paints every
+    part.
     """
 
     def __init__(self) -> None:
         super().__init__()
         self._readings: tuple[ContainerReading, ...] = ()
         self._marks: tuple[float, ...] = ()
+        self._clear_part: Callable[[], QRect] | None = None
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def measure_clear_part(self, clear_part: Callable[[], QRect]) -> None:
+        """Read the canvas's clear part from `clear_part` each time the canvas paints.
+
+        `clear_part` returns the part of the canvas that is in view and that
+        nothing is drawn over, in the canvas's pixels. It is read at each
+        paint rather than kept, so a scroll can never leave the canvas
+        painting from where the clear part was before it.
+        """
+
+        self._clear_part = clear_part
+        self.update()
+
+    def shown_parts(self) -> CanvasParts:
+        """Return the parts that `paintEvent` paints now, from the clear part as it is now.
+
+        The containers are painted while every container, with the line that
+        marks one above the scale, is whole in the clear part from top to
+        bottom. A cut at a container's side leaves the height of its fill as it
+        is, so only their vertical extent is compared. Each label line and each
+        share bar is painted while it is whole there both ways, because a line
+        cut at a side drops digits and a bar cut at a side loses the end its
+        fill is read against. Where the containers are not painted,
+        `CUT_CONTAINERS_TEXT` is painted at the top of the clear part, above
+        the labels, where that space holds all of it.
+        """
+
+        if not self._readings:
+            return CanvasParts(False, frozenset(), frozenset(), None)
+
+        clear = None if self._clear_part is None else self._clear_part()
+
+        def whole(part: QRectF, *, sideways: bool) -> bool:
+            if clear is None:
+                return True
+
+            if clear.isEmpty():
+                return False
+
+            down = clear.top() <= part.top() and part.bottom() <= clear.y() + clear.height()
+            across = clear.left() <= part.left() and part.right() <= clear.x() + clear.width()
+
+            return down and (across or not sideways)
+
+        reach = _container_reach()
+        top = self._containers_top() - reach
+        row = QRectF(0.0, top, float(self.width()), _CONTAINER_HEIGHT + 2.0 * reach)
+        containers = whole(row, sideways=False)
+        lines = frozenset(
+            (index, line)
+            for index in range(len(CONTAINER_ORDER))
+            for line in range(_LABEL_LINES)
+            if whole(self.label_line(index, line), sideways=True)
+        )
+        bars = frozenset(
+            index
+            for index in range(len(CONTAINER_ORDER))
+            if whole(self.share_bar(index), sideways=True)
+        )
+
+        return CanvasParts(
+            containers,
+            lines,
+            bars,
+            None if containers or clear is None else self._cut_notice(clear),
+        )
+
+    def _cut_notice(self, clear: QRect) -> QRectF | None:
+        """Return where the cut-containers line goes in `clear`, or None where it does not fit."""
+
+        top = max(clear.top(), 0)
+        height = min(clear.y() + clear.height(), self._labels_top()) - top
+
+        if clear.isEmpty() or height <= 0:
+            return None
+
+        space = QRect(0, top, self.width(), height)
+        needed = QFontMetrics(self.font()).boundingRect(
+            space, _CUT_NOTICE_FLAGS, CUT_CONTAINERS_TEXT
+        )
+
+        if needed.height() > height:
+            return None
+
+        return QRectF(0.0, float(top), float(self.width()), float(needed.height()))
 
     @property
     def readings(self) -> tuple[ContainerReading, ...]:
@@ -155,12 +283,16 @@ class SchematicCanvas(QWidget):
         self.update()
 
     def painted_strings(self) -> tuple[str, ...]:
-        """Every label painted now: each container's tension, amount and share, in order.
+        """Every label the canvas paints: each container's tension, amount and share, in order.
 
-        `paintEvent` paints exactly these strings, read through `_labels`, so a
-        test that reads them reads what the reader sees (`PL-0G2P`). The
-        containers' names are painted in the run's heading
-        (`ContainerNames`).
+        `paintEvent` paints each of these strings, read through `_labels`, so a
+        test that reads them reads what the reader sees (`PL-0G2P`). A line is
+        listed at every scroll position, though it is painted only while it is
+        whole in the clear part (`shown_parts`), as a widget scrolled out of
+        view still counts as seen. The containers' names are painted in the
+        run's heading (`ContainerNames`). The column width is read from these
+        strings, so `CUT_CONTAINERS_TEXT`, which spans the columns, is listed by
+        `RunSchematic.painted_strings` instead.
         """
 
         return tuple(text for reading in self._readings for text in _labels(reading))
@@ -253,18 +385,39 @@ class SchematicCanvas(QWidget):
         if not self._readings:
             return
 
+        parts = self.shown_parts()
         rectangles = [self.container(index) for index in range(len(CONTAINER_ORDER))]
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self._paint_connections(painter, rectangles)
+
+        if parts.containers:
+            self._paint_connections(painter, rectangles)
 
         for index, (reading, rectangle) in enumerate(zip(self._readings, rectangles, strict=True)):
-            self._paint_container(painter, reading, rectangle)
-            self._paint_marks(painter, rectangle)
-            self._paint_labels(painter, index, reading)
-            self._paint_share_bar(painter, reading, self.share_bar(index))
+            if parts.containers:
+                self._paint_container(painter, reading, rectangle)
+                self._paint_marks(painter, rectangle)
+
+            self._paint_labels(painter, index, reading, parts.lines)
+
+            if index in parts.bars:
+                self._paint_share_bar(painter, reading, self.share_bar(index))
+
+        if parts.cut_notice is not None:
+            painter.setPen(QColor(WARNING))
+            painter.drawText(parts.cut_notice, _CUT_NOTICE_FLAGS, CUT_CONTAINERS_TEXT)
 
         painter.end()
+
+    def containers_bottom(self) -> int:
+        """Return how far below the canvas's top the containers end, in pixels.
+
+        It counts the half of each outline drawn outside a container. A box
+        this tall below the run's heading shows the containers whole while
+        the run's section starts at the box's top (`RunSchematic.legible_height`).
+        """
+
+        return math.ceil(self._containers_top() + _CONTAINER_HEIGHT + _container_reach())
 
     def _column_width(self, metrics: QFontMetrics) -> int:
         """The width of one container's column: its widest label, reserved or shown, and a gap."""
@@ -359,12 +512,21 @@ class SchematicCanvas(QWidget):
 
         painter.restore()
 
-    def _paint_labels(self, painter: QPainter, index: int, reading: ContainerReading) -> None:
-        """Paint the container's tension, amount and share under it, one line each."""
+    def _paint_labels(
+        self,
+        painter: QPainter,
+        index: int,
+        reading: ContainerReading,
+        shown: frozenset[tuple[int, int]],
+    ) -> None:
+        """Paint the container's tension, amount and share under it, one line each, where shown."""
 
         painter.setPen(QColor(INK))
 
         for line, text in enumerate(_labels(reading)):
+            if (index, line) not in shown:
+                continue
+
             painter.drawText(
                 self.label_line(index, line),
                 int(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop),
@@ -475,6 +637,12 @@ class ContainerNames(QWidget):
             )
 
         painter.end()
+
+
+def _container_reach() -> float:
+    """Return how far a container's painting reaches past its outline: half its widest line."""
+
+    return max(_OFF_SCALE_WIDTH, _OUTLINE_WIDTH) / 2.0
 
 
 def _check_order(readings: tuple[ContainerReading, ...]) -> None:
@@ -599,6 +767,7 @@ class RunSchematic(PinnedHeadingSection):
         self.share_text = share_text
         self.names = names
         self.canvas = SchematicCanvas()
+        self.canvas.measure_clear_part(lambda: self.clear_of_heading(self.canvas))
         self.scale_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
         self.off_scale_text = styled_label("", color=WARNING, size_px=METRIC_QUALIFIER_SIZE)
         self.column.setSpacing(VIEW_ROW_SPACING)
@@ -615,16 +784,51 @@ class RunSchematic(PinnedHeadingSection):
         """Every string painted without a label: each container's name, tension, amount and share.
 
         They come in the containers' order, the name first, which is the
-        order a reader takes them in down each column.
+        order a reader takes them in down each column. `CUT_CONTAINERS_TEXT`
+        comes last. The canvas paints it in place of the containers while any
+        is cut off, and it is listed at every scroll position, as the labels
+        are, so the interface's wording test reads it (`PL-GWTR`).
         """
 
         labels = self.canvas.painted_strings()
 
-        return tuple(
-            text
-            for index, name in enumerate(self.names.painted_strings())
-            for text in (name, *labels[index * _LABEL_LINES : (index + 1) * _LABEL_LINES])
+        return (
+            *(
+                text
+                for index, name in enumerate(self.names.painted_strings())
+                for text in (name, *labels[index * _LABEL_LINES : (index + 1) * _LABEL_LINES])
+            ),
+            CUT_CONTAINERS_TEXT,
         )
+
+    def pin_heading(self) -> None:
+        """Place the heading over the part in view, and repaint the canvas for what it leaves clear.
+
+        A scroll moves the canvas's pixels without asking the canvas to paint
+        them again, so a container that the scroll has cut would stay painted
+        whole. The canvas is therefore repainted after every move of the
+        heading, and paints only what is whole in its clear part now
+        (`SchematicCanvas.shown_parts`).
+        """
+
+        super().pin_heading()
+        self.canvas.update()
+
+    def legible_height(self) -> int:
+        """Return the least height of a box that shows every container whole at the run's top.
+
+        It is the heading's height and the canvas's height down to the
+        containers' lower edge, so the containers are whole while the run's
+        section starts at the box's top, where the box opens. The canvas's
+        top 12 px hold only the arterial line, and the heading may stand over
+        them, so a box up to 12 px shorter shows the containers whole at a
+        few scroll positions 12 px or less from there. A mouse wheel moves the
+        box 60 px a notch (Qt's step of 20 px, three steps a notch), so a
+        reader would rarely stop at one of them, and the height leaves none
+        of them out (`CompartmentSchematicView.legible_height`, `PL-GWTR`).
+        """
+
+        return self.heading.sizeHint().height() + self.canvas.containers_bottom()
 
     def show_name(self, name: str | None) -> None:
         """Name the schematic while runs are compared, or leave it unnamed when `name` is None."""

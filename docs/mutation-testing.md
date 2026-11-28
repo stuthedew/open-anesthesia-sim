@@ -186,7 +186,7 @@ about a third of the 2-hour limit, so the controller's mutants stay in the compa
 (`PL-19M4`).
 
 `make mutate` runs `tools/diff_mutation.py` through `uv run --group mutation`.
-mutmut is pinned to version 3.8.0 in the `mutation` dependency group, so
+mutmut is pinned to version 3.8.1 in the `mutation` dependency group, so
 `uv sync` leaves it out and no test needs it. The tool's docstring
 explains the five things that it decides and mutmut's settings cannot: which
 tests run, which functions changed, which files mutmut mutates and which
