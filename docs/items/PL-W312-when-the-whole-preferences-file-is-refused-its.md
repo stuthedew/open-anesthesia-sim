@@ -113,3 +113,17 @@ faults, and one more each, so five in all. All five are fixed on this branch.
    runs a file holding only its version for every version this build reads,
    and `test_every_version_this_build_reads_has_a_case_of_every_setting_missing`
    fails when a version is added without a case.
+
+**Self-audit's mutation step.** The first run left four survivors. Two were
+real gaps: no test told the operating system's words for a read error from the
+exception's longer text, and none showed a version that holds a letter outside
+ASCII as the file writes it. `test_a_file_that_cannot_be_read_turns_saving_off`
+now compares the whole notice, and the version case "version written as a
+letter outside ASCII" was added. The one left is equivalent: mutmut's
+`ensure_ascii=None` gives the same text as `ensure_ascii=False`, because the
+JSON encoder reads the flag only for whether it is true (`if
+self.ensure_ascii:` in `json/encoder.py`, read in this session), so that line
+carries `# pragma: no mutate`. A case of 100,000 nested lists stopped the
+decoder in the container and parsed on the CI runner, so
+`test_a_file_nested_too_deeply_for_the_decoder_turns_saving_off` makes the
+decoder give up instead.
