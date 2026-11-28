@@ -813,13 +813,18 @@ def test_each_shipped_workspace_shows_its_lesson_whole_with_one_run(
         assert _wholly_in_view(view, widget), f"the {name} is not wholly on screen in {workspace}"
 
 
+#: The font the test below draws in. DejaVu Sans is the font the Linux CI
+#: runners draw the tests in, and it is installed in this repository's cloud
+#: container too, so the test measures the same font wherever it runs.
+_MAC_MARGIN_FONT_FAMILY = "DejaVu Sans"
+
 #: How much lower the foot of the Maintenance Workspace's schematic canvas
-#: stands in its box at 1366 by 768 in macOS's font and style than in Inter, the
-#: font this repository's cloud container draws its tests in. Measured on
-#: 2026-11-28 on a GitHub macOS runner, under Qt's `cocoa` platform (`PL-H100`).
-#: The canvas's foot stood 20 px below the box's foot there, and at the box's
-#: foot in Inter.
-_MAC_CANVAS_FOOT_LOWER_PX = 20
+#: stands in its box at 1366 by 768 in macOS's font and style than in DejaVu
+#: Sans at 9 pt. Measured on 2026-11-28 with the containers 96 px tall
+#: (`PL-H100`): on a GitHub macOS runner, under Qt's `cocoa` platform, the
+#: canvas's foot stood 20 px below the box's foot, and in DejaVu Sans under the
+#: offscreen platform it stood 14 px above it.
+_MAC_CANVAS_FOOT_LOWER_PX = 34
 
 
 def test_the_maintenance_schematic_leaves_room_for_macos_text_at_1366_by_768(
@@ -828,35 +833,49 @@ def test_the_maintenance_schematic_leaves_room_for_macos_text_at_1366_by_768(
     """`PL-H100`: on a Mac, the containers and their share lines stay whole at 1366 by 768.
 
     macOS's system font draws taller lines than the Linux fonts the tests run
-    in, and its controls are taller. So the canvas's foot stands 20 px lower in
-    its box on a Mac. Before the fix every Linux test passed while the share
-    line under each container was cut through at the box's lower edge on a Mac.
-    No test runs on macOS (`PL-2Y1L`), so this one keeps the canvas's foot at
-    least that far above the box's foot. Under DejaVu Sans, the font the Linux
-    CI runners use, the foot stands 14 px higher than in Inter, so there the
-    test catches only a larger loss of room. Under macOS's own platform the
-    room it stands in for is already taken, and
+    in, and its controls are taller. So the canvas's foot stands lower in its
+    box on a Mac. Before the fix every Linux test passed while the share line
+    under each container was cut through at the box's lower edge on a Mac. No
+    test runs on macOS (`PL-2Y1L`), so this one draws in DejaVu Sans and keeps
+    the canvas's foot at least as far above the box's foot as it stands
+    higher there than on a Mac. Under macOS's own platform that room is
+    already taken, and
     `test_each_shipped_workspace_shows_its_lesson_whole_with_one_run` checks
     the fit itself, so the test does not run there.
     """
+
+    from PySide6.QtGui import QFont, QFontInfo
 
     from anesthesia_sim.app.qt_schematic import RunSchematic
 
     if application.platformName() == "cocoa":
         pytest.skip("macOS draws its own text here, and the lesson test checks the fit")
 
-    view = _shipped_view_at(application, "Maintenance", 1366, 768)
-    (canvas,) = (
-        schematic.canvas for schematic in view.findChildren(RunSchematic) if schematic.isVisible()
-    )
-    boxes = [box for box in view.findChildren(QScrollArea) if box.isAncestorOf(canvas)]
-    (box,) = (
-        box
-        for box in boxes
-        if not any(other is not box and box.isAncestorOf(other) for other in boxes)
-    )
-    foot = canvas.mapTo(box.viewport(), QPoint(0, canvas.height())).y()
-    room = box.viewport().height() - foot
+    font = application.font()
+    application.setFont(QFont(_MAC_MARGIN_FONT_FAMILY, 9))
+
+    try:
+        # Qt substitutes another family without an error when the one asked
+        # for is missing, and the test would then measure a font it does not
+        # name.
+        assert QFontInfo(application.font()).family() == _MAC_MARGIN_FONT_FAMILY
+        view = _shipped_view_at(application, "Maintenance", 1366, 768)
+        (canvas,) = (
+            schematic.canvas
+            for schematic in view.findChildren(RunSchematic)
+            if schematic.isVisible()
+        )
+        boxes = [box for box in view.findChildren(QScrollArea) if box.isAncestorOf(canvas)]
+        (box,) = (
+            box
+            for box in boxes
+            if not any(other is not box and box.isAncestorOf(other) for other in boxes)
+        )
+        foot = canvas.mapTo(box.viewport(), QPoint(0, canvas.height())).y()
+        room = box.viewport().height() - foot
+    finally:
+        application.setFont(font)
+        _delete_shown_views(application)
 
     assert room >= _MAC_CANVAS_FOOT_LOWER_PX, f"the canvas's foot has {room} px of room"
 
