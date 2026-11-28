@@ -1099,7 +1099,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a user cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 215 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 217 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1316,6 +1316,8 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-H100 (M) On a Mac, the Maintenance Workspace at 1366 by 768 leaves each container's share line cut through at the schematic's lower edge and its share bar out of view
 - PL-2Y1L (M) No test runs on macOS, so a layout that fits the Linux test fonts but not macOS's system font passes every check
 - PL-596J (S) The concentration chart's text alternative gives the MAC-awake band without the legend's words "population, read against vessel-rich group trace", so a screen-reader user is not told which trace the band is read against
+- PL-BQB6 (M) Where the window's edge cuts across an Area while the page scrolls sideways, a line of the Area's header or its View's pinned row is cut mid-sentence, such as the schematic's "Tensions are in % of 1 atm."
+- PL-2XRN (M) On macOS, Qt hands a widget's accessible description to VoiceOver as the element's label, so a picture's description may be read without the run and instant its name gives
 
 ### Captures after the cut
 
@@ -1602,6 +1604,29 @@ was not told which trace to read the band against, and reading it against the
 alveolar trace is the first misreading that `docs/INTERFACE.md` § "MAC-awake
 as a chart reference" names. The text alternative now words the 1 MAC line and
 the band as their legend entries do.
+
+**`PL-BQB6` (`safety`) joined the frozen list on 2026-11-28, after the
+freeze, and waits for the owner's choice of route.** `PL-DKQ5`'s review found
+it, and the cut was present before the list froze. Where the window's edge cuts
+across an Area while the page scrolls sideways, a line of the Area's header can
+be cut mid-sentence, so the schematic's unit line can read "Tensions are in %
+of 1" while the tensions below it are drawn whole. No shipped Workspace scrolls
+the page sideways at any window size the app allows, so only a row of Areas
+that a user arranges wider than the window reaches it. It is not deferred,
+because a cut unit line can be misread, so the hazard is not recorded as not
+live. The item holds the question and its recommendation: wrap each line to
+the part in view.
+
+**`PL-2XRN` (`safety`) joined the frozen list on 2026-11-28, after the
+freeze.** `PL-PN2C`'s review found it, and both causes were present before the
+list froze. On macOS, Qt hands a widget's accessible description to VoiceOver
+as the element's label and its name as the title. The compartment schematic's
+description gives each container's tension, amount and share, and only its
+name says which run and which instant they belong to. So where VoiceOver reads
+the label in place of the title, a Mac user comparing two runs could hear one
+run's modelled values without being told which. It is not deferred, because
+what VoiceOver reads first is not yet known. Making each picture's description
+name its own run and instant removes the hazard whatever VoiceOver reads.
 
 ### Required scope
 

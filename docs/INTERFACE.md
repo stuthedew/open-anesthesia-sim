@@ -4524,6 +4524,12 @@ add the run while two runs are compared, such as "Playback, Run 2" and
 reader while it still shows its own text, because Linux and macOS take what a
 selector is for from that label. Each name starts with the label shown, which
 the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
+A button or a box shows its own words, and its name starts with them too, in
+each shipped Workspace with one run or two. So a compartment's box in the
+concentration chart's legend is named by its legend words, such as "Alveolar
+(long dash)". The box has no description of what it does, because Qt hands a
+description to VoiceOver on macOS as the element's label, which could be read
+in place of those words (`PL-PN2C`).
 The W3C's ARIA Authoring Practices Guide asks for "unique names for elements
 with the same role unless the elements are actually identical". So no two
 controls or pictures that a reader can reach share a name, in any shipped
@@ -4535,9 +4541,12 @@ it, or by what it holds, such as "Concentration chart legend"
 `test_each_selector_is_named_by_its_shown_label_on_every_platform`,
 `test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
 `test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot`,
-`test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`
-and `test_a_name_that_does_not_start_with_the_shown_label_is_refused` in
-`tests/integration/test_keyboard_focus.py`).
+`test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`,
+`test_a_name_that_does_not_start_with_the_shown_label_is_refused` and
+`test_each_button_and_box_is_named_starting_with_the_words_it_shows` in
+`tests/integration/test_keyboard_focus.py`, and
+`test_each_compartment_box_is_named_by_the_words_it_shows`
+in `tests/integration/test_qt_chart.py`).
 
 **Each Area, and each control that belongs to one Area, is named with the
 Area** (`PL-XV64`). An Area's name is the title of the View it shows, such as

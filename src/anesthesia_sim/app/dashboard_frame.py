@@ -1268,11 +1268,6 @@ MAC_AWAKE_BAND_LEGEND_TEMPLATE: Final = (
     + " trace"
 )
 MAC_AWAKE_BAND_LEGEND_NAME: Final = "MAC-awake"
-#: What assistive technology announces for a compartment's legend box. It
-#: names the action the box performs, not the pattern words beside it, which
-#: describe the line rather than the control. It is carried over from the Flet
-#: legend's semantics label, so the port loses nothing a screen reader had.
-TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE: Final = "Draw the {label} compartment on the chart"
 #: A compartment's legend words: its name and its line style, so the style can
 #: be read without looking at the plot (`docs/INTERFACE.md` § "The six
 #: compartment traces"). It is one template rather than an f-string at each

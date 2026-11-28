@@ -134,7 +134,6 @@ from anesthesia_sim.app.dashboard_frame import (
     ONE_MAC_LINE_LEGEND_TEMPLATE,
     TIME_AXIS_TITLE,
     TIME_AXIS_TITLE_TEMPLATE,
-    TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
     compared_trace_legend_label,
     concentration_chart_description,
@@ -2909,19 +2908,27 @@ class TraceLegend(QWidget):
         self.show_selection(INITIAL_COMPARTMENT_SELECTION)
 
     def name_boxes(self, which: str | None) -> None:
-        """Name each compartment's box for a screen reader, adding `which` where it is not None.
+        """Name each compartment's box by the words it shows, adding `which` where it is not None.
 
         `which` names the Area that holds the chart, where another Area shows
         a concentration chart too, such as "Concentrations 2" (`PL-XV64`).
         Only a name that differs is written, so a screen reader is sent no
         change while the Area keeps its name.
+
+        The name is the box's words, as WCAG 2.2 SC 2.5.3 (Label in Name)
+        asks, because a speech-input user says those words to click the box.
+        The Understanding document for SC 2.5.3 says "Where practical, make
+        the control's text label and name match". The box is given no
+        description of what it does. Qt 6.12 hands a widget's description to
+        VoiceOver on macOS as the element's label, and its name as the title
+        (`accessibilityLabel` and `accessibilityTitle` in
+        `qcocoaaccessibilityelement.mm`), so a description could be read there
+        in place of the box's words (`PL-PN2C`).
         """
 
         for style in COMPARTMENT_TRACES:
             box = self._boxes[style.quantity]
-            name = control_name(
-                TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label), which
-            )
+            name = control_name(trace_legend_label(style), which)
 
             if box.accessibleName() != name:
                 box.setAccessibleName(name)

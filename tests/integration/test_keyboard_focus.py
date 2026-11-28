@@ -25,6 +25,7 @@ from PySide6.QtGui import QAccessible, QAccessibleInterface, QColor, QImage
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
+    QAbstractButton,
     QApplication,
     QGraphicsView,
     QLabel,
@@ -502,6 +503,72 @@ def test_no_two_controls_or_pictures_share_a_name_after_each_plot_area_is_split(
     assert sorted(shared) == []
 
 
+def _as_said(text: str) -> str:
+    """Return `text` as a speech-input user says it: no mnemonic mark, case or punctuation.
+
+    The Understanding document for WCAG 2.2 SC 2.5.3 (Label in Name) says that
+    capitalization and most punctuation "are generally ignored when a user
+    speaks a label", so a difference in either does not count. Qt draws a
+    single "&" in a button's text as an underline under the next letter, and
+    "&&" as one "&".
+    """
+
+    shown = text.replace("&&", "\0").replace("&", "").replace("\0", "&")
+    words = "".join(character if character.isalnum() else " " for character in shown.casefold())
+
+    return " ".join(words.split())
+
+
+def _names_without_their_shown_words(window: QWidget) -> list[str]:
+    """Return each button or box shown in `window` whose name does not start with its own words.
+
+    The name is compared word by word, so "Settings" does not start with
+    "Set". A button or a box with no letter or digit in its text is left out,
+    such as "▶". The Understanding document for SC 2.5.3 does not count text
+    used as a symbol as a label.
+    """
+
+    found = []
+
+    for node in _accessible_tree(QAccessible.queryAccessibleInterface(window)):
+        widget = node.object()
+
+        if not isinstance(widget, QAbstractButton) or node.state().invisible:
+            continue
+
+        shown = _as_said(widget.text()).split()
+        name = node.text(QAccessible.Text.Name)
+
+        if shown and _as_said(name).split()[: len(shown)] != shown:
+            found.append(f"{type(widget).__name__} shows {widget.text()!r} but is named {name!r}")
+
+    return found
+
+
+@pytest.mark.parametrize("runs", [1, 2], ids=["one run", "two runs compared"])
+@pytest.mark.parametrize("shipped", WALKED, ids=WALKED_IDS)
+def test_each_button_and_box_is_named_starting_with_the_words_it_shows(
+    application: QApplication, shipped: ShippedWorkspaceId | None, runs: int
+) -> None:
+    """`PL-PN2C`: a speech-input user can say the words on a button or a box to click it.
+
+    WCAG 2.2 SC 2.5.3 (Label in Name) asks that a control's name contain the
+    words that label it on screen, and its Understanding document calls it
+    best practice for the name to start with them. `qt_widgets.label_control`
+    refuses such a name for a control labelled by a separate label. A button
+    or a box shows its own words, and nothing refused a name for it that left
+    them out. So the concentration chart's legend boxes showed "Circuit
+    (solid)" and were named "Draw the Circuit compartment on the chart"
+    until `PL-PN2C`.
+    """
+
+    view = _compared_dashboard(application, runs, shipped)
+    found = _names_without_their_shown_words(view)
+    view.close()
+
+    assert found == []
+
+
 #: The widget classes that paint themselves but draw no picture, each against
 #: what it draws. A screen reader is told about each in another way, or what it
 #: draws is told beside it. A class of this program that paints itself and is
@@ -736,7 +803,7 @@ def test_an_area_alone_of_its_kind_adds_no_name_to_its_legends_pictures_or_price
     view.close()
 
     assert "Concentration chart legend" in purposes
-    assert "Draw the Alveolar compartment on the chart" in purposes
+    assert "Alveolar (long dash)" in purposes
     assert "Bottle price" in purposes
     assert removes == ["Remove price"]
     assert len(pictures) == 3
@@ -828,9 +895,9 @@ def test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number(
         "Axis top, Concentrations 1",
         "Axis top, Concentrations 2",
     ]
-    assert starting("Draw the Alveolar compartment") == [
-        "Draw the Alveolar compartment on the chart, Concentrations 1",
-        "Draw the Alveolar compartment on the chart, Concentrations 2",
+    assert starting("Alveolar (long dash)") == [
+        "Alveolar (long dash), Concentrations 1",
+        "Alveolar (long dash), Concentrations 2",
     ]
     assert starting("Concentration chart legend") == [
         "Concentration chart legend, Concentrations 1",
