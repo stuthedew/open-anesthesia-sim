@@ -7040,22 +7040,23 @@ message states the error and the operations that can follow it (guideline
 2.7.3-1, p. 2-86), and a user is told when a received message is cut short to
 fit its space (guideline 10.3.4-8, p. 10-14).
 
-**Where no scroll position can show a whole row of containers, the Area shows
-its too-small notice instead** (`PL-GWTR`). The box must be at least as tall as
-a run's heading and the schematic down to its containers' lower edge. On a 1366
-by 768 screen, the Maintenance Workspace gives the schematic an Area too short
-to hold even one run's schematic (`PL-3NGZ`). With a branch open there, the
-page scrolls and the Area is held at its least height, which leaves the box
-shorter than that. The Area then shows "Too small for Compartment schematic."
-and the size that the View needs. Giving the schematic room for a row of
-containers here is `PL-C14T`. While the page scrolls, no border can give the
-Area more height, so the notice says to make the window taller in place of its
-usual advice to drag a border. The Area is not held taller, because the page
-would then grow and push the concentration chart's title and key above the
-window's top after a branch (`PL-DKQ5`). With one run, or with two on a 1680 by
-1050 or a 1920 by 1080 screen, the schematic is shown. The row above the
-scrolling part, and the Area's header, still move out of view when the page
-itself scrolls them past the window's edge (`PL-DKQ5`).
+**Where the box is too short to show a whole row of containers under a run's
+heading, the Area shows its too-small notice instead** (`PL-GWTR`). The box
+must be at least as tall as a run's heading and the schematic down to its
+containers' lower edge. On a 1366 by 768 screen, the Maintenance Workspace
+gives the schematic an Area too short to hold even one run's schematic
+(`PL-3NGZ`). With a branch open there, the page scrolls and the Area is held at
+its least height, which leaves the box shorter than that. The Area then shows
+"Too small for Compartment schematic." and the size that the View needs. Giving
+the schematic room for a row of containers here is `PL-C14T`. While the page
+scrolls, no border can give the Area more height, so the notice says to make
+the window taller in place of its usual advice to drag a border. The Area is
+not held taller, because the page would then grow and push the concentration
+chart's title and key above the window's top after a branch (`PL-DKQ5`). With
+one run, or with two on a 1680 by 1050 or a 1920 by 1080 screen, the schematic
+is shown. The row above the scrolling part, and the Area's header, still move
+out of view when the page itself scrolls them past the window's edge
+(`PL-DKQ5`).
 
 Two compared runs can be at
 different times, as when one is a branch taken at an earlier point. A
@@ -7125,7 +7126,7 @@ canvas's pixels without painting them again. The View declares its
 `legible_height`: the heading, and the canvas down to the containers' lower
 edge. `AreaLayout` shows the too-small notice wherever the box is shorter, and
 asks `largest_height` in `layout/sizing.py` whether a border could give the
-Area that height. Seven tests in
+Area that height. Ten tests in
 `tests/integration/test_compartment_schematic_view.py` hold the rest.
 
 1. `test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`
@@ -7153,6 +7154,15 @@ Area that height. Seven tests in
 7. `test_a_box_too_short_for_a_row_of_containers_shows_a_notice_in_place_of_the_schematic`
    checks the notice, and the height it states, in the Maintenance Workspace
    at 1366 by 768 with a branch open.
+8. `test_a_page_scrolled_sideways_hides_each_label_line_and_share_bar_it_cuts`
+   scrolls the page of a window 1280 px wide to its left and right ends. It
+   checks that a label line or a share bar is shown only while it is whole
+   across as well as down.
+9. `test_the_hidden_containers_line_is_listed_with_each_run_s_strings` checks
+   that the line shown in place of cut containers is in each run's list of
+   painted strings, which the interface's wording test reads.
+10. `test_each_move_of_a_run_heading_asks_its_canvas_to_repaint` checks that
+    a scroll of the box asks every run's canvas to paint again.
 
 `test_a_row_s_clear_part_is_its_part_in_view_below_the_heading` in
 `tests/integration/test_pinned_heading.py` checks `clear_of_heading`. Three

@@ -1622,11 +1622,12 @@ class CompartmentSchematicView(QWidget):
     def legible_height(self) -> int | None:
         """Return the least height of the box that scrolls this View for a whole row of containers.
 
-        In a shorter box, every container would be cut off at every scroll
-        position, by the run's heading or by the box's edge. Its Area then
-        shows a notice in place of the View (`app/area_layout.py`'s
-        `legible_height`). The result is None while no run is shown, as before
-        the first tick.
+        A box this tall shows each run's containers whole while that run's
+        section starts at the box's top (`RunSchematic.legible_height`). In a
+        shorter box, the containers are cut off at every scroll position, or
+        at all but a few that a mouse wheel passes over. Its Area then shows a
+        notice in place of the View (`app/area_layout.py`'s `legible_height`).
+        The result is None while no run is shown, as before the first tick.
         """
 
         heights = [schematic.legible_height() for schematic in self._schematics.widgets]

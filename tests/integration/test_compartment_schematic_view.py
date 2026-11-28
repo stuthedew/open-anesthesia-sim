@@ -27,6 +27,7 @@ from anesthesia_sim.app.area_layout import ViewScroll
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
+    CUT_CONTAINERS_TEXT,
     NO_AGENT_SHARE_CAPTION,
     NO_SHARE_TEXT,
     SHARE_TEMPLATE,
@@ -1265,13 +1266,20 @@ def _clear_part(scroll: ViewScroll, run: RunSchematic) -> QRect:
     return shown_part.translated(-corner)
 
 
-def _whole_in(clear: QRect, part: QRectF, reach: float = 0.0) -> bool:
-    """Return whether `part`, widened by `reach` px above and below, lies within `clear`'s rows."""
+def _whole_in(clear: QRect, part: QRectF, reach: float = 0.0, *, across: bool = False) -> bool:
+    """Return whether `part`, widened by `reach` px above and below, lies within `clear`'s rows.
+
+    With `across`, `part` must lie within `clear`'s columns too.
+    """
 
     return (
         not clear.isEmpty()
         and clear.top() <= part.top() - reach
         and part.bottom() + reach <= clear.top() + clear.height()
+        and (
+            not across
+            or (clear.left() <= part.left() and part.right() <= clear.x() + clear.width())
+        )
     )
 
 
@@ -1339,10 +1347,10 @@ def test_no_container_label_line_or_share_bar_is_painted_cut_at_any_scroll_posit
                 (index, line)
                 for index in columns
                 for line in range(3)
-                if _whole_in(clear, canvas.label_line(index, line))
+                if _whole_in(clear, canvas.label_line(index, line), across=True)
             }, where
             assert parts.bars == {
-                index for index in columns if _whole_in(clear, canvas.share_bar(index))
+                index for index in columns if _whole_in(clear, canvas.share_bar(index), across=True)
             }, where
 
             for index, reading in enumerate(canvas.readings):
@@ -1385,7 +1393,9 @@ def test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole(
     hides them. A clear part from 20 px puts the line that says why they are
     hidden at its top, above the labels. An edge across a label line hides
     that line in every column. A space too short for the line paints neither
-    the containers nor the line.
+    the containers nor the line. An edge at a side hides each label line and
+    share bar that it crosses, because a line cut there loses digits, but not
+    the containers, whose fills keep their heights.
     """
 
     controller = SimulationController()
@@ -1432,6 +1442,21 @@ def test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole(
 
     assert measured(QRect(0, 0, width, bottom)) == CanvasParts(
         True, frozenset((index, 0) for index in range(6)), frozenset(), None
+    )
+
+    # A cut at a side hides the lines and the bar it crosses, and leaves the
+    # containers, whose fills keep their heights.
+    last_column = frozenset((5, line) for line in range(3))
+    first_column = frozenset((0, line) for line in range(3))
+
+    assert measured(QRect(0, 0, width - 1, height)) == CanvasParts(
+        True, every_line - last_column, every_bar, None
+    )
+    assert measured(QRect(0, 0, int(source.share_bar(5).right()) - 1, height)) == CanvasParts(
+        True, every_line - last_column, every_bar - {5}, None
+    )
+    assert measured(QRect(1, 0, width - 1, height)) == CanvasParts(
+        True, every_line - first_column, every_bar, None
     )
 
     too_short = measured(QRect(0, 100, width, 10))
@@ -1715,3 +1740,117 @@ def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
     for run in schematic.schematics:
         if _seen_without_heading(page, run, shown_part):
             assert _heading_in_view(page, run, shown_part), run.name_text.text()
+
+
+def test_a_page_scrolled_sideways_hides_each_label_line_and_share_bar_it_cuts(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-GWTR`: a column cut at the window's side shows no part of its label or share bar.
+
+    In the Maintenance Workspace at 1280 by 1080 with one run, the page is
+    wider than the window and scrolls sideways, and the schematic is in the
+    right-hand column. With the page at its left end, the window's right edge
+    runs through the last containers' columns. A tension cut there could read
+    as a smaller number, and a share bar cut at its right end could read as a
+    larger share. The part of each label line and share bar in view is worked
+    out here from where the page, the box and the canvas stand. Each must be
+    painted only while it is whole in view, at both ends of the page's scroll.
+    """
+
+    view = _paused_dashboard(application, shown, _maintenance(), (1280, 1080), branched=False)
+    schematic = _schematic(view)
+    (run,) = schematic.schematics
+    canvas = run.canvas
+    scroll = _view_scroll(schematic)
+    page = view._page_scroll
+    sideways = page.horizontalScrollBar()
+    columns = range(len(_NAMES))
+
+    # The premise: the schematic is shown and the page scrolls sideways.
+    assert schematic.isVisible()
+    assert sideways.maximum() > 0
+
+    hidden_at_left = None
+
+    for position in (0, sideways.maximum()):
+        sideways.setValue(position)
+        application.processEvents()
+        corner = canvas.mapTo(page.viewport(), QPoint(0, 0))
+        on_page = QRect(corner, canvas.size()).intersected(page.viewport().rect())
+        clear = _clear_part(scroll, run).intersected(on_page.translated(-corner))
+        parts = canvas.shown_parts()
+        lines = {
+            (index, line)
+            for index in columns
+            for line in range(3)
+            if _whole_in(clear, canvas.label_line(index, line), across=True)
+        }
+        bars = {
+            index for index in columns if _whole_in(clear, canvas.share_bar(index), across=True)
+        }
+
+        assert parts.lines == lines, position
+        assert parts.bars == bars, position
+
+        if position == 0:
+            hidden_at_left = len(columns) * 3 - len(lines)
+
+    # The premise: at the page's left end the window's edge cuts a column.
+    assert hidden_at_left is not None and hidden_at_left > 0
+
+
+def test_the_hidden_containers_line_is_listed_with_each_run_s_strings(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-GWTR`: the interface's wording test can read the line that replaces cut containers.
+
+    The canvas paints the line itself, so no label holds it. Each run's
+    schematic lists it once, after its names and labels, at every scroll
+    position, as it lists the labels. So the dashboard's strings hold it, and
+    a change to its words fails the wording test until it is approved.
+    """
+
+    view = _paused_dashboard(application, shown, _maintenance(), (1920, 1080), branched=True)
+    schematic = _schematic(view)
+
+    for run in schematic.schematics:
+        assert run.painted_strings()[-1] == CUT_CONTAINERS_TEXT
+        assert run.painted_strings().count(CUT_CONTAINERS_TEXT) == 1
+
+    assert view.interface_strings().count(CUT_CONTAINERS_TEXT) == len(schematic.schematics)
+
+
+def test_each_move_of_a_run_heading_asks_its_canvas_to_repaint(
+    application: QApplication, shown: list[SimulationView], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-GWTR`: a scroll that moves a run's heading asks that run's canvas to paint again.
+
+    On a platform that scrolls by copying the pixels already painted, a
+    container painted whole before a scroll would stay painted after the
+    scroll had slid the heading over its top, until something else repainted
+    it. So each move of a heading asks its canvas to paint again, and the
+    canvas then paints from its clear part as it is. The offscreen platform
+    the tests run on repaints the whole widget after a scroll, measured on
+    2026-11-28, so no pixel there can show the stale case. The test therefore
+    counts the canvas's requests to paint while the box scrolls by 3 px in the
+    Maintenance Workspace at 1920 by 1080 with two runs.
+    """
+
+    view = _paused_dashboard(application, shown, _maintenance(), (1920, 1080), branched=True)
+    schematic = _schematic(view)
+    bar = _view_scroll(schematic).verticalScrollBar()
+    bar.setValue(bar.maximum() // 2)
+    application.processEvents()
+    requests = {id(run.canvas): 0 for run in schematic.schematics}
+
+    for run in schematic.schematics:
+
+        def count(canvas_id: int = id(run.canvas)) -> None:
+            requests[canvas_id] += 1
+
+        monkeypatch.setattr(run.canvas, "update", count)
+
+    bar.setValue(bar.value() + 3)
+    application.processEvents()
+
+    assert all(requests.values()), requests

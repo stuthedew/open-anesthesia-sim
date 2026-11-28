@@ -11,7 +11,7 @@ added: 2026-11-27
 closed: 2026-11-28
 pr: 2346
 payoff: a user never sees a schematic container or label line cut off, so no fill reads as full or above the scale and no cut digit reads as another
-tests: tests/integration/test_compartment_schematic_view.py::test_no_container_label_line_or_share_bar_is_painted_cut_at_any_scroll_position, tests/integration/test_compartment_schematic_view.py::test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole, tests/integration/test_compartment_schematic_view.py::test_a_box_too_short_for_a_row_of_containers_shows_a_notice_in_place_of_the_schematic, tests/integration/test_layout_adapter.py::test_an_area_shorter_than_its_view_s_legible_height_shows_the_notice_and_is_not_held_taller, tests/integration/test_layout_adapter.py::test_an_area_no_border_can_make_legible_says_to_make_the_window_taller, tests/integration/test_layout_adapter.py::test_an_area_follows_its_view_s_legible_height_when_the_view_drops_it, tests/unit/test_view_registry.py::test_the_too_small_notice_says_to_make_the_window_taller_where_no_border_can_help, tests/integration/test_pinned_heading.py::test_a_row_s_clear_part_is_its_part_in_view_below_the_heading, tests/unit/test_layout_sizing.py::test_largest_height_gives_an_area_its_column_less_its_siblings_least_heights, tests/unit/test_layout_sizing.py::test_largest_height_refuses_an_area_the_tree_does_not_hold
+tests: tests/integration/test_compartment_schematic_view.py::test_no_container_label_line_or_share_bar_is_painted_cut_at_any_scroll_position, tests/integration/test_compartment_schematic_view.py::test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole, tests/integration/test_compartment_schematic_view.py::test_a_box_too_short_for_a_row_of_containers_shows_a_notice_in_place_of_the_schematic, tests/integration/test_layout_adapter.py::test_an_area_shorter_than_its_view_s_legible_height_shows_the_notice_and_is_not_held_taller, tests/integration/test_layout_adapter.py::test_an_area_no_border_can_make_legible_says_to_make_the_window_taller, tests/integration/test_layout_adapter.py::test_an_area_follows_its_view_s_legible_height_when_the_view_drops_it, tests/unit/test_view_registry.py::test_the_too_small_notice_says_to_make_the_window_taller_where_no_border_can_help, tests/integration/test_pinned_heading.py::test_a_row_s_clear_part_is_its_part_in_view_below_the_heading, tests/unit/test_layout_sizing.py::test_largest_height_gives_an_area_its_column_less_its_siblings_least_heights, tests/unit/test_layout_sizing.py::test_largest_height_refuses_an_area_the_tree_does_not_hold, tests/integration/test_compartment_schematic_view.py::test_a_page_scrolled_sideways_hides_each_label_line_and_share_bar_it_cuts, tests/integration/test_compartment_schematic_view.py::test_the_hidden_containers_line_is_listed_with_each_run_s_strings, tests/integration/test_compartment_schematic_view.py::test_each_move_of_a_run_heading_asks_its_canvas_to_repaint
 ---
 
 **Problem.** A schematic container that stands across a pinned run heading's lower edge shows only its lower part, so its fill can look like that of a container at or over the scale's top
@@ -94,7 +94,10 @@ paints, it works out from that which parts are whole there
 (`SchematicCanvas.shown_parts` in `app/qt_schematic.py`), and paints only
 those. The six containers, the lines that join them and the marks inside them
 are one part, because a fill is read against its neighbours and against the
-scale's marks. Each label line and each share bar is a part of its own. A
+scale's marks. Each label line and each share bar is a part of its own, and
+is painted only while it is whole across as well as down, because a cut at a
+side drops a line's last digits and a bar's end. A container's fill keeps its
+height when a side is cut, so the containers are held whole only down. A
 container above the scale draws a line 2 px over its outline, so the
 containers count as whole only when that line is in view too. Where the
 containers are hidden, the canvas paints "The containers are not wholly in
@@ -103,7 +106,7 @@ at the top of the part in view and above the labels, where that space holds
 the whole line. `RunSchematic.pin_heading` repaints the canvas after each move
 of the heading, because a scroll moves pixels already painted.
 
-**Where no scroll position can show a row, the Area shows its notice.** The
+**Where the box is too short to show a whole row of containers under a run's heading, the Area shows its notice.** The
 View declares a legible height: the heading and the canvas down to the
 containers' lower edge, 154 px under the container's font
 (`CompartmentSchematicView.legible_height`). `AreaLayout` shows the
@@ -163,7 +166,7 @@ of containers whole. At 1366 by 768 and 1440 by 900, dragging either border of
 the schematic's Area by 300 px up or down did not make the Area taller, which
 is what the notice's new advice rests on.
 
-**Tests.** Seven tests in `tests/integration/test_compartment_schematic_view.py`
+**Tests.** Ten tests in `tests/integration/test_compartment_schematic_view.py`
 are listed in `docs/INTERFACE.md`'s note for developers on the schematic, and
 three new ones in `tests/integration/test_layout_adapter.py` check the notice
 for any View that declares a legible height. Five tests in
@@ -187,6 +190,57 @@ failed each time:
 4. Leaving the off-scale line's 2 px out of the containers' extent fails both
    tests, the second at a clear part 13 px from the top.
 5. Comparing only a part's top with the clear part fails both tests.
+
+The three tests added after the review failed the same way, each with its own
+part taken out:
+
+6. Comparing only a part's vertical extent fails
+   `test_a_page_scrolled_sideways_hides_each_label_line_and_share_bar_it_cuts`
+   and `test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole`.
+7. Leaving the hidden-containers line out of `RunSchematic.painted_strings`
+   fails `test_the_hidden_containers_line_is_listed_with_each_run_s_strings`.
+8. Taking the canvas's repaint out of `RunSchematic.pin_heading` fails
+   `test_each_move_of_a_run_heading_asks_its_canvas_to_repaint`, with every
+   canvas asked to repaint 0 times.
+
+**Review findings** (two blind passes, 2026-11-28). Both passes found the same
+two faults, and both are fixed:
+
+1. A label line or a share bar cut at the left or right edge of the page's
+   view was still painted, so "1520 mL vapour" could show as "520 mL vapour".
+   The page scrolls sideways when the window is narrower than the layout's
+   least width. `shown_parts` now holds each label line and share bar whole
+   across as well as down. At 1280 by 1080 in the Maintenance Workspace with
+   one run, the page scrolls 22 px sideways. At its left end the window's
+   right edge cuts the last column, and that column's three label lines and
+   its share bar are now hidden, while the other 15 lines and five bars show.
+2. The hidden-containers line was not in the run's list of painted strings,
+   so the interface's wording test could not hold it. `RunSchematic` now lists
+   it last, and the canvas leaves it out of its own list, because the column
+   width is read from the canvas's list and would widen to the line's length.
+   The line is now in the approved wording list.
+
+The first pass also said that "Make the window taller" cannot be followed on a
+small screen with the window maximized. That is left as it is: the notice also
+offers a smaller View, and giving the schematic room on such a screen is
+`PL-C14T`'s work in the interface pass.
+
+The second pass made two more points, and both are fixed:
+
+1. The pixel test reads the canvas through `grab()`, which paints again, so it
+   would pass if `pin_heading` stopped asking the canvas to repaint. On the
+   offscreen platform a scroll repaints the whole canvas anyway (measured
+   2026-11-28), so a pixel test cannot see this either. A new test counts
+   each canvas's repaint requests across a 3 px scroll of the box.
+2. `legible_height` is 12 px more than the least box that can show a row
+   whole. The canvas's top 12 px hold only the arterial line, so the heading
+   can slide over them, and a box 100 px taller than the heading shows the
+   row whole at one scroll position. The height is kept, because a mouse
+   wheel moves the box 60 px a notch (Qt's 20 px step times three lines,
+   measured 2026-11-28) and so passes over that one position. The docstrings
+   of `RunSchematic.legible_height`, `CompartmentSchematicView.legible_height`
+   and `AreaLayout` that said every shorter box cuts the row at every scroll
+   position now say what is true.
 
 **Gate.** Added to v0.7.0's frozen list by the owner's decision above. The
 `ROADMAP.md` paragraph before v0.7.0's "Required scope" records it.

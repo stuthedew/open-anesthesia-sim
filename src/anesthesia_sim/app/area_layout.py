@@ -2328,8 +2328,8 @@ class AreaFrame(QFrame):
     is updated whenever the Area is resized, so a reader who drags a border
     sees it disappear as soon as the Area is large enough. It shows no value
     from any run. The same notice is shown where the layout gives the Area its
-    need but its box is shorter than the View's legible height, in which every
-    scroll position would cut the View's smallest part (`legible_height`,
+    need but its box is shorter than the View's legible height, in which a
+    scroll would show the View's smallest part cut (`legible_height`,
     `PL-GWTR`). Where no border can give the Area that height, as in a page
     that scrolls, the notice says to make the window taller.
 
@@ -2570,7 +2570,7 @@ def legible_height(view: QWidget) -> int | None:
     A View declares it as a `legible_height` method, in pixels. A View whose
     parts could be misread when cut, such as the compartment schematic's
     containers, declares one, so that in a shorter box its Area shows a notice
-    rather than parts that every scroll position cuts (`PL-GWTR`). A View that
+    rather than parts that a scroll would show cut (`PL-GWTR`). A View that
     declares none, or whose method returns None, is shown in a box of any
     height and scrolls there (`PL-CBYS`).
     """
