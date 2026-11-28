@@ -328,12 +328,35 @@ class PinnedHeadingSection(QWidget):
         height = self.heading.sizeHint().height()
         shown = in_view(self)
         top = 0 if shown.isEmpty() else min(max(shown.top(), 0), max(self.height() - height, 0))
-        # A heading that slides keeps the width it has in its own space, so
-        # each of its lines and controls keeps its place within it, and the
-        # section's right edge cuts what runs past it.
+        # A heading that slides ends at the section's right edge, so a
+        # control at its right end stays in view with the part in view. It is
+        # never narrower than its least width, so no line is squeezed. Where
+        # the part in view is narrower than that, the section's right edge
+        # cuts the heading's end (`PL-BQB6`).
         left = self._inset if self._slides_left else 0
+        width = max(self.width() - left, self._least_line_width()) if left else self.width()
 
-        return QRect(left, top, self.width(), height)
+        return QRect(left, top, width, height)
+
+    def _least_line_width(self) -> int:
+        """Return the least width that the widest of the heading's lines needs, in pixels.
+
+        A line can ask for no width of its own, as an Area's header does so
+        that a narrow Area clips its title rather than growing. The heading's
+        own least width then leaves that line out, so each line is asked.
+        """
+
+        margins = self.heading.contentsMargins()
+        lines = self.heading.findChildren(
+            QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly
+        )
+        widest = max(
+            (line.minimumSizeHint().width() for line in lines if not line.isHidden()), default=0
+        )
+
+        return max(
+            widest + margins.left() + margins.right(), self.heading.minimumSizeHint().width()
+        )
 
     def _left_inset(self) -> int:
         """Return how far the heading's start moves right, to the left edge of the part in view.

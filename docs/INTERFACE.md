@@ -3160,13 +3160,16 @@ edge, both stand at the top of the area's part in view, over the top of the
 view. A heading inside the view, such as a run's name in the compartment
 schematic, then stands under them. While the page is scrolled sideways, each
 line of the header and the pinned row starts at the left edge of the part in
-view, and so does a run's name. NUREG-0700 Rev. 3, guideline 1.5-15, p. 1-59,
-asks that general labels "remain along the top (or bottom) and left (or
+view, and so does a run's name. The header and the pinned row then end at
+the area's right edge, so a control at the row's end, such as the
+schematic's "Axis top", stays in view with the area. NUREG-0700 Rev. 3,
+guideline 1.5-15, p. 1-59, asks that general labels "remain along the top (or bottom) and left (or
 right) edges of the display" while it scrolls, and a Blender area keeps its
 header at the area's edge ("A header is a small horizontal strip, which sits
 either at the top or bottom of an area", Blender Manual, "Regions"). A long
-line can still run past the window's right edge where that edge cuts across
-an area (`PL-BQB6`). A control that Tab or Shift+Tab moves the focus to is
+line can still be cut at its end, where the window's right edge cuts across
+an area, or where the part of an area in view is narrower than the line
+(`PL-BQB6`). A control that Tab or Shift+Tab moves the focus to is
 scrolled into view below the header and the pinned row, never under them.
 WCAG 2.2, success criterion 2.4.11, "Focus Not Obscured (Minimum)", asks that
 a control taking the focus is "not entirely hidden due to author-created
@@ -3178,8 +3181,9 @@ heading of a `PinnedHeadingSection` (`AreaFrame.chrome` in
 leaves out what any heading around it covers (`in_view`), so a heading inside
 the view pins under the area's. The dashboard scrolls the page to the
 concentration chart only as far as it takes to show the chart clear of its
-area's header (`scroll_clear_into_view`). The page and each view's scroll box
-are a `HeadingScroll`, which scrolls a control that takes the focus clear of
+area's header (`scroll_clear_into_view`). The page, each view's scroll box
+and each box inside a view, such as a chart's key (`FittedScroll`), are a
+`HeadingScroll`, which scrolls a control that takes the focus clear of
 the headings, through every box around it from the innermost out. Every
 registered view is checked in an area at the window's top, at every position
 of the page's scroll down and sideways, and with the focus moved back through

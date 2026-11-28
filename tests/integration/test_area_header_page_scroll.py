@@ -58,6 +58,11 @@ _WIDE = (COMPARTMENT_SCHEMATIC, AGENT_COST, WASH_IN, CONCENTRATION_CHART)
 # the parameter controls are held at their whole height with two runs open.
 _SHORT_WINDOW_PX = (1400, 400)
 
+# Beside the parameter controls, a window this tall leaves the page's view
+# taller than the schematic's header and pinned row, so its values can show
+# below them, and the page still scrolls down.
+_BESIDE_WINDOW_PX = (1400, 500)
+
 # How far the page scrolls sideways at least, once the window has been made
 # narrow enough.
 _SIDEWAYS_SCROLL_PX = 120
@@ -87,18 +92,28 @@ def shown(application: QApplication) -> Iterator[list[SimulationView]]:
 
 
 @pytest.mark.parametrize("kind", _KINDS, ids=str)
+@pytest.mark.parametrize("arranged", ["over", "beside"])
 def test_a_page_scrolled_down_keeps_each_area_s_header_and_pinned_row_over_its_values(
-    application: QApplication, shown: list[SimulationView], kind: ViewKind
+    application: QApplication, shown: list[SimulationView], kind: ViewKind, arranged: str
 ) -> None:
     """`PL-DKQ5`: no value is seen while the page has scrolled its Area's header or pinned row away.
 
-    The View is in the top Area of a column, over the parameter controls, in
-    a window 1400 by 400. Before the fix, the page carried the header and the
-    pinned row above the window's edge with the View's lower part still in
-    view: the schematic's tension lines, for one, past about 71 px of scroll.
+    The View is in the first Area, over the parameter controls in a window
+    1400 by 400, or beside them in a window 1400 by 500. Over them, the
+    schematic's Area is too short to draw, so the schematic is checked beside
+    them, where its Area is as tall as theirs. Halfway down, the header
+    starts to show a pinned run's name. Before the fix, the page carried the
+    header and the pinned row above the window's edge with the View's lower
+    part still in view: the wash-in plot without its line saying it is
+    modelled, for one.
     """
 
-    view = _paused_dashboard(application, shown, _column_of(kind), _SHORT_WINDOW_PX)
+    layout, size = (
+        (_column_of(kind), _SHORT_WINDOW_PX)
+        if arranged == "over"
+        else (_beside(kind), _BESIDE_WINDOW_PX)
+    )
+    view = _paused_dashboard(application, shown, layout, size)
     page = view._page_scroll
     bar = page.verticalScrollBar()
     top = view.layout_container.frame(AreaId(1))
@@ -109,16 +124,29 @@ def test_a_page_scrolled_down_keeps_each_area_s_header_and_pinned_row_over_its_v
     application.processEvents()
     assert bar.maximum() > top.mapTo(page.viewport(), QPoint(0, 0)).y() + top.header.height()
 
-    seen_anywhere = False
+    seen: set[AreaId] = set()
+    painted: set[AreaId] = set()
 
     for position in range(bar.maximum() + 1):
         bar.setValue(position)
-        application.processEvents()
-        seen_anywhere |= _check_every_area(
-            view, f"{kind} at page scroll {position}", _wholly_in_every_box
-        )
 
-    assert seen_anywhere, kind
+        if position == bar.maximum() // 2:
+            top.show_pin("Run 1", absent=False)
+
+        application.processEvents()
+        where = f"{kind} {arranged} at page scroll {position}"
+        seen |= _check_every_area(view, where, _wholly_in_every_box)
+        painted |= _check_chrome_drawn_over_its_view(view, where)
+
+    # The View's own Area was checked, not only the Area beside it, and so
+    # was the surface of a header standing over its View. Only an Area too
+    # short for its View, which shows a notice instead, is left out.
+    drawn = top.view_scroll is not None and not top.view_scroll.isHidden()
+    assert drawn or arranged == "over", (kind, arranged)
+
+    if drawn:
+        assert AreaId(1) in seen, (kind, arranged, seen)
+        assert AreaId(1) in painted, (kind, arranged, painted)
 
 
 @pytest.mark.parametrize("kind", _KINDS, ids=str)
@@ -151,7 +179,7 @@ def test_a_page_scrolled_sideways_starts_each_area_s_header_and_pinned_row_in_vi
     # The premise: the page scrolls sideways.
     assert across.maximum() >= _SIDEWAYS_SCROLL_PX, (width, across.maximum())
 
-    seen_anywhere = False
+    seen: set[AreaId] = set()
 
     for vertical in sorted({0, down.maximum()}):
         down.setValue(vertical)
@@ -159,11 +187,11 @@ def test_a_page_scrolled_sideways_starts_each_area_s_header_and_pinned_row_in_vi
         for position in range(across.maximum() + 1):
             across.setValue(position)
             application.processEvents()
-            seen_anywhere |= _check_every_area(
+            seen |= _check_every_area(
                 view, f"{kind} at page scroll {position} across, {vertical} down", _starts_in_view
             )
 
-    assert seen_anywhere, kind
+    assert AreaId(1) in seen, (kind, seen)
 
 
 @pytest.mark.parametrize("kind", _KINDS, ids=str)
@@ -194,8 +222,11 @@ def test_shift_tab_up_a_scrolled_page_never_leaves_the_focus_under_an_area_s_hea
         if widget.focusPolicy() & Qt.FocusPolicy.TabFocus and widget.isVisible()
     ]
     assert focusable, kind
+    # The window must be the active one for a widget in it to hold the focus.
+    view.activateWindow()
     focusable[-1].setFocus(Qt.FocusReason.TabFocusReason)
     application.processEvents()
+    assert application.focusWidget() is focusable[-1], "the window did not take the focus"
     checked = 0
 
     for _ in range(3 * len(focusable)):
@@ -208,6 +239,7 @@ def test_shift_tab_up_a_scrolled_page_never_leaves_the_focus_under_an_area_s_hea
         QApplication.sendEvent(application.focusWidget(), press)
         application.processEvents()
         focused = application.focusWidget()
+        assert focused is not None, f"{kind}: Shift+Tab left no widget with the focus"
         holder = next((frame for frame in frames if frame.body.isAncestorOf(focused)), None)
 
         if holder is None or holder.chrome.isAncestorOf(focused):
@@ -227,17 +259,17 @@ def test_shift_tab_up_a_scrolled_page_never_leaves_the_focus_under_an_area_s_hea
 
 def _check_every_area(
     view: SimulationView, where: str, in_view: Callable[[QScrollArea, QWidget], bool]
-) -> bool:
+) -> set[AreaId]:
     """Assert that every Area with a value seen has its header and pinned row in view above it.
 
     `in_view` says whether a line of the header or the pinned row counts as
-    in view. Returns whether any value was seen, so a test can check that it
-    checked something.
+    in view. Returns each Area in which a value was seen, so a test can check
+    that it checked the Area it is about.
     """
 
     page = view._page_scroll
     areas = view.layout_container
-    seen_anywhere = False
+    seen_in: set[AreaId] = set()
 
     for area in areas.model.areas():
         frame = areas.frame(area.id)
@@ -246,17 +278,17 @@ def _check_every_area(
             continue
 
         chrome = _on_page(page, frame.chrome)
-        seen = [
-            value
-            for value in _values(frame)
-            if _wholly_in_every_box(page, value) and not _on_page(page, value).intersects(chrome)
-        ]
+        # A value counts as seen wherever its whole width and any part of its
+        # height are in view below the header, so a canvas taller than the
+        # window counts as well. A value cut at the window's right edge is
+        # `PL-BQB6`'s.
+        seen = [value for value in _values(frame) if not _below(page, value, chrome).isEmpty()]
 
         if not seen:
             continue
 
-        seen_anywhere = True
-        highest = min(_on_page(page, value).top() for value in seen)
+        seen_in.add(area.id)
+        highest = min(_below(page, value, chrome).top() for value in seen)
         qualifiers: list[QLabel | QAbstractButton] = [frame.chooser, *_labels_in(frame.pinned_row)]
 
         if frame.pin_label.isVisible():
@@ -271,8 +303,25 @@ def _check_every_area(
             least = qualifier.minimumSizeHint().width()
             assert qualifier.width() >= least, f"{where}: {text!r} is {qualifier.width()} px"
 
+        # A control at the pinned row's right end, such as the schematic's
+        # axis top, stays in view with its Area wherever the Area's part in
+        # view is as wide as the header and the row need.
+        if _part_on_page(page, frame).width() >= frame.chrome.minimumSizeHint().width():
+            for control in _controls_in(frame.pinned_row):
+                shown = _clipped(page, control).size()
+                assert shown == control.size(), f"{where}: {control.accessibleName()!r} is cut"
+
         for run in frame.content.findChildren(RunSchematic):
             if any(run.isAncestorOf(value) for value in seen):
+                # The run's name stands below its Area's header, not under it.
+                name_on_page = _on_page(page, run.name_text)
+                assert not name_on_page.intersects(chrome), (
+                    f"{where}: {run.name_text.text()!r} is under its Area's header"
+                )
+                view_top = max(_on_page(page, frame.view_scroll.viewport()).top(), 0)
+                assert name_on_page.top() >= view_top, (
+                    f"{where}: {run.name_text.text()!r} is above the part in view"
+                )
                 left = run.name_text.mapTo(page.viewport(), QPoint(0, 0)).x()
                 assert left >= 0, f"{where}: {run.name_text.text()!r} starts {-left} px left"
                 # The name is whole wherever the part of its run in view is
@@ -287,11 +336,58 @@ def _check_every_area(
                         f"{where}: {run.name_text.text()!r} is cut to {run.name_text.width()} px"
                     )
 
-                if not run.share_text_whole():
+                caption_text = run.share_text.text()
+                needed = run.share_text.fontMetrics().horizontalAdvance(caption_text)
+
+                if run.share_text.width() < needed:
                     caption = run.share_text.grab().toImage()
                     assert caption.isNull() or _blank(caption), f"{where}: a cut share caption"
 
-    return seen_anywhere
+    return seen_in
+
+
+def _check_chrome_drawn_over_its_view(view: SimulationView, where: str) -> set[AreaId]:
+    """Assert that each header standing over its View hides what is under it.
+
+    Where the page has carried an Area's top above the window's edge, the
+    part of the page under the Area's header must show the header as drawn
+    on its own, so no value shows through it or is drawn over it. Returns
+    each Area whose header was checked this way.
+    """
+
+    page = view._page_scroll
+    areas = view.layout_container
+    checked: set[AreaId] = set()
+
+    for area in areas.model.areas():
+        frame = areas.frame(area.id)
+        drawn = _clipped(page, frame.chrome)
+        # The header stands over its View once the Area's own top is above
+        # the window's edge by more than a few pixels.
+        if frame.mapTo(page.viewport(), QPoint(0, 0)).y() > -10 or drawn.height() < 10:
+            continue
+
+        alone = frame.chrome.grab(drawn).toImage()
+        on_page = page.viewport().grab(drawn.translated(_on_page(page, frame.chrome).topLeft()))
+        assert on_page.toImage() == alone, (
+            f"{where}: something shows through Area {area.id}'s header"
+        )
+        checked.add(area.id)
+
+    return checked
+
+
+def _beside(kind: ViewKind) -> WorkspaceSet:
+    """Return one Workspace whose left Area shows `kind`, beside the parameter controls.
+
+    Where `kind` is the parameter controls, the right Area shows the agent
+    accounting instead. Each Area is as tall as the parameter controls need,
+    so the schematic draws while the page scrolls down.
+    """
+
+    other = AGENT_ACCOUNTING if kind == PARAMETER_CONTROLS else PARAMETER_CONTROLS
+
+    return _workspace(Orientation.ROW, (kind, other))
 
 
 def _blank(image: QImage) -> bool:
@@ -330,6 +426,46 @@ def _labels_in(row: QWidget | None) -> list[QLabel]:
         return []
 
     return [label for label in row.findChildren(QLabel) if label.isVisible() and label.text()]
+
+
+def _below(page: QScrollArea, value: QWidget, chrome: QRect) -> QRect:
+    """Return the part of `value` in view on the page that is below `chrome`, its Area's header."""
+
+    shown = _part_on_page(page, value).intersected(page.viewport().rect())
+
+    if shown.width() < value.width():
+        return QRect()
+
+    if shown.top() <= chrome.bottom() and shown.intersects(chrome):
+        shown.setTop(chrome.bottom() + 1)
+
+    return shown if shown.height() > 0 and shown.width() > 0 else QRect()
+
+
+def _controls_in(row: QWidget | None) -> list[QWidget]:
+    """Return the visible controls of a View's pinned row that Tab reaches."""
+
+    if row is None:
+        return []
+
+    return [
+        widget
+        for widget in row.findChildren(QWidget)
+        if widget.isVisible() and widget.focusPolicy() & Qt.FocusPolicy.TabFocus
+    ]
+
+
+def _clipped(page: QScrollArea, widget: QWidget) -> QRect:
+    """Return the part of `widget` that every widget around it, up to the page, leaves drawn."""
+
+    part = widget.rect()
+    holder = widget.parentWidget()
+
+    while holder is not None and holder is not page:
+        part = part.intersected(QRect(widget.mapFrom(holder, QPoint(0, 0)), holder.size()))
+        holder = holder.parentWidget()
+
+    return part
 
 
 def _part_on_page(page: QScrollArea, widget: QWidget) -> QRect:

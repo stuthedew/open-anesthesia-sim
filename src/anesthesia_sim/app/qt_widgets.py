@@ -96,7 +96,6 @@ from PySide6.QtWidgets import (
     QLayoutItem,
     QLineEdit,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSlider,
     QSpinBox,
@@ -156,6 +155,7 @@ from anesthesia_sim.app.formatting import (
     MAC_UNIT_SUFFIX,
     format_elapsed,
 )
+from anesthesia_sim.app.pinned_heading import HeadingScroll
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.stylesheets import (
     clear_scroll_area_stylesheet,
@@ -3692,7 +3692,7 @@ class FocusedDateEdit(QDateEdit):
         wheel_only_with_focus(self)
 
 
-class FittedScroll(QScrollArea):
+class FittedScroll(HeadingScroll):
     """Holds rows that a reader reads in order, and scrolls them where its space is too short.
 
     The box asks for the height that the rows need at the width the box has,
@@ -3704,7 +3704,8 @@ class FittedScroll(QScrollArea):
 
     The box takes the keyboard focus so that the keyboard can scroll it, so
     it carries a name for a screen reader to say when it has the focus
-    (`PL-RK9Z`).
+    (`PL-RK9Z`). It is a `HeadingScroll`, so that a row taking the focus is
+    scrolled into view in this box and in every box around it in turn.
 
     Args:
         rows: The rows, in the order they are read.
