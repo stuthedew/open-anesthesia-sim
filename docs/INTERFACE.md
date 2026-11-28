@@ -7122,6 +7122,16 @@ schematic's width as it was.
 `tests/integration/simulation_view/test_simulation_view_page.py` checks that
 the containers and the share caption are wholly in view in the Maintenance
 Workspace at 1366 by 768 and three larger screen sizes.
+The fit at 1366 by 768 was also checked in macOS's own font and style
+(`.AppleSystemUIFont` at 13 pt, Qt's `macos` style), under Qt's `cocoa`
+platform on a GitHub macOS runner, on 2026-11-28 (`PL-H100`). There the foot of
+the schematic's canvas stands 20 px lower in its box than in the Linux test
+fonts, because macOS draws taller lines of text and taller controls. So the
+containers are 72 px tall, which leaves the label lines and share bars whole
+there with 4 px to spare. No test runs on macOS (`PL-2Y1L`).
+`test_the_maintenance_schematic_leaves_room_for_macos_text_at_1366_by_768` in
+the same file keeps at least 20 px of room under the canvas in the Linux test
+fonts instead.
 
 Each run's heading is a `PinnedHeadingSection` (`app/pinned_heading.py`).
 `ViewScroll` in `app/area_layout.py` moves every such heading after each

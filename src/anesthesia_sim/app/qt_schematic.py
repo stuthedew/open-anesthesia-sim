@@ -78,11 +78,11 @@ _TISSUES: Final = frozenset(
 
 # Sizes in logical pixels. Each is a placeholder.
 _CONTAINER_WIDTH: Final = 44
-# The containers were 96 px tall. In the Maintenance Workspace at 1366 by 768,
-# macOS's system font and controls then left the share line under each
-# container cut through at the schematic's lower edge, 20 px short (`PL-H100`).
-# At 72 px the canvas fits there with 4 px to spare. Each value is also
-# printed in the label under its container, so the shorter scale loses no value.
+# At 72 px each container's label lines and share bar stay whole in the
+# Maintenance Workspace at 1366 by 768 in macOS's system font and style, with
+# 4 px to spare. At 96 px they ran 20 px below the schematic's box there
+# (`PL-H100`). Each value is also printed under its container, so the shorter
+# scale hides no value.
 _CONTAINER_HEIGHT: Final = 72
 # The gap between a container and the arterial line above it, or the venous
 # line below it.

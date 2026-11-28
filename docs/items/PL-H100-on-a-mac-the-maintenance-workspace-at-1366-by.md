@@ -3,12 +3,15 @@ id: PL-H100
 title: On a Mac, the Maintenance Workspace at 1366 by 768 leaves each container's share line cut through at the schematic's lower edge and its share bar out of view, because macOS's system font draws taller lines than the Linux fonts the tests use; the values show whole only from a 788 px tall window
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: interface-matches-its-spec
 touches: src/anesthesia_sim/data/workspaces/maintenance.json, src/anesthesia_sim/app/qt_schematic.py, tests/integration/simulation_view/test_simulation_view_page.py, docs/INTERFACE.md
 added: 2026-11-28
+closed: 2026-11-28
+pr: 2350
 payoff: A user on a Mac with a 1366 by 768 window sees each container's tension, amount and share whole in the Maintenance Workspace, never a value cut through at the schematic's edge.
+tests: tests/integration/simulation_view/test_simulation_view_page.py::test_the_maintenance_schematic_leaves_room_for_macos_text_at_1366_by_768
 ---
 
 **Problem.** On a Mac, the Maintenance Workspace at 1366 by 768 leaves each container's share line cut through at the schematic's lower edge and its share bar out of view, because macOS's system font draws taller lines than the Linux fonts the tests use; the values show whole only from a 788 px tall window
@@ -31,3 +34,16 @@ payoff: A user on a Mac with a 1366 by 768 window sees each container's tension,
 
 **Done when.** In the Maintenance Workspace at 1366 by 768 with one run, the schematic's canvas and its share caption are wholly in view under Qt's `cocoa` platform on a GitHub macOS runner, as well as on Linux CI, and `docs/INTERFACE.md` says the fit was checked in macOS's system font.
 
+
+**Fixed 2026-11-28.** The schematic's containers are 72 px tall instead of 96 (`_CONTAINER_HEIGHT` in `app/qt_schematic.py`). That gives the canvas back 24 px. On a GitHub macOS runner under Qt's `cocoa` platform, run 46095018194 of the throwaway `mac-test-drive` workflow on this branch, `test_each_shipped_workspace_shows_its_lesson_whole_with_one_run[Maintenance-1366-768]` passes. The canvas's foot stands 4 px above its box's foot there, at a scale of 1 and of 2, and at widths 1366, 1440 and 1512 the values show whole from a window 764 px tall. In the Linux test fonts the room under the canvas at 1366 by 768 went from 0 to 24 px in Inter and from 14 to 38 px in DejaVu Sans. The other four macOS failures in that run are the ones `PL-2Y1L` lists, and they failed the same way before this change (run 46091853273).
+
+**Why the containers, and not another part of the View.**
+
+1. The Workspace's shares cannot give room at 1366 by 768. The right-hand column is as tall as the chart beside it, and the Parameters Area above the schematic is at its least height, which `test_the_parameters_area_is_not_far_taller_than_its_controls` enforces.
+2. Inside the schematic's box, 77 px stand above the canvas in Inter: 14 px of the padding every View has, 21 px for the View's heading line, which every View carries, and 42 px for the run's pinned heading, which `PL-3NGZ` keeps over the rows. Taking room there changes what other Views or the pinned heading show.
+3. The gaps that hold the arterial and venous lines and the gap above the labels could give about 12 px while keeping each line clear of its containers. That is too little.
+4. A container's height carries no value that is not also printed: the label under each container prints its tension, amount and share. NUREG-0700 Rev. 3 (O'Hara, Brookhaven National Laboratory for the U.S. Nuclear Regulatory Commission, 2020) guideline 1.1-50, p. 1-13, asks that "displays should provide a sufficient viewing area to include all important information". Guideline 1.3.6-18, p. 1-45, says that where "accuracy of reading graphic data is required", it "might prove best simply to let a user point at any data item and have the computer label that item with a readout of its exact value(s)". So the printed values come before the graphic's height. Read in full text on 2026-11-28 from https://www.osti.gov/servlets/purl/1644018. At the standard 3 MAC top the marks at the chart's MAC labels stay 12 px apart.
+
+**Regression test.** `test_the_maintenance_schematic_leaves_room_for_macos_text_at_1366_by_768` keeps at least 20 px of room under the canvas in the Linux test fonts, the measured difference on a Mac, because no test runs on macOS. On the code before the fix (containers 96 px) it fails with `AssertionError: the canvas's foot has 0 px of room` (`uv run pytest tests/integration/simulation_view/test_simulation_view_page.py -k leaves_room_for_macos`, in the container's Inter font). Under DejaVu Sans, the CI runners' font, it catches only a loss of more than 18 px. It does not run under `cocoa`, where the lesson test checks the fit itself.
+
+**Docs checked.** `docs/INTERFACE.md` § "The compartment schematic: what its heights, amounts and share bar assert", its note for developers (updated: the fit was checked in macOS's font and style, and the new test). The scale caption's comment in `app/compartment_schematic.py` (no longer states 96 px). `docs/VERIFICATION.md`, `docs/MODEL.md`, `README.md` and `docs/ARCHITECTURE.md` state no container height. `ROADMAP.md` names "96 px containers" only in the title of the closed `PL-8W1B`, which is a record.
