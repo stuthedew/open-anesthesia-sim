@@ -7044,17 +7044,18 @@ fit its space (guideline 10.3.4-8, p. 10-14).
 its too-small notice instead** (`PL-GWTR`). The box must be at least as tall as
 a run's heading and the schematic down to its containers' lower edge. On a 1366
 by 768 screen, the Maintenance Workspace gives the schematic an Area too short
-to hold even one run's schematic (`PL-3NGZ`). With a branch open there, the page
-scrolls and the Area is held at its least height, which leaves the box shorter
-than that. The Area then shows "Too small for Compartment schematic." and the
-size that the View needs. While the page scrolls, no border can give the Area
-more height, so the notice says to make the window taller in place of its usual
-advice to drag a border. The Area is not held taller, because the page
+to hold even one run's schematic (`PL-3NGZ`). With a branch open there, the
+page scrolls and the Area is held at its least height, which leaves the box
+shorter than that. The Area then shows "Too small for Compartment schematic."
+and the size that the View needs. Giving the schematic room for a row of
+containers here is `PL-C14T`. While the page scrolls, no border can give the
+Area more height, so the notice says to make the window taller in place of its
+usual advice to drag a border. The Area is not held taller, because the page
 would then grow and push the concentration chart's title and key above the
-window's top after a branch (`PL-DKQ5`). With one run, or on a 1920 by 1080
-screen with two, the schematic is shown. The row above the scrolling part, and
-the Area's header, still move out of view when the page itself scrolls them
-past the window's edge (`PL-DKQ5`).
+window's top after a branch (`PL-DKQ5`). With one run, or with two on a 1680 by
+1050 or a 1920 by 1080 screen, the schematic is shown. The row above the
+scrolling part, and the Area's header, still move out of view when the page
+itself scrolls them past the window's edge (`PL-DKQ5`).
 
 Two compared runs can be at
 different times, as when one is a branch taken at an earlier point. A
