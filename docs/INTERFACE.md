@@ -3152,6 +3152,43 @@ menu. Every layout has at least one area, so a chooser always offers the
 accounting view. None of the Workspaces supplied with the simulator includes the
 accounting view, so the chooser is how a reader reaches it.
 
+**An area's header and its view's pinned row stay in view while the page
+scrolls the area** (`PL-DKQ5`). The header names the view and any run the
+Workspace is pinned to. The pinned row states the view's units and that its
+values are modelled. While the page carries the area's top above the window's
+edge, both stand at the top of the area's part in view, over the top of the
+view. A heading inside the view, such as a run's name in the compartment
+schematic, then stands under them. While the page is scrolled sideways, each
+line of the header and the pinned row starts at the left edge of the part in
+view, and so does a run's name. The header and the pinned row then end at
+the area's right edge, so a control at the row's end, such as the
+schematic's "Axis top", stays in view with the area. NUREG-0700 Rev. 3,
+guideline 1.5-15, p. 1-59, asks that general labels "remain along the top (or bottom) and left (or
+right) edges of the display" while it scrolls, and a Blender area keeps its
+header at the area's edge ("A header is a small horizontal strip, which sits
+either at the top or bottom of an area", Blender Manual, "Regions"). A long
+line can still be cut at its end, where the window's right edge cuts across
+an area, or where the part of an area in view is narrower than the line
+(`PL-BQB6`). A control that Tab or Shift+Tab moves the focus to is
+scrolled into view below the header and the pinned row, never under them.
+WCAG 2.2, success criterion 2.4.11, "Focus Not Obscured (Minimum)", asks that
+a control taking the focus is "not entirely hidden due to author-created
+content", and names sticky headers as the usual cause.
+
+**For developers.** The header, the rule under it and the pinned row are the
+heading of a `PinnedHeadingSection` (`AreaFrame.chrome` in
+`app/area_layout.py`, `app/pinned_heading.py`). The part of a widget in view
+leaves out what any heading around it covers (`in_view`), so a heading inside
+the view pins under the area's. The dashboard scrolls the page to the
+concentration chart only as far as it takes to show the chart clear of its
+area's header (`scroll_clear_into_view`). The page, each view's scroll box
+and each box inside a view, such as a chart's key (`FittedScroll`), are a
+`HeadingScroll`, which scrolls a control that takes the focus clear of
+the headings, through every box around it from the innermost out. Every
+registered view is checked in an area at the window's top, at every position
+of the page's scroll down and sideways, and with the focus moved back through
+its controls (`tests/integration/test_area_header_page_scroll.py`).
+
 #### Values required only with their chart
 
 **Conditional values are required only on a chart or plot that is shown.** A
@@ -7032,7 +7069,9 @@ schematic therefore prints "Model outputs — not measurements." once, as the
 readout section does, followed by the tensions' unit. The line under it names
 the amounts' unit and the condition they are stated at. Both lines stand in a
 row above the part of the View that scrolls, so they stay in view whatever part
-of the schematic the Area shows (`PL-3NGZ`). The "Axis top" control stands at
+of the schematic the Area shows (`PL-3NGZ`). While the page scrolls the Area
+itself, the row and the Area's header stand at the top of the Area's part in
+view (`PL-DKQ5`). The "Axis top" control stands at
 the right end of that row. The scale's top is read together with the tensions'
 unit, and "information that must be compared or mentally integrated should be
 presented in close spatial proximity" (NUREG-0700 Rev. 3, guideline 1.1-26,
@@ -7210,9 +7249,7 @@ the window taller in place of its usual advice to drag a border. The Area is
 not held taller, because the page would then grow and push the concentration
 chart's title and key above the window's top after a branch (`PL-DKQ5`). With
 one run, or with two on a 1680 by 1050 or a 1920 by 1080 screen, the schematic
-is shown. The row above the scrolling part, and the Area's header, still move
-out of view when the page itself scrolls them past the window's edge
-(`PL-DKQ5`).
+is shown.
 
 Two compared runs can be at
 different times, as when one is a branch taken at an earlier point. A

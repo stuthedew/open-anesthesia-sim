@@ -103,7 +103,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QScrollArea,
     QSizePolicy,
     QSpinBox,
     QVBoxLayout,
@@ -157,7 +156,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.halt_gate import halt_gate
-from anesthesia_sim.app.pinned_heading import pin_on_scroll
+from anesthesia_sim.app.pinned_heading import HeadingScroll, pin_on_scroll, scroll_clear_into_view
 from anesthesia_sim.app.preferences import (
     AgentPrice,
     LoadedPreferences,
@@ -818,7 +817,7 @@ class SimulationView(QWidget):
         middle_column.addWidget(self._tabs)
         middle_column.addWidget(self._areas, 1)
 
-        scroll = QScrollArea()
+        scroll = HeadingScroll()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet(scroll_area_stylesheet())
@@ -1619,7 +1618,7 @@ class SimulationView(QWidget):
         """
 
         self._chart_view_owed = True
-        self._page_scroll.ensureWidgetVisible(self._kept_in_view(), 0, 0)
+        scroll_clear_into_view(self._page_scroll, self._kept_in_view())
 
     def _kept_in_view(self) -> QWidget:
         """Return the widget that `_keep_chart_in_view` keeps on screen.
@@ -1663,7 +1662,7 @@ class SimulationView(QWidget):
         """Bring the chart back into view after a pass of layout, while the page is holding it."""
 
         if self._chart_view_owed:
-            self._page_scroll.ensureWidgetVisible(self._kept_in_view(), 0, 0)
+            scroll_clear_into_view(self._page_scroll, self._kept_in_view())
 
     def _restate_fork_panel(self) -> None:
         """Restate the branch offer from the case on a halt, and offer nothing if that raises.

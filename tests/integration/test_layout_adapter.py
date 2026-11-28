@@ -343,7 +343,7 @@ def test_a_layout_of_one_area_is_its_view_alone(
     # An Area holds its View in a scroll box under the header (`PL-CBYS`).
     scroll = container.frame(AreaId(1)).view_scroll
     assert scroll is not None and scroll.widget() is view
-    assert scroll.parentWidget() is container.frame(AreaId(1))
+    assert scroll.parentWidget() is container.frame(AreaId(1)).body
     assert container.frame(AreaId(1)).parentWidget() is container
     assert view.isVisible()
 
