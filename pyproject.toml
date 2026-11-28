@@ -202,7 +202,7 @@ dev = [
 # id through pytest's public `nodeid`. 3.8.0 read the private `_nodeid`, which
 # pytest 9.2.0 no longer has, so every mutation run stopped at its first step
 # (`PL-LR03`).
-mutation = ["mutmut==3.8.0"]
+mutation = ["mutmut==3.8.1"]
 
 # uv resolves `.python-version` against the interpreter list baked into the
 # binary at build time, so an older uv silently maps a bare `3.14` onto the
