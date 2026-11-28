@@ -322,10 +322,6 @@ _UNUSABLE_NEXT_STEP = (
         ("", "the file is empty"),
         (" \n\t", "the file is empty"),
         (
-            "[" * 100_000 + "]" * 100_000,
-            "the file's entries are nested too deeply for the application to read them",
-        ),
-        (
             "[]",
             "the file does not hold a set of named settings, which is how the application "
             "saves them",
@@ -416,7 +412,6 @@ _UNUSABLE_NEXT_STEP = (
         "cut off on line 3",
         "empty",
         "only blank space",
-        "nested too deeply to read",
         "not an object",
         "version 0",
         "version true",
@@ -497,6 +492,34 @@ def test_a_file_that_holds_only_its_version_names_every_setting_it_lacks(
     assert loaded.notice == (
         f"The application could not use your preferences file, because the file has {missing}. "
         f"{_UNUSABLE_EFFECT} {_UNUSABLE_NEXT_STEP} The file is {path}."
+    )
+
+
+def test_a_file_nested_too_deeply_for_the_decoder_turns_saving_off(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A file the decoder gives up on is named as nested too deeply, in the reader's words.
+
+    How deep the decoder can go depends on the stack of the platform and the
+    thread it runs on. A file of 100,000 nested lists stopped it here and
+    parsed under the mutation run's copy in CI. So the test makes the decoder
+    give up, as it does on such a file.
+    """
+
+    path = _write(tmp_path, {"schema_version": PREFERENCES_SCHEMA_VERSION})
+
+    def give_up(*args: object, **kwargs: object) -> object:
+        raise RecursionError("maximum recursion depth exceeded while decoding a JSON array")
+
+    monkeypatch.setattr(json, "loads", give_up)
+
+    loaded = PreferencesStore(tmp_path).load()
+
+    assert not loaded.writable
+    assert loaded.notice == (
+        "The application could not use your preferences file, because the file's entries are "
+        f"nested too deeply for the application to read them. {_UNUSABLE_EFFECT} "
+        f"{_UNUSABLE_NEXT_STEP} The file is {path}."
     )
 
 
