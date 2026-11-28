@@ -33,7 +33,8 @@ Commission, 2020), guideline 1.5-15, p. 1-59, asks for this: "General labels
 and row and column labels should remain along the top (or bottom) and left (or
 right) edges of the display." So a heading's general label, such as a run's
 name, also starts at the left edge of the part in view while the page is
-scrolled sideways (`follows_left`). Its column labels stay over their columns.
+scrolled sideways (`follows_left`, `slides_left`). Its column labels stay over
+their columns.
 """
 
 from __future__ import annotations

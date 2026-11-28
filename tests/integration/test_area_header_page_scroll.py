@@ -25,8 +25,7 @@ from collections.abc import Callable, Iterator
 
 import pytest
 from PySide6.QtCore import QEvent, QPoint, QRect, Qt
-from PySide6.QtGui import QImage
-from PySide6.QtTest import QTest
+from PySide6.QtGui import QImage, QKeyEvent
 from PySide6.QtWidgets import QAbstractButton, QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app.area_layout import AreaFrame
@@ -200,7 +199,13 @@ def test_shift_tab_up_a_scrolled_page_never_leaves_the_focus_under_an_area_s_hea
     checked = 0
 
     for _ in range(3 * len(focusable)):
-        QTest.keyClick(application.focusWidget(), Qt.Key.Key_Backtab)
+        # Sent straight to the focused widget, as Qt's own key handling would.
+        # `QTest.keyClick` needs a native window, which a window kept off a
+        # Mac runner's screen does not have.
+        press = QKeyEvent(
+            QEvent.Type.KeyPress, Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier
+        )
+        QApplication.sendEvent(application.focusWidget(), press)
         application.processEvents()
         focused = application.focusWidget()
         holder = next((frame for frame in frames if frame.body.isAncestorOf(focused)), None)
