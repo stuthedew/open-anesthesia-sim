@@ -117,9 +117,9 @@ SCHEMATIC_HEADING: Final = "Where the agent is: each compartment's tension and a
 #: tension, as a share of the concentration chart's range. So the caption names
 #: that range, says what the marks stand for, and says that a height is not an
 #: amount (`docs/INTERFACE.md` § "The compartment schematic: what its
-#: heights, amounts and share bar assert"). The containers are 96 px tall and the
-#: chart's plot is several hundred, and a Workspace can show the two side by
-#: side. A fill level read across to the chart's gridlines would give the wrong
+#: heights, amounts and share bar assert"). A container is a few tens of pixels
+#: tall and the chart's plot is several hundred, and a Workspace can show the
+#: two side by side. A fill level read across to the chart's gridlines would give the wrong
 #: tension. So each container carries a mark at each labelled MAC value of the
 #: chart's scale (`scale_marks`), and is read against its own marks
 #: (`PL-8W1B`). The caption names the scale's top in percent and in MAC, so a

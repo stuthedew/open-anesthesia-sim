@@ -645,7 +645,7 @@ def _column_centre(canvas: SchematicCanvas, index: int) -> int:
 # Where the canvas stands its containers, restated from `app/qt_schematic.py`'s
 # placeholder sizes: their top, their height and their width, in pixels.
 _CONTAINER_TOP_PX = 14
-_CONTAINER_HEIGHT_PX = 96
+_CONTAINER_HEIGHT_PX = 72
 _CONTAINER_WIDTH_PX = 44
 # How far inside a share bar's edge its fill starts, past the outline and one
 # pixel of ground, restated the same way.
