@@ -1,14 +1,21 @@
 ---
 id: PL-C14T
 title: With two runs in the Maintenance Workspace at 1366 by 768, the schematic's Area is held at 110 px, so under its pinned names and units it shows about one line of a label at a time and never a whole container
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect
 feature: interface-design-review
 touches: src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/data/workspaces/maintenance.json
+deferred-from: v0.7.0 - not safety or science, and no user sees a wrong value from it: since PL-GWTR the Area shows its too-small notice in this state, so no cut value can be read (checked 2026-11-28); the coordinator kept the 110 px Area for v0.7.0 on 2026-11-27, and the release waits only on the owner's test drive (triage 2026-11-28)
 added: 2026-11-27
 filed-pr: 2331
+payoff: a user comparing two runs in the Maintenance Workspace at 1366 by 768 can read the schematic's containers whole, rather than a notice asking for a taller window
 ---
 
 **Problem.** With a branch open in the Maintenance Workspace at 1366 by 768, the compartment schematic's Area is held at its least height, 110 px under its header (`_LEAST_HEIGHT_PX` in `app/view_registry.py`). `PL-3NGZ` keeps the model-output statement and both units above the scroll box (44 px) and each run's name and compartment names over its rows (42 px), so about 24 px is left for rows with the page scrolled to its end. After a branch, the dashboard scrolls the page 33 of its 47 px to keep the chart's plot whole (`SimulationView._keep_chart_in_view`), which leaves about 10 px of the box on screen. No label line is whole there, and the tensions in that band are cut at the window's lower edge. A user never sees a whole container, so no fill can be read against its marks without scrolling it in pieces. Every value that is seen keeps its run, compartment and unit in view.
+
+**Why it matters.** With a branch open, the Maintenance Workspace is where a user compares the two runs' compartments, and at 1366 by 768, one of the sizes the shipped Workspaces are tested at, its schematic shows only its too-small notice (checked 2026-11-28, below). So the comparison that the Workspace is laid out for cannot be made at that size without making the window taller.
 
 **What was measured** (`PL-3NGZ`, 2026-11-27, offscreen platform, the container's font). Holding the Area tall enough for the pinned row, a heading and one whole container (209 px with its header) made the page 119 px taller than the window, up from 47 px, and opened a page scroll of 23 px at 1536 by 864. After a branch the dashboard scrolls the page until the chart's plot is whole (`SimulationView._keep_chart_in_view`), which then put the top 51 px of the Concentrations View, its title and key, above the window's top. On `main` the same View's top sits 21 px below it. The patch that made the Area taller is the least-height change recorded in `PL-3NGZ`'s brief.
 
@@ -55,3 +62,7 @@ runs. The Done-when below still needs the room that the interface pass
 **Done when** a test opens a branch in the Maintenance Workspace at 1366 by 768 and finds, for each run, a scroll position at which all six containers are whole under the run's heading, with the chart's title and key in view.
 
 **Generator check.** A consequence of `PL-3NGZ`'s pinned heading meeting the Workspace's overflow at this size; a one-off.
+
+**Decision needed.** Which of the three routes in the Direction paragraph gives the schematic at least four whole label lines with two runs at 1366 by 768, with the chart's title and key still in view: another arrangement of the Maintenance Workspace for two runs, containers drawn shorter when their Area is short, or a chart kept in view by its title rather than by its plot's foot.
+
+**No recommendation yet, and why** (triage, 2026-11-28). Each route changes how a shipped Workspace is arranged or scrolls. The interface pass weighs that for every Workspace at once, through its heuristic evaluation (`PL-8Q1P`) and its grey-box layouts (`PL-2V6V`), in the `interface-pass-design-round` feature. Choosing a route here would fix one Workspace's arrangement ahead of that pass. This item is one of the pass's inputs. Since `PL-GWTR`, the state shows a notice rather than a value that can be misread, so waiting costs readability and not a wrong reading.

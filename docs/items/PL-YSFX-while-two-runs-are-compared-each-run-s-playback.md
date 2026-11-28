@@ -3,7 +3,7 @@ id: PL-YSFX
 title: While two runs are compared, each run's playback selector reaches a screen reader as "Playback" alone, and in the Induction Workspace both plots' window selectors are "Time base" alone, so a screen-reader user cannot tell which run or plot a selector sets
 priority: P3
 effort: S
-status: untriaged
+status: ready
 classes: defect
 feature: presentation-safety
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py
@@ -22,3 +22,7 @@ payoff: a screen-reader user who reaches a playback or time base selector hears 
 **Done when.** A test with two compared runs reads two different names for the two playback selectors, and a test of the Induction Workspace reads two different names for the two window selectors.
 
 **How it was found.** The first independent review of `PL-RK9Z`'s change, 2026-11-27, as an optional finding.
+
+**Reproduced 2026-11-28.** `src/anesthesia_sim/app/views.py` names both window selectors with `label_control(time_base_name, self._window.selector)`, and nothing adds the plot's heading. No test in `tests/integration/test_keyboard_focus.py` compares the names of two controls.
+
+**Generator check.** A member of `PL-9XGQ`: what a screen reader is told about each element on screen, including a name that tells it apart from the others in its window. The walk that `PL-RK9Z` built checks that each control has a name, not that the names differ.
