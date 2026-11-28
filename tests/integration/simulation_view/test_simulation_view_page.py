@@ -698,17 +698,18 @@ def test_no_view_paints_narrower_than_its_least_width_after_a_workspace_switch(
 
 
 def test_a_view_taller_than_its_area_scrolls_inside_the_area(application: QApplication) -> None:
-    """`PL-CBYS`: the compartment schematic on a laptop is shown whole, by scrolling its own Area.
+    """`PL-CBYS`: a compartment schematic taller than its Area is shown whole, by scrolling the Area.
 
-    In the Maintenance Workspace at 1366 by 768, with a branch open, the
+    In the Maintenance Workspace at 1920 by 1080, with a branch open, the
     schematic shows one drawing for each run, and the two are taller than its
     Area. The View stays shown, with no notice in its place, and its Area's
     scroll bar covers the height the View does not get. The concentration plot
-    is wholly on screen in its own Area. Until `PL-D5J4` the wash-in chart in
-    Induction was the View that scrolled at this size with one run.
+    is wholly on screen in its own Area. At 1366 by 768 the Area is too short
+    to show one row of containers whole, so it shows its too-small notice
+    there instead (`PL-GWTR`).
     """
 
-    view = _shipped_view_at(application, "Maintenance", 1366, 768, branched=True)
+    view = _shipped_view_at(application, "Maintenance", 1920, 1080, branched=True)
     areas = view.layout_container
     (schematic,) = (area for area in areas.model.areas() if area.view == COMPARTMENT_SCHEMATIC)
     frame = areas.frame(schematic.id)
@@ -1128,7 +1129,7 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
     """`PL-CBYS`: splitting one Area does not scroll a View in another Area back to its top.
 
     Each rebuild of the layout gives every View a new frame and a new scroll
-    box. In the Maintenance Workspace at 1366 by 768, with a branch open, the
+    box. In the Maintenance Workspace at 1920 by 1080, with a branch open, the
     compartment schematic scrolls inside its Area. Before the fix, a reader who
     had scrolled such a View partway down found it back at the top after
     splitting a different Area, though the same View was kept. Before
@@ -1139,7 +1140,7 @@ def test_a_view_kept_across_a_rebuild_keeps_its_scroll_position(application: QAp
 
     from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
 
-    view = _shipped_view_at(application, "Maintenance", 1366, 768, branched=True)
+    view = _shipped_view_at(application, "Maintenance", 1920, 1080, branched=True)
     areas = view.layout_container
     (scrolled,) = (area for area in areas.model.areas() if area.view == COMPARTMENT_SCHEMATIC)
     kept = areas.frame(scrolled.id).content

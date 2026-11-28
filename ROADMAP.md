@@ -1099,7 +1099,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-HQPF (M) The accounting panel's unit caption ('Litres of equivalent pure agent gas') and the schematic's unit ('mL vapour') do not name the condition an agent amount is stated at, 20 °C and 1 atm, so a user cannot tell that an amount held in the body is stated at room temperature and reads 5.8% high
 - PL-RJN9 (S) The agent cost View's two captions in src/anesthesia_sim/app/agent_cost.py write '20 degrees C' as text, a second copy of core/liquid_agent.py's REFERENCE_TEMPERATURE_CELSIUS, so a change to the reference temperature would leave the captions naming the old one
 
-**Cleared before v0.7.0's implementation begins, unless deferred - 211 entries**
+**Cleared before v0.7.0's implementation begins, unless deferred - 212 entries**
 
 - PL-H57W (L) Since PL-CZXN no check measures whether a branch that changes no core function weakens a core unit test, because PL-7FPD's route compares only the display modules' mutants; the same comparison over core's mutants took 538 to 968 s for one changed test file
 - PL-5B1N (M) Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
@@ -1312,6 +1312,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-R8JK (M) Make patient age an input for adults, 18 years and older, refusing any age outside its sourced range with a notice that names the limit and the value
 - PL-XXWY (M) Re-run the wash-in, elimination and 24-hour washout comparisons with measured human data on the five-compartment model, beside the four-compartment results, and check the new equations against an independent calculation
 - PL-Z2L5 (M) Show the intertissue compartment the way Eger and Saidman draw it, and label its tension and amount apart from bulk fat
+- PL-GWTR (M) A schematic container that stands across a pinned run heading's lower edge shows only its lower part, so its fill can look like that of a container at or over the scale's top
 
 ### Captures after the cut
 
@@ -1561,6 +1562,17 @@ whatever its date, and a deferred one stays written on the list. They are
 `PL-XXWY` and `PL-Z2L5`. Each describes work not yet built, so no user sees a
 wrong value from it now, and each item's `deferred-from` records that check,
 made against `009da829`.
+
+**`PL-GWTR` (`safety`) joined the frozen list on 2026-11-28, after the freeze,
+and this milestone clears it** (project owner, 2026-11-28, ratified, over
+shipping v0.7.0 as it was and leaving the fix to the interface pass). A
+container cut off at its top by a run's pinned heading, or by the edge of the
+box that scrolls it, could look full, or above the scale, at a tension it does
+not hold. A label line cut the same way could be read as other digits. Its
+problem was present at the freeze, since the box's own edge cut a container the
+same way. The schematic now draws each container, label line and share bar only
+whole, and its Area shows the too-small notice where its box cannot hold a
+whole row of containers.
 
 ### Required scope
 

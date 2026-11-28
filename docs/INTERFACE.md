@@ -3134,9 +3134,11 @@ Their areas grow to hold all of the view, so the chart's plot, a run's dials or
 the branch control's caption cannot sit out of sight below the area's edge
 (`PL-D5J4`). The page
 grows past the window only where the window is too small for every view's least
-height or least width. So the reader sees the view itself, never only a notice
-that the area is
-too small (`PL-K285`, `PL-CBYS`). The
+height or least width. So the reader sees the view itself rather than a notice
+that the area is too small (`PL-K285`, `PL-CBYS`). The one exception is the
+compartment schematic in a box too short to show a whole row of its containers,
+because a container shown in part could be misread (§ "The compartment
+schematic: what its heights, amounts and share bar assert", `PL-GWTR`). The
 application will not start if the accounting view is missing from the chooser's
 menu. Every layout has at least one area, so a chooser always offers the
 accounting view. None of the Workspaces supplied with the simulator includes the
@@ -7020,19 +7022,40 @@ edges of the display" (O'Hara, Brookhaven National Laboratory for the U.S.
 Nuclear Regulatory Commission, 2020, guideline 1.5-15, p. 1-59). So no tension,
 amount or share is in view without its run, its compartment and what its
 share is of. The heading follows a scroll of the whole page as well as a
-scroll of the Area. On a 1366 by 768 screen, the Maintenance Workspace gives the
-schematic an Area too short to hold even one run's schematic, and two
-compared runs share it (`PL-3NGZ`). With a branch open there, the Area is held
-at its least height. After the branch opens, the dashboard scrolls the page so
-the concentration chart's plot is whole, which leaves about 10 px of the
-schematic's box on screen under a pinned heading. No label line is whole
-there, and a number in that band is cut at the window's lower edge. Scrolling the page
-to its end shows about 24 px, one label line at a time, and still no container
-whole (`PL-C14T`). The Area is not made taller,
-because the page would then grow and push the concentration chart's title and
-key above the window's top after a branch. The row above the scrolling part,
-and the Area's header, still move out of view when the page itself scrolls
-them past the window's edge (`PL-DKQ5`).
+scroll of the Area.
+
+**No container, label line or share bar is drawn in part** (`PL-GWTR`). A
+container shows its tension as the height of its fill. A container cut off at
+its top, by the heading or by the edge of the box, could look full, or empty,
+at a tension it does not hold. A label line cut in the same way could be read
+as other digits. So each label line and each share bar is drawn only while it
+is whole in view and clear of the heading. The six containers, with the lines
+that join them and the marks inside them, are drawn only while all six are. In
+their place the schematic states, in the warning colour, "The containers do not
+fit whole in view, so they are hidden. Scroll to see them." It states this where
+the space above the labels holds the line. No guideline in NUREG-0700 Rev. 3
+covers a drawing cut off by the edge of a box that scrolls, so the line follows
+the two nearest, both written for messages. An error message states the error
+and the operations that can follow it (guideline 2.7.3-1, p. 2-86), and a user
+is told when a received message is cut short to fit its space (guideline
+10.3.4-8, p. 10-14).
+
+**Where no scroll position can show a whole row of containers, the Area shows
+its too-small notice instead** (`PL-GWTR`). The box must be at least as tall as
+a run's heading and the schematic down to its containers' lower edge. On a 1366
+by 768 screen, the Maintenance Workspace gives the schematic an Area too short
+to hold even one run's schematic (`PL-3NGZ`). With a branch open there, the page
+scrolls and the Area is held at its least height, which leaves the box shorter
+than that. The Area then shows "Too small for Compartment schematic." and the
+size that the View needs. While the page scrolls, no border can give the Area
+more height, so the notice says to make the window taller in place of its usual
+advice to drag a border. The Area is not held taller, because the page
+would then grow and push the concentration chart's title and key above the
+window's top after a branch (`PL-DKQ5`). With one run, or on a 1920 by 1080
+screen with two, the schematic is shown. The row above the scrolling part, and
+the Area's header, still move out of view when the page itself scrolls them
+past the window's edge (`PL-DKQ5`).
+
 Two compared runs can be at
 different times, as when one is a branch taken at an earlier point. A
 difference between their schematics may then come from elapsed time rather
@@ -7093,27 +7116,50 @@ Each run's heading is a `PinnedHeadingSection` (`app/pinned_heading.py`).
 resize, and `pin_on_scroll` after each scroll of the Area's box or of the
 dashboard's page, and after each change of what either can scroll. The
 heading is drawn over the rows on the panel's colour, so the part of a row
-under it is hidden. A label line or a container can stand across the
-heading's lower edge and show in part. A container cut there shows only its
-lower part, so its fill can look like that of a container at or over the
-scale's top. A label line cut there shows only the lower part of its
-characters, so its value can look like another (`PL-GWTR`). Four tests in
+under it is hidden. Each time the canvas paints, it reads the part of itself
+that is in view and not under the heading (`clear_of_heading`), and paints only
+the parts whole there (`SchematicCanvas.shown_parts`). `RunSchematic.pin_heading`
+repaints the canvas after each move of the heading, because a scroll moves the
+canvas's pixels without painting them again. The View declares its
+`legible_height`: the heading, and the canvas down to the containers' lower
+edge. `AreaLayout` shows the too-small notice wherever the box is shorter, and
+asks `largest_height` in `layout/sizing.py` whether a border could give the
+Area that height. Seven tests in
 `tests/integration/test_compartment_schematic_view.py` hold the rest.
 
 1. `test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`
-   scrolls the Maintenance Workspace at 1366 by 768 through every position,
-   with two runs, with one run and with one run's circuit above the scale.
-   Wherever a container, a share bar or a label line is wholly in view and
-   not under the heading, the whole heading is in view too, above it.
+   scrolls the Maintenance Workspace through every position, with two runs at
+   1920 by 1080, and with one run and with one run's circuit above the scale
+   at 1366 by 768. Wherever a container, a share bar or a label line is wholly
+   in view and not under the heading, the whole heading is in view too, above
+   it.
 2. `test_each_compartment_name_stands_over_its_own_container` checks that
    each name is centred over its container, at two widths.
 3. `test_a_run_heading_follows_a_scroll_of_the_page` scrolls the page of a
-   window 400 px tall through every position, and makes the same check as
-   the first test.
+   window 500 px tall through every position, with the schematic beside the
+   parameter controls, and makes the same check as the first test.
 4. `test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view`
    makes the window taller while the schematic's Area is below its lower
    edge, with no scroll and no change to the box's size, and makes the same
    check.
+5. `test_no_container_label_line_or_share_bar_is_painted_cut_at_any_scroll_position`
+   scrolls two runs at 1920 by 1080 through every position. It checks from
+   the painted pixels that no container, label line or share bar is painted
+   unless it is whole in view and clear of the heading.
+6. `test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole`
+   checks the same rule on a canvas given fixed clear parts, at the edges of
+   each part.
+7. `test_a_box_too_short_for_a_row_of_containers_shows_a_notice_in_place_of_the_schematic`
+   checks the notice, and the height it states, in the Maintenance Workspace
+   at 1366 by 768 with a branch open.
+
+`test_a_row_s_clear_part_is_its_part_in_view_below_the_heading` in
+`tests/integration/test_pinned_heading.py` checks `clear_of_heading`. Three
+tests in `tests/integration/test_layout_adapter.py` check the notice for any
+View that declares a legible height:
+`test_an_area_shorter_than_its_view_s_legible_height_shows_the_notice_and_is_not_held_taller`,
+`test_an_area_no_border_can_make_legible_says_to_make_the_window_taller` and
+`test_an_area_follows_its_view_s_legible_height_when_the_view_drops_it`.
 
 The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.

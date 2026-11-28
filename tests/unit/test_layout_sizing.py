@@ -25,6 +25,7 @@ from anesthesia_sim.layout.sizing import (
     border_range,
     border_share,
     drawn_bounds,
+    largest_height,
     minimum_extent,
     pixel_sizes,
     settle,
@@ -127,6 +128,66 @@ def test_minimum_extent_sums_along_each_split_and_takes_the_largest_across_it() 
     # The column is max(438, 309) = 438 wide and 585 + 8 + 361 = 954 tall.
     # The row is 438 + 8 + 228 = 674 wide and max(954, 224) = 954 tall.
     assert minimum_extent(tree, _HANDLE_PX, bounds) == PixelSize(674, 954)
+
+
+def test_largest_height_gives_an_area_its_column_less_its_siblings_least_heights() -> None:
+    """`PL-GWTR`: a border move can bring an Area only to where its siblings reach their bounds."""
+
+    # A column of Area 1 over a row of Areas 2 and 3, over Area 4. The row is
+    # as tall as its tallest child, 120 px.
+    tree = _column(
+        (0.2, 0.5, 0.3), _area(1), _row((0.5, 0.5), _area(2), _area(3)), _area(4, _PANEL)
+    )
+    bounds = {
+        AreaId(1): PixelSize(100, 60),
+        AreaId(2): PixelSize(100, 120),
+        AreaId(3): PixelSize(100, 80),
+        AreaId(4): PixelSize(100, 50),
+    }
+
+    # 600 px, less two 8 px handles, less the others' 120 and 50, leaves 414.
+    assert largest_height(tree, AreaId(1), 600, _HANDLE_PX, bounds) == 414
+    # Areas 2 and 3 share the row, so each has the row's 600 - 16 - 60 - 50 = 474.
+    assert largest_height(tree, AreaId(2), 600, _HANDLE_PX, bounds) == 474
+    assert largest_height(tree, AreaId(3), 600, _HANDLE_PX, bounds) == 474
+    # 600 - 16 - 60 - 120 = 404.
+    assert largest_height(tree, AreaId(4), 600, _HANDLE_PX, bounds) == 404
+
+
+def test_largest_height_is_the_bound_itself_where_the_tree_is_at_its_least_height() -> None:
+    """A page that scrolls lays its tree out at its least height, so no border move can help."""
+
+    tree = _column((0.5, 0.5), _area(1), _area(2))
+    bounds = {AreaId(1): PixelSize(100, 110), AreaId(2): PixelSize(100, 300)}
+    least = minimum_extent(tree, _HANDLE_PX, bounds).height_px
+
+    # 110 + 8 + 300 = 418, and 418 - 8 - 300 leaves Area 1 its own bound of 110.
+    assert least == 418
+    assert largest_height(tree, AreaId(1), least, _HANDLE_PX, bounds) == 110
+    # A tree too short for every bound leaves the Area less than its bound.
+    assert largest_height(tree, AreaId(1), 400, _HANDLE_PX, bounds) == 92
+
+
+def test_largest_height_of_a_lone_area_is_the_tree_s_height() -> None:
+    assert largest_height(_area(1), AreaId(1), 250, _HANDLE_PX, {AreaId(1): PixelSize(1, 1)}) == 250
+
+
+def test_largest_height_refuses_an_area_the_tree_does_not_hold() -> None:
+    bounds = {AreaId(1): PixelSize(10, 10), AreaId(2): PixelSize(10, 10)}
+
+    with pytest.raises(KeyError, match="the layout has no Area 7"):
+        largest_height(_column((0.5, 0.5), _area(1), _area(2)), AreaId(7), 600, _HANDLE_PX, bounds)
+
+    with pytest.raises(KeyError, match="the layout has no Area 7"):
+        largest_height(_area(1), AreaId(7), 600, _HANDLE_PX, bounds)
+
+
+def test_largest_height_refuses_a_handle_width_that_is_not_a_whole_number_of_pixels() -> None:
+    with pytest.raises(TypeError, match="a handle's width is an int, not bool"):
+        largest_height(_area(1), AreaId(1), 600, True, {AreaId(1): PixelSize(10, 10)})
+
+    with pytest.raises(InvalidLayout, match="zero or more pixels"):
+        largest_height(_area(1), AreaId(1), 600, -1, {AreaId(1): PixelSize(10, 10)})
 
 
 def test_settle_draws_every_area_the_extent_can_give_its_need() -> None:

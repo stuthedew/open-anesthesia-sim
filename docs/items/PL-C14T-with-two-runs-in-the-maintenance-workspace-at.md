@@ -42,6 +42,16 @@ misread: a container cut by the heading can look full, and a cut tension can
 look like another. The case above did not weigh that, so the choice went back
 to the coordinator with `PL-GWTR`, which holds the measurements.
 
+**Checked 2026-11-28:** after `PL-GWTR`, this state no longer shows the
+schematic's band. The Area shows its too-small notice, "It needs at least 720
+by 198 px; this Area is 720 by 110. Make the window taller, or choose a smaller
+View from the menu above." (offscreen platform, the container's font). The
+notice also shows at 1440 by 900, 1536 by 864 and 1600 by 900 with a branch
+open, and the schematic is shown from 1680 by 1050. So no cut value can be read
+here now, but a user still cannot read the schematic at this size with two
+runs. The Done-when below still needs the room that the interface pass
+(`PL-9WDN`) is to give.
+
 **Done when** a test opens a branch in the Maintenance Workspace at 1366 by 768 and finds, for each run, a scroll position at which all six containers are whole under the run's heading, with the chart's title and key in view.
 
 **Generator check.** A consequence of `PL-3NGZ`'s pinned heading meeting the Workspace's overflow at this size; a one-off.

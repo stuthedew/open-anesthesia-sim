@@ -36,13 +36,24 @@ from anesthesia_sim.app.compartment_schematic import (
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
 from anesthesia_sim.app.formatting import format_compartment_share, format_elapsed
-from anesthesia_sim.app.qt_schematic import ContainerNames, RunSchematic, SchematicCanvas
+from anesthesia_sim.app.qt_schematic import (
+    CanvasParts,
+    ContainerNames,
+    RunSchematic,
+    SchematicCanvas,
+)
 from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import INK, MUTED, WARNING
-from anesthesia_sim.app.view_registry import BOOKMARKS, BRANCH, COMPARTMENT_SCHEMATIC, REGISTERED
+from anesthesia_sim.app.view_registry import (
+    BOOKMARKS,
+    BRANCH,
+    COMPARTMENT_SCHEMATIC,
+    PARAMETER_CONTROLS,
+    REGISTERED,
+)
 from anesthesia_sim.app.views import BranchView, CompartmentSchematicView, ConcentrationView
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.parameters import load_agent_parameters
@@ -89,30 +100,47 @@ _SCHEMATIC_AND_BRANCH = WorkspaceSet(
     0,
 )
 
-#: The schematic over the bookmarks, for a test that scrolls the page. The
-#: bookmarks' Area below gives the page room to carry the schematic's top out
-#: of a short window while the rest of it is in view.
-_SCHEMATIC_OVER_BOOKMARKS = WorkspaceSet(
-    (
-        Workspace(
-            WorkspaceName("Schematic over bookmarks"),
-            Origin.mine(),
-            LayoutModel(
-                (
-                    Window(
-                        Split(
-                            Orientation.COLUMN,
-                            (0.5, 0.5),
-                            (Area(AreaId(1), COMPARTMENT_SCHEMATIC), Area(AreaId(2), BOOKMARKS)),
-                        )
-                    ),
-                ),
-                AreaId(3),
+
+def _beside_the_controls(name: str, bookmarks_first: bool) -> WorkspaceSet:
+    """Return one Workspace of the schematic beside the parameter controls, and the bookmarks.
+
+    The bookmarks' Area stands under that row, or over it where
+    `bookmarks_first`, so that a window shorter than the page scrolls the
+    page. While the page scrolls, every Area is held at its need, the least
+    height at which its View is shown. The parameter controls need their whole
+    height, which with a branch open is more than the schematic needs to show
+    a whole row of containers. Their row is as tall as they are, so the
+    schematic beside them is shown, and its box is shorter than two runs'
+    schematics, so it scrolls too (`PL-GWTR`).
+    """
+
+    row = Split(
+        Orientation.ROW,
+        (0.6, 0.4),
+        (Area(AreaId(1), COMPARTMENT_SCHEMATIC), Area(AreaId(2), PARAMETER_CONTROLS)),
+    )
+    bookmarks = Area(AreaId(3), BOOKMARKS)
+    children = (bookmarks, row) if bookmarks_first else (row, bookmarks)
+
+    return WorkspaceSet(
+        (
+            Workspace(
+                WorkspaceName(name),
+                Origin.mine(),
+                LayoutModel((Window(Split(Orientation.COLUMN, (0.5, 0.5), children)),), AreaId(4)),
             ),
         ),
-    ),
-    0,
-)
+        0,
+    )
+
+
+#: The schematic and the controls over the bookmarks, for a test that scrolls
+#: the page and carries the schematic's top out of view.
+_SCHEMATIC_OVER_BOOKMARKS = _beside_the_controls("Schematic over bookmarks", False)
+
+#: The bookmarks over the schematic and the controls, for a test that scrolls
+#: the page and carries the whole schematic out of view below the window.
+_BOOKMARKS_OVER_SCHEMATIC = _beside_the_controls("Bookmarks over schematic", True)
 
 _WINDOW_WIDTH_PX = 1400
 _WINDOW_HEIGHT_PX = 1000
@@ -1064,8 +1092,8 @@ def _in_run(run: RunSchematic, widget: QWidget, rectangle: QRectF) -> QRectF:
 
 
 @pytest.mark.parametrize(
-    ("dial_percent", "branched"),
-    [(None, True), (8.0, False), (None, False)],
+    ("dial_percent", "branched", "size"),
+    [(None, True, (1920, 1080)), (8.0, False, (1366, 768)), (None, False, (1366, 768))],
     ids=["two runs", "one run off the scale", "one run"],
 )
 def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position(
@@ -1073,12 +1101,16 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
     shown: list[SimulationView],
     dial_percent: float | None,
     branched: bool,
+    size: tuple[int, int],
 ) -> None:
     """`PL-3NGZ`: wherever a value of a run is in view, that run's whole heading is in view too.
 
     The Maintenance Workspace at 1366 by 768 gives the schematic an Area
-    shorter than one run's schematic, and two compared runs share it. The test
-    scrolls the Area through every position. Wherever a container, a share bar
+    shorter than one run's schematic. At that size, two compared runs leave the
+    schematic's box too short to show a whole row of containers, so the Area
+    shows a notice in place of the View (`PL-GWTR`). At 1920 by 1080 the two
+    runs share a box that shows a whole row and is shorter than both runs'
+    schematics. The test scrolls the Area through every position. Wherever a container, a share bar
     or a line of a label is wholly in view and not under the heading, the
     heading is wholly in view too, and above that value. It holds the line
     that names the run and the instant, the share caption and the
@@ -1093,12 +1125,7 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
     """
 
     view = _paused_dashboard(
-        application,
-        shown,
-        _maintenance(),
-        (1366, 768),
-        branched=branched,
-        dial_percent=dial_percent,
+        application, shown, _maintenance(), size, branched=branched, dial_percent=dial_percent
     )
     schematic = _schematic(view)
     scroll = _view_scroll(schematic)
@@ -1106,7 +1133,9 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
     viewport = scroll.viewport().rect()
 
     assert len(schematic.schematics) == (2 if branched else 1)
-    # The premise: the Area cannot hold the schematic, so the test scrolls.
+    # The premise: the Area shows the schematic, and cannot hold all of it,
+    # so the test scrolls.
+    assert schematic.isVisible()
     assert bar.maximum() > 0
     assert schematic.pinned_row.isVisible()
     assert not scroll.isAncestorOf(schematic.pinned_row)
@@ -1157,13 +1186,268 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
                 )
 
 
+# How far the line that marks a container above the scale reaches past the
+# container's top: half its 4 px width, restated from `app/qt_schematic.py`.
+_OFF_SCALE_REACH_PX = 2
+# An Area's header row and the 1 px rule under it, which the too-small notice
+# leaves out of the size it gives, restated as `tests/integration/test_layout_adapter.py`
+# measures them.
+_AREA_CHROME_PX = 27
+
+
+def test_a_box_too_short_for_a_row_of_containers_shows_a_notice_in_place_of_the_schematic(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-GWTR`: where every scroll position would cut each container, no container is drawn.
+
+    In the Maintenance Workspace at 1366 by 768, a branch adds the second run's
+    row to the parameter controls, and the page then scrolls. Each Area is then
+    held at its need, which leaves the schematic's box shorter than a run's
+    heading and its row of containers. So the Area shows the too-small notice
+    in place of the View. The height it states is worked out here: the row kept
+    above the box, the run's heading, and the canvas down to the containers'
+    lower edge, past which the line over a container above the scale reaches
+    2 px. No border can give the Area that height while the page scrolls, so
+    the notice says to make the window taller. At 1920 by 1080 the box is tall
+    enough, and the schematic is shown.
+    """
+
+    view = _paused_dashboard(application, shown, _maintenance(), (1366, 768), branched=True)
+    schematic = _schematic(view)
+    run = schematic.schematics[0]
+    (too_small,) = view.layout_container.too_small()
+    frame = view.layout_container.frame(too_small.area_id)
+    notice = frame.too_small_notice
+    needed = (
+        schematic.pinned_row.sizeHint().height()
+        + run.heading.sizeHint().height()
+        + _CONTAINER_TOP_PX
+        + _CONTAINER_HEIGHT_PX
+        + _OFF_SCALE_REACH_PX
+    )
+    has = frame.height() - _AREA_CHROME_PX
+
+    # The premise: the page scrolls, so every Area is held at its need.
+    assert view._page_scroll.verticalScrollBar().maximum() > 0
+    assert too_small.needed.height_px == needed + _AREA_CHROME_PX
+    assert not schematic.isVisible()
+    assert notice is not None and notice.isVisible()
+    assert [notice.title_label.text(), notice.body_label.text()] == [
+        "Too small for Compartment schematic.",
+        f"It needs at least {too_small.needed.width_px} by {needed} px; this Area is "
+        f"{frame.width()} by {has}. Make the window taller, or choose a smaller View from "
+        "the menu above.",
+    ]
+
+    wide = _paused_dashboard(application, shown, _maintenance(), (1920, 1080), branched=True)
+
+    assert wide.layout_container.too_small() == ()
+    assert _schematic(wide).isVisible()
+
+
+def _clear_part(scroll: ViewScroll, run: RunSchematic) -> QRect:
+    """Return the part of the run's canvas in the box's view and below the heading, in its pixels.
+
+    It is worked out here from where the box, the heading and the canvas stand,
+    apart from the code under test.
+    """
+
+    viewport = scroll.viewport()
+    corner = run.canvas.mapTo(viewport, QPoint(0, 0))
+    shown_part = QRect(corner, run.canvas.size()).intersected(viewport.rect())
+    shown_part.setTop(
+        max(shown_part.top(), run.heading.mapTo(viewport, QPoint(0, 0)).y() + run.heading.height())
+    )
+
+    if shown_part.height() <= 0:
+        return QRect()
+
+    return shown_part.translated(-corner)
+
+
+def _whole_in(clear: QRect, part: QRectF, reach: float = 0.0) -> bool:
+    """Return whether `part`, widened by `reach` px above and below, lies within `clear`'s rows."""
+
+    return (
+        not clear.isEmpty()
+        and clear.top() <= part.top() - reach
+        and part.bottom() + reach <= clear.top() + clear.height()
+    )
+
+
+def _middle_row(image: QImage, part: QRectF) -> set[int]:
+    """Return the colours along the middle row of `part` in `image`."""
+
+    row = int(part.center().y())
+
+    return {
+        image.pixel(x, row)
+        for x in range(max(int(part.left()), 0), min(int(part.right()), image.width()))
+    }
+
+
+def test_no_container_label_line_or_share_bar_is_painted_cut_at_any_scroll_position(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-GWTR`: each part of the schematic is painted only while it is whole in view.
+
+    A container shows its tension as the height of its fill, so a container
+    cut by a run's heading or by the box's edge could look full, or empty, at a
+    tension it does not hold. A cut line of a label could be read as other
+    digits. In the Maintenance Workspace at 1920 by 1080, two compared runs
+    share a box shorter than both. The test scrolls the box through every
+    position and works out, for each run, the part of the canvas in view and
+    not under the heading. The six containers must be painted only while all of
+    them are whole there, with the 2 px by which the line over a container
+    above the scale reaches past its top. Each label line and share bar must be
+    painted only while it is whole there. The test then reads the painted
+    pixels. A container that is not painted shows none of its compartment's
+    colour down its middle. A label line or a share bar that is not painted is
+    one colour along its middle row. Where the containers are not painted, the
+    line that says why may be painted, in the clear part and above the labels.
+    """
+
+    view = _paused_dashboard(application, shown, _maintenance(), (1920, 1080), branched=True)
+    schematic = _schematic(view)
+    scroll = _view_scroll(schematic)
+    bar = scroll.verticalScrollBar()
+    columns = range(len(_NAMES))
+    states = {"containers painted": 0, "containers hidden, line painted": 0, "a line hidden": 0}
+
+    # The premise: the schematic is shown, the whole box is in the page's
+    # view, and the box scrolls.
+    assert schematic.isVisible()
+    assert _shown_part(view._page_scroll, scroll).size() == scroll.viewport().size()
+    assert bar.maximum() > 0
+
+    for position in range(bar.maximum() + 1):
+        bar.setValue(position)
+        application.processEvents()
+
+        for run in schematic.schematics:
+            canvas = run.canvas
+            clear = _clear_part(scroll, run)
+            parts = canvas.shown_parts()
+            image = canvas.grab().toImage()
+            containers = all(
+                _whole_in(clear, canvas.container(index), _OFF_SCALE_REACH_PX) for index in columns
+            )
+            where = (position, run.name_text.text())
+
+            assert parts.containers is containers, where
+            assert parts.lines == {
+                (index, line)
+                for index in columns
+                for line in range(3)
+                if _whole_in(clear, canvas.label_line(index, line))
+            }, where
+            assert parts.bars == {
+                index for index in columns if _whole_in(clear, canvas.share_bar(index))
+            }, where
+
+            for index, reading in enumerate(canvas.readings):
+                colour = QColor(trace_style(reading.quantity).color).rgb()
+                fill = range(_CONTAINER_TOP_PX, _CONTAINER_TOP_PX + _CONTAINER_HEIGHT_PX + 1)
+                filled = any(image.pixel(_column_centre(canvas, index), y) == colour for y in fill)
+                assert containers or not filled, (*where, reading.name)
+
+                for line in range(3):
+                    if (index, line) not in parts.lines:
+                        assert len(_middle_row(image, canvas.label_line(index, line))) == 1, where
+
+                if index not in parts.bars:
+                    assert len(_middle_row(image, canvas.share_bar(index))) == 1, where
+
+            if parts.cut_notice is not None:
+                assert not containers, where
+                assert clear.contains(parts.cut_notice.toAlignedRect()), where
+                assert parts.cut_notice.bottom() <= canvas.label_line(0, 0).top(), where
+                assert len(_middle_row(image, parts.cut_notice)) > 1, where
+
+            states["containers painted"] += containers
+            states["containers hidden, line painted"] += parts.cut_notice is not None
+            states["a line hidden"] += len(parts.lines) < 3 * len(_NAMES)
+
+    # The premise: the scroll reached each state at least once.
+    assert all(states.values()), states
+
+
+def test_a_canvas_paints_each_part_only_while_its_clear_part_holds_it_whole(
+    application: QApplication, shown: list[SimulationView]
+) -> None:
+    """`PL-GWTR`: the canvas paints the parts that the clear part it is given holds whole.
+
+    Each canvas here is given one run's readings, at the size the run's own
+    canvas has, and a fixed clear part. A canvas that nobody measures, or one
+    whose clear part is all of it, paints every part. The containers stand from
+    14 px down, and the line over a container above the scale reaches 2 px
+    above them, so a clear part from 12 px down shows them and one from 13 px
+    hides them. A clear part from 20 px puts the line that says why they are
+    hidden at its top, above the labels. An edge across a label line hides
+    that line in every column. A space too short for the line paints neither
+    the containers nor the line.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 10 * SECONDS_PER_MINUTE)
+    controller.pause()
+    source = _schematic(_dashboard(application, shown, controller)).schematics[0].canvas
+    width, height = source.width(), source.height()
+    every_line = frozenset((index, line) for index in range(6) for line in range(3))
+    every_bar = frozenset(range(6))
+
+    def measured(clear: QRect | None) -> CanvasParts:
+        canvas = SchematicCanvas()
+        canvas.show_readings(source.readings, source.marks)
+        canvas.resize(source.size())
+
+        if clear is not None:
+            canvas.measure_clear_part(lambda: clear)
+
+        return canvas.shown_parts()
+
+    assert SchematicCanvas().shown_parts() == CanvasParts(False, frozenset(), frozenset(), None)
+
+    for clear in (None, QRect(0, 0, width, height)):
+        assert measured(clear) == CanvasParts(True, every_line, every_bar, None)
+
+    assert measured(QRect(0, 12, width, height - 12)).containers
+    assert not measured(QRect(0, 13, width, height - 13)).containers
+
+    hidden = measured(QRect(0, 20, width, height - 20))
+
+    assert (hidden.containers, hidden.lines, hidden.bars) == (False, every_line, every_bar)
+    assert hidden.cut_notice is not None
+    assert hidden.cut_notice.top() == 20
+    assert hidden.cut_notice.bottom() <= source.label_line(0, 0).top()
+
+    top = int(source.label_line(0, 0).top()) + 3
+    first_cut = measured(QRect(0, top, width, height - top))
+
+    assert first_cut.lines == every_line - {(index, 0) for index in range(6)}
+    assert first_cut.cut_notice is None
+
+    bottom = int(source.label_line(0, 1).bottom()) - 2
+
+    assert measured(QRect(0, 0, width, bottom)) == CanvasParts(
+        True, frozenset((index, 0) for index in range(6)), frozenset(), None
+    )
+
+    too_short = measured(QRect(0, 100, width, 10))
+
+    assert not too_short.containers
+    assert too_short.cut_notice is None
+    assert measured(QRect()) == CanvasParts(False, frozenset(), frozenset(), None)
+
+
 @pytest.mark.parametrize(
     ("workspaces", "size", "branched"),
     [
-        (_maintenance(), (1366, 768), True),
+        (_maintenance(), (1920, 1080), True),
         (_SCHEMATIC_ONLY, (_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX), False),
     ],
-    ids=["two runs at 1366 by 768", "one run, wide"],
+    ids=["two runs at 1920 by 1080", "one run, wide"],
 )
 def test_each_compartment_name_stands_over_its_own_container(
     application: QApplication,
@@ -1183,6 +1467,9 @@ def test_each_compartment_name_stands_over_its_own_container(
     """
 
     view = _paused_dashboard(application, shown, workspaces, size, branched=branched)
+    # The premise: the Area shows the schematic, not the notice that stands in
+    # its place in a box too short for a row of containers (`PL-GWTR`).
+    assert _schematic(view).isVisible()
 
     for run in _schematic(view).schematics:
         for index, name in enumerate(_NAMES):
@@ -1295,9 +1582,10 @@ def test_a_run_heading_follows_a_scroll_of_the_page(
     """`PL-3NGZ`: wherever the page's scroll leaves a run's value in view, its heading is in view.
 
     A window shorter than the dashboard scrolls the whole page, Areas and
-    all. The schematic's Area is here at the top of a window 400 px tall,
-    over the bookmarks' Area, so a page scroll carries the top of its box,
-    and the heading pinned there, above the page's edge. For each run, the test scrolls the
+    all. The schematic's Area is here at the top of a window 500 px tall,
+    beside the parameter controls and over the bookmarks' Area, so a page
+    scroll carries the top of its box, and the heading pinned there, above
+    the page's edge. For each run, the test scrolls the
     box until a container, a share bar or a line of a label stands just
     under the heading pinned at the box's top. It then scrolls the page
     through every position. Wherever a value is wholly in view and not under
@@ -1309,7 +1597,7 @@ def test_a_run_heading_follows_a_scroll_of_the_page(
     """
 
     view = _paused_dashboard(
-        application, shown, _SCHEMATIC_OVER_BOOKMARKS, (_WINDOW_WIDTH_PX, 400), branched=True
+        application, shown, _SCHEMATIC_OVER_BOOKMARKS, (_WINDOW_WIDTH_PX, 500), branched=True
     )
     page = view._page_scroll
     schematic = _schematic(view)
@@ -1318,10 +1606,12 @@ def test_a_run_heading_follows_a_scroll_of_the_page(
     box_bar = scroll.verticalScrollBar()
 
     # The premise: the page scrolls far enough to take the top of the
-    # schematic's box out of view.
+    # schematic's box out of view, and the box shows the schematic and scrolls.
     page_bar.setValue(0)
     application.processEvents()
     assert page_bar.maximum() > scroll.viewport().mapTo(page.viewport(), QPoint(0, 0)).y()
+    assert schematic.isVisible()
+    assert box_bar.maximum() > 0
 
     for pinned in schematic.schematics:
         for placed in (
@@ -1356,10 +1646,11 @@ def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
 ) -> None:
     """`PL-H55Q`: a taller window moves each heading over the part of its run it brings into view.
 
-    In the Maintenance Workspace at 1366 by 600 with a branch open, the page
-    scrolls. The page is scrolled to its end, as a reader scrolls it. That
-    ends the hold on the concentration chart that the branch began, so no
-    later change of the page's range scrolls the page to the chart. The
+    With the bookmarks over the schematic and the parameter controls, in a
+    window 1400 by 500 px with a branch open, the page scrolls. The page is
+    scrolled to its end, as a reader scrolls it. In a Workspace that shows the
+    concentration chart, that ends the hold on the chart that a branch begins,
+    so no later change of the page's range scrolls the page to the chart. The
     schematic's box is scrolled until the first run's tension line stands
     just under the heading, and the page is scrolled back to its top, which
     takes the schematic's Area below the window's lower edge. No part of
@@ -1375,7 +1666,9 @@ def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
     its heading above the box's top edge.
     """
 
-    view = _paused_dashboard(application, shown, _maintenance(), (1366, 600), branched=True)
+    view = _paused_dashboard(
+        application, shown, _BOOKMARKS_OVER_SCHEMATIC, (_WINDOW_WIDTH_PX, 500), branched=True
+    )
     page = view._page_scroll
     schematic = _schematic(view)
     scroll = _view_scroll(schematic)
@@ -1396,13 +1689,15 @@ def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
     page_bar.triggerAction(QAbstractSlider.SliderAction.SliderToMinimum)
     application.processEvents()
 
-    # The premise: the page's scroll has taken the whole box out of view.
+    # The premise: the Area shows the schematic, and the page's scroll has
+    # taken the whole box out of view.
+    assert not schematic.isHidden()
     assert _shown_part(page, scroll).isEmpty()
     before = (page_bar.value(), box_bar.value(), scroll.viewport().size())
 
     # The page's viewport grows with the window, so this leaves the page one
     # pixel to scroll.
-    view.resize(1366, 600 + page_bar.maximum() - 1)
+    view.resize(_WINDOW_WIDTH_PX, 500 + page_bar.maximum() - 1)
     application.processEvents()
     shown_part = _shown_part(page, scroll)
 
@@ -1412,7 +1707,9 @@ def test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view(
     assert page_bar.maximum() == 1
     assert (page_bar.value(), box_bar.value(), scroll.viewport().size()) == before
 
-    # The premise: the taller window shows the first run's values again.
+    # The premise: the taller window shows the schematic and the first run's
+    # values again.
+    assert schematic.isVisible()
     assert _seen_without_heading(page, first, shown_part)
 
     for run in schematic.schematics:

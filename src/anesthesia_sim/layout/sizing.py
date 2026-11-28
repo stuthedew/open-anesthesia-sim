@@ -78,6 +78,7 @@ __all__ = [
     "border_range",
     "border_share",
     "drawn_bounds",
+    "largest_height",
     "minimum_extent",
     "pixel_sizes",
     "settle",
@@ -503,6 +504,56 @@ def minimum_extent(tree: Node, handle_px: int, bounds: Mapping[AreaId, PixelSize
     _require_handle(handle_px)
 
     return _minimum_extent(tree, handle_px, bounds)
+
+
+def largest_height(
+    tree: Node, area_id: AreaId, height_px: int, handle_px: int, bounds: Mapping[AreaId, PixelSize]
+) -> int:
+    """Return the greatest height, in pixels, to which moving borders can bring the Area `area_id`.
+
+    `height_px` is the height of `tree`. A border move changes only fractions,
+    so it cannot make the tree taller. In a column, the Area's branch is
+    tallest when every other child is held at its least height
+    (`minimum_extent`), so it has the column's height less those heights and
+    the handles. In a row, every child has the row's height. The result is
+    less than the Area's bound where the tree is too short for every bound.
+
+    Raises:
+        TypeError: `handle_px` is not an `int`, or is a `bool`.
+        InvalidLayout: `handle_px` is negative.
+        KeyError: `area_id` is not an Area of `tree`, or `bounds` has no bound
+            for an Area of `tree`.
+    """
+
+    _require_handle(handle_px)
+    node, height = tree, height_px
+
+    while not isinstance(node, Area):
+        index = next(
+            (
+                index
+                for index, child in enumerate(node.children)
+                if any(area.id == area_id for area in areas_in(child))
+            ),
+            None,
+        )
+
+        if index is None:
+            raise KeyError(f"the layout has no Area {area_id}")
+
+        if node.orientation is Orientation.COLUMN:
+            height -= handle_px * (len(node.children) - 1) + sum(
+                _minimum_extent(child, handle_px, bounds).height_px
+                for other, child in enumerate(node.children)
+                if other != index
+            )
+
+        node = node.children[index]
+
+    if node.id != area_id:
+        raise KeyError(f"the layout has no Area {area_id}")
+
+    return height
 
 
 def apportion(

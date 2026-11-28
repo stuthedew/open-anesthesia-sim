@@ -361,15 +361,24 @@ def test_the_too_small_notice_names_the_view_and_both_sizes() -> None:
     """The notice follows `PL-DB5G` Q3: the size needed first, then the Area's size."""
 
     assert too_small_title("Wash-in") == "Too small for Wash-in."
-    assert too_small_text(PixelSize(300, 246), PixelSize(212, 97)) == (
+    assert too_small_text(PixelSize(300, 246), PixelSize(212, 97), border_can_enlarge=True) == (
         "It needs at least 300 by 246 px; this Area is 212 by 97. Drag a border to enlarge it, "
+        "or choose a smaller View from the menu above."
+    )
+
+
+def test_the_too_small_notice_says_to_make_the_window_taller_where_no_border_can_help() -> None:
+    """`PL-GWTR`: where no border can give the Area the room, the notice does not advise a drag."""
+
+    assert too_small_text(PixelSize(720, 198), PixelSize(720, 110), border_can_enlarge=False) == (
+        "It needs at least 720 by 198 px; this Area is 720 by 110. Make the window taller, "
         "or choose a smaller View from the menu above."
     )
 
 
 def test_the_too_small_notice_refuses_a_size_that_is_not_a_pixel_size() -> None:
     with pytest.raises(TypeError, match="a size on screen is a PixelSize, not tuple"):
-        too_small_text((300, 246), PixelSize(212, 97))  # type: ignore[arg-type]
+        too_small_text((300, 246), PixelSize(212, 97), border_can_enlarge=True)  # type: ignore[arg-type]
 
 
 def test_the_short_too_small_notice_states_both_sizes_and_drops_the_advice() -> None:

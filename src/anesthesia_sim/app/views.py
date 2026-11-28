@@ -1566,6 +1566,10 @@ class CompartmentSchematicView(QWidget):
     shares are of, stays at the top of that run's part in view
     (`RunSchematic`).
 
+    The View declares its `legible_height`, so an Area whose box is too short
+    to show a whole row of containers under a run's heading shows a notice in
+    place of the View (`PL-GWTR`).
+
     Args:
         context: What the View is built from.
 
@@ -1614,6 +1618,20 @@ class CompartmentSchematicView(QWidget):
         """The schematic shown for each displayed run, in drawing order."""
 
         return self._schematics.widgets
+
+    def legible_height(self) -> int | None:
+        """Return the least height of the box that scrolls this View for a whole row of containers.
+
+        In a shorter box, every container would be cut off at every scroll
+        position, by the run's heading or by the box's edge. Its Area then
+        shows a notice in place of the View (`app/area_layout.py`'s
+        `legible_height`). The result is None while no run is shown, as before
+        the first tick.
+        """
+
+        heights = [schematic.legible_height() for schematic in self._schematics.widgets]
+
+        return max(heights) if heights else None
 
     def refresh(self, tick: ViewTick) -> None:
         """Show one schematic for each run in the tick, written from that run's presentation.
