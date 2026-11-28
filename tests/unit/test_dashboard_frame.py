@@ -141,6 +141,7 @@ from anesthesia_sim.app.dashboard_frame import (
     compared_run_line,
     compared_run_notice,
     comparing_fork_lock_text,
+    control_name,
     delivered_line,
     fork_offer,
     halt_disposition,
@@ -2605,6 +2606,19 @@ def test_a_slider_position_round_trips_to_the_value_printed_beside_it() -> None:
 
             assert slider_position(value, decimals) == position
             assert f"{value:.{decimals}f}" == f"{slider_value(position, decimals):.{decimals}f}"
+
+
+def test_a_control_whose_label_another_shows_is_named_with_which_one_it_is() -> None:
+    """A screen reader hears the label, then what tells this control from the others.
+
+    Where no other control shows the label, the name is the label alone, so a
+    control that needs no telling apart is not given a longer name
+    (`PL-YSFX`).
+    """
+
+    assert control_name("Playback", None) == "Playback"
+    assert control_name("Playback", "Run 2") == "Playback, Run 2"
+    assert control_name("Name", "MAC target") == "Name, MAC target"
 
 
 def test_the_fresh_gas_flow_control_names_the_common_gas_outlet() -> None:
