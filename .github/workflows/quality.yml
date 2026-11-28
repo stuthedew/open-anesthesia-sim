@@ -582,7 +582,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # Can a mutation run get past its first step? (`PL-PG0S`)
+  # Can a mutation run get past its first step, and then finish? (`PL-PG0S`)
   #
   # mutmut first runs the simulator's unit tests once in its own copy of the
   # tree, `mutants/`, and a test that fails there stops every mutation run
@@ -594,6 +594,15 @@ jobs:
   # those tests in it once, with no mutant applied. It took 2 min 25 s on
   # four cores on 2026-11-11. A pull request that changes only item files
   # skips it, as the parts skip the suite.
+  #
+  # Running the tests in the copy leaves out mutmut's own pytest plugin and
+  # its runs of the mutants. So the job's last step runs mutmut the whole way
+  # on one small function, and fails unless the function's tests catch one of
+  # its mutants. A pytest or mutmut upgrade that breaks either part then
+  # fails the pull request that brings it. mutmut 3.8.0's plugin failed under
+  # pytest 9.2.0, and every mutation run stopped for about a day while this
+  # job passed (`PL-LR03`, `PL-NZ0R`). `sample_run` in
+  # `tools/diff_mutation.py` says why one caught mutant is enough.
   #
   # not-required: gated by `checks`, which needs this job and fails unless it succeeded
   mutation-copy:
@@ -624,6 +633,9 @@ jobs:
       - name: the simulator's unit tests in mutmut's copy of the tree
         if: steps.scope.outputs.scope != 'items'
         run: uv run --locked --group mutation python tools/diff_mutation.py --first-step
+      - name: a whole mutation run on one small function
+        if: steps.scope.outputs.scope != 'items'
+        run: uv run --locked --group mutation python tools/diff_mutation.py --sample-run
 
   # **This job's name is load-bearing outside the tree.** Branch protection
   # matches a required status check by name, so renaming or removing a job here

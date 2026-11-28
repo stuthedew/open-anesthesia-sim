@@ -94,6 +94,15 @@ rule took the run from 5,486 mutants to 11,702.
   2 min 25 s on a four-core container on 2026-11-11. CI's `mutation-copy` job
   runs it on every pull request that changes more than item files
   (`PL-PG0S`).
+- `make mutate ARGS=--sample-run` runs mutmut the whole way on one small
+  function, `exponential_approach_in_time_constants` in
+  `core/exponential_approach.py`, and fails unless its tests kill at least
+  one of its mutants. It runs the two parts that `--first-step` leaves out:
+  mutmut's pytest plugin, which records which tests call each function, and
+  the runs of the mutants. It took 8 seconds on a four-core container on
+  2026-11-28. The same CI job runs it after `--first-step`, so that a pytest or
+  mutmut upgrade that breaks either part fails its own pull request
+  (`PL-NZ0R`).
 - `bin/docket verify` runs the same tool with `--verdict`, which prints the run
   as JSON for its check `the unit tests catch a mutation of each changed line`.
   `docket.toml`'s `mutation_command` names it. A survivor on a changed line
