@@ -671,17 +671,42 @@ _NO_AGENT_COST_VIEW: Final = WorkspaceSet(
 )
 
 
-@pytest.mark.parametrize("cause", ["a file from a newer version", "a save that fails"])
-def test_a_top_that_could_not_be_saved_is_named_on_every_chart_and_schematic(
-    application: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cause: str
-) -> None:
-    """`PL-GWSY`: a Workspace with no agent cost View still says that a picked top is not kept.
+#: What every chart and schematic says while the top in force is one that the
+#: next launch will not open at. Written out by hand (`PL-GWSY`).
+_UNSAVED_TOP_LINE: Final = (
+    "The application could not save this axis top, so it lasts only until the "
+    "application closes. The Agent cost View says why."
+)
+#: What they say while the launch could not use the preferences file.
+_UNUSED_FILE_LINE: Final = (
+    "The application could not use your preferences file, so any axis top saved in it is "
+    "not in use. The Agent cost View says why."
+)
 
-    Saving is off for a file that a newer version wrote, and a save can fail
-    for a reason of the file system's. Either way, the picked top applies
-    until the application closes, and every chart and schematic says so under
-    its axis top control. The line is written out by hand. A later save that
-    succeeds writes the top in force too, so it clears the line.
+
+def _assert_ceiling_line(
+    views: Sequence[ConcentrationView | CompartmentSchematicView], text: str | None
+) -> None:
+    """Assert that every one of `views` shows `text` under its axis top control, or no line."""
+
+    for shown in views:
+        assert shown.ceiling_notice.isHidden() is (text is None)
+
+        if text is not None:
+            assert shown.ceiling_notice.text() == text
+
+
+def test_a_file_the_launch_could_not_use_is_named_on_every_chart_and_schematic(
+    application: QApplication, tmp_path: Path
+) -> None:
+    """`PL-GWSY`: a Workspace with no agent cost View still says the saved top is not in use.
+
+    Saving is off for a file that a newer version wrote, so any top saved in
+    it is not in force, and every chart and schematic says so from launch. A
+    top picked while saving is off says instead that it lasts only until the
+    application closes. Picking the top the launch opened at again brings the
+    first line back, because the next launch opens at that top too. The file
+    is never written.
     """
 
     directory = tmp_path / "user"
@@ -689,17 +714,8 @@ def test_a_top_that_could_not_be_saved_is_named_on_every_chart_and_schematic(
     (directory / WORKSPACES_FILE_NAME).write_text(
         workspace_set_to_json(_NO_AGENT_COST_VIEW), encoding="utf-8"
     )
-    newer = json.dumps({"schema_version": 3})
-
-    if cause == "a file from a newer version":
-        (directory / PREFERENCES_FILE_NAME).write_text(newer, encoding="utf-8")
-    else:
-
-        def refuse(store: PreferencesStore, preferences: Preferences) -> Path:
-            raise PreferencesFileError(f"the preferences could not be saved to {store.path}")
-
-        monkeypatch.setattr(PreferencesStore, "save", refuse)
-
+    newer = json.dumps({"schema_version": 3, "chart_axis_top_mac": 4.5})
+    (directory / PREFERENCES_FILE_NAME).write_text(newer, encoding="utf-8")
     view = open_dashboard(
         BranchedCase(SimulationController()), "", {USER_DIRECTORY_VARIABLE: str(directory)}
     )
@@ -713,29 +729,83 @@ def test_a_top_that_could_not_be_saved_is_named_on_every_chart_and_schematic(
         (chart,) = [shown for shown in views if isinstance(shown, ConcentrationView)]
         (schematic,) = [shown for shown in views if isinstance(shown, CompartmentSchematicView)]
         assert len(views) == 2
-        assert chart.ceiling_notice.isHidden()
-        assert schematic.ceiling_notice.isHidden()
+        both = (chart, schematic)
+        assert chart.ceiling_selector.currentData() == ChartCeiling.STANDARD.name
+        _assert_ceiling_line(both, _UNUSED_FILE_LINE)
+
+        _pick_ceiling(chart, ChartCeiling.STANDARD)
+        _assert_ceiling_line(both, _UNUSED_FILE_LINE)
 
         _pick_ceiling(chart, ChartCeiling.HIGH)
-
-        for shown in (chart, schematic):
+        for shown in both:
             assert shown.ceiling_selector.currentData() == ChartCeiling.HIGH.name
-            assert not shown.ceiling_notice.isHidden()
-            assert shown.ceiling_notice.text() == (
-                "The application could not save this axis top, so it lasts only until the "
-                "application closes. The Agent cost View says why."
-            )
+        _assert_ceiling_line(both, _UNSAVED_TOP_LINE)
 
-        if cause == "a file from a newer version":
-            assert (directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8") == newer
-        else:
-            monkeypatch.undo()
-            _pick_ceiling(schematic, ChartCeiling.STANDARD)
+        _pick_ceiling(schematic, ChartCeiling.STANDARD)
+        _assert_ceiling_line(both, _UNUSED_FILE_LINE)
+        assert (directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8") == newer
+    finally:
+        view.stop_timers()
+        view.close()
+        view.deleteLater()
+        application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        application.processEvents()
 
-            for shown in (chart, schematic):
-                assert shown.ceiling_notice.isHidden()
-            saved = json.loads((directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
-            assert saved["chart_axis_top_mac"] == 3.0
+
+def test_a_top_that_could_not_be_saved_is_named_on_every_chart_and_schematic(
+    application: QApplication, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`PL-GWSY`: a Workspace with no agent cost View still says that a picked top is not kept.
+
+    A save can fail for a reason of the file system's. The picked top then
+    applies until the application closes, and every chart and schematic says
+    so under its axis top control. Picking the top the next launch opens at
+    clears the line, and so does a later save that succeeds, because it
+    writes the top in force.
+    """
+
+    directory = tmp_path / "user"
+    directory.mkdir()
+    (directory / WORKSPACES_FILE_NAME).write_text(
+        workspace_set_to_json(_NO_AGENT_COST_VIEW), encoding="utf-8"
+    )
+
+    def refuse(store: PreferencesStore, preferences: Preferences) -> Path:
+        raise PreferencesFileError(f"the preferences could not be saved to {store.path}")
+
+    monkeypatch.setattr(PreferencesStore, "save", refuse)
+    view = open_dashboard(
+        BranchedCase(SimulationController()), "", {USER_DIRECTORY_VARIABLE: str(directory)}
+    )
+
+    try:
+        view.resize(1600, 1000)
+        view.show()
+        application.processEvents()
+        view.present(False)
+        views = view.layout_container.views()
+        (chart,) = [shown for shown in views if isinstance(shown, ConcentrationView)]
+        (schematic,) = [shown for shown in views if isinstance(shown, CompartmentSchematicView)]
+        assert len(views) == 2
+        both = (chart, schematic)
+        _assert_ceiling_line(both, None)
+
+        _pick_ceiling(chart, ChartCeiling.HIGH)
+        for shown in both:
+            assert shown.ceiling_selector.currentData() == ChartCeiling.HIGH.name
+        _assert_ceiling_line(both, _UNSAVED_TOP_LINE)
+
+        _pick_ceiling(schematic, ChartCeiling.STANDARD)
+        _assert_ceiling_line(both, None)
+
+        _pick_ceiling(chart, ChartCeiling.HIGH)
+        _assert_ceiling_line(both, _UNSAVED_TOP_LINE)
+
+        monkeypatch.undo()
+        _pick_ceiling(schematic, ChartCeiling.LOW)
+        _assert_ceiling_line(both, None)
+        saved = json.loads((directory / PREFERENCES_FILE_NAME).read_text(encoding="utf-8"))
+        assert saved["chart_axis_top_mac"] == 1.5
     finally:
         view.stop_timers()
         view.close()

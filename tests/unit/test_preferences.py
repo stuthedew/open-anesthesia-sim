@@ -129,7 +129,7 @@ def test_the_axis_top_is_saved_as_its_mac_multiple_and_survives_a_restart(
     assert loaded.notice is None
     assert loaded.writable
     assert loaded.preferences.chart_ceiling is ceiling
-    assert chart_ceiling_notice(loaded.preferences, unsaved=False) is None
+    assert chart_ceiling_notice(loaded.preferences) is None
 
 
 def test_a_version_1_file_opens_at_the_standard_top_and_its_next_save_writes_version_2(
@@ -206,7 +206,7 @@ def test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept(
     assert loaded.writable
     assert loaded.notice is None
     assert preferences.chart_ceiling is ChartCeiling.STANDARD
-    assert chart_ceiling_notice(preferences, unsaved=False) == (
+    assert chart_ceiling_notice(preferences) == (
         f"The saved axis top, {shown}, is not one of the numbers 1.5, 3 or 4.5 ×MAC, so every "
         "chart and schematic shows 3 ×MAC. Choose a top to replace it."
     )
@@ -219,33 +219,8 @@ def test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept(
 
     picked = PreferencesStore(tmp_path).load().preferences.with_chart_ceiling(ChartCeiling.LOW)
 
-    assert chart_ceiling_notice(picked, unsaved=False) is None
+    assert chart_ceiling_notice(picked) is None
     assert picked.chart_ceiling is ChartCeiling.LOW
-
-
-def test_a_picked_top_that_could_not_be_saved_is_named_on_the_charts(tmp_path: Path) -> None:
-    """`PL-GWSY`: a top that will not be kept is said so beside the control that set it.
-
-    The line is written out by hand. A refused saved top keeps its own notice,
-    because it names the top the charts fell back to and says what to do.
-    """
-
-    unsaved = (
-        "The application could not save this axis top, so it lasts only until the application "
-        "closes. The Agent cost View says why."
-    )
-    picked = Preferences().with_chart_ceiling(ChartCeiling.HIGH)
-
-    assert chart_ceiling_notice(picked, unsaved=True) == unsaved
-    assert chart_ceiling_notice(picked, unsaved=False) is None
-
-    _write(tmp_path, {**_document([]), "schema_version": 2, "chart_axis_top_mac": 7})
-    refused = PreferencesStore(tmp_path).load().preferences
-
-    assert chart_ceiling_notice(refused, unsaved=True) == (
-        "The saved axis top, 7, is not one of the numbers 1.5, 3 or 4.5 ×MAC, so every "
-        "chart and schematic shows 3 ×MAC. Choose a top to replace it."
-    )
 
 
 def test_a_top_that_is_not_a_chart_ceiling_is_refused() -> None:
