@@ -2154,7 +2154,8 @@ def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
     whose Reset was refused. The failed run refuses the dial (`PL-3B34`), so the
     exit is still on the banner and the refusal follows it, and the next Reset is
     refused again. The expected sentences are written here as literals rather
-    than read from the constants.
+    than read from the constants. The banner tells the user to keep the failure
+    details first, and the test presses the two buttons it names, in its order.
     """
 
     controller = SimulationController()
@@ -2167,7 +2168,9 @@ def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
     _with_stale_tissue_flows(controller, 6.0)
     way_out = (
         "Reset was refused for this reason. No setting can repair this, because only a "
-        "fault in the simulator causes it. Close and reopen the application to start a "
+        "fault in the simulator causes it. To keep the failure details, use Show details, "
+        "then Copy details, and paste them elsewhere before closing, because closing the "
+        "application can clear the copy. Then close and reopen the application to start a "
         "new run."
     )
 
@@ -2177,6 +2180,17 @@ def test_a_refused_reset_names_no_setting_and_sends_the_reader_to_restart(
     assert notice is not None
     assert notice.endswith(way_out)
     assert "Change the setting" not in notice
+
+    # The banner's steps are the buttons on screen, in the order it names
+    # them: the copy button appears only once the details are shown.
+    details = run._failure_details
+    assert details.toggle.isVisible() and details.toggle.text() == "Show details"
+    assert not details.copy_button.isVisible()
+    details.toggle.click()
+    application.processEvents()
+    assert details.copy_button.isVisible() and details.copy_button.text() == "Copy details"
+    details.toggle.click()
+    application.processEvents()
 
     run._handle_cardiac_output_change(6.0)
 
