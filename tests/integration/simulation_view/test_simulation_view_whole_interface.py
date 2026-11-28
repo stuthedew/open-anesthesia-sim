@@ -109,7 +109,7 @@ def test_the_screen_states_the_band_fraction_and_the_divisor_for_every_agent(
 def test_the_interface_says_which_trace_the_band_is_read_against(application: QApplication) -> None:
     prose = " ".join(_visible_strings(_shown_view(application, SimulationController())))
 
-    assert "vessel-rich trace" in prose
+    assert "vessel-rich group trace" in prose
     assert "±1 SD" in prose
     assert "population" in prose
 
@@ -143,7 +143,7 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence(
 
     joined = " ".join(sorted(strings))
     assert "1 MAC sevoflurane (age 40) = 1.8%" in joined
-    assert "read against vessel-rich trace" in joined
+    assert "read against vessel-rich group trace" in joined
     assert "1 MAC sevoflurane (age 40) = 1.8%, reference adult (alveolar, wide dash)" in joined
     assert "Compartments:" in joined
     assert "Clinical references:" in joined

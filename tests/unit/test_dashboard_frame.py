@@ -84,6 +84,7 @@ from anesthesia_sim.app.dashboard_frame import (
     HALT_FORK_LABEL_TEMPLATE,
     HERE_FORK_LABEL_TEMPLATE,
     INTERPRETATION_DISCLAIMER_TEXT,
+    MAC_AWAKE_BAND_LEGEND_TEMPLATE,
     MAC_TARGET_HEADING,
     MARK_FORK_LABEL_TEMPLATE,
     MARK_STANDING_COMPARED_TEXT,
@@ -96,6 +97,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     OFF_SCALE_NOTICE_TEMPLATE,
+    ONE_MAC_LINE_LEGEND_TEMPLATE,
     PREVIEW_OFF_SCALE_NOTICE_TEMPLATE,
     READOUT_PANELS,
     READOUT_RESERVATIONS,
@@ -1874,6 +1876,32 @@ _ALVEOLAR_METRIC_NAME = "Alveolar"
 _ALVEOLAR_METRIC_QUALIFIER = "end-tidal-equivalent"
 _FRESH_GAS_FLOW_LABEL = "Fresh gas flow"
 _FRESH_GAS_FLOW_QUALIFIER = "common gas outlet"
+
+
+def test_each_readout_names_its_compartment_as_the_chart_s_key_does() -> None:
+    """`PL-GRC6`: a compartment's readout and its trace carry one name and one gloss.
+
+    The readout said "Vessel-rich group" while the chart's key, its hover and
+    the mark editor said "Vessel-rich", because the readout held its own copy
+    of each name. The field's own texts name the compartment the vessel-rich
+    group (the Gas Man Workbook, p. 21, and OpenAnesthesia's page on uptake
+    and distribution), so that is the one name. The legend entries of the 1 MAC
+    line and the MAC-awake band name the trace each is read against, in lower
+    case inside their phrase, and say the same name.
+    """
+
+    for panel in COMPARTMENT_PANELS:
+        style = trace_style(panel.compartment())
+
+        assert (panel.name, panel.qualifier) == (style.label, style.gloss), panel
+
+    assert trace_style(RecordedQuantity.VESSEL_RICH).label == "Vessel-rich group"
+    assert MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference="MAC-awake") == (
+        "MAC-awake; population, read against vessel-rich group trace"
+    )
+    assert ONE_MAC_LINE_LEGEND_TEMPLATE.format(reference="1 MAC") == (
+        "1 MAC, reference adult (alveolar, wide dash)"
+    )
 
 
 def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
@@ -3870,7 +3898,7 @@ def test_each_legend_entry_names_its_compartment_and_line_style_and_then_its_run
         RecordedQuantity.CIRCUIT: "Circuit (solid)",
         RecordedQuantity.ALVEOLAR: "Alveolar (long dash)",
         RecordedQuantity.MIXED_VENOUS: "Mixed venous (short dash)",
-        RecordedQuantity.VESSEL_RICH: "Vessel-rich (even dash)",
+        RecordedQuantity.VESSEL_RICH: "Vessel-rich group (even dash)",
         RecordedQuantity.MUSCLE: "Muscle (dotted)",
         RecordedQuantity.FAT: "Fat (dash-dot)",
     }
@@ -4318,7 +4346,7 @@ def test_the_height_maximum_rounds_down_to_a_height_the_agent_can_reach(
 def test_a_target_names_its_compartment_and_its_height() -> None:
     row = bookmark_panel(_marks(), _one_run(_unreached(_marks()))).targets.rows[0]
 
-    assert row.startswith("Vessel-rich 0.80 ×MAC")
+    assert row.startswith("Vessel-rich group 0.80 ×MAC")
 
 
 def test_a_target_is_named_by_the_table_that_names_its_trace() -> None:

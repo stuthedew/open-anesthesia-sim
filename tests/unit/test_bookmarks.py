@@ -270,7 +270,7 @@ def test_the_repeated_mac_target_refusal_is_pinned_whole() -> None:
         marks.with_mac_target(_target(label="again"))
 
     assert str(refusal.value) == (
-        "each height on a compartment is marked once, and 0.80 ×MAC on Vessel-rich already "
+        "each height on a compartment is marked once, and 0.80 ×MAC on Vessel-rich group already "
         "has a MAC target, so a second would stop a run at the same place as the first"
     )
 
@@ -394,7 +394,7 @@ def test_removing_a_target_that_is_not_there_is_refused() -> None:
 
 
 def test_a_removal_refusal_names_the_crossing_it_could_not_find() -> None:
-    with pytest.raises(SimulationConfigurationError, match="on Vessel-rich,"):
+    with pytest.raises(SimulationConfigurationError, match="on Vessel-rich group,"):
         BookmarkSet().without_mac_target(_target())
 
 
@@ -1436,7 +1436,7 @@ def test_removing_a_target_that_is_not_there_names_its_compartment_as_the_legend
         BookmarkSet().without_mac_target(_target(RecordedQuantity.VESSEL_RICH, 0.8))
 
     assert refused_setting_notice(refusal.value) == (
-        "Setting refused — no MAC target stands at 0.80 ×MAC on Vessel-rich, "
+        "Setting refused — no MAC target stands at 0.80 ×MAC on Vessel-rich group, "
         "so there is none to remove"
     )
 
@@ -1449,7 +1449,8 @@ def test_a_target_on_a_quantity_that_is_not_a_compartment_lists_the_compartments
 
     assert str(refusal.value) == (
         "a MAC target is read against one of the compartments Circuit, Alveolar, "
-        "Mixed venous, Vessel-rich, Muscle, Fat; given wash_in_ratio, which is not a compartment"
+        "Mixed venous, Vessel-rich group, Muscle, Fat; "
+        "given wash_in_ratio, which is not a compartment"
     )
 
 

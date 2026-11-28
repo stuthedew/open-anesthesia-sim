@@ -95,6 +95,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
+    COMPARTMENT_GLOSSES,
     COMPARTMENT_NAMES,
     COMPARTMENT_QUANTITIES,
     DrawnWindow,
@@ -333,17 +334,8 @@ class TraceStyle:
     Attributes:
         quantity: The one recorded quantity this trace draws.
             `DrawnWindow.compartment_fractions` maps it to a state index, so
-            this table keeps no second copy of that pairing.
-        label: The compartment's name, as the legend and the hover show it,
-            read from `run_series.COMPARTMENT_NAMES`.
-        gloss: The clinical hedge that the readout row shows under the name,
-            or `None` where it shows none. The gloss is not decoration.
-            "end-tidal-equivalent" and "inspired" are required hedges
-            (`PL-NV9W`, `PL-8M05`). What the model computes is a compartment,
-            and what a clinician would compare it with on a monitor is a
-            different, measured thing. The hover readout shows the gloss for
-            the reason `docs/INTERFACE.md` § "The chart's hover readout" gives: a
-            floating box has no readout row beside it to supply the hedge.
+            this table keeps no second copy of that pairing. The trace's name
+            and gloss are read from it too (`label`, `gloss`).
         color: The colour of the trace's line and of its legend swatch, from
             `app/theme.py`.
         stroke_width: Line width in display pixels.
@@ -361,12 +353,36 @@ class TraceStyle:
     """
 
     quantity: RecordedQuantity
-    label: str
-    gloss: str | None
     color: str
     stroke_width: float
     dash_pattern: tuple[int, ...] | None
     line_style: str
+
+    @property
+    def label(self) -> str:
+        """The compartment's name, as the legend and the hover show it.
+
+        It is read from `run_series.COMPARTMENT_NAMES` by `quantity`, so a
+        trace cannot carry another compartment's name (`PL-GRC6`).
+        """
+
+        return COMPARTMENT_NAMES[self.quantity]
+
+    @property
+    def gloss(self) -> str | None:
+        """The clinical hedge shown with the name, or None where there is none.
+
+        The gloss is not decoration. "end-tidal-equivalent" and "inspired" are
+        required hedges (`PL-NV9W`, `PL-8M05`). What the model computes is a
+        compartment, and what a clinician would compare it with on a monitor
+        is a different, measured thing. The hover readout shows the gloss for
+        the reason `docs/INTERFACE.md` § "The chart's hover readout" gives: a
+        floating box has no readout row beside it to supply the hedge. It is
+        read from `run_series.COMPARTMENT_GLOSSES` by `quantity`, the record
+        the readout row reads too.
+        """
+
+        return COMPARTMENT_GLOSSES[self.quantity]
 
 
 # The six compartment traces, in the order they are drawn and listed.
@@ -400,60 +416,12 @@ class TraceStyle:
 # simulated deuteranopia, which is no place for a pair that would have to be
 # told apart by mark length alone.
 COMPARTMENT_TRACES: Final[tuple[TraceStyle, ...]] = (
-    TraceStyle(
-        RecordedQuantity.CIRCUIT,
-        COMPARTMENT_NAMES[RecordedQuantity.CIRCUIT],
-        "inspired",
-        CIRCUIT_COLOR,
-        3,
-        None,
-        "solid",
-    ),
-    TraceStyle(
-        RecordedQuantity.ALVEOLAR,
-        COMPARTMENT_NAMES[RecordedQuantity.ALVEOLAR],
-        "end-tidal-equivalent",
-        ALVEOLAR_COLOR,
-        3,
-        (10, 4),
-        "long dash",
-    ),
-    TraceStyle(
-        RecordedQuantity.MIXED_VENOUS,
-        COMPARTMENT_NAMES[RecordedQuantity.MIXED_VENOUS],
-        None,
-        MIXED_VENOUS_COLOR,
-        2,
-        (4, 3),
-        "short dash",
-    ),
-    TraceStyle(
-        RecordedQuantity.VESSEL_RICH,
-        COMPARTMENT_NAMES[RecordedQuantity.VESSEL_RICH],
-        None,
-        VESSEL_RICH_COLOR,
-        2,
-        (6, 6),
-        "even dash",
-    ),
-    TraceStyle(
-        RecordedQuantity.MUSCLE,
-        COMPARTMENT_NAMES[RecordedQuantity.MUSCLE],
-        None,
-        MUSCLE_COLOR,
-        2,
-        (2, 3),
-        "dotted",
-    ),
-    TraceStyle(
-        RecordedQuantity.FAT,
-        COMPARTMENT_NAMES[RecordedQuantity.FAT],
-        None,
-        FAT_COLOR,
-        2,
-        (12, 4, 2, 4),
-        "dash-dot",
-    ),
+    TraceStyle(RecordedQuantity.CIRCUIT, CIRCUIT_COLOR, 3, None, "solid"),
+    TraceStyle(RecordedQuantity.ALVEOLAR, ALVEOLAR_COLOR, 3, (10, 4), "long dash"),
+    TraceStyle(RecordedQuantity.MIXED_VENOUS, MIXED_VENOUS_COLOR, 2, (4, 3), "short dash"),
+    TraceStyle(RecordedQuantity.VESSEL_RICH, VESSEL_RICH_COLOR, 2, (6, 6), "even dash"),
+    TraceStyle(RecordedQuantity.MUSCLE, MUSCLE_COLOR, 2, (2, 3), "dotted"),
+    TraceStyle(RecordedQuantity.FAT, FAT_COLOR, 2, (12, 4, 2, 4), "dash-dot"),
 )
 
 _TRACE_STYLE_BY_QUANTITY: Final[Mapping[RecordedQuantity, TraceStyle]] = MappingProxyType(

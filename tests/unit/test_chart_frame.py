@@ -1819,7 +1819,7 @@ def test_every_compartment_of_one_run_answers_at_one_instant() -> None:
     assert target.readout.splitlines() == [
         "Modelled sevoflurane",
         "Mixed venous · 20m   0.53%   0.30 ×MAC",
-        "Vessel-rich · 20m   0.60%   0.33 ×MAC",
+        "Vessel-rich group · 20m   0.60%   0.33 ×MAC",
     ]
 
     # No pointer height at which the hover reports anything moves the instant.
