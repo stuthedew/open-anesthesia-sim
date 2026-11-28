@@ -150,6 +150,7 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
+from anesthesia_sim.app.pinned_heading import pin_headings, pin_on_scroll
 from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.stylesheets import (
@@ -227,7 +228,7 @@ from anesthesia_sim.layout.sizing import (
     pixel_sizes,
     settle,
 )
-from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, areas_in
+from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, ViewKind, areas_in
 
 __all__ = [
     "AREA_MENU_LABEL",
@@ -1640,7 +1641,7 @@ class AreaLayout(QWidget):
 
         if sizes is None:
             # The splitters are being built and nothing is settled yet.
-            split = _split_at(self._model.windows[MAIN_WINDOW].tree, splitter.path)
+            split = self._model.split_at(splitter.path)
             available = _drawable_px(splitter)
             sizes = pixel_sizes(split.sizes, max(available, len(split.sizes)))
 
@@ -1877,7 +1878,7 @@ class AreaLayout(QWidget):
         if fit is None or drawn is None or sum(drawn) <= 0:
             return None
 
-        split = _split_at(start.windows[MAIN_WINDOW].tree, splitter.path)
+        split = start.split_at(splitter.path)
         bounds = tuple(
             minimum_extent(child, AREA_HANDLE_WIDTH, fit.bounds).along(split.orientation)
             for child in split.children
@@ -2321,6 +2322,11 @@ class AreaFrame(QFrame):
         self._column.addWidget(self.header)
         self._column.addWidget(rule)
         self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
+
+        if self.view_scroll is not None:
+            # The box takes the focus so the keyboard can scroll it, so a
+            # screen reader names it by the View it holds (`PL-RK9Z`).
+            self.view_scroll.setAccessibleName(chooser.text())
         # A row that the View must keep on screen wherever any of the View is,
         # such as the wash-in plot's statement that it is modelled, sits above the
         # scroll box rather than in it (`PL-26BZ`).
@@ -2529,6 +2535,7 @@ class ViewScroll(QScrollArea):
         # which would paint over the corners of a View's rounded panel.
         view.setAutoFillBackground(filled)
         FocusRing(self)
+        pin_on_scroll(self)
         self._fit()
 
     def bar_width(self) -> int:
@@ -2541,6 +2548,21 @@ class ViewScroll(QScrollArea):
         # scroll bar appears and takes room from the View.
         super().resizeEvent(event)
         self._fit()
+        self._pin_headings()
+
+    def _pin_headings(self) -> None:
+        """Keep each pinned heading in the View at the top of its section's part in view.
+
+        A resize can change which part of the View is in view without moving
+        any section in it, so no section learns of it by itself. A scroll, and
+        a change of what the box can scroll, are followed through
+        `pin_on_scroll` (`app/pinned_heading.py`, `PL-3NGZ`, `PL-H55Q`).
+        """
+
+        view = self.widget()
+
+        if view is not None:
+            pin_headings(view)
 
     def event(self, event: QEvent) -> bool:
         handled = super().event(event)
@@ -2688,6 +2710,15 @@ def _handle_layout_requests() -> None:
 _BORDER_ACCESSIBLE_NAME: Final = "Area border"
 _BORDER_ACCESSIBLE_DESCRIPTION: Final = (
     "The arrow keys move it. Shift moves it alone. Escape puts it back."
+)
+# What assistive technology says a corner is, and the keyboard's way to do
+# what dragging it does. A press on a corner gives it the focus, so Escape
+# can cancel the drag, and a screen reader then names what has the focus
+# (`PL-RK9Z`).
+_CORNER_ACCESSIBLE_NAME: Final = "Area corner"
+_CORNER_ACCESSIBLE_DESCRIPTION: Final = (
+    "Drag it to split or join the Area. "
+    f"The {AREA_MENU_LABEL} menu does the same from the keyboard."
 )
 
 
@@ -2985,6 +3016,8 @@ class _CornerZone(QWidget):
         self.setFixedSize(AREA_CORNER_ZONE, AREA_CORNER_ZONE)
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        self.setAccessibleName(_CORNER_ACCESSIBLE_NAME)
+        self.setAccessibleDescription(_CORNER_ACCESSIBLE_DESCRIPTION)
         self.place()
         self.raise_()
 
@@ -3186,23 +3219,6 @@ def _shape(node: Node) -> tuple[object, ...]:
         return (node.id, node.view)
 
     return (node.orientation, tuple(_shape(child) for child in node.children))
-
-
-def _split_at(tree: Node, path: tuple[int, ...]) -> Split:
-    """Return the split at `path`. The adapter built a splitter for it from this same tree."""
-
-    node = tree
-
-    for step in path:
-        if not isinstance(node, Split):
-            break
-
-        node = node.children[step]
-
-    if not isinstance(node, Split):
-        raise LookupError(f"the layout has no split at {path}")
-
-    return node
 
 
 def _attempt(label: str, group: str | None, operation: Callable[[], LayoutModel]) -> AreaOperation:

@@ -95,6 +95,7 @@ from anesthesia_sim.app.formatting import (
 )
 from anesthesia_sim.app.run_series import (
     COMPARTMENT_FRACTION_NAMES,
+    COMPARTMENT_NAMES,
     COMPARTMENT_QUANTITIES,
     DrawnWindow,
     RecordedQuantity,
@@ -154,6 +155,7 @@ __all__ = [
     "format_compared_trace_hover",
     "format_compared_wash_in_hover",
     "format_trace_hover",
+    "latest_values_lines",
     "format_wash_in_hover",
     "nearest_trace_point",
     "nearest_wash_in_point",
@@ -332,7 +334,8 @@ class TraceStyle:
         quantity: The one recorded quantity this trace draws.
             `DrawnWindow.compartment_fractions` maps it to a state index, so
             this table keeps no second copy of that pairing.
-        label: The compartment's name, as the legend and the hover show it.
+        label: The compartment's name, as the legend and the hover show it,
+            read from `run_series.COMPARTMENT_NAMES`.
         gloss: The clinical hedge that the readout row shows under the name,
             or `None` where it shows none. The gloss is not decoration.
             "end-tidal-equivalent" and "inspired" are required hedges
@@ -397,10 +400,18 @@ class TraceStyle:
 # simulated deuteranopia, which is no place for a pair that would have to be
 # told apart by mark length alone.
 COMPARTMENT_TRACES: Final[tuple[TraceStyle, ...]] = (
-    TraceStyle(RecordedQuantity.CIRCUIT, "Circuit", "inspired", CIRCUIT_COLOR, 3, None, "solid"),
+    TraceStyle(
+        RecordedQuantity.CIRCUIT,
+        COMPARTMENT_NAMES[RecordedQuantity.CIRCUIT],
+        "inspired",
+        CIRCUIT_COLOR,
+        3,
+        None,
+        "solid",
+    ),
     TraceStyle(
         RecordedQuantity.ALVEOLAR,
-        "Alveolar",
+        COMPARTMENT_NAMES[RecordedQuantity.ALVEOLAR],
         "end-tidal-equivalent",
         ALVEOLAR_COLOR,
         3,
@@ -409,7 +420,7 @@ COMPARTMENT_TRACES: Final[tuple[TraceStyle, ...]] = (
     ),
     TraceStyle(
         RecordedQuantity.MIXED_VENOUS,
-        "Mixed venous",
+        COMPARTMENT_NAMES[RecordedQuantity.MIXED_VENOUS],
         None,
         MIXED_VENOUS_COLOR,
         2,
@@ -417,10 +428,32 @@ COMPARTMENT_TRACES: Final[tuple[TraceStyle, ...]] = (
         "short dash",
     ),
     TraceStyle(
-        RecordedQuantity.VESSEL_RICH, "Vessel-rich", None, VESSEL_RICH_COLOR, 2, (6, 6), "even dash"
+        RecordedQuantity.VESSEL_RICH,
+        COMPARTMENT_NAMES[RecordedQuantity.VESSEL_RICH],
+        None,
+        VESSEL_RICH_COLOR,
+        2,
+        (6, 6),
+        "even dash",
     ),
-    TraceStyle(RecordedQuantity.MUSCLE, "Muscle", None, MUSCLE_COLOR, 2, (2, 3), "dotted"),
-    TraceStyle(RecordedQuantity.FAT, "Fat", None, FAT_COLOR, 2, (12, 4, 2, 4), "dash-dot"),
+    TraceStyle(
+        RecordedQuantity.MUSCLE,
+        COMPARTMENT_NAMES[RecordedQuantity.MUSCLE],
+        None,
+        MUSCLE_COLOR,
+        2,
+        (2, 3),
+        "dotted",
+    ),
+    TraceStyle(
+        RecordedQuantity.FAT,
+        COMPARTMENT_NAMES[RecordedQuantity.FAT],
+        None,
+        FAT_COLOR,
+        2,
+        (12, 4, 2, 4),
+        "dash-dot",
+    ),
 )
 
 _TRACE_STYLE_BY_QUANTITY: Final[Mapping[RecordedQuantity, TraceStyle]] = MappingProxyType(
@@ -1684,6 +1717,48 @@ def format_trace_hover(
             _hover_value(run, quantity, index),
         )
     )
+
+
+def latest_values_lines(frame: ChartFrame) -> tuple[str, ...]:
+    """Return one sentence per run with the latest drawn value of each trace the chart shows.
+
+    A screen reader reads these sentences in place of the traces, as the
+    chart's long description (`PL-T9RB`). Each opens with the hover's
+    qualifiers, "Modelled" and the agent, then the run while more than one is
+    drawn, then the instant of the run's last drawn point. That instant is the
+    right edge of a held window rather than the run's own instant, so a
+    sentence never states a value the chart does not show. Each value is in
+    both units the chart uses, formatted as the hover formats it
+    (`_hover_value`), and named by its compartment as the hover names it
+    (`_hover_subject`). A run with no drawn point, and a frame with no trace
+    shown, give no sentence.
+
+    Args:
+        frame: The frame the chart drew.
+
+    Returns:
+        The sentences, in the frame's run order.
+    """
+
+    if not frame.visible:
+        return ()
+
+    lines: list[str] = []
+
+    for run in frame.runs:
+        if not run.times_s:
+            continue
+
+        run_named = f", {run.label}," if frame.run_count > 1 else ""
+        context = f"{_hover_agent(run)}{run_named} at {_hover_instant(run.times_s[-1])}"
+        values = "; ".join(
+            f"{_hover_subject(quantity)} {format_percent(run.fractions[quantity][-1])}, "
+            f"{format_mac_multiple(run.fractions[quantity][-1], run.mac_percent)}"
+            for quantity in frame.visible
+        )
+        lines.append(f"{context}: {values}.")
+
+    return tuple(lines)
 
 
 def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_count: int) -> str:

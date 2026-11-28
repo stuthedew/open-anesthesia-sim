@@ -30,7 +30,7 @@ enforces each of them.
 
 import html
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from math import ceil, floor, isfinite
 from pathlib import Path
@@ -54,6 +54,7 @@ from anesthesia_sim.app.chart_frame import (
     RunCount,
     RunIndex,
     TraceStyle,
+    latest_values_lines,
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
@@ -71,6 +72,7 @@ from anesthesia_sim.app.control_timeline import (
 from anesthesia_sim.app.controller import (
     HereForkPoint,
     MarkForkPoint,
+    PreviewOfAnotherCase,
     RunRecord,
     RunSettings,
     RunStatus,
@@ -407,6 +409,16 @@ REFUSED_SETTING_TEMPLATE: Final = "Setting refused — {error}"
 # A refused branch changed no setting, so its notice does not say "Setting
 # refused" (`PL-3JTH`).
 REFUSED_BRANCH_TEMPLATE: Final = "Branch not opened — {error}"
+# A refused preview changes no setting either, and the thumb is still held, so its
+# notice opens by saying that the preview was not drawn. It takes the form of the
+# two notices above, because NUREG-0700 Rev. 3 guideline 2.7.1-2 asks that "System
+# messages should use consistent grammatical construction". The release still
+# applies the held value, so the notice ends by saying so rather than that the run
+# is unchanged. Guideline 2.7.3-1 asks that "an error message should state the
+# error and possible subsequent operations" (`PL-412F`).
+REFUSED_PREVIEW_TEMPLATE: Final = (
+    "Preview not drawn — {error}. Releasing the dial still applies the new setting."
+)
 # A setting refused for lying outside a limit is named to the user by its control's
 # label, with the value asked for and the limit, as the stopped run's refusal names
 # its control (`SimulationController._refuse_a_setting_on_a_stopped_run`). The core's
@@ -482,6 +494,16 @@ RESET_SETTING_WAY_OUT_TEXT: Final = "Reset to start a new run, which keeps every
 # a refusal that a setting can repair is ever added to that record, this text
 # must change with it.
 #
+# Closing the application can clear what Copy details copied. On X11 an
+# application serves the clipboard it owns (Qt 6, `QClipboard`, "Notes for X11
+# Users"), and an owner that exits with no clipboard manager running "should
+# simply exit" (freedesktop.org, Clipboard Manager Specification, section
+# "Responsibilities of clipboard owners"; both read 2026-11-27). So the text
+# says to paste the details before closing, as NUREG-0700 Rev. 3 guideline
+# 2.7.5-2, p. 2-89, asks: "For conditions that may require special user
+# attention to protect against information loss, an explicit alert or advisory
+# message, or both, should prompt appropriate user action" (`PL-PYWF`).
+#
 # Which wording states the refusal depends on the banner's reason. On a run
 # that had not failed, or whose recorded failure is this same refusal, the
 # halt's reason is the refusal, so the exit refers to it. On a run that had
@@ -490,9 +512,16 @@ RESET_SETTING_WAY_OUT_TEXT: Final = "Reset to start a new run, which keeps every
 # the form in which the failure line gives a reason (`PL-M4M0`).
 REFUSED_RESET_EXIT_TEMPLATE: Final = "Reset was refused for this reason. {way_out}"
 REFUSED_RESET_AFTER_FAILURE_EXIT_TEMPLATE: Final = "Reset was refused — {reason}. {way_out}"
+# The way out names the two buttons in the order the user presses them,
+# because the copy button stays hidden until the details are shown
+# (`FailureDetails` in `app/qt_widgets.py`). It reads their labels, so a
+# renamed button renames them here too.
 REFUSED_RESET_WAY_OUT_TEXT: Final = (
     "No setting can repair this, because only a fault in the simulator causes it. "
-    "Close and reopen the application to start a new run."
+    f"To keep the failure details, use {SHOW_FAILURE_DETAILS_LABEL}, then "
+    f"{COPY_FAILURE_DETAILS_LABEL}, and paste them elsewhere before closing, "
+    "because closing the application can clear the copy. "
+    "Then close and reopen the application to start a new run."
 )
 
 # What the chart says when a reader has unchecked every compartment. A plot
@@ -903,8 +932,10 @@ def widest_fork_point_label(advance_px: Callable[[str], int]) -> str:
 # The headings of the marks editor's two forms. Each names the one action
 # its form does, so a reader does not take a form for a second copy of the
 # list above it (`PL-G1JM`). The wording is a placeholder (`PL-CHX0`).
-TIME_FORM_HEADING: Final = "Add a time bookmark"
-TARGET_FORM_HEADING: Final = "Add a MAC target"
+TIME_MARK_KIND: Final = "time bookmark"
+TARGET_MARK_KIND: Final = "MAC target"
+TIME_FORM_HEADING: Final = f"Add a {TIME_MARK_KIND}"
+TARGET_FORM_HEADING: Final = f"Add a {TARGET_MARK_KIND}"
 ADD_MARK_LABEL: Final = "Add"
 # The label of the button on each listed mark. The button's accessible name
 # adds the mark's own text, so a screen reader says which mark it removes.
@@ -919,6 +950,20 @@ INSTANT_FIELD_LABEL: Final = "Instant"
 COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
 MARK_NAME_FIELD_LABEL: Final = "Name"
+
+
+def form_control_name(label: str, kind: str) -> str:
+    """Return what a screen reader calls a control of one of the marks editor's two forms.
+
+    Both forms have a "Name" field and an "Add" button. Each is named with its
+    form's kind of mark as well, such as "Name, MAC target", so the two are
+    not heard as the same control (`PL-RK9Z`). The name starts with the
+    label, as the Understanding document for WCAG 2.2 SC 2.5.3 recommends.
+    """
+
+    return f"{label}, {kind}"
+
+
 MARK_NAME_PLACEHOLDER: Final = "Optional"
 # The unit in which an instant is entered, and the resolution of the entry.
 # The unit is seconds rather than the compound form the clock shows, because a
@@ -1084,6 +1129,10 @@ ACCOUNTING_UNIT_CAPTION: Final = (
 ACCOUNTING_AMOUNT_NAMES: Final = ("Delivered", "Exhausted", "Stored", "Unaccounted")
 
 # The transport row's labels, and the two selector captions beside it.
+# The agent selector's caption is shown rather than given to a screen reader
+# alone. On Linux and macOS, Qt takes what a selector is for only from a
+# label shown beside it (`qt_widgets.label_control`, `PL-RK9Z`).
+AGENT_SELECTOR_LABEL: Final = "Agent"
 START_LABEL: Final = "Start"
 PAUSE_LABEL: Final = "Pause"
 RESET_LABEL: Final = "Reset"
@@ -1103,6 +1152,17 @@ FIT_RUN_LABEL: Final = "Fit run"
 # names the resulting width. The caption is written into the time axis's
 # title.
 CHART_HEADING: Final = "Agent concentration and relative partial pressure over time"
+# What the chart's long description opens with. The W3C example of a chart's
+# text alternative "identifies the type of chart" first (Understanding WCAG
+# 2.2 SC 1.1.1, `PL-T9RB`).
+CHART_TYPE_TEXT: Final = "Line chart."
+# What a screen reader calls the box that holds each chart View's legend,
+# which takes the focus so the keyboard can scroll it (`PL-RK9Z`).
+CONCENTRATION_LEGEND_NAME: Final = "Concentration chart legend"
+WASH_IN_LEGEND_NAME: Final = "Wash-in plot legend"
+# What a screen reader calls the page that scrolls the Workspace tabs and their
+# Areas, which takes the focus for the same reason (`PL-RK9Z`).
+WORKSPACE_PAGE_NAME: Final = "Workspace"
 # The time axis's title states the window after the axis's name, so the
 # window takes no line of its own above the plot (`PL-K4CZ`). A narrow plot
 # breaks the title after a comma, and so never between a span and its unit.
@@ -1263,7 +1323,9 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # to say which condition stopped it: an inspired concentration too low to
 # divide by, alveolar ventilation at zero, or an alveolar concentration above
 # the inspired. A reader shown only an empty plot could not tell them apart.
-# Each sentence names the condition and not a cause. The inspired
+# Each sentence names the condition and not a cause, and all three use one
+# construction, the condition and then "so" and the verdict (NUREG-0700 Rev. 3,
+# guideline 2.7.1-2, p. 2-85, `PL-8R2Y`). The inspired
 # concentration also falls that low during a washout, while the patient still
 # holds agent (`PL-P3ZL`). The sentence for a ratio above 1 does not say that
 # the patient returns agent or that the run is past equilibrium, for the same
@@ -1274,7 +1336,9 @@ COMPARED_CAP_NOTICE_TEMPLATE: Final = (
 # A paused run can stand on a state reached during apnoea while its control
 # already shows ventilation restored, and both stay true until the next step.
 WASH_IN_STATE_TEMPLATE: Final = "Now: " + WASH_IN_RATIO_NAME + " = {ratio}"
-WASH_IN_NOT_DEFINED_TEXT: Final = "Not defined: the inspired concentration is too low to divide by."
+WASH_IN_NOT_DEFINED_TEXT: Final = (
+    "The inspired concentration is too low to divide by, so the ratio is not defined."
+)
 WASH_IN_ELIMINATION_TEXT: Final = (
     "Alveolar exceeds inspired, so the ratio is not a wash-in fraction."
 )
@@ -2448,6 +2512,24 @@ def refused_branch_notice(error: SimulationConfigurationError) -> str:
     return REFUSED_BRANCH_TEMPLATE.format(error=error)
 
 
+def refused_preview_notice(error: PreviewOfAnotherCase) -> str:
+    """Return what the banner says while a held dial's preview is refused.
+
+    The preview is refused because the run it was rebuilt as differs from the
+    run on screen. The banner says that the release still applies the held
+    value, because applying a value rebuilds nothing. So the notice is not
+    worded as a refused setting, whose run keeps its previous setting.
+
+    Args:
+        error: The refusal, whose message names the dial and what to do.
+
+    Returns:
+        The whole banner, which `notice` shows in place of a refused setting's.
+    """
+
+    return REFUSED_PREVIEW_TEMPLATE.format(error=error)
+
+
 def refused_reset_exit(error: BaseException, *, recorded_failure_reason: str | None) -> str:
     """Return the way out that a stopped-run banner names when the core refused Reset.
 
@@ -2493,14 +2575,17 @@ def notice(
     *,
     refused_reset: str | None = None,
     branch_offered: bool = False,
+    refused_preview: str | None = None,
 ) -> str | None:
-    """Return the banner for a frame that drew: a stopped run, a refused setting, or nothing.
+    """Return the banner for a frame that drew: a stopped run, a refusal, or nothing.
 
-    A stopped run outranks a refused setting, because it describes the state
-    of everything else on screen, while a refusal describes only one control.
+    A stopped run outranks a refusal, because it describes the state of
+    everything else on screen, while a refusal describes only one control.
     A failure in turn outranks the supported run length. A setting refused on
     a stopped run is stated inside the stopped run's banner, in place of its
-    way out (`_stopped_run_exit`, `PL-3B34`).
+    way out (`_stopped_run_exit`, `PL-3B34`). A refused preview outranks a
+    refused setting, because it is about the dial the user holds now, and an
+    earlier refusal returns once the drag ends (`PL-412F`).
 
     `RunView.show_presentation` writes this banner while the frame for which the status
     was read is on screen. That is what lets the failure wording say that the
@@ -2524,6 +2609,9 @@ def notice(
             names a branch as its way out only while this is True. It is False
             by default, so when a caller leaves it out, the banner names only
             Reset, which is always offered.
+        refused_preview: The banner from `refused_preview_notice` while a
+            held dial's preview is refused, or None. The run's view keeps it,
+            and drops it when the drag ends.
 
     Returns:
         The banner text, or None when there is nothing to say.
@@ -2551,6 +2639,9 @@ def notice(
                 setting_way_out=_supported_limit_setting_way_out(branch_offered),
             ),
         )
+
+    if refused_preview is not None:
+        return refused_preview
 
     if rejected_setting_notice is not None:
         return REFUSED_SETTING_NOTICE_TEMPLATE.format(refused=rejected_setting_notice)
@@ -2647,10 +2738,23 @@ class Notice:
     muted, as the status word for that stop is. Nothing is wrong with a run
     that reaches its declared span, and drawing it in the warning colour
     would spend the interface's one signal for a real fault (`PL-0889`).
+
+    Attributes:
+        text: The banner's words.
+        emphasis: How the banner is drawn.
+        topic: What the banner is about, where its text changes while its
+            topic does not. A countdown's time left changes every second, so
+            a countdown's topic is its wording without that time. It is None
+            where the text is the topic. A screen reader is told the banner
+            when its topic changes, and not on each second of a countdown
+            (`qt_widgets.NoticeLabel`, `PL-J7Z5`). Two banners with the same
+            text are equal whatever their topics, because the topic is read
+            from the text.
     """
 
     text: str
     emphasis: Emphasis
+    topic: str | None = field(default=None, compare=False)
 
 
 def run_notice(
@@ -2660,6 +2764,7 @@ def run_notice(
     elapsed_s: int,
     refused_reset: str | None = None,
     branch_offered: bool = False,
+    refused_preview: str | None = None,
 ) -> Notice | None:
     """Return the banner for a frame that drew, with its emphasis.
 
@@ -2679,13 +2784,18 @@ def run_notice(
             seconds.
         refused_reset: As `notice` takes it.
         branch_offered: As `notice` takes it.
+        refused_preview: As `notice` takes it.
 
     Returns:
         The banner, or None when there is nothing to say.
     """
 
     text = notice(
-        status, rejected_setting_notice, refused_reset=refused_reset, branch_offered=branch_offered
+        status,
+        rejected_setting_notice,
+        refused_reset=refused_reset,
+        branch_offered=branch_offered,
+        refused_preview=refused_preview,
     )
     remaining_s = MAXIMUM_ELAPSED_SIMULATION_TIME_S - elapsed_s
     countdown = (
@@ -2696,15 +2806,24 @@ def run_notice(
         else None
     )
 
+    # The countdown's topic is its wording with the time left still a
+    # placeholder, so the topic stays the same while the time counts down.
     if text is None:
-        return None if countdown is None else Notice(countdown, Emphasis.MUTED)
+        return (
+            None
+            if countdown is None
+            else Notice(countdown, Emphasis.MUTED, topic=APPROACHING_LIMIT_NOTICE_TEMPLATE)
+        )
 
     stopped = status.failure_reason is not None or status.supported_limit_reason is not None
+    emphasis = _stopped_emphasis(status, rejected_setting_notice, refused_reset)
 
     if countdown is not None and not stopped:
-        text = f"{text} {countdown}"
+        return Notice(
+            f"{text} {countdown}", emphasis, topic=f"{text} {APPROACHING_LIMIT_NOTICE_TEMPLATE}"
+        )
 
-    return Notice(text, _stopped_emphasis(status, rejected_setting_notice, refused_reset))
+    return Notice(text, emphasis)
 
 
 def halt_run_notice(
@@ -3966,6 +4085,53 @@ def mac_awake_caption(frame: ChartFrame) -> str:
         fraction_of_mac=mac_awake.fraction_of_mac,
         standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
         mac_percent=frame.mac_percent,
+    )
+
+
+def concentration_chart_name(frame: ChartFrame | None) -> str:
+    """Return what a screen reader calls the concentration chart: what it plots, and its window.
+
+    This is the chart's short text alternative, which WCAG 2.2 SC 1.1.1 asks
+    of non-text content (`PL-T9RB`). It is the chart's heading followed by the
+    time axis's caption, so it says the same as the screen. A withheld frame
+    has no window, so the name is the heading alone.
+
+    Args:
+        frame: The frame the chart drew, or None while it draws none.
+
+    Returns:
+        The name.
+    """
+
+    return CHART_HEADING if frame is None else f"{CHART_HEADING}, {time_axis_caption(frame)}"
+
+
+def concentration_chart_description(frame: ChartFrame | None) -> str:
+    """Return the concentration chart's long description, for a screen reader.
+
+    The W3C example of a chart's text alternative pairs a short name with a
+    longer description that names the type of chart and summarises its data
+    (Understanding WCAG 2.2 SC 1.1.1, `PL-T9RB`). This one names the type,
+    then gives the latest drawn value of each trace shown
+    (`chart_frame.latest_values_lines`), then the 1 MAC and MAC-awake
+    references the chart draws. Where the reader has unchecked every
+    compartment, or no frame could be drawn, it says what the screen says
+    instead. A window in which no run has a drawn point gives no values.
+
+    Args:
+        frame: The frame the chart drew, or None while it draws none.
+
+    Returns:
+        The description, one sentence or reference per line.
+    """
+
+    if frame is None:
+        return WITHHELD_FRAME_TEXT
+
+    values = (NO_TRACES_SHOWN_TEXT,) if no_traces_shown(frame) else latest_values_lines(frame)
+
+    return "\n".join(
+        (CHART_TYPE_TEXT, *values, mac_reference_caption(frame), mac_awake_caption(frame))
     )
 
 

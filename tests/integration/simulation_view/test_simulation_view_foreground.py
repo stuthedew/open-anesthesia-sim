@@ -128,9 +128,16 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "the MAC-awake band's legend mark, painted with the band's own edge "
         "pen and fill for the reason the line swatches are."
     ),
+    "ContainerNames": (
+        "the compartment schematic's row of names in each run's heading "
+        "(`qt_schematic.ContainerNames`, PL-3NGZ). It paints each name with a "
+        "pen it sets to INK, on the heading's PANEL surface, and never reads "
+        "its foreground role. `tools/contrast_check.py` measures INK against "
+        "PANEL."
+    ),
     "SchematicCanvas": (
         "the compartment schematic's drawing (`qt_schematic.SchematicCanvas`, "
-        "PL-RNYV). It paints each container's name, tension, amount and share "
+        "PL-RNYV). It paints each container's tension, amount and share "
         "with a pen it sets to INK, the outlines of the containers and share "
         "bars in INK, the flow lines and scale marks in MUTED and the "
         "off-scale bar in WARNING, and never reads its foreground role. "

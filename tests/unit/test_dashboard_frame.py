@@ -62,6 +62,7 @@ from anesthesia_sim.app.controller import (
     CompartmentAgentAmounts,
     HereForkPoint,
     MarkForkPoint,
+    PreviewOfAnotherCase,
     ResumePoint,
     RunStatus,
     SettingPreview,
@@ -161,6 +162,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_row_width,
     readouts,
     refused_branch_notice,
+    refused_preview_notice,
     refused_reset_exit,
     refused_setting_notice,
     rejected_step_accounting,
@@ -231,6 +233,7 @@ from anesthesia_sim.core.exceptions import (
 )
 from anesthesia_sim.core.governing_equations import STATE_SIZE, UNIT_STATE
 from anesthesia_sim.core.mac import mac_for_patient
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
     MacAwakeReference,
@@ -1118,7 +1121,9 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
 
     way_out = (
         "No setting can repair this, because only a fault in the simulator causes it. "
-        "Close and reopen the application to start a new run."
+        "To keep the failure details, use Show details, then Copy details, and paste them "
+        "elsewhere before closing, because closing the application can clear the copy. "
+        "Then close and reopen the application to start a new run."
     )
     assert first == f"Reset was refused for this reason. {way_out}"
     assert first == REFUSED_RESET_EXIT_TEMPLATE.format(way_out=REFUSED_RESET_WAY_OUT_TEXT)
@@ -1195,7 +1200,10 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
     )
     refused_reset = (
         "Reset was refused for this reason. No setting can repair this, because only a fault "
-        "in the simulator causes it. Close and reopen the application to start a new run."
+        "in the simulator causes it. To keep the failure details, use Show details, then Copy "
+        "details, and paste them elsewhere before closing, because closing the application can "
+        "clear the copy. "
+        "Then close and reopen the application to start a new run."
     )
     reset_keeps = "Reset to start a new run, which keeps every setting."
     branch_or_reset = (
@@ -1358,6 +1366,35 @@ def test_a_refusal_made_before_the_warning_does_not_hide_the_countdown() -> None
         "run length of 24 hours.",
         Emphasis.WARNING,
     )
+
+
+def test_a_countdown_keeps_one_topic_while_its_time_left_changes() -> None:
+    """A screen reader is told a banner when its topic changes, so a countdown is read once.
+
+    The countdown's text changes every second, and its topic does not, with or
+    without a refusal in front of it (`PL-J7Z5`). A refusal joining the
+    countdown is a new topic, because the banner now asks the reader to act. A
+    banner with no countdown has no topic of its own, so its text is its topic.
+    """
+
+    def banner_at(elapsed_s: int, refused: str | None = None) -> Notice:
+        snapshot = replace(_snapshot(is_running=True), elapsed_s=CaseInstant(elapsed_s))
+        banner = run_notice(snapshot, refused, elapsed_s=snapshot.elapsed_s)
+        assert banner is not None
+        return banner
+
+    approach = (_FIRST_SECOND_OF_THE_APPROACH_S, 86_000, 86_399)
+    countdown = [banner_at(elapsed_s) for elapsed_s in approach]
+    refused = [banner_at(elapsed_s, "Setting refused — too high") for elapsed_s in approach]
+    before_the_countdown = banner_at(1_000, "Setting refused — too high")
+
+    assert len({banner.text for banner in countdown}) == 3
+    assert len({banner.topic for banner in countdown}) == 1
+    assert len({banner.text for banner in refused}) == 3
+    assert len({banner.topic for banner in refused}) == 1
+    assert countdown[0].topic is not None
+    assert refused[0].topic not in {None, countdown[0].topic}
+    assert before_the_countdown.topic is None
 
 
 def test_a_halt_banner_takes_the_emphasis_of_what_stopped_the_run() -> None:
@@ -1565,6 +1602,77 @@ def test_a_stopped_run_outranks_a_refused_setting_in_the_notice() -> None:
     for banner in (failure_banner, limit_banner):
         assert "Setting refused — a value the core refused. " in banner
         assert "still running its previous setting" not in banner
+
+
+def test_a_refused_preview_outranks_a_refused_setting_and_says_the_release_still_applies() -> None:
+    """A refused preview is about the dial held now, and its banner says what the release does.
+
+    The release of that dial applies the held value, so the banner must not
+    say, as a refused setting's banner does, that the run keeps its previous
+    setting (`PL-412F`). A setting refused before the drag returns to the
+    banner once the drag ends. A stopped run outranks both, and its banner
+    says nothing of the preview.
+    """
+
+    preview = refused_preview_notice(PreviewOfAnotherCase("the reason the preview gave"))
+    setting = refused_setting_notice(SimulationConfigurationError("a value the core refused"))
+    running = _snapshot(is_running=True)
+    at_limit = _snapshot(supported_limit_reason="this run has reached 86400 s of simulated time")
+
+    assert preview == (
+        "Preview not drawn — the reason the preview gave. "
+        "Releasing the dial still applies the new setting."
+    )
+    assert notice(running, setting, refused_preview=preview) == preview
+    assert run_notice(running, setting, elapsed_s=0, refused_preview=preview) == Notice(
+        preview, Emphasis.WARNING
+    )
+    assert notice(running, setting) == (
+        "Setting refused — a value the core refused. "
+        "The simulation is unchanged and still running its previous setting."
+    )
+    limit_banner = notice(at_limit, None, refused_preview=preview)
+    assert limit_banner is not None
+    assert limit_banner.startswith(
+        "Simulation stopped — this run reached the supported run length of "
+    )
+    assert "Preview not drawn" not in limit_banner
+
+
+def test_a_preview_of_another_case_puts_the_dial_and_the_remedy_in_the_banner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The controller's refusal of a preview reaches the banner in the user's words (`PL-412F`).
+
+    A preview rebuilds the run and reads the patient file again. A patient
+    file edited after the run began therefore gives the preview another
+    patient, and the controller refuses it. The banner names the dial, the
+    possible causes and what to do, and says that the release still applies
+    the new setting. The values that differ go to the refusal's note, for the
+    failure log. The banner's text is typed by hand.
+    """
+
+    controller = SimulationController()
+    on_file = load_reference_adult_parameters()
+    edited = replace(on_file, muscle_volume_l=CompartmentVolume(on_file.muscle_volume_l + 1.0))
+    monkeypatch.setattr(uptake_system, "load_reference_adult_parameters", lambda: edited)
+
+    with pytest.raises(PreviewOfAnotherCase) as refusal:
+        controller.preview_settings(SettingPreview(ControlInput.FRESH_GAS_FLOW, 6.0))
+
+    assert refused_preview_notice(refusal.value) == (
+        "Preview not drawn — the fresh gas flow preview would not start from the values "
+        "this run holds, so it would predict a different case. The simulator's data may "
+        "have changed since this run began, or the simulator may have a fault. Reopen the "
+        "simulator and run the case again to preview a setting. If this notice comes back, "
+        "the cause is a fault in the simulator. Releasing the dial still applies the new "
+        "setting."
+    )
+    (note,) = refusal.value.__notes__
+    assert note.startswith(
+        "a preview would be drawn from values this run does not hold, so it would predict a "
+        "different case: muscle volume_l is "
+    )
 
 
 def test_the_transport_is_enabled_by_state_in_all_four_states() -> None:
@@ -3089,7 +3197,9 @@ def test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit() -> N
 
     state = wash_in_state(_reading(_snapshot(history=_run_history(1))), 0)
 
-    assert state == "Not defined: the inspired concentration is too low to divide by."
+    assert state == (
+        "The inspired concentration is too low to divide by, so the ratio is not defined."
+    )
 
 
 def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit() -> None:
@@ -3122,7 +3232,7 @@ def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit()
     assert snapshot.inspired_partial_pressure_fraction < 0.00005
     assert snapshot.alveolar_partial_pressure_fraction > 0.00005
     assert wash_in_state_lines(_frame(controller)) == (
-        "Not defined: the inspired concentration is too low to divide by.",
+        "The inspired concentration is too low to divide by, so the ratio is not defined.",
     )
 
 
@@ -3332,8 +3442,8 @@ def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_cou
         "(2 earlier stretch(es) not drawn)"
     )
     assert wash_in_state(no_ratio, 2) == (
-        "Not defined: the inspired concentration is too low to divide by. "
-        "(2 earlier stretch(es) not drawn)"
+        "The inspired concentration is too low to divide by, so the ratio is not "
+        "defined. (2 earlier stretch(es) not drawn)"
     )
 
 

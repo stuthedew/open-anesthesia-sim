@@ -45,14 +45,18 @@ It also cannot carry a per-mark "armed" flag from one run to the next.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Hashable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from math import isfinite
 from types import MappingProxyType
 
-from anesthesia_sim.app.formatting import format_elapsed
-from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.formatting import format_elapsed, render_mac_multiple
+from anesthesia_sim.app.run_series import (
+    COMPARTMENT_NAMES,
+    COMPARTMENT_QUANTITIES,
+    RecordedQuantity,
+)
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.rounding import HEIGHT_BAND
@@ -333,10 +337,10 @@ class MacTarget:
 
     def __post_init__(self) -> None:
         if self.quantity not in COMPARTMENT_QUANTITIES:
-            offered = ", ".join(quantity.value for quantity in COMPARTMENT_QUANTITIES)
+            offered = ", ".join(COMPARTMENT_NAMES[quantity] for quantity in COMPARTMENT_QUANTITIES)
             raise SimulationConfigurationError(
-                f"a MAC target is read against one compartment; given {self.quantity.value!r}, "
-                f"which is not one of {offered}"
+                f"a MAC target is read against one of the compartments {offered}; "
+                f"given {self.quantity.value}, which is not a compartment"
             )
 
         if not isfinite(self.mac_multiple) or self.mac_multiple <= 0.0:
@@ -553,14 +557,18 @@ class BookmarkSet:
 
     def __post_init__(self) -> None:
         _refuse_repeats(
-            (bookmark.instant_s for bookmark in self.time_bookmarks),
+            self.time_bookmarks,
+            key=lambda bookmark: bookmark.instant_s,
+            stated=lambda bookmark: format_elapsed(bookmark.instant_s),
             what="time bookmark",
-            named="an instant",
+            each="each instant",
         )
         _refuse_repeats(
-            (target.crossing_key for target in self.mac_targets),
+            self.mac_targets,
+            key=lambda target: target.crossing_key,
+            stated=_stated_height,
             what="MAC target",
-            named="a compartment and a height",
+            each="each height on a compartment",
         )
 
     @property
@@ -684,8 +692,7 @@ class BookmarkSet:
 
         if len(kept) == len(self.mac_targets):
             raise SimulationConfigurationError(
-                f"no MAC target stands at {target.mac_multiple} ×MAC on the "
-                f"{target.quantity.value} compartment, so there is none to remove"
+                f"no MAC target stands at {_stated_height(target)}, so there is none to remove"
             )
 
         return BookmarkSet(self.time_bookmarks, kept)
@@ -971,8 +978,8 @@ def _require_readings(
     for target in targets:
         if target.quantity not in readings:
             raise SimulationConfigurationError(
-                f"the {side} reading names no {target.quantity.value} compartment, so the "
-                f"target at {target.mac_multiple} ×MAC on it cannot be tested for a crossing"
+                f"the {side} reading holds no value for {COMPARTMENT_NAMES[target.quantity]}, "
+                f"so the target at {_stated_height(target)} cannot be tested for a crossing"
             )
 
 
@@ -990,13 +997,38 @@ def _require_position(position: int) -> None:
         raise ValueError(f"a mark is put back at a position of 0 or more, not {position}")
 
 
-def _refuse_repeats(keys: Iterable[object], what: str, named: str) -> None:
+def _stated_height(target: MacTarget) -> str:
+    """Return a MAC target's height and compartment in a refusal's words.
+
+    An example is "0.80 ×MAC on Vessel-rich". The height is rendered by
+    `render_mac_multiple`, and the compartment's name is read from
+    `run_series.COMPARTMENT_NAMES`. The marks list builds the target's row from
+    the same two, so a refusal and the row it is about name one target in the
+    same words. A raw height would print `0.8` beside a row reading `0.80`,
+    which looks like a different target.
+    """
+
+    return f"{render_mac_multiple(target.mac_multiple)} on {COMPARTMENT_NAMES[target.quantity]}"
+
+
+def _refuse_repeats[Mark: (TimeBookmark, MacTarget)](
+    marks: Iterable[Mark],
+    *,
+    key: Callable[[Mark], Hashable],
+    stated: Callable[[Mark], str],
+    what: str,
+    each: str,
+) -> None:
     """Refuse a collection that contains two marks naming one crossing.
 
     Args:
-        keys: What makes each mark distinct, in the collection's own order.
+        marks: The marks, in the collection's own order.
+        key: What makes a mark distinct. Two marks with one key would stop a
+            run at the same place.
+        stated: The mark's instant or height in the words the marks list
+            shows, for the message.
         what: The kind of mark, for the message.
-        named: What the key is, in the reader's words, for the message.
+        each: What is marked once, in the reader's words, for the message.
 
     Raises:
         SimulationConfigurationError: If any key repeats. The message names
@@ -1004,13 +1036,13 @@ def _refuse_repeats(keys: Iterable[object], what: str, named: str) -> None:
             look at.
     """
 
-    seen: set[object] = set()
+    seen: set[Hashable] = set()
 
-    for key in keys:
-        if key in seen:
+    for mark in marks:
+        if key(mark) in seen:
             raise SimulationConfigurationError(
-                f"{named} is marked once: a second {what} naming {key!r} would be a row no "
-                "run could stop at on its own account"
+                f"{each} is marked once, and {stated(mark)} already has a {what}, so a second "
+                "would stop a run at the same place as the first"
             )
 
-        seen.add(key)
+        seen.add(key(mark))

@@ -593,6 +593,13 @@ def _readout_secondary(run: RunView, quantity: RecordedQuantity) -> str:
     return run._readout_row.panels[_READOUT_INDEX[quantity]].secondary_label.text()
 
 
+def _hold_thumb(control: ParameterSlider, value: float, decimals: int) -> None:
+    """Press a slider's thumb and drag it to `value`, without releasing it."""
+
+    control.slider.setSliderDown(True)
+    control.slider.setSliderPosition(slider_position(value, decimals))
+
+
 def _drag(control: ParameterSlider, value: float, decimals: int) -> None:
     """Move a slider the way a reader's drag moves it, through the QSlider itself.
 
@@ -604,8 +611,7 @@ def _drag(control: ParameterSlider, value: float, decimals: int) -> None:
     applies it (`PL-5B1N`).
     """
 
-    control.slider.setSliderDown(True)
-    control.slider.setSliderPosition(slider_position(value, decimals))
+    _hold_thumb(control, value, decimals)
     control.slider.setSliderDown(False)
 
 

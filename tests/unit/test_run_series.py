@@ -7,7 +7,13 @@ import pytest
 
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import BranchedCase, SettingPreview, SimulationController
-from anesthesia_sim.app.run_series import DrawnWindow, RecordedQuantity, RecordedSeries
+from anesthesia_sim.app.run_series import (
+    COMPARTMENT_NAMES,
+    COMPARTMENT_QUANTITIES,
+    DrawnWindow,
+    RecordedQuantity,
+    RecordedSeries,
+)
 from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import ALVEOLAR_FRACTION, INSPIRED_FRACTION
@@ -273,3 +279,9 @@ def test_a_coarse_preview_draws_the_restored_ratio_from_its_first_ventilated_sec
     assert quotients[0] is None
     assert first_restored is not None
     assert all(ratio is not None and ratio > first_restored for ratio in quotients[2:])
+
+
+def test_every_compartment_has_one_on_screen_name_in_the_order_the_interface_lists_them() -> None:
+    """`PL-5867`: the legend, the mark editor and a refused mark's notice read one name each."""
+
+    assert tuple(COMPARTMENT_NAMES) == COMPARTMENT_QUANTITIES

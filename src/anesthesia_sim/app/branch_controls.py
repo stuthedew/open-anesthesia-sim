@@ -9,11 +9,16 @@ module imports nothing, so either can read it.
 
 from typing import Final
 
-__all__ = ["FORK_POINT_LABEL", "HERE_FORK_NAME", "TAKE_FORK_LABEL"]
+__all__ = ["FORK_POINT_ACCESSIBLE_NAME", "FORK_POINT_LABEL", "HERE_FORK_NAME", "TAKE_FORK_LABEL"]
 
 #: The label of the list of instants a branch can open at. "From" labels the
 #: instant at which the branch opens.
 FORK_POINT_LABEL: Final = "From"
+
+#: What a screen reader calls that list. "From" alone does not say what the
+#: list is for once it is heard away from the View's "Branch" header
+#: (`PL-RK9Z`).
+FORK_POINT_ACCESSIBLE_NAME: Final = f"{FORK_POINT_LABEL}, branch point"
 
 # The label is "Branch", not "Branch here" (`PL-Y2SL`). On the button below,
 # "here" names where the paused trunk stands, while this button branches at

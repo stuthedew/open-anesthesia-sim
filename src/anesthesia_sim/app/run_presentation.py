@@ -178,6 +178,9 @@ class RunPanelState:
         branch_offered: As `dashboard_frame.notice` takes it.
         rejected_setting_notice: The notice for a setting the run refused,
             or None.
+        refused_preview_notice: The banner for the preview of a held dial
+            that the run refused, as `dashboard_frame.notice` takes it, or
+            None (`PL-412F`).
         refused_reset_notice: The notice for a Reset the run refused, or None.
         refused_reset_reason: The message of the error with which a Reset
             was refused, for the failure's details, or None.
@@ -204,6 +207,7 @@ class RunPanelState:
     comparing: bool
     branch_offered: bool
     rejected_setting_notice: str | None
+    refused_preview_notice: str | None
     refused_reset_notice: str | None
     refused_reset_reason: str | None
     pending_agent_name: str | None
@@ -354,6 +358,7 @@ def drawn_run(
             elapsed_s=snapshot.elapsed_s,
             refused_reset=state.refused_reset_notice,
             branch_offered=state.branch_offered,
+            refused_preview=state.refused_preview_notice,
         ),
         stopped_on_mark=snapshot.stopped_on_mark,
         standing=ValuesStanding.DRAWN,
@@ -448,13 +453,19 @@ def _compared_banner(banner: Notice | None, run_name: str | None) -> Notice | No
     """Return the banner with its text naming the run while a second run is drawn.
 
     The emphasis is the banner's own, so naming the run never changes its
-    colour. A run with nothing to say keeps no banner, named or not.
+    colour. A run with nothing to say keeps no banner, named or not. The
+    topic is the unnamed banner's, so a banner that stands while a branch is
+    taken or closed is not read to a screen reader again (`PL-J7Z5`).
     """
 
     if banner is None:
         return None
 
-    return replace(banner, text=compared_run_notice(banner.text, run_name))
+    return replace(
+        banner,
+        text=compared_run_notice(banner.text, run_name),
+        topic=banner.text if banner.topic is None else banner.topic,
+    )
 
 
 def _at_playback_rate(

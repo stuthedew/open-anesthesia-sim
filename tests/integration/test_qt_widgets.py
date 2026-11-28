@@ -108,6 +108,12 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.core.concentration import Percent, fraction_from_percent
+from tests.integration.announcement_support import (
+    ASSERTIVE,
+    POLITE,
+    Announcement,
+    record_announcements,
+)
 
 
 @pytest.fixture(scope="module")
@@ -1283,6 +1289,75 @@ def test_the_notice_hides_when_there_is_nothing_to_say(application: QApplication
     assert notice.isHidden()
     assert notice.text() == ""
     assert notice.notice() is None
+
+
+def test_each_new_banner_is_read_out_once_and_a_warning_interrupts(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A screen reader says nothing when a label's text changes, so each new banner is announced.
+
+    WCAG 2.2 SC 4.1.3 (Status Messages) asks that a status message reach a
+    screen reader without taking the focus (`PL-J7Z5`). A warning, such as a
+    refused setting, interrupts what is being read. A muted banner, such as the
+    stop at the supported run length, waits until speech pauses. A banner that
+    is drawn again unchanged on the next frame is not read again. A countdown
+    whose time left changes every second keeps one topic, so it is read once.
+    A banner that goes away and comes back is new again. Each frame here is
+    one write followed by a return to the event loop, as each tick of the
+    dashboard is.
+    """
+
+    notice = NoticeLabel()
+    recorded = record_announcements(monkeypatch)
+    countdown = "This run stops in {remaining} of simulated time."
+    frames: list[tuple[str | None, str, str | None]] = [
+        ("Setting refused — too high.", WARNING, None),
+        ("Setting refused — too high.", WARNING, None),
+        ("Simulation stopped — supported run length reached.", MUTED, None),
+        ("This run stops in 5s of simulated time.", MUTED, countdown),
+        ("This run stops in 4s of simulated time.", MUTED, countdown),
+        (None, WARNING, None),
+        ("Setting refused — too high.", WARNING, None),
+    ]
+
+    for text, color, topic in frames:
+        notice.set_notice(text, color, topic=topic)
+        application.processEvents()
+
+    assert recorded == [
+        Announcement("Setting refused — too high.", ASSERTIVE),
+        Announcement("Simulation stopped — supported run length reached.", POLITE),
+        Announcement("This run stops in 5s of simulated time.", POLITE),
+        Announcement("Setting refused — too high.", ASSERTIVE),
+    ]
+
+
+def test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A banner written twice in one action is read once, as the action leaves it.
+
+    A halt writes its banner before its frame and again from the frame. Two
+    announcements in a row would have the second interrupt the first, so the
+    reader would hear the start of a banner that no longer stands. A banner
+    shown and hidden again within one action is not read at all.
+    """
+
+    notice = NoticeLabel()
+    recorded = record_announcements(monkeypatch)
+
+    notice.set_notice("Simulation stopped — no frame could be drawn.")
+    notice.set_notice("Simulation stopped — the values shown are the last completed step.")
+    application.processEvents()
+    notice.set_notice("Setting refused — too high.")
+    notice.set_notice(None)
+    application.processEvents()
+
+    assert recorded == [
+        Announcement(
+            "Simulation stopped — the values shown are the last completed step.", ASSERTIVE
+        )
+    ]
 
 
 # ------------------------------------------------------------- the dialog

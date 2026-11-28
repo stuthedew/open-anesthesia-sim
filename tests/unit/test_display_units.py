@@ -20,7 +20,7 @@ from anesthesia_sim.app.agent_cost import (
     UNIT_CHOICES,
     VAPOUR_CAPTION_TEMPLATE,
 )
-from anesthesia_sim.app.compartment_schematic import AMOUNT_CONDITION_LINES
+from anesthesia_sim.app.compartment_schematic import AMOUNT_UNIT_TEXT
 from anesthesia_sim.app.control_record import (
     CONTROL_INPUT_DISPLAY_UNITS,
     CONTROL_INPUT_UNITS,
@@ -117,7 +117,7 @@ def test_the_cost_views_unit_names_are_the_members_full_spellings() -> None:
 
 def test_a_refused_bottle_volume_names_its_unit_from_the_member() -> None:
     with pytest.raises(
-        SimulationConfigurationError, match="isoflurane bottle volume in millilitres of liquid"
+        SimulationConfigurationError, match="the bottle volume in millilitres of liquid"
     ):
         AgentPrice("isoflurane", 20.47, 0.0, "USD", date(2008, 3, 5))
 
@@ -281,8 +281,6 @@ def test_every_agent_amount_unit_names_the_reference_condition() -> None:
     assert dashboard_frame.ACCOUNTING_UNIT_CAPTION == (
         f"Litres of equivalent pure agent gas,\nat 20 °C and 1 atm.\n{body}"
     )
-    assert (
-        AMOUNT_CONDITION_LINES == f"Amounts are millilitres of vapour at 20 °C and 1 atm.\n{body}"
-    )
+    assert AMOUNT_UNIT_TEXT == "Amounts are millilitres of vapour at 20 °C and 1 atm."
     assert VAPOUR_CAPTION_TEMPLATE.endswith(" at 20 °C and 1 atm.")
     assert LIQUID_CAPTION_TEMPLATE.endswith(" at 20 °C.")

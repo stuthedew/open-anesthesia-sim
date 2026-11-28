@@ -43,6 +43,7 @@ from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 
 __all__ = [
     "COMPARTMENT_FRACTION_NAMES",
+    "COMPARTMENT_NAMES",
     "COMPARTMENT_QUANTITIES",
     "COMPARTMENT_STATE_INDEX",
     "DrawnWindow",
@@ -95,6 +96,21 @@ COMPARTMENT_QUANTITIES: Final = (
     RecordedQuantity.VESSEL_RICH,
     RecordedQuantity.MUSCLE,
     RecordedQuantity.FAT,
+)
+
+#: The name the interface shows for each compartment: in the chart's legend and
+#: hover readout, in the mark editor's list of compartments, and in a refused
+#: mark's notice. `chart_frame.COMPARTMENT_TRACES` takes its labels from here, so
+#: a refusal about a mark names a compartment as the legend does (`PL-5867`).
+COMPARTMENT_NAMES: Final[Mapping[RecordedQuantity, str]] = MappingProxyType(
+    {
+        RecordedQuantity.CIRCUIT: "Circuit",
+        RecordedQuantity.ALVEOLAR: "Alveolar",
+        RecordedQuantity.MIXED_VENOUS: "Mixed venous",
+        RecordedQuantity.VESSEL_RICH: "Vessel-rich",
+        RecordedQuantity.MUSCLE: "Muscle",
+        RecordedQuantity.FAT: "Fat",
+    }
 )
 
 #: Which core state each drawn quantity reads, by position in the state vector.

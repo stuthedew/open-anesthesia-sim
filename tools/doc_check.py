@@ -1245,14 +1245,28 @@ CLAIMING_CONNECTIVE = r"§{1,2}|" + POSSESSIVE
 # regex: this tests whether a captured connective is one of the claiming forms: the section mark or
 # a possessive.
 CLAIMING_CONNECTIVE_RE = re.compile(CLAIMING_CONNECTIVE)
-#: A code-spanned source - a document, an item, a module - standing directly
-#: before a citation, which then quotes *that* source. `` `docs/MODEL.md` under
-#: "Known limitations" `` is `QUOTED_SOURCE_RE`'s to hold, by containment, and
-#: telling it to take a `§` would break the one match that reads it.
+#: A code-spanned source standing directly before a citation, which then
+#: quotes *that* source, and which a reader of its own holds. A document is one
+#: after any connective: `` `docs/MODEL.md` under "Known limitations" `` is
+#: `QUOTED_SOURCE_RE`'s to hold, by containment, and telling it to take a `§`
+#: would break the one match that reads it. An item brief is one after nothing
+#: or the possessive (`ITEM_SECTION_RE`), and so is a Python module's docstring
+#: (`MODULE_SECTION_RE`).
+#:
+#: **After any other code span, or after an item or a module and a connective
+#: that claims nothing, the mark names a section of the text around it**
+#: (`PL-MWL0`). The documents and the Python files held 11 such marks on
+#: 2026-11-27, and each named a section of the text around it:
+#: `` `PL-B9PY` under § "Cleared by v0.5.0 itself" `` names a section of
+#: `ROADMAP.md`, and `` `tests/unit/test_generated_runs.py` (§
+#: "Step-refinement test") `` one of `docs/VERIFICATION.md`. No reader held any
+#: of the 11 while a code span before the mark handed it on.
 # regex: this tests whether a code-spanned source stands just before a quotation, across a soft
 # break where there is one.
 QUALIFIED_RE = re.compile(
-    r"`[\w./-]+`" + GAP + r"*" + CITATION_CONNECTIVE + r"?" + GAP + r"*(?=.\Z)", re.DOTALL
+    r"(?:`[\w./-]+\.md`" + GAP + r"*" + CITATION_CONNECTIVE + r"?"
+    rf"|`(?:{ID_PATTERN}|[\w./-]+\.py)`(?:{GAP}*{POSSESSIVE})?)" + GAP + r"*(?=.\Z)",
+    re.DOTALL,
 )
 #: A code-spanned document, a connective that claims nothing, and then the
 #: section mark: `` `docs/MODEL.md`, § "Time" `` or `` `docs/MODEL.md` (§
@@ -1271,6 +1285,18 @@ CONNECTED_MARK_RE = re.compile(
     + r"*§{1,2}"
     + GAP
     + rf'*"(?:(?P<quoted>\w{QUOTATION_CHAR}*+)"|(?=\w){UNCLOSED_QUOTATION})'
+)
+#: A code-spanned Python file directly before a section mark, or after its
+#: possessive, which cites a heading of that module's docstring read as
+#: Markdown: `` `core/governing_equations.py` § "The state vector" ``. Before
+#: `PL-MWL0` no reader held one, so renaming such a heading left its citations
+#: pointing at nothing. A mark inside a code span is an example written out,
+#: and is not read.
+# regex: a code-spanned `.py` path, the section mark and a quotation are an explicit citation
+# syntax, searched for through prose.
+MODULE_SECTION_RE = re.compile(
+    rf"`(?P<module>[\w./-]+\.py)`(?:{GAP}*['\u2019]s)?{GAP}*(?P<mark>§{{1,2}}){GAP}*"
+    rf'"(?:(?P<quoted>\w{QUOTATION_CHAR}*+)"|(?=\w){UNCLOSED_QUOTATION})'
 )
 #: A claiming connective after a code-spanned item id, which cites that item's
 #: brief: `` `PL-MB2W` § "Design round, 2026-09-24" `` or `` `PL-CNJ1`'s
@@ -6065,18 +6091,41 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
     recorded pull requests are, all of them numbered 3 to 105, from before the
     convention. A truncated clone declines rather than reporting, because a
     span this checkout cannot walk and one whose notes are genuinely short look
-    identical from inside it. So does a span whose notes carry a bullet on from
-    the margin, which may name what reads as missing (`PL-CL8R`).
+    identical from inside it. It declines when it finds nothing too, because a
+    closure past its history is in no span it can see, and when it holds no tag
+    at all, because a shallow clone fetches only the tags inside its depth
+    (`PL-9GBS`). A span whose
+    notes carry a bullet on from the margin declines as well, because the
+    bullet may name what reads as missing (`PL-CL8R`).
     """
     roadmap_name = roadmap_path(root)
-    held = tags(root)
-    if not held.known or not held.names:
-        return
     # A repository that writes no release notes has nothing for this rule to
     # hold, and is told so by silence rather than by a decline - the reasoning
     # `release.is_untagged` gives for the tag read, one document along:
     # adopting the practice is the project's decision and not this tool's.
     if not (root / NOTES_DIR).is_dir():
+        return
+    held = tags(root)
+    if not held.known:
+        return
+    if not held.names:
+        # A shallow clone fetches only the tags inside its depth, so a depth-1
+        # clone of an untagged commit holds none, and its empty tag set says
+        # nothing about the project's tags. It declines rather than passing,
+        # like a shallow clone that holds tags (`PL-9GBS`). A complete
+        # checkout with no tags belongs to a project that does not tag, and
+        # stays silent.
+        truncated = is_shallow(root)
+        if truncated is not False:
+            why = (
+                "the checkout is a shallow clone"
+                if truncated
+                else "git cannot say whether this checkout is complete"
+            )
+            report.declined.append(
+                f"{NOTES_DIR}: {why} and holds no release tag, so no tag span was compared "
+                "against its notes; `git fetch --unshallow --tags` makes the question answerable"
+            )
         return
     store = _read_store(root)
     if store is None:
@@ -6174,22 +6223,31 @@ def check_tag_span_covers_its_notes(root: Path, report: Report) -> None:
             '§ "Tags" is why the two records differ'
         )
 
-    # Only a finding a truncated checkout could have invented is withheld, and
-    # only when there is one - the shape `check_tags` settled on, for the same
-    # reason: declining on `is_shallow` alone would silence this everywhere it
-    # runs, including the clones that have since fetched and can answer.
+    # A truncated checkout declines whether or not it found anything
+    # (`PL-9GBS`). It walks only the commits it holds, so a closure past its
+    # boundary is in no span here and can be missing from its notes unseen. A
+    # clean result from it said nothing, and the v0.6.19 cut on a shallow
+    # checkout asked for no pointer line that v0.6.18's notes owed. A shallow
+    # clone stays shallow after `git fetch --tags`, so declining on
+    # `is_shallow` silences no clone that could answer, unlike `check_tags`,
+    # whose question fetching the tags does answer.
     truncated = is_shallow(root)
-    if findings and truncated is not False:
+    if truncated is not False:
+        why = (
+            "the checkout is a shallow clone"
+            if truncated
+            else "git cannot say whether this checkout is complete"
+        )
         report.declined.append(
-            f"{NOTES_DIR}: "
+            f"{NOTES_DIR}: {why}, so a closure older than its history holds may be missing "
+            "from its release's notes without this check seeing it"
             + (
-                "the checkout is a shallow clone"
-                if truncated
-                else "git cannot say whether this checkout is complete"
+                f", and the {_plural(len(findings), 'span', 'spans')} whose notes look short "
+                "here cannot be told from a span this clone cannot walk"
+                if findings
+                else ""
             )
-            + f", so the {_plural(len(findings), 'span', 'spans')} whose notes look short here "
-            "cannot be told from a span this clone cannot walk; "
-            "`git fetch --unshallow --tags` makes the question answerable"
+            + "; `git fetch --unshallow --tags` makes the question answerable"
         )
     else:
         report.errors.extend(findings)
@@ -7505,10 +7563,19 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
     id's brief is `vcs.ITEM_FILE_RE`'s reading of its name; a glob of this
     tool's own took a file whose name carries no slug for one, which `docket`
     reads as no item's (`PL-5QG4`).
+
+    **A Python file is a source after the mark or the possessive** -
+    `MODULE_SECTION_RE`. Its module docstring is read as Markdown, and the
+    quotation is held to its headings, as `` `core/governing_equations.py` §
+    "The state vector" `` is (`PL-MWL0`). A file Python cannot parse is
+    declined. After any other code span, and after an item or a module and a
+    connective that claims nothing, the mark is a bare mark of the text around
+    it, as `QUALIFIED_RE` says.
     """
     bodies: dict[str, str | None] = {}
     briefs: dict[str, list[str]] = {}
     titles: dict[str, list[str] | None] = {}
+    modules: dict[str, list[str] | None] = {}
 
     def target_of(cited: str) -> Path | None:
         return next(
@@ -7551,6 +7618,20 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             )
         return f'{where}: quotes {cited} § "{term}", which is no heading of {cited}'
 
+    def module_titles(cited: str) -> list[str] | None:
+        """The headings of `cited`'s module docstring, read as Markdown, or `None` where no file is.
+
+        Raises: one of `docket.python.UNPARSABLE`: Python cannot parse `cited`.
+        """
+        if cited not in modules:
+            target = target_of(cited)
+            modules[cited] = (
+                _headings(ast.get_docstring(ast.parse(target.read_text(encoding="utf-8"))) or "")
+                if target is not None
+                else None
+            )
+        return modules[cited]
+
     def body_of(cited: str) -> str | None:
         if cited not in bodies:
             target = target_of(cited)
@@ -7582,12 +7663,12 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
             line = offset + _line_of(text, match.start()) - 1
             claims = CLAIMING_CONNECTIVE_RE.fullmatch(match.group("connective") or "")
             if match["unclosed"] is not None:
-                refusal = _unclosed(
+                unclosed = _unclosed(
                     f"{path}:{line}",
                     f"this citation of {cited}",
                     "whether the file holds the words",
                 )
-                (report.errors if claims else report.advisories).append(refusal)
+                (report.errors if claims else report.advisories).append(unclosed)
                 continue
             quoted = _normalized(match.group("quoted"))
             if "..." in quoted or "…" in quoted:
@@ -7625,6 +7706,34 @@ def check_quoted_sources(root: Path, documents: dict[Path, str], report: Report)
                 report.errors.append(f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}")
             elif not _cites_heading(quoted, titles_of(cited) or []):
                 report.errors.append(unheaded(f"{path}:{line}", cited, quoted))
+
+        literals = [(span.start(), span.end()) for span in _statement_spans(text)]
+        for match in _statement_matches(MODULE_SECTION_RE, prose, kinds):
+            if _inside(match.start("mark"), literals):
+                continue
+            cited = match["module"]
+            line = offset + _line_of(text, match.start()) - 1
+            if match["unclosed"] is not None:
+                report.errors.append(
+                    _unclosed(f"{path}:{line}", f"this § of {cited}", "the section it names")
+                )
+                continue
+            quoted = _normalized(match["quoted"])
+            try:
+                headed = module_titles(cited)
+            except UNPARSABLE as error:
+                report.declined.append(
+                    f'{path}:{line}: cites {cited} § "{quoted}", but Python cannot parse '
+                    f"{cited} ({refusal(error)}), so its docstring's headings were not read"
+                )
+                continue
+            if headed is None:
+                report.errors.append(f"{path}:{line}: quotes {cited}, {_unresolved_place(cited)}")
+            elif not _cites_heading(quoted, headed):
+                report.errors.append(
+                    f'{path}:{line}: quotes {cited} § "{quoted}", which is no heading of its '
+                    "module docstring"
+                )
 
         for match in _statement_matches(ITEM_SECTION_RE, prose, kinds):
             item = match.group("item")

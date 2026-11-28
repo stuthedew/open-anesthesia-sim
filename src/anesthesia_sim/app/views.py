@@ -74,11 +74,16 @@ from anesthesia_sim.app.chart_time_base import (
     saved_time_base,
     saved_time_base_value,
 )
-from anesthesia_sim.app.compartment_schematic import SCHEMATIC_HEADING
+from anesthesia_sim.app.compartment_schematic import (
+    AMOUNT_UNIT_TEXT,
+    SCHEMATIC_HEADING,
+    TENSION_UNIT_TEXT,
+)
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_HEADING,
     CHART_CEILING_LABEL,
     CHART_HEADING,
+    CONCENTRATION_LEGEND_NAME,
     EARLIER_WINDOW_NAME,
     EARLIER_WINDOW_TEXT,
     FOLLOW_RUN_TEXT,
@@ -91,6 +96,7 @@ from anesthesia_sim.app.dashboard_frame import (
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
+    WASH_IN_LEGEND_NAME,
     WITHHELD_FRAME_TEXT,
     WITHHELD_REFERENCE_TEXT,
     SettingReadout,
@@ -127,6 +133,7 @@ from anesthesia_sim.app.qt_widgets import (
     ForkPanel,
     MarkButton,
     MarkEntry,
+    label_control,
     styled_label,
 )
 from anesthesia_sim.app.run_presentation import (
@@ -209,6 +216,7 @@ _CEILING_KEY: Final = "ceiling_mac"
 _CONCENTRATION_VIEW_NAME: Final = "concentrationView"
 _WASH_IN_VIEW_NAME: Final = "washInView"
 _WASH_IN_PINNED_ROW_NAME: Final = "washInPinnedRow"
+_SCHEMATIC_PINNED_ROW_NAME: Final = "schematicPinnedRow"
 _SCHEMATIC_VIEW_NAME: Final = "compartmentSchematicView"
 _AGENT_COST_VIEW_NAME: Final = "agentCostView"
 _BOOKMARKS_VIEW_NAME: Final = "bookmarksView"
@@ -642,14 +650,21 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
     return column
 
 
-def _labelled_control(label: str, control: QWidget) -> QWidget:
-    """Return `control` with its muted label before it, as one item that a row wraps whole."""
+def _labelled_control(label: str, control: QWidget, named: QWidget | None = None) -> QWidget:
+    """Return `control` with its muted label before it, as one item that a row wraps whole.
+
+    The label names `named` for assistive technology (`label_control`). That
+    is the selector inside `control` where `control` holds the selector and
+    its step buttons, and `control` itself by default.
+    """
 
     item = QWidget()
     pair = QHBoxLayout(item)
     pair.setContentsMargins(0, 0, 0, 0)
     pair.setSpacing(VIEW_HEADING_SPACING)
-    pair.addWidget(styled_label(label, color=MUTED))
+    name = styled_label(label, color=MUTED)
+    label_control(name, control if named is None else named)
+    pair.addWidget(name)
     pair.addWidget(control)
 
     return item
@@ -845,13 +860,17 @@ class ConcentrationView(QWidget):
         # the View would grow taller than the Induction Workspace has room for.
         controls = QHBoxLayout()
         controls.setSpacing(VIEW_HEADING_SPACING)
-        controls.addWidget(_labelled_control(TIME_BASE_LABEL, self._window.control))
+        controls.addWidget(
+            _labelled_control(TIME_BASE_LABEL, self._window.control, self._window.selector)
+        )
         controls.addWidget(_labelled_control(CHART_CEILING_LABEL, self.ceiling_selector))
         controls.addStretch(1)
         column.addLayout(controls)
         column.addWidget(self._window.held_row)
         column.addWidget(self.state_notice)
-        column.addWidget(FittedScroll((self.legend,), CHART_KEY_LEAST_HEIGHT))
+        column.addWidget(
+            FittedScroll((self.legend,), CHART_KEY_LEAST_HEIGHT, CONCENTRATION_LEGEND_NAME)
+        )
         column.addWidget(self.withheld_text)
         column.addWidget(self.hidden_traces_text)
         column.addWidget(self.capped_traces_text)
@@ -1007,7 +1026,9 @@ class WashInView(QWidget):
         heading = QHBoxLayout()
         heading.setSpacing(VIEW_HEADING_SPACING)
         heading.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True), 1)
-        heading.addWidget(styled_label(TIME_BASE_LABEL, color=MUTED))
+        time_base_name = styled_label(TIME_BASE_LABEL, color=MUTED)
+        label_control(time_base_name, self._window.selector)
+        heading.addWidget(time_base_name)
         heading.addWidget(self._window.control)
         column.addLayout(heading)
         column.addWidget(self._window.held_row)
@@ -1024,6 +1045,7 @@ class WashInView(QWidget):
             FittedScroll(
                 (styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True), self.legend),
                 CHART_KEY_LEAST_HEIGHT,
+                WASH_IN_LEGEND_NAME,
             )
         )
         column.addWidget(self.withheld_text)
@@ -1198,6 +1220,12 @@ class RunDials(QWidget):
     apart. A lone run is not named. The name is written from the presentation on every tick, so it
     changes with the run set (`PL-CPF2`).
 
+    A thumb still held when the run starts over, by a Reset or an agent
+    change, is let go before the new run's settings are written. Its release
+    then applies nothing, so a drag begun on the run that was discarded never
+    sets the new one (`PL-HPD0`). The row tells a start-over from the count in
+    `RunPresentation.case`.
+
     Args:
         run_id: The run whose settings the dials show and ask to change.
         requests: How the View asks the dashboard for a change.
@@ -1212,6 +1240,9 @@ class RunDials(QWidget):
         super().__init__()
         self._run_id = run_id
         self._requests = requests
+        # The start-over count of the presentation this row last showed, or
+        # None before the first (`show_dials`).
+        self._case: int | None = None
         self.controls: ParameterControls | None = None
         self.name_text = styled_label("", color=INK, bold=True)
         self.name_text.setHidden(True)
@@ -1231,6 +1262,9 @@ class RunDials(QWidget):
     def show_dials(self, run: RunPresentation) -> None:
         """Write the run's name, then the four dials from `run.dials` or the line in their place.
 
+        A thumb held across a start-over of the run is let go first, applying
+        nothing (`PL-HPD0`).
+
         Args:
             run: The presentation of the run that this row was built for.
 
@@ -1244,6 +1278,12 @@ class RunDials(QWidget):
                 f"a presentation built for {run_label(run.run_id)} was given to the dials of "
                 f"{run_label(self._run_id)}: each row of dials shows the run it was built for"
             )
+
+        started_over = self._case is not None and run.case != self._case
+        self._case = run.case
+
+        if started_over and self.controls is not None:
+            self.controls.cancel_holds()
 
         self.name_text.setText(run.name or "")
         self.name_text.setHidden(run.name is None)
@@ -1534,11 +1574,23 @@ class CompartmentSchematicView(QWidget):
     readouts. So the schematic shows the same step as the readouts, and it
     is withheld whenever they are. The View asks for no chart frame.
     The statement that its values are model outputs, not measurements, appears
-    once, in the View's heading, because every value the View shows is a model
-    output.
+    once, because every value the View shows is a model output. It shares a
+    line with the unit of every tension, and the line under it names the unit
+    of every amount and the condition the amounts are stated at. The two
+    lines are the View's `pinned_row`: its Area shows them above the box that
+    scrolls the View, so they are on screen wherever any value is (`PL-26BZ`,
+    `PL-3NGZ`). Each run's own heading, which names the run and says what its
+    shares are of, stays at the top of that run's part in view
+    (`RunSchematic`).
 
     Args:
         context: What the View is built from.
+
+    Attributes:
+        qualifier_label: The lines that say the values are model outputs,
+            and name the units of every tension and every amount.
+        pinned_row: The row that holds `qualifier_label`, which the View's
+            Area keeps on screen above the View's scroll box.
     """
 
     scope = ViewScope.RUNS
@@ -1551,12 +1603,12 @@ class CompartmentSchematicView(QWidget):
             lambda run: RunSchematic(run.values.schematic, run.name), PAGE_SPACING
         )
         column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
-        heading = QHBoxLayout()
-        heading.setSpacing(VIEW_HEADING_SPACING)
-        heading.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True), 1)
-        heading.addWidget(styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED))
+        self.qualifier_label = styled_label(
+            f"{INTERPRETATION_DISCLAIMER_TEXT} {TENSION_UNIT_TEXT}\n{AMOUNT_UNIT_TEXT}", color=MUTED
+        )
+        self.pinned_row = _panel_row(self.qualifier_label, _SCHEMATIC_PINNED_ROW_NAME)
         column.addWidget(self.state_notice)
-        column.addLayout(heading)
+        column.addWidget(styled_label(SCHEMATIC_HEADING, color=INK, bold=True, wrap=True))
         column.addWidget(self._schematics.holder)
         column.addStretch(1)
 
@@ -1593,9 +1645,7 @@ class CompartmentSchematicView(QWidget):
 
     def painted_strings(self) -> tuple[str, ...]:
         return tuple(
-            text
-            for schematic in self._schematics.widgets
-            for text in schematic.canvas.painted_strings()
+            text for schematic in self._schematics.widgets for text in schematic.painted_strings()
         )
 
 
@@ -1657,6 +1707,7 @@ class AgentCostView(QWidget):
         # in force on each tick never reads as a request.
         self.unit_selector.activated.connect(self._handle_pick)
         self.unit_label = styled_label(UNIT_CHOICE_LABEL, color=INK)
+        label_control(self.unit_label, self.unit_selector)
         # Until a tick has drawn the panels, the selector has no unit in force
         # to show, so it is hidden rather than showing the default.
         self.unit_label.setHidden(True)

@@ -156,7 +156,12 @@ dev = [
     # docket, so copied logic fails `make check` (`PL-VWXL`). No other pylint
     # message is enabled; ruff is the linter.
     "pylint>=4.1.3",
-    "pytest>=9.1.1",
+    # 9.2.0 fixes a fixture lookup that failed when the paths on one command
+    # line return to a directory after leaving it, as `tests/a/test_x.py
+    # tests/test_y.py tests/a/test_z.py` does: `test_z.py` lost the fixtures of
+    # `tests/a/conftest.py` (pytest issue 14635, in pytest's changelog for
+    # 9.2.0, read 2026-11-27, `PL-NV1C`).
+    "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
     # Shuffles the test order, for `drift.yml`'s weekly `order` job only. The
     # `-p no:randomly` in `addopts` below keeps every other run in file order,
@@ -279,6 +284,7 @@ source_paths = ["src/"]
 do_not_mutate = [
     "src/anesthesia_sim/app/area_layout.py",
     "src/anesthesia_sim/app/main.py",
+    "src/anesthesia_sim/app/pinned_heading.py",
     "src/anesthesia_sim/app/qt_agent_cost.py",
     "src/anesthesia_sim/app/qt_agent_price.py",
     "src/anesthesia_sim/app/qt_chart.py",

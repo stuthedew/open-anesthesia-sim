@@ -22,6 +22,10 @@ a pull request, and assert the property rather than the spelling. `_evaluate`
 understands only the expression forms the block actually uses and raises on
 anything else, deliberately: a rewrite into a shape this file cannot read is a
 failure to report, not a pass to hand out.
+
+The last tests hold the two required checks that run only on pull requests,
+`merge-hold` and `pr-title`, to cancelling none of their runs, and `pr-title` to
+checking the title the pull request holds when it runs (`PL-Q3DW`).
 """
 
 from __future__ import annotations
@@ -183,3 +187,40 @@ def test_an_unrecognised_expression_fails_rather_than_passing() -> None:
     """The refusal in `_evaluate`, which is what keeps the assertions above honest."""
     with pytest.raises(AssertionError, match="cannot evaluate"):
         _evaluate("github.ref == 'refs/heads/main' && 1 || 2", _push("2ebe91e9"))
+
+
+@pytest.mark.parametrize("name", ["merge-hold.yml", "pr-title.yml"])
+def test_a_required_check_on_a_pull_request_cancels_none_of_its_runs(name: str) -> None:
+    """Every run of `merge-hold` and `pr-title` finishes, so the newest has a verdict (`PL-Q3DW`).
+
+    Branch protection reads the newest run of a required check on the head
+    commit. Two runs that start in the same second can enter their lane in
+    either order, so a lane that cancels a run can leave the newest one
+    cancelled, and the pull request blocked with every check green, as #2322
+    was for six hours. `queue: max` keeps up to 100 runs waiting and cancels
+    none, and GitHub refuses it beside `cancel-in-progress: true`.
+    """
+    workflow = yaml.safe_load((WORKFLOW.parent / name).read_text(encoding="utf-8"))
+    block = workflow["concurrency"]
+
+    assert "cancel-in-progress" not in block, block
+    assert block["queue"] == "max", block
+
+
+def test_the_title_check_reads_the_pull_request_s_title_rather_than_its_event_s() -> None:
+    """A run that finishes last checks the newest title, whatever its event carried (`PL-Q3DW`).
+
+    `pr-title` runs queue rather than cancel. A run whose event carried an
+    older title can finish after a title edit, or run after the edit's own run.
+    Checking its event's title, it would pass the old title last, and auto-merge
+    could land the new one unchecked. So the title step asks the pull request
+    for its title, and reads nothing about the title from the event.
+    """
+    workflow = yaml.safe_load((WORKFLOW.parent / "pr-title.yml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["pr-title"]["steps"]
+    (title_step,) = [step for step in steps if "pr_title_check.py" in step.get("run", "")]
+
+    assert "pull_request.title" not in str(title_step), title_step
+    assert "PR_TITLE" not in title_step.get("env", {}), title_step
+    assert 'gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq .title' in title_step["run"]
+    assert workflow["permissions"]["pull-requests"] == "read", workflow["permissions"]

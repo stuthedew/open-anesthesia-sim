@@ -3,13 +3,16 @@ id: PL-Q3DW
 title: An armed pull request can wait blocked for hours with every check green: merge-hold and pr-title cancel a run already in progress, two events on one commit in the same second can start in either order, and branch protection reads the newest run, which may be the cancelled one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: ci-cost
 touches: .github/workflows/merge-hold.yml, .github/workflows/pr-title.yml
 deferred-from: v0.7.0 - a merge workflow defect, which changes no simulated or displayed value
 added: 2026-11-25
+closed: 2026-11-27
+pr: 2340
 payoff: an armed pull request merges when its checks pass, instead of waiting for hours behind a cancelled run that nobody sees
+tests: tests/unit/test_ci_concurrency.py::test_a_required_check_on_a_pull_request_cancels_none_of_its_runs, tests/unit/test_ci_concurrency.py::test_the_title_check_reads_the_pull_request_s_title_rather_than_its_event_s
 ---
 
 **Problem.** An armed pull request can wait blocked for hours with every check green: merge-hold and pr-title cancel a run already in progress, two events on one commit in the same second can start in either order, and branch protection reads the newest run, which may be the cancelled one
@@ -66,3 +69,14 @@ the cancelled run clears it.
 
 **Done when.** No required check on a pull request can end with its newest
 run cancelled by a run of the same workflow on the same commit.
+
+**Done 2026-11-27.** Both `merge-hold.yml` and `pr-title.yml` now set `queue: max` in place of `cancel-in-progress: true`, as the brief's direction said. GitHub's workflow syntax page, section `concurrency`, read 2026-11-27, says that with `queue: max` "Up to 100 jobs or workflow runs can be pending in the concurrency group", and that combining it with `cancel-in-progress: true` "is not allowed and will result in a workflow validation error". So no run of either check is cancelled by another run of the same workflow, and the newest run on the head commit always ends with a verdict.
+
+The two points the brief left to settle:
+
+1. An invalid `merge-hold.yml` would block every merge, and a pull request cannot test its own change to it, because `pull_request_target` runs the default branch's copy. `pr-title.yml` runs on `pull_request`, which runs the pull request's own copy, and it carries the same `queue: max`. So this pull request's own `pr-title` run shows whether GitHub accepts the key before `merge-hold.yml` reaches `main`. **Measured on #2340, 2026-11-27.** GitHub accepted `queue: max` in this pull request's own `pr-title.yml`: the push and the title edit that followed it started two `pr-title` runs on head `9be5a071`, and the second started at 23:23:42 UTC, two seconds after the first finished at 23:23:40. Both passed, and neither was cancelled.
+2. `pr-title` used to read the title from its own event's payload (`github.event.pull_request.title`), so each run checked the title as it was at that event. The first draft kept that and argued that the newest run, which read the newest title, is the one that counts. The pull request's blind review showed why that does not hold once runs queue. A run whose event carried an older title can still be running when the title is edited, and GitHub does not order two runs that start in the same second, so the old title's run can also run last. Either way the last result can be a pass on the old title, and auto-merge can then land the new title unchecked. So the title step now asks the pull request for its title with `gh api` when it runs, with `pull-requests: read` added to the workflow's permissions. The run that finishes last has then checked the title the merge uses. The one case left is an edit in the second or so between that read and the run's end. The edit's own run still checks it, but possibly after the merge. `tests/unit/test_ci_concurrency.py::test_the_title_check_reads_the_pull_request_s_title_rather_than_its_event_s` holds the step to it, and fails on the first draft.
+
+`tests/unit/test_ci_concurrency.py::test_a_required_check_on_a_pull_request_cancels_none_of_its_runs` holds both files to `queue: max` and no `cancel-in-progress`. It fails on both files at `8f404cfa`.
+
+**Documents checked:** the comments above both `concurrency` blocks, rewritten; `tests/unit/test_ci_concurrency.py`'s module docstring, which now names the new test; `.claude/skills/pull-request/SKILL.md` and `docs/maintainer.md`, which say nothing about cancelled runs; `tools/main_ci_status.py`, which reads `quality.yml`'s runs on `main` and not these two.

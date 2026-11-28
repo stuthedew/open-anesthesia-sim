@@ -1551,7 +1551,12 @@ failures, the banner names Reset as the way to recover. For a refused Reset, it
 says instead that Reset was refused, and that no setting can repair the run,
 because only a fault in the simulator causes the refusal. A new cardiac output
 cannot repair it, because it scales every flow by one factor. The banner also
-says that closing and reopening the application starts a new run (`PL-01GY`).
+says that closing and reopening the application starts a new run (`PL-01GY`),
+and to keep the failure details first: Show details, then Copy details, then
+paste them elsewhere. It names both buttons, in the order they are pressed,
+because Copy details is hidden until the details are shown. On X11 with no
+clipboard manager running, closing the application clears what it copied
+(`PL-PYWF`).
 It names neither Reset nor a dial as the way to recover. If the run had already
 failed from another cause, the interface
 keeps that earlier failure as the reason, and the banner's advice on recovery
@@ -2889,7 +2894,8 @@ While two or more runs are drawn, each of these places names its run in text:
    runs use this one place, and an empty banner is hidden and takes no room. A
    banner's position therefore does not show which run it belongs to.
 6. The heading over each run's compartment schematic, taken from the name on
-   the run's own panel.
+   the run's own panel. It stays at the top of the part of that run's
+   schematic in view while the Area scrolls (`PL-3NGZ`).
 7. The heading over each run's agent cost panel, in the same way.
 8. The line above each run's row of dials in the setting controls view, in the
    same way (`PL-CPF2`).
@@ -2959,10 +2965,10 @@ Run 2."). The user stays in the Workspace they chose. The sentence goes as
 soon as the Workspace is unpinned or the reader switches to another Workspace.
 The interface does not switch the Workspace itself, because the press asked
 for a branch and not for another Workspace. WCAG 2.2 Success Criterion 4.1.3
-treats a result shown without moving the reader as a status message. Nothing
-announces this one to a screen reader yet, because screen-reader support is
-planned and not yet a commitment (§ "Color contrast, and the standard this
-interface is held to"). The Understanding document for Success Criterion 3.2.2 holds a change of context
+treats a result shown without moving the reader as a status message. So the
+caption is announced to a screen reader when it appears or changes, without
+moving the focus, once speech pauses (§ "Color contrast, and the standard this
+interface is held to", `PL-J7Z5`). The Understanding document for Success Criterion 3.2.2 holds a change of context
 appropriate "only when it is clear that such a change will happen in response
 to the user's action"
 (`test_a_branch_taken_in_a_workspace_pinned_to_a_run_that_is_not_open_says_where_it_went`
@@ -4387,6 +4393,92 @@ carry (`test_each_reading_is_named_with_its_compartment_and_that_it_is_modelled`
 and `test_a_compared_run_s_readings_are_named_with_their_run` in
 `tests/integration/simulation_view/test_simulation_view_readouts.py`).
 
+**Every control a screen reader can reach says what it is for** (`PL-RK9Z`).
+WCAG 2.2 SC 4.1.2 requires a name for each control at Level A. Each field and
+selector is tied to the label shown beside it. On Linux and macOS, Qt names a
+selector by the entry it shows, such as "Sevoflurane", and takes what the
+selector is for only from a label tied to it. Windows reads the control's
+accessible name instead, so each control has one as well. The run's agent
+selector had no label on screen, so the word "Agent" now stands before it, in
+the muted style of "Playback" before the playback rate. Where two controls
+share a label, the name adds which one it is: "Name, time bookmark" and "Name,
+MAC target", "Add, time bookmark" and "Add, MAC target", and "From, branch
+point". Each name starts with the label shown, which the Understanding
+document for SC 2.5.3 (Label in Name) calls best practice. A scroll box that
+takes the focus so that the keyboard can scroll it is named by the heading
+above it, or by what it holds, such as "Concentration chart legend". An Area's
+corner is named "Area corner", and its description says that the Area menu
+does from the keyboard what a drag on the corner does
+(`test_every_control_a_reader_can_reach_says_what_it_is_for` and
+`test_each_selector_is_named_by_its_shown_label_on_every_platform` in
+`tests/integration/test_keyboard_focus.py`).
+
+**A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
+reader says nothing when a label's text changes, and SC 4.1.3 (Status
+Messages) asks that a status message reach it all the same. So each new
+banner above a run's values, and each refusal under a bookmark form or the
+branch control, is sent to the screen reader as an announcement. A failure and
+a refused setting or request interrupt what is being read, because each asks
+the reader to act. The countdown to the supported run length, and the stop
+there, wait until speech pauses. Qt's documentation asks that an interrupting
+announcement be used only where the interruption is imperative. A banner
+drawn again unchanged on the next frame is not read again, nor is a banner
+that gains its run's name when a second run is drawn. The countdown changes
+every second and is read once, when it appears. A banner written twice in one
+action, as a halt writes it before and after its frame, is read once, as the
+action leaves it. The caption that takes the branch control's place is read
+when it appears or changes, once speech pauses. The dashboard, not each View,
+reads out a refusal under a bookmark form or the branch control, and the
+caption. So two Areas that show the same refusal read it once, and a View
+built again after a Workspace switch shows it without reading it again. Each
+refused press is read, even where the refusal is already shown, so that a
+second press is not met with silence
+(`test_each_new_banner_is_read_out_once_and_a_warning_interrupts` and
+`test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends` in
+`tests/integration/test_qt_widgets.py`,
+`test_a_countdown_keeps_one_topic_while_its_time_left_changes` in
+`tests/unit/test_dashboard_frame.py`,
+`test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` in
+`tests/integration/simulation_view/test_simulation_view_refusals.py`,
+`test_the_countdown_and_the_stop_at_the_supported_run_length_are_each_read_out_once`
+in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`,
+`test_a_refused_mark_is_read_out_once_however_many_copies_show_it` in
+`tests/integration/simulation_view/test_simulation_view_bookmarks.py`,
+`test_each_refused_branch_press_is_read_out_once` in
+`tests/integration/simulation_view/test_simulation_view_branch_refusals.py`, and
+`test_the_caption_that_replaces_the_branch_control_is_read_out_once` and
+`test_a_banner_standing_when_a_branch_is_taken_is_not_read_out_again` in
+`tests/integration/simulation_view/test_simulation_view_branch_control.py`).
+
+**The concentration chart has a text alternative** (`PL-T9RB`). SC 1.1.1
+asks a chart for a text alternative at Level A, and the W3C's example of one
+pairs a short name with a long description that names the type of chart and
+summarises its data. The chart reports itself as an image. Its name is the
+chart's heading and the time axis's caption, such as "Agent concentration and
+relative partial pressure over time, whole run so far, 15 minutes shown". Its
+description opens "Line chart." Then, for each run, it gives the latest drawn
+value of each trace shown, in percent and in multiples of 1 MAC, as the hover
+words them, such as "Modelled sevoflurane at 10m: Circuit (inspired) 1.45%,
+0.81 ×MAC; Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC". The instant is
+that of the run's last drawn point, which is the right edge of a held window.
+The 1 MAC and MAC-awake references follow. With every compartment unchecked,
+or no frame drawn, the description says what the screen says. A window in
+which no run has a drawn point gives no values. Both texts are written when a
+screen reader asks for them, and the chart reports each change to either. The
+AT-SPI client library on Linux keeps the texts it has read until told they
+changed, so without these reports it would go on reading an earlier frame's.
+The chart gives no table of its values. The Understanding document for SC 1.1.1
+provides one "where possible and practical", and the readouts already give
+each compartment's current value in text. The wash-in plot and the compartment
+schematic have no text alternative yet (`PL-R1M6`)
+(`test_the_chart_s_text_alternative_gives_each_shown_trace_s_latest_value` and
+`test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_drawn`
+in `tests/unit/test_chart_frame.py`, and
+`test_the_concentration_chart_tells_a_screen_reader_what_it_plots_and_where_it_ends`
+and `test_the_concentration_chart_tells_a_screen_reader_when_its_text_changes`
+in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+<!-- not-restated: 15 minutes -->
+
 #### Minimum contrast for text and graphics
 
 Two criteria carry most of the weight:
@@ -4801,6 +4893,14 @@ clinical value.
 The legend entry beside each checkbox names its trace's style in words, so a
 reader can learn every style from the legend alone.
 
+**Every width and dash length is in device-independent pixels, on every
+screen.** That is the unit Qt lays out every widget in, so a 3 px trace is as
+wide beside the text on a Retina screen at 200%, or on a Windows screen at 125%,
+as it is on a screen at 100%. The same holds for every other line on both plots
+and for each legend swatch (`PL-FSRR`;
+`test_each_trace_is_painted_at_its_specified_width_at_every_screen_scale` in
+`tests/integration/test_chart_screen_scale.py`).
+
 **Color cannot be the first cue, because some pairs of trace colors are almost
 equally bright.** The closest pairs are alveolar and muscle, circuit and
 mixed venous, and, under protanopia, vessel-rich and fat. No other choice of colors fixes this. Each color has at least the 3:1
@@ -4847,6 +4947,15 @@ ceilings and the 3:1 minimum against these figures
 before they were darkened, and no test checks those. The search over lightness
 is not part of the script. The script runs as part of `make check`, and its
 `--matrix` option prints the pairwise ratios in the table below.
+
+The chart's lines are cosmetic pens, which Qt draws in device pixels.
+`on_screen` in `src/anesthesia_sim/app/qt_chart.py` multiplies a pen's width by
+the screen's device pixel ratio, and each plot's `_ScreenPens` gives every line
+its pen through it again when the window moves to a screen with another ratio.
+`tests/integration/test_chart_screen_scale.py` paints every trace, dash pattern
+and legend swatch at ratios of 1, 1.25, 1.5, 2 and 3. It also checks, on a
+screen at each ratio, that every line both plots stroke goes through
+`on_screen`.
 
 Each trace has this contrast against the panel, as displayed (Normal) and as
 simulated for each dichromacy:
@@ -6307,8 +6416,12 @@ pattern, because those tell the six compartments apart.
    the press and is gone from the frame drawn at release. It also ends while the
    handle is still held when the run starts over, on a Reset or an agent change,
    and when a branch is opened or dropped, because its label would otherwise
-   name an agent or a run that is no longer shown (`PL-1WFW`). If the held
-   handle then moves, a new preview is drawn from the run on screen.
+   name an agent or a run that is no longer shown (`PL-1WFW`). After a branch
+   is opened or dropped, a move of the held handle draws a new preview from the
+   run on screen. A start-over also lets go of the handle, so the rest of the
+   drag moves nothing and its release applies nothing to the new run
+   (`PL-HPD0`). The drag began on a run that is gone, and each platform's own
+   input system cancels a gesture whose target is taken away in the same way.
 
 **The preview comes from the same model and version as the run.** It starts from
 the run's state at its current time, as § "Each second has one stored state"
@@ -6362,6 +6475,21 @@ moves the handle only as far as the pointer moves.
 **A stopped run accepts no new setting and draws no preview.** A run stops when
 it fails or reaches the end of the longest run the simulator supports.
 
+**A preview that would not start from the run's own values is not drawn, and
+the banner says why while the handle is held** (`PL-412F`). A preview rebuilds
+the run from its settings and reads the agent, the patient and the circuit from
+the data files again. A data file changed after the run began gives the rebuilt
+run values that the run does not hold, so its future would be another case's.
+The run's notice banner then names the dial, says that the simulator's data may
+have changed or the simulator may have a fault, and says to reopen the
+simulator to preview a setting. It also says that releasing the dial still
+applies the new setting, because applying a value rebuilds nothing. So it is
+not worded as a refused setting, and it takes the place of an earlier refused
+setting's notice until the drag ends. The failure log records each value that
+differs. Every other refusal of a
+preview is also a refusal of the value itself, so the drag shows none of them
+and the release reports it in the banner.
+
 **The time window keeps its width during a preview.** It slides so that the
 run's current time sits at mid-plot: half the window shows the run that
 happened, and half shows the prediction. Early in a run the window stops at
@@ -6391,7 +6519,14 @@ in `tests/unit/test_chart_frame.py` checks the split. The preview's settings are
 built the way a branch's are (`SimulationController.preview_settings`). A trial
 run is rebuilt from the settings in force and checked to match the run in every
 value. The trial run then takes the new value through the same setter that
-applies a value to the run. The centred time window comes from
+applies a value to the run. A trial run that does not match raises
+`controller.PreviewOfAnotherCase`, which `RunView.request_preview` puts in the
+banner (`test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_the_release`
+in `tests/integration/simulation_view/test_simulation_view_refusals.py`).
+`dashboard_frame.notice` ranks that banner below a stopped run and above a
+refused setting
+(`test_a_refused_preview_outranks_a_refused_setting_and_says_the_release_still_applies`
+in `tests/unit/test_dashboard_frame.py`). The centred time window comes from
 `chart_time_base.preview_window`, and the wording of the off-scale notice from
 `dashboard_frame.PREVIEW_OFF_SCALE_NOTICE_TEMPLATE`.
 
@@ -6411,6 +6546,11 @@ presses under Fusion and under a style that returns the macOS hints
 (`test_a_click_on_a_slider_s_track_applies_at_once_and_draws_no_preview`,
 `test_a_press_on_the_handle_off_its_centre_released_unmoved_applies_nothing`,
 `test_a_drag_from_off_the_handle_s_centre_moves_the_setting_only_as_far_as_the_pointer_moves`).
+`views.RunDials.show_dials` lets go of a held handle when the presentation's
+start-over count, `RunPresentation.case`, changes. `_SettingSlider.cancel_hold`
+puts the handle back with its signals blocked and ignores the rest of the
+gesture (`test_a_thumb_held_when_the_run_starts_over_is_let_go_and_its_release_applies_nothing`
+in the same file).
 
 The 2 px minimum width for a preview curve is there because an antialiased line
 thinner than 2 px has less than 3:1 contrast against the panel
@@ -6525,6 +6665,21 @@ these four cases:
   `test_a_cost_too_large_to_show_to_its_minor_unit_is_refused` in
   `tests/unit/test_formatting.py`); or
 - the delivered amount cannot be converted to liquid (`docs/PARAMETERS.md` § "Agent amount").
+
+In each of the first three cases the readout also says what the reader can do:
+set the price, set it again, or check the bottle price and volume, all in the
+form below the readout. Where the cost itself cannot be computed, the readout
+says whether it is too large or too small, so the reader knows which way the
+price is wrong
+(`test_a_cost_too_large_and_a_cost_too_small_each_say_which` in
+`tests/unit/test_agent_cost.py`). The notice that names the refused entries
+lists them one per line and gives the step "Set them again in this View, or
+discard the refused entries below." In
+the fourth case the reader can do nothing in this View, so the readout names no
+step (NUREG-0700 Rev. 3, guideline 2.7.3-1; `PL-VT87`). For developers: the
+texts are the constants beside `NO_PRICE_TEXT` in `app/agent_cost.py`, and
+`test_the_notice_of_refused_preferences_says_what_the_reader_can_do` in
+`tests/unit/test_preferences.py` checks the notice.
 
 The readout never shows a cost of zero in place of one of these cases. Nor does
 it show a cost left over from an earlier instant, another agent or an earlier
@@ -6676,8 +6831,11 @@ agent the container holds and its share of all the agent, and a bar under the
 label draws that share.
 
 **Every height, amount and share on the schematic is a model output.** The
-schematic therefore prints "Model outputs — not measurements." once, in its
-own heading, as the readout section does. No amount is a prediction about a
+schematic therefore prints "Model outputs — not measurements." once, as the
+readout section does, followed by the tensions' unit. The line under it names
+the amounts' unit and the condition they are stated at. Both lines stand in a
+row above the part of the View that scrolls, so they stay in view whatever part
+of the schematic the Area shows (`PL-3NGZ`). No amount is a prediction about a
 patient to its last digit, for the reason § "Displayed precision" gives for
 the readouts.
 
@@ -6725,9 +6883,10 @@ expresses an amount of agent, not gas present in the body. This subsection's
 rules for an agent amount also apply to every other View that shows one,
 such as the agent cost View (`PL-B396`).
 § "Displayed precision" derives the precision at which amounts are shown. The
-label names the reference condition
+line above the scrolling part of the View names the reference condition
 (`test_the_reference_condition_label_names_the_conversions_temperature_and_pressure`
-in `tests/unit/test_display_units.py`).
+in `tests/unit/test_display_units.py`). The caption under the containers says
+that the amounts held in the body read high at that condition.
 <!-- provenance: core/liquid_agent.py REFERENCE_TEMPERATURE_CELSIUS = 20 -->
 
 **An agent amount's unit always names vapour or liquid, and is never a bare
@@ -6771,14 +6930,11 @@ at this instant (`PL-S79P`, `PL-8PL4`). It names the six containers, not the
 circuit and body, because the model leaves out three stores that a patient's
 body and circuit hold: lung tissue and pulmonary blood, a vessel-poor group,
 and the circuit's plastics (`docs/MODEL.md` § "What the model does not
-represent", `PL-KQ0S`). It stands just under the containers,
-so on a 1366 by 768 screen it stays in view with the bars while the scale
-caption below it scrolls. The line naming a container above the scale comes
-before it, because that line warns that a container's fill is cut off. While
-that line shows on a 1366 by 768 screen, the share caption can scroll too. A
-run holds no agent when it starts, so no share exists then: each bar is drawn
-empty, each label prints a dash where its share would be, and the caption line
-says that the six containers hold no agent.
+represent", `PL-KQ0S`). It stands in the run's heading, so it stays in view
+with every bar (§ "Each schematic shows its run at the same instant as the
+readouts" below). A run holds no agent when it starts, so no share exists
+then: each bar is drawn empty, each label prints a dash where its share would
+be, and the caption line says that the six containers hold no agent.
 
 **Lines between the containers show ventilation and blood flow.** The
 containers stand in one row. A line joins the circuit to the alveoli for
@@ -6800,7 +6956,32 @@ would show agent that the model does not hold.
 **Each schematic shows its run at the same instant as the readouts.** A line
 of text above the schematic gives that instant as the readouts' clock prints
 it. While runs are compared, that line also names the run, so that a reader
-does not take one run's value for the other's. Two compared runs can be at
+does not take one run's value for the other's. That line, the share caption
+and the six compartments' names, each over its own container, form the run's
+heading. The heading stays at the top of the part of the schematic in view
+while the Area scrolls, as a list's section headers stay pinned while the list
+scrolls (Apple, SwiftUI documentation, "Grouping data with lazy stack views",
+section "Keep important information visible", read 2026-11-27). NUREG-0700
+Rev. 3 asks the same of any scrollable display: "General labels and row and
+column labels should remain along the top (or bottom) and left (or right)
+edges of the display" (O'Hara, Brookhaven National Laboratory for the U.S.
+Nuclear Regulatory Commission, 2020, guideline 1.5-15, p. 1-59). So no tension,
+amount or share is in view without its run, its compartment and what its
+share is of. The heading follows a scroll of the whole page as well as a
+scroll of the Area. On a 1366 by 768 screen, the Maintenance Workspace gives the
+schematic an Area too short to hold even one run's schematic, and two
+compared runs share it (`PL-3NGZ`). With a branch open there, the Area is held
+at its least height. After the branch opens, the dashboard scrolls the page so
+the concentration chart's plot is whole, which leaves about 10 px of the
+schematic's box on screen under a pinned heading. No label line is whole
+there, and a number in that band is cut at the window's lower edge. Scrolling the page
+to its end shows about 24 px, one label line at a time, and still no container
+whole (`PL-C14T`). The Area is not made taller,
+because the page would then grow and push the concentration chart's title and
+key above the window's top after a branch. The row above the scrolling part,
+and the Area's header, still move out of view when the page itself scrolls
+them past the window's edge (`PL-DKQ5`).
+Two compared runs can be at
 different times, as when one is a branch taken at an earlier point. A
 difference between their schematics may then come from elapsed time rather
 than from the change the branch made. The schematic withholds its values
@@ -6851,6 +7032,33 @@ schematic's width as it was.
 `tests/integration/simulation_view/test_simulation_view_page.py` checks that
 the containers and the share caption are wholly in view in the Maintenance
 Workspace at 1366 by 768 and three larger screen sizes.
+
+Each run's heading is a `PinnedHeadingSection` (`app/pinned_heading.py`).
+`ViewScroll` in `app/area_layout.py` moves every such heading after each
+resize, and `pin_on_scroll` after each scroll of the Area's box or of the
+dashboard's page, and after each change of what either can scroll. The
+heading is drawn over the rows on the panel's colour, so the part of a row
+under it is hidden. A label line or a container can stand across the
+heading's lower edge and show in part. A container cut there shows only its
+lower part, so its fill can look like that of a container at or over the
+scale's top. A label line cut there shows only the lower part of its
+characters, so its value can look like another (`PL-GWTR`). Four tests in
+`tests/integration/test_compartment_schematic_view.py` hold the rest.
+
+1. `test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_position`
+   scrolls the Maintenance Workspace at 1366 by 768 through every position,
+   with two runs, with one run and with one run's circuit above the scale.
+   Wherever a container, a share bar or a label line is wholly in view and
+   not under the heading, the whole heading is in view too, above it.
+2. `test_each_compartment_name_stands_over_its_own_container` checks that
+   each name is centred over its container, at two widths.
+3. `test_a_run_heading_follows_a_scroll_of_the_page` scrolls the page of a
+   window 400 px tall through every position, and makes the same check as
+   the first test.
+4. `test_a_run_heading_follows_a_taller_window_that_brings_its_run_into_view`
+   makes the window taller while the schematic's Area is below its lower
+   edge, with no scroll and no change to the box's size, and makes the same
+   check.
 
 The empty bars at a run's start are there because computing a share would then
 divide by zero, and six zeros would look like real shares.

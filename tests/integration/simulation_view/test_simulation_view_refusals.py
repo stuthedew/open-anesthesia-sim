@@ -5,19 +5,32 @@ These tests cover refusals shown as notices, and the halt.
 `simulation_view_support.py` describes the whole suite.
 """
 
+import dataclasses
 import logging
 
 import pytest
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.dashboard_frame import slider_position
+from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS
 from anesthesia_sim.app.qt_widgets import ParameterSlider
+from anesthesia_sim.core import uptake_system
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
     SimulationExecutionError,
 )
-from tests.integration.simulation_view.simulation_view_support import _dials, _shown_view
+from anesthesia_sim.core.numerical_envelope import CompartmentVolume
+from anesthesia_sim.core.parameters import load_reference_adult_parameters
+from tests.integration.announcement_support import ASSERTIVE, Announcement, record_announcements
+from tests.integration.simulation_view.simulation_view_support import (
+    _advance,
+    _concentration,
+    _dials,
+    _hold_thumb,
+    _shown_view,
+)
 
 # ---------------------------------------------- refusals, and the halt
 
@@ -96,6 +109,54 @@ def test_a_refused_setting_is_reported_without_stopping_the_run(
     assert _dials(run)._delivered_concentration_slider.value() == pytest.approx(delivered_before)
 
 
+def test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A screen reader is interrupted for each, and not told again on the frames after (`PL-J7Z5`).
+
+    The refusal's banner is the one the test above pins, typed here again. A
+    halt writes its banner before its frame and again from the frame, and only
+    the banner that stands once the halt is over is read. Before `PL-J7Z5`
+    neither banner reached a screen reader at all.
+    """
+
+    recorded = record_announcements(monkeypatch)
+    controller = SimulationController(agent_id="isoflurane")
+    view = _shown_view(application, controller)
+    controller.start()
+
+    view.runs[0]._handle_delivered_concentration_change(50.0)
+
+    for _ in range(3):
+        application.processEvents()
+        view.present(False)
+
+    application.processEvents()
+
+    assert recorded == [
+        Announcement(
+            "Setting refused — the vaporizer setting cannot be 50.0%, because this agent's "
+            f"vaporizer delivers at most 5.0%. {_UNCHANGED}",
+            ASSERTIVE,
+        )
+    ]
+
+    recorded.clear()
+    halted = SimulationController()
+    run = _shown_view(application, halted).runs[0]
+    halted.start()
+    application.processEvents()
+
+    run._halt_run(ValueError("mass balance violated"))
+    application.processEvents()
+
+    assert [announcement.politeness for announcement in recorded] == [ASSERTIVE]
+    assert recorded[0].message == run._notice_text.notice()
+    assert recorded[0].message.startswith(
+        "Simulation stopped — an unexpected error occurred in the simulator"
+    )
+
+
 def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplication) -> None:
     controller = SimulationController(agent_id="isoflurane")
     run = _shown_view(application, controller).runs[0]
@@ -107,6 +168,67 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplic
 
     assert run._notice_text.isHidden() is True
     assert controller.snapshot().delivered_concentration_percent == 2.0
+
+
+def test_a_preview_rebuilt_on_changed_data_names_the_dial_in_the_banner_until_the_release(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A dial held on a run whose patient file changed says in the banner why no preview is drawn.
+
+    A preview rebuilds the run and reads the patient file again, so a file
+    edited after the run began gives the preview another patient, and the
+    controller refuses the preview. The banner used to say nothing, so the
+    preview simply did not appear (`PL-412F`). The banner now names the dial
+    while the thumb is held, and the failure log records each value that
+    differs once for the drag, not on every move. The release applies the
+    value through the run's own setter, which rebuilds nothing, so the value
+    is accepted, the banner says so while the thumb is held, and the notice
+    ends with the drag. The banner's text is typed by hand.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300)
+    controller.pause()
+    held_flow = controller.settings().fresh_gas_flow_l_min
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+    control = _dials(run)._fresh_gas_flow_slider
+    on_file = load_reference_adult_parameters()
+    edited = dataclasses.replace(
+        on_file, muscle_volume_l=CompartmentVolume(on_file.muscle_volume_l + 1.0)
+    )
+    monkeypatch.setattr(uptake_system, "load_reference_adult_parameters", lambda: edited)
+
+    with caplog.at_level(logging.ERROR, logger="anesthesia_sim"):
+        _hold_thumb(control, 6.0, FLOW_DISPLAY_DECIMALS)
+        view.render_tick()
+        control.slider.setSliderPosition(slider_position(7.0, FLOW_DISPLAY_DECIMALS))
+        view.render_tick()
+
+    assert held_flow not in (6.0, 7.0)
+    assert controller.settings().fresh_gas_flow_l_min == held_flow
+    assert _concentration(view).chart.preview_label(0) is None
+    assert run._notice_text.isHidden() is False
+    assert run._notice_text.notice() == (
+        "Preview not drawn — the fresh gas flow preview would not start from the values "
+        "this run holds, so it would predict a different case. The simulator's data may "
+        "have changed since this run began, or the simulator may have a fault. Reopen the "
+        "simulator and run the case again to preview a setting. If this notice comes back, "
+        "the cause is a fault in the simulator. Releasing the dial still applies the new "
+        "setting."
+    )
+    (logged,) = caplog.records
+    assert logged.levelno == logging.ERROR
+    assert (
+        f"muscle volume_l is {on_file.muscle_volume_l!r} in this run and "
+        f"{edited.muscle_volume_l!r} in the preview"
+    ) in logged.getMessage()
+
+    control.slider.setSliderDown(False)
+
+    assert controller.settings().fresh_gas_flow_l_min == 7.0
+    assert run._notice_text.isHidden() is True
 
 
 @pytest.mark.parametrize(

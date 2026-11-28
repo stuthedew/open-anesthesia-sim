@@ -24,9 +24,10 @@ from pathlib import Path
 import pytest
 
 from anesthesia_sim.app.agent_cost import (
-    COST_NOT_COMPUTED_TEXT,
     COST_NOT_CONVERTED_TEXT,
     COST_ROUNDED_TEXT,
+    COST_TOO_LARGE_TEXT,
+    COST_TOO_SMALL_TEXT,
     NO_PRICE_TEXT,
     NOT_CONVERTED_TEXT,
     PRICE_PER_ML_NOT_SHOWN_TEXT,
@@ -447,11 +448,9 @@ def test_a_price_refused_when_the_file_was_read_is_named_and_never_replaced() ->
     [
         pytest.param(1e308, 0.5, 26.0, PRICE_PER_ML_NOT_SHOWN_TEXT, id="price per mL overflows"),
         pytest.param(1e-300, 1e300, 26.0, PRICE_PER_ML_NOT_SHOWN_TEXT, id="price per mL is zero"),
-        pytest.param(1e308, 1.0, 26.0, COST_NOT_COMPUTED_TEXT, id="cost overflows"),
-        pytest.param(
-            1e26, 1.0, 26.0, COST_NOT_COMPUTED_TEXT, id="cost too large to show to the cent"
-        ),
-        pytest.param(5e-324, 1.0, 0.4, COST_NOT_COMPUTED_TEXT, id="cost underflows to zero"),
+        pytest.param(1e308, 1.0, 26.0, COST_TOO_LARGE_TEXT, id="cost overflows"),
+        pytest.param(1e26, 1.0, 26.0, COST_TOO_LARGE_TEXT, id="cost too large to show to the cent"),
+        pytest.param(5e-324, 1.0, 0.4, COST_TOO_SMALL_TEXT, id="cost underflows to zero"),
         pytest.param(20.47, 100.0, None, COST_NOT_CONVERTED_TEXT, id="amount not converted"),
     ],
 )
@@ -472,6 +471,28 @@ def test_no_cost_is_shown_where_one_cannot_be_trusted(
     assert (cost.working, cost.price, cost.rounded) == ("", "", "")
 
 
+def test_a_cost_too_large_and_a_cost_too_small_each_say_which() -> None:
+    """`PL-VT87`: the reader is told which way the cost failed, and what to check.
+
+    The project owner asked on 2026-11-27 that the two cases be told apart.
+    The expected sentences are written out here rather than read from the
+    module.
+    """
+
+    def shown(bottle_price: float, liquid_ml: float) -> str:
+        price = AgentPrice("isoflurane", bottle_price, 1.0, "USD", date(2026, 1, 2))
+        return cost_shown(_shown_with_liquid(liquid_ml), _priced(price)).cost
+
+    assert shown(1e308, 26.0) == (
+        "No cost: at your price, the isoflurane would cost more than the simulator can show. "
+        "Check the bottle price and volume below for a typing error."
+    )
+    assert shown(5e-324, 0.4) == (
+        "No cost: at your price, the isoflurane would cost less than the simulator can show. "
+        "Check the bottle price and volume below for a typing error."
+    )
+
+
 def test_the_largest_cost_shown_depends_on_its_own_currency() -> None:
     """A yen cost is shown where the same figure in dollars could not be held to the cent.
 
@@ -486,7 +507,7 @@ def test_the_largest_cost_shown_depends_on_its_own_currency() -> None:
         return cost_shown(_shown_with_liquid(1.0), _priced(price)).cost
 
     assert shown("JPY") == "JPY 1125899906842624"
-    assert shown("USD") == COST_NOT_COMPUTED_TEXT.format(agent="isoflurane")
+    assert shown("USD") == COST_TOO_LARGE_TEXT.format(agent="isoflurane")
 
 
 def test_the_withheld_cost_names_no_agent_and_no_figure() -> None:
@@ -512,10 +533,18 @@ def test_a_price_entered_as_the_reader_types_it_is_read_exactly() -> None:
         pytest.param("2e1", "100", "USD", "at most one decimal point", id="an exponent"),
         pytest.param("", "100", "USD", "bottle price", id="an empty price"),
         pytest.param("20.47", "", "USD", "bottle volume", id="an empty volume"),
-        pytest.param("0", "100", "USD", "positive", id="a price of zero"),
-        pytest.param("20.47", "0.0", "USD", "positive", id="a volume of zero"),
-        pytest.param("20.47", "100", "usd", "three capital letters", id="a lower-case code"),
-        pytest.param("20.47", "100", "$", "three capital letters", id="a sign for the currency"),
+        pytest.param("0", "100", "USD", "a number above zero", id="a price of zero"),
+        pytest.param("20.47", "0.0", "USD", "a number above zero", id="a volume of zero"),
+        pytest.param(
+            "20.47", "100", "usd", "three-letter code in capital letters", id="a lower-case code"
+        ),
+        pytest.param(
+            "20.47",
+            "100",
+            "$",
+            "three-letter code in capital letters",
+            id="a sign for the currency",
+        ),
     ],
 )
 def test_an_entry_that_is_not_a_plain_positive_price_is_refused_with_its_reason(

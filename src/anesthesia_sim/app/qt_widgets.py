@@ -61,10 +61,12 @@ from PySide6.QtCore import (
     QSignalBlocker,
     QSize,
     Qt,
+    QTimer,
     Signal,
 )
 from PySide6.QtGui import (
     QAccessible,
+    QAccessibleAnnouncementEvent,
     QAccessibleValueInterface,
     QColor,
     QFont,
@@ -106,7 +108,11 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
-from anesthesia_sim.app.branch_controls import FORK_POINT_LABEL, TAKE_FORK_LABEL
+from anesthesia_sim.app.branch_controls import (
+    FORK_POINT_ACCESSIBLE_NAME,
+    FORK_POINT_LABEL,
+    TAKE_FORK_LABEL,
+)
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import (
@@ -124,7 +130,9 @@ from anesthesia_sim.app.dashboard_frame import (
     REMOVED_MARK_TEMPLATE,
     SHOW_FAILURE_DETAILS_LABEL,
     TARGET_FORM_HEADING,
+    TARGET_MARK_KIND,
     TIME_FORM_HEADING,
+    TIME_MARK_KIND,
     UNDO_REMOVAL_LABEL,
     UNDO_REMOVAL_NAME_TEMPLATE,
     BookmarkPanel,
@@ -134,6 +142,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NewCaseQuestion,
     Readout,
     SettingReadout,
+    form_control_name,
     height_entry_maximum_mac,
     readout_columns,
     readout_row_width,
@@ -1270,6 +1279,10 @@ class _SettingSlider(QSlider):
     would repeat into the run with no announcement, and its steps would be
     counted as part of the drag.
 
+    **A hold on the handle can be cancelled** (`cancel_hold`, `PL-HPD0`). The
+    handle goes back to the value the slider holds, the rest of the gesture
+    moves nothing, and its release applies nothing.
+
     **Assistive technology is told the setting, not the position**
     (`PL-9QY5`). The slider's position is a count of display steps, such as
     180 for 1.80% sevoflurane, and Qt's own accessible slider reports that
@@ -1305,6 +1318,9 @@ class _SettingSlider(QSlider):
         self._grab_offset: int | None = None
         self._ignored_keys: set[int] = set()
         self._ignoring_swipe = False
+        # True from a cancelled hold until the release of the mouse button that
+        # held the handle (`cancel_hold`).
+        self._hold_cancelled = False
 
     def setting(self) -> float:
         """Return the setting that the slider's value stands for, in the setting's unit."""
@@ -1333,6 +1349,31 @@ class _SettingSlider(QSlider):
         position = slider_position(min(max(setting, lowest), highest), self.decimals)
         self.input_started.emit()
         self.setValue(position)
+
+    def cancel_hold(self) -> None:
+        """End a pointer's hold on the handle without applying the value under it.
+
+        The handle goes back to the value the slider holds, and no signal is
+        emitted, so nothing is applied and no preview is reported as ended.
+        Until the mouse button that held the handle is released, a move of the
+        pointer moves nothing, and the release applies nothing. A slider whose
+        handle is not held is left as it is.
+
+        Each platform ends a pointer gesture in this way when something takes
+        it away. Android's `MotionEvent.ACTION_CANCEL` says "You should not
+        perform any action that you normally would as a result of this
+        gesture", and `PL-HPD0` lists the other sources.
+        """
+
+        if not self.isSliderDown():
+            return
+
+        self._hold_cancelled = True
+        self._grab_offset = None
+
+        with QSignalBlocker(self):
+            self.setSliderPosition(self.value())
+            self.setSliderDown(False)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # Qt spells this in camelCase.
         if self.isSliderDown():
@@ -1386,6 +1427,8 @@ class _SettingSlider(QSlider):
             event.accept()
             return
 
+        # No button was down, so no cancelled hold is still going on.
+        self._hold_cancelled = False
         self.input_started.emit()
         button = event.button().value
         moves_to_pointer = self.style().styleHint(
@@ -1424,6 +1467,10 @@ class _SettingSlider(QSlider):
             self.sliderPressed.emit()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # Qt spells this in camelCase.
+        if self._hold_cancelled:
+            event.accept()
+            return
+
         if self._grab_offset is None or not self.isSliderDown():
             super().mouseMoveEvent(event)
             return
@@ -1450,6 +1497,17 @@ class _SettingSlider(QSlider):
             return
 
         self._grab_offset = None
+
+        if self._hold_cancelled:
+            self._hold_cancelled = False
+
+            # Qt's own release still runs, so the slider no longer counts the
+            # handle as pressed. Its signals are blocked, so it applies nothing.
+            with QSignalBlocker(self):
+                super().mouseReleaseEvent(event)
+
+            return
+
         super().mouseReleaseEvent(event)
 
     def _handle_rect(self) -> QRect:
@@ -1806,6 +1864,19 @@ class ParameterSlider(QWidget):
 
         return self.slider.setting()
 
+    def cancel_hold(self) -> None:
+        """Let go of a held thumb without applying its value, and end its preview without a signal.
+
+        The View calls this when the run starts over, by a Reset or an agent
+        change, while the thumb is held (`PL-HPD0`). The run's view has already
+        dropped the preview, so `preview_ended` is not emitted. Neither is
+        `value_changed`, so the release applies nothing to the new run. A thumb
+        that is not held is left as it is.
+        """
+
+        self._previewing = False
+        self.slider.cancel_hold()
+
     def _on_slider_moved(self, position: int) -> None:
         dial_input = DialInput.RELEASE if self._releasing else DialInput.STEP
         self.value_changed.emit(slider_value(position, self.slider.decimals), dial_input)
@@ -1858,26 +1929,66 @@ class NoticeLabel(QLabel):
     colour for a banner that reports no fault. It is hidden rather than blank
     when there is nothing to say, so an empty line never takes up the space a
     warning would.
+
+    A new banner is also announced to assistive technology, because a screen
+    reader says nothing when a label's text changes. WCAG 2.2 SC 4.1.3
+    (Status Messages) asks that such a message reach a screen reader without
+    taking the focus (`PL-J7Z5`). A banner in the warning colour, a failure
+    or a refused request, interrupts what is being read, because it asks the
+    reader to act. Any other banner, such as the
+    countdown to the supported run length or the stop there, waits until
+    speech pauses. Qt asks that the interrupting kind be used only where the
+    interruption is imperative (`QAccessible.AnnouncementPoliteness`).
+
+    The banner is announced once control returns to the event loop, as it
+    stands then. So a banner written twice in one action is read once. A halt
+    writes its banner before its frame is drawn and again from the frame, and
+    only the second is read.
+
+    A label in a View that the dashboard builds again on each Workspace
+    switch, or holds in two Areas at once, is built with `announces` False.
+    The notice it shows belongs to the dashboard, which announces it once,
+    when it is made (`SimulationView`). A label that announced it would read
+    a standing refusal again in each new copy (`PL-J7Z5`).
+
+    Args:
+        parent: The widget the label is drawn in.
+        announces: Whether the label announces each new banner itself.
     """
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None, *, announces: bool = True) -> None:
         super().__init__(parent)
+        self._announces = announces
         self.setWordWrap(True)
         font = QFont(self.font())
         font.setBold(True)
         self.setFont(font)
         self._notice: str | None = None
         self._color: str | None = None
+        # The topic of the banner on screen, and of the one last announced.
+        # Each is None while the banner is hidden.
+        self._topic: str | None = None
+        self._announced_topic: str | None = None
+        self._announcement = QTimer(self)
+        self._announcement.setSingleShot(True)
+        self._announcement.setInterval(0)
+        self._announcement.timeout.connect(self._announce)
         self.set_notice(None)
 
-    def set_notice(self, text: str | None, color: str = WARNING) -> None:
-        """Show `text` in `color`, or hide the banner when there is none.
+    def set_notice(
+        self, text: str | None, color: str = WARNING, *, topic: str | None = None
+    ) -> None:
+        """Show `text` in `color`, or hide the banner when there is none, and announce a new one.
 
         Args:
             text: The banner this tick, such as `dashboard_frame.notice`'s
                 result.
             color: A theme colour. `theme.WARNING` unless the banner reports
                 no fault, such as a stop at the supported run length.
+            topic: What the banner is about, where its text changes while its
+                topic does not, as `dashboard_frame.Notice.topic` gives it.
+                The banner is announced when its topic changes. It is the
+                text itself by default.
         """
 
         # A stylesheet write restyles the label, so it is made only when the
@@ -1887,13 +1998,48 @@ class NoticeLabel(QLabel):
             self._color = color
 
         self._notice = text
+        self._topic = None if text is None else text if topic is None else topic
         self.setText(text if text is not None else "")
         self.setHidden(text is None)
+
+        if self._announces and self._topic != self._announced_topic:
+            self._announcement.start()
 
     def notice(self) -> str | None:
         """The banner's text, or None while it is hidden."""
 
         return self._notice
+
+    def _announce(self) -> None:
+        """Announce the banner on screen, if its topic is not the one last announced."""
+
+        if self._notice is not None and self._topic != self._announced_topic:
+            announce(self, self._notice, interrupt=self._color == WARNING)
+
+        self._announced_topic = self._topic
+
+
+def announce(source: QWidget, message: str, *, interrupt: bool) -> None:
+    """Ask assistive technology to read `message` now, without moving the focus.
+
+    Qt passes the request to each platform's screen reader interface: AT-SPI
+    on Linux, UI Automation on Windows and the accessibility notifications on
+    macOS. It does nothing where no screen reader is running.
+
+    Args:
+        source: The widget that shows the message.
+        message: What to read, which is the text the widget shows.
+        interrupt: True to interrupt what is being read, for a message that
+            asks the reader to act. False to wait until speech pauses.
+    """
+
+    announcement = QAccessibleAnnouncementEvent(source, message)
+    announcement.setPoliteness(
+        QAccessible.AnnouncementPoliteness.Assertive
+        if interrupt
+        else QAccessible.AnnouncementPoliteness.Polite
+    )
+    QAccessible.updateAccessibility(announcement)
 
 
 class FailureDetails(QWidget):
@@ -2246,7 +2392,7 @@ class MarkList(QWidget):
         self.undo_button = QPushButton(UNDO_REMOVAL_LABEL)
         self.undo_button.setStyleSheet(outlined_button_stylesheet())
         self.undo_button.clicked.connect(self._ask_to_undo)
-        self.remove_notice = NoticeLabel()
+        self.remove_notice = NoticeLabel(announces=False)
         # When this list last asked for a removal or an undo, so that the
         # second press of a double-click is not taken for a press of the next
         # mark or of the next undo.
@@ -2546,8 +2692,9 @@ class ForkPanel(QWidget):
         self.lock_text.setHidden(True)
         self.pin_text = styled_label("", color=MUTED, wrap=True)
         self.pin_text.setHidden(True)
-        self.notice = NoticeLabel(self)
+        self.notice = NoticeLabel(self, announces=False)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
+        label_control(self._point_label, self.point_selector, FORK_POINT_ACCESSIBLE_NAME)
         # The points behind the selector's entries, one per entry, in the
         # selector's order. `selected_point` returns one of them, and
         # `set_offer` rebuilds the entries when a new offer differs from them.
@@ -2914,7 +3061,7 @@ class MarkEditor(QWidget):
         self.time_label_edit = QLineEdit()
         self.time_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_time_button = QPushButton(ADD_MARK_LABEL)
-        self.add_time_notice = NoticeLabel()
+        self.add_time_notice = NoticeLabel(announces=False)
 
         self.compartment_combo = FocusedComboBox()
         self.compartment_combo.setStyleSheet(selector_stylesheet())
@@ -2929,7 +3076,7 @@ class MarkEditor(QWidget):
         self.target_label_edit = QLineEdit()
         self.target_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_target_button = QPushButton(ADD_MARK_LABEL)
-        self.add_target_notice = NoticeLabel()
+        self.add_target_notice = NoticeLabel(announces=False)
 
         for field in (self.instant_spin, self.height_spin):
             wheel_only_with_focus(field)
@@ -2981,6 +3128,25 @@ class MarkEditor(QWidget):
             (height_name, self.height_spin, None),
             (target_label_name, self.target_label_edit, self.add_target_button),
             (self.add_target_notice, self.add_target_notice, self.add_target_notice),
+        )
+
+        # Both forms have a "Name" field and an "Add" button, so each is named
+        # with its form's kind of mark as well (`form_control_name`).
+        time_name = form_control_name(MARK_NAME_FIELD_LABEL, TIME_MARK_KIND)
+        target_name = form_control_name(MARK_NAME_FIELD_LABEL, TARGET_MARK_KIND)
+
+        for label, control, name in (
+            (instant_name, self.instant_spin, None),
+            (time_label_name, self.time_label_edit, time_name),
+            (compartment_name, self.compartment_combo, None),
+            (height_name, self.height_spin, None),
+            (target_label_name, self.target_label_edit, target_name),
+        ):
+            label_control(label, control, name)
+
+        self.add_time_button.setAccessibleName(form_control_name(ADD_MARK_LABEL, TIME_MARK_KIND))
+        self.add_target_button.setAccessibleName(
+            form_control_name(ADD_MARK_LABEL, TARGET_MARK_KIND)
         )
 
         # Both forms give their field names the width of the widest name, so
@@ -3322,6 +3488,32 @@ def wheel_only_with_focus(widget: QWidget) -> None:
     widget.installEventFilter(_WheelOnlyWithFocus(widget))
 
 
+def label_control(label: QLabel, control: QWidget, name: str | None = None) -> None:
+    """Make `label` the label that assistive technology gives `control`, and name the control.
+
+    The label becomes the control's buddy. Qt reports a buddy to each
+    platform's accessibility interface as the control's label. On Linux and
+    macOS, Qt names a selector by the entry it shows and takes what the
+    selector is for from that label alone (`QAccessibleComboBox::text` in Qt
+    6.12). So a selector with no buddy reaches a screen reader there as, for
+    example, "Sevoflurane" and never as "Agent" (`PL-RK9Z`). Windows names a
+    selector by its accessible name, so the control is given one as well. A
+    spin box or an entry field takes the name on every platform.
+
+    Args:
+        label: The label shown beside the control.
+        control: The control the label names.
+        name: The name for a screen reader, where the label's text alone does
+            not say which control it is, such as one of two fields called
+            "Name". It starts with the label's text, which W3C's
+            Understanding document for WCAG 2.2 SC 2.5.3 (Label in Name)
+            calls best practice. It is the label's text by default.
+    """
+
+    label.setBuddy(control)
+    control.setAccessibleName(label.text() if name is None else name)
+
+
 class FocusedComboBox(SelectorComboBox):
     """A combo box that a mouse wheel changes only once it has focus (`wheel_only_with_focus`).
 
@@ -3358,13 +3550,20 @@ class FittedScroll(QScrollArea):
     and its legend, is one such box (`PL-CBYS`). Each run's list of control
     changes is another (`PL-HF1B`).
 
+    The box takes the keyboard focus so that the keyboard can scroll it, so
+    it carries a name for a screen reader to say when it has the focus
+    (`PL-RK9Z`).
+
     Args:
         rows: The rows, in the order they are read.
         least_height_px: The height the box keeps however short its space is.
+        name: What a screen reader calls the box, such as the heading shown
+            above it.
     """
 
-    def __init__(self, rows: Sequence[QWidget], least_height_px: int) -> None:
+    def __init__(self, rows: Sequence[QWidget], least_height_px: int, name: str) -> None:
         super().__init__()
+        self.setAccessibleName(name)
         self._body = QWidget()
         column = QVBoxLayout(self._body)
         column.setContentsMargins(0, 0, 0, 0)
