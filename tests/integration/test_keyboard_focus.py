@@ -1065,6 +1065,10 @@ def test_a_control_s_hint_is_its_description_except_on_macos_where_it_is_its_hel
             "",
         )
         assert _texts(entry) == ("Name, MAC target", "Optional", "")
+        # Qt reads the placeholder itself, so a placeholder changed later is
+        # the one a screen reader hears.
+        entry.setPlaceholderText("Required")
+        assert _texts(entry)[1] == "Required"
 
     assert _texts(selector)[1:] == ("", "")
 

@@ -10,12 +10,14 @@ from pyqtgraph import PlotWidget
 from PySide6.QtGui import QAccessible
 from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
+from anesthesia_sim.app import qt_widgets
 from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
     SELECTABLE_TIME_BASES,
     time_base_for_span,
 )
+from anesthesia_sim.app.compartment_schematic import SCHEMATIC_TYPE_TEXT
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import WASH_IN_HEADING
 from anesthesia_sim.app.formatting import (
@@ -311,33 +313,36 @@ def test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values
     assert described.text(QAccessible.Text.Name) == (
         "Compartment schematic, at 10m of simulated time"
     )
-    lines = described.text(QAccessible.Text.Description).splitlines()
-    assert lines[0] == "At 10m of simulated time."
-    assert any(line.startswith(alveolar_line) for line in lines)
+    assert any(
+        line.startswith(alveolar_line)
+        for line in described.text(QAccessible.Text.Description).splitlines()
+    )
 
     schematic.show_name("Run 2")
 
     assert described.text(QAccessible.Text.Name) == (
         "Compartment schematic, Run 2, at 10m of simulated time"
     )
-    assert described.text(QAccessible.Text.Description).splitlines()[0] == (
-        "Run 2, at 10m of simulated time."
-    )
 
 
-def test_each_compared_schematic_s_description_starts_with_its_own_run_and_instant(
-    application: QApplication,
+@pytest.mark.parametrize("on_macos", [False, True], ids=["elsewhere", "macOS"])
+def test_on_macos_each_compared_schematic_s_description_opens_with_its_own_run_and_instant(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch, on_macos: bool
 ) -> None:
-    """While two runs are compared, each schematic's description names its run and instant first.
+    """A Mac user hears each compared schematic's run and instant before its values.
 
-    On macOS, VoiceOver reads a picture's description in place of its name,
-    so the description must say itself which run and which instant its
-    values are for (`PL-2XRN`). The two runs stand at different instants, so
-    a description that gave the other run's instant fails too. Each expected
-    alveolar line is read from a separate run built with the same settings
-    and advanced as far, not from the run the schematic draws.
+    On macOS, VoiceOver reads a picture's description in place of its name
+    (`qt_widgets.description_is_read_as_the_name`), so there the description
+    opens with the name (`PL-2XRN`, `PL-26K2`). Elsewhere a screen reader
+    reads the name first, so the description opens with the kind of picture.
+    On neither does the description repeat the run and the instant.
+    The two runs stand at different instants, so a description that gave the
+    other run's name fails too. Each expected alveolar line is read from a
+    separate run built with the same settings and advanced as far, not from
+    the run the schematic draws.
     """
 
+    monkeypatch.setattr(qt_widgets, "description_is_read_as_the_name", lambda: on_macos)
     alveolar_lines = {}
     controllers = []
 
@@ -373,8 +378,15 @@ def test_each_compared_schematic_s_description_starts_with_its_own_run_and_insta
     ]
     first = told["Compartment schematic, Run 1, at 10m of simulated time"]
     second = told["Compartment schematic, Run 2, at 5m of simulated time"]
-    assert first[0] == "Run 1, at 10m of simulated time."
-    assert second[0] == "Run 2, at 5m of simulated time."
+
+    if on_macos:
+        assert first[0] == "Compartment schematic, Run 1, at 10m of simulated time."
+        assert second[0] == "Compartment schematic, Run 2, at 5m of simulated time."
+        first, second = first[1:], second[1:]
+
+    # Nothing after the name repeats the run and the instant.
+    assert first[0] == second[0] == SCHEMATIC_TYPE_TEXT
+
     assert any(line.startswith(alveolar_lines["Run 1"]) for line in first)
     assert any(line.startswith(alveolar_lines["Run 2"]) for line in second)
 

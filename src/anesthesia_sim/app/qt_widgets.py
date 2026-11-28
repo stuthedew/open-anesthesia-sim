@@ -3804,8 +3804,9 @@ def name_control(control: QWidget, name: str, hint: str = "") -> None:
     widget that has one.
 
     Set a control's tool tip and placeholder before naming it, because this
-    reads them. Only a text that differs is written, so a name written again
-    on each frame sends a screen reader no change.
+    reads them. This writes the control's name, description and help text, so
+    it replaces any written before. Only a text that differs is written, so a
+    name written again on each frame sends a screen reader no change.
 
     Args:
         control: The control to name.
@@ -3875,9 +3876,15 @@ def label_control(label: QLabel, control: QWidget, name: str | None = None) -> N
 
     label.setBuddy(control)
     spoken = label.text() if name is None else name
-    # An entry field's placeholder, such as "Optional", is the hint that Qt
-    # would otherwise read as its description (`name_control`).
-    hint = control.placeholderText() if isinstance(control, QLineEdit) else ""
+    # On macOS an entry field's placeholder, such as "Optional", becomes its
+    # hint, because its description must be its name there (`name_control`).
+    # Elsewhere Qt reads the placeholder as the description itself, so a
+    # placeholder changed later is still the one read.
+    hint = (
+        control.placeholderText()
+        if description_is_read_as_the_name() and isinstance(control, QLineEdit)
+        else ""
+    )
     name_control(control, spoken, hint)
 
     if label.accessibleName() != ("" if name is None else name):
