@@ -55,6 +55,8 @@ from anesthesia_sim.app.chart_frame import (
     RunIndex,
     TraceStyle,
     latest_values_lines,
+    latest_wash_in_lines,
+    plain_text,
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
@@ -1229,9 +1231,12 @@ WASH_IN_DENOMINATOR_TEXT: Final = (
     "control mark can be the denominator moving, not uptake"
 )
 WASH_IN_TRACE_LEGEND_LABEL: Final = f"{WASH_IN_RATIO_NAME} (solid)"
-EQUILIBRIUM_LEGEND_LABEL: Final = (
-    f"Equilibrium, {ALVEOLAR_FRACTION_NAME} = {INSPIRED_FRACTION_NAME} (wide dash)"
+# The reference line at which the ratio is 1. The legend adds how the line is
+# drawn, and the plot's text alternative gives the reference alone.
+EQUILIBRIUM_REFERENCE_TEXT: Final = (
+    f"Equilibrium, {ALVEOLAR_FRACTION_NAME} = {INSPIRED_FRACTION_NAME}"
 )
+EQUILIBRIUM_LEGEND_LABEL: Final = f"{EQUILIBRIUM_REFERENCE_TEXT} (wide dash)"
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
 #: The 1 MAC line's legend words. `{reference}` is the line's value, as
 #: `mac_reference_caption` writes it, so the value and the line's style are
@@ -4349,6 +4354,62 @@ def wash_in_state_lines(frame: ChartFrame) -> tuple[str, ...]:
             wash_in_state(run.wash_in_now, run.undrawn_wash_in_stretches), frame, index
         )
         for index, run in enumerate(frame.runs)
+    )
+
+
+def wash_in_plot_name(frame: ChartFrame | None) -> str:
+    """Return what a screen reader calls the wash-in plot: what it plots, and its window.
+
+    This is the plot's short text alternative, built as
+    `concentration_chart_name` builds the concentration chart's (`PL-R1M6`):
+    the plot's heading, then the time axis's caption. The heading is given
+    without its subscript markup, as Qt reads the heading's label to a
+    screen reader. A withheld frame has no window, so the name is the
+    heading alone.
+
+    Args:
+        frame: The frame the plot drew, or None while it draws none.
+
+    Returns:
+        The name.
+    """
+
+    heading = plain_text(WASH_IN_HEADING)
+
+    return heading if frame is None else f"{heading}, {time_axis_caption(frame)}"
+
+
+def wash_in_plot_description(frame: ChartFrame | None) -> str:
+    """Return the wash-in plot's long description, for a screen reader.
+
+    It follows `concentration_chart_description` (`PL-R1M6`). It names the
+    type of chart and says that the values are modelled. Then it gives the
+    last point each run's trace draws, with its instant
+    (`chart_frame.latest_wash_in_lines`), and last the equilibrium line that
+    the plot draws. It leaves out the row above the plot, which is text a
+    screen reader already reads, and whose "Now" reading lies outside a
+    held window. The lines are given without subscript markup. A window in
+    which no run has a drawn point gives no values. A withheld frame gives
+    what the concentration chart gives while it draws none.
+
+    Args:
+        frame: The frame the plot drew, or None while it draws none.
+
+    Returns:
+        The description, one sentence or reference per line.
+    """
+
+    if frame is None:
+        return WITHHELD_FRAME_TEXT
+
+    return "\n".join(
+        plain_text(line)
+        for line in (
+            CHART_TYPE_TEXT,
+            INTERPRETATION_DISCLAIMER_TEXT,
+            *latest_wash_in_lines(frame),
+            EQUILIBRIUM_REFERENCE_TEXT,
+        )
     )
 
 
