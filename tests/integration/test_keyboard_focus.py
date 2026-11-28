@@ -485,9 +485,9 @@ def test_no_two_controls_or_pictures_share_a_name_after_each_plot_area_is_split(
     """`PL-XV64`: two copies of each plot, side by side, give no two controls or pictures one name.
 
     Each Area that draws a plot is split from its Area menu, as a reader
-    splits it. Before `PL-XV64`, the 32 corners were each "Area corner", the
-    7 borders each "Area border", and the two halves of a split Area gave two
-    "Time base, Concentrations" selectors.
+    splits it. Before `PL-XV64`, every corner was "Area corner", every border
+    "Area border", and the two halves of a split Area gave two "Time base,
+    Concentrations" selectors.
     """
 
     view = _compared_dashboard(application, runs)
@@ -715,8 +715,9 @@ def test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number(
 ) -> None:
     """`PL-XV64`: a split Area's halves name themselves, their corners and plot controls by number.
 
-    The Areas showing one kind are numbered in reading order, as VS Code
-    numbers its editor groups. Each name still starts with the label shown.
+    The Areas showing one kind are numbered through the layout's splits, the
+    left or upper part first, as VS Code numbers its editor groups. Each name
+    still starts with the label shown.
     The legend's boxes, and each plot and schematic picture, add the number
     only while two Areas of their kind are on screen.
     """

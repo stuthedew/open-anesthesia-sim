@@ -228,10 +228,11 @@ class AreaName:
     """What a screen reader calls an Area: its View's title, and its number where the title repeats.
 
     Where two or more Areas in the window show the same kind of View, each is
-    numbered among them, counted in reading order through the layout, as VS
-    Code numbers its editor groups: "Concentrations 1" and "Concentrations 2"
-    (`PL-XV64`). An Area that is the only one of its kind has no number, and
-    its name is the title alone.
+    numbered among them, as VS Code numbers its editor groups:
+    "Concentrations 1" and "Concentrations 2" (`PL-XV64`). The left or upper
+    part of each split, with every Area inside it, is counted before the next
+    part. An Area that is the only one of its kind has no number, and its name
+    is the title alone.
 
     Attributes:
         title: The View's title, as the Area's View chooser shows it.
@@ -530,6 +531,9 @@ class View(Protocol):
         a swap, a close or a change of View can change an Area's number
         (`PL-XV64`). A View whose controls all act on shared state does
         nothing, because two copies of such a control are the same control.
+        The method only writes names and must raise nothing: the adapter calls
+        it outside the guard that keeps a View that fails to build inside its
+        own Area.
         """
         ...
 

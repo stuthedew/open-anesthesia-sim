@@ -3396,10 +3396,11 @@ def _area_names(tree: Node, title: Callable[[ViewKind], str]) -> dict[AreaId, Ar
 
     An Area is named by the title of its View, which `title` returns for the
     View's kind. Where two or more Areas show the same kind of View, each is
-    numbered among them in reading order, as VS Code numbers its editor groups
-    in the order they appear in its grid. So the numbers follow the layout,
-    and every split, join, swap, close and change of View works them out
-    again.
+    numbered among them in the order `areas_in` walks the tree: the left or
+    upper part of each split, with every Area inside it, before the next part.
+    VS Code numbers its editor groups by the same walk of its grid. So the
+    numbers follow the layout rather than the Areas' ids, and every split,
+    join, swap, close and change of View works them out again.
     """
 
     areas = tuple(areas_in(tree))

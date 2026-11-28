@@ -1013,9 +1013,10 @@ def test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kin
 ) -> None:
     """`PL-XV64`: two Areas of one kind are told apart, and each border names the pane before it.
 
-    The Areas are numbered in reading order, and an Area alone of its kind has
-    no number. The W3C's "Window Splitter" pattern names a border by the pane
-    whose size it sets, which here is the pane before it. The name says which
+    The Areas are numbered through the layout's splits, the left or upper part
+    of each split first, and an Area alone of its kind has no number. The
+    W3C's "Window Splitter" pattern names a border by the pane whose size it
+    sets, which here is the pane before it. The name says which
     side of that pane the border lies on: to its right in a row, below it in a
     column.
     """
@@ -1037,6 +1038,37 @@ def test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kin
     for frame, name in ((first, AreaName("Test view", 1)), (third, AreaName("Test view", 2))):
         assert isinstance(frame.content, _TestView)
         assert frame.content.area_names[-1] == name
+
+
+def test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids(
+    application: QApplication, shown: list[AreaLayout]
+) -> None:
+    """`PL-XV64`: the Areas are numbered from the left, whatever ids they carry.
+
+    A split gives the new Area the next id and puts it after the one it came
+    from, so before a swap the ids and the places count the same way. Swapping
+    the outer two of three Areas makes them count opposite ways. The Area with
+    id 3 now sits on the left and is "Test view 1", and the View that moved
+    with Area 1 to the right is told that it is now "Test view 3".
+    """
+
+    model = _layout(_row((0.25, 0.5, 0.25), _area(1), _area(2), _area(3)), 4)
+    container = _show_with(application, shown, model)
+    moved = container.frame(AreaId(1)).content
+    assert isinstance(moved, _TestView)
+    assert moved.area_names[-1] == AreaName("Test view", 1)
+
+    container.set_model(container.model.swap(AreaId(1), AreaId(3)))
+    application.processEvents()
+
+    assert _area_widget_names(container.frame(AreaId(3))) == _named("Test view 1")
+    assert _area_widget_names(container.frame(AreaId(2))) == _named("Test view 2")
+    assert _area_widget_names(container.frame(AreaId(1))) == _named("Test view 3")
+    assert _border_names(container) == {
+        (): ["Area border, right of Test view 1", "Area border, right of Test view 2"]
+    }
+    assert container.frame(AreaId(1)).content is moved
+    assert moved.area_names[-1] == AreaName("Test view", 3)
 
 
 def test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed(

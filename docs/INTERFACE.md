@@ -4505,10 +4505,11 @@ and `test_a_name_that_does_not_start_with_the_shown_label_is_refused` in
 **Each Area, and each control that belongs to one Area, is named with the
 Area** (`PL-XV64`). An Area's name is the title of the View it shows, such as
 "Concentrations". Where two or more Areas show the same kind of View, each
-name adds the Area's number among them, counted in reading order, such as
-"Concentrations 1" and "Concentrations 2". VS Code numbers its editor groups
-in the same way. The names are worked out again after every change to the
-layout.
+name adds the Area's number among them, such as "Concentrations 1" and
+"Concentrations 2". The Areas are counted through the layout's splits: the
+left or upper part of each split, with every Area inside it, is counted before
+the next part. VS Code numbers its editor groups in the same way. The names
+are worked out again after every change to the layout.
 
 1. The View chooser and the scroll box of each Area carry the Area's name.
 2. Each corner is named "Area corner", then the Area and the corner's place,
@@ -4529,12 +4530,13 @@ layout.
    split Concentrations Area show "Time base, Concentrations 1" and "Time
    base, Concentrations 2". The name tells a screen-reader user which plot a
    control sits beside, as its place on screen tells a sighted user. So the
-   legend's boxes and the axis top add it too, although each acts on state
-   that every chart shares: a change to either in one half changes the
-   other half too.
-5. The concentration chart's legend appears in no other kind of View. So its
-   boxes and its scroll box add the Area's name only while two Areas show the
-   chart, such as "Concentration chart legend, Concentrations 2".
+   axis top adds it too, and so do the legend's boxes while two Areas show
+   the chart, although both act on state that every chart shares: a change
+   to either in one half changes the other half too.
+5. Each legend appears in one kind of View only. So the concentration
+   chart's legend boxes, and the scroll box of each legend, add the Area's
+   name only while two Areas show that View, such as "Concentration chart
+   legend, Concentrations 2".
 6. Each plot, and each run's schematic, is named by what it shows, so two
    copies of one picture would have one name. So the picture's name adds the
    Area's name while two Areas show that kind of View, such as "Compartment
@@ -4557,6 +4559,7 @@ gives two such links as its example of identical elements
 `test_each_half_of_a_split_agent_cost_area_names_its_own_price_form` in
 `tests/integration/test_keyboard_focus.py`, and
 `test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kind`,
+`test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids`,
 `test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed`,
 `test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma`,
 `test_an_area_s_name_counts_from_one_and_needs_a_title` and
