@@ -3,13 +3,16 @@ id: PL-XV64
 title: Every Area corner reaches a screen reader as 'Area corner', every Area border as 'Area border', and the plot controls of two Areas that show the same kind of View share their names, so a screen-reader user cannot tell which Area a control acts on
 priority: P3
 effort: S
-status: untriaged
+status: done
 classes: defect
 feature: interface-areas
-touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py
+touches: src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py, src/anesthesia_sim/app/view_contract.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_agent_price.py, src/anesthesia_sim/app/qt_widgets.py, docs/INTERFACE.md, tests/integration/test_layout_adapter.py, tests/integration/test_view_contract.py, tests/integration/simulation_view/test_simulation_view_charts.py, tests/unit/test_area_name.py
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it: the Area menu each corner opens names its Area, so the release waits only on the owner test drive (filed 2026-11-28)
 added: 2026-11-28
+closed: 2026-11-28
+pr: 2358
 payoff: a screen-reader user who reaches an Area corner or border hears which Area it acts on
+tests: tests/integration/test_keyboard_focus.py::test_no_two_controls_or_pictures_share_a_name_after_each_plot_area_is_split, tests/integration/test_keyboard_focus.py::test_an_area_alone_of_its_kind_adds_no_name_to_its_legends_pictures_or_price_form, tests/integration/test_keyboard_focus.py::test_the_schematic_view_renames_the_schematics_it_has_drawn_as_soon_as_it_is_told_its_area, tests/integration/test_keyboard_focus.py::test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number, tests/integration/test_keyboard_focus.py::test_each_half_of_a_split_agent_cost_area_names_its_own_price_form, tests/integration/test_layout_adapter.py::test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kind, tests/integration/test_layout_adapter.py::test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids, tests/integration/test_layout_adapter.py::test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed, tests/integration/test_layout_adapter.py::test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma, tests/integration/test_layout_adapter.py::test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone, tests/integration/test_layout_adapter.py::test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make, tests/integration/test_layout_adapter.py::test_join_split_swap_and_close_each_draw_the_layout_worked_out_by_hand, tests/integration/test_view_contract.py::test_every_member_of_the_contract_has_a_call_site_in_the_adapter, tests/integration/simulation_view/test_simulation_view_charts.py::test_the_concentration_chart_reports_its_new_name_when_its_area_gains_or_loses_a_number, tests/unit/test_area_name.py::test_an_area_s_name_is_its_view_s_title_and_its_number_among_areas_of_that_kind, tests/unit/test_area_name.py::test_an_area_s_number_below_one_is_refused, tests/unit/test_area_name.py::test_an_area_s_number_that_is_not_an_int_is_refused, tests/unit/test_area_name.py::test_an_area_s_name_without_a_title_is_refused
 ---
 
 **Problem.** Every Area corner reaches a screen reader as "Area corner" and
@@ -103,14 +106,153 @@ So the names are these:
 each change, and keeps each View that stays. So `_build` works out every
 Area's name from the model's tree, names each frame's corners and each
 splitter's handles, and then gives each View its Area's name through a new
-member of the View contract (`view_contract.View`), such as
-`name_area(name)`. A View with no plot controls does nothing with it. All
-names are written through `dashboard_frame.control_name`.
+member of the View contract (`view_contract.View.name_controls`). A View
+with no plot controls does nothing with it. All names are written through
+`dashboard_frame.control_name`.
 
 **Done when.** The two entries of `SHARED_PURPOSES` in
 `tests/integration/test_keyboard_focus.py` are gone, and the test that reads
 it still passes, with every kind of View on screen and again after the Area
 menu splits an Area of each kind that draws against an axis.
+
+**Generator check.** An instance of the open head `PL-9XGQ` (the
+screen-reader walk checks only that each control has a name), whose misread
+fact is what a screen reader is told about each element: its role, and a name
+unique in its window. The walk that head widens is the test this item
+extends, and its brief already names this item among the cases it waits on.
+
+**Built 2026-11-28.** `area_layout._area_names` works out each Area's name
+from the tree on every `_build`, as a `view_contract.AreaName`, which refuses
+an empty title and a number less than 1. `AreaFrame` is built with that name,
+and names the Area's View chooser, its scroll box and its four corners from
+it, which is the one place those names are written. `_widget_for`
+names each splitter handle after the Areas before it. A pane of three or more
+Areas is listed with a comma before the "and", as the Google developer
+documentation style guide asks in "Serial commas"
+(https://developers.google.com/style/commas, read 2026-11-28). The View
+contract's new member is `name_controls(area)`, because a View names its own
+controls with the Area's name and not the Area itself.
+
+Walking every control a screen reader reaches after a split of each plot Area
+found four more names that repeat, beyond those the brief listed. They are
+the View chooser and the scroll box of each half, the concentration chart's
+legend box and its six check boxes, and the wash-in legend's scroll box. All
+are now named with the Area. The legend's boxes add the Area's name only while
+two Areas show the chart, through `AreaName.among_copies`, because no other
+kind of View shows a legend.
+
+`PL-R1M6` merged during this work and gave each plot and each run's
+schematic a name for a screen reader. Two halves of a split plot then gave
+two pictures one name, because each name says only what its picture shows.
+So `DescribedGraphic.name_among_copies` adds the Area's name to a picture's
+name while another Area shows the same kind of View, and the split test
+checks that each of the six pictures ends with its own Area's name.
+
+The brief said a split Agent cost or Bookmarks Area repeats its names too.
+Splitting every kind found that the copies of the Parameters, Agent
+accounting, Branch and Bookmarks Views, and the Agent cost View's unit
+selector and its offer to discard refused entries, act on state that all
+copies share. So each pair is identical in the Authoring Practices Guide's
+sense, as its example of two links to the same place is, and each keeps one
+name. The Agent cost View's price form is the exception, because each copy
+keeps the agent picked and the price typed in it. Its fields and buttons now
+add the Area's name while two Areas show the View (`PriceEntry.name_for`).
+
+Both blind reviews found three things. A border named only by the pane
+before it, such as "Area border, Concentrations and Wash-in", reads as the
+border between those Areas. So each border now says where it lies against
+that pane: "Area border, below Concentrations and Wash-in", and "Area border,
+right of Parameters". The Area menu's "Join with" and "Swap with" entries
+named each Area by its bare title, so two neighbours of one kind gave two
+entries with one label. They now use the Area's name. Both reviews also said
+that the legend's boxes and the axis top act on state every chart shares, so
+naming them with one half suggests a setting of that half alone. They keep
+the Area's name, because the name tells a screen-reader user which plot a
+control sits beside, as its place tells a sighted user, and a sighted user
+who changes either in one half sees both halves change too.
+`docs/INTERFACE.md` now says so, where it had said that every control acting
+on shared state keeps one name.
+
+Three adversarial reviews, 2026-11-28, each looked for one kind of fault.
+The review of state through splits, joins, swaps, closes and Workspace
+switches found the names right after every sequence it tried. It found that
+items 4 and 5 of the `docs/INTERFACE.md` passage disagreed about the legend
+boxes, and item 5 now says only which legends add the Area's name. It also
+found that the adapter calls `name_controls` outside the guard that catches a
+View's failure, so the View contract now says that the method must raise
+nothing. The review of what a screen-reader user hears found that the
+documents said the Areas are numbered "in reading order", which a reader takes
+to mean left to right and top to bottom. The numbers follow the walk through
+the layout's splits that VS Code uses, so the documents now say that. It also
+found that a legend box's name does not contain the words the box shows. That
+is older than this item, and is `PL-PN2C`. It found the names long, such as
+"Draw the Alveolar compartment on the chart, Concentrations 2", which is not
+changed, because each name starts with its label and ends with its Area, as
+every other control's name does.
+
+The review of the tests planted 17 faults, one at a time, and ran the eight
+test modules that the change reaches against each. Eight faults passed every
+test, and each now has a test that fails on it:
+
+1. Numbering the Areas by id rather than by place passed, because a split
+   always gives the new Area the next id after the one it came from.
+   `test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids`
+   swaps the outer two of three Areas, and fails on it with "'Test view 3' !=
+   'Test view 1'".
+2. A price form's Remove button left unnamed passed, because the keyboard
+   walk passes over an unavailable button. The price form test now reads both
+   buttons' names, and fails on it with "[''] == ['Remove price']".
+3. A picture whose new name is not reported to the screen reader passed.
+   `test_the_concentration_chart_reports_its_new_name_when_its_area_gains_or_loses_a_number`
+   fails on it with "[] == [TextChange(...NameChanged...)]".
+4. A pane of two Areas joined with a comma, as "Test view 1, and Other view",
+   passed. `test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone`
+   fails on it.
+5. The concentration legend's scroll box and the price form, each given its
+   Area's name while its Area was the only one of its kind, passed.
+   `test_an_area_alone_of_its_kind_adds_no_name_to_its_legends_pictures_or_price_form`
+   fails on each, and on the concentration chart's picture given its Area's
+   name too, which an older chart test already caught.
+6. The schematic View leaving the schematics it has drawn unrenamed when it
+   is told its Area passed, because the dashboard draws a new frame right
+   after each change of layout, and that frame renames them.
+   `test_the_schematic_view_renames_the_schematics_it_has_drawn_as_soon_as_it_is_told_its_area`
+   fails on it, and the View contract now says that a View names its
+   controls at once.
+7. An Area number given as 1.5 passed, because the refusal test gave no
+   number that is not an int. The refusal test gives 1.5 too, and fails on it
+   with "DID NOT RAISE TypeError". It moved to `tests/unit/test_area_name.py`,
+   because the branch audit runs only the unit tests against each mutation of
+   a changed line, and it now compares each refusal's whole message, which
+   catches the eleven mutations of `AreaName`'s checks that the audit found
+   the unit tests passed.
+
+The same review found that the frame and each corner wrote a name when they
+were built, which the Area's name then replaced. The frame is now built with
+the Area's name, so each of those names is written in one place. The border
+handles still take "Area border" when Qt makes them, because Qt makes a
+handle before the splitter holds the pane it is named for.
+
+Against the code before the change (a worktree at `48942cbc` with only
+`tests/integration/test_keyboard_focus.py` copied in, and that worktree's
+`src/` first on `PYTHONPATH`), 6 of the selected tests fail. The shared-name
+test fails with "Left contains 2 more items, first extra item: ('Client',
+'Area corner')" for each View once, and with 24 more items, the first ('Button',
+'Show a later part of the run, Concentrations'), after the split. The split
+test fails with "'Time base, Concentrations' != 'Time base, Concentrations
+1'", and the price form test with "'Agent, price' != 'Agent, price, Agent
+cost 1'". The four tests in `tests/integration/test_layout_adapter.py` need
+`AreaName`, which the change adds, so the keyboard tests are their variant.
+
+**Documents checked, 2026-11-28.** `docs/INTERFACE.md`'s passage on naming
+each Area and its controls is the one this item rewrote. The lines that
+`tools/doc_check.py candidates` named for the changed modules were read in
+`docs/INTERFACE.md`, `docs/ARCHITECTURE.md` (the View contract, the case
+state handed to each View, and the module map), `docs/interface-provenance.md`
+(each paragraph naming `app/area_layout.py`), `ROADMAP.md` (the screen-reader
+check of 2026-11-23 and the module mentions), `.claude/rules/ui-areas.md` and
+`.claude/rules/ui-color.md`. None describes how an Area or its controls are
+named, so none needed a change.
 
 **How it was found.** Building `PL-YSFX`, 2026-11-28: its test that no two
 reachable controls share a name found the corners and borders beside the run

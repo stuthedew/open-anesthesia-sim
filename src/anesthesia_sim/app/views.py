@@ -167,6 +167,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_contract import (
     STATE_VERSION_KEY,
     UNREADABLE_STATE_TEXT,
+    AreaName,
     BranchPresentation,
     CasePresentation,
     FrameRequest,
@@ -377,6 +378,91 @@ def _read_time_base(saved: object) -> tuple[ChartTimeBase | None, str | None]:
         return None, UNREADABLE_STATE_TEXT
 
 
+class _PlotControls:
+    """Names each control beside one plot with the name of the Area that holds the View.
+
+    Both charts and the schematic show controls with the same labels, such as
+    "Time base" and "Axis top", and a split Area shows two copies of one View.
+    A screen-reader user hears only a control's name. So each name adds the
+    Area's name: "Time base, Concentrations", or "Time base, Concentrations 2"
+    in one half of a split Area (`control_name`, `PL-YSFX`, `PL-XV64`). Until
+    the View's Area names it (`View.name_controls`), the Area's name is the
+    View's title, so a View built outside an Area still names its plot.
+
+    Args:
+        title: The View's title, as the View chooser shows it.
+    """
+
+    def __init__(self, title: str) -> None:
+        self._area = AreaName(title)
+        # Each label with the control it names and the text it shows.
+        self._labelled: list[tuple[QLabel, QWidget, str]] = []
+        # Each button with what it does, which its name starts with.
+        self._buttons: list[tuple[QPushButton, str]] = []
+
+    def labelled(self, label: str, control: QWidget, named: QWidget | None = None) -> QWidget:
+        """Return `control` with its muted label before it, as one item that a row wraps whole.
+
+        The label names `named` for assistive technology (`label_control`).
+        That is the selector inside `control` where `control` holds the
+        selector and its step buttons, and `control` itself by default.
+        """
+
+        item = QWidget()
+        pair = QHBoxLayout(item)
+        pair.setContentsMargins(0, 0, 0, 0)
+        pair.setSpacing(VIEW_HEADING_SPACING)
+        name = styled_label(label, color=MUTED)
+        self.label(name, control if named is None else named)
+        pair.addWidget(name)
+        pair.addWidget(control)
+
+        return item
+
+    def label(self, label: QLabel, control: QWidget) -> None:
+        """Make `label` the label that a screen reader gives `control`, with the Area's name."""
+
+        self._labelled.append((label, control, label.text()))
+        label_control(label, control, control_name(label.text(), self._area.text))
+
+    def button(self, text: str, name: str) -> QPushButton:
+        """Return a button that moves or releases a chart's window, named for what it does.
+
+        It is drawn as the run controls are, so its label stays readable under
+        a dark host appearance and when it is unavailable (`PL-DHBX`), and it
+        shows a ring while it has the keyboard focus (`PL-63FQ`). Its name
+        adds the Area's name. Its tooltip shows `name` alone, because the
+        button is drawn beside the chart it moves.
+        """
+
+        button = QPushButton(text)
+        button.setAccessibleName(control_name(name, self._area.text))
+        button.setToolTip(name)
+        button.setStyleSheet(transport_button_stylesheet())
+        FocusRing(button, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH)
+        self._buttons.append((button, name))
+
+        return button
+
+    def name_for(self, area: AreaName) -> None:
+        """Name every control again with `area`, the name of the Area that holds the View now.
+
+        Only a name that differs is written, so an Area whose name stays the
+        same sends a screen reader no change.
+        """
+
+        self._area = area
+
+        for label, control, text in self._labelled:
+            label_control(label, control, control_name(text, area.text))
+
+        for button, name in self._buttons:
+            spoken = control_name(name, area.text)
+
+            if button.accessibleName() != spoken:
+                button.setAccessibleName(spoken)
+
+
 class _TimeWindow:
     """A chart View's own time window, with the controls that set and move it, and its saved form.
 
@@ -398,13 +484,13 @@ class _TimeWindow:
 
     Args:
         context: What the chart View is built from.
-        view_title: The chart View's name in the View chooser. Each control
-            that a screen reader reaches is named with it, because both plots
-            have the same controls (`control_name`, `PL-YSFX`).
+        controls: What names the chart's controls for a screen reader. Each
+            button here is named through it, because both plots have the same
+            buttons (`_PlotControls`). The chart View names the selector,
+            because it places the selector's label.
 
     Attributes:
         selector: The control that sets the window's width.
-        selector_name: What a screen reader calls `selector`.
         control: The selector between the two arrows, as one item for a row.
         held_row: The line that says what a held window shows and where the
             run is now, with the button that follows the run again. It is
@@ -418,21 +504,20 @@ class _TimeWindow:
 
     _NOT_DRAWN: Final = object()
 
-    def __init__(self, context: ViewContext, view_title: str) -> None:
+    def __init__(self, context: ViewContext, controls: _PlotControls) -> None:
         self.time_base, self.notice_text = _read_time_base(context.saved_state)
         self.held_start_s: CaseInstant | None = None
         self._drawn: object = self._NOT_DRAWN
         self._frame: ChartFrame | None = None
         self._request_frame = context.requests.frame
         self.selector = TimeBaseSelector()
-        self.selector_name = control_name(TIME_BASE_LABEL, view_title)
         self.selector.show_time_base(self.time_base)
         self.selector.time_base_requested.connect(self._choose)
-        self.earlier_button = _step_button(EARLIER_WINDOW_TEXT, EARLIER_WINDOW_NAME, view_title)
+        self.earlier_button = controls.button(EARLIER_WINDOW_TEXT, EARLIER_WINDOW_NAME)
         self.earlier_button.clicked.connect(self._step_earlier)
-        self.later_button = _step_button(LATER_WINDOW_TEXT, LATER_WINDOW_NAME, view_title)
+        self.later_button = controls.button(LATER_WINDOW_TEXT, LATER_WINDOW_NAME)
         self.later_button.clicked.connect(self._step_later)
-        self.follow_button = _step_button(FOLLOW_RUN_TEXT, FOLLOW_RUN_TEXT, view_title)
+        self.follow_button = controls.button(FOLLOW_RUN_TEXT, FOLLOW_RUN_TEXT)
         self.follow_button.clicked.connect(self._follow)
         self.control = QWidget()
         steps = QHBoxLayout(self.control)
@@ -574,26 +659,6 @@ class _TimeWindow:
         self._request_frame()
 
 
-def _step_button(text: str, name: str, view_title: str) -> QPushButton:
-    """Return a button that moves or releases a chart's window, named for what it does.
-
-    It is drawn as the run controls are, so its label stays readable under
-    a dark host appearance and when it is unavailable (`PL-DHBX`), and it
-    shows a ring while it has the keyboard focus (`PL-63FQ`). A screen reader
-    hears which chart it moves as well, from `view_title`, because both charts
-    have the same buttons (`PL-YSFX`). The tooltip shows `name` alone, because
-    it is drawn beside the chart it moves.
-    """
-
-    button = QPushButton(text)
-    button.setAccessibleName(control_name(name, view_title))
-    button.setToolTip(name)
-    button.setStyleSheet(transport_button_stylesheet())
-    FocusRing(button, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH)
-
-    return button
-
-
 def _state_notice_for(context: ViewContext) -> QLabel:
     """Return `_state_notice` for a View whose saved state holds only its version."""
 
@@ -637,30 +702,6 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
     column.setSpacing(VIEW_ROW_SPACING)
 
     return column
-
-
-def _labelled_control(
-    label: str, control: QWidget, named: QWidget | None = None, *, view_title: str
-) -> QWidget:
-    """Return `control` with its muted label before it, as one item that a row wraps whole.
-
-    The label names `named` for assistive technology (`label_control`). That
-    is the selector inside `control` where `control` holds the selector and
-    its step buttons, and `control` itself by default. The name adds the
-    View's title, because another View shows a control with the same label
-    (`control_name`, `PL-YSFX`).
-    """
-
-    item = QWidget()
-    pair = QHBoxLayout(item)
-    pair.setContentsMargins(0, 0, 0, 0)
-    pair.setSpacing(VIEW_HEADING_SPACING)
-    name = styled_label(label, color=MUTED)
-    label_control(name, control if named is None else named, control_name(label, view_title))
-    pair.addWidget(name)
-    pair.addWidget(control)
-
-    return item
 
 
 def _panel_row(label: QLabel, object_name: str, control: QWidget | None = None) -> QWidget:
@@ -821,7 +862,8 @@ class ConcentrationView(QWidget):
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
-        self._window = _TimeWindow(context, CONCENTRATION_VIEW_TITLE)
+        self._plot_controls = _PlotControls(CONCENTRATION_VIEW_TITLE)
+        self._window = _TimeWindow(context, self._plot_controls)
         # The frame the plot shows now. A kept frame is drawn again only when
         # it is not this frame.
         self._source: ChartFrame | None = None
@@ -862,26 +904,20 @@ class ConcentrationView(QWidget):
         controls = QHBoxLayout()
         controls.setSpacing(VIEW_HEADING_SPACING)
         controls.addWidget(
-            _labelled_control(
-                TIME_BASE_LABEL,
-                self._window.control,
-                self._window.selector,
-                view_title=CONCENTRATION_VIEW_TITLE,
+            self._plot_controls.labelled(
+                TIME_BASE_LABEL, self._window.control, self._window.selector
             )
         )
-        controls.addWidget(
-            _labelled_control(
-                CHART_CEILING_LABEL, self.ceiling_selector, view_title=CONCENTRATION_VIEW_TITLE
-            )
-        )
+        controls.addWidget(self._plot_controls.labelled(CHART_CEILING_LABEL, self.ceiling_selector))
         controls.addStretch(1)
         column.addLayout(controls)
         column.addWidget(self._window.held_row)
         column.addWidget(self.state_notice)
         column.addWidget(self.ceiling_notice)
-        column.addWidget(
-            FittedScroll((self.legend,), CHART_KEY_LEAST_HEIGHT, CONCENTRATION_LEGEND_NAME)
+        self._legend_box = FittedScroll(
+            (self.legend,), CHART_KEY_LEAST_HEIGHT, CONCENTRATION_LEGEND_NAME
         )
+        column.addWidget(self._legend_box)
         column.addWidget(self.withheld_text)
         column.addWidget(self.hidden_traces_text)
         column.addWidget(self.capped_traces_text)
@@ -984,6 +1020,26 @@ class ConcentrationView(QWidget):
     def painted_strings(self) -> tuple[str, ...]:
         return self.chart.axis_titles()
 
+    def name_controls(self, area: AreaName) -> None:
+        """Name the window and axis controls with `area`, and the chart and legend where copied.
+
+        No other kind of View shows the chart or its legend, so the chart, the
+        legend's boxes and its scroll box add the Area's name only while
+        another Area shows this kind too.
+        """
+
+        self._plot_controls.name_for(area)
+        self.chart.name_among_copies(area.among_copies)
+        self.legend.name_boxes(area.among_copies)
+        _name_box(self._legend_box, control_name(CONCENTRATION_LEGEND_NAME, area.among_copies))
+
+
+def _name_box(box: QWidget, name: str) -> None:
+    """Give a scroll box `name` for a screen reader, unless it already has that name."""
+
+    if box.accessibleName() != name:
+        box.setAccessibleName(name)
+
 
 class WashInView(QWidget):
     """The F_A/F_I plot, with its heading, its window, what it shows, its legend and lines per run.
@@ -1017,7 +1073,8 @@ class WashInView(QWidget):
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
-        self._window = _TimeWindow(context, WASH_IN_VIEW_TITLE)
+        self._plot_controls = _PlotControls(WASH_IN_VIEW_TITLE)
+        self._window = _TimeWindow(context, self._plot_controls)
         self.chart = WashInChart()
         self.legend = WashInLegend()
         self.time_base_selector = self._window.selector
@@ -1031,7 +1088,7 @@ class WashInView(QWidget):
         heading.setSpacing(VIEW_HEADING_SPACING)
         heading.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True), 1)
         time_base_name = styled_label(TIME_BASE_LABEL, color=MUTED)
-        label_control(time_base_name, self._window.selector, self._window.selector_name)
+        self._plot_controls.label(time_base_name, self._window.selector)
         heading.addWidget(time_base_name)
         heading.addWidget(self._window.control)
         column.addLayout(heading)
@@ -1045,13 +1102,12 @@ class WashInView(QWidget):
         # it reads as part of this View (`PL-T8DF`).
         self.modelled_label = styled_label(INTERPRETATION_DISCLAIMER_TEXT, color=MUTED)
         self.pinned_row = _panel_row(self.modelled_label, _WASH_IN_PINNED_ROW_NAME)
-        column.addWidget(
-            FittedScroll(
-                (styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True), self.legend),
-                CHART_KEY_LEAST_HEIGHT,
-                WASH_IN_LEGEND_NAME,
-            )
+        self._legend_box = FittedScroll(
+            (styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True), self.legend),
+            CHART_KEY_LEAST_HEIGHT,
+            WASH_IN_LEGEND_NAME,
         )
+        column.addWidget(self._legend_box)
         column.addWidget(self.withheld_text)
         column.addWidget(self.states.holder)
         column.addWidget(self.unmarked_changes.holder)
@@ -1108,6 +1164,13 @@ class WashInView(QWidget):
     def painted_strings(self) -> tuple[str, ...]:
         return self.chart.axis_titles()
 
+    def name_controls(self, area: AreaName) -> None:
+        """Name the window controls with `area`, and the plot and legend box while it is a copy."""
+
+        self._plot_controls.name_for(area)
+        self.chart.name_among_copies(area.among_copies)
+        _name_box(self._legend_box, control_name(WASH_IN_LEGEND_NAME, area.among_copies))
+
 
 class _RunPanelsView[W: QWidget](QWidget):
     """A View that shows one widget per displayed run, one above the next, with no frame.
@@ -1162,6 +1225,9 @@ class _RunPanelsView[W: QWidget](QWidget):
 
     def painted_strings(self) -> tuple[str, ...]:
         return ()
+
+    def name_controls(self, area: AreaName) -> None:
+        """Keep every control's name: each copy of this View shows the same shared state."""
 
 
 def _accounting_heading(run: RunPresentation) -> str:
@@ -1440,6 +1506,9 @@ class _CasePanelView[W: QWidget, S](QWidget):
     def painted_strings(self) -> tuple[str, ...]:
         return ()
 
+    def name_controls(self, area: AreaName) -> None:
+        """Keep every control's name: each copy of this View shows the same shared state."""
+
 
 class BookmarksView(_CasePanelView[BookmarksPanel, MarksPresentation]):
     """The case's marked instants and marked heights, each with a Remove button, and the add forms.
@@ -1616,6 +1685,7 @@ class CompartmentSchematicView(QWidget):
         # The top that the axis-top control names. None before the first tick.
         self._shown_ceiling: ChartCeiling | None = None
         self._request_ceiling = context.requests.chart_ceiling
+        self._plot_controls = _PlotControls(SCHEMATIC_VIEW_TITLE)
         self.ceiling_selector = ChartCeilingSelector()
         self.ceiling_selector.ceiling_requested.connect(self._choose_ceiling)
         self.state_notice = _state_notice_for(context)
@@ -1623,6 +1693,9 @@ class CompartmentSchematicView(QWidget):
         self._schematics = _RunWidgets(
             lambda run: RunSchematic(run.values.schematic, run.name), PAGE_SPACING
         )
+        # The name of the Area that holds the View while another Area shows a
+        # copy, which each run's schematic adds to its name (`name_controls`).
+        self._copied_in: str | None = None
         column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
         self.qualifier_label = styled_label(
             f"{INTERPRETATION_DISCLAIMER_TEXT} {TENSION_UNIT_TEXT}\n{AMOUNT_UNIT_TEXT}", color=MUTED
@@ -1630,9 +1703,7 @@ class CompartmentSchematicView(QWidget):
         self.pinned_row = _panel_row(
             self.qualifier_label,
             _SCHEMATIC_PINNED_ROW_NAME,
-            _labelled_control(
-                CHART_CEILING_LABEL, self.ceiling_selector, view_title=SCHEMATIC_VIEW_TITLE
-            ),
+            self._plot_controls.labelled(CHART_CEILING_LABEL, self.ceiling_selector),
         )
         column.addWidget(self.state_notice)
         column.addWidget(self.ceiling_notice)
@@ -1678,6 +1749,9 @@ class CompartmentSchematicView(QWidget):
         for schematic, run in zip(self._schematics.widgets, tick.runs, strict=True):
             schematic.show_name(run.name)
             schematic.show_schematic(run.values.schematic)
+            # A run's schematic built on this tick is named here, after the
+            # last `name_controls`.
+            schematic.canvas.name_among_copies(self._copied_in)
 
         filled = (run.values.schematic.ceiling for run in tick.runs)
         self._show_ceiling(
@@ -1715,6 +1789,15 @@ class CompartmentSchematicView(QWidget):
         return tuple(
             text for schematic in self._schematics.widgets for text in schematic.painted_strings()
         )
+
+    def name_controls(self, area: AreaName) -> None:
+        """Name the axis-top control with `area`, and each run's schematic while it is a copy."""
+
+        self._plot_controls.name_for(area)
+        self._copied_in = area.among_copies
+
+        for schematic in self._schematics.widgets:
+            schematic.canvas.name_among_copies(self._copied_in)
 
 
 class AgentCostView(QWidget):
@@ -1862,6 +1945,17 @@ class AgentCostView(QWidget):
 
     def painted_strings(self) -> tuple[str, ...]:
         return ()
+
+    def name_controls(self, area: AreaName) -> None:
+        """Name the price form's controls with `area` while another Area shows this View too.
+
+        Each copy of the form keeps the agent picked and the price typed in it,
+        so its controls are named apart (`PriceEntry.name_for`). The unit
+        selector and the offer to discard refused entries act on the reader's
+        one set of preferences, so each copy of them keeps its name.
+        """
+
+        self.price_entry.name_for(area.among_copies)
 
     def _handle_pick(self, index: int) -> None:
         """Ask for the unit the reader picked. The next tick shows it on every agent cost View.

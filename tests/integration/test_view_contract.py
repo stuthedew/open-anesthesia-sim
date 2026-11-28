@@ -148,6 +148,7 @@ def test_every_member_of_the_contract_has_a_call_site_in_the_adapter() -> None:
         "frame_request",
         "save_state",
         "painted_strings",
+        "name_controls",
     }
     assert members <= called, f"never called by the adapter: {sorted(members - called)}"
 
