@@ -38,6 +38,7 @@ from anesthesia_sim.app.agent_cost import (
     entry_date,
     price_from_entry,
 )
+from anesthesia_sim.app.dashboard_frame import control_name
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import format_entered_figure
 from anesthesia_sim.app.preferences import AgentPrice, Preferences
@@ -73,6 +74,9 @@ __all__ = ["PRICE_ENTRY_HEADING", "PriceEntry", "RefusedEntriesDiscard"]
 #: § "A cost at the reader's price").
 PRICE_ENTRY_HEADING: Final = "Your price per agent"
 AGENT_FIELD_LABEL: Final = "Agent"
+#: What a screen reader adds to the agent field's label, because each run's
+#: agent selector is labelled "Agent" too (`control_name`, `PL-YSFX`).
+PRICE_FORM_KIND: Final = "price"
 BOTTLE_PRICE_FIELD_LABEL: Final = "Bottle price"
 BOTTLE_VOLUME_FIELD_LABEL: Final = f"Bottle volume ({DisplayUnit.AGENT_LIQUID_MILLILITRES.label})"
 CURRENCY_FIELD_LABEL: Final = "Currency code, such as USD"
@@ -188,18 +192,18 @@ class PriceEntry(QWidget):
         form = QFormLayout()
         form.setSpacing(VIEW_ROW_SPACING)
 
-        for label, field in (
-            (AGENT_FIELD_LABEL, self.agent_selector),
-            (BOTTLE_PRICE_FIELD_LABEL, self.bottle_price_edit),
-            (BOTTLE_VOLUME_FIELD_LABEL, self.bottle_volume_edit),
-            (CURRENCY_FIELD_LABEL, self.currency_edit),
-            (APPLIES_ON_FIELD_LABEL, self.applies_on_edit),
+        for label, field, which in (
+            (AGENT_FIELD_LABEL, self.agent_selector, PRICE_FORM_KIND),
+            (BOTTLE_PRICE_FIELD_LABEL, self.bottle_price_edit, None),
+            (BOTTLE_VOLUME_FIELD_LABEL, self.bottle_volume_edit, None),
+            (CURRENCY_FIELD_LABEL, self.currency_edit, None),
+            (APPLIES_ON_FIELD_LABEL, self.applies_on_edit, None),
         ):
             # A field holds a few characters, so it stops growing at a set
             # width rather than stretching across a wide Area (`PL-PZD9`).
             field.setMaximumWidth(PRICE_FIELD_MAX_WIDTH)
             name = styled_label(label, color=MUTED, wrap=True)
-            label_control(name, field)
+            label_control(name, field, control_name(label, which))
             form.addRow(name, field)
 
         buttons = QHBoxLayout()

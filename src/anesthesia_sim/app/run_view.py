@@ -144,6 +144,7 @@ from anesthesia_sim.app.dashboard_frame import (
     Transport,
     accounting,
     compared_panel_heading,
+    control_name,
     halt_disposition,
     new_case_question,
     preview_label,
@@ -614,6 +615,8 @@ class RunView(QWidget):
         # steps a tick takes, and never how large a step is. It is never
         # disabled, and Reset leaves it alone, as it does every other setting.
         self._playback_rate_dropdown = SelectorComboBox()
+        self._playback_caption = styled_label(PLAYBACK_LABEL, color=MUTED)
+        self._agent_caption = styled_label(AGENT_SELECTOR_LABEL, color=MUTED)
         self._playback_rate_dropdown.setFixedWidth(PLAYBACK_RATE_SELECTOR_WIDTH)
         self._playback_rate_dropdown.setStyleSheet(selector_stylesheet())
 
@@ -1059,6 +1062,24 @@ class RunView(QWidget):
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
         self._readout_row.set_run_name(name)
+        # Each run's selectors and run controls show the same labels, so a
+        # screen reader hears which run each one is for while two are drawn
+        # (`control_name`, `PL-YSFX`).
+        label_control(
+            self._agent_caption, self._agent_dropdown, control_name(AGENT_SELECTOR_LABEL, name)
+        )
+        label_control(
+            self._playback_caption, self._playback_rate_dropdown, control_name(PLAYBACK_LABEL, name)
+        )
+
+        for button, label in (
+            (self._start_button, START_LABEL),
+            (self._pause_button, PAUSE_LABEL),
+            (self._reset_button, RESET_LABEL),
+        ):
+            if button.accessibleName() != control_name(label, name):
+                button.setAccessibleName(control_name(label, name))
+
         timeline_heading = compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
         self._control_timeline_heading_text.setText(timeline_heading)
         # The box of entries is named by the heading above it, so a screen
@@ -2004,18 +2025,16 @@ class RunView(QWidget):
         # Each selector's caption is its label for a screen reader as well
         # (`label_control`). The agent's caption stays beside the chip that
         # takes the selector's place while a run is locked to its agent.
-        agent_caption = styled_label(AGENT_SELECTOR_LABEL, color=MUTED)
-        label_control(agent_caption, self._agent_dropdown)
-        playback_caption = styled_label(PLAYBACK_LABEL, color=MUTED)
-        label_control(playback_caption, self._playback_rate_dropdown)
+        label_control(self._agent_caption, self._agent_dropdown)
+        label_control(self._playback_caption, self._playback_rate_dropdown)
         layout.addWidget(self._run_name_text)
-        layout.addWidget(agent_caption)
+        layout.addWidget(self._agent_caption)
         layout.addWidget(self._agent_dropdown)
         layout.addWidget(self._running_agent_display)
         layout.addWidget(self._start_button)
         layout.addWidget(self._pause_button)
         layout.addWidget(self._reset_button)
-        layout.addWidget(playback_caption)
+        layout.addWidget(self._playback_caption)
         layout.addWidget(self._playback_rate_dropdown)
         layout.addWidget(self._status_text)
         layout.addStretch(1)

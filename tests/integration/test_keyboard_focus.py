@@ -13,18 +13,20 @@ tests move the focus with `ShortcutFocusReason`, which keeps it set, as the
 keyboard shortcut that it stands for would.
 """
 
+from collections import Counter
 from collections.abc import Iterator
+from typing import Final
 
 import pytest
 from pyqtgraph import PlotWidget
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QAccessible, QAccessibleInterface, QColor, QImage
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QPushButton, QScrollArea, QSlider, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QScrollArea, QSlider, QWidget
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
-from anesthesia_sim.app.dashboard_frame import AGENT_SELECTOR_LABEL, new_case_question
-from anesthesia_sim.app.qt_widgets import FocusRing, NewCaseDialog, SelectorComboBox
+from anesthesia_sim.app.dashboard_frame import AGENT_SELECTOR_LABEL, control_name, new_case_question
+from anesthesia_sim.app.qt_widgets import FocusRing, NewCaseDialog, SelectorComboBox, label_control
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
@@ -37,6 +39,9 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.view_registry import REGISTERED
 from tests.integration.simulation_view.simulation_view_support import (
     EVERY_REGISTERED_VIEW_SIZE_PX,
+    _branched_case,
+    _settle,
+    _take_fork,
     built_view_kinds,
     every_registered_view,
 )
@@ -262,6 +267,139 @@ def test_each_selector_is_named_by_its_shown_label_on_every_platform(
         assert isinstance(selector, QWidget)
         assert label, selector.accessibleName()
         assert selector.accessibleName().startswith(label[0]), label[0]
+
+
+#: The controls a reader can reach that a screen reader is told are for the
+#: same thing, each against its reason. The test below checks the table in both
+#: directions: a shared name that no entry lists fails, and so does an entry
+#: that no two controls share any more.
+SHARED_PURPOSES: Final[dict[tuple[str, str], str]] = {
+    ("Client", "Area corner"): (
+        "each Area's corners are named alike, and the Area menu each one opens names its "
+        "Area; naming each corner with its Area is PL-XV64's work"
+    ),
+    ("Grip", "Area border"): (
+        "each border between two Areas is named alike; naming each with the Areas it "
+        "divides is PL-XV64's work"
+    ),
+}
+
+
+def _compared_dashboard(application: QApplication, runs: int) -> SimulationView:
+    """The dashboard with every kind of View, showing one run or a trunk and its branch."""
+
+    case = _branched_case()
+    view = SimulationView((case.trunk,), case=case, workspaces=every_registered_view())
+    view.resize(*EVERY_REGISTERED_VIEW_SIZE_PX)
+    view.show()
+    application.processEvents()
+    view.present(False)
+    _settle(application)
+
+    if runs == 2:
+        _take_fork(view, 60.0)
+        _settle(application)
+        view.present(False)
+        _settle(application)
+
+    assert len(view.runs) == runs
+
+    return view
+
+
+def _reachable_purposes(window: QWidget) -> list[tuple[str, str]]:
+    """Return the role and the said purpose of each control a reader can reach in `window`.
+
+    An entry in a selector's list is left out. A screen reader reads it inside
+    the selector it belongs to, so the same entry in two lists is told apart
+    by its list.
+    """
+
+    return [
+        (node.role().name, _said_purpose(node))
+        for node in _accessible_tree(QAccessible.queryAccessibleInterface(window))
+        if node.state().focusable
+        and not node.state().invisible
+        and node.role() is not QAccessible.Role.ListItem
+    ]
+
+
+@pytest.mark.parametrize("runs", [1, 2], ids=["one run", "two runs compared"])
+def test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing(
+    application: QApplication, runs: int
+) -> None:
+    """`PL-YSFX`: each control a screen reader reaches has a name no other control of its role has.
+
+    The W3C's ARIA Authoring Practices Guide asks for "unique names for
+    elements with the same role unless the elements are actually identical"
+    (in its section "Composing Effective and User-friendly Accessible Names"). A sighted
+    user sees which run's panel or which plot a control sits in, and a
+    screen-reader user hears only its name. Before `PL-YSFX`, two compared
+    runs gave two selectors called "Playback" and two Start buttons, and the
+    two plots gave two selectors called "Time base". The walk covers every kind
+    of View, so a control added later that repeats another's name fails here.
+    """
+
+    view = _compared_dashboard(application, runs)
+    counts = Counter(_reachable_purposes(view))
+    shared = {purpose for purpose, count in counts.items() if count > 1}
+    view.close()
+
+    assert sorted(shared - set(SHARED_PURPOSES)) == []
+    assert sorted(set(SHARED_PURPOSES) - shared) == [], (
+        "these entries of SHARED_PURPOSES name controls that no longer share a name - remove each"
+    )
+
+
+def test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot(
+    application: QApplication,
+) -> None:
+    """While two runs are compared, each run's controls name the run, and each plot's name the plot.
+
+    The names start with the label shown beside or on the control, which the
+    Understanding document for WCAG 2.2 SC 2.5.3 (Label in Name) calls best
+    practice. A selector's purpose is what the label tied to it reports, which
+    is what Linux and macOS read (`qt_widgets.label_control`), so each name
+    below is the one every platform hears.
+    """
+
+    view = _compared_dashboard(application, 2)
+    purposes = [purpose for _, purpose in _reachable_purposes(view)]
+    view.close()
+
+    def starting(label: str) -> list[str]:
+        return sorted(purpose for purpose in purposes if purpose.startswith(label))
+
+    assert starting("Playback") == ["Playback, Run 1", "Playback, Run 2"]
+    assert starting("Start") == ["Start, Run 1", "Start, Run 2"]
+    assert starting("Time base") == ["Time base, Concentrations", "Time base, Wash-in"]
+    assert starting("Show an earlier part of the run") == [
+        "Show an earlier part of the run, Concentrations",
+        "Show an earlier part of the run, Wash-in",
+    ]
+
+
+def test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn(
+    application: QApplication,
+) -> None:
+    """A name written for a compared run goes once the run is the only one drawn again.
+
+    The label keeps the name it was given only while it has one, so a screen
+    reader on Linux or macOS is not left saying "Playback, Run 1" for the only
+    run on screen.
+    """
+
+    window = QWidget()
+    label = QLabel("Playback", window)
+    selector = SelectorComboBox(window)
+    selector.addItem("1× real time")
+
+    label_control(label, selector, control_name("Playback", "Run 1"))
+    node = QAccessible.queryAccessibleInterface(selector)
+    assert (_labels(node), selector.accessibleName()) == (["Playback, Run 1"], "Playback, Run 1")
+
+    label_control(label, selector, control_name("Playback", None))
+    assert (_labels(node), selector.accessibleName()) == (["Playback"], "Playback")
 
 
 def test_a_plot_is_not_a_tab_stop(dashboard: SimulationView) -> None:

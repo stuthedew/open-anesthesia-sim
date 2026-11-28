@@ -83,6 +83,7 @@ from anesthesia_sim.app.dashboard_frame import (
     CHART_CEILING_LABEL,
     CHART_HEADING,
     CONCENTRATION_LEGEND_NAME,
+    CONCENTRATION_VIEW_TITLE,
     EARLIER_WINDOW_NAME,
     EARLIER_WINDOW_TEXT,
     FOLLOW_RUN_TEXT,
@@ -91,16 +92,19 @@ from anesthesia_sim.app.dashboard_frame import (
     LATER_WINDOW_TEXT,
     NO_CASE_TO_BRANCH_TEXT,
     NO_TRACES_SHOWN_TEXT,
+    SCHEMATIC_VIEW_TITLE,
     SETTING_CONTROLS_NOT_SHOWN_TEXT,
     TIME_BASE_LABEL,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
     WASH_IN_LEGEND_NAME,
+    WASH_IN_VIEW_TITLE,
     WITHHELD_FRAME_TEXT,
     WITHHELD_REFERENCE_TEXT,
     SettingReadout,
     compared_panel_heading,
     compartment_cap_notice,
+    control_name,
     held_window_notice,
     mac_awake_caption,
     mac_reference_caption,
@@ -394,9 +398,13 @@ class _TimeWindow:
 
     Args:
         context: What the chart View is built from.
+        view_title: The chart View's name in the View chooser. Each control
+            that a screen reader reaches is named with it, because both plots
+            have the same controls (`control_name`, `PL-YSFX`).
 
     Attributes:
         selector: The control that sets the window's width.
+        selector_name: What a screen reader calls `selector`.
         control: The selector between the two arrows, as one item for a row.
         held_row: The line that says what a held window shows and where the
             run is now, with the button that follows the run again. It is
@@ -410,20 +418,21 @@ class _TimeWindow:
 
     _NOT_DRAWN: Final = object()
 
-    def __init__(self, context: ViewContext) -> None:
+    def __init__(self, context: ViewContext, view_title: str) -> None:
         self.time_base, self.notice_text = _read_time_base(context.saved_state)
         self.held_start_s: CaseInstant | None = None
         self._drawn: object = self._NOT_DRAWN
         self._frame: ChartFrame | None = None
         self._request_frame = context.requests.frame
         self.selector = TimeBaseSelector()
+        self.selector_name = control_name(TIME_BASE_LABEL, view_title)
         self.selector.show_time_base(self.time_base)
         self.selector.time_base_requested.connect(self._choose)
-        self.earlier_button = _step_button(EARLIER_WINDOW_TEXT, EARLIER_WINDOW_NAME)
+        self.earlier_button = _step_button(EARLIER_WINDOW_TEXT, EARLIER_WINDOW_NAME, view_title)
         self.earlier_button.clicked.connect(self._step_earlier)
-        self.later_button = _step_button(LATER_WINDOW_TEXT, LATER_WINDOW_NAME)
+        self.later_button = _step_button(LATER_WINDOW_TEXT, LATER_WINDOW_NAME, view_title)
         self.later_button.clicked.connect(self._step_later)
-        self.follow_button = _step_button(FOLLOW_RUN_TEXT, FOLLOW_RUN_TEXT)
+        self.follow_button = _step_button(FOLLOW_RUN_TEXT, FOLLOW_RUN_TEXT, view_title)
         self.follow_button.clicked.connect(self._follow)
         self.control = QWidget()
         steps = QHBoxLayout(self.control)
@@ -565,16 +574,19 @@ class _TimeWindow:
         self._request_frame()
 
 
-def _step_button(text: str, name: str) -> QPushButton:
+def _step_button(text: str, name: str, view_title: str) -> QPushButton:
     """Return a button that moves or releases a chart's window, named for what it does.
 
     It is drawn as the run controls are, so its label stays readable under
     a dark host appearance and when it is unavailable (`PL-DHBX`), and it
-    shows a ring while it has the keyboard focus (`PL-63FQ`).
+    shows a ring while it has the keyboard focus (`PL-63FQ`). A screen reader
+    hears which chart it moves as well, from `view_title`, because both charts
+    have the same buttons (`PL-YSFX`). The tooltip shows `name` alone, because
+    it is drawn beside the chart it moves.
     """
 
     button = QPushButton(text)
-    button.setAccessibleName(name)
+    button.setAccessibleName(control_name(name, view_title))
     button.setToolTip(name)
     button.setStyleSheet(transport_button_stylesheet())
     FocusRing(button, radius=PANEL_RADIUS, inset=CONTROL_BORDER_WIDTH)
@@ -627,12 +639,16 @@ def _panel_column(view: QWidget, object_name: str) -> QVBoxLayout:
     return column
 
 
-def _labelled_control(label: str, control: QWidget, named: QWidget | None = None) -> QWidget:
+def _labelled_control(
+    label: str, control: QWidget, named: QWidget | None = None, *, view_title: str
+) -> QWidget:
     """Return `control` with its muted label before it, as one item that a row wraps whole.
 
     The label names `named` for assistive technology (`label_control`). That
     is the selector inside `control` where `control` holds the selector and
-    its step buttons, and `control` itself by default.
+    its step buttons, and `control` itself by default. The name adds the
+    View's title, because another View shows a control with the same label
+    (`control_name`, `PL-YSFX`).
     """
 
     item = QWidget()
@@ -640,7 +656,7 @@ def _labelled_control(label: str, control: QWidget, named: QWidget | None = None
     pair.setContentsMargins(0, 0, 0, 0)
     pair.setSpacing(VIEW_HEADING_SPACING)
     name = styled_label(label, color=MUTED)
-    label_control(name, control if named is None else named)
+    label_control(name, control if named is None else named, control_name(label, view_title))
     pair.addWidget(name)
     pair.addWidget(control)
 
@@ -805,7 +821,7 @@ class ConcentrationView(QWidget):
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
-        self._window = _TimeWindow(context)
+        self._window = _TimeWindow(context, CONCENTRATION_VIEW_TITLE)
         # The frame the plot shows now. A kept frame is drawn again only when
         # it is not this frame.
         self._source: ChartFrame | None = None
@@ -846,9 +862,18 @@ class ConcentrationView(QWidget):
         controls = QHBoxLayout()
         controls.setSpacing(VIEW_HEADING_SPACING)
         controls.addWidget(
-            _labelled_control(TIME_BASE_LABEL, self._window.control, self._window.selector)
+            _labelled_control(
+                TIME_BASE_LABEL,
+                self._window.control,
+                self._window.selector,
+                view_title=CONCENTRATION_VIEW_TITLE,
+            )
         )
-        controls.addWidget(_labelled_control(CHART_CEILING_LABEL, self.ceiling_selector))
+        controls.addWidget(
+            _labelled_control(
+                CHART_CEILING_LABEL, self.ceiling_selector, view_title=CONCENTRATION_VIEW_TITLE
+            )
+        )
         controls.addStretch(1)
         column.addLayout(controls)
         column.addWidget(self._window.held_row)
@@ -992,7 +1017,7 @@ class WashInView(QWidget):
     def __init__(self, context: ViewContext) -> None:
         super().__init__()
         self._drawn = False
-        self._window = _TimeWindow(context)
+        self._window = _TimeWindow(context, WASH_IN_VIEW_TITLE)
         self.chart = WashInChart()
         self.legend = WashInLegend()
         self.time_base_selector = self._window.selector
@@ -1006,7 +1031,7 @@ class WashInView(QWidget):
         heading.setSpacing(VIEW_HEADING_SPACING)
         heading.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True), 1)
         time_base_name = styled_label(TIME_BASE_LABEL, color=MUTED)
-        label_control(time_base_name, self._window.selector)
+        label_control(time_base_name, self._window.selector, self._window.selector_name)
         heading.addWidget(time_base_name)
         heading.addWidget(self._window.control)
         column.addLayout(heading)
@@ -1605,7 +1630,9 @@ class CompartmentSchematicView(QWidget):
         self.pinned_row = _panel_row(
             self.qualifier_label,
             _SCHEMATIC_PINNED_ROW_NAME,
-            _labelled_control(CHART_CEILING_LABEL, self.ceiling_selector),
+            _labelled_control(
+                CHART_CEILING_LABEL, self.ceiling_selector, view_title=SCHEMATIC_VIEW_TITLE
+            ),
         )
         column.addWidget(self.state_notice)
         column.addWidget(self.ceiling_notice)

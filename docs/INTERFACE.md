@@ -4478,16 +4478,29 @@ accessible name instead, so each control has one as well. The run's agent
 selector had no label on screen, so the word "Agent" now stands before it, in
 the muted style of "Playback" before the playback rate. Where two controls
 share a label, the name adds which one it is: "Name, time bookmark" and "Name,
-MAC target", "Add, time bookmark" and "Add, MAC target", and "From, branch
-point". Each name starts with the label shown, which the Understanding
-document for SC 2.5.3 (Label in Name) calls best practice. A scroll box that
+MAC target", "Add, time bookmark" and "Add, MAC target", "From, branch
+point", and "Agent, price" for the price form's agent. Each run's controls
+add the run while two runs are compared, such as "Playback, Run 2" and
+"Start, Run 2". Each plot's window and axis controls add the plot, such as
+"Time base, Wash-in" and "Show an earlier part of the run, Concentrations"
+(`PL-YSFX`). The label tied to a selector carries the same name for a screen
+reader while it still shows its own text, because Linux and macOS take what a
+selector is for from that label. Each name starts with the label shown, which
+the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
+The W3C's ARIA Authoring Practices Guide asks that controls with the same
+role have different names unless they are identical. So no two controls that
+a reader can reach share a name, apart from the Area corners and the Area
+borders, which are still to be named (`PL-XV64`). A scroll box that
 takes the focus so that the keyboard can scroll it is named by the heading
 above it, or by what it holds, such as "Concentration chart legend". An Area's
 corner is named "Area corner", and its description says that the Area menu
 does from the keyboard what a drag on the corner does
-(`test_every_control_a_reader_can_reach_says_what_it_is_for` and
-`test_each_selector_is_named_by_its_shown_label_on_every_platform` in
-`tests/integration/test_keyboard_focus.py`).
+(`test_every_control_a_reader_can_reach_says_what_it_is_for`,
+`test_each_selector_is_named_by_its_shown_label_on_every_platform`,
+`test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
+`test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot` and
+`test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`
+in `tests/integration/test_keyboard_focus.py`).
 
 **A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
 reader says nothing when a label's text changes, and SC 4.1.3 (Status

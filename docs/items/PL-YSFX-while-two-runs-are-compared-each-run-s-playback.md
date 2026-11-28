@@ -11,6 +11,7 @@ deferred-from: v0.7.0 - found after the freeze, not safety or science, and no us
 added: 2026-11-27
 filed-pr: 2333
 payoff: a screen-reader user who reaches a playback or time base selector hears which run or plot it sets
+recurrences: 2026-11-28 PL-XV64
 ---
 
 **Problem.** `PL-RK9Z` named every control from the label shown beside it, and added which one it is where two controls in one form share a label, such as "Add, time bookmark" and "Add, MAC target". It did not do this for controls that repeat across runs or Views. While two runs are compared, each run's playback selector is named "Playback" (`RunView._lay_out_transport_row`). In the Induction Workspace the concentration chart's and the wash-in plot's window selectors are both named "Time base" (`views.py`, `label_control(time_base_name, self._window.selector)`). A screen-reader user moving through the controls hears the same name twice and cannot tell which run's playback rate, or which plot's window, the next key press changes. The run's list of control changes is already named with its run, by `compared_panel_heading` in `RunView`, so these two are the gap.
@@ -25,4 +26,69 @@ payoff: a screen-reader user who reaches a playback or time base selector hears 
 
 **Reproduced 2026-11-28.** `src/anesthesia_sim/app/views.py` names both window selectors with `label_control(time_base_name, self._window.selector)`, and nothing adds the plot's heading. No test in `tests/integration/test_keyboard_focus.py` compares the names of two controls.
 
-**Generator check.** A member of `PL-9XGQ`: what a screen reader is told about each element on screen, including a name that tells it apart from the others in its window. The walk that `PL-RK9Z` built checks that each control has a name, not that the names differ.
+**Decided 2026-11-28.** The brief's names are the ones the sources
+support, so they are taken without a question. The W3C's ARIA Authoring
+Practices Guide (in its section "Composing Effective and User-friendly Accessible Names",
+https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/, read
+2026-11-28) asks for "unique names for elements with the same role unless the
+elements are actually identical", says "Be concise. For many elements, one to
+three words is sufficient", and puts the most distinguishing words first. The
+Understanding document for WCAG 2.2 SC 2.5.3 asks that the name start with the
+label shown. So each name is the label, then the run's name or the View's
+title as the View chooser shows it: "Playback, Run 2", "Time base, Wash-in".
+A View's title is short where its heading is a sentence, so the title is the
+one used.
+
+**What building it found.** Two things the brief did not say. First, the
+brief's route would have fixed Windows only. Qt names a selector on Linux and
+macOS by the entry it shows, and takes its purpose from the tied label alone
+(`qt_widgets.label_control`), so a selector's own accessible name never reaches
+VoiceOver. Measured here: a combo box given the accessible name "Playback, Run
+2" still reports its shown entry, "1x", as its name, and the label relation reports the label's
+accessible name once the label has one. So `label_control` now gives a
+qualified name to the label as well, which also mends "From, branch point" and
+the two "Name, ..." fields on those platforms. Second, the same gap reached
+more controls than the brief names. With every kind of View on screen, each
+run's Start, Pause and Reset buttons and agent selector, each plot's arrow
+buttons, its "Follow the run" button and its "Axis top" selector, and the price
+form's "Agent" field
+shared a name with another control. Each is named the same way here. The Area
+corners and borders share names too, and `PL-XV64` holds them.
+
+**Fix.** `dashboard_frame.control_name` is the one grammar for such a name,
+and replaces `form_control_name`; `branch_controls.FORK_POINT_KIND` replaces
+the branch point's own copy of it. The titles of the three Views that draw
+against an axis are `dashboard_frame` constants, which the View registry and
+the Views both read. `views._TimeWindow` takes its View's title and names its
+selector and buttons with it, and `_labelled_control` takes the title for each
+axis control. `RunView._show_name` names the agent selector, the playback
+selector and the three run buttons with the run on each frame, and back to
+the label alone when one run is drawn. `label_control` writes only a name that
+differs, so a name written again on each frame sends a screen reader no
+change.
+
+**Generator check, 2026-11-28.** Triage (`#2353`) records this item as a member of
+`PL-9XGQ`, whose `misread:` states the fact: what a screen reader is told
+about each element, its role and a name unique in its window. This item
+builds the half of that head's fix that compares two names.
+`test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`
+fails on two controls that share a name, and the exceptions it lists are
+`PL-XV64`'s, which stays open until it is fixed. `PL-9XGQ` still owns the
+walk's other half, a plot or a schematic with no name or description.
+
+**Tests.** In `tests/integration/test_keyboard_focus.py`:
+`test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`
+(with one run and with two compared, every kind of View on screen, against the
+table `SHARED_PURPOSES`, which is checked in both directions),
+`test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot`
+(the brief's "Done when", against literal names), and
+`test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`.
+
+**Regression check.** The first two tests, with the third test and the two new
+imports taken out of a copy of the file, were run against `origin/main`
+(aa4dca79) with `QT_QPA_PLATFORM=offscreen PYTHONPATH=<main's src> python -m
+pytest -q <copy> -k "same_thing or named_with_their_run"`. All three cases
+failed: with one run, "Left contains 6 more items, first extra item:
+('Button', 'Show a later part of the run')"; with two runs, "Left contains 9
+more items, first extra item: ('Button', 'Pause')"; and "At index 0 diff:
+'Playback' != 'Playback, Run 1'".
