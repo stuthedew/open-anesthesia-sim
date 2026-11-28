@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: tests-detect-wrong-values
-touches: .github/workflows/quality.yml, tools/diff_mutation.py
+touches: .github/workflows/quality.yml, tools/diff_mutation.py, tests/unit/test_diff_mutation.py, tools/doc_check.py, docs/mutation-testing.md
 deferred-from: v0.7.0 - present at the freeze, not safety or science, and no user sees a wrong value from it: a broken mutation run stops a close-out with an error rather than passing it, and the release waits only on the owner's test drive (triage 2026-11-28)
 added: 2026-11-28
 filed-pr: 2346

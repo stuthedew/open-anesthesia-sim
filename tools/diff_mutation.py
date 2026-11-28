@@ -40,6 +40,14 @@ the selected tests there once, as mutmut's first step does, so that CI fails
 the pull request that adds a test which would stop every mutation run there
 (`PL-PG0S`). `first_step` says what it leaves out.
 
+`--sample-run` runs mutmut the whole way on one small function, through the
+same `run` and `statuses` that `--verdict` uses, and fails unless the
+function's tests catch at least one of its mutants. It is the part of a
+mutation run that `--first-step` leaves out, at about 8 seconds where the full
+run costs minutes, so CI fails the pull request whose upgrade of pytest or
+mutmut would stop every mutation run (`PL-NZ0R`). `sample_run` says why one
+caught mutant is enough.
+
 `--all` runs every mutant instead and prints the kill rate of each module.
 `docs/mutation-testing.md` records the baseline that such a run measured, and
 says how to read a survivor. mutmut is in the `mutation` dependency group, so
@@ -239,6 +247,16 @@ LEFT_OUT = ("tool", "diff_mutation", "left_out")
 #: How long a run of a changed test's base version, with no mutant applied,
 #: may take before the file is reported as not compared.
 CLEAN_TIMEOUT_S = 900
+#: The file and the function that `--sample-run` mutates, and the test file
+#: that runs against their mutants. Any top-level function would do whose
+#: tests catch at least one of its mutants. This one is a small step of the
+#: first-order approach with ten fast unit tests. On 2026-11-28 its tests
+#: caught 12 of its 13 mutants, and the whole run took 8 seconds on four
+#: cores. A change that renames or moves the function makes the run refuse,
+#: and the refusal names these constants.
+SAMPLE_SOURCE = "src/anesthesia_sim/core/exponential_approach.py"
+SAMPLE_FUNCTION = "exponential_approach_in_time_constants"
+SAMPLE_TESTS = ("tests/unit/test_exponential_approach.py",)
 #: The script that builds `mutants/` and generates the mutants without running
 #: any test. It calls the steps mutmut 3.8.0's `run` takes before it collects
 #: coverage, which is the slow part. They are mutmut's internals rather than its
@@ -792,6 +810,8 @@ def first_step(root: Path, table: Mapping[str, object]) -> int:
     process, would pass here and still stop mutmut. So would a fault in the
     plugin that keeps the record: mutmut 3.8.0's plugin failed under pytest
     9.2.0 and stopped every run while this step passed (`PL-LR03`).
+    `sample_run` runs the plugin and the mutants' runs on one function, and CI
+    runs it beside this step (`PL-NZ0R`).
 
     Returns pytest's exit status: 0 when every selected test passed in the
     copy. `Refusal` where the copy could not be built.
@@ -842,6 +862,68 @@ def first_step(root: Path, table: Mapping[str, object]) -> int:
             flush=True,
         )
     return done.returncode
+
+
+def sample_run(root: Path, table: Mapping[str, object]) -> int:
+    """Run mutmut the whole way on `SAMPLE_FUNCTION`, and refuse unless a mutant was killed.
+
+    `first_step` leaves out two parts of a mutation run. One is mutmut's pytest
+    plugin, which records which tests call each function. The other is the
+    run of each mutant's tests. A fault in either stops every mutation run
+    while `first_step` passes, as mutmut 3.8.0's plugin did under pytest 9.2.0
+    for about a day (`PL-LR03`). This run goes through `run` and `statuses`, as
+    `--verdict` does, with `SAMPLE_SOURCE` as the only mutated file and
+    `SAMPLE_TESTS` as the only tests.
+
+    One killed mutant is enough to show that every part worked. mutmut gives a
+    mutant that status only when the plugin recorded a test that calls the
+    function, the mutant was applied, and that test failed on it. Without the
+    record the mutant reads "no tests", and without the mutant it reads
+    "survived". mutmut itself stops when the tests fail with no mutant
+    applied, so a broken test cannot pass this run as a killed mutant.
+
+    Returns 0 when at least one mutant was killed. `Refusal` when the function
+    is not in its file, when mutmut exits other than 0, when the results list
+    no mutant of the function, or when none of its mutants was killed.
+    """
+    source = (root / SAMPLE_SOURCE).read_text(encoding="utf-8")
+    sample = next(
+        (
+            unit
+            for unit in units(SAMPLE_SOURCE, source)
+            if unit.cls is None and unit.name == SAMPLE_FUNCTION
+        ),
+        None,
+    )
+    if sample is None:
+        raise Refusal(
+            f"{SAMPLE_SOURCE} has no top-level function {SAMPLE_FUNCTION}. Name another "
+            "function and its tests in SAMPLE_SOURCE, SAMPLE_FUNCTION and SAMPLE_TESTS in "
+            "tools/diff_mutation.py."
+        )
+    code, log = run(root, [sample.pattern], table, tests=list(SAMPLE_TESTS), only=[SAMPLE_SOURCE])
+    if code:
+        raise Refusal(
+            f"mutmut exited {code} on the mutants of {sample.label}, so every mutation run "
+            f"would stop the same way. The end of {log}:\n{_tail(log)}"
+        )
+    found = [
+        status for name, status in statuses(root).items() if fnmatch.fnmatch(name, sample.pattern)
+    ]
+    if not found:
+        raise Refusal(
+            f"mutmut ran, but `mutmut results` listed no mutant of {sample.label}. "
+            + LISTING_UNREAD
+        )
+    if "killed" not in found:
+        raise Refusal(
+            f"mutmut ran the {len(found)} mutants of {sample.label} against "
+            f"{', '.join(SAMPLE_TESTS)}, and it killed none ({counts(found)}). Its record "
+            "of which tests call the function, or its run of each mutant, is broken. "
+            f"The end of {log}:\n{_tail(log)}"
+        )
+    print(f"mutmut ran the whole way on {sample.label}: {counts(found)}.", flush=True)
+    return 0
 
 
 def _test_files(root: Path, name: str) -> list[str]:
@@ -1712,6 +1794,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="run the selected tests in mutmut's copy of the tree, with no mutant, and stop",
     )
     modes.add_argument(
+        "--sample-run",
+        action="store_true",
+        help="run mutmut the whole way on one small function, and fail unless a mutant is killed",
+    )
+    modes.add_argument(
         "--verdict",
         action="store_true",
         help="print, as JSON for docket verify, the changed lines' mutants the tests missed",
@@ -1736,6 +1823,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         if args.first_step:
             return first_step(root, table)
+        if args.sample_run:
+            return sample_run(root, table)
         if args.all:
             code, log = run(root, (), table)
             if code:
