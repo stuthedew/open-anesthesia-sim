@@ -9,7 +9,7 @@ import os
 import sys
 import tempfile
 
-from PySide6.QtCore import QPoint, QRect
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QFont, QFontInfo, QFontMetrics
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QScrollArea
 
@@ -35,6 +35,11 @@ print("runner screen:", screen.geometry(), "available:", screen.availableGeometr
 
 case = BranchedCase(SimulationController())
 view = open_dashboard(case, "", {USER_DIRECTORY_VARIABLE: tempfile.mkdtemp()})
+if os.environ.get("PROBE_DONT_SHOW"):
+    # The runner's screen is 1024 by 768, and macOS shrinks a shown window to
+    # fit it. A window that is never put on screen keeps the size it is given,
+    # and still lays out its text with macOS's own font and style.
+    view.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen, True)
 view.resize(*SIZES[0])
 view.show()
 app.processEvents()
@@ -62,7 +67,7 @@ for width, height in SIZES:
         viewport_owner = viewport_owner.parentWidget()
     viewport = viewport_owner.viewport() if viewport_owner is not None else schematic
     visible_rect = QRect(QPoint(0, 0), viewport.size())
-    print(f"\n== {width}x{height}: schematic Area viewport {viewport.width()}x{viewport.height()}")
+    print(f"\n== asked {width}x{height}, window is {view.width()}x{view.height()}: schematic Area viewport {viewport.width()}x{viewport.height()}")
     window_rect = QRect(QPoint(0, 0), view.size())
     for label in view.findChildren(QLabel):
         if not label.isVisible() or not label.text():
@@ -108,8 +113,19 @@ for width, height in SIZES:
     for canvas in [*schematic.findChildren(SchematicCanvas), *view.findChildren(ContainerNames)]:
         hint = canvas.minimumSizeHint()
         fits = canvas.width() >= hint.width() and canvas.height() >= hint.height()
-        failures += 0 if fits else 1
-        print(f"  {'OK ' if fits else 'CUT'} {type(canvas).__name__} {canvas.width()}x{canvas.height()}, needs {hint.width()}x{hint.height()}")
+        if isinstance(canvas, SchematicCanvas):
+            top_left = canvas.mapTo(viewport, QPoint(0, 0))
+            in_view = visible_rect.contains(QRect(top_left, canvas.size()))
+        else:
+            top_left = canvas.mapTo(view, QPoint(0, 0))
+            in_view = window_rect.contains(QRect(top_left, canvas.size()))
+        failures += 0 if fits and in_view else 1
+        print(
+            f"  {'OK ' if fits and in_view else 'CUT'} {type(canvas).__name__} {canvas.width()}x{canvas.height()},"
+            f" needs {hint.width()}x{hint.height()} | wholly in view without scrolling: {in_view}"
+        )
+        if width == SIZES[0][0]:
+            print("     draws:", canvas.painted_strings())
     print("  grab saved:", view.grab().save(f"{OUT}/mac-maintenance-1h-{width}x{height}.png"))
 
 print("\nlabels or canvases that do not fit:", failures)
