@@ -1121,7 +1121,9 @@ def test_a_refused_reset_names_the_way_out_in_the_banner() -> None:
 
     way_out = (
         "No setting can repair this, because only a fault in the simulator causes it. "
-        "Close and reopen the application to start a new run."
+        "To keep the failure details, use Show details, then Copy details, and paste them "
+        "elsewhere before closing, because closing the application can clear the copy. "
+        "Then close and reopen the application to start a new run."
     )
     assert first == f"Reset was refused for this reason. {way_out}"
     assert first == REFUSED_RESET_EXIT_TEMPLATE.format(way_out=REFUSED_RESET_WAY_OUT_TEXT)
@@ -1198,7 +1200,10 @@ def test_a_setting_refused_on_a_stopped_run_is_stated_with_that_run_s_way_out() 
     )
     refused_reset = (
         "Reset was refused for this reason. No setting can repair this, because only a fault "
-        "in the simulator causes it. Close and reopen the application to start a new run."
+        "in the simulator causes it. To keep the failure details, use Show details, then Copy "
+        "details, and paste them elsewhere before closing, because closing the application can "
+        "clear the copy. "
+        "Then close and reopen the application to start a new run."
     )
     reset_keeps = "Reset to start a new run, which keeps every setting."
     branch_or_reset = (
@@ -3192,7 +3197,9 @@ def test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit() -> N
 
     state = wash_in_state(_reading(_snapshot(history=_run_history(1))), 0)
 
-    assert state == "Not defined: the inspired concentration is too low to divide by."
+    assert state == (
+        "The inspired concentration is too low to divide by, so the ratio is not defined."
+    )
 
 
 def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit() -> None:
@@ -3224,7 +3231,7 @@ def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit()
     assert snapshot.inspired_partial_pressure_fraction < 0.0001
     assert snapshot.alveolar_partial_pressure_fraction > 0.0001
     assert wash_in_state_lines(_frame(controller)) == (
-        "Not defined: the inspired concentration is too low to divide by.",
+        "The inspired concentration is too low to divide by, so the ratio is not defined.",
     )
 
 
@@ -3434,8 +3441,8 @@ def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_cou
         "(2 earlier stretch(es) not drawn)"
     )
     assert wash_in_state(no_ratio, 2) == (
-        "Not defined: the inspired concentration is too low to divide by. "
-        "(2 earlier stretch(es) not drawn)"
+        "The inspired concentration is too low to divide by, so the ratio is not "
+        "defined. (2 earlier stretch(es) not drawn)"
     )
 
 

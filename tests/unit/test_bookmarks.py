@@ -28,6 +28,7 @@ from anesthesia_sim.app.bookmarks import (
     TimeBookmark,
 )
 from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.dashboard_frame import refused_setting_notice
 from anesthesia_sim.app.formatting import mac_multiple
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple, Percent
@@ -145,7 +146,7 @@ def test_the_wash_in_ratio_may_not_carry_a_target() -> None:
     # concentration. So a multiple of MAC of it is not a quantity that the model
     # represents. It is also the one member of `RecordedQuantity` that a
     # compartment picker could offer by mistake.
-    with pytest.raises(SimulationConfigurationError, match="not one of"):
+    with pytest.raises(SimulationConfigurationError, match="not a compartment"):
         _target(RecordedQuantity.WASH_IN_RATIO)
 
 
@@ -237,9 +238,9 @@ def test_the_repeated_instant_refusal_is_pinned_whole() -> None:
     """Pin the whole sentence that the marks editor shows when an instant is marked twice.
 
     The test above matches only "marked once", which would pass even with the
-    instant missing from the message (`PL-79PK`). The matching MAC-target message
-    is not pinned. It names its crossing by the Python repr of an enum member,
-    which is a defect of its own rather than a sentence to freeze.
+    instant missing from the message (`PL-79PK`). The instant is named as the
+    marks list and the run clock show it, 10m for 600 s, rather than as a bare
+    number with no unit (`PL-5HM5`).
     """
 
     marks = BookmarkSet().with_time_bookmark(TimeBookmark(CaseInstant(600)))
@@ -248,9 +249,50 @@ def test_the_repeated_instant_refusal_is_pinned_whole() -> None:
         marks.with_time_bookmark(TimeBookmark(CaseInstant(600), "second thoughts"))
 
     assert str(refusal.value) == (
-        "an instant is marked once: a second time bookmark naming 600 would be a row no "
-        "run could stop at on its own account"
+        "each instant is marked once, and 10m already has a time bookmark, so a second "
+        "would stop a run at the same place as the first"
     )
+
+
+def test_the_repeated_mac_target_refusal_is_pinned_whole() -> None:
+    """Pin the whole sentence that the marks editor shows when a MAC target is marked twice.
+
+    It names the target as the marks list's row does, with the height at the
+    list's two decimals and the compartment by its on-screen name. It used to
+    print the Python repr of the crossing's key (`PL-5HM5`). The second
+    target's label differs, which shows that the label plays no part in the
+    match.
+    """
+
+    marks = BookmarkSet().with_mac_target(_target())
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        marks.with_mac_target(_target(label="again"))
+
+    assert str(refusal.value) == (
+        "each height on a compartment is marked once, and 0.80 ×MAC on Vessel-rich already "
+        "has a MAC target, so a second would stop a run at the same place as the first"
+    )
+
+
+def test_the_repeat_refusal_names_the_mark_that_repeats() -> None:
+    """Name the repeated mark, not the first mark or the last, in a list of three.
+
+    With three entries a message built from the wrong one of them reads
+    differently, which two entries would not show (`.claude/rules/test-oracles.md`
+    rule 5).
+    """
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        BookmarkSet(
+            mac_targets=(
+                _target(RecordedQuantity.ALVEOLAR, 1.0),
+                _target(RecordedQuantity.MUSCLE, 0.5),
+                _target(RecordedQuantity.MUSCLE, 0.5, label="again"),
+            )
+        )
+
+    assert "0.50 ×MAC on Muscle already has a MAC target" in str(refusal.value)
 
 
 def test_a_crossing_already_marked_may_not_be_marked_again() -> None:
@@ -352,7 +394,7 @@ def test_removing_a_target_that_is_not_there_is_refused() -> None:
 
 
 def test_a_removal_refusal_names_the_crossing_it_could_not_find() -> None:
-    with pytest.raises(SimulationConfigurationError, match="vessel_rich"):
+    with pytest.raises(SimulationConfigurationError, match="on Vessel-rich,"):
         BookmarkSet().without_mac_target(_target())
 
 
@@ -640,7 +682,7 @@ def test_a_reading_missing_a_marked_compartment_is_refused() -> None:
     marks = BookmarkSet().with_mac_target(_target(RecordedQuantity.FAT))
     short = {RecordedQuantity.VESSEL_RICH: MacMultiple(0.1)}
 
-    with pytest.raises(SimulationConfigurationError, match="no fat compartment"):
+    with pytest.raises(SimulationConfigurationError, match="no value for Fat,"):
         marks.crossings_between(
             before_s=CaseInstant(0), after_s=CaseInstant(1), before=short, after=short
         )
@@ -1380,6 +1422,58 @@ def test_removing_a_mark_that_is_not_there_is_refused_in_the_panels_words() -> N
         BookmarkSet().without_time_bookmark(TimeBookmark(CaseInstant(60)))
 
     assert str(refusal.value) == "no time bookmark stands at 1m, so there is none to remove"
+
+
+def test_removing_a_target_that_is_not_there_names_its_compartment_as_the_legend_does() -> None:
+    """The mark editor's notice names the compartment as the chart's legend does (`PL-5867`).
+
+    The editor shows a refused mark through `refused_setting_notice`, word for
+    word. The expected text is written out by hand. The height is at the marks
+    list's two decimals, as the list's row shows it (`PL-5HM5`).
+    """
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        BookmarkSet().without_mac_target(_target(RecordedQuantity.VESSEL_RICH, 0.8))
+
+    assert refused_setting_notice(refusal.value) == (
+        "Setting refused — no MAC target stands at 0.80 ×MAC on Vessel-rich, "
+        "so there is none to remove"
+    )
+
+
+def test_a_target_on_a_quantity_that_is_not_a_compartment_lists_the_compartments_by_name() -> None:
+    """`PL-5867`: the refusal lists the compartments by the names the legend gives them."""
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        _target(RecordedQuantity.WASH_IN_RATIO)
+
+    assert str(refusal.value) == (
+        "a MAC target is read against one of the compartments Circuit, Alveolar, "
+        "Mixed venous, Vessel-rich, Muscle, Fat; given wash_in_ratio, which is not a compartment"
+    )
+
+
+def test_a_reading_without_a_target_s_compartment_names_it_as_the_legend_does() -> None:
+    """`PL-5867`: a reading that lacks a marked compartment names it by its on-screen name.
+
+    The target is named as the marks list's row names it, with the height at
+    the list's two decimals (`PL-5HM5`).
+    """
+
+    marks = BookmarkSet((), (_target(RecordedQuantity.MIXED_VENOUS, 0.5),))
+
+    with pytest.raises(SimulationConfigurationError) as refusal:
+        marks.crossings_between(
+            before_s=CaseInstant(0),
+            after_s=CaseInstant(1),
+            before={},
+            after={RecordedQuantity.MIXED_VENOUS: MacMultiple(0.6)},
+        )
+
+    assert str(refusal.value) == (
+        "the before reading holds no value for Mixed venous, so the target at 0.50 ×MAC "
+        "on Mixed venous cannot be tested for a crossing"
+    )
 
 
 @pytest.mark.parametrize(
