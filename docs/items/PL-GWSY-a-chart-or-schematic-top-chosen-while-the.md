@@ -1,11 +1,16 @@
 ---
 id: PL-GWSY
 title: A chart or schematic top chosen while the preferences cannot be saved is said to be unsaved only in the agent cost View, so a Workspace without that View gives no sign that the top will reset at the next launch
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: chart-readout
 touches: src/anesthesia_sim/app/views.py, src/anesthesia_sim/app/simulation_view.py
+deferred-from: v0.7.0 - new: PL-7LZ7 made the axis top a saved preference on 2026-11-28; not safety or science, and no user sees a wrong value from it, since the axis and its control show the top in force (triage 2026-11-28)
 added: 2026-11-28
 filed-pr: 2341
+payoff: a user who picks an axis top while preferences cannot be saved is told it will not be kept, whichever Views are open
 ---
 
 **Problem.** A chart or schematic top chosen while the preferences cannot be saved is said to be unsaved only in the agent cost View, so a Workspace without that View gives no sign that the top will reset at the next launch
@@ -17,3 +22,7 @@ filed-pr: 2341
 **What a fix needs to decide.** Where a reader who is not looking at the agent cost View learns that preferences are not being saved. One candidate is the same line under each "Axis top" control that names a refused saved top (`preferences.chart_ceiling_notice`). The other is one application-wide notice. The wording follows the sources `PL-VT87` recorded.
 
 **Generator check.** A one-off: the first preference set outside the agent cost View.
+
+**Reproduced 2026-11-28.** `preferences_notice` is built only in `AgentCostView` in `src/anesthesia_sim/app/views.py`, and `SimulationView._change_preferences` in `src/anesthesia_sim/app/simulation_view.py` writes the unsaved-change reason into it (`unsaved_preferences_notice`).
+
+**Done when.** A test that makes saving fail, then picks an axis top in a Workspace that shows no agent cost View, finds a notice in view saying that the top lasts only until the application closes. Where that notice goes is a placement choice, so the session that builds it decides it from a cited source, as rule 14 of `.claude/rules/instruction-writing.md` says, and records the source here.
