@@ -4308,6 +4308,29 @@ stored state. The caption reads the state that the run stored for the second it
 has reached, and the trace's right-hand end is drawn from that same state by the
 same division, so the two show the same ratio.
 
+**While a preview draws no ratio because alveolar ventilation would be zero, a
+line under the caption says so** (`PL-PJWT`). A state reached at zero
+ventilation has no wash-in fraction, so a preview of zero ventilation draws
+nothing past the run's current time. So does a preview of any slider on a run
+whose ventilation is already zero. The line reads "Preview: alveolar
+ventilation would be zero, so the predicted ratio would not be a wash-in
+fraction." It opens with the word that opens the preview's label, so it is read
+as part of the preview, and it goes when the slider is let go. Where every
+predicted inspired concentration is too low to divide by, the preview draws no
+ratio at any ventilation, so the line is not shown, as the caption names that
+reason first. Nielsen Norman Group's guidance on empty states asks for a brief
+message that says why an area shows nothing, so that a user does not take it
+for a failure (Kaplan, "Designing Empty States in Complex Applications: 3
+Guidelines", 2021, https://www.nngroup.com/articles/empty-state-interface-design/,
+read 2026-11-28). The line sits above the plot rather than in the preview's
+label, because above the equilibrium line the plot has room for one line of
+text, and a taller label covered the equilibrium line and a compared run's
+curve (`test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation`
+and `test_the_line_on_an_empty_f_a_f_i_preview_is_on_the_compared_run_that_draws_it`
+in `tests/unit/test_chart_frame.py`,
+`test_a_held_thumb_at_zero_ventilation_says_above_the_f_a_f_i_plot_why_it_draws_no_ratio`
+in `tests/integration/simulation_view/test_simulation_view_views.py`).
+
 **The gridlines and labels run from 0 to 1, with a little space above them.**
 Every published wash-in figure uses a scale of 0 to 1, and matching those
 figures is the point of this plot. The space above keeps a trace that ends at
@@ -4742,9 +4765,7 @@ in `tests/integration/simulation_view/test_simulation_view_charts.py`).
 
 **While a drag draws a preview, both descriptions name it** (`PL-MP1X`). After
 the run's values, each gives the preview's label as the plot draws it, with a
-full stop, such as "Preview: Fresh gas flow 6.0 L/min, not applied.". Where
-the F_A/F_I plot's label adds why it draws no ratio, its description gives
-that sentence too, on one line (`PL-PJWT`). The
+full stop, such as "Preview: Fresh gas flow 6.0 L/min, not applied.". The
 concentration chart draws the label even with every compartment unchecked, so
 its description gives it then too. Neither
 gives a predicted value, because no value on a preview curve is printed as a
@@ -6739,7 +6760,9 @@ While a user holds a slider's handle, the chart draws the trajectory that the
 run would take if the value under the handle were applied at the run's current
 time (`PL-5B1N`). Both plots draw it, so they never show two different futures.
 On the F_A/F_I plot the preview is the predicted ratio. A dot marks where a
-stretch of it stops, as on the run's curve.
+stretch of it stops, as on the run's curve. Where alveolar ventilation would be
+zero, that plot draws no predicted ratio, and a line under its caption says why
+(§ "F_A/F_I as a displayed ratio").
 
 **A preview is a prediction.** The run has not passed through it, so it is not a
 modelled state of the run. It is not a measurement either. It depends on a
@@ -6760,24 +6783,7 @@ pattern, because those tell the six compartments apart.
    slider's own words, such as "Preview: Fresh gas flow 6.0 L/min, not applied".
    It is drawn inside the region, so a screenshot taken during a drag includes
    it. Each compared run has its own controls, so only the run whose slider
-   handle is held shows a preview. The label names that run. Where a step at
-   zero alveolar ventilation would reach every predicted state, the F_A/F_I
-   plot draws no ratio past the run's current time, because the ratio is then
-   not a wash-in fraction (rule 3 of `app/wash_in.py`). Its label adds two
-   lines that say so: "Alveolar ventilation would be zero, so the ratio would
-   not be a wash-in fraction and is not drawn." This holds for a preview of
-   any slider on a run whose ventilation is already zero. The concentration
-   chart's label stays the preview's own, because that chart still draws the
-   predicted curves. Nielsen Norman Group's guidance on empty states asks for
-   a brief message inside the area that shows nothing, saying why (Kaplan,
-   "Designing Empty States in Complex Applications: 3 Guidelines", 2021,
-   https://www.nngroup.com/articles/empty-state-interface-design/, read
-   2026-11-28), so the empty region is not taken for a drawing that failed
-   (`PL-PJWT`,
-   `test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation`
-   in `tests/unit/test_chart_frame.py` and
-   `test_a_held_thumb_at_zero_ventilation_says_on_the_f_a_f_i_plot_why_it_draws_no_ratio`
-   in `tests/integration/simulation_view/test_simulation_view_views.py`).
+   handle is held shows a preview. The label names that run.
 3. **Width.** Each preview curve is one pixel thinner than the same compartment's
    curve in a run shown alone, but never thinner than 2 px. The two compartments
    drawn at 3 px therefore have 2 px preview curves, and so do the four drawn at

@@ -49,7 +49,7 @@ palette that is drawn.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from html import escape
 from math import ceil
@@ -142,7 +142,6 @@ from anesthesia_sim.app.dashboard_frame import (
     trace_legend_label,
     wash_in_plot_description,
     wash_in_plot_name,
-    wash_in_preview_label,
 )
 from anesthesia_sim.app.display_units import DisplayUnit
 from anesthesia_sim.app.formatting import ChartCeiling, format_chart_time_label, format_time_base
@@ -1121,18 +1120,10 @@ class _PreviewMarks:
     the reach, where the run stands now. The label sits inside the region, at
     the top, in the same kind of box as the hover's text. So a screenshot
     taken during a drag says in words that the curves there did not happen
-    (`PL-5B1N`). `label_of` writes the label from the preview, because the
-    F_A/F_I plot adds why it draws no ratio where it draws none
-    (`dashboard_frame.wash_in_preview_label`).
+    (`PL-5B1N`).
     """
 
-    def __init__(
-        self,
-        item: Any,
-        pens: _ScreenPens,
-        label_of: Callable[[RunPreview], str] = lambda preview: preview.label,
-    ) -> None:
-        self._label_of = label_of
+    def __init__(self, item: Any, pens: _ScreenPens) -> None:
         fill = QColor(PREVIEW_REGION_COLOR)
         fill.setAlphaF(PREVIEW_REGION_FILL_OPACITY)
         self.region = pg.LinearRegionItem(
@@ -1165,7 +1156,7 @@ class _PreviewMarks:
         start_s, _ = preview.region_s
         self.region.setRegion(preview.region_s)
         self.region.show()
-        self.label.setText(self._label_of(preview))
+        self.label.setText(preview.label)
         self.label.setPos(start_s, top)
         # `setVisible` rather than `show`, for the reason `_HoverReadout.show`
         # gives: it orients the box for the view at once (`PL-J0F7`).
@@ -1785,7 +1776,7 @@ class _WashInRunItems:
             size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
         )
         item.addItem(self.preview_termini, ignoreBounds=True)
-        self.preview = _PreviewMarks(item, pens, wash_in_preview_label)
+        self.preview = _PreviewMarks(item, pens)
         self.branch_point = _branch_point_mark(item, pens)
         self.marks = _control_mark_pool(item, pens)
 

@@ -53,13 +53,11 @@ from anesthesia_sim.app.chart_frame import (
     ChartFrame,
     RunCount,
     RunIndex,
-    RunPreview,
     TraceStyle,
     latest_values_lines,
     latest_wash_in_lines,
     plain_text,
     preview_label_lines,
-    preview_sentence,
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
@@ -1388,19 +1386,26 @@ WASH_IN_VENTILATION_STOPPED_TEXT: Final = (
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 
-# What the F_A/F_I plot's preview label adds while a step at zero alveolar
-# ventilation reached every predicted state, so the plot draws no ratio in the
-# preview's region (rule 3 of `app/wash_in.py`, `PL-PJWT`). Without it, the
-# empty region looks like a drawing that failed. Nielsen Norman Group's
-# guidance on empty states asks for "a brief system message within the content
-# area" that says why nothing is shown (Kaplan, "Designing Empty States in
-# Complex Applications: 3 Guidelines", 2021), so the sentence goes in the label
-# that the region already carries. It has the construction of the state lines
-# above: the condition, then "so", then the verdict. It is drawn on two lines,
-# so the label grows taller rather than much wider than the preview's own line.
-WASH_IN_PREVIEW_VENTILATION_STOPPED_LINES: Final = (
-    "Alveolar ventilation would be zero, so the ratio",
-    "would not be a wash-in fraction and is not drawn.",
+# The line above the F_A/F_I plot that says why it draws no ratio in a
+# preview's region, while zero alveolar ventilation is the reason
+# (`RunPreview.ventilation_stopped`, rule 3 of `app/wash_in.py`, `PL-PJWT`).
+# Without it, the empty region looks like a drawing that failed. Nielsen Norman
+# Group's guidance on empty states says that "totally empty states cause
+# confusion about how and whether the system is working", and asks for a brief
+# message that says why nothing is shown (Kaplan, "Designing Empty States in
+# Complex Applications: 3 Guidelines", 2021). The line goes in the rows above
+# the plot, and not in the preview's label inside it. Above the equilibrium
+# line the plot has room for one line of text, so a longer label would cover
+# the equilibrium line and the curve of a compared run. Those rows already
+# hold the plot's own state line, and the concentration chart's rows already
+# name a preview whose traces leave the axis (`PL-5B1N`). The line opens with
+# the word that opens a preview's label, so it reads as part of the preview.
+# It has the construction of the state lines above: the condition, then "so",
+# then the verdict.
+WASH_IN_PREVIEW_VENTILATION_STOPPED_TEXT: Final = (
+    PREVIEW_LABEL_SUBJECT
+    + ": alveolar ventilation would be zero, so the predicted ratio would not be a "
+    "wash-in fraction."
 )
 
 # The two standing statements. The first says what the tool is *for*. The
@@ -4392,6 +4397,28 @@ def wash_in_state_lines(frame: ChartFrame) -> tuple[str, ...]:
     )
 
 
+def wash_in_preview_lines(frame: ChartFrame) -> tuple[str | None, ...]:
+    """Each drawn run's line on why the F_A/F_I plot draws no ratio in its preview, if it says one.
+
+    The result has one entry for each run in `frame.runs`, in the same order.
+    An entry is `WASH_IN_PREVIEW_VENTILATION_STOPPED_TEXT` while the run draws
+    a preview whose region is empty because alveolar ventilation would be zero
+    (`RunPreview.ventilation_stopped`, `PL-PJWT`). While more than one run is
+    drawn, `compared_run_line` labels it with its run. Every other entry is
+    None.
+
+    Args:
+        frame: The frame the plot drew.
+    """
+
+    return tuple(
+        compared_run_line(WASH_IN_PREVIEW_VENTILATION_STOPPED_TEXT, frame, index)
+        if run.preview is not None and run.preview.ventilation_stopped
+        else None
+        for index, run in enumerate(frame.runs)
+    )
+
+
 def wash_in_plot_name(frame: ChartFrame | None) -> str:
     """Return what a screen reader calls the wash-in plot: what it plots, and its window.
 
@@ -4414,46 +4441,6 @@ def wash_in_plot_name(frame: ChartFrame | None) -> str:
     return heading if frame is None else f"{heading}, {time_axis_caption(frame)}"
 
 
-def wash_in_preview_label(preview: RunPreview) -> str:
-    """Return the label that the F_A/F_I plot draws in one run's preview region.
-
-    It is the preview's own label, such as "Preview: Alveolar ventilation
-    0.0 L/min, not applied". While a step at zero alveolar ventilation reached
-    every predicted state, the plot draws no ratio past the reach, and two
-    more lines say why (`WASH_IN_PREVIEW_VENTILATION_STOPPED_LINES`,
-    `PL-PJWT`). The concentration chart draws the preview's own label alone,
-    because it draws the predicted traces whatever the ventilation.
-    """
-
-    if not preview.ventilation_stopped:
-        return preview.label
-
-    return "\n".join((preview.label, *WASH_IN_PREVIEW_VENTILATION_STOPPED_LINES))
-
-
-def wash_in_preview_lines(frame: ChartFrame) -> tuple[str, ...]:
-    """Return what the F_A/F_I plot's preview labels say, as sentences for a screen reader.
-
-    Each run that draws a preview gives its label as a sentence
-    (`chart_frame.preview_sentence`). Where the plot draws no ratio for the
-    preview, the sentence that says why follows, on one line, because a
-    screen reader pauses at a line break (`wash_in_preview_label`).
-    """
-
-    lines: list[str] = []
-
-    for run in frame.runs:
-        if run.preview is None:
-            continue
-
-        lines.append(preview_sentence(run.preview))
-
-        if run.preview.ventilation_stopped:
-            lines.append(" ".join(WASH_IN_PREVIEW_VENTILATION_STOPPED_LINES))
-
-    return tuple(lines)
-
-
 def wash_in_plot_description(frame: ChartFrame | None) -> str:
     """Return the wash-in plot's long description, for a screen reader.
 
@@ -4461,7 +4448,7 @@ def wash_in_plot_description(frame: ChartFrame | None) -> str:
     type of chart and says that the values are modelled. Then it gives the
     last point each run's trace draws, with its instant
     (`chart_frame.latest_wash_in_lines`), and the label of a preview that a
-    drag draws (`wash_in_preview_lines`, `PL-MP1X`). Last comes the
+    drag draws (`chart_frame.preview_label_lines`, `PL-MP1X`). Last comes the
     equilibrium line that the plot draws. It leaves out the row above the plot, which is text a
     screen reader already reads, and whose "Now" reading lies outside a
     held window. The lines are given without subscript markup. A window in
@@ -4484,7 +4471,7 @@ def wash_in_plot_description(frame: ChartFrame | None) -> str:
             CHART_TYPE_TEXT,
             INTERPRETATION_DISCLAIMER_TEXT,
             *latest_wash_in_lines(frame),
-            *wash_in_preview_lines(frame),
+            *preview_label_lines(frame),
             EQUILIBRIUM_REFERENCE_TEXT,
         )
     )

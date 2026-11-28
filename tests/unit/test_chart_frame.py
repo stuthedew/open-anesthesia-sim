@@ -31,7 +31,6 @@ from anesthesia_sim.app.chart_frame import (
     RunFrame,
     RunIndex,
     RunInput,
-    RunPreview,
     WashInStretch,
     assemble_chart_frame,
     chart_columns,
@@ -45,7 +44,6 @@ from anesthesia_sim.app.chart_frame import (
     nearest_trace_point,
     nearest_wash_in_point,
     percent_axis_ticks,
-    plain_text,
     preview_stroke_width,
     preview_trace_style,
     resample_owed,
@@ -65,14 +63,13 @@ from anesthesia_sim.app.controller import (
     _with_later_crossings,
 )
 from anesthesia_sim.app.dashboard_frame import (
-    EQUILIBRIUM_REFERENCE_TEXT,
     NO_TRACES_SHOWN_TEXT,
     concentration_chart_description,
     concentration_chart_name,
     run_label,
     wash_in_plot_description,
     wash_in_plot_name,
-    wash_in_preview_label,
+    wash_in_preview_lines,
 )
 from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
@@ -3267,76 +3264,74 @@ def test_each_chart_s_text_alternative_names_a_preview_while_a_drag_draws_one() 
     ]
 
 
-_STOPPED_LINES = (
-    "Alveolar ventilation would be zero, so the ratio",
-    "would not be a wash-in fraction and is not drawn.",
+_STOPPED_TEXT = (
+    "Preview: alveolar ventilation would be zero, so the predicted ratio would not be a "
+    "wash-in fraction."
 )
 
 
-def test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation() -> None:
-    """A preview whose predicted steps all run at zero ventilation is labelled with why.
+def _preview_frame(*run_inputs: RunInput) -> ChartFrame:
+    return assemble_chart_frame(
+        list(run_inputs),
+        time_base_for_span(1800.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+        held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
+    )
 
-    Rule 3 of `app/wash_in.py` leaves each such state without a ratio, so the
-    F_A/F_I plot draws nothing past the reach, and its label says why
-    (`PL-PJWT`). Four previews are written out. A preview of zero ventilation
-    adds the two lines. So does a preview of fresh gas flow on a run whose
-    ventilation was set to zero at its reach, because its predicted steps run
-    at zero too. A preview of fresh gas flow on a ventilated run, and a
-    preview that restores ventilation on a run that reached its reach in
-    apnoea, draw a ratio past the reach and keep the preview's own label.
-    The plot's description gives the two lines as one sentence.
+
+def test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation() -> None:
+    """A preview whose region is empty because ventilation would be zero gets a line saying so.
+
+    Rule 3 of `app/wash_in.py` leaves a state reached at zero alveolar
+    ventilation without a ratio, so the F_A/F_I plot draws nothing past the
+    reach, and the row above the plot says why (`PL-PJWT`). Five previews are
+    written out. A preview of zero ventilation gets the line. So does a
+    preview of fresh gas flow on a run whose ventilation was set to zero at
+    its reach, because its predicted steps run at zero too. A preview of fresh
+    gas flow on a ventilated run, and a preview that restores ventilation on
+    a run that reached its reach in apnoea, draw a ratio past the reach and get
+    no line. A run with the dial closed from the start has no inspired agent
+    to divide by, so rule 1 leaves its preview empty at any ventilation, and a
+    preview of zero ventilation on it gets no line either.
     """
 
     def preview_of(
-        controller: SimulationController, control: ControlInput, value: float, label: str
-    ) -> RunPreview:
-        frame = assemble_chart_frame(
-            [
-                replace(
-                    _input(controller),
-                    preview=PreviewRequest(SettingPreview(control, value), label),
-                )
-            ],
-            time_base_for_span(1800.0),
-            COMPARTMENT_QUANTITIES,
-            plot_width_px=_PLOT_WIDTH_PX,
-            held_start_s=None,
-            ceiling=ChartCeiling.STANDARD,
+        controller: SimulationController, control: ControlInput, value: float
+    ) -> ChartFrame:
+        return _preview_frame(
+            replace(
+                _input(controller),
+                preview=PreviewRequest(SettingPreview(control, value), _PREVIEW_LABEL),
+            )
         )
-        assert frame.runs[0].preview is not None
-        assert wash_in_plot_description(frame).splitlines()[3:5] == (
-            [f"{label}.", " ".join(_STOPPED_LINES)]
-            if frame.runs[0].preview.ventilation_stopped
-            else [f"{label}.", plain_text(EQUILIBRIUM_REFERENCE_TEXT)]
-        )
-
-        return frame.runs[0].preview
 
     ventilated = _run(300)
     running_l_min = ventilated.settings().alveolar_ventilation_l_min
-    stopping = "Preview: Alveolar ventilation 0.0 L/min, not applied"
-    flow = "Preview: Fresh gas flow 6.0 L/min, not applied"
-    restoring = f"Preview: Alveolar ventilation {running_l_min:.1f} L/min, not applied"
     stopped_at_reach = _run(300)
     stopped_at_reach.set_alveolar_ventilation(AlveolarVentilation(0.0))
     in_apnoea = _run(300)
     in_apnoea.set_alveolar_ventilation(AlveolarVentilation(0.0))
     _advance(in_apnoea, 60)
+    no_agent = SimulationController()
+    no_agent.set_delivered_concentration_percent(Percent(0.0))
+    no_agent.start()
+    _advance(no_agent, 300)
 
-    previews = {
-        "zero ventilation": preview_of(
-            ventilated, ControlInput.ALVEOLAR_VENTILATION, 0.0, stopping
-        ),
-        "flow at zero ventilation": preview_of(
-            stopped_at_reach, ControlInput.FRESH_GAS_FLOW, 6.0, flow
-        ),
-        "flow": preview_of(ventilated, ControlInput.FRESH_GAS_FLOW, 6.0, flow),
+    frames = {
+        "zero ventilation": preview_of(ventilated, ControlInput.ALVEOLAR_VENTILATION, 0.0),
+        "flow at zero ventilation": preview_of(stopped_at_reach, ControlInput.FRESH_GAS_FLOW, 6.0),
+        "flow": preview_of(ventilated, ControlInput.FRESH_GAS_FLOW, 6.0),
         "ventilation restored": preview_of(
-            in_apnoea, ControlInput.ALVEOLAR_VENTILATION, running_l_min, restoring
+            in_apnoea, ControlInput.ALVEOLAR_VENTILATION, running_l_min
         ),
+        "no inspired agent": preview_of(no_agent, ControlInput.ALVEOLAR_VENTILATION, 0.0),
     }
+    previews = {name: frame.runs[0].preview for name, frame in frames.items()}
     drawn_past_reach = {
-        name: any(
+        name: preview is not None
+        and any(
             time_s > preview.region_s[0]
             for stretch in preview.wash_in
             for time_s in stretch.times_s
@@ -3349,13 +3344,33 @@ def test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_venti
         "flow at zero ventilation": False,
         "flow": True,
         "ventilation restored": True,
+        "no inspired agent": False,
     }
-    assert {name: wash_in_preview_label(preview) for name, preview in previews.items()} == {
-        "zero ventilation": "\n".join((stopping, *_STOPPED_LINES)),
-        "flow at zero ventilation": "\n".join((flow, *_STOPPED_LINES)),
-        "flow": flow,
-        "ventilation restored": restoring,
+    assert {name: wash_in_preview_lines(frame) for name, frame in frames.items()} == {
+        "zero ventilation": (_STOPPED_TEXT,),
+        "flow at zero ventilation": (_STOPPED_TEXT,),
+        "flow": (None,),
+        "ventilation restored": (None,),
+        "no inspired agent": (None,),
     }
+
+
+def test_the_line_on_an_empty_f_a_f_i_preview_is_on_the_compared_run_that_draws_it() -> None:
+    """With three runs drawn, only the run whose preview is empty gets the line, under its name.
+
+    The preview is on the second of three runs, so a line written for the
+    wrong run, or for every run, differs (`.claude/rules/test-oracles.md`
+    rule 5).
+    """
+
+    runs = [_run(300) for _ in RUN_IDS]
+    frame = _preview_frame(
+        _input(runs[0], run_index=0),
+        _previewing(runs[1], ControlInput.ALVEOLAR_VENTILATION, 0.0, run_index=1),
+        _input(runs[2], run_index=2),
+    )
+
+    assert wash_in_preview_lines(frame) == (None, f"Run 2 — {_STOPPED_TEXT}", None)
 
 
 def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:
