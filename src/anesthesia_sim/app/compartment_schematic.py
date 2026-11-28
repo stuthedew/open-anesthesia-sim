@@ -10,10 +10,14 @@ computed and tested apart from the drawing.
 A container's fill is the compartment's tension, on the concentration chart's
 scale, from zero to `chart_axis_top_percent` at the top that the reader chose
 (`ChartCeiling`). The reader chooses one top for every concentration chart and
-every schematic (`PL-7LZ7`), and the dashboard passes it here. So a container
-is marked as off the scale exactly when the chart's off-scale notice names its
-compartment. The fill is not an amount. A tension above the top of the scale
-fills the container, and the container is marked as off the scale. Its label
+every schematic (`PL-7LZ7`), and the dashboard passes it here. So a tension
+is above the top on the schematic exactly when it is above the top of every
+chart's plot. The chart's off-scale notice covers more time than the
+schematic does. It names each shown compartment whose trace is above the top
+anywhere in the chart's window, and the schematic marks each compartment that
+is above the top at the instant it shows. The fill is not an amount. A
+tension above the top of the scale fills the container, and the container is
+marked as off the scale. Its label
 still prints the tension. Each container carries a mark at each MAC value that
 the chart's MAC axis labels at that top, so a fill level is read against the
 container's own marks. Each label gives
@@ -54,6 +58,7 @@ from anesthesia_sim.app.formatting import (
     format_elapsed,
     format_percent,
     mac_axis_ticks,
+    reference_percent_digits,
 )
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.core.concentration import percent_from_fraction
@@ -382,8 +387,11 @@ def scale_caption(snapshot: SimulationSnapshot, ceiling: ChartCeiling) -> str:
 
     The caption names the top of the scale in percent and in MAC, and the
     spacing of the marks in MAC, as the chart's MAC axis labels them
-    (`_scale_ticks`). It ends with the lines that say the amounts held in the
-    body read high at the condition `AMOUNT_UNIT_TEXT` names.
+    (`_scale_ticks`). The top's percent goes through
+    `reference_percent_digits`, so it is the value that the chart's
+    off-scale notice gives for the same top, at the 1 MAC line's precision.
+    The caption ends with the lines that say the amounts held in the body
+    read high at the condition `AMOUNT_UNIT_TEXT` names.
 
     Raises:
         TypeError: As `_scale_ticks` raises it.
@@ -393,7 +401,7 @@ def scale_caption(snapshot: SimulationSnapshot, ceiling: ChartCeiling) -> str:
     top_percent = chart_axis_top_percent(snapshot.agent_mac_percent, ceiling)
 
     scale = SCALE_CAPTION_TEMPLATE.format(
-        top=f"{top_percent:g}",
+        top=reference_percent_digits(top_percent),
         unit=DisplayUnit.CONCENTRATION.axis_title,
         top_mac=ceiling.label,
         step_mac=f"{ticks[1][1]}{MAC_UNIT_SUFFIX}",

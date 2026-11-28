@@ -855,10 +855,14 @@ def _chart_ceiling_from(raw: object) -> tuple[ChartCeiling, RefusedEntry | None]
     if ceiling is not None:
         return ceiling, None
 
+    # The value is shown as the file holds it, so text reads in quotes and a
+    # JSON null as null. Text such as "4.5" then reads as text, which is why
+    # the sentence says that the top is a number.
     values = [f"{member.value:g}" for member in ChartCeiling]
     offered = f"{', '.join(values[:-1])} or {values[-1]}{MAC_UNIT_SUFFIX}"
+    shown = json.dumps(raw, ensure_ascii=False)
     reason = (
-        f"The saved axis top, {raw!r}, is not one of the choices, {offered}, so every "
+        f"The saved axis top, {shown}, is not one of the numbers {offered}, so every "
         f"chart and schematic shows {ChartCeiling.STANDARD.label}. Choose a top to replace it."
     )
 

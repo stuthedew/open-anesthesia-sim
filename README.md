@@ -108,10 +108,14 @@ While a case runs, the window shows the following.
   this View.
 - The compartment schematic View shows where the agent is. Each compartment is
   drawn as a container, filled to its tension on the concentration chart's
-  scale and labelled with its tension and its amount in mL of vapour. One bar
+  scale and labelled with its tension and its amount in mL of vapour. The top
+  of that scale, 1.5, 3 or 4.5 times MAC, is one setting for every chart and
+  schematic: choosing it on any of them changes all of them, and your choice
+  still applies after a restart. One bar
   shows each compartment's share of all the agent in the run, so fat's share
   can be seen growing while its tension stays near zero. The Maintenance
   Workspace includes this View.
+  <!-- not-restated: 4.5 -->
 - The agent cost View shows the agent delivered, in mL of the liquid that the
   vaporizer turned into vapour. You can choose litres of vapour instead, and the
   unit is named on the value. Your choice is saved in your preferences file and

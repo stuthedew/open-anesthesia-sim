@@ -359,6 +359,33 @@ def test_each_container_is_marked_every_half_mac_of_the_standard_scale(agent_id:
     assert "Marks stand every 0.5 ×MAC." in scale_caption(snapshot, ChartCeiling.STANDARD)
 
 
+@pytest.mark.parametrize(
+    ("ceiling", "top"),
+    [
+        # Mapleson 1996 (PMID 8777094), Abstract: 1.17% isoflurane at age 40.
+        # 1.5 × 1.17 = 1.755 and 4.5 × 1.17 = 5.265 are both ties at two
+        # decimals. The products in binary are just below each tie, so they
+        # round down, as the chart's off-scale notice rounds them.
+        (ChartCeiling.LOW, "1.75"),
+        (ChartCeiling.HIGH, "5.26"),
+    ],
+)
+def test_the_caption_names_isoflurane_s_top_at_the_readouts_two_decimals(
+    ceiling: ChartCeiling, top: str
+) -> None:
+    """`PL-7LZ7`: the caption names the top with the value the chart's notice gives it.
+
+    The caption once printed isoflurane's 1.5 and 4.5 ×MAC tops as 1.755% and
+    5.265%, while the chart's off-scale notice named the same tops 1.75% and
+    5.26%. So two Views gave one top as two numbers. The top now goes through
+    the 1 MAC line's rounding, two decimals with no trailing zero.
+    """
+
+    caption = scale_caption(SimulationController(agent_id="isoflurane").snapshot(), ceiling)
+
+    assert f"0 to {top}% of 1 atm ({ceiling.label})" in caption
+
+
 def test_the_scale_caption_ends_with_the_body_stores_caveat_and_leaves_the_unit_out() -> None:
     """`PL-3NGZ`: the caption under the containers says the body's amounts read high.
 

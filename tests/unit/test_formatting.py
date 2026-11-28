@@ -727,6 +727,52 @@ def test_a_run_states_its_agent_s_mac_at_age_40_in_full(agent_id: str, reference
     )
 
 
+@pytest.mark.parametrize(
+    ("percent", "digits"),
+    [
+        (5.4, "5.4"),
+        (8.0, "8"),
+        (3.51, "3.51"),
+        # Desflurane's 3 × 6.6 is 19.799999999999997 in binary.
+        (3 * 6.6, "19.8"),
+        # 4.5 × 1.17 = 5.265 is a tie at two decimals. The binary product is
+        # just below it, so it rounds down, as the percent readouts round it.
+        (4.5 * 1.17, "5.26"),
+        (5.268, "5.27"),
+    ],
+)
+def test_a_multiple_of_the_mac_in_percent_prints_two_decimals_with_no_trailing_zero(
+    percent: float, digits: str
+) -> None:
+    """The 1 MAC line and the schematic's scale caption print a percent this way.
+
+    The expected digits are two decimals, as `docs/INTERFACE.md` § "Displayed
+    precision" sets for the percent readouts, with each trailing zero dropped
+    as the 1 MAC line drops it. The readout's formatter is also asked for the
+    same value, so a top that the caption names is the value that the chart's
+    off-scale notice names (`PL-7LZ7`).
+    """
+
+    assert formatting_module.reference_percent_digits(percent) == digits
+    readout = format_percent(fraction_from_percent(Percent(percent)))
+    assert float(readout.removesuffix("%")) == float(digits)
+
+
+@pytest.mark.parametrize("percent", [0.0, 0.004, -1.0, math.nan, math.inf])
+def test_a_multiple_of_the_mac_that_rounds_to_nothing_or_is_not_finite_is_refused(
+    percent: float,
+) -> None:
+    """A percent that rounds to zero, or is not finite, is refused rather than printed.
+
+    The smallest such percent the simulator states is isoflurane's 1.5 ×MAC
+    top, 1.75%, so a smaller value is a fault upstream. Printing it would
+    show a scale from 0 to 0% or to `nan%`.
+    """
+
+    with pytest.raises(ValueError, match=re.escape(f"got {percent!r}")):
+        formatting_module.reference_percent_digits(percent)
+
+
 def test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac() -> None:
     """The band's height is a fraction times a divisor, and nothing else.
 

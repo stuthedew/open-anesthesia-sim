@@ -264,6 +264,7 @@ TYPICAL: Mapping[str, object] = {
     "after": {},
     "alveolar_partial_pressure_fraction": 0.01,
     "before": {},
+    "ceiling": ChartCeiling.STANDARD,
     "compensation": UNCOMPENSATED,
     "initial_state": AgentUptakeSystem.default().state_vector(),
     "inspired_partial_pressure_fraction": 0.02,

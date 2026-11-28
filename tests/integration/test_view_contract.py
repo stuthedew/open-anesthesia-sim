@@ -612,7 +612,7 @@ def test_a_refused_saved_top_is_named_on_every_chart_and_schematic_until_a_top_i
         for shown in [*charts, schematic]:
             assert not shown.ceiling_notice.isHidden()
             assert shown.ceiling_notice.text() == (
-                "The saved axis top, 7, is not one of the choices, 1.5, 3 or 4.5 ×MAC, so every "
+                "The saved axis top, 7, is not one of the numbers 1.5, 3 or 4.5 ×MAC, so every "
                 "chart and schematic shows 3 ×MAC. Choose a top to replace it."
             )
 

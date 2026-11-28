@@ -175,12 +175,12 @@ def test_a_saved_top_is_read_whether_written_as_an_int_or_a_float(
         (7, "7"),
         (2.0, "2.0"),
         (0, "0"),
-        ("3", "'3'"),
-        (True, "True"),
-        (None, "None"),
+        ("4.5", '"4.5"'),
+        (True, "true"),
+        (None, "null"),
         ([4.5], "[4.5]"),
     ],
-    ids=["7", "2.0", "0", "the text 3", "true", "null", "a list"],
+    ids=["7", "2.0", "0", "the text 4.5", "true", "null", "a list"],
 )
 def test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept(
     tmp_path: Path, raw: object, shown: str
@@ -189,8 +189,10 @@ def test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept(
 
     The notice is written out by hand. The agent cost View's notice and its
     offer to discard do not name the top, because the top is not set there.
-    `True` is refused although it equals 1 in Python, and the text "3" is
-    refused although it reads as a top.
+    `True` is refused although it equals 1 in Python, and the text "4.5" is
+    refused although it reads as a top. The value is shown as the file holds
+    it, so the text "4.5" is in quotes and the sentence says the top is a
+    number.
     """
 
     _write(tmp_path, {**_document([]), "schema_version": 2, "chart_axis_top_mac": raw})
@@ -202,7 +204,7 @@ def test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept(
     assert loaded.notice is None
     assert preferences.chart_ceiling is ChartCeiling.STANDARD
     assert chart_ceiling_notice(preferences) == (
-        f"The saved axis top, {shown}, is not one of the choices, 1.5, 3 or 4.5 ×MAC, so every "
+        f"The saved axis top, {shown}, is not one of the numbers 1.5, 3 or 4.5 ×MAC, so every "
         "chart and schematic shows 3 ×MAC. Choose a top to replace it."
     )
     assert not preferences.holds_refused_entries
