@@ -4672,7 +4672,12 @@ value of each trace shown, in percent and in multiples of 1 MAC, as the hover
 words them, such as "Modelled sevoflurane at 10m: Circuit (inspired) 1.45%,
 0.81 ×MAC; Alveolar (end-tidal-equivalent) 1.12%, 0.62 ×MAC". The instant is
 that of the run's last drawn point, which is the right edge of a held window.
-The 1 MAC and MAC-awake references follow. With every compartment unchecked,
+The 1 MAC and MAC-awake references follow, each worded as its legend entry
+words it, without how the line is drawn (`PL-596J`). So the band's line ends
+"; population, read against vessel-rich group trace.", and the 1 MAC line's
+ends ", reference adult (alveolar).". Each line ends with a full stop, so a
+screen reader that reads the description as one passage pauses between them.
+With every compartment unchecked,
 or no frame drawn, the description says what the screen says. A window in
 which no run has a drawn point gives no values. Both texts are written when a
 screen reader asks for them, and the chart reports each change to either. The
@@ -4709,6 +4714,17 @@ in `tests/unit/test_chart_frame.py`, and
 and `test_a_held_wash_in_plot_tells_a_screen_reader_the_ratio_at_its_right_edge`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
 <!-- not-restated: 15 minutes -->
+
+**While a drag draws a preview, both descriptions name it** (`PL-MP1X`). After
+the run's values, each gives the preview's label as the plot draws it, with a
+full stop, such as "Preview: Fresh gas flow 6.0 L/min, not applied.". The
+concentration chart draws the label even with every compartment unchecked, so
+its description gives it then too. Neither
+gives a predicted value, because no value on a preview curve is printed as a
+reading (§ "A preview of an unapplied setting"). Only a pointer drag draws a
+preview, so a keyboard user never meets one
+(`PL-LS34`) (`test_each_chart_s_text_alternative_names_a_preview_while_a_drag_draws_one`
+in `tests/unit/test_chart_frame.py`).
 
 A schematic's name is the View's title, the run while runs are compared, and
 the instant, such as "Compartment schematic, Run 2, at 10m of simulated time".

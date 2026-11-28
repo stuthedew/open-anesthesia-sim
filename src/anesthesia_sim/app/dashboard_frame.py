@@ -57,6 +57,7 @@ from anesthesia_sim.app.chart_frame import (
     latest_values_lines,
     latest_wash_in_lines,
     plain_text,
+    preview_label_lines,
     trace_style,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
@@ -1238,18 +1239,23 @@ EQUILIBRIUM_REFERENCE_TEXT: Final = (
 )
 EQUILIBRIUM_LEGEND_LABEL: Final = f"{EQUILIBRIUM_REFERENCE_TEXT} (wide dash)"
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
-#: The 1 MAC line's legend words. `{reference}` is the line's value, as
-#: `mac_reference_caption` writes it, so the value and the line's style are
-#: stated once, in one entry (`PL-K4CZ`). Before the first frame it is the
-#: bare name, `ONE_MAC_LINE_LEGEND_NAME`. The compartment the line is read
+#: The 1 MAC line's words, which its legend entry and the concentration
+#: chart's text alternative both start with. `{reference}` is the line's value,
+#: as `mac_reference_caption` writes it. The compartment the line is read
 #: against is named from `run_series.COMPARTMENT_NAMES`, in lower case because
 #: it sits inside a phrase (`PL-GRC6`).
-ONE_MAC_LINE_LEGEND_TEMPLATE: Final = (
-    "{reference}, reference adult ("
-    + COMPARTMENT_NAMES[RecordedQuantity.ALVEOLAR].lower()
-    + ", wide dash)"
+_ONE_MAC_LINE_WORDS: Final = (
+    "{reference}, reference adult (" + COMPARTMENT_NAMES[RecordedQuantity.ALVEOLAR].lower()
 )
+#: The 1 MAC line's legend words, so the value and the line's style are stated
+#: once, in one entry (`PL-K4CZ`). Before the first frame `{reference}` is the
+#: bare name, `ONE_MAC_LINE_LEGEND_NAME`.
+ONE_MAC_LINE_LEGEND_TEMPLATE: Final = _ONE_MAC_LINE_WORDS + ", wide dash)"
 ONE_MAC_LINE_LEGEND_NAME: Final = "1 MAC"
+#: The 1 MAC line's words in the concentration chart's text alternative: the
+#: legend's words without how the line is drawn, as the wash-in plot's text
+#: alternative gives its equilibrium line (`PL-596J`).
+ONE_MAC_LINE_SPOKEN_TEMPLATE: Final = _ONE_MAC_LINE_WORDS + ")"
 #: The MAC-awake band's legend words: the band's values, as
 #: `mac_awake_caption` writes them, that they are a population's, and the
 #: trace that the band is read against (`PL-90Y6`, `PL-K4CZ`). Before the
@@ -4163,10 +4169,21 @@ def concentration_chart_description(frame: ChartFrame | None) -> str:
     longer description that names the type of chart and summarises its data
     (Understanding WCAG 2.2 SC 1.1.1, `PL-T9RB`). This one names the type,
     then gives the latest drawn value of each trace shown
-    (`chart_frame.latest_values_lines`), then the 1 MAC and MAC-awake
-    references the chart draws. Where the reader has unchecked every
-    compartment, or no frame could be drawn, it says what the screen says
-    instead. A window in which no run has a drawn point gives no values.
+    (`chart_frame.latest_values_lines`). While a drag draws a preview, the
+    preview's label follows (`chart_frame.preview_label_lines`, `PL-MP1X`).
+    Then come the 1 MAC and MAC-awake references the chart draws. Each
+    reference is worded as its legend entry words it, less how the line is
+    drawn. So the band says that it is a
+    population's and is read against the vessel-rich group trace, and the 1 MAC
+    line names the reference adult and the alveolar trace (`PL-596J`). Each
+    reference ends with a full stop, as each sentence before it does. A screen
+    reader that reads the description as one passage then pauses between them,
+    because JAWS, NVDA and VoiceOver pause at a full stop, while NVDA reads
+    through a parenthesis without a pause (Bohman, "Why Don't Screen Readers
+    Always Read What's on the Screen? Part 1", Deque, 2014). Where the reader
+    has unchecked every compartment, or no frame could be drawn, it says what
+    the screen says instead. A window in which no run has a drawn point gives
+    no values.
 
     Args:
         frame: The frame the chart drew, or None while it draws none.
@@ -4179,10 +4196,16 @@ def concentration_chart_description(frame: ChartFrame | None) -> str:
         return WITHHELD_FRAME_TEXT
 
     values = (NO_TRACES_SHOWN_TEXT,) if no_traces_shown(frame) else latest_values_lines(frame)
+    # The plot draws a preview's region and label even with every compartment
+    # unchecked, so the label is read in that case too.
+    values = (*values, *preview_label_lines(frame))
 
-    return "\n".join(
-        (CHART_TYPE_TEXT, *values, mac_reference_caption(frame), mac_awake_caption(frame))
+    references = (
+        ONE_MAC_LINE_SPOKEN_TEMPLATE.format(reference=mac_reference_caption(frame)) + ".",
+        MAC_AWAKE_BAND_LEGEND_TEMPLATE.format(reference=mac_awake_caption(frame)) + ".",
     )
+
+    return "\n".join((CHART_TYPE_TEXT, *values, *references))
 
 
 def wash_in_state(reading: WashInReading, undrawn_wash_in_stretches: int) -> str:
@@ -4385,8 +4408,9 @@ def wash_in_plot_description(frame: ChartFrame | None) -> str:
     It follows `concentration_chart_description` (`PL-R1M6`). It names the
     type of chart and says that the values are modelled. Then it gives the
     last point each run's trace draws, with its instant
-    (`chart_frame.latest_wash_in_lines`), and last the equilibrium line that
-    the plot draws. It leaves out the row above the plot, which is text a
+    (`chart_frame.latest_wash_in_lines`), and the label of a preview that a
+    drag draws (`chart_frame.preview_label_lines`, `PL-MP1X`). Last comes the
+    equilibrium line that the plot draws. It leaves out the row above the plot, which is text a
     screen reader already reads, and whose "Now" reading lies outside a
     held window. The lines are given without subscript markup. A window in
     which no run has a drawn point gives no values. A withheld frame gives
@@ -4408,6 +4432,7 @@ def wash_in_plot_description(frame: ChartFrame | None) -> str:
             CHART_TYPE_TEXT,
             INTERPRETATION_DISCLAIMER_TEXT,
             *latest_wash_in_lines(frame),
+            *preview_label_lines(frame),
             EQUILIBRIUM_REFERENCE_TEXT,
         )
     )

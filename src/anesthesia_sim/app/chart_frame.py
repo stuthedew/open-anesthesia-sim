@@ -158,6 +158,7 @@ __all__ = [
     "format_trace_hover",
     "latest_values_lines",
     "latest_wash_in_lines",
+    "preview_label_lines",
     "format_wash_in_hover",
     "nearest_trace_point",
     "nearest_wash_in_point",
@@ -1786,6 +1787,26 @@ def latest_wash_in_lines(frame: ChartFrame) -> tuple[str, ...]:
         lines.append(f"{context}: {WASH_IN_HOVER_LABEL}, {_wash_in_hover_value(last.ratios[-1])}.")
 
     return tuple(lines)
+
+
+def preview_label_lines(frame: ChartFrame) -> tuple[str, ...]:
+    """Return one sentence per run that draws a preview: the label the plot draws in its region.
+
+    A screen reader reads these sentences in each chart's long description, so
+    a user who drags a setting hears that a preview is drawn and of which
+    setting and value (`PL-MP1X`). The sentence is the label alone, such as
+    "Preview: Fresh gas flow 6.0 L/min, not applied.", and gives no predicted
+    value, because no value on a preview curve is printed as a reading
+    (`docs/INTERFACE.md` § "A preview of an unapplied setting").
+
+    Args:
+        frame: The frame the chart drew.
+
+    Returns:
+        The sentences, in the frame's run order.
+    """
+
+    return tuple(f"{run.preview.label}." for run in frame.runs if run.preview is not None)
 
 
 def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_count: int) -> str:
