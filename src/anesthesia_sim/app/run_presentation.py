@@ -82,7 +82,7 @@ from anesthesia_sim.app.dashboard_frame import (
     withheld_readouts,
 )
 from anesthesia_sim.app.failures import failure_log_path
-from anesthesia_sim.app.formatting import format_mac_reference
+from anesthesia_sim.app.formatting import ChartCeiling, format_mac_reference
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.layout.run_identity import RunId
 
@@ -192,6 +192,11 @@ class RunPanelState:
             that draws none, because the runs they show are not the runs
             their last frame was drawn from (`kept_frames_match`). A halt's
             banner then says that the charts are withheld.
+        chart_ceiling: The top that the reader chose for every
+            concentration chart and schematic, from the dashboard's
+            preferences. `drawn_run` fills the schematic's containers against
+            it (`PL-7LZ7`). A halt builds no schematic, so `halted_run` does
+            not read it.
         delivered_fraction: The fraction of the set rate that the run is
             delivering while the clock line should name it, as
             `playback.TickPace.disclosed_fraction` returns it, or None
@@ -213,6 +218,7 @@ class RunPanelState:
     pending_agent_name: str | None
     reset_question: NewCaseQuestion | None
     charts_withheld: bool
+    chart_ceiling: ChartCeiling
     delivered_fraction: float | None = None
 
 
@@ -270,8 +276,10 @@ class RunPresentation:
     reset_question: NewCaseQuestion | None
 
 
-def drawn_values(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> RunValues:
-    """Return the compartment values of one snapshot.
+def drawn_values(
+    snapshot: SimulationSnapshot, playback_rate: PlaybackRate, chart_ceiling: ChartCeiling
+) -> RunValues:
+    """Return the compartment values of one snapshot, with the schematic at `chart_ceiling`.
 
     Raises:
         TypeError: As `readouts`, `schematic_shown` and `delivered_shown`
@@ -281,7 +289,7 @@ def drawn_values(snapshot: SimulationSnapshot, playback_rate: PlaybackRate) -> R
 
     return RunValues(
         readouts=readouts(snapshot, playback_rate),
-        schematic=schematic_shown(snapshot),
+        schematic=schematic_shown(snapshot, chart_ceiling),
         delivered=delivered_shown(snapshot),
         accounting=accounting(snapshot),
     )
@@ -332,7 +340,7 @@ def drawn_run(
             returned in `dials` or in `one_mac`.
     """
 
-    values = drawn_values(snapshot, state.playback_rate)
+    values = drawn_values(snapshot, state.playback_rate, state.chart_ceiling)
 
     if state.delivered_fraction is not None:
         values = replace(

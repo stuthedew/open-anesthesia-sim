@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import simulation_view as simulation_view_module
-from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP, format_trace_hover
+from anesthesia_sim.app.chart_frame import COMPARED_COMPARTMENT_CAP, format_trace_hover, trace_style
 from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment
 from anesthesia_sim.app.controller import SimulationController
@@ -27,10 +27,16 @@ from anesthesia_sim.app.dashboard_frame import (
     ComparedRuns,
     comparing_fork_lock_text,
 )
-from anesthesia_sim.app.formatting import format_elapsed, format_mac_multiple, format_percent
+from anesthesia_sim.app.formatting import (
+    ChartCeiling,
+    format_elapsed,
+    format_mac_multiple,
+    format_percent,
+)
 from anesthesia_sim.app.qt_chart import TraceLegend
 from anesthesia_sim.app.qt_widgets import MetricPanel, ReadoutRow
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
+from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import AGENT_SELECTOR_WIDTH, CHART_HEIGHT
 from anesthesia_sim.app.unconditional_set import (
     INHALED_AGENT,
@@ -39,7 +45,8 @@ from anesthesia_sim.app.unconditional_set import (
     unconditional_set,
 )
 from anesthesia_sim.app.view_registry import CONCENTRATION_CHART, PARAMETER_CONTROLS
-from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent
+from anesthesia_sim.app.views import CompartmentSchematicView
+from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, percent_from_fraction
 from anesthesia_sim.core.parameters import load_agent_parameters
 from anesthesia_sim.core.supported_ranges import FreshGasFlow
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -565,6 +572,91 @@ def test_a_trace_above_the_axis_is_reported_on_the_run_that_drew_it(
     _set_trace_shown(application, view, RecordedQuantity.CIRCUIT, False)
 
     assert line.isHidden() is True
+
+
+def _off_scale_compartments(
+    view: SimulationView,
+) -> tuple[set[RecordedQuantity], set[RecordedQuantity]]:
+    """Return the compartments named by the chart's off-scale notice and marked by the schematic."""
+
+    line = _concentration(view).off_scale.lines[0]
+    named = {
+        quantity
+        for quantity in COMPARTMENT_QUANTITIES
+        if not line.isHidden() and trace_style(quantity).label in line.text()
+    }
+    (schematic,) = [
+        shown
+        for shown in view.layout_container.views()
+        if isinstance(shown, CompartmentSchematicView)
+    ]
+    (run,) = schematic.schematics
+    marked = {reading.quantity for reading in run.canvas.readings if reading.off_scale}
+
+    return named, marked
+
+
+def _pick_chart_ceiling(view: SimulationView, ceiling: ChartCeiling) -> None:
+    selector = _concentration(view).ceiling_selector
+    index = selector.findData(ceiling.name)
+    selector.setCurrentIndex(index)
+    selector.activated.emit(index)
+
+
+def test_the_schematic_marks_off_the_scale_what_the_chart_names_at_the_top_picked(
+    application: QApplication,
+) -> None:
+    """`PL-7LZ7`: a top picked on the chart is the top that the schematic fills against.
+
+    Two runs are on sevoflurane's 8% dial. In the first, ten minutes on, the
+    circuit is above 3 ×MAC and below 4.5 ×MAC. In the second, the alveolar
+    tension has just reached 1.67 MAC, between 1.5 and 3 ×MAC. Each premise is
+    checked against the run's MAC, read from its snapshot. At each top, the
+    compartments that the schematic marks as above the scale must be those
+    that the chart's off-scale notice names. Before `PL-7LZ7`, the schematic
+    stayed at 3 ×MAC, so at 4.5 ×MAC it marked the circuit, which the chart
+    did not name, and at 1.5 ×MAC it left unmarked the alveoli, which the
+    chart named.
+    """
+
+    circuit_run = SimulationController()
+    circuit_run.start()
+    circuit_run.set_delivered_concentration_percent(Percent(8.0))
+    _advance(circuit_run, 600)
+    alveolar_run = SimulationController()
+    alveolar_run.start()
+    alveolar_run.set_delivered_concentration_percent(Percent(8.0))
+    mac_percent = alveolar_run.snapshot().agent_mac_percent
+
+    while (
+        percent_from_fraction(alveolar_run.snapshot().alveolar_partial_pressure_fraction)
+        < 1.67 * mac_percent
+    ):
+        alveolar_run.advance()
+
+    circuit_percent = percent_from_fraction(
+        circuit_run.snapshot().inspired_partial_pressure_fraction
+    )
+    alveolar_percent = percent_from_fraction(
+        alveolar_run.snapshot().alveolar_partial_pressure_fraction
+    )
+    assert 3.0 * mac_percent < circuit_percent < 4.5 * mac_percent
+    assert 1.5 * mac_percent < alveolar_percent < 3.0 * mac_percent
+
+    for controller, ceiling, compartment, off_at_the_top in (
+        (circuit_run, ChartCeiling.HIGH, RecordedQuantity.CIRCUIT, False),
+        (circuit_run, ChartCeiling.STANDARD, RecordedQuantity.CIRCUIT, True),
+        (alveolar_run, ChartCeiling.LOW, RecordedQuantity.ALVEOLAR, True),
+        (alveolar_run, ChartCeiling.STANDARD, RecordedQuantity.ALVEOLAR, False),
+    ):
+        view = _shown_view(application, controller)
+        assert _concentration(view).chart.frame.visible == COMPARTMENT_QUANTITIES  # type: ignore[union-attr]
+
+        _pick_chart_ceiling(view, ceiling)
+        named, marked = _off_scale_compartments(view)
+
+        assert marked == named, f"at {ceiling.label}"
+        assert (compartment in named) is off_at_the_top, f"at {ceiling.label}"
 
 
 def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(

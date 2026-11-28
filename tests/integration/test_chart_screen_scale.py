@@ -37,6 +37,7 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
+from anesthesia_sim.app.formatting import ChartCeiling
 from anesthesia_sim.app.qt_chart import (
     ConcentrationChart,
     TraceLegend,
@@ -241,7 +242,12 @@ def _two_run_frame() -> ChartFrame:
         )
 
     return assemble_chart_frame(
-        runs, None, COMPARTMENT_QUANTITIES, plot_width_px=900.0, held_start_s=None
+        runs,
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=900.0,
+        held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 

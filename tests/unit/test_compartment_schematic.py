@@ -30,6 +30,7 @@ from anesthesia_sim.app.compartment_schematic import (
 )
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import readouts
+from anesthesia_sim.app.formatting import ChartCeiling
 from anesthesia_sim.app.playback import DEFAULT_PLAYBACK_RATE
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import Percent
@@ -70,7 +71,9 @@ def _circuit_percent(dial_percent: float, seconds: int, volume_l: float) -> floa
 
 
 def test_the_containers_are_the_readout_panels_in_the_readout_row_s_order() -> None:
-    readings = container_readings(SimulationController(agent_id="sevoflurane").snapshot())
+    readings = container_readings(
+        SimulationController(agent_id="sevoflurane").snapshot(), ChartCeiling.STANDARD
+    )
 
     assert [reading.quantity for reading in readings] == list(COMPARTMENT_QUANTITIES)
     assert [reading.name for reading in readings] == [
@@ -84,7 +87,9 @@ def test_the_containers_are_the_readout_panels_in_the_readout_row_s_order() -> N
 
 
 def test_a_run_that_has_not_started_fills_no_container_and_holds_no_agent() -> None:
-    for reading in container_readings(SimulationController(agent_id="sevoflurane").snapshot()):
+    for reading in container_readings(
+        SimulationController(agent_id="sevoflurane").snapshot(), ChartCeiling.STANDARD
+    ):
         assert reading.fill == 0.0
         assert not reading.off_scale
         assert reading.tension == "0.00%"
@@ -99,7 +104,7 @@ def test_the_circuit_fills_to_its_closed_form_tension_on_the_chart_s_scale() -> 
     volume_l = float(snapshot.circuit_volume_l)
     percent = _circuit_percent(4.0, seconds, volume_l)
     millilitres = volume_l * percent / 100.0 * 1000.0
-    circuit = container_readings(snapshot)[0]
+    circuit = container_readings(snapshot, ChartCeiling.STANDARD)[0]
 
     assert 100.0 <= millilitres < 1000.0
     assert circuit.quantity is RecordedQuantity.CIRCUIT
@@ -115,7 +120,7 @@ def test_a_tension_above_the_chart_s_top_fills_the_container_and_keeps_its_value
     seconds = 10 * SECONDS_PER_MINUTE
     snapshot = _run_with_no_ventilation(8.0, seconds).snapshot()
     percent = _circuit_percent(8.0, seconds, float(snapshot.circuit_volume_l))
-    circuit, alveolar, *_ = container_readings(snapshot)
+    circuit, alveolar, *_ = container_readings(snapshot, ChartCeiling.STANDARD)
 
     assert percent > AXIS_TOP_PERCENT
     assert circuit.fill == 1.0
@@ -141,7 +146,9 @@ def test_a_container_s_height_is_its_tension_and_not_its_amount() -> None:
     for _ in range(60 * SECONDS_PER_MINUTE // SIMULATION_STEP_S):
         controller.advance()
     snapshot = controller.snapshot()
-    by_quantity = {reading.quantity: reading for reading in container_readings(snapshot)}
+    by_quantity = {
+        reading.quantity: reading for reading in container_readings(snapshot, ChartCeiling.STANDARD)
+    }
     amounts = snapshot.compartment_agent_amounts
 
     assert by_quantity[RecordedQuantity.FAT].fill < 0.01
@@ -156,7 +163,7 @@ def test_each_container_prints_the_tension_its_readout_prints() -> None:
         readout.name: readout.value for readout in readouts(snapshot, DEFAULT_PLAYBACK_RATE)
     }
 
-    for reading in container_readings(snapshot):
+    for reading in container_readings(snapshot, ChartCeiling.STANDARD):
         assert reading.tension == readout_values[reading.name]
 
 
@@ -193,7 +200,7 @@ def test_the_six_shares_add_up_to_the_whole(agent_id: str) -> None:
             controller.advance()
         elapsed_s = until_s
         snapshot = controller.snapshot()
-        readings = container_readings(snapshot)
+        readings = container_readings(snapshot, ChartCeiling.STANDARD)
         amounts = snapshot.compartment_agent_amounts
         total = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
         shares = [reading.share for reading in readings]
@@ -215,7 +222,9 @@ def test_with_no_ventilation_the_circuit_holds_the_whole_share() -> None:
     holds nothing, so its share is exactly zero and its label prints `0%`.
     """
 
-    readings = container_readings(_run_with_no_ventilation(8.0, 90).snapshot())
+    readings = container_readings(
+        _run_with_no_ventilation(8.0, 90).snapshot(), ChartCeiling.STANDARD
+    )
 
     assert [(reading.share, reading.share_text) for reading in readings] == [
         (1.0, "100% of agent")
@@ -226,7 +235,7 @@ def test_a_run_that_holds_no_agent_prints_no_share_and_says_why() -> None:
     """Before any agent is delivered, no share exists, so none is printed, not six zeros."""
 
     snapshot = SimulationController(agent_id="sevoflurane").snapshot()
-    shown = schematic_shown(snapshot)
+    shown = schematic_shown(snapshot, ChartCeiling.STANDARD)
 
     assert snapshot.stored_agent_l == 0.0
     assert [reading.share for reading in shown.readings] == [None] * 6
@@ -244,8 +253,10 @@ def test_the_share_caption_keeps_its_height_when_the_first_agent_arrives() -> No
     three when the first agent arrived, which moved everything below it.
     """
 
-    before = schematic_shown(SimulationController(agent_id="sevoflurane").snapshot())
-    after = schematic_shown(_run("sevoflurane", 1).snapshot())
+    before = schematic_shown(
+        SimulationController(agent_id="sevoflurane").snapshot(), ChartCeiling.STANDARD
+    )
+    after = schematic_shown(_run("sevoflurane", 1).snapshot(), ChartCeiling.STANDARD)
 
     assert before.share_caption is not None
     assert after.share_caption is not None
@@ -264,7 +275,9 @@ def test_the_share_caption_says_the_shares_are_of_the_agent_held_at_this_instant
     checked against the number of containers the schematic shows.
     """
 
-    shown = schematic_shown(_run("sevoflurane", 60 * SECONDS_PER_MINUTE).snapshot())
+    shown = schematic_shown(
+        _run("sevoflurane", 60 * SECONDS_PER_MINUTE).snapshot(), ChartCeiling.STANDARD
+    )
 
     assert shown.share_caption == SHARE_CAPTION
     assert len(shown.readings) == 6
@@ -285,7 +298,7 @@ def test_each_label_prints_its_own_compartment_s_share_in_whole_percent() -> Non
     """
 
     snapshot = _run("sevoflurane", 10 * SECONDS_PER_MINUTE).snapshot()
-    readings = container_readings(snapshot)
+    readings = container_readings(snapshot, ChartCeiling.STANDARD)
     amounts = snapshot.compartment_agent_amounts
     total = sum(amounts.of(quantity) for quantity in COMPARTMENT_QUANTITIES)
     expected_texts = []
@@ -310,10 +323,10 @@ def test_fat_s_share_grows_through_the_first_hour_while_its_container_stays_near
     """
 
     controller = _run("sevoflurane", 10 * SECONDS_PER_MINUTE)
-    early = container_readings(controller.snapshot())[-1]
+    early = container_readings(controller.snapshot(), ChartCeiling.STANDARD)[-1]
     for _ in range(50 * SECONDS_PER_MINUTE // SIMULATION_STEP_S):
         controller.advance()
-    late = container_readings(controller.snapshot())[-1]
+    late = container_readings(controller.snapshot(), ChartCeiling.STANDARD)[-1]
     assert early.share is not None
     assert late.share is not None
 
@@ -339,9 +352,38 @@ def test_each_container_is_marked_every_half_mac_of_the_standard_scale(agent_id:
     snapshot = controller.snapshot()
     top = 3 * load_agent_parameters(agent_id).mac_at_age_40_percent
 
-    assert scale_marks(snapshot) == pytest.approx([sixth / 6 for sixth in range(1, 6)])
-    assert f"0 to {top:g}% of 1 atm (3 ×MAC)" in scale_caption(snapshot)
-    assert "Marks stand every 0.5 ×MAC." in scale_caption(snapshot)
+    assert scale_marks(snapshot, ChartCeiling.STANDARD) == pytest.approx(
+        [sixth / 6 for sixth in range(1, 6)]
+    )
+    assert f"0 to {top:g}% of 1 atm (3 ×MAC)" in scale_caption(snapshot, ChartCeiling.STANDARD)
+    assert "Marks stand every 0.5 ×MAC." in scale_caption(snapshot, ChartCeiling.STANDARD)
+
+
+@pytest.mark.parametrize(
+    ("ceiling", "top"),
+    [
+        # Mapleson 1996 (PMID 8777094), Abstract: 1.17% isoflurane at age 40.
+        # 1.5 × 1.17 = 1.755 and 4.5 × 1.17 = 5.265 are both ties at two
+        # decimals. The products in binary are just below each tie, so they
+        # round down, as the chart's off-scale notice rounds them.
+        (ChartCeiling.LOW, "1.75"),
+        (ChartCeiling.HIGH, "5.26"),
+    ],
+)
+def test_the_caption_names_isoflurane_s_top_at_the_readouts_two_decimals(
+    ceiling: ChartCeiling, top: str
+) -> None:
+    """`PL-7LZ7`: the caption names the top with the value the chart's notice gives it.
+
+    The caption once printed isoflurane's 1.5 and 4.5 ×MAC tops as 1.755% and
+    5.265%, while the chart's off-scale notice named the same tops 1.75% and
+    5.26%. So two Views gave one top as two numbers. The top now goes through
+    the 1 MAC line's rounding, two decimals with no trailing zero.
+    """
+
+    caption = scale_caption(SimulationController(agent_id="isoflurane").snapshot(), ceiling)
+
+    assert f"0 to {top}% of 1 atm ({ceiling.label})" in caption
 
 
 def test_the_scale_caption_ends_with_the_body_stores_caveat_and_leaves_the_unit_out() -> None:
@@ -354,7 +396,7 @@ def test_the_scale_caption_ends_with_the_body_stores_caveat_and_leaves_the_unit_
     the unit is not stated twice.
     """
 
-    caption = scale_caption(SimulationController().snapshot())
+    caption = scale_caption(SimulationController().snapshot(), ChartCeiling.STANDARD)
 
     assert caption.endswith(
         "\nAmounts in the body read high,\nas they are gas at body temperature."
@@ -391,7 +433,7 @@ def test_the_schematic_shows_every_part_from_one_snapshot() -> None:
 
     seconds = 10 * SECONDS_PER_MINUTE
     snapshot = _run_with_no_ventilation(8.0, seconds).snapshot()
-    shown = schematic_shown(snapshot)
+    shown = schematic_shown(snapshot, ChartCeiling.STANDARD)
     circuit = shown.readings[0]
 
     assert _circuit_percent(8.0, seconds, float(snapshot.circuit_volume_l)) > AXIS_TOP_PERCENT
@@ -427,7 +469,7 @@ def test_a_stored_total_that_is_negative_or_not_finite_is_refused_by_name(total_
     message = f"the run's stored agent must be finite and not negative, not {total_l!r} L"
 
     with pytest.raises(ValueError, match=re.escape(message)):
-        container_readings(snapshot)
+        container_readings(snapshot, ChartCeiling.STANDARD)
 
 
 def test_the_line_over_a_schematic_names_the_run_only_while_runs_are_compared() -> None:

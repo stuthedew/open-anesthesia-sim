@@ -141,7 +141,7 @@ src/anesthesia_sim/
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string: a percent, and a multiple of the running agent's 1 MAC; toolkit-independent
 │   ├── currency_code.py            # the rules for a currency: its code is three capital letters, which the preferences store and the cost formatters both read (PL-1P15), and its amounts show to its minor unit, which CLDR gives through Babel; the one module that imports Babel (PL-7R8S); toolkit-independent
-│   ├── preferences.py              # the reader's preferences.json: an AgentPrice per agent and the agent cost View's unit (§ "User state: the reader's preferences", PL-93B3); toolkit-independent
+│   ├── preferences.py              # the reader's preferences.json: an AgentPrice per agent, the agent cost View's unit, and the axis top that every concentration chart and the schematic share (§ "User state: the reader's preferences", PL-93B3, PL-7LZ7); toolkit-independent
 │   ├── playback.py                 # playback rate -> the simulated time each tick owes a run, and the whole steps the run takes for it; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the two bookmark listings, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of the plots at one time window draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
@@ -1168,17 +1168,19 @@ kept in their own file, `preferences.json`. It sits beside the layouts file,
 reads and writes the file. That module imports no Qt.
 <!-- absent: preferences.json workspaces.json -->
 
-The file holds at most one price for each shipped agent (`AgentPrice`), and the
-unit in which the agent cost View shows the delivered agent: millilitres of
-liquid or litres of vapour. `docs/INTERFACE.md` § "A cost at the reader's price"
+The file holds at most one price for each shipped agent (`AgentPrice`), the
+unit in which the agent cost View shows the delivered agent, millilitres of
+liquid or litres of vapour, and the top of the MAC axis that every
+concentration chart and compartment schematic is drawn to, 1.5, 3 or 4.5 ×MAC
+(`ChartCeiling`, `PL-7LZ7`). `docs/INTERFACE.md` § "A cost at the reader's price"
 specifies what a price carries and what is refused. The project ships no price.
 
 - **What a launch does with the file.** Startup code in `app/main.py` opens the
   preferences store (`open_preferences`) in the directory it finds for the
   layouts file (`PL-B396`). The store's load method (`PreferencesStore.load`)
   returns the preferences to use, whether saving is on, and any notice, in one
-  `LoadedPreferences` result. With no file, there is no price or notice, and
-  the unit is millilitres of liquid. If a newer build wrote the file, or the
+  `LoadedPreferences` result. With no file, there is no price or notice, the
+  unit is millilitres of liquid, and the top is 3 ×MAC. If a newer build wrote the file, or the
   file cannot be read or checked entry by entry, saving is turned off for the
   session, so the file is left as it is. The notice says why. Otherwise, each
   entry is checked. A refused price is not used, and no default takes its
@@ -1186,18 +1188,25 @@ specifies what a price carries and what is refused. The project ships no price.
   notice says what was refused and why. Until the reader replaces a refused
   entry, each save writes it back unchanged, and the agent cost View shows the
   notice about it. Under the notice, the View offers to discard every refused
-  entry (`ViewRequests.refused_entries_discard`). The reader confirms the
+  price and unit (`ViewRequests.refused_entries_discard`). A refused top falls
+  back to 3 ×MAC, and every chart and schematic names it under its "Axis top"
+  control until the reader chooses a top (`chart_ceiling_notice`). A file of
+  schema version 1, which has no top, opens at 3 ×MAC without a notice. The reader confirms the
   discard first, because it cannot be undone (`PL-7KXN`).
 - **Who uses the preferences.** The dashboard holds the preferences, as it
   holds the compartment selection. It passes them to every View in each tick
-  (`ViewTick`). Only the agent cost View uses them (`PL-B396`). It asks the
-  dashboard to change the unit (`ViewRequests.agent_cost_unit`), so two agent
-  cost Views always show the same unit.
+  (`ViewTick`). The agent cost View uses the prices and the unit (`PL-B396`).
+  It asks the dashboard to change the unit (`ViewRequests.agent_cost_unit`), so
+  two agent cost Views always show the same unit. The dashboard assembles every
+  chart frame and every run's schematic at the top (`PL-7LZ7`). Each chart and
+  the schematic asks it for another top (`ViewRequests.chart_ceiling`), so all
+  of them always draw at one top.
 - **When the file is written.** The preferences store writes the whole file when
   asked (`PreferencesStore.save`). The dashboard saves as soon as the reader
   picks the agent cost View's unit (`PL-B396`), sets or removes a price
-  (`PL-1P15`) or discards the refused entries (`PL-7KXN`), as Blender saves its
-  preferences on change. Nothing is
+  (`PL-1P15`), discards the refused entries (`PL-7KXN`) or chooses an axis top
+  on any chart or schematic (`PL-7LZ7`), as Blender saves its preferences on
+  change. Nothing is
   written until the reader does one of these.
 - **How a save works.** A save takes the same atomic write as the saved
   Workspaces, through `user_files.py`. No previous version is kept,

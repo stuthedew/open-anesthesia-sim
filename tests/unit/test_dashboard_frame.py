@@ -560,6 +560,7 @@ def _frame(
         shown,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=held_start_s,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 
@@ -583,6 +584,7 @@ def _compared_frame(*controllers: Any) -> ChartFrame:
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 
@@ -3052,6 +3054,7 @@ def test_each_run_s_unmarked_changes_line_is_named_while_runs_are_compared() -> 
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
     assert unmarked_changes_lines(frame) == (
@@ -5201,6 +5204,7 @@ def test_the_axis_caption_says_when_the_window_is_centred_for_a_preview() -> Non
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
     caption = time_axis_caption(frame)
 
@@ -5240,6 +5244,7 @@ def test_a_preview_above_the_axis_is_named_with_its_highest_predicted_value() ->
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
     preview = frame.runs[0].preview
     assert preview is not None
@@ -5279,6 +5284,7 @@ def test_a_run_and_its_preview_both_above_the_axis_are_named_in_two_sentences() 
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
     run = frame.runs[0]
     preview = run.preview

@@ -58,6 +58,7 @@ from anesthesia_sim.app.chart_time_base import ChartWindow, time_base_for_span
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import run_label
+from anesthesia_sim.app.formatting import ChartCeiling
 from anesthesia_sim.app.preferences import Preferences
 from anesthesia_sim.app.run_presentation import ShownFrame, ValuesStanding, shown_drawn
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
@@ -100,6 +101,7 @@ _REQUESTS = ViewRequests(
     frame=lambda: None,
     compartment=lambda _quantity, _shown: None,
     agent_cost_unit=lambda _unit: None,
+    chart_ceiling=lambda _ceiling: None,
     agent_price=lambda _agent, _price: None,
     refused_entries_discard=lambda: None,
     adjustment_start=lambda _run: None,
@@ -1067,6 +1069,7 @@ def _frames(
                 selection.shown,
                 plot_width_px=400.0,
                 held_start_s=window.held_start_s,
+                ceiling=ChartCeiling.STANDARD,
             ),
             selection,
         )
