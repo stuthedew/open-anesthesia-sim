@@ -16,26 +16,17 @@ jobs:
           enable-cache: true
       - run: uv sync --locked --dev
       - run: sw_vers; system_profiler SPDisplaysDataType | grep -iE "resolution|retina|looks like" || true
-      - name: Probe under the native cocoa platform, window kept at its size
+      - name: Sweep window heights in the macOS style
         continue-on-error: true
         env:
           QT_QPA_PLATFORM: cocoa
-          PROBE_DONT_SHOW: "1"
-        run: mkdir -p "$RUNNER_TEMP/screens/cocoa" && uv run python .github/mac-test-drive/probe.py "$RUNNER_TEMP/screens/cocoa"
-      - name: Probe under cocoa at a Retina scale of 2
+        run: uv run python .github/mac-test-drive/sweep.py
+      - name: Sweep window heights in the Fusion style, macOS font
         continue-on-error: true
         env:
           QT_QPA_PLATFORM: cocoa
-          PROBE_DONT_SHOW: "1"
-          QT_SCALE_FACTOR: "2"
-        run: mkdir -p "$RUNNER_TEMP/screens/retina" && uv run python .github/mac-test-drive/probe.py "$RUNNER_TEMP/screens/retina"
-      - name: Layout tests under cocoa, windows kept at their size
-        continue-on-error: true
-        env:
-          QT_QPA_PLATFORM: cocoa
-          PYTHONPATH: .github/mac-test-drive
-        run: |
-          uv run pytest -q -p no:cacheprovider -p dont_show_on_screen tests/integration/test_compartment_schematic_view.py tests/integration/test_agent_cost_view.py tests/integration/test_qt_rendering.py tests/integration/simulation_view/test_simulation_view_page.py
+          PROBE_STYLE: Fusion
+        run: uv run python .github/mac-test-drive/sweep.py
       - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
