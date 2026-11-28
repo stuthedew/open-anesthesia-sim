@@ -13,6 +13,7 @@ tests move the focus with `ShortcutFocusReason`, which keeps it set, as the
 keyboard shortcut that it stands for would.
 """
 
+import importlib
 from collections import Counter
 from collections.abc import Iterator
 from typing import Final
@@ -21,12 +22,27 @@ import pytest
 from pyqtgraph import PlotWidget
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QAccessible, QAccessibleInterface, QColor, QImage
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QLabel, QPushButton, QScrollArea, QSlider, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QGraphicsView,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QWidget,
+)
 
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import AGENT_SELECTOR_LABEL, control_name, new_case_question
-from anesthesia_sim.app.qt_widgets import FocusRing, NewCaseDialog, SelectorComboBox, label_control
+from anesthesia_sim.app.qt_widgets import (
+    DescribedGraphic,
+    FocusRing,
+    NewCaseDialog,
+    SelectorComboBox,
+    label_control,
+)
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
@@ -37,6 +53,8 @@ from anesthesia_sim.app.theme import (
     PANEL_RADIUS,
 )
 from anesthesia_sim.app.view_registry import REGISTERED
+from anesthesia_sim.layout.shipped import SHIPPED_WORKSPACE_IDS, shipped_workspaces
+from anesthesia_sim.layout.workspace import ShippedWorkspaceId
 from tests.integration.simulation_view.simulation_view_support import (
     EVERY_REGISTERED_VIEW_SIZE_PX,
     _branched_case,
@@ -290,11 +308,21 @@ SHARED_PURPOSES: Final[dict[tuple[str, str], str]] = {
 }
 
 
-def _compared_dashboard(application: QApplication, runs: int) -> SimulationView:
-    """The dashboard with every kind of View, showing one run or a trunk and its branch."""
+def _compared_dashboard(
+    application: QApplication, runs: int, shipped: ShippedWorkspaceId | None = None
+) -> SimulationView:
+    """The dashboard showing one run or a trunk and its branch, in one Workspace.
+
+    With no `shipped` id, the one Workspace shows every kind of View. With an
+    id, the window holds the shipped Workspaces and shows the one named. The
+    branch is taken in the first shipped Workspace, which shows the branch
+    control, and the window then switches tab, as a user would. The window is
+    large enough that every View draws everything it can show.
+    """
 
     case = _branched_case()
-    view = SimulationView((case.trunk,), case=case, workspaces=every_registered_view())
+    workspaces = every_registered_view() if shipped is None else shipped_workspaces()
+    view = SimulationView((case.trunk,), case=case, workspaces=workspaces)
     view.resize(*EVERY_REGISTERED_VIEW_SIZE_PX)
     view.show()
     application.processEvents()
@@ -307,9 +335,22 @@ def _compared_dashboard(application: QApplication, runs: int) -> SimulationView:
         view.present(False)
         _settle(application)
 
+    if shipped is not None and SHIPPED_WORKSPACE_IDS.index(shipped):
+        index = SHIPPED_WORKSPACE_IDS.index(shipped)
+        QTest.mouseClick(view.tab_strip.tab_at(index), Qt.MouseButton.LeftButton)
+        _settle(application)
+        assert view.workspaces.active == index
+
     assert len(view.runs) == runs
 
     return view
+
+
+#: The Workspaces a screen-reader walk covers: one that shows every kind of
+#: View, so a View registered later is in the walk, and each shipped
+#: Workspace, as a user first meets it.
+WALKED: Final[tuple[ShippedWorkspaceId | None, ...]] = (None, *SHIPPED_WORKSPACE_IDS)
+WALKED_IDS: Final = ["every kind of View", *(str(shipped) for shipped in SHIPPED_WORKSPACE_IDS)]
 
 
 def _reachable_purposes(window: QWidget) -> list[tuple[str, str]]:
@@ -329,11 +370,34 @@ def _reachable_purposes(window: QWidget) -> list[tuple[str, str]]:
     ]
 
 
+def _told_names(window: QWidget) -> list[tuple[str, str]]:
+    """Return the role and the name a screen reader is told for each control and picture shown.
+
+    The controls are those `_reachable_purposes` returns. A picture that takes
+    no focus is added, because a screen reader reaches it by moving through
+    the window's objects. A picture that takes the focus is a control already,
+    so it is not counted twice. Static text is left out: its name is the text the screen shows
+    in that place, so the same words shown twice are told as the screen
+    shows them.
+    """
+
+    pictures = [
+        (node.role().name, node.text(QAccessible.Text.Name))
+        for node in _accessible_tree(QAccessible.queryAccessibleInterface(window))
+        if node.role() is QAccessible.Role.Graphic
+        and not node.state().invisible
+        and not node.state().focusable
+    ]
+
+    return [*_reachable_purposes(window), *pictures]
+
+
 @pytest.mark.parametrize("runs", [1, 2], ids=["one run", "two runs compared"])
+@pytest.mark.parametrize("shipped", WALKED, ids=WALKED_IDS)
 def test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing(
-    application: QApplication, runs: int
+    application: QApplication, shipped: ShippedWorkspaceId | None, runs: int
 ) -> None:
-    """`PL-YSFX`: each control a screen reader reaches has a name no other control of its role has.
+    """`PL-YSFX`: each control or picture a reader reaches has a name no other of its role has.
 
     The W3C's ARIA Authoring Practices Guide asks for "unique names for
     elements with the same role unless the elements are actually identical"
@@ -342,18 +406,209 @@ def test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing(
     screen-reader user hears only its name. Before `PL-YSFX`, two compared
     runs gave two selectors called "Playback" and two Start buttons, and the
     two plots gave two selectors called "Time base". The walk covers every kind
-    of View, so a control added later that repeats another's name fails here.
+    of View and every shipped Workspace, so a control or a picture added later
+    that repeats another's name fails here (`PL-9XGQ`).
+
+    Only the Workspace with every kind of View checks that each entry of
+    `SHARED_PURPOSES` is still needed, because a shipped Workspace with one
+    Area would have no border to share a name.
     """
 
-    view = _compared_dashboard(application, runs)
-    counts = Counter(_reachable_purposes(view))
+    view = _compared_dashboard(application, runs, shipped)
+    counts = Counter(_told_names(view))
     shared = {purpose for purpose, count in counts.items() if count > 1}
     view.close()
 
     assert sorted(shared - set(SHARED_PURPOSES)) == []
-    assert sorted(set(SHARED_PURPOSES) - shared) == [], (
-        "these entries of SHARED_PURPOSES name controls that no longer share a name - remove each"
+
+    if shipped is None:
+        assert sorted(set(SHARED_PURPOSES) - shared) == [], (
+            "these entries of SHARED_PURPOSES name controls that no longer share a name - "
+            "remove each"
+        )
+
+
+#: The widget classes that paint themselves but draw no picture, each against
+#: what it draws. A screen reader is told about each in another way, or what it
+#: draws is told beside it. A class of this program that paints itself and is
+#: not listed is taken for a picture, so the walk below fails on it until it is
+#: described, as a `DescribedGraphic`, or listed here with its reason. A
+#: subclass is covered by the class whose painting it keeps.
+PAINTED_NOT_PICTURES: Final[dict[str, str]] = {
+    "anesthesia_sim.app.area_layout._AreaHandle": (
+        "a border between Areas, drawn as a line only while a drag of it is one move away; "
+        "a screen reader is told it as a grip with a name"
+    ),
+    "anesthesia_sim.app.area_layout._CornerZone": (
+        "an Area corner's grip; a screen reader is told it as a control with a name"
+    ),
+    "anesthesia_sim.app.area_layout._LayoutOverlay": (
+        "a corner drag's preview, drawn only while a pointer drags; the Area menu offers the "
+        "same splits, joins and swaps in words"
+    ),
+    "anesthesia_sim.app.qt_chart._LineSwatch": (
+        "a legend's sample of a line, beside the check box that names the line"
+    ),
+    "anesthesia_sim.app.qt_chart._BandSwatch": (
+        "the legend's sample of the MAC-awake band, beside the text that names the band"
+    ),
+    "anesthesia_sim.app.qt_schematic.ContainerNames": (
+        "the six compartment names over their containers, which the schematic's description "
+        "names one line each"
+    ),
+    "anesthesia_sim.app.qt_widgets.FocusRing": (
+        "the ring round the control that has the keyboard focus, which a screen reader "
+        "follows itself"
+    ),
+    "anesthesia_sim.app.qt_widgets.SelectorComboBox": (
+        "a selector's arrow; a screen reader is told the selector as a combo box with a name "
+        "and a value"
+    ),
+}
+
+
+def _painter(widget: QWidget) -> str | None:
+    """Return the class of this program that paints `widget`, or None where Qt or a library does."""
+
+    painter = next(kind for kind in type(widget).__mro__ if "paintEvent" in vars(kind))
+
+    if not painter.__module__.startswith("anesthesia_sim."):
+        return None
+
+    return f"{painter.__module__}.{painter.__qualname__}"
+
+
+def _is_picture(widget: QWidget) -> bool:
+    """Return whether `widget` draws a picture.
+
+    A picture is a graphics view, which every plot is drawn in, an SVG
+    widget, a label that shows an image, a recorded picture or a movie and no
+    text, or a widget that a class of this program paints and
+    `PAINTED_NOT_PICTURES` does not list. A picture drawn some
+    other way, such as from an event filter, is not found here, which is why
+    each `DescribedGraphic` and each node that reports itself as an image is
+    checked as well.
+    """
+
+    if isinstance(widget, (QGraphicsView, QSvgWidget)):
+        return True
+
+    if isinstance(widget, QLabel):
+        shows = not widget.pixmap().isNull() or not widget.picture().isNull()
+
+        return not widget.text() and (shows or widget.movie() is not None)
+
+    painter = _painter(widget)
+
+    return painter is not None and painter not in PAINTED_NOT_PICTURES
+
+
+def _described(node: QAccessibleInterface) -> bool:
+    """Return whether `node` reports itself as an image with a name and a description."""
+
+    return (
+        node.role() is QAccessible.Role.Graphic
+        and bool(node.text(QAccessible.Text.Name))
+        and bool(node.text(QAccessible.Text.Description))
     )
+
+
+def _undescribed_pictures(window: QWidget) -> list[str]:
+    """Return each picture shown in `window` that a screen reader is not told about on its own.
+
+    Each picture must sit in a `DescribedGraphic` that reports itself as an
+    image with a name and a description, and no two pictures may share one,
+    because one text alternative would then be read for two pictures. Each
+    `DescribedGraphic` must be shown, since the window is large enough for
+    every View to draw all it can. Each other node that reports itself as an
+    image needs a name and a description too.
+    """
+
+    undescribed = []
+    covered: Counter[int] = Counter()
+    graphics = window.findChildren(DescribedGraphic)
+
+    for widget in window.findChildren(QWidget):
+        if not widget.isVisible() or not _is_picture(widget):
+            continue
+
+        graphic: QWidget | None = widget
+
+        while graphic is not None and not isinstance(graphic, DescribedGraphic):
+            graphic = graphic.parentWidget()
+
+        if graphic is None or not _described(QAccessible.queryAccessibleInterface(graphic)):
+            undescribed.append(type(widget).__name__)
+        else:
+            covered[id(graphic)] += 1
+
+    undescribed.extend(
+        f"{type(graphic).__name__} that holds {covered[id(graphic)]} pictures"
+        for graphic in graphics
+        if covered[id(graphic)] > 1
+    )
+    undescribed.extend(
+        f"hidden {type(graphic).__name__}" for graphic in graphics if not graphic.isVisible()
+    )
+    undescribed.extend(
+        f"{node.role().name} {type(node.object()).__name__}"
+        for node in _accessible_tree(QAccessible.queryAccessibleInterface(window))
+        if node.role() is QAccessible.Role.Graphic
+        and not node.state().invisible
+        and not _described(node)
+    )
+
+    return undescribed
+
+
+@pytest.mark.parametrize("runs", [1, 2], ids=["one run", "two runs compared"])
+@pytest.mark.parametrize("shipped", WALKED, ids=WALKED_IDS)
+def test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named(
+    application: QApplication, shipped: ShippedWorkspaceId | None, runs: int
+) -> None:
+    """`PL-9XGQ`: no control a reader can reach goes unnamed, and no picture undescribed.
+
+    WCAG 2.2 SC 4.1.2 (Name, Role, Value) asks every control for a name, and
+    SC 1.1.1 (Non-text Content) asks every picture for a text alternative. A
+    plot takes no focus, so the walk of the controls passed the wash-in plot
+    and the schematic while they gave a screen reader nothing (`PL-R1M6`).
+    This walk finds each picture from the widgets shown, so a plot, a
+    schematic or a painted widget added later to any View is in it.
+    """
+
+    view = _compared_dashboard(application, runs, shipped)
+    areas = len(view.layout_container.model.areas())
+    built = len(view.layout_container.views())
+    pictures = [widget for widget in view.findChildren(DescribedGraphic) if widget.isVisible()]
+    unnamed = _unnamed(view)
+    undescribed = _undescribed_pictures(view)
+    view.close()
+
+    # An Area whose View failed to build shows a notice instead, and would
+    # hide that View's pictures from the walk.
+    assert built == areas
+    assert pictures
+    assert unnamed == []
+    assert undescribed == []
+
+
+def test_each_painted_widget_that_draws_no_picture_still_paints() -> None:
+    """Each entry of `PAINTED_NOT_PICTURES` names a class that still paints itself.
+
+    An entry for a class that is gone or no longer paints would hide the next
+    class given that name.
+    """
+
+    stale = []
+
+    for name in PAINTED_NOT_PICTURES:
+        module, _, qualname = name.rpartition(".")
+        kind = getattr(importlib.import_module(module), qualname, None)
+
+        if kind is None or "paintEvent" not in vars(kind):
+            stale.append(name)
+
+    assert stale == []
 
 
 def test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot(
