@@ -3187,7 +3187,10 @@ type. It is stated once, instead of being argued again for each mechanism.
 Any later floating mechanism must comply with the occlusion rule, rather
 than being ruled out ahead of time. **It is settled** (`PL-WLWY`, project
 owner, 2026-09-15), in `docs/INTERFACE.md` § "Minimum displayed outputs" ->
-"What this list requires once the layout is the reader's".
+"What this list requires once the layout is the reader's". That section also
+holds the rule's one exception: a question that blocks input to the
+application may cover a required value while every run waits (project owner,
+2026-11-28, ratified, `PL-JV5H`).
 
 That list now divides into three parts. The first is an **unconditional**
 set that no workspace may remove and nothing may cover. This set is stated
