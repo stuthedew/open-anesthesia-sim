@@ -37,4 +37,6 @@ Without `WA_DontShowOnScreen` 32 tests fail, because macOS shrinks every window 
 
 **Done when.** A macOS job in CI runs the layout test files listed above under Qt's `cocoa` platform on every pull request that runs the test suite, and each of the four failures listed above passes there or has been re-derived for macOS's font, with the reason written in this brief.
 
+**Ordered 2026-11-28.** This is the first work after the v0.7.0 cut (project owner, 2026-11-28, ratified, over leaving it to the queue's ordinary order).
+
 **Generator check.** This is the cause `PL-H100` names: every layout test runs in a Linux font and style, so a fit that holds there is never checked in macOS's system font. The fact misread is whether a layout that fits in the test fonts fits in the user's platform font. `PL-H100` is its one member, and one member is not a generator.
