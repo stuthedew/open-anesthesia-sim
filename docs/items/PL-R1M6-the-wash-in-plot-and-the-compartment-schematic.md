@@ -3,7 +3,7 @@ id: PL-R1M6
 title: The wash-in plot and the compartment schematic give a screen reader no text alternative, as the concentration chart did before PL-T9RB
 priority: P3
 effort: S
-status: untriaged
+status: ready
 classes: defect
 feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_chart.py
@@ -22,3 +22,7 @@ payoff: a screen-reader user can learn what the wash-in plot and the compartment
 **Done when.** A test shows that each of the two widgets reports the role `Graphic`, a name naming what it plots, and a description with the values it draws, and a second test shows that the description follows a later frame.
 
 **How it was found.** Building `PL-T9RB`, 2026-11-27: the same accessibility walk that found the concentration chart unnamed shows these two as unnamed client areas, which VoiceOver on macOS passes over.
+
+**Reproduced 2026-11-28.** In `src/anesthesia_sim/app/qt_chart.py` only the concentration chart installs an accessible interface (`_ConcentrationChartAccessible`, role `Graphic`, installed by `QAccessible.installFactory`). `WashInChart` and the schematic's widgets in `src/anesthesia_sim/app/qt_schematic.py` install none and set no accessible name.
+
+**Generator check.** A member of `PL-9XGQ`: what a screen reader is told about each element on screen. The walk that `PL-RK9Z` built checks only nodes that take the focus, and a plot takes none, so this passed it.
