@@ -1684,11 +1684,14 @@ branches: `test_resetting_the_trunk_asks_before_dropping_a_branch_that_holds_wor
 
 Runs wait during a question because otherwise a user who spent ten seconds on
 it at 300× playback would come back to a case 50 simulated minutes further on.
-The wait works by skipping ticks of the step timer. One test enforces the wait
-during the trunk's Reset question
-(`test_the_run_does_not_advance_while_a_reset_question_is_open`), and two tests
-beside that one do the same for the question asked before a change of agent
-and the Workspace strip's questions.
+The wait works by skipping ticks of the step timer. Three tests in
+`tests/integration/simulation_view/test_simulation_view_comparison.py` enforce
+the wait, one for each kind of question:
+`test_the_run_does_not_advance_while_a_reset_question_is_open`,
+`test_a_running_run_holds_while_its_new_case_question_is_open` and
+`test_a_running_run_holds_while_a_workspace_question_is_open`. They are also the
+tests for the exception that lets these questions cover a required value
+(§ "No required value may be covered").
 
 ## What a branch comparison asserts, and what it does not
 
@@ -3174,6 +3177,18 @@ value, and no application can prevent that. The application can tell when one of
 its windows is minimized or hidden, but it has no reliable signal that a window
 is covered. It must never go on treating a value as shown once it can see that
 the value's window is minimized or hidden.
+
+**A question that blocks the window may cover a required value, because every
+run waits while it is open** (project owner, 2026-11-28, ratified, over showing
+each question inside the window so that it covers nothing, `PL-JV5H`). The
+exception applies to the trunk's Reset question, to the question asked before a
+change of agent starts a new case, and to each question from the Workspace
+strip. Each one opens as a window over the dashboard. While it is open, it
+blocks the rest of the window and every run waits (§ "Discarding a run, and the
+questions that guard it"), so no value it covers can change. The user cannot
+compare the question with the readouts it covers, so each question must name in
+its own text what it would discard. The exception does not apply to a question
+or panel during which a run can step.
 
 **The marks are edited in a view, not in a window of their own** (project
 owner, 2026-11-21, ratified, over a window kept off the readouts, an exemption
