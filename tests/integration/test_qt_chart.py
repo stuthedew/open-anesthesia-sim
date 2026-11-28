@@ -1761,9 +1761,9 @@ def test_the_legend_is_the_visibility_control(application: QApplication) -> None
 def _box(legend: TraceLegend, quantity: RecordedQuantity) -> QCheckBox:
     """Return the box a reader clicks for one compartment, found by its accessible name."""
 
-    from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
+    from anesthesia_sim.app.dashboard_frame import trace_legend_label
 
-    name = TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=trace_style(quantity).label)
+    name = trace_legend_label(trace_style(quantity))
 
     return next(box for box in legend.findChildren(QCheckBox) if box.accessibleName() == name)
 
@@ -2000,27 +2000,34 @@ def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(
     assert mark.vertical
 
 
-def test_every_compartment_box_carries_the_name_assistive_technology_announces(
-    application: QApplication,
-) -> None:
-    """The Flet legend's semantics label survives the port as the box's accessible name.
+def test_each_compartment_box_is_named_by_the_words_it_shows(application: QApplication) -> None:
+    """A box's name is the words it shows, and it carries no description.
 
-    The words beside a box describe the line ("Circuit (solid)"). A screen
-    reader should instead announce the action that the box performs. That is
-    the string the Flet build carried, and the port must not lose it
-    (`PL-25KS`).
+    WCAG 2.2 SC 2.5.3 (Label in Name) asks that a control's name contain the
+    words that label it on screen, because a speech-input user says them to
+    click it. Before `PL-PN2C`, the boxes were named "Draw the Circuit
+    compartment on the chart", which does not contain "Circuit (solid)". The
+    names are written out here rather than built from `trace_legend_label`,
+    so a change to the legend words or to the naming fails here. A
+    description would reach VoiceOver on macOS as the element's label, which
+    could be read in place of the name (`TraceLegend.name_boxes`).
     """
-
-    from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
 
     legend = TraceLegend()
     boxes = legend.findChildren(QCheckBox)
-    names = {box.accessibleName() for box in boxes}
 
-    assert names == {
-        TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
-        for style in COMPARTMENT_TRACES
-    }
+    assert sorted(box.accessibleName() for box in boxes) == sorted(
+        [
+            "Circuit (solid)",
+            "Alveolar (long dash)",
+            "Mixed venous (short dash)",
+            "Vessel-rich group (even dash)",
+            "Muscle (dotted)",
+            "Fat (dash-dot)",
+        ]
+    )
+    assert all(box.accessibleName() == box.text() for box in boxes)
+    assert [box.accessibleDescription() for box in boxes] == [""] * len(boxes)
 
 
 def _dashes_px(pen) -> list[float]:

@@ -301,21 +301,18 @@ def test_the_interface_walk_reaches_the_axis_titles_and_the_accessible_names(
     The hedge and wake-time tests guarantee only what the walk reaches. The
     plots' axis titles and the legend boxes' accessible names are standing
     text that a reader or a screen reader meets, so both are on the walk
-    (`PL-25KS`).
+    (`PL-25KS`). Each box's name is the words it shows (`PL-PN2C`).
     """
 
     from anesthesia_sim.app.chart_frame import COMPARTMENT_TRACES
-    from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
+    from anesthesia_sim.app.dashboard_frame import trace_legend_label
 
     view = _shown_view(application, SimulationController())
     strings = set(view.interface_strings())
 
     assert {"% of 1 atm", "×MAC", "F<sub>A</sub>/F<sub>I</sub>"} <= strings
     assert any(string.startswith("simulated time") for string in strings)
-    assert {
-        TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
-        for style in COMPARTMENT_TRACES
-    } <= strings
+    assert {trace_legend_label(style) for style in COMPARTMENT_TRACES} <= strings
 
 
 def test_the_dashboard_carries_the_educational_disclaimer(application: QApplication) -> None:
