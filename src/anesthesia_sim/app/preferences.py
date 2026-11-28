@@ -854,15 +854,18 @@ def _from_document(document: object) -> Preferences:
 
     version = document[_SCHEMA_VERSION_KEY]
 
-    shown = json.dumps(version, ensure_ascii=False)
-
     if isinstance(version, float) and version.is_integer() and version >= 1:
         raise _InvalidDocument(
-            f"the file's version, {shown}, is written with a decimal point, and the application "
-            f"reads a version only as a whole number written without one, such as {int(version)}"
+            f"the file's version, {json.dumps(version)}, is written with a decimal point, and the "
+            "application reads a version only as a whole number written without one, such as "
+            f"{int(version)}"
         )
 
     if isinstance(version, bool) or not isinstance(version, int) or version < 1:
+        # The version is shown as the file writes it, so a letter outside ASCII
+        # stays a letter. mutmut's `ensure_ascii=None` is equivalent, because
+        # `json.dumps` reads the flag only for whether it is true.
+        shown = json.dumps(version, ensure_ascii=False)  # pragma: no mutate
         raise _InvalidDocument(f"the file's version, {shown}, is not a whole number from 1 up")
 
     if version > PREFERENCES_SCHEMA_VERSION:
