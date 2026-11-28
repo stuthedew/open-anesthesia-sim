@@ -772,6 +772,9 @@ class AreaLayout(QWidget):
 
         model = self._model
         model.area(area_id)
+        # Each other Area is named as the screen reader hears it, so two Areas
+        # that show one kind of View are told apart here too (`PL-XV64`).
+        names = _area_names(model.windows[MAIN_WINDOW].tree, self._title_of)
         entries = [
             self._split_operation(area_id, Orientation.ROW, SPLIT_SIDE_BY_SIDE_LABEL),
             self._split_operation(area_id, Orientation.COLUMN, SPLIT_STACKED_LABEL),
@@ -779,7 +782,7 @@ class AreaLayout(QWidget):
         neighbours = model.neighbours(area_id)
 
         for neighbour in neighbours:
-            label = f"{self._title(neighbour.area_id)}, {_SIDE_WORDS[neighbour.side]}"
+            label = f"{names[neighbour.area_id].text}, {_SIDE_WORDS[neighbour.side]}"
             entries.append(
                 _attempt(label, JOIN_WITH_LABEL, partial(model.join, area_id, neighbour.area_id))
                 if neighbour.whole_edge
@@ -792,7 +795,7 @@ class AreaLayout(QWidget):
             if area.id == area_id:
                 continue
 
-            label = f"{self._title(area.id)}, {_relative_place(own, model.rectangle(area.id))}"
+            label = f"{names[area.id].text}, {_relative_place(own, model.rectangle(area.id))}"
             entries.append(_attempt(label, SWAP_WITH_LABEL, partial(model.swap, area_id, area.id)))
 
         entries.append(self._close_operation(area_id, neighbours))
@@ -1071,11 +1074,6 @@ class AreaLayout(QWidget):
         held = self._parts_hold_the_floor(split, area_id, new_id, orientation, parts)
 
         return SplitPreview(area_id, orientation, at, split if held else None)
-
-    def _title(self, area_id: AreaId) -> str:
-        """Name the View an Area shows by its registry title, or by its tag if no entry has it."""
-
-        return self._title_of(self._model.area(area_id).view)
 
     def _title_of(self, view: ViewKind) -> str:
         """Name a kind of View by its registry title, or by its tag if no entry has it."""
@@ -1367,12 +1365,15 @@ class AreaLayout(QWidget):
         # handle at `index` is the border after the child before it. That
         # child is the pane whose size the border sets, which the W3C's
         # "Window Splitter" pattern calls the primary pane and names the
-        # border after (`PL-XV64`).
+        # border after. The name says which side of the pane the border lies
+        # on, so a border after a pane of two Areas is not taken for the
+        # border between them (`PL-XV64`).
         for index in range(1, splitter.count()):
             pane = _listed(
                 [self._names[area.id].text for area in areas_in(node.children[index - 1])]
             )
-            splitter.handle(index).setAccessibleName(control_name(_BORDER_ACCESSIBLE_NAME, pane))
+            place = f"{_BORDER_PLACE_WORDS[node.orientation]} {pane}"
+            splitter.handle(index).setAccessibleName(control_name(_BORDER_ACCESSIBLE_NAME, place))
 
         return splitter
 
@@ -2859,11 +2860,14 @@ def _handle_layout_requests() -> None:
 
 
 # What assistive technology says a border is, and how the keyboard moves it.
-# The name is followed by the pane before the border, as `_widget_for` writes
-# it, such as "Area border, Concentrations" (`PL-XV64`). The words "Area
-# border" come first, because Qt reports a border with the role Grip, and
-# that role does not say that the border resizes Areas.
+# The name is followed by where the border lies against the pane before it,
+# as `_widget_for` writes it, such as "Area border, right of Parameters" or
+# "Area border, below Concentrations 1" (`PL-XV64`). The words "Area border"
+# come first, because Qt reports a border with the role Grip, and that role
+# does not say that the border resizes Areas.
 _BORDER_ACCESSIBLE_NAME: Final = "Area border"
+# Where a border lies against the pane before it, for each way a split divides.
+_BORDER_PLACE_WORDS: Final = {Orientation.ROW: "right of", Orientation.COLUMN: "below"}
 _BORDER_ACCESSIBLE_DESCRIPTION: Final = (
     "The arrow keys move it. Shift moves it alone. Escape puts it back."
 )

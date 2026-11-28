@@ -154,6 +154,21 @@ name. The Agent cost View's price form is the exception, because each copy
 keeps the agent picked and the price typed in it. Its fields and buttons now
 add the Area's name while two Areas show the View (`PriceEntry.name_for`).
 
+Both blind reviews found three things. A border named only by the pane
+before it, such as "Area border, Concentrations and Wash-in", reads as the
+border between those Areas. So each border now says where it lies against
+that pane: "Area border, below Concentrations and Wash-in", and "Area border,
+right of Parameters". The Area menu's "Join with" and "Swap with" entries
+named each Area by its bare title, so two neighbours of one kind gave two
+entries with one label. They now use the Area's name. Both reviews also said
+that the legend's boxes and the axis top act on state every chart shares, so
+naming them with one half suggests a setting of that half alone. They keep
+the Area's name, because the name tells a screen-reader user which plot a
+control sits beside, as its place tells a sighted user, and a sighted user
+who changes either in one half sees both halves change too.
+`docs/INTERFACE.md` now says so, where it had said that every control acting
+on shared state keeps one name.
+
 Against the code before the change (a worktree at `48942cbc` with only
 `tests/integration/test_keyboard_focus.py` copied in, and that worktree's
 `src/` first on `PYTHONPATH`), 6 of the selected tests fail. The shared-name

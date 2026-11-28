@@ -508,7 +508,7 @@ def test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number(
         "Area corner, Wash-in 2, top left",
         "Area corner, Wash-in 2, top right",
     ]
-    assert "Area border, Concentrations 1" in purposes
+    assert "Area border, right of Concentrations 1" in purposes
     assert {"Concentrations 1", "Concentrations 2", "Parameters"} <= set(purposes)
 
 

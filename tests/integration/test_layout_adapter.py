@@ -1015,8 +1015,9 @@ def test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kin
 
     The Areas are numbered in reading order, and an Area alone of its kind has
     no number. The W3C's "Window Splitter" pattern names a border by the pane
-    whose size it sets, which here is the pane before it. A pane of two Areas
-    is named by both.
+    whose size it sets, which here is the pane before it. The name says which
+    side of that pane the border lies on: to its right in a row, below it in a
+    column.
     """
 
     model = _layout(
@@ -1029,8 +1030,8 @@ def test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kin
     assert _area_widget_names(second) == _named("Other view")
     assert _area_widget_names(third) == _named("Test view 2")
     assert _border_names(container) == {
-        (): ["Area border, Test view 1"],
-        (1,): ["Area border, Other view"],
+        (): ["Area border, right of Test view 1"],
+        (1,): ["Area border, below Other view"],
     }
 
     for frame, name in ((first, AreaName("Test view", 1)), (third, AreaName("Test view", 2))):
@@ -1061,7 +1062,7 @@ def test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_close
     assert kept.area_names[-1] == AreaName("Test view")
     assert _area_widget_names(container.frame(AreaId(1))) == _named("Test view")
     assert _area_widget_names(container.frame(AreaId(2))) == _named("Other view")
-    assert _border_names(container) == {(): ["Area border, Test view"]}
+    assert _border_names(container) == {(): ["Area border, right of Test view"]}
 
     container.set_model(
         _layout(
@@ -1075,7 +1076,9 @@ def test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_close
         "Other view 1",
         "Other view 2",
     ]
-    assert _border_names(container) == {(): ["Area border, Test view", "Area border, Other view 1"]}
+    assert _border_names(container) == {
+        (): ["Area border, right of Test view", "Area border, right of Other view 1"]
+    }
 
     (close,) = [
         operation
@@ -1094,14 +1097,22 @@ def test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_close
 def test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """A pane of three or more Areas is named as a list, with a comma before its last "and"."""
+    """A pane of three or more Areas is named as a list, with a comma before its last "and".
+
+    The border after the whole pane says that it lies to the right of all
+    three, and each border inside the pane says that it lies below one Area.
+    So the border after the pane is not taken for a border between its Areas.
+    """
 
     pane = _column(
         (1 / 3, 1 / 3, 1 / 3), _area(1), Area(AreaId(2), _OTHER), Area(AreaId(3), _THIRD)
     )
     container = _show_with(application, shown, _layout(_row((0.5, 0.5), pane, _area(4)), 5))
 
-    assert _border_names(container)[()] == ["Area border, Test view 1, Other view, and Third view"]
+    assert _border_names(container) == {
+        (): ["Area border, right of Test view 1, Other view, and Third view"],
+        (0,): ["Area border, below Test view 1", "Area border, below Other view"],
+    }
 
 
 def test_an_area_s_name_counts_from_one_and_needs_a_title() -> None:
@@ -1589,26 +1600,31 @@ def test_a_right_click_on_the_header_or_its_chooser_opens_the_area_menu(
 def test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:
-    """A neighbour along part of an edge is listed and unavailable, never left out (`PL-2KXB`)."""
+    """A neighbour along part of an edge is listed and unavailable, never left out (`PL-2KXB`).
+
+    Each other Area is named as a screen reader hears it, with its number
+    among the Areas of its kind. So the two neighbours on the right, which
+    show one kind of View, are told apart (`PL-XV64`).
+    """
 
     container = _show(application, shown, _LEFT_AND_STACK, size=(800, 600))
 
     assert _labels(container, 1) == [
         (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
         (None, SPLIT_STACKED_LABEL, True),
-        (JOIN_WITH_LABEL, "Test view, on the right", False),
-        (JOIN_WITH_LABEL, "Test view, on the right", False),
-        (SWAP_WITH_LABEL, "Test view, above, on the right", True),
-        (SWAP_WITH_LABEL, "Test view, below, on the right", True),
+        (JOIN_WITH_LABEL, "Test view 2, on the right", False),
+        (JOIN_WITH_LABEL, "Test view 3, on the right", False),
+        (SWAP_WITH_LABEL, "Test view 2, above, on the right", True),
+        (SWAP_WITH_LABEL, "Test view 3, below, on the right", True),
         (None, CLOSE_AREA_LABEL, False),
     ]
     assert _labels(container, 2) == [
         (None, SPLIT_SIDE_BY_SIDE_LABEL, True),
         (None, SPLIT_STACKED_LABEL, True),
-        (JOIN_WITH_LABEL, "Test view, on the left", False),
-        (JOIN_WITH_LABEL, "Test view, below", True),
-        (SWAP_WITH_LABEL, "Test view, below, on the left", True),
-        (SWAP_WITH_LABEL, "Test view, below", True),
+        (JOIN_WITH_LABEL, "Test view 1, on the left", False),
+        (JOIN_WITH_LABEL, "Test view 3, below", True),
+        (SWAP_WITH_LABEL, "Test view 1, below, on the left", True),
+        (SWAP_WITH_LABEL, "Test view 3, below", True),
         (None, CLOSE_AREA_LABEL, True),
     ]
 
@@ -1629,7 +1645,7 @@ def test_join_split_swap_and_close_each_draw_the_layout_worked_out_by_hand(
     changes: list[LayoutModel] = []
     container.layout_changed.connect(changes.append)
 
-    container.perform(_operation(container, 2, "Test view, below", JOIN_WITH_LABEL))
+    container.perform(_operation(container, 2, "Test view 3, below", JOIN_WITH_LABEL))
     application.processEvents()
 
     assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 4)
@@ -1647,7 +1663,7 @@ def test_join_split_swap_and_close_each_draw_the_layout_worked_out_by_hand(
     assert container.model == _layout(_row((0.5, 0.5), _area(1), _area(2)), 5)
 
     view_of_1 = _content(container.frame(AreaId(1)))
-    container.perform(_operation(container, 1, "Test view, on the right", SWAP_WITH_LABEL))
+    container.perform(_operation(container, 1, "Test view 2, on the right", SWAP_WITH_LABEL))
     application.processEvents()
 
     assert container.model == _layout(_row((0.5, 0.5), _area(2), _area(1)), 5)

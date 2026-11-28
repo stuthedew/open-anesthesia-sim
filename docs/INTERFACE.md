@@ -4515,16 +4515,22 @@ layout.
    Area menu does from the keyboard what a drag on the corner does. Qt gives
    a corner the generic Client role, so its name is what tells a screen-reader
    user that it is a corner.
-3. Each border between two Areas is named "Area border", then the Areas
-   before it, such as "Area border, Parameters", or "Area border,
-   Concentrations and Wash-in" where the pane before it holds two Areas.
-   Three or more Areas are listed with a comma before the "and", as the
-   Google developer documentation style guide asks. The W3C's window
-   splitter pattern gives a splitter "an accessible name that matches the
-   name of the primary pane".
+3. Each border between two Areas is named "Area border", then where it lies
+   against the Areas before it, such as "Area border, right of Parameters",
+   or "Area border, below Concentrations and Wash-in" where the pane above it
+   holds two Areas. The place word keeps a border after a pane of two Areas
+   from being taken for the border between them. Three or more Areas are
+   listed with a comma before the "and", as the Google developer
+   documentation style guide asks. The W3C's window splitter pattern gives a
+   splitter "an accessible name that matches the name of the primary pane",
+   the pane whose size it sets.
 4. Each control beside a plot adds the Area's name, so the two halves of a
    split Concentrations Area show "Time base, Concentrations 1" and "Time
-   base, Concentrations 2".
+   base, Concentrations 2". The name tells a screen-reader user which plot a
+   control sits beside, as its place on screen tells a sighted user. So the
+   legend's boxes and the axis top add it too, although each acts on state
+   that every chart shares: a change to either in one half changes the
+   other half too.
 5. The concentration chart's legend appears in no other kind of View. So its
    boxes and its scroll box add the Area's name only while two Areas show the
    chart, such as "Concentration chart legend, Concentrations 2".
@@ -4536,21 +4542,25 @@ layout.
    the price typed in it. So while two Areas show that View, each form's
    fields and buttons add the Area's name, such as "Bottle price, Agent cost
    2".
+8. The Area menu's "Join with" and "Swap with" entries name each other Area
+   by its Area name, so two neighbours that show one kind of View are told
+   apart, such as "Concentrations 2, on the right".
 
-The controls of every other kind of View act on state that all its copies
-share, such as a setting's slider or the unit the agent cost is shown in. So
-two copies of one of those controls do the same thing, as two links to one
-place do, and they keep one name. The Authoring Practices Guide gives two
-such links as its example of identical elements
+The other controls of the Views without a plot act on state that all copies
+of the View share, such as a setting's slider or the unit the agent cost is
+shown in. So two copies of one of those controls do the same thing, as two
+links to one place do, and they keep one name. The Authoring Practices Guide
+gives two such links as its example of identical elements
 (`test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
 `test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number` and
 `test_each_half_of_a_split_agent_cost_area_names_its_own_price_form` in
 `tests/integration/test_keyboard_focus.py`, and
 `test_each_area_is_named_by_its_view_and_numbered_among_areas_of_the_same_kind`,
 `test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed`,
-`test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma`
-and `test_an_area_s_name_counts_from_one_and_needs_a_title` in
-`tests/integration/test_layout_adapter.py`).
+`test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma`,
+`test_an_area_s_name_counts_from_one_and_needs_a_title` and
+`test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make`
+in `tests/integration/test_layout_adapter.py`).
 
 **A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
 reader says nothing when a label's text changes, and SC 4.1.3 (Status
