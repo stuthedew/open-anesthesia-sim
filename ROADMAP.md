@@ -1318,7 +1318,7 @@ classed `safety`, because it builds a unit conversion that is displayed.
 - PL-596J (S) The concentration chart's text alternative gives the MAC-awake band without the legend's words "population, read against vessel-rich group trace", so a screen-reader user is not told which trace the band is read against
 - PL-BQB6 (M) Where the window's edge cuts across an Area while the page scrolls sideways, a line of the Area's header or its View's pinned row is cut mid-sentence, such as the schematic's "Tensions are in % of 1 atm."
 - PL-2XRN (M) On macOS, VoiceOver may read the compartment schematic's description without the run and instant its name gives
-- PL-26K2 (M) On macOS, VoiceOver reads a control's description in place of its name, so seven controls are announced without the Area, corner or plot they belong to
+- PL-26K2 (M) On macOS, VoiceOver reads a widget's description in place of its name, so seven controls and the two plots are announced without the Area, corner, plot or window their name gives
 
 ### Captures after the cut
 
@@ -1631,10 +1631,11 @@ name its own run and instant removes the hazard whatever VoiceOver reads.
 
 **`PL-26K2` joined the frozen list on 2026-11-28, after the freeze.**
 `PL-2XRN` split it off, and the descriptions were present before the list
-froze. On macOS, VoiceOver reads a control's description in place of its name,
+froze. On macOS, VoiceOver reads a widget's description in place of its name,
 so five layout controls and each plot's earlier and later buttons are announced
-without the Area, corner or plot they belong to. None of them shows a clinical
-value, so it is not a `safety` item. It is placed rather than deferred because
+without the Area, corner or plot they belong to, and each plot without its
+window and whether it is held. Every value a plot describes still names its run
+and its instant, so it is not a `safety` item. It is placed rather than deferred because
 this thread works it next, after `PL-2XRN`.
 
 ### Required scope

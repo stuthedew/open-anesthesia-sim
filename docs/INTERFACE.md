@@ -4746,9 +4746,11 @@ runs could hear one run's values with no word of which run they are
 v6.12.0, Apple's "Accessibility Programming Guide for OS X", which says a
 screen reader asks each element, such as a button, for its label, and Qt's
 bug report QTBUG-140871, which records VoiceOver reading a description in
-place of the name, all read 2026-11-28. The two plots' descriptions need no
+place of the name, all read 2026-11-28. The two plots' descriptions have no
 such line, because each of their value lines names its run while runs are
-compared, and its instant. After that line, the schematic's description names
+compared, and its instant. Their names also give the window and whether it is
+held, and the Area's name while another Area shows a copy, which a Mac user
+does not hear (`PL-26K2`). After that line, the schematic's description names
 the picture and how its containers are joined, says that the values are
 modelled, and gives the tensions' unit and the amounts' unit. Then it takes the schematic's lines in the order a reader meets them:
 what the shares are of, one line for each container, such as "Fat: 0.03%,
