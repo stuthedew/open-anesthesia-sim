@@ -4962,7 +4962,7 @@ clinical value.
 | Circuit | solid | — | 3 |
 | Alveolar | long dash | 10 on, 4 off | 3 |
 | Mixed venous | short dash | 4 on, 3 off | 2 |
-| Vessel-rich | even dash | 6 on, 6 off | 2 |
+| Vessel-rich group | even dash | 6 on, 6 off | 2 |
 | Muscle | dotted | 2 on, 3 off | 2 |
 | Fat | dash-dot | 12 on, 4 off, 2 on, 4 off | 2 |
 
@@ -5041,7 +5041,7 @@ simulated for each dichromacy:
 | Circuit | `#176B87` | 6.02 | 5.67 | 6.21 | 6.02 |
 | Alveolar | `#159789` | 3.61 | 3.23 | 3.84 | 3.63 |
 | Mixed venous | `#7C3AED` | 5.70 | 5.96 | 4.68 | 5.55 |
-| Vessel-rich | `#DC2626` | 4.83 | 7.18 | 4.14 | 4.84 |
+| Vessel-rich group | `#DC2626` | 4.83 | 7.18 | 4.14 | 4.84 |
 | Muscle | `#D17206` | 3.43 | 3.96 | 3.22 | 3.46 |
 | Fat | `#5D5510` | 7.57 | 7.51 | 7.63 | 7.62 |
 
@@ -5050,16 +5050,16 @@ section rests on it:
 
 | Pair | Normal | Protanopia | Deuteranopia | Tritanopia | Worst |
 | --- | --- | --- | --- | --- | --- |
-| Vessel-rich / Fat | 1.57 | 1.05 | 1.84 | 1.57 | **1.05** |
+| Vessel-rich group / Fat | 1.57 | 1.05 | 1.84 | 1.57 | **1.05** |
 | Alveolar / Muscle | 1.05 | 1.23 | 1.19 | 1.05 | **1.05** |
 | Circuit / Mixed venous | 1.06 | 1.05 | 1.33 | 1.08 | **1.05** |
-| Alveolar / Vessel-rich | 1.34 | 2.22 | 1.08 | 1.33 | **1.08** |
-| Mixed venous / Vessel-rich | 1.18 | 1.20 | 1.13 | 1.15 | **1.13** |
+| Alveolar / Vessel-rich group | 1.34 | 2.22 | 1.08 | 1.33 | **1.08** |
+| Mixed venous / Vessel-rich group | 1.18 | 1.20 | 1.13 | 1.15 | **1.13** |
 | Alveolar / Mixed venous | 1.58 | 1.84 | 1.22 | 1.53 | **1.22** |
 | Circuit / Fat | 1.26 | 1.33 | 1.23 | 1.27 | **1.23** |
-| Circuit / Vessel-rich | 1.25 | 1.27 | 1.50 | 1.24 | **1.24** |
+| Circuit / Vessel-rich group | 1.25 | 1.27 | 1.50 | 1.24 | **1.24** |
 | Mixed venous / Fat | 1.33 | 1.26 | 1.63 | 1.37 | **1.26** |
-| Vessel-rich / Muscle | 1.41 | 1.81 | 1.28 | 1.40 | **1.28** |
+| Vessel-rich group / Muscle | 1.41 | 1.81 | 1.28 | 1.40 | **1.28** |
 | Circuit / Muscle | 1.75 | 1.43 | 1.93 | 1.74 | **1.43** |
 | Mixed venous / Muscle | 1.66 | 1.50 | 1.45 | 1.61 | **1.45** |
 | Circuit / Alveolar | 1.67 | 1.75 | 1.62 | 1.66 | **1.62** |

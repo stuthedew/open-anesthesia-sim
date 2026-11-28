@@ -376,7 +376,7 @@ def test_reset_leaves_the_selected_time_base_alone(application: QApplication) ->
 # (`PL-K4CZ`). They are written out here rather than read from the templates,
 # so a change to the entries' words fails this module.
 _ONE_MAC_ENTRY_WORDS = ", reference adult (alveolar, wide dash)"
-_BAND_ENTRY_WORDS = "; population, read against vessel-rich trace"
+_BAND_ENTRY_WORDS = "; population, read against vessel-rich group trace"
 
 
 def test_the_mac_axis_and_references_follow_the_agent(application: QApplication) -> None:

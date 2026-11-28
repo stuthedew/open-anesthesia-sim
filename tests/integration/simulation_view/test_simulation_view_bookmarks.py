@@ -101,7 +101,7 @@ def test_a_target_entered_in_the_editor_names_its_compartment_and_height(
 
     listed = _marks_panel(view).targets.text()
 
-    assert listed == "Vessel-rich 0.80 ×MAC"
+    assert listed == "Vessel-rich group 0.80 ×MAC"
 
 
 def test_the_compartment_picker_offers_the_six_drawn_compartments_and_no_ratio(
@@ -452,7 +452,7 @@ def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplica
     # And the panel still draws, which is what the refusal above would stop.
     view.present(False)
 
-    assert _marks_panel(view).targets.text().startswith("Vessel-rich")
+    assert _marks_panel(view).targets.text().startswith("Vessel-rich group")
 
 
 def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplication) -> None:

@@ -43,6 +43,7 @@ from anesthesia_sim.core.supported_ranges import AlveolarVentilation
 
 __all__ = [
     "COMPARTMENT_FRACTION_NAMES",
+    "COMPARTMENT_GLOSSES",
     "COMPARTMENT_NAMES",
     "COMPARTMENT_QUANTITIES",
     "COMPARTMENT_STATE_INDEX",
@@ -98,18 +99,51 @@ COMPARTMENT_QUANTITIES: Final = (
     RecordedQuantity.FAT,
 )
 
-#: The name the interface shows for each compartment: in the chart's legend and
-#: hover readout, in the mark editor's list of compartments, and in a refused
-#: mark's notice. `chart_frame.COMPARTMENT_TRACES` takes its labels from here, so
-#: a refusal about a mark names a compartment as the legend does (`PL-5867`).
+#: The name the interface shows for each compartment: in its readout, in the
+#: chart's legend and hover readout, over its schematic container, in the mark
+#: editor's list of compartments, and in a refused mark's notice.
+#: `chart_frame.TraceStyle` and `dashboard_frame.ReadoutPanel` read each name
+#: from here and hold no copy, so every place names a compartment the same way
+#: (`PL-5867`, `PL-GRC6`). NUREG-0700 Rev. 3 guideline 1.3.3-4 asks for that:
+#: "the same item is given the same label whenever it appears".
+#:
+#: The names are the field's own. The Gas Man Workbook names "the vessel-rich
+#: group (VRG) ... muscle (MUS), and finally fat (FAT)" (p. 21), and
+#: OpenAnesthesia's page on uptake and distribution lists "Vessel-rich group",
+#: "Muscle" and "Fat".
 COMPARTMENT_NAMES: Final[Mapping[RecordedQuantity, str]] = MappingProxyType(
     {
         RecordedQuantity.CIRCUIT: "Circuit",
         RecordedQuantity.ALVEOLAR: "Alveolar",
         RecordedQuantity.MIXED_VENOUS: "Mixed venous",
-        RecordedQuantity.VESSEL_RICH: "Vessel-rich",
+        RecordedQuantity.VESSEL_RICH: "Vessel-rich group",
         RecordedQuantity.MUSCLE: "Muscle",
         RecordedQuantity.FAT: "Fat",
+    }
+)
+
+#: The hedge shown with each compartment's name: what a clinician would compare
+#: the modelled value with, or None where nothing measured corresponds to it.
+#: The readout row shows it under the name, and the chart's hover readout beside
+#: it, because a floating box has no readout row beside it to supply the hedge.
+#: `chart_frame.TraceStyle` and `dashboard_frame.ReadoutPanel` read it from here.
+#:
+#: The alveolar gloss is "end-tidal-equivalent", never "end-tidal".
+#: `docs/INTERFACE.md` § "Minimum displayed outputs" requires the hedge, because
+#: dead space, airway sampling delay, shunt and V/Q mismatch are all listed in
+#: `docs/MODEL.md` § "Known limitations", so this value is not end-tidal in any
+#: patient. End-tidal is the name of a measurement, and it is the one a
+#: clinician would most readily compare this value with. Do not shorten either
+#: gloss to fit a layout. `test_the_alveolar_readout_is_labelled_end_tidal_equivalent`
+#: checks the pair.
+COMPARTMENT_GLOSSES: Final[Mapping[RecordedQuantity, str | None]] = MappingProxyType(
+    {
+        RecordedQuantity.CIRCUIT: "inspired",
+        RecordedQuantity.ALVEOLAR: "end-tidal-equivalent",
+        RecordedQuantity.MIXED_VENOUS: None,
+        RecordedQuantity.VESSEL_RICH: None,
+        RecordedQuantity.MUSCLE: None,
+        RecordedQuantity.FAT: None,
     }
 )
 

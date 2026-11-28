@@ -115,7 +115,7 @@ from anesthesia_sim.app.formatting import (
     render_mac_multiple,
 )
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
-from anesthesia_sim.app.run_series import RecordedQuantity
+from anesthesia_sim.app.run_series import COMPARTMENT_GLOSSES, COMPARTMENT_NAMES, RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, WashInReading
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidationResult
@@ -1216,14 +1216,26 @@ CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
 #: The 1 MAC line's legend words. `{reference}` is the line's value, as
 #: `mac_reference_caption` writes it, so the value and the line's style are
 #: stated once, in one entry (`PL-K4CZ`). Before the first frame it is the
-#: bare name, `ONE_MAC_LINE_LEGEND_NAME`.
-ONE_MAC_LINE_LEGEND_TEMPLATE: Final = "{reference}, reference adult (alveolar, wide dash)"
+#: bare name, `ONE_MAC_LINE_LEGEND_NAME`. The compartment the line is read
+#: against is named from `run_series.COMPARTMENT_NAMES`, in lower case because
+#: it sits inside a phrase (`PL-GRC6`).
+ONE_MAC_LINE_LEGEND_TEMPLATE: Final = (
+    "{reference}, reference adult ("
+    + COMPARTMENT_NAMES[RecordedQuantity.ALVEOLAR].lower()
+    + ", wide dash)"
+)
 ONE_MAC_LINE_LEGEND_NAME: Final = "1 MAC"
 #: The MAC-awake band's legend words: the band's values, as
 #: `mac_awake_caption` writes them, that they are a population's, and the
 #: trace that the band is read against (`PL-90Y6`, `PL-K4CZ`). Before the
 #: first frame `{reference}` is the bare name, `MAC_AWAKE_BAND_LEGEND_NAME`.
-MAC_AWAKE_BAND_LEGEND_TEMPLATE: Final = "{reference}; population, read against vessel-rich trace"
+#: The trace is named from `run_series.COMPARTMENT_NAMES`, so the band names
+#: the compartment as its legend line does (`PL-GRC6`).
+MAC_AWAKE_BAND_LEGEND_TEMPLATE: Final = (
+    "{reference}; population, read against "
+    + COMPARTMENT_NAMES[RecordedQuantity.VESSEL_RICH].lower()
+    + " trace"
+)
 MAC_AWAKE_BAND_LEGEND_NAME: Final = "MAC-awake"
 #: What assistive technology announces for a compartment's legend box. It
 #: names the action the box performs, not the pattern words beside it, which
@@ -1448,23 +1460,39 @@ def status_word(status: RunStatus, *, stopped_on_mark: bool) -> StatusWord:
 
 @dataclass(frozen=True, slots=True)
 class ReadoutPanel:
-    """The fixed part of one readout panel: its name, its gloss and what it shows.
+    """The fixed part of one readout panel: what it shows, and so its name and gloss.
+
+    A compartment's panel reads its name and gloss from `run_series`'s records
+    by its compartment, so the readout names a compartment as the chart's
+    legend, the schematic and the mark editor do (`PL-GRC6`).
 
     Attributes:
-        name: The modeled quantity, in the model's own terms.
-        qualifier: What a clinician would compare that quantity against, or
-            None where nothing measured corresponds to it. It is drawn
-            smaller than the name because it is the weaker claim of the two.
-            The compartment is what the model computes, and the measurement
-            is what a clinician would compare it with. Type of equal size
-            would present them as two names for one quantity (`PL-NV9W`,
-            `PL-8M05`).
         quantity: The compartment the panel shows, or None for the clock.
     """
 
-    name: str
-    qualifier: str | None
     quantity: RecordedQuantity | None
+
+    @property
+    def name(self) -> str:
+        """The modelled quantity, in the model's own terms, or the clock's name."""
+
+        quantity = self.quantity
+        return CLOCK_PANEL_NAME if quantity is None else COMPARTMENT_NAMES[quantity]
+
+    @property
+    def qualifier(self) -> str | None:
+        """What a clinician would compare the quantity against, or None.
+
+        It is None for the clock and for a compartment that nothing measured
+        corresponds to. It is drawn smaller than the name because it is the
+        weaker claim of the two. The compartment is what the model computes,
+        and the measurement is what a clinician would compare it with. Type
+        of equal size would present them as two names for one quantity
+        (`PL-NV9W`, `PL-8M05`).
+        """
+
+        quantity = self.quantity
+        return None if quantity is None else COMPARTMENT_GLOSSES[quantity]
 
     @property
     def is_clock(self) -> bool:
@@ -1490,23 +1518,20 @@ class ReadoutPanel:
         return quantity
 
 
-# The seven panels in row order. The gloss is "end-tidal-equivalent", never
-# "end-tidal". `docs/INTERFACE.md` § "Minimum displayed outputs" requires the
-# hedge, because dead space, airway sampling delay, shunt and V/Q mismatch are
-# all listed in `docs/MODEL.md` § "Known limitations". So this value is not
-# end-tidal in any
-# patient. End-tidal is the name of a *measurement*, and it is the one a
-# clinician would most readily compare this readout with. Do not shorten
-# either gloss to fit a layout.
-# `test_the_alveolar_readout_is_labelled_end_tidal_equivalent` checks the pair.
+#: The clock panel's name.
+CLOCK_PANEL_NAME: Final = "Simulated time"
+
+# The seven panels in row order. Each compartment's name and gloss are read
+# from `run_series.COMPARTMENT_NAMES` and `COMPARTMENT_GLOSSES`, which say why
+# the alveolar gloss is "end-tidal-equivalent" and never "end-tidal".
 READOUT_PANELS: Final[tuple[ReadoutPanel, ...]] = (
-    ReadoutPanel("Simulated time", None, None),
-    ReadoutPanel("Circuit", "inspired", RecordedQuantity.CIRCUIT),
-    ReadoutPanel("Alveolar", "end-tidal-equivalent", RecordedQuantity.ALVEOLAR),
-    ReadoutPanel("Mixed venous", None, RecordedQuantity.MIXED_VENOUS),
-    ReadoutPanel("Vessel-rich group", None, RecordedQuantity.VESSEL_RICH),
-    ReadoutPanel("Muscle", None, RecordedQuantity.MUSCLE),
-    ReadoutPanel("Fat", None, RecordedQuantity.FAT),
+    ReadoutPanel(None),
+    ReadoutPanel(RecordedQuantity.CIRCUIT),
+    ReadoutPanel(RecordedQuantity.ALVEOLAR),
+    ReadoutPanel(RecordedQuantity.MIXED_VENOUS),
+    ReadoutPanel(RecordedQuantity.VESSEL_RICH),
+    ReadoutPanel(RecordedQuantity.MUSCLE),
+    ReadoutPanel(RecordedQuantity.FAT),
 )
 
 #: Each panel that shows a compartment, in row order (`PL-J791`).

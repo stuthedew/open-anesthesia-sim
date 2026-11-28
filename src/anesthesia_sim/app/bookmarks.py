@@ -1000,7 +1000,7 @@ def _require_position(position: int) -> None:
 def _stated_height(target: MacTarget) -> str:
     """Return a MAC target's height and compartment in a refusal's words.
 
-    An example is "0.80 ×MAC on Vessel-rich". The height is rendered by
+    An example is "0.80 ×MAC on Vessel-rich group". The height is rendered by
     `render_mac_multiple`, and the compartment's name is read from
     `run_series.COMPARTMENT_NAMES`. The marks list builds the target's row from
     the same two, so a refusal and the row it is about name one target in the

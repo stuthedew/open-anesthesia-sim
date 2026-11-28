@@ -585,7 +585,7 @@ def test_the_hover_reports_the_drawn_state_through_the_formatters(
     assert readout == format_trace_hover(run, RecordedQuantity.VESSEL_RICH, index, len(frame.runs))
     assert readout is not None
     assert readout.startswith("Modelled sevoflurane · ")
-    assert readout.splitlines()[1] == "Vessel-rich"
+    assert readout.splitlines()[1] == "Vessel-rich group"
     assert readout.splitlines()[2].endswith(" ×MAC")
     assert "%" in readout.splitlines()[2]
 
@@ -1647,7 +1647,9 @@ def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wra
     one_line = band.height()
 
     assert legend.one_mac_text == one_mac + ", reference adult (alveolar, wide dash)"
-    assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
+    assert (
+        legend.band_mark.label == mac_awake + "; population, read against vessel-rich group trace"
+    )
     assert band.heightForWidth(band.width()) == one_line
 
     narrow = legend.minimumSizeHint().width()
@@ -1667,7 +1669,9 @@ def test_each_clinical_reference_entry_states_its_value_and_the_band_s_words_wra
     assert all(line.endswith((",", ";")) for line in lines[:-1])
     assert "MAC-awake sevoflurane = 0.34 ×MAC (0.61%)," in lines
     assert any(line.startswith("band ±1 SD 0.52–0.70%;") for line in lines)
-    assert legend.band_mark.label == mac_awake + "; population, read against vessel-rich trace"
+    assert (
+        legend.band_mark.label == mac_awake + "; population, read against vessel-rich group trace"
+    )
     legend.close()
 
 
@@ -1691,7 +1695,7 @@ def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
     application.processEvents()
     mark = legend.band_mark
 
-    assert mark.label == "MAC-awake; population, read against vessel-rich trace"
+    assert mark.label == "MAC-awake; population, read against vessel-rich group trace"
     assert mark.edge_pen.color().name() == MAC_AWAKE_BAND_COLOR.lower()
     assert mark.edge_pen.widthF() == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
     assert mark.edge_pen.dashPattern() == []
@@ -2038,7 +2042,7 @@ COMPARTMENT_LEGEND_WORDS = {
     RecordedQuantity.CIRCUIT: "Circuit (solid)",
     RecordedQuantity.ALVEOLAR: "Alveolar (long dash)",
     RecordedQuantity.MIXED_VENOUS: "Mixed venous (short dash)",
-    RecordedQuantity.VESSEL_RICH: "Vessel-rich (even dash)",
+    RecordedQuantity.VESSEL_RICH: "Vessel-rich group (even dash)",
     RecordedQuantity.MUSCLE: "Muscle (dotted)",
     RecordedQuantity.FAT: "Fat (dash-dot)",
 }

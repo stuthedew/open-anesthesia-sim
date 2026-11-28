@@ -1512,9 +1512,12 @@ before any `PySide6` import. On Linux that plugin needs the OS libraries that
 - A new chart series, or a change to how one is drawn → two modules. What the
   series *claims* goes in `app/chart_frame.py`. How pyqtgraph paints it goes in
   `app/qt_chart.py`. A new *compartment* trace is declared in
-  `chart_frame.COMPARTMENT_TRACES`. Its entry there gives four things as one
-  record: the quantity the trace draws, how it is drawn, the legend words that
-  name it, and the gloss its hover text carries. The table belongs to the
+  `chart_frame.COMPARTMENT_TRACES`. Its entry there gives the quantity the
+  trace draws and how it is drawn. The words that name the trace and the gloss
+  its hover text carries are read by that quantity from
+  `run_series.COMPARTMENT_NAMES` and `run_series.COMPARTMENT_GLOSSES`, which
+  the readout reads too, so a new compartment also needs an entry in each
+  (`PL-GRC6`). The table belongs to the
   chart, not to any one run. `assemble_chart_frame` reads it once per run, for
   the substance that the run's snapshot names. The run is recorded under that
   substance's identifier. `ChartFrame.visible` is the dashboard's
