@@ -163,7 +163,7 @@ def scroll_clear_into_view(box: QScrollArea, widget: QWidget, margin: int = 0) -
 
     while ancestor is not None and ancestor is not held:
         if isinstance(ancestor, PinnedHeadingSection) and not ancestor.heading.isAncestorOf(widget):
-            covered += ancestor.heading.sizeHint().height()
+            covered += ancestor.heading_height()
 
         ancestor = ancestor.parentWidget()
 
@@ -325,18 +325,47 @@ class PinnedHeadingSection(QWidget):
         view, it stands in its own space.
         """
 
-        height = self.heading.sizeHint().height()
+        left, width = self._heading_span()
+        height = self._height_at(width)
         shown = in_view(self)
         top = 0 if shown.isEmpty() else min(max(shown.top(), 0), max(self.height() - height, 0))
-        # A heading that slides ends at the section's right edge, so a
-        # control at its right end stays in view with the part in view. It is
-        # never narrower than its least width, so no line is squeezed. Where
-        # the part in view is narrower than that, the section's right edge
-        # cuts the heading's end (`PL-BQB6`).
+
+        return QRect(left, top, width, height)
+
+    def heading_height(self) -> int:
+        """Return the heading's height at the width it is drawn, in pixels."""
+
+        return self._height_at(self._heading_span()[1])
+
+    def _heading_span(self) -> tuple[int, int]:
+        """Return where the heading starts and how wide it is drawn, in the section's pixels.
+
+        A heading that slides ends at the section's right edge, so a control
+        at its right end stays in view with the part in view. It is never
+        narrower than its least width, so no line is squeezed. Where the part
+        in view is narrower than that, the section's right edge cuts the
+        heading's end (`PL-BQB6`).
+        """
+
         left = self._inset if self._slides_left else 0
         width = max(self.width() - left, self._least_line_width()) if left else self.width()
 
-        return QRect(left, top, width, height)
+        return left, width
+
+    def _height_at(self, width: int) -> int:
+        """Return the height the heading needs at `width` pixels wide.
+
+        A heading that holds a line that wraps, such as the line under the
+        compartment schematic's axis top control, takes more rows in a
+        narrower width. Its size hint gives its height at a width Qt picks, so
+        a line could be cut off or followed by an empty row (`PL-B3M6`). Any
+        other heading's height is its size hint's.
+        """
+
+        if self.heading.hasHeightForWidth() and width > 0:
+            return self.heading.heightForWidth(width)
+
+        return self.heading.sizeHint().height()
 
     def _least_line_width(self) -> int:
         """Return the least width that the widest of the heading's lines needs, in pixels.
@@ -386,7 +415,7 @@ class PinnedHeadingSection(QWidget):
 
         self._inset = inset
 
-        height = self.heading.sizeHint().height()
+        height = self.heading_height()
         least_width = self.heading.minimumSizeHint().width() - (
             0 if self._follows_left is None else self._inset
         )

@@ -15,6 +15,7 @@ that `tests/conftest.py` selects.
 
 from collections.abc import Iterator
 from math import exp, floor, log10
+from pathlib import Path
 from typing import NoReturn
 
 import pytest
@@ -36,7 +37,8 @@ from anesthesia_sim.app.compartment_schematic import (
 )
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
-from anesthesia_sim.app.formatting import format_compartment_share, format_elapsed
+from anesthesia_sim.app.formatting import ChartCeiling, format_compartment_share, format_elapsed
+from anesthesia_sim.app.preferences import Preferences, PreferencesFileError, PreferencesStore
 from anesthesia_sim.app.qt_schematic import (
     CanvasParts,
     ContainerNames,
@@ -47,7 +49,7 @@ from anesthesia_sim.app.qt_widgets import ForkPanel
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
-from anesthesia_sim.app.theme import INK, MUTED, WARNING
+from anesthesia_sim.app.theme import INK, MUTED, PANEL_PADDING, VIEW_ROW_SPACING, WARNING
 from anesthesia_sim.app.view_registry import (
     BOOKMARKS,
     BRANCH,
@@ -987,11 +989,14 @@ def _paused_dashboard(
     *,
     branched: bool,
     dial_percent: float | None = None,
+    preferences_store: PreferencesStore | None = None,
 ) -> SimulationView:
     """Return a dashboard at `size`, paused 10 minutes into a run, with a branch open if asked.
 
     The branch opens at the run's last second, so the two runs show the same
-    values and differ only in their names.
+    values and differ only in their names. A `preferences_store` is the store
+    the dashboard loads the reader's preferences from and saves them to, and by
+    default it has none.
     """
 
     controller = SimulationController()
@@ -1003,7 +1008,13 @@ def _paused_dashboard(
     _advance_to(controller, 10 * SECONDS_PER_MINUTE)
     controller.pause()
     case = BranchedCase(controller)
-    view = SimulationView((controller,), case=case, workspaces=workspaces)
+    view = SimulationView(
+        (controller,),
+        case=case,
+        workspaces=workspaces,
+        preferences=None if preferences_store is None else preferences_store.load(),
+        preferences_store=preferences_store,
+    )
     shown.append(view)
     view.resize(*size)
     view.show()
@@ -1208,6 +1219,150 @@ def test_no_value_is_in_view_without_its_run_and_compartment_at_any_scroll_posit
                     position,
                     run.name_text.text(),
                 )
+
+
+#: What the schematic says under its axis top control while the top in force
+#: is one the next launch will not open at. Written out by hand (`PL-GWSY`).
+_UNSAVED_TOP_LINE = (
+    "The application could not save this axis top, so it lasts only until the "
+    "application closes. The Agent cost View says why."
+)
+
+
+class _RefusingStore(PreferencesStore):
+    """A preferences store whose every save fails, as one on a full disk would."""
+
+    def save(self, preferences: Preferences) -> Path:
+        raise PreferencesFileError(f"the preferences could not be saved to {self.path}")
+
+
+def test_the_line_under_the_axis_top_control_is_in_view_at_any_scroll_position(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """`PL-B3M6`: a line that appears under the pinned axis top control is on screen with it.
+
+    The Maintenance Workspace at 1920 by 1080 with two compared runs gives the
+    schematic a box that scrolls. The test scrolls it to its end and then picks
+    a top. Every save fails, so the top cannot be kept, and the line under the
+    control says so. The line stands in the pinned row,
+    outside the box, inside the window, and tall enough for every line of its
+    text. The box keeps the place the reader scrolled to, and it is still tall
+    enough to show a whole row of containers, so the View is still shown. The
+    pinned row grows by the line's height while the line shows, and shrinks back
+    when a top the next launch opens at clears it. Before the fix, the line
+    stood at the top of the box's content, above the part in view.
+    """
+
+    view = _paused_dashboard(
+        application,
+        shown,
+        _maintenance(),
+        (1920, 1080),
+        branched=True,
+        preferences_store=_RefusingStore(tmp_path),
+    )
+    schematic = _schematic(view)
+    scroll = _view_scroll(schematic)
+    bar = scroll.verticalScrollBar()
+    line = schematic.ceiling_notice
+    row_height = schematic.pinned_row.height()
+
+    # The premise: the box scrolls, and no line shows yet.
+    assert bar.maximum() > 0
+    assert line.isHidden()
+
+    bar.setValue(bar.maximum())
+    application.processEvents()
+    scrolled_to = bar.value()
+    high = schematic.ceiling_selector.findData(ChartCeiling.HIGH.name)
+    schematic.ceiling_selector.setCurrentIndex(high)
+    schematic.ceiling_selector.activated.emit(high)
+    application.processEvents()
+
+    assert line.text() == _UNSAVED_TOP_LINE
+    assert line.isVisible()
+    assert not scroll.isAncestorOf(line)
+    assert view.rect().contains(QRect(line.mapTo(view, QPoint(0, 0)), line.size()))
+    assert line.height() == line.heightForWidth(line.width())
+    assert schematic.pinned_row.height() == row_height + VIEW_ROW_SPACING + line.height()
+    assert bar.value() == scrolled_to
+    assert view.layout_container.too_small() == ()
+    assert schematic.isVisible()
+    legible = schematic.legible_height()
+    assert legible is not None and scroll.viewport().height() >= legible
+
+    standard = schematic.ceiling_selector.findData(ChartCeiling.STANDARD.name)
+    schematic.ceiling_selector.setCurrentIndex(standard)
+    schematic.ceiling_selector.activated.emit(standard)
+    application.processEvents()
+
+    assert line.isHidden()
+    assert schematic.pinned_row.height() == row_height
+
+
+def test_an_area_too_short_for_the_line_under_the_axis_top_control_shows_the_too_small_notice(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """`PL-B3M6`: the line under the axis top control counts in the height the schematic needs.
+
+    The line stands in the row kept above the schematic's box, so while it
+    shows, the box is shorter by the line and the gap above it. The test sizes
+    a window that shows only the schematic so that its box is exactly tall
+    enough for a run's heading and a whole row of containers without the line.
+    A picked top that cannot be saved then shows the line, and the Area shows
+    the too-small notice rather than containers that every scroll position
+    would cut (`PL-GWTR`). The height the notice states grows by the line's
+    height, measured here from the font, and the gap above it. A top that the
+    next launch opens at clears the line, and the schematic is shown again.
+    """
+
+    store = _RefusingStore(tmp_path)
+    short = _paused_dashboard(
+        application, shown, _SCHEMATIC_ONLY, (1366, 420), branched=False, preferences_store=store
+    )
+    (too_short,) = short.layout_container.too_small()
+    window_height = 420 + too_short.needed.height_px - too_short.available.height_px
+    view = _paused_dashboard(
+        application,
+        shown,
+        _SCHEMATIC_ONLY,
+        (1366, window_height),
+        branched=False,
+        preferences_store=store,
+    )
+    schematic = _schematic(view)
+    line = schematic.ceiling_notice
+
+    # The premise: without the line, the box is exactly tall enough.
+    assert view.layout_container.too_small() == ()
+    assert schematic.isVisible()
+
+    high = schematic.ceiling_selector.findData(ChartCeiling.HIGH.name)
+    schematic.ceiling_selector.setCurrentIndex(high)
+    schematic.ceiling_selector.activated.emit(high)
+    application.processEvents()
+
+    text_width = schematic.pinned_row.width() - 2 * PANEL_PADDING
+    line_height = (
+        QFontMetrics(line.font())
+        .boundingRect(QRect(0, 0, text_width, 1000), Qt.TextFlag.TextWordWrap, _UNSAVED_TOP_LINE)
+        .height()
+    )
+    (too_small,) = view.layout_container.too_small()
+
+    assert line.text() == _UNSAVED_TOP_LINE
+    assert not schematic.isVisible()
+    assert too_small.needed.height_px == (
+        too_short.needed.height_px + VIEW_ROW_SPACING + line_height
+    )
+
+    standard = schematic.ceiling_selector.findData(ChartCeiling.STANDARD.name)
+    schematic.ceiling_selector.setCurrentIndex(standard)
+    schematic.ceiling_selector.activated.emit(standard)
+    application.processEvents()
+
+    assert view.layout_container.too_small() == ()
+    assert schematic.isVisible()
 
 
 # How far the line that marks a container above the scale reaches past the
