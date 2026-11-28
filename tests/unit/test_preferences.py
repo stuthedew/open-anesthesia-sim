@@ -5,7 +5,9 @@ the code under test. A "restart" is a second `PreferencesStore` built on the
 same directory, which reads only what the first one wrote to disk.
 """
 
+import errno
 import json
+import os
 from datetime import date, datetime
 from pathlib import Path
 
@@ -329,6 +331,10 @@ _UNUSABLE_NEXT_STEP = (
         ('{"schema_version": 0}', "the file's version, 0, is not a whole number from 1 up"),
         ('{"schema_version": true}', "the file's version, true, is not a whole number from 1 up"),
         ('{"schema_version": 1.5}', "the file's version, 1.5, is not a whole number from 1 up"),
+        (
+            '{"schema_version": "\u00e9"}',
+            'the file\'s version, "\u00e9", is not a whole number from 1 up',
+        ),
         ('{"schema_version": 0.0}', "the file's version, 0.0, is not a whole number from 1 up"),
         (
             '{"schema_version": 2.0}',
@@ -416,6 +422,7 @@ _UNUSABLE_NEXT_STEP = (
         "version 0",
         "version true",
         "version 1.5",
+        "version written as a letter outside ASCII",
         "version 0.0",
         "version 2.0",
         "version 1.0",
@@ -501,9 +508,9 @@ def test_a_file_nested_too_deeply_for_the_decoder_turns_saving_off(
     """A file the decoder gives up on is named as nested too deeply, in the reader's words.
 
     How deep the decoder can go depends on the stack of the platform and the
-    thread it runs on. A file of 100,000 nested lists stopped it here and
-    parsed under the mutation run's copy in CI. So the test makes the decoder
-    give up, as it does on such a file.
+    thread it runs on. A file of 100,000 nested lists stopped it in a cloud
+    container and parsed on the CI runner. So the test makes the decoder give
+    up, as it does on such a file where the stack is smaller.
     """
 
     path = _write(tmp_path, {"schema_version": PREFERENCES_SCHEMA_VERSION})
@@ -552,12 +559,17 @@ def test_a_file_that_is_not_utf8_turns_saving_off(tmp_path: Path) -> None:
 def test_a_file_that_cannot_be_read_turns_saving_off(tmp_path: Path) -> None:
     (tmp_path / PREFERENCES_FILE_NAME).mkdir()
 
+    path = tmp_path / PREFERENCES_FILE_NAME
+
     loaded = PreferencesStore(tmp_path).load()
 
+    # The reason in brackets is the operating system's own words for the
+    # error, which `os.strerror` gives, not the exception's longer text.
     assert not loaded.writable
-    assert loaded.notice is not None
-    assert loaded.notice.startswith(
-        "The application could not use your preferences file, because the file could not be read ("
+    assert loaded.notice == (
+        "The application could not use your preferences file, because the file could not be read "
+        f"({os.strerror(errno.EISDIR)}). {_UNUSABLE_EFFECT} {_UNUSABLE_NEXT_STEP} The file is "
+        f"{path}."
     )
 
 
