@@ -13,6 +13,7 @@ way as the run's own panel. The tests render under the `offscreen` platform
 that `tests/conftest.py` selects.
 """
 
+import json
 from collections.abc import Iterator
 from math import exp, floor, log10
 from pathlib import Path
@@ -38,7 +39,12 @@ from anesthesia_sim.app.compartment_schematic import (
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import TRUNK_RUN_INDEX, WITHHELD_CONCENTRATION_TEXT
 from anesthesia_sim.app.formatting import ChartCeiling, format_compartment_share, format_elapsed
-from anesthesia_sim.app.preferences import Preferences, PreferencesFileError, PreferencesStore
+from anesthesia_sim.app.preferences import (
+    PREFERENCES_FILE_NAME,
+    Preferences,
+    PreferencesFileError,
+    PreferencesStore,
+)
 from anesthesia_sim.app.qt_schematic import (
     CanvasParts,
     ContainerNames,
@@ -1311,9 +1317,10 @@ def test_an_area_too_short_for_the_line_under_the_axis_top_control_shows_the_too
     enough for a run's heading and a whole row of containers without the line.
     A picked top that cannot be saved then shows the line, and the Area shows
     the too-small notice rather than containers that every scroll position
-    would cut (`PL-GWTR`). The height the notice states grows by the line's
-    height, measured here from the font, and the gap above it. A top that the
-    next launch opens at clears the line, and the schematic is shown again.
+    would cut (`PL-GWTR`). The height the notice states grows by the gap above
+    the line and the line's height at the width the row is drawn, measured here
+    from the font. A top that the next launch opens at clears the line, and the
+    schematic is shown again.
     """
 
     store = _RefusingStore(tmp_path)
@@ -1363,6 +1370,69 @@ def test_an_area_too_short_for_the_line_under_the_axis_top_control_shows_the_too
 
     assert view.layout_container.too_small() == ()
     assert schematic.isVisible()
+
+
+def test_a_narrower_window_counts_the_rows_the_line_under_the_axis_top_control_takes_there(
+    application: QApplication, shown: list[SimulationView], tmp_path: Path
+) -> None:
+    """`PL-B3M6`: after a resize, the Area counts the line at the width it is drawn.
+
+    The preferences file holds a saved top that is long text, so the line under
+    the axis top control, which quotes it, wraps onto a different number of
+    rows at each width. The schematic's Area takes 70% of the window's width.
+    The test sizes the window so that, at 1366 px wide, the box is exactly tall
+    enough for a run's heading and a whole row of containers. Narrowing the
+    window to 1136 px wraps the line onto more rows, so the box becomes too
+    short, and the Area shows the too-small notice rather than containers
+    that every scroll position would cut (`PL-GWTR`).
+    """
+
+    (tmp_path / PREFERENCES_FILE_NAME).write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "agent_cost_unit": "millilitres of liquid",
+                "agent_prices": [],
+                "chart_axis_top_mac": "a top typed by hand " * 8,
+            }
+        ),
+        encoding="utf-8",
+    )
+    store = PreferencesStore(tmp_path)
+    short = _paused_dashboard(
+        application,
+        shown,
+        _SCHEMATIC_AND_BRANCH,
+        (1366, 420),
+        branched=False,
+        preferences_store=store,
+    )
+    (too_short,) = short.layout_container.too_small()
+    window_height = 420 + too_short.needed.height_px - too_short.available.height_px
+    view = _paused_dashboard(
+        application,
+        shown,
+        _SCHEMATIC_AND_BRANCH,
+        (1366, window_height),
+        branched=False,
+        preferences_store=store,
+    )
+    schematic = _schematic(view)
+    line = schematic.ceiling_notice
+    wide_rows = line.height()
+
+    # The premise: the line shows, and the box is exactly tall enough.
+    assert line.text().startswith('The saved axis top, "a top typed by hand')
+    assert view.layout_container.too_small() == ()
+    assert schematic.isVisible()
+
+    view.resize(1136, window_height)
+    application.processEvents()
+
+    # The premise: at the narrower width the line takes more rows.
+    assert line.heightForWidth(schematic.pinned_row.width() - 2 * PANEL_PADDING) > wide_rows
+    assert len(view.layout_container.too_small()) == 1
+    assert not schematic.isVisible()
 
 
 # How far the line that marks a container above the scale reaches past the

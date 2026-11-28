@@ -1697,7 +1697,12 @@ class AreaLayout(QWidget):
 
         frame = self._frames[area_id]
         need = self._view_need(area_id)
-        row = 0 if frame.pinned_row is None else _row_height(frame.pinned_row, frame.width())
+        # A row that wraps is measured at the width the last settle draws the
+        # Area, as `_floor` and `_narrowed` are, and not at the width the frame
+        # had before a resize reached the splitters.
+        drawn = None if self._fit is None else self._fit.apportionment.areas.get(area_id)
+        width = frame.width() if drawn is None else drawn.width_px
+        row = 0 if frame.pinned_row is None else _row_height(frame.pinned_row, width)
 
         return PixelSize(need.width_px, max(need.height_px, row + height))
 
