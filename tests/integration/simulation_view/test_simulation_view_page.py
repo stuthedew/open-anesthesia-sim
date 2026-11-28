@@ -838,27 +838,27 @@ def test_the_maintenance_schematic_leaves_room_for_macos_text_at_1366_by_768(
     under each container was cut through at the box's lower edge on a Mac. No
     test runs on macOS (`PL-2Y1L`), so this one draws in DejaVu Sans and keeps
     the canvas's foot at least as far above the box's foot as it stands
-    higher there than on a Mac. Under macOS's own platform that room is
-    already taken, and
-    `test_each_shipped_workspace_shows_its_lesson_whole_with_one_run` checks
-    the fit itself, so the test does not run there.
+    higher there than on a Mac. Under macOS's own platform the test draws in
+    the system font instead, where that room is already taken, and asks only
+    that the canvas's foot be inside the box.
     """
 
     from PySide6.QtGui import QFont, QFontInfo
 
     from anesthesia_sim.app.qt_schematic import RunSchematic
 
-    if application.platformName() == "cocoa":
-        pytest.skip("macOS draws its own text here, and the lesson test checks the fit")
-
     font = application.font()
-    application.setFont(QFont(_MAC_MARGIN_FONT_FAMILY, 9))
+    on_macos = application.platformName() == "cocoa"
+    least_room_px = 0 if on_macos else _MAC_CANVAS_FOOT_LOWER_PX
 
     try:
-        # Qt substitutes another family without an error when the one asked
-        # for is missing, and the test would then measure a font it does not
-        # name.
-        assert QFontInfo(application.font()).family() == _MAC_MARGIN_FONT_FAMILY
+        if not on_macos:
+            application.setFont(QFont(_MAC_MARGIN_FONT_FAMILY, 9))
+            # Qt substitutes another family without an error when the one
+            # asked for is missing, and the test would then measure a font it
+            # does not name.
+            assert QFontInfo(application.font()).family() == _MAC_MARGIN_FONT_FAMILY
+
         view = _shipped_view_at(application, "Maintenance", 1366, 768)
         (canvas,) = (
             schematic.canvas
@@ -877,7 +877,7 @@ def test_the_maintenance_schematic_leaves_room_for_macos_text_at_1366_by_768(
         application.setFont(font)
         _delete_shown_views(application)
 
-    assert room >= _MAC_CANVAS_FOOT_LOWER_PX, f"the canvas's foot has {room} px of room"
+    assert room >= least_room_px, f"the canvas's foot has {room} px of room"
 
 
 @pytest.mark.parametrize(("width_px", "height_px"), _COMMON_SCREENS_PX)
