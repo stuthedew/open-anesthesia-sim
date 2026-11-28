@@ -2035,14 +2035,18 @@ _AnnouncementRequest = Callable[[], tuple[str, bool] | None]
 class _WindowAnnouncements(QObject):
     """The announcements one window asks for before control returns to the event loop.
 
-    They are sent as one announcement, in the order they were asked for. WAI-ARIA
-    1.2's definition of `aria-live` says that a screen reader given an assertive update "could
-    potentially clear the speech queue of previous updates", and that it "MAY
-    choose to clear queued changes when an assertive change occurs". So two
-    announcements sent in one action can leave a screen-reader user hearing only
-    the second. When every run halts at once, that was each compared run's halt
-    but the last (`PL-MP92`). The one announcement interrupts what is being read
-    if any of the messages in it does, and it repeats no message.
+    They are sent as one announcement. WAI-ARIA 1.2's definition of `aria-live`
+    says that a screen reader given an assertive update "could potentially clear
+    the speech queue of previous updates", and that it "MAY choose to clear
+    queued changes when an assertive change occurs". So two announcements sent
+    in one action can leave a screen-reader user hearing only the second. When
+    every run halts at once, that was each compared run's halt but the last
+    (`PL-MP92`). The one announcement interrupts what is being read if any of
+    the messages in it does, and it repeats no message. The messages that
+    interrupt come first, so the ones that ask the reader to act are heard even
+    if a later announcement cuts this one short. Within each group, the messages
+    keep the order they were asked for. Each message but the last ends with a
+    full stop, so a screen reader pauses between two messages.
 
     Each request is read when the announcement is sent, so a banner written twice
     in one action is read as the action leaves it. A request from a widget that
@@ -2079,9 +2083,7 @@ class _WindowAnnouncements(QObject):
         """Send every request that still has a message, as one announcement."""
 
         requests, self._requests = self._requests, {}
-        messages: list[str] = []
-        interrupt = False
-        first_source: QWidget | None = None
+        readings: dict[str, tuple[QWidget, bool]] = {}
 
         for source, request in requests.values():
             if not isValid(source):
@@ -2093,15 +2095,37 @@ class _WindowAnnouncements(QObject):
                 continue
 
             message, interrupts = reading
+            earlier = readings.get(message)
 
-            if message not in messages:
-                messages.append(message)
+            if earlier is None:
+                readings[message] = (source, interrupts)
+            elif interrupts:
+                readings[message] = (earlier[0], True)
 
-            interrupt = interrupt or interrupts
-            first_source = source if first_source is None else first_source
+        if not readings:
+            return
 
-        if first_source is not None:
-            _send_announcement(first_source, " ".join(messages), interrupt=interrupt)
+        # sorted() keeps the order asked for among messages with the same key.
+        ordered = sorted(readings.items(), key=lambda reading: not reading[1][1])
+        messages = [_ended_as_sentence(message) for message, _ in ordered[:-1]]
+        messages.append(ordered[-1][0])
+        source, interrupt = ordered[0][1]
+        _send_announcement(source, " ".join(messages), interrupt=interrupt)
+
+
+#: The marks that end a sentence, after which a screen reader pauses.
+_SENTENCE_ENDS: Final = (".", "!", "?", "…")
+
+
+def _ended_as_sentence(message: str) -> str:
+    """Return `message` with a full stop added where it ends with no mark that ends a sentence.
+
+    Some messages are shown without one, such as "Select an instant to branch
+    at". Read before another message in one announcement, such a message would
+    run into the next with no pause (`PL-MP92`).
+    """
+
+    return message if message.endswith(_SENTENCE_ENDS) else f"{message}."
 
 
 def _announcements_of(widget: QWidget) -> _WindowAnnouncements:

@@ -13,7 +13,7 @@ closed: 2026-11-28
 pr: 2352
 filed-pr: 2333
 payoff: a screen-reader user hears every run's halt when several runs stop at once
-tests: tests/integration/simulation_view/test_simulation_view_refusals.py::test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement, tests/integration/test_qt_widgets.py::test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement, tests/integration/test_qt_widgets.py::test_a_message_asked_for_twice_in_one_action_is_read_once, tests/integration/test_qt_widgets.py::test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read, tests/integration/test_qt_widgets.py::test_each_window_reads_its_own_announcements
+tests: tests/integration/simulation_view/test_simulation_view_refusals.py::test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement, tests/integration/test_qt_widgets.py::test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement, tests/integration/test_qt_widgets.py::test_a_message_asked_for_twice_in_one_action_is_read_once, tests/integration/test_qt_widgets.py::test_each_message_read_before_another_in_one_announcement_ends_a_sentence, tests/integration/test_qt_widgets.py::test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read, tests/integration/test_qt_widgets.py::test_each_window_reads_its_own_announcements
 ---
 
 **Problem.** When a frame cannot be drawn, `SimulationView` halts every run at once, and each run's banner then changes in the same action. `PL-J7Z5` announces each banner from its own label (`qt_widgets.NoticeLabel`), and a failure interrupts what is being read. So with two runs compared, the second run's announcement interrupts the first, and a screen-reader user hears only that the second run stopped.
@@ -55,8 +55,11 @@ collector that record.
 
 **Fix.** `qt_widgets._WindowAnnouncements` is a child of each window. It
 collects every request the window makes until control returns to the event
-loop, then sends one announcement: each message once, in the order asked for,
-joined by a space, interrupting if any message does. `announce` adds a request
+loop, then sends one announcement: each message once, joined by a space,
+interrupting if any message does. The messages that interrupt come first, and
+each group keeps the order asked for. Each message but the last ends with a
+full stop, added where the message has none, so a screen reader pauses
+between two. `announce` adds a request
 to it rather than sending at once, and `NoticeLabel` adds itself in place of
 its own timer. A label's request is read when the announcement is sent, so a
 banner written twice in one action is still read as the action leaves it. A
@@ -68,6 +71,9 @@ request from a widget deleted before then is dropped, which
 (three labels, the order and the politeness of the joined message),
 `test_a_message_asked_for_twice_in_one_action_is_read_once` (a repeated
 message, and a direct request read with the banners),
+`test_each_message_read_before_another_in_one_announcement_ends_a_sentence`
+(the added full stop, a message read alone as shown, and a message asked for
+twice that interrupts the second time),
 `test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read` and
 `test_each_window_reads_its_own_announcements`. In
 `tests/integration/simulation_view/test_simulation_view_refusals.py`:
@@ -84,3 +90,17 @@ failed both. The halt test recorded two announcements, Run 1's and then Run 2's
 unexpected error occurred in the simulator, ..."). The widget test recorded
 three ("Left contains 2 more items, first extra item:
 Announcement(message='Setting refused — too high.', ...").
+
+**Blind review.** Pass 1 found nothing. Pass 2 found two faults, both marked
+optional, and both are fixed. The joined messages kept the order asked for, so
+a countdown asked for before a refusal was read first, and the refusal that
+asked the reader to act could be cut off by the next announcement. The
+interrupting messages now come first. Two messages shown with no full stop,
+such as "Select an instant to branch at" and a refused mark, ran together with
+no pause. Each message but the last now ends with one.
+
+**Documents checked.** `docs/INTERFACE.md`, whose paragraph on banners read
+out without moving the focus now says how one window's announcements are
+joined and lists the new tests. `docs/ARCHITECTURE.md`, `docs/VERIFICATION.md`,
+`README.md` and the rules under `.claude/rules/` say nothing about
+announcements, so none changes.

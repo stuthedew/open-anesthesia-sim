@@ -1370,9 +1370,11 @@ def test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announc
     queued changes when an assertive change occurs". So one announcement per
     banner could leave a screen-reader user hearing only the last banner, as
     happened with each compared run's halt but the last (`PL-MP92`). The
-    banners are read in the order they changed. The announcement interrupts
-    when any banner in it does, and waits until speech pauses when none does.
-    A banner that is hidden or unchanged adds nothing.
+    announcement interrupts when any banner in it does, and waits until speech
+    pauses when none does. The banners that interrupt are read first, so the
+    one that asks the reader to act is heard even if a later announcement cuts
+    this one short, and the others follow in the order they changed. A banner
+    that is hidden or unchanged adds nothing.
     """
 
     window = QWidget()
@@ -1386,7 +1388,7 @@ def test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announc
 
     assert recorded == [
         Announcement(
-            "Simulation stopped — supported run length reached. Setting refused — too high. "
+            "Setting refused — too high. Simulation stopped — supported run length reached. "
             "This run stops in 5s of simulated time.",
             ASSERTIVE,
         )
@@ -1422,6 +1424,41 @@ def test_a_message_asked_for_twice_in_one_action_is_read_once(
 
     assert recorded == [
         Announcement("Setting refused — too high. A branch cannot be taken here.", ASSERTIVE)
+    ]
+
+
+def test_each_message_read_before_another_in_one_announcement_ends_a_sentence(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A message shown with no full stop is given one where another message follows it.
+
+    A screen reader pauses at the end of a sentence. "Select an instant to
+    branch at" is shown with no full stop, so read before a halt in one
+    announcement it would run into the halt with no pause. A message read
+    alone is read as it is shown. A message asked for first without
+    interrupting and again with it is read once, among the messages that
+    interrupt.
+    """
+
+    window = QWidget()
+    recorded = record_announcements(monkeypatch)
+
+    announce(window, "Select an instant to branch at", interrupt=False)
+    announce(window, "Run 1: Simulation stopped — no frame could be drawn", interrupt=True)
+    announce(window, "Select an instant to branch at", interrupt=True)
+    announce(window, "Run 2: Simulation stopped — no frame could be drawn", interrupt=True)
+    application.processEvents()
+    announce(window, "Select an instant to branch at", interrupt=False)
+    application.processEvents()
+
+    assert recorded == [
+        Announcement(
+            "Select an instant to branch at. "
+            "Run 1: Simulation stopped — no frame could be drawn. "
+            "Run 2: Simulation stopped — no frame could be drawn",
+            ASSERTIVE,
+        ),
+        Announcement("Select an instant to branch at", POLITE),
     ]
 
 
