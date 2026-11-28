@@ -159,7 +159,7 @@ from anesthesia_sim.app.dashboard_frame import (
     transport,
 )
 from anesthesia_sim.app.failures import failure_kind
-from anesthesia_sim.app.formatting import format_playback_rate, format_subtitle
+from anesthesia_sim.app.formatting import ChartCeiling, format_playback_rate, format_subtitle
 from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
@@ -376,6 +376,7 @@ class RunView(QWidget):
         branch_control: Callable[[], bool],
         name: Callable[[RunId], str | None],
         charts_withheld: Callable[[], bool],
+        chart_ceiling: Callable[[], ChartCeiling],
     ) -> None:
         """Build one run's controls and readouts from its first snapshot.
 
@@ -399,6 +400,12 @@ class RunView(QWidget):
                 their frame on a tick that draws none. A halt's banner then
                 says so, rather than saying that the charts show the last
                 frame (`run_presentation.RunPanelState.charts_withheld`).
+            chart_ceiling: Returns the top that the reader chose for every
+                concentration chart and schematic, which the dashboard holds
+                in the reader's preferences. It is read each time a
+                presentation is built from a snapshot, so this run's
+                schematic is filled against the top the charts draw at
+                (`PL-7LZ7`).
 
         Raises:
             TypeError: If `run_id` is not a `RunId`.
@@ -412,6 +419,7 @@ class RunView(QWidget):
         self.run_id = run_id
         self._branch_control = branch_control
         self._charts_withheld = charts_withheld
+        self._chart_ceiling = chart_ceiling
         snapshot = controller.snapshot()
 
         # The reason the last setting change did not take effect, or None if
@@ -877,6 +885,7 @@ class RunView(QWidget):
                 else self._reset_question()
             ),
             charts_withheld=self._charts_withheld(),
+            chart_ceiling=self._chart_ceiling(),
             # Only a run that is playing delivers a rate. A paused, held or
             # stopped run draws its frame before the next tick restarts the
             # measurement, so the fraction is withheld here.

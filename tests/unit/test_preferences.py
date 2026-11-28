@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from test_user_files import make_the_platform_encoding_ascii
 
-from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.preferences import (
     PREFERENCES_FILE_NAME,
     AgentPrice,
@@ -20,6 +20,7 @@ from anesthesia_sim.app.preferences import (
     PreferencesFileError,
     PreferencesStore,
     RefusedEntry,
+    chart_ceiling_notice,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
@@ -84,7 +85,7 @@ def test_the_saved_document_is_the_one_the_schema_describes(tmp_path: Path) -> N
     path = store.save(Preferences().with_price(ISOFLURANE_PRICE))
 
     assert json.loads(path.read_text(encoding="utf-8")) == {
-        "schema_version": 1,
+        "schema_version": 2,
         "agent_cost_unit": "millilitres of liquid",
         "agent_prices": [
             {
@@ -95,8 +96,136 @@ def test_the_saved_document_is_the_one_the_schema_describes(tmp_path: Path) -> N
                 "applies_on": "2008-03-05",
             }
         ],
+        "chart_axis_top_mac": 3.0,
     }
     assert sorted(entry.name for entry in tmp_path.iterdir()) == [PREFERENCES_FILE_NAME]
+
+
+@pytest.mark.parametrize(
+    ("ceiling", "written"),
+    [(ChartCeiling.LOW, 1.5), (ChartCeiling.STANDARD, 3.0), (ChartCeiling.HIGH, 4.5)],
+    ids=["1.5 xMAC", "3 xMAC", "4.5 xMAC"],
+)
+def test_the_axis_top_is_saved_as_its_mac_multiple_and_survives_a_restart(
+    tmp_path: Path, ceiling: ChartCeiling, written: float
+) -> None:
+    """Every chart and schematic shares one top, which the file keeps across a restart (`PL-7LZ7`).
+
+    The expected multiples are the three tops that `docs/INTERFACE.md` § "The
+    chart's fixed MAC axis" lists.
+    """
+
+    store = PreferencesStore(tmp_path)
+    store.load()
+    path = store.save(Preferences().with_chart_ceiling(ceiling))
+
+    assert json.loads(path.read_text(encoding="utf-8"))["chart_axis_top_mac"] == written
+
+    loaded = PreferencesStore(tmp_path).load()
+
+    assert loaded.notice is None
+    assert loaded.writable
+    assert loaded.preferences.chart_ceiling is ceiling
+    assert chart_ceiling_notice(loaded.preferences) is None
+
+
+def test_a_version_1_file_opens_at_the_standard_top_and_its_next_save_writes_version_2(
+    tmp_path: Path,
+) -> None:
+    """A file written before the top was a preference has none, and is not refused for it.
+
+    v0.6.22 to v0.6.24 wrote version 1. The file's prices and unit are kept,
+    and the next save adds the top.
+    """
+
+    _write(tmp_path, _document([SEVOFLURANE_PRICE_ENTRY], unit="litres of vapour"))
+    store = PreferencesStore(tmp_path)
+    loaded = store.load()
+
+    assert loaded.notice is None
+    assert loaded.writable
+    assert loaded.preferences.chart_ceiling is ChartCeiling.STANDARD
+    assert loaded.preferences.refused_chart_ceiling is None
+
+    path = store.save(loaded.preferences)
+
+    assert json.loads(path.read_text(encoding="utf-8")) == {
+        "schema_version": 2,
+        "agent_cost_unit": "litres of vapour",
+        "agent_prices": [SEVOFLURANE_PRICE_ENTRY],
+        "chart_axis_top_mac": 3.0,
+    }
+
+
+@pytest.mark.parametrize("written", [1.5, 3, 3.0, 4.5], ids=["1.5", "3 as int", "3.0", "4.5"])
+def test_a_saved_top_is_read_whether_written_as_an_int_or_a_float(
+    tmp_path: Path, written: float
+) -> None:
+    _write(tmp_path, {**_document([]), "schema_version": 2, "chart_axis_top_mac": written})
+
+    loaded = PreferencesStore(tmp_path).load()
+
+    assert loaded.preferences.chart_ceiling.value == written
+    assert loaded.preferences.refused_chart_ceiling is None
+
+
+@pytest.mark.parametrize(
+    ("raw", "shown"),
+    [
+        (7, "7"),
+        (2.0, "2.0"),
+        (0, "0"),
+        ("4.5", '"4.5"'),
+        (True, "true"),
+        (None, "null"),
+        ([4.5], "[4.5]"),
+    ],
+    ids=["7", "2.0", "0", "the text 4.5", "true", "null", "a list"],
+)
+def test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept(
+    tmp_path: Path, raw: object, shown: str
+) -> None:
+    """A refused top falls back to 3 xMAC, and the charts say so until the reader picks one.
+
+    The notice is written out by hand. The agent cost View's notice and its
+    offer to discard do not name the top, because the top is not set there.
+    `True` is refused although it equals 1 in Python, and the text "4.5" is
+    refused although it reads as a top. The value is shown as the file holds
+    it, so the text "4.5" is in quotes and the sentence says the top is a
+    number.
+    """
+
+    _write(tmp_path, {**_document([]), "schema_version": 2, "chart_axis_top_mac": raw})
+    store = PreferencesStore(tmp_path)
+    loaded = store.load()
+    preferences = loaded.preferences
+
+    assert loaded.writable
+    assert loaded.notice is None
+    assert preferences.chart_ceiling is ChartCeiling.STANDARD
+    assert chart_ceiling_notice(preferences) == (
+        f"The saved axis top, {shown}, is not one of the numbers 1.5, 3 or 4.5 ×MAC, so every "
+        "chart and schematic shows 3 ×MAC. Choose a top to replace it."
+    )
+    assert not preferences.holds_refused_entries
+    assert preferences.without_refused_entries().refused_chart_ceiling is not None
+
+    path = store.save(preferences.with_price(ISOFLURANE_PRICE))
+
+    assert json.loads(path.read_text(encoding="utf-8"))["chart_axis_top_mac"] == raw
+
+    picked = PreferencesStore(tmp_path).load().preferences.with_chart_ceiling(ChartCeiling.LOW)
+
+    assert chart_ceiling_notice(picked) is None
+    assert picked.chart_ceiling is ChartCeiling.LOW
+
+
+def test_a_top_that_is_not_a_chart_ceiling_is_refused() -> None:
+    with pytest.raises(TypeError, match="the axis top is a ChartCeiling, not float"):
+        Preferences(chart_ceiling=3.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="the axis top is a ChartCeiling, not str"):
+        Preferences().with_chart_ceiling("HIGH")  # type: ignore[arg-type]
 
 
 def test_a_first_run_has_no_price_and_the_liquid_unit_and_writes_nothing(tmp_path: Path) -> None:
@@ -143,7 +272,7 @@ def test_a_save_the_system_refuses_names_the_file_and_leaves_no_temporary_file(
 
 
 def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: Path) -> None:
-    path = _write(tmp_path, {"schema_version": 2, "anything": "a newer build wrote"})
+    path = _write(tmp_path, {"schema_version": 3, "anything": "a newer build wrote"})
     before = path.read_bytes()
     store = PreferencesStore(tmp_path)
 
@@ -152,8 +281,8 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
     assert not loaded.writable
     assert dict(loaded.preferences.agent_prices) == {}
     assert loaded.notice is not None
-    assert "schema version 2" in loaded.notice
-    assert "reads version 1" in loaded.notice
+    assert "schema version 3" in loaded.notice
+    assert "reads version 2" in loaded.notice
     assert str(path) in loaded.notice
     with pytest.raises(PreferencesFileError, match="saving is off"):
         store.save(Preferences().with_price(ISOFLURANE_PRICE))
@@ -172,6 +301,15 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [], "theme": "dark"}',
             "not known",
+        ),
+        (
+            '{"schema_version": 2, "agent_cost_unit": "millilitres of liquid", "agent_prices": []}',
+            "missing ['chart_axis_top_mac']",
+        ),
+        (
+            '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
+            '"agent_prices": [], "chart_axis_top_mac": 3.0}',
+            "not known ['chart_axis_top_mac']",
         ),
         (
             '{"schema_version": 1, "schema_version": 1, '
@@ -212,6 +350,8 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
         "version true",
         "a key missing",
         "an unknown key",
+        "a version 2 file with no top",
+        "a version 1 file with a top",
         "a repeated key",
         "prices not a list",
         "NaN",
@@ -661,7 +801,7 @@ def test_the_saved_file_is_written_for_a_person_to_read(tmp_path: Path) -> None:
 
     assert path.read_text(encoding="utf-8") == (
         "{\n"
-        '  "schema_version": 1,\n'
+        '  "schema_version": 2,\n'
         '  "agent_cost_unit": "µL",\n'
         '  "agent_prices": [\n'
         "    {\n"
@@ -671,7 +811,8 @@ def test_the_saved_file_is_written_for_a_person_to_read(tmp_path: Path) -> None:
         '      "currency": "USD",\n'
         '      "applies_on": "2008-03-05"\n'
         "    }\n"
-        "  ]\n"
+        "  ],\n"
+        '  "chart_axis_top_mac": 3.0\n'
         "}\n"
     )
 

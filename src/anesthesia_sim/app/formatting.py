@@ -121,6 +121,7 @@ __all__ = [
     "reaches_concentration_display_resolution",
     "format_playback_rate",
     "format_price_per_liquid_ml",
+    "reference_percent_digits",
     "format_subtitle",
     "format_time_base",
     "format_wash_in_ratio",
@@ -730,6 +731,37 @@ def render_mac_multiple(multiple: MacMultiple) -> str:
     return f"{rendered}{MAC_UNIT_SUFFIX}"
 
 
+def reference_percent_digits(percent: float) -> str:
+    """Return the digits of a percent that is a multiple of the agent's MAC, without its unit.
+
+    The 1 MAC line and the schematic's scale caption print a percent this
+    way. The value is rounded to `CONCENTRATION_DISPLAY_DECIMALS`, the
+    decimals of the percent readouts, and each trailing zero is dropped. So
+    isoflurane's 4.5 ×MAC, 5.265%, prints as 5.26, the value that the
+    chart's off-scale notice gives for the same top, and sevoflurane's 3
+    ×MAC prints as 5.4. `format_mac_reference` says why a trailing zero is
+    dropped. A multiple of the MAC carries the MAC's relative uncertainty, so
+    the same reason applies to it.
+
+    Raises:
+        ValueError: `percent` is not finite, or it rounds to zero at the
+            readouts' decimals. The smallest percent printed this way is
+            isoflurane's 1.5 ×MAC top, 1.75%, so such a value is a fault
+            upstream, and printing it would show an empty or zero scale.
+    """
+
+    rendered = f"{percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}"
+
+    if not (isfinite(percent) and float(rendered) > 0.0):
+        raise ValueError(
+            f"a percent stated as a multiple of the MAC must be finite and at least "
+            f"{CONCENTRATION_DISPLAY_RESOLUTION_PERCENT:.{CONCENTRATION_DISPLAY_DECIMALS}f}%, "
+            f"got {percent!r}"
+        )
+
+    return rendered.rstrip("0").rstrip(".")
+
+
 def format_mac_reference(
     agent_display_name: str, mac_percent: MacPercent, *, age_years: int
 ) -> str:
@@ -744,8 +776,9 @@ def format_mac_reference(
     line also names the age that the MAC is for:
     `1 MAC sevoflurane (age 40) = 1.8%`.
 
-    The MAC is rounded to `CONCENTRATION_DISPLAY_DECIMALS`, the decimals of
-    the percent readouts, and a trailing zero is dropped. So isoflurane's
+    The MAC is rounded by `reference_percent_digits` to
+    `CONCENTRATION_DISPLAY_DECIMALS`, the decimals of the percent readouts,
+    and a trailing zero is dropped. So isoflurane's
     1.17% is printed in full, and sevoflurane's 1.80% and desflurane's 6.6%
     print as 1.8% and 6.6%, as the 1 MAC gridline's axis label does. A
     trailing zero would claim a digit that the MAC's own uncertainty does
@@ -773,7 +806,7 @@ def format_mac_reference(
     """
 
     require_mac_percent("mac_percent", mac_percent)
-    rounded = f"{mac_percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}".rstrip("0").rstrip(".")
+    rounded = reference_percent_digits(mac_percent)
 
     return f"1 MAC {agent_display_name.lower()} (age {age_years}) = {rounded}{_PERCENT}"
 

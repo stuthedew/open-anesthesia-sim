@@ -3560,11 +3560,34 @@ from three: **1.5, 3 or 4.5 ×MAC** of the agent in use. The chart opens at
 agent. The "Axis top" control sits beside the time base, under the chart's
 heading, and names the top in force in words. The axis never grows or shrinks to fit a trace. The top stays where the
 reader put it across runs and across both runs of a comparison, so runs drawn
-one after another are comparable too. Each chart View keeps its own top and
-saves it with its layout
+one after another are comparable too
 (`test_the_chart_ceiling_is_the_chosen_top_times_the_agent_s_mac` in
 `tests/unit/test_formatting.py`).
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+
+**One top applies to every concentration chart and every compartment
+schematic** (`PL-7LZ7`). Choosing a top on any of their "Axis top" controls
+redraws all of them at it, in every Workspace. So a tension is above the top of
+the scale on every chart and schematic or on none. Two Views at different
+tops would each be labelled correctly, but a reader comparing graphic data
+across displays "may overlook differences in labeling and assume that the
+same scale has been used" (NUREG-0700 Rev. 3, guideline 1.3.6-8, p. 1-43).
+The chart's off-scale notice and the schematic's off-scale mark still cover
+different stretches of time. The notice names each shown compartment whose
+trace is above the top anywhere in the chart's window. The schematic marks
+each compartment that is above the top at the instant it shows. So after an
+8% sevoflurane induction is turned down, the notice can still name the
+circuit while the schematic marks nothing.
+The top is one of the reader's preferences, so it is kept when the
+application is closed and opened again (`app/preferences.py`). A layout saved
+by v0.6.22 to v0.6.24 kept a top for each chart. That top is not read, so such
+a layout opens at 3 ×MAC, without a notice. A saved top that is not one of the
+three is not used either. Every chart and schematic is then drawn at 3 ×MAC,
+and each says under its "Axis top" control which saved top was refused and
+asks the reader to choose a top. Choosing any top clears the line, 3 ×MAC
+included.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
+<!-- provenance: data/agents/sevoflurane.json max_delivered_concentration_percent = 8 -->
 
 **Every gridline stands at a MAC multiple that the right axis labels.** The
 right axis is labelled every half MAC at a top of 3 or 4.5 ×MAC, and every
@@ -3696,6 +3719,36 @@ run that drew it
 trace exactly at the ceiling is not
 (`test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale` in
 `tests/unit/test_dashboard_frame.py`).
+
+The one top is `Preferences.chart_ceiling` in `app/preferences.py`, which the
+dashboard passes to every chart frame it assembles and to every run's
+schematic. A View asks for another top through `ViewRequests.chart_ceiling`
+and saves none of its own. A chart's state saved by v0.6.22 to v0.6.24 still
+holds that chart's own top, and the chart reads its window from that state and
+passes over the old top. A top picked on any chart or schematic redraws every
+one of them
+(`test_a_top_picked_on_any_chart_or_schematic_redraws_every_one_at_it` in
+`tests/integration/test_view_contract.py`). With every compartment shown and
+every trace still rising, the schematic marks as above the scale exactly the
+compartments that the chart's notice names
+(`test_the_schematic_marks_off_the_scale_what_the_chart_names_at_the_top_picked`
+in `tests/integration/simulation_view/test_simulation_view_readouts.py`). The
+top survives a restart (`test_a_top_picked_before_a_restart_is_the_top_after_it`
+in `tests/integration/test_view_contract.py`), and an old chart state opens
+without a notice
+(`test_a_concentration_chart_saved_with_a_top_of_its_own_opens_without_a_notice`
+in the same file). The preferences file holds the top's MAC multiple from
+version 2 of its schema, and a version 1 file opens at 3 ×MAC
+(`test_a_version_1_file_opens_at_the_standard_top_and_its_next_save_writes_version_2`
+in `tests/unit/test_preferences.py`). A refused saved top is named on every
+chart and schematic until a top is chosen
+(`test_a_saved_top_off_the_choices_is_refused_named_on_the_charts_and_kept` in
+`tests/unit/test_preferences.py`;
+`test_a_refused_saved_top_is_named_on_every_chart_and_schematic_until_a_top_is_picked`
+in `tests/integration/test_view_contract.py`). The "Axis top" control reads a
+choice from Qt's `activated` signal, which a choice of the top already shown
+also sends, so a reader can clear that line by keeping 3 ×MAC.
+<!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->
 
 ### The chart's time base
 
@@ -6835,20 +6888,33 @@ schematic therefore prints "Model outputs — not measurements." once, as the
 readout section does, followed by the tensions' unit. The line under it names
 the amounts' unit and the condition they are stated at. Both lines stand in a
 row above the part of the View that scrolls, so they stay in view whatever part
-of the schematic the Area shows (`PL-3NGZ`). No amount is a prediction about a
+of the schematic the Area shows (`PL-3NGZ`). The "Axis top" control stands at
+the right end of that row. The scale's top is read together with the tensions'
+unit, and "information that must be compared or mentally integrated should be
+presented in close spatial proximity" (NUREG-0700 Rev. 3, guideline 1.1-26,
+p. 1-11). In that row the control also adds no height above the containers
+(`PL-7LZ7`). No amount is a prediction about a
 patient to its last digit, for the reason § "Displayed precision" gives for
 the readouts.
+<!-- not-restated: 1.1 -->
 
 **A container's fill height is the compartment's modelled tension, not an
 amount.** All containers of one run fill against one scale: the concentration
-chart's standard scale, from zero at the bottom to 3 MAC of the running agent
-at the top. The schematic keeps that scale when a reader gives the chart
-another top. So a container filled to some share of its height shows the same
-tension as a trace standing at that share of the chart's axis at its standard
-top. A container is much shorter than the chart's plot, so its fill level does
-not line up with the chart's gridlines on screen. Each container therefore
-carries short marks every 0.5 MAC, and the caption names the top in percent
-and in MAC, and the spacing in MAC (`PL-8W1B`). A container that holds more agent can stand lower than one that
+chart's scale, from zero at the bottom to the top that the reader chose, 1.5,
+3 or 4.5 ×MAC of the running agent. The charts and the schematic share that
+top, and the schematic carries the same "Axis top" control
+(§ "The chart's fixed MAC axis", `PL-7LZ7`). So a container filled to some
+share of its height shows the same tension as a trace standing at that share
+of the chart's axis. A container is much shorter than the chart's plot, so its
+fill level does not line up with the chart's gridlines on screen. Each
+container therefore carries short marks at the MAC values that the chart's
+right axis labels, every 0.5 MAC at a top of 3 or 4.5 ×MAC and every 0.25 MAC
+at 1.5 ×MAC. The caption names the top in percent and in MAC, and the spacing
+in MAC (`PL-8W1B`). It prints the top's percent as the 1 MAC line prints the
+MAC, at two decimals with no trailing zero, so it gives a top the value that
+the chart's off-scale notice gives it: 5.26% for isoflurane at 4.5 ×MAC
+(`test_the_caption_names_isoflurane_s_top_at_the_readouts_two_decimals` in
+`tests/unit/test_compartment_schematic.py`). A container that holds more agent can stand lower than one that
 holds less. At 60 min in a run with sevoflurane at a 1 MAC dial, fat holds a fifth of
 all the agent in the run, but its tension of 0.03% atm fills less than 1% of
 its container's height (`ROADMAP.md` § "v0.7.0 - the schematic"). At a 1 MAC
@@ -6991,9 +7057,12 @@ frame of that run has been drawn. If the run's first frame fails, the readouts
 show the state in which the run was opened, and the schematic shows no values.
 
 **For developers.** The schematic takes the top of its scale from the function
-that sets the concentration chart's top (`chart_axis_top_percent`), at the
-standard top (`ChartCeiling.STANDARD`), and sets no top of its own. Its marks
-are the chart's MAC labels at that top (`mac_axis_ticks`). The top's MAC
+that sets the concentration chart's top (`chart_axis_top_percent`), at the top
+in the reader's preferences (`Preferences.chart_ceiling` in
+`app/preferences.py`). The dashboard passes that top to each run when the run
+builds its presentation (`RunPanelState.chart_ceiling`), and to each chart
+frame it assembles, so the schematic sets no top of its own. Its marks are the
+chart's MAC labels at that top (`mac_axis_ticks`). The standard top's MAC
 multiple is a constant (`CHART_AXIS_TOP_MAC`), and § "MAC multiples as a
 display unit" gives the reason for 3 MAC.
 <!-- provenance: app/formatting.py CHART_AXIS_TOP_MAC = 3 -->

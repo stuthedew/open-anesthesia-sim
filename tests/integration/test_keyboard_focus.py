@@ -251,9 +251,9 @@ def test_each_selector_is_named_by_its_shown_label_on_every_platform(
     labels = {_labels(node)[0] if _labels(node) else "" for node in selectors}
 
     # The agent selector, the playback rate, the branch point, both time
-    # bases, the chart's top, the cost unit, the price form's agent and the
-    # bookmark editor's compartment.
-    assert len(selectors) == 9
+    # bases, the chart's top, the schematic's top, the cost unit, the price
+    # form's agent and the bookmark editor's compartment.
+    assert len(selectors) == 10
     assert AGENT_SELECTOR_LABEL in labels
 
     for node in selectors:

@@ -115,6 +115,7 @@ from anesthesia_sim.app.controller import (
     SimulationController,
     SimulationSnapshot,
 )
+from anesthesia_sim.app.formatting import ChartCeiling
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES
 from anesthesia_sim.core import supported_ranges
 from anesthesia_sim.core.agent_simulation_validation import UNCOMPENSATED, AgentSimulationValidator
@@ -189,6 +190,7 @@ def _chart_frame() -> ChartFrame:
         COMPARTMENT_QUANTITIES,
         plot_width_px=CHART_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 
@@ -262,6 +264,7 @@ TYPICAL: Mapping[str, object] = {
     "after": {},
     "alveolar_partial_pressure_fraction": 0.01,
     "before": {},
+    "ceiling": ChartCeiling.STANDARD,
     "compensation": UNCOMPENSATED,
     "initial_state": AgentUptakeSystem.default().state_vector(),
     "inspired_partial_pressure_fraction": 0.02,

@@ -39,6 +39,7 @@ from anesthesia_sim.app.dashboard_frame import (
     new_case_question,
 )
 from anesthesia_sim.app.failures import FailureKind, open_failure_log
+from anesthesia_sim.app.formatting import ChartCeiling
 from anesthesia_sim.app.playback import PlaybackRate
 from anesthesia_sim.app.run_presentation import (
     KeptValues,
@@ -102,6 +103,7 @@ def _state(**changes: object) -> RunPanelState:
         pending_agent_name=None,
         reset_question=None,
         charts_withheld=False,
+        chart_ceiling=ChartCeiling.STANDARD,
     )
 
     return replace(state, **changes)  # type: ignore[arg-type]
@@ -273,7 +275,7 @@ def test_a_stopped_run_s_banner_states_what_the_panel_refused_on_a_frame_and_on_
     snapshot = replace(controller.snapshot(), supported_limit_reason=reason)
     record = replace(controller.record(), supported_limit_reason=reason)
     adjustments = group_adjustments(snapshot.control_timeline)
-    kept = KeptValues(0, drawn_values(snapshot, PlaybackRate(1)))
+    kept = KeptValues(0, drawn_values(snapshot, PlaybackRate(1), ChartCeiling.STANDARD))
     setting_refused = _state(rejected_setting_notice="Setting refused: too high.")
     states = {
         "plain": _state(),
@@ -459,10 +461,13 @@ def test_withheld_values_state_no_number_and_no_agent_of_any_run() -> None:
 
     rate = PlaybackRate(20)
     standing = {
-        _naming_no_agent(text) for text in _strings(drawn_values(_run_at(90).snapshot(), rate))
+        _naming_no_agent(text)
+        for text in _strings(drawn_values(_run_at(90).snapshot(), rate, ChartCeiling.STANDARD))
     } & {
         _naming_no_agent(text)
-        for text in _strings(drawn_values(_run_at(30, agent_id="desflurane").snapshot(), rate))
+        for text in _strings(
+            drawn_values(_run_at(30, agent_id="desflurane").snapshot(), rate, ChartCeiling.STANDARD)
+        )
     }
 
     texts = list(_strings(withheld_values(rate)))
@@ -504,7 +509,7 @@ def test_withheld_readouts_keep_each_panel_s_gloss_and_the_playback_rate() -> No
     The expected panel descriptions are those of a frame drawn from a real run.
     """
 
-    drawn = drawn_values(_run_at(90).snapshot(), PlaybackRate(4)).readouts
+    drawn = drawn_values(_run_at(90).snapshot(), PlaybackRate(4), ChartCeiling.STANDARD).readouts
 
     withheld = withheld_values(PlaybackRate(4)).readouts
 
@@ -516,7 +521,7 @@ def test_withheld_readouts_keep_each_panel_s_gloss_and_the_playback_rate() -> No
 def test_every_value_a_frame_draws_differs_from_its_withheld_form() -> None:
     """A drawn value never equals its withheld form, so the two tests above can tell them apart."""
 
-    drawn = drawn_values(_run_at(90).snapshot(), PlaybackRate(1))
+    drawn = drawn_values(_run_at(90).snapshot(), PlaybackRate(1), ChartCeiling.STANDARD)
     withheld = withheld_values(PlaybackRate(1))
 
     for field in fields(RunValues):
@@ -897,7 +902,9 @@ def test_a_drawn_run_carries_the_open_reset_question_and_a_halt_carries_none() -
     controller = _run_at(90)
     question = new_case_question(controller.snapshot(), "Desflurane", 0)
     state = _state(reset_question=question)
-    kept = KeptValues(0, drawn_values(controller.snapshot(), PlaybackRate(1)))
+    kept = KeptValues(
+        0, drawn_values(controller.snapshot(), PlaybackRate(1), ChartCeiling.STANDARD)
+    )
 
     assert _drawn(controller, state).reset_question is question
     assert _drawn(controller, _state()).reset_question is None
@@ -918,6 +925,7 @@ def _frame_of(controller: SimulationController, label: str) -> ChartFrame:
         COMPARTMENT_QUANTITIES,
         plot_width_px=400.0,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 
