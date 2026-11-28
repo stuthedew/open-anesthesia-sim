@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: presentation-safety
-touches: ROADMAP.md, docs/ARCHITECTURE.md, docs/INTERFACE.md, docs/VERIFICATION.md, docs/items/PL-C14T-with-two-runs-in-the-maintenance-workspace-at.md, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/pinned_heading.py, src/anesthesia_sim/app/qt_schematic.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/layout/sizing.py, tests/integration/simulation_view/test_simulation_view_page.py, tests/integration/test_compartment_schematic_view.py, tests/integration/test_layout_adapter.py, tests/integration/test_pinned_heading.py, tests/unit/test_layout_sizing.py, tests/unit/test_view_registry.py, tools/contrast_check.py
+touches: ROADMAP.md, docs/ARCHITECTURE.md, docs/INTERFACE.md, docs/VERIFICATION.md, docs/items/PL-C14T-with-two-runs-in-the-maintenance-workspace-at.md, docs/items/PL-H100-on-a-mac-the-maintenance-workspace-at-1366-by.md, src/anesthesia_sim/app/area_layout.py, src/anesthesia_sim/app/compartment_schematic.py, src/anesthesia_sim/app/pinned_heading.py, src/anesthesia_sim/app/qt_schematic.py, src/anesthesia_sim/app/view_registry.py, src/anesthesia_sim/app/views.py, src/anesthesia_sim/layout/sizing.py, tests/integration/simulation_view/test_simulation_view_page.py, tests/integration/test_compartment_schematic_view.py, tests/integration/test_layout_adapter.py, tests/integration/test_pinned_heading.py, tests/unit/test_layout_sizing.py, tests/unit/test_view_registry.py, tools/contrast_check.py
 added: 2026-11-27
 closed: 2026-11-28
 pr: 2346
@@ -260,4 +260,5 @@ with a new row for a cut container. `docs/ARCHITECTURE.md`'s lines for
 `layout/sizing.py`. `ROADMAP.md`'s v0.7.0 gate. `tools/contrast_check.py`'s
 requirement for the warning colour on the panel, which now names the cut
 line. `docs/MODEL.md` and `README.md` do not describe the schematic's
-drawing. `PL-C14T`'s brief has a dated paragraph on what its state shows now.
+drawing. `PL-C14T`'s brief has a dated paragraph on what its state shows now,
+and so does `PL-H100`'s, on the Mac's cut share line.

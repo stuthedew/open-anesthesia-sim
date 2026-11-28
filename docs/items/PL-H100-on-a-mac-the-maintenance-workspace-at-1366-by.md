@@ -19,5 +19,14 @@ added: 2026-11-28
 
 **Why it matters.** `docs/INTERFACE.md` says the Maintenance Workspace shows the containers and the share caption whole at 1366 by 768 with one run. On a Mac it does not, and a value line cut through at the lower edge can look like another value, the hazard `PL-GWTR` records for the upper edge. The pinned run heading keeps every value beside its run and compartment (`PL-3NGZ`), and a scroll of the Area shows the rest.
 
+**Checked 2026-11-28** (`PL-GWTR`, pull request #2346). The schematic now
+paints a label line or a share bar only while it is whole in view. So on a Mac
+at 1366 by 768 the third label line under each container is hidden rather than
+cut through, and no cut value can be misread there. This follows from the
+painting rule, which the Linux tests check at every scroll position; it was not
+run on a Mac. The share lines and bars are still out of view until the Area is
+scrolled, so the Workspace still fails `docs/INTERFACE.md`'s requirement on a
+Mac, and this item's fix is still needed.
+
 **Where to start.** The fix needs about 20 px of height at 1366 by 768 in the macOS font, taken from the schematic's own rows or given by the Workspace's shares, without breaking the concentration chart's least height. Prove it on macOS, which needs `PL-2Y1L` (a macOS test job) or the same throwaway probe, because the Linux tests cannot see this.
 
