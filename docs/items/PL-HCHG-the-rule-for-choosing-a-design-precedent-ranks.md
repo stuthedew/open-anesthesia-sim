@@ -5,18 +5,20 @@ priority: P2
 effort: S
 status: done
 classes: docs, ux
-touches: .claude/rules/expert-review.md
+touches: .claude/rules/expert-review.md, .claude/skills/docket/modes/design.md, docs/resident-instructions.md
 added: 2026-11-28
 closed: 2026-11-28
 pr: 2345
-verify: grep -qF 'never a patient monitor or an anesthesia' .claude/rules/expert-review.md
+verify: grep -qF 'use a patient monitor or an anesthesia workstation as the precedent' .claude/rules/expert-review.md
 ---
 
 **Problem.** The rule for choosing a design precedent ranks patient monitors and anesthesia workstations first for how a clinical value is drawn, but this is simulation software; compare with simulation programs, Blender and the platform guides instead
 
 **Where this comes from.** The owner, 2026-11-28 01:00Z: "Shouldn't use a patient monitor as a comparison. This is simulation software. Not a patient monitor. Please make sure that's a global change." Two threads had already met the case. `PL-JV5H` (the confirmation windows, `#2343`) had taken an IntelliVue monitor as its closest analog, and the owner answered that "Philips monitor is not the same thing as a simulation program". The cause was `.claude/rules/expert-review.md` § "Search the closest analog first", added by `PL-HWZK` (`#2330`) on 2026-11-27. It ranked "the same quantity or signal first", and said that for how a clinical value is drawn "anesthesia workstations, patient monitors and Gas Man rank above Blender". A monitor shows the same quantity, so the rule sent every session to one.
 
-**What changed.** The section now says that the comparison is another simulation program, never a patient monitor or an anesthesia workstation, and ranks three kinds of precedent: Gas Man and other anesthesia or physiology simulators, then Blender for Workspaces, Areas and Views, then the Apple, GNOME and Microsoft desktop guides. The three guides are the ones `PL-JV5H` read in full on 2026-11-28. A general display guideline or paper, such as NUREG-0700 or a study of linked views, stays citable as a source, with a check that a rule written to protect a live value applies to a modelled one. A monitor may still be named as what a user compares a value with, and a machine's manual as a source of the model's physical data. The workstation is excluded with the monitor because it is the same class of product, a clinical device, and the rule named the two together.
+**What changed.** The section now says to compare with simulation software, and names three kinds of precedent in order: Gas Man and other anesthesia or physiology simulators, then Blender for Workspaces, Areas and Views, then the Apple, GNOME and Microsoft desktop guides. It refuses a patient monitor or an anesthesia workstation as the precedent. The three guides are the ones `PL-JV5H` read in full on 2026-11-28. The workstation is refused with the monitor because it is the same class of product, a clinical device, and the old rule named the two together.
+
+The section is resident, and the cap on resident text left room for 72 more characters, so the detail went to `.claude/skills/docket/modes/design.md` step 3, which a design round reads. It says that a general display guideline or paper, such as NUREG-0700 or a study of linked views, stays citable as a source, with a check that a rule written to protect a live value applies to a modelled one. It also says that a monitor may still be named as what a user compares a value with, and a machine's manual as a source of the model's physical data. `docs/resident-instructions.md` § "The closest analog, reworded 2026-11-28" records the move.
 
 **Decisions that cited a monitor, rechecked 2026-11-28.** The search covered every item, rule, skill and standing document for "patient monitor", "monitor", "IntelliVue", "Philips", "IEC 60601-1-8", "workstation" and "closest analog".
 
@@ -34,4 +36,4 @@ No decision was found whose only basis is a monitor beyond `PL-JV5H`, so nothing
 
 **Done when.** The rule names simulation programs, Blender and the platform guides as the precedents and excludes monitors and workstations, and this brief lists each decision that cited a monitor with its verdict.
 
-**Docs checked.** `.claude/rules/expert-review.md` (changed), `.claude/rules/instruction-writing.md` rule 14 (names "a cited standard, design system or professional product's documentation", still true), `.claude/skills/` (no analog ranking), `docs/interface-provenance.md` (its only "monitor" is a display screen), `docs/INTERFACE.md`, `docs/MODEL.md`, `ROADMAP.md`, `src/anesthesia_sim/app/` and every item brief, by the search above.
+**Docs checked.** `.claude/rules/expert-review.md`, `.claude/skills/docket/modes/design.md` and `docs/resident-instructions.md` (changed), `.claude/rules/instruction-writing.md` rule 14 (names "a cited standard, design system or professional product's documentation", still true), `.claude/skills/` (no analog ranking), `docs/interface-provenance.md` (its only "monitor" is a display screen), `docs/INTERFACE.md`, `docs/MODEL.md`, `ROADMAP.md`, `src/anesthesia_sim/app/` and every item brief, by the search above.
