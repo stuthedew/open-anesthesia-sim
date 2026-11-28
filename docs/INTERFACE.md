@@ -4489,10 +4489,11 @@ selector is for from that label. Each name starts with the label shown, which
 the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
 The W3C's ARIA Authoring Practices Guide asks for "unique names for elements
 with the same role unless the elements are actually identical". So no two
-controls that a reader can reach share a name, apart from the identical copies
-that the next paragraph describes. A scroll box that takes the focus so that
-the keyboard can scroll it is named by the heading above it, or by what it
-holds, such as "Concentration chart legend"
+controls or pictures that a reader can reach share a name, in any shipped
+Workspace, with one run or with two compared (`PL-9XGQ`), apart from the
+identical copies that the next paragraph describes. A scroll box that takes
+the focus so that the keyboard can scroll it is named by the heading above
+it, or by what it holds, such as "Concentration chart legend"
 (`test_every_control_a_reader_can_reach_says_what_it_is_for`,
 `test_each_selector_is_named_by_its_shown_label_on_every_platform`,
 `test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
@@ -4551,7 +4552,7 @@ of the View share, such as a setting's slider or the unit the agent cost is
 shown in. So two copies of one of those controls do the same thing, as two
 links to one place do, and they keep one name. The Authoring Practices Guide
 gives two such links as its example of identical elements
-(`test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
+(`test_no_two_controls_or_pictures_share_a_name_after_each_plot_area_is_split`,
 `test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number` and
 `test_each_half_of_a_split_agent_cost_area_names_its_own_price_form` in
 `tests/integration/test_keyboard_focus.py`, and
@@ -4692,6 +4693,23 @@ in `tests/unit/test_compartment_schematic.py`, and
 `test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes`
 and `test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+
+**Every picture in every shipped Workspace has a text alternative**
+(`PL-9XGQ`). A test finds each picture among the widgets shown, in each
+shipped Workspace and in one that shows every kind of View, with one run and
+with two compared. A picture is a plot, an SVG drawing, a label that shows
+only an image, or any widget that this program paints for itself, apart from a
+short list of painted widgets that draw no picture, such as a legend's sample
+of a line beside the check box that names the line. Each picture must sit in
+an image with a name and a description of its own, which it shares with no
+other picture. So a plot or a painted widget added later to any View fails the
+test until it has a text alternative or joins that list with its reason. A
+picture drawn some other way, such as onto another widget from outside it, is
+not found by the test, so the test also checks that every image the screen
+reader is told about has a name and a description
+(`test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named`
+and `test_each_painted_widget_that_draws_no_picture_still_paints` in
+`tests/integration/test_keyboard_focus.py`).
 
 #### Minimum contrast for text and graphics
 
