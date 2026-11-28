@@ -61,15 +61,16 @@ notice for the reader. No problem with the file passes without a notice:
   save never deletes something the reader wrote without the reader asking.
 - *A file that a newer build wrote.* It is not read. Saving is off for the
   session, so the file is never overwritten. The notice names the file, its
-  version and this build's version. The Workspaces file follows the same rule
-  (`PL-SSQW`).
+  version and this build's version, and says what the reader can do. The
+  Workspaces file follows the same rule (`PL-SSQW`).
 - *A file that cannot be read, or cannot be checked entry by entry.* It is
   handled in the same way as a file from a newer build. This covers a file
   that is not UTF-8 JSON, and one with a duplicated key, a missing or unknown
   key, a container of the wrong kind, two prices for one agent, or a number
   too large for a float. An example of the last is 1e400, which could not be
   written back. Saving is off, so the file stays as it is for the reader to
-  repair or remove. The notice says what is wrong with the file.
+  repair or remove. The notice says what is wrong with the file, in the
+  words the agent cost View uses, and what the reader can do (`PL-W312`).
 
 **How the file is written.** `save` uses `user_files`, which the Workspaces
 store uses as well. It writes the whole document to `preferences.json.tmp`,
@@ -83,7 +84,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from math import isfinite
@@ -140,6 +141,17 @@ _DOCUMENT_KEYS: Final = MappingProxyType(
     {
         1: frozenset({_SCHEMA_VERSION_KEY, _UNIT_KEY, _PRICES_KEY}),
         2: frozenset({_SCHEMA_VERSION_KEY, _UNIT_KEY, _PRICES_KEY, _CHART_CEILING_KEY}),
+    }
+)
+#: What the agent cost View and the charts call each setting of the file, for a
+#: notice that names a missing one. The schema version is checked first, so it
+#: is never named as missing.
+_DOCUMENT_KEY_WORDS: Final = MappingProxyType(
+    {
+        _SCHEMA_VERSION_KEY: "version",
+        _UNIT_KEY: "choice of how agent amounts are shown",
+        _PRICES_KEY: "agent prices",
+        _CHART_CEILING_KEY: "axis top",
     }
 )
 _AGENT_KEY: Final = "agent"
@@ -469,6 +481,26 @@ class LoadedPreferences:
     notice: str | None
 
 
+#: What the notice for a file that cannot be used at all says about the
+#: session, after the reason (`PreferencesStore._read_only`).
+UNUSABLE_PREFERENCES_FILE_EFFECT: Final = (
+    "None of your saved settings is in use, and the application does not save changes you "
+    "make now, so the file stays as it is."
+)
+#: What a reader can do about a file that cannot be used at all. Preferences
+#: are read only at launch, so each way out ends in a restart.
+UNUSABLE_PREFERENCES_FILE_NEXT_STEP: Final = (
+    "To use your saved settings again, correct the file or move it out of its folder, then "
+    "restart the application."
+)
+#: What a reader can do about a file that a newer version of the application
+#: saved. This version cannot read it, so correcting it is not a way out.
+NEWER_PREFERENCES_FILE_NEXT_STEP: Final = (
+    "To use your saved settings, open the newer version of the application. To start again "
+    "without them, move the file out of its folder, then restart this version."
+)
+
+
 class PreferencesStore:
     """The reader's preferences file in one directory, read at launch and written on request."""
 
@@ -523,7 +555,7 @@ class PreferencesStore:
             )
 
         if not self._loaded.writable:
-            raise PreferencesFileError(f"saving is off for this session: {self._loaded.notice}")
+            raise PreferencesFileError(f"saving is off for this session. {self._loaded.notice}")
 
         text = _to_json(preferences)
         pending = self._directory / _PENDING_FILE_NAME
@@ -556,9 +588,11 @@ class PreferencesStore:
         except FileNotFoundError:
             return LoadedPreferences(Preferences(), writable=True, notice=None)
         except UnicodeDecodeError:
-            return self._read_only("it is not UTF-8 text")
+            return self._read_only(
+                "the file's text is not in UTF-8, the encoding that the application saves"
+            )
         except OSError as error:
-            return self._read_only(f"it could not be read ({error.strerror or error})")
+            return self._read_only(f"the file could not be read ({error.strerror or error})")
 
         try:
             document = json.loads(
@@ -568,14 +602,17 @@ class PreferencesStore:
                 parse_float=_finite_float,
             )
         except (ValueError, RecursionError) as error:
-            return self._read_only(f"it is not a JSON document this build can read ({error})")
+            return self._read_only(
+                f"the file's contents are not in the format that the application saves ({error})"
+            )
 
         try:
             preferences = _from_document(document)
         except _NewerFile as newer:
             return self._read_only(
-                f"it was written at schema version {newer.version} by a newer build, and this "
-                f"build reads version {PREFERENCES_SCHEMA_VERSION} and earlier"
+                f"a newer version of the application saved the file as version {newer.version}, "
+                f"and this version reads files up to version {PREFERENCES_SCHEMA_VERSION}",
+                NEWER_PREFERENCES_FILE_NEXT_STEP,
             )
         except _InvalidDocument as invalid:
             return self._read_only(str(invalid))
@@ -584,14 +621,23 @@ class PreferencesStore:
             preferences, writable=True, notice=refusals_notice(self.path, preferences)
         )
 
-    def _read_only(self, reason: str) -> LoadedPreferences:
+    def _read_only(
+        self, reason: str, next_step: str = UNUSABLE_PREFERENCES_FILE_NEXT_STEP
+    ) -> LoadedPreferences:
+        """Return the defaults, with saving off, for a file that cannot be used at all.
+
+        The notice says what went wrong, then what that means for the
+        session, then what the reader can do, as `refusals_notice` does. The
+        file's path comes last, as Microsoft's Windows error-message guidelines
+        ask for a full path (`PL-W312`, which records the sources).
+        """
+
         return LoadedPreferences(
             Preferences(),
             writable=False,
             notice=(
-                f"the preferences file {self.path} was not used because {reason}. No price is "
-                "set, and saving preferences is off for this session so that the file is left "
-                "as it is"
+                f"The application could not use your preferences file, because {reason}. "
+                f"{UNUSABLE_PREFERENCES_FILE_EFFECT} {next_step} The file is {self.path}."
             ),
         )
 
@@ -684,7 +730,7 @@ def _refuse_repeated_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
     repeated = sorted({key for key in keys if keys.count(key) > 1})
 
     if repeated:
-        raise ValueError(f"the key {repeated[0]!r} is given twice in one object")
+        raise ValueError(f"the setting {repeated[0]!r} is written twice in one place")
 
     return dict(pairs)
 
@@ -735,7 +781,8 @@ def _refuse_what_cannot_be_written_back(document: object) -> None:
                 value.encode("utf-8")
             except UnicodeEncodeError:
                 raise _InvalidDocument(
-                    "it holds text that is not valid Unicode, so it could not be written back"
+                    "the file holds text that is not valid Unicode, so the application could not "
+                    "save it back unchanged"
                 ) from None
             continue
 
@@ -744,8 +791,8 @@ def _refuse_what_cannot_be_written_back(document: object) -> None:
 
         if depth > _DEEPEST_NESTING:
             raise _InvalidDocument(
-                f"it nests lists and objects more than {_DEEPEST_NESTING} deep, which no "
-                "preferences document does"
+                f"the file's entries are nested more than {_DEEPEST_NESTING} levels deep, and no "
+                "preferences file that the application saves is"
             )
 
         children = [*value.keys(), *value.values()] if isinstance(value, dict) else value
@@ -754,14 +801,21 @@ def _refuse_what_cannot_be_written_back(document: object) -> None:
 
 def _from_document(document: object) -> Preferences:
     if not isinstance(document, dict):
-        raise _InvalidDocument("its document is not a JSON object")
+        raise _InvalidDocument(
+            "the file does not hold a set of named settings, which is how the application "
+            "saves them"
+        )
 
     _refuse_what_cannot_be_written_back(document)
 
-    version = document.get(_SCHEMA_VERSION_KEY)
+    if _SCHEMA_VERSION_KEY not in document:
+        raise _InvalidDocument("the file gives no version")
+
+    version = document[_SCHEMA_VERSION_KEY]
 
     if isinstance(version, bool) or not isinstance(version, int) or version < 1:
-        raise _InvalidDocument(f"its {_SCHEMA_VERSION_KEY} is {version!r}, not a version from 1 up")
+        shown = json.dumps(version, ensure_ascii=False)
+        raise _InvalidDocument(f"the file's version, {shown}, is not a whole number from 1 up")
 
     if version > PREFERENCES_SCHEMA_VERSION:
         raise _NewerFile(version)
@@ -769,13 +823,14 @@ def _from_document(document: object) -> Preferences:
     keys = set(document)
     expected = _DOCUMENT_KEYS[version]
     if keys != expected:
-        missing = sorted(expected - keys)
-        unknown = sorted(keys - expected)
-        raise _InvalidDocument(f"its keys are wrong: missing {missing}, not known {unknown}")
+        raise _InvalidDocument(_wrong_settings(version, expected - keys, keys - expected))
 
     raw_prices = document[_PRICES_KEY]
     if not isinstance(raw_prices, list):
-        raise _InvalidDocument(f"its {_PRICES_KEY} is not a list")
+        raise _InvalidDocument(
+            "the file's agent prices are not written as a list, which is how the application "
+            "saves them"
+        )
 
     prices: dict[str, AgentPrice] = {}
     refused: list[RefusedEntry] = []
@@ -788,7 +843,8 @@ def _from_document(document: object) -> Preferences:
         if agent_id is not None:
             if agent_id in named:
                 raise _InvalidDocument(
-                    f"it holds two prices for {agent_id}, so it cannot say which applies"
+                    f"the file holds two prices for {agent_id}, so the application cannot tell "
+                    "which one applies"
                 )
             named.add(agent_id)
 
@@ -838,6 +894,36 @@ def _from_document(document: object) -> Preferences:
         chart_ceiling=ceiling,
         refused_chart_ceiling=refused_ceiling,
     )
+
+
+def _wrong_settings(version: int, missing: Set[str], unknown: Set[str]) -> str:
+    """Return why a file's settings are not the ones its version holds, in the View's words.
+
+    A missing setting is named as the View names it (`_DOCUMENT_KEY_WORDS`).
+    A setting the file's version does not have is named as the file writes
+    it, in quotes, because the View has no name for it. `_price_from_entry`
+    words a price entry's wrong fields the same way.
+    """
+
+    problems = []
+
+    if missing:
+        words = sorted(_DOCUMENT_KEY_WORDS[key] for key in missing)
+        problems.append(f"has {_listed([f'no {word}' for word in words])}")
+
+    if unknown:
+        problems.append(
+            f"holds settings that a version {version} file does not have: "
+            f"{', '.join(repr(key) for key in sorted(unknown))}"
+        )
+
+    return f"the file {', and '.join(problems)}"
+
+
+def _listed(words: Sequence[str]) -> str:
+    """Return `words` as a list in a sentence, such as "no agent prices and no axis top"."""
+
+    return words[0] if len(words) == 1 else f"{', '.join(words[:-1])} and {words[-1]}"
 
 
 def _chart_ceiling_from(raw: object) -> tuple[ChartCeiling, RefusedEntry | None]:

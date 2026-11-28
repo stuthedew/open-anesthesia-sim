@@ -7060,6 +7060,24 @@ texts are the constants beside `NO_PRICE_TEXT` in `app/agent_cost.py`, and
 `test_the_notice_of_refused_preferences_says_what_the_reader_can_do` in
 `tests/unit/test_preferences.py` checks the notice.
 
+**When the whole preferences file cannot be used, the agent cost View says why,
+what that means and what to do** (`PL-W312`). The notice opens "The application
+could not use your preferences file, because", then gives the reason in the
+View's words. A missing setting is named as the View names it, such as "agent
+prices" or "axis top". A setting that the View has no name for is named as the
+file writes it, in quotes. Next comes "None of your saved settings is in use,
+and the application does not save changes you make now, so the file stays as
+it is." Then the notice says what the reader can do. The application reads its
+preferences only when it starts, so each way out ends in a restart: correct the
+file or move it out of its folder, or, for a file that a newer version saved,
+open that version. The file's path comes last, as Microsoft's Windows
+error-message guidelines ask of a full path
+(https://learn.microsoft.com/en-us/windows/win32/uxguide/mess-error, read
+2026-11-28). For developers:
+`test_a_document_that_cannot_be_checked_entry_by_entry_turns_saving_off` and
+`test_a_file_from_a_newer_build_is_not_read_and_never_overwritten` in
+`tests/unit/test_preferences.py` check each notice.
+
 The readout never shows a cost of zero in place of one of these cases. Nor does
 it show a cost left over from an earlier instant, another agent or an earlier
 price. When the price changes, the readout redraws the cost at once, whether or

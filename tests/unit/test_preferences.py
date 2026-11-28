@@ -280,67 +280,108 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
 
     assert not loaded.writable
     assert dict(loaded.preferences.agent_prices) == {}
-    assert loaded.notice is not None
-    assert "schema version 3" in loaded.notice
-    assert "reads version 2" in loaded.notice
-    assert str(path) in loaded.notice
+    # `PL-W312`: what went wrong, what it means, what the reader can do, and
+    # the path last, in the reader's words. The sentences are written out here
+    # rather than read from the module, so a change to them fails this test.
+    assert loaded.notice == (
+        "The application could not use your preferences file, because a newer version of the "
+        "application saved the file as version 3, and this version reads files up to version 2. "
+        f"{_UNUSABLE_EFFECT} To use your saved settings, open the newer version of the "
+        "application. To start again without them, move the file out of its folder, then "
+        f"restart this version. The file is {path}."
+    )
     with pytest.raises(PreferencesFileError, match="saving is off"):
         store.save(Preferences().with_price(ISOFLURANE_PRICE))
     assert path.read_bytes() == before
 
 
+#: What the notice for a file that cannot be used at all says after its
+#: reason, written out rather than read from the module (`PL-W312`).
+_UNUSABLE_EFFECT = (
+    "None of your saved settings is in use, and the application does not save changes you "
+    "make now, so the file stays as it is."
+)
+_UNUSABLE_NEXT_STEP = (
+    "To use your saved settings again, correct the file or move it out of its folder, then "
+    "restart the application."
+)
+
+
 @pytest.mark.parametrize(
     ("text", "reason"),
     [
-        ("{not json", "not a JSON document"),
-        ("[]", "not a JSON object"),
-        ('{"schema_version": 0}', "not a version from 1 up"),
-        ('{"schema_version": true}', "not a version from 1 up"),
-        ('{"schema_version": 1, "agent_cost_unit": "millilitres of liquid"}', "missing"),
+        (
+            "{not json",
+            "the file's contents are not in the format that the application saves (Expecting "
+            "property name enclosed in double quotes: line 1 column 2 (char 1))",
+        ),
+        (
+            "[]",
+            "the file does not hold a set of named settings, which is how the application "
+            "saves them",
+        ),
+        ('{"schema_version": 0}', "the file's version, 0, is not a whole number from 1 up"),
+        ('{"schema_version": true}', "the file's version, true, is not a whole number from 1 up"),
+        ('{"agent_cost_unit": "millilitres of liquid"}', "the file gives no version"),
+        (
+            '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid"}',
+            "the file has no agent prices",
+        ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [], "theme": "dark"}',
-            "not known",
+            "the file holds settings that a version 1 file does not have: 'theme'",
         ),
         (
             '{"schema_version": 2, "agent_cost_unit": "millilitres of liquid", "agent_prices": []}',
-            "missing ['chart_axis_top_mac']",
+            "the file has no axis top",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [], "chart_axis_top_mac": 3.0}',
-            "not known ['chart_axis_top_mac']",
+            "the file holds settings that a version 1 file does not have: 'chart_axis_top_mac'",
+        ),
+        (
+            '{"schema_version": 2, "colour": "red", "theme": "dark"}',
+            "the file has no agent prices, no axis top and no choice of how agent amounts are "
+            "shown, and holds settings that a version 2 file does not have: 'colour', 'theme'",
         ),
         (
             '{"schema_version": 1, "schema_version": 1, '
             '"agent_cost_unit": "millilitres of liquid", "agent_prices": []}',
-            "given twice",
+            "the file's contents are not in the format that the application saves (the setting "
+            "'schema_version' is written twice in one place)",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", "agent_prices": {}}',
-            "not a list",
+            "the file's agent prices are not written as a list, which is how the application saves "
+            "them",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [{"agent": "isoflurane", "bottle_price": NaN, '
             '"bottle_volume_ml": 100, "currency": "USD", "applies_on": "2008-03-05"}]}',
-            "NaN is not a number",
+            "the file's contents are not in the format that the application saves (NaN is not "
+            "a number a preference can hold)",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [{"agent": "isoflurane", "bottle_price": 20.47, '
             '"bottle_volume_ml": 1e400, "currency": "USD", "applies_on": "2008-03-05"}]}',
-            "1e400 is too large",
+            "the file's contents are not in the format that the application saves (1e400 is too "
+            "large to be a number a preference can hold)",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": ["\\ud800"]}',
-            "not valid Unicode",
+            "the file holds text that is not valid Unicode, so the application could not save it "
+            "back unchanged",
         ),
         (
             '{"schema_version": 1, "agent_cost_unit": "millilitres of liquid", '
             '"agent_prices": [' + "[" * 8 + "]" * 8 + "]}",
-            "more than 8 deep",
+            "the file's entries are nested more than 8 levels deep, and no preferences file "
+            "that the application saves is",
         ),
     ],
     ids=[
@@ -348,10 +389,12 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
         "not an object",
         "version 0",
         "version true",
+        "no version",
         "a key missing",
         "an unknown key",
         "a version 2 file with no top",
         "a version 1 file with a top",
+        "three keys missing and two unknown",
         "a repeated key",
         "prices not a list",
         "NaN",
@@ -363,6 +406,13 @@ def test_a_file_from_a_newer_build_is_not_read_and_never_overwritten(tmp_path: P
 def test_a_document_that_cannot_be_checked_entry_by_entry_turns_saving_off(
     tmp_path: Path, text: str, reason: str
 ) -> None:
+    """The notice says what is wrong in the reader's words, then what to do (`PL-W312`).
+
+    No setting is named in Python's list notation. A missing setting is named
+    as the View names it, and a setting the file's version does not have is
+    named as the file writes it.
+    """
+
     path = tmp_path / PREFERENCES_FILE_NAME
     path.write_text(text, encoding="utf-8")
 
@@ -370,8 +420,11 @@ def test_a_document_that_cannot_be_checked_entry_by_entry_turns_saving_off(
 
     assert not loaded.writable
     assert dict(loaded.preferences.agent_prices) == {}
-    assert loaded.notice is not None
-    assert reason in loaded.notice
+    assert loaded.notice == (
+        f"The application could not use your preferences file, because {reason}. "
+        f"{_UNUSABLE_EFFECT} {_UNUSABLE_NEXT_STEP} The file is {path}."
+    )
+    assert "[" not in loaded.notice
     assert path.read_text(encoding="utf-8") == text
 
 
@@ -382,7 +435,10 @@ def test_two_prices_for_one_agent_turn_saving_off(tmp_path: Path) -> None:
 
     assert not loaded.writable
     assert loaded.notice is not None
-    assert "two prices for sevoflurane" in loaded.notice
+    assert loaded.notice.startswith(
+        "The application could not use your preferences file, because the file holds two prices "
+        "for sevoflurane, so the application cannot tell which one applies. "
+    )
 
 
 def test_a_file_that_is_not_utf8_turns_saving_off(tmp_path: Path) -> None:
@@ -392,7 +448,10 @@ def test_a_file_that_is_not_utf8_turns_saving_off(tmp_path: Path) -> None:
 
     assert not loaded.writable
     assert loaded.notice is not None
-    assert "not UTF-8" in loaded.notice
+    assert loaded.notice.startswith(
+        "The application could not use your preferences file, because the file's text is not in "
+        "UTF-8, the encoding that the application saves. "
+    )
 
 
 def test_a_file_that_cannot_be_read_turns_saving_off(tmp_path: Path) -> None:
@@ -402,7 +461,9 @@ def test_a_file_that_cannot_be_read_turns_saving_off(tmp_path: Path) -> None:
 
     assert not loaded.writable
     assert loaded.notice is not None
-    assert "could not be read" in loaded.notice
+    assert loaded.notice.startswith(
+        "The application could not use your preferences file, because the file could not be read ("
+    )
 
 
 # ---------------------------------------------- one entry refused, the rest used
@@ -834,7 +895,7 @@ def _nested_lists(count: int) -> object:
     [
         (_document([{**SEVOFLURANE_PRICE_ENTRY, "agent": "\ud800"}]), "not valid Unicode"),
         (_document([SEVOFLURANE_PRICE_ENTRY], unit="\ud800"), "not valid Unicode"),
-        (_document([_nested_lists(7), SEVOFLURANE_PRICE_ENTRY]), "more than 8 deep"),
+        (_document([_nested_lists(7), SEVOFLURANE_PRICE_ENTRY]), "more than 8 levels deep"),
     ],
     ids=[
         "a lone surrogate in a price's agent field",
