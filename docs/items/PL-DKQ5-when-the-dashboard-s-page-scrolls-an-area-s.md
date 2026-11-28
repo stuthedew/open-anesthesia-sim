@@ -13,7 +13,7 @@ closed: 2026-11-28
 pr: 2355
 filed-pr: 2331
 payoff: a user never sees a value in any View without its Area's header and the lines that state its unit and that it is modelled, whatever the window's size or arrangement
-tests: tests/integration/test_area_header_page_scroll.py::test_a_page_scrolled_down_keeps_each_area_s_header_and_pinned_row_over_its_values, tests/integration/test_area_header_page_scroll.py::test_a_page_scrolled_sideways_starts_each_area_s_header_and_pinned_row_in_view
+tests: tests/integration/test_area_header_page_scroll.py::test_a_page_scrolled_down_keeps_each_area_s_header_and_pinned_row_over_its_values, tests/integration/test_area_header_page_scroll.py::test_a_page_scrolled_sideways_starts_each_area_s_header_and_pinned_row_in_view, tests/integration/test_area_header_page_scroll.py::test_shift_tab_up_a_scrolled_page_never_leaves_the_focus_under_an_area_s_header, tests/unit/test_stylesheets.py::test_a_heading_over_rows_draws_the_panel_colour_and_one_at_home_draws_nothing
 root-cause-of: PL-26BZ, PL-P83G, PL-3NGZ
 generator: spent - check: tests/integration/test_area_header_page_scroll.py puts every registered View at the window's top and scrolls the page through every position, down and sideways, and fails where a value is seen without its Area's header and pinned row; inside an Area the pinned row sits outside the View's box by construction (AreaFrame), and every heading inside a View pins under the Area's because each reads in_view
 misread: Which lines a shown value needs in view with it, kept together by every box that scrolls
