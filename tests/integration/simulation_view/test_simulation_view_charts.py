@@ -152,7 +152,7 @@ def _changes_of(source: QWidget, recorded: list[TextChange]) -> list[TextChange]
 def test_the_wash_in_plot_tells_a_screen_reader_what_it_plots_and_each_run_s_ratio(
     application: QApplication,
 ) -> None:
-    """The plot reports itself as an image, with a name and the ratio now (`PL-R1M6`).
+    """The plot reports itself as an image, with a name and the ratio it ends at (`PL-R1M6`).
 
     Before `PL-R1M6` the plot reached a screen reader as an unnamed client
     area. The expected ratio is read from a second run built with the same
@@ -190,7 +190,8 @@ def test_the_wash_in_plot_tells_a_screen_reader_what_it_plots_and_each_run_s_rat
     assert described.text(QAccessible.Text.Description).splitlines() == [
         "Line chart.",
         "Model outputs — not measurements.",
-        f"Now: FA/FI = {format_wash_in_ratio(reading.plotted_ratio)}",
+        "Modelled sevoflurane at 10m: Wash-in FA/FI (alveolar / modelled circuit), "
+        f"{format_wash_in_ratio(reading.plotted_ratio)}.",
         "Equilibrium, FA = FI",
     ]
 
@@ -202,10 +203,48 @@ def test_the_wash_in_plot_tells_a_screen_reader_what_it_plots_and_each_run_s_rat
     )
 
 
+def test_a_held_wash_in_plot_tells_a_screen_reader_the_ratio_at_its_right_edge(
+    application: QApplication,
+) -> None:
+    """With the window held back, the description gives the ratio where the trace ends (`PL-R1M6`).
+
+    At 50 minutes, a 15-minute window stepped back once shows 30m to 45m, as
+    `test_simulation_view_held_window.py` works out for the concentration
+    chart. The trace ends at the window's right edge, so the description gives
+    the ratio at 45m, read from a second run advanced only to 45m, and not the
+    reading at 50m that the row above the plot gives.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 3000)
+    fresh = SimulationController()
+    fresh.start()
+    _advance(fresh, 2700)
+    snapshot = fresh.snapshot()
+    reading = read_wash_in_with_ventilation(
+        snapshot.alveolar_partial_pressure_fraction,
+        snapshot.inspired_partial_pressure_fraction,
+        snapshot.reaching_alveolar_ventilation_l_min,
+    )
+    assert reading.plotted_ratio is not None
+    view = _shown_view(application, controller)
+    wash_in = _wash_in(view)
+    wash_in.time_base_selector.setCurrentIndex(wash_in.time_base_selector.findData("900.0"))
+    wash_in._window.earlier_button.click()
+    described = QAccessible.queryAccessibleInterface(wash_in.chart)
+
+    assert described.text(QAccessible.Text.Name).endswith("held: not following the run")
+    assert described.text(QAccessible.Text.Description).splitlines()[2] == (
+        "Modelled sevoflurane at 45m: Wash-in FA/FI (alveolar / modelled circuit), "
+        f"{format_wash_in_ratio(reading.plotted_ratio)}."
+    )
+
+
 def test_each_schematic_tells_a_screen_reader_its_run_its_instant_and_its_values(
     application: QApplication,
 ) -> None:
-    """Each run's schematic reports itself as an image, with its run, instant and values (`PL-R1M6`).
+    """Each run's schematic reports itself as an image with its run, instant and values (`PL-R1M6`).
 
     The expected alveolar tension and amount are read from a second run built
     with the same settings, not from the run the schematic draws. The name

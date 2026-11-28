@@ -3451,12 +3451,20 @@ class DescribedGraphic(QWidget):
         self._reported_texts: tuple[str, str] | None = None
 
     def graphic_name(self) -> str:
-        """Return the short text alternative, which says what the picture shows."""
+        """Return the short text alternative, which says what the picture shows.
+
+        Raises:
+            NotImplementedError: The subclass does not define its name.
+        """
 
         raise NotImplementedError
 
     def graphic_description(self) -> str:
-        """Return the long text alternative, which gives the values the picture shows."""
+        """Return the long text alternative, which gives the values the picture shows.
+
+        Raises:
+            NotImplementedError: The subclass does not define its description.
+        """
 
         raise NotImplementedError
 

@@ -40,6 +40,7 @@ from anesthesia_sim.app.chart_frame import (
     format_trace_hover,
     format_wash_in_hover,
     latest_values_lines,
+    latest_wash_in_lines,
     nearest_trace_point,
     nearest_wash_in_point,
     percent_axis_ticks,
@@ -65,6 +66,7 @@ from anesthesia_sim.app.dashboard_frame import (
     concentration_chart_description,
     concentration_chart_name,
     run_label,
+    wash_in_plot_description,
 )
 from anesthesia_sim.app.failures import FailureKind
 from anesthesia_sim.app.formatting import (
@@ -1107,6 +1109,51 @@ def test_the_chart_s_text_alternative_names_each_run_and_says_when_nothing_is_dr
     assert concentration_chart_description(None) == (
         "Nothing is plotted, because no frame could be drawn for this chart."
     )
+
+
+def test_the_wash_in_plot_s_text_alternative_gives_each_run_s_last_drawn_point() -> None:
+    """Each run's sentence gives the last point its trace draws, with that point's instant.
+
+    The run's own reading now is set to a ratio the trace never draws, 0.92,
+    so a sentence built from it, as the row above the plot is, would fail.
+    The first run draws three stretches, and its sentence takes the last
+    point of the last one. The second run's last stretch stopped at the
+    crossing column past equilibrium, so its sentence says that alveolar
+    exceeds inspired rather than giving a quotient above 1. The third run
+    draws no stretch, so it has no sentence (`PL-R1M6`).
+    """
+
+    trunk = replace(
+        _run_frame((0.0, 300.0, 600.0)),
+        wash_in=(
+            WashInStretch((0.0, 60.0), (0.30, 0.35), False),
+            WashInStretch((120.0, 180.0), (0.50, 0.55), False),
+            WashInStretch((300.0, 420.0, 540.0), (0.60, 0.66, 0.71), False),
+        ),
+        wash_in_now=read_wash_in(0.92, 1.0),
+    )
+    crossed = replace(
+        _run_frame((0.0, 300.0)),
+        label=run_label(SECOND_RUN),
+        wash_in=(WashInStretch((0.0, 240.0, 300.0), (0.50, 0.95, 1.02), True),),
+    )
+    undrawn = replace(_run_frame((0.0, 60.0)), label="Run 3", wash_in=())
+    frame = replace(_frame(trunk), runs=(trunk, crossed, undrawn))
+
+    assert latest_wash_in_lines(frame) == (
+        "Modelled sevoflurane, Run 1, at 9m: Wash-in FA/FI (alveolar / modelled circuit), 0.71.",
+        "Modelled sevoflurane, Run 2, at 5m: Wash-in FA/FI (alveolar / modelled circuit), "
+        "Alveolar exceeds inspired: not a wash-in fraction.",
+    )
+    assert latest_wash_in_lines(_frame(trunk)) == (
+        "Modelled sevoflurane at 9m: Wash-in FA/FI (alveolar / modelled circuit), 0.71.",
+    )
+    assert wash_in_plot_description(_frame(trunk)).splitlines() == [
+        "Line chart.",
+        "Model outputs — not measurements.",
+        "Modelled sevoflurane at 9m: Wash-in FA/FI (alveolar / modelled circuit), 0.71.",
+        "Equilibrium, FA = FI",
+    ]
 
 
 def test_the_hover_reads_as_the_specification_shows() -> None:

@@ -31,8 +31,10 @@ bars (`PL-8PL4`).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isfinite
+from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.controller import SimulationSnapshot
@@ -40,6 +42,7 @@ from anesthesia_sim.app.dashboard_frame import (
     COMPARTMENT_PANELS,
     INTERPRETATION_DISCLAIMER_TEXT,
     SCHEMATIC_VIEW_TITLE,
+    SPOKEN_WITHHELD_READINGS,
     WIDEST_COMPARTMENT_VALUE,
     WITHHELD_CONCENTRATION_TEXT,
     WITHHELD_ELAPSED_TIME_TEXT,
@@ -81,6 +84,8 @@ __all__ = [
     "SCHEMATIC_TYPE_TEXT",
     "SHARE_CAPTION",
     "SHARE_TEMPLATE",
+    "SPOKEN_LABEL_DASHES",
+    "SPOKEN_WITHHELD_INSTANT_TEXT",
     "TENSION_UNIT_TEXT",
     "WIDEST_LABELS",
     "WITHHELD_AMOUNT_TEXT",
@@ -569,6 +574,25 @@ WITHHELD_SCHEMATIC: Final = SchematicShown(
     None,
 )
 
+#: What the text alternative says in place of each dash that a container's label
+#: shows (`schematic_description`). On screen the dash says by how it looks
+#: that no value is shown, so a screen reader is told in words, as the readouts
+#: tell it (`SPOKEN_WITHHELD_READINGS`, `PL-R1M6`). The share line shows its
+#: dash while the run holds no agent too, and the share caption then says why.
+#: The wording is a placeholder.
+SPOKEN_LABEL_DASHES: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        WITHHELD_CONCENTRATION_TEXT: SPOKEN_WITHHELD_READINGS[WITHHELD_CONCENTRATION_TEXT],
+        WITHHELD_AMOUNT_TEXT: "amount not shown",
+        NO_SHARE_TEXT: "share not shown",
+    }
+)
+
+#: What the schematic's name says in place of the instant while the instant is
+#: withheld, where the line over the schematic shows a dash (`schematic_name`).
+#: The wording is a placeholder.
+SPOKEN_WITHHELD_INSTANT_TEXT: Final = "simulated time not shown"
+
 
 def instant_line(instant: str, run_name: str | None) -> str:
     """Return the line above one run's schematic.
@@ -592,10 +616,15 @@ def schematic_name(instant: str, run_name: str | None) -> str:
     asks of a diagram (`PL-R1M6`). It names the View, then the run while runs
     are compared, then the instant, so it says what the line above the
     schematic says, such as "Compartment schematic, Run 2, at 10m of
-    simulated time".
+    simulated time". While the instant is withheld, the line shows a dash,
+    and the name says so in words (`SPOKEN_WITHHELD_INSTANT_TEXT`).
     """
 
-    phrase = INSTANT_PHRASE_TEMPLATE.format(instant=instant)
+    phrase = (
+        SPOKEN_WITHHELD_INSTANT_TEXT
+        if instant == WITHHELD_ELAPSED_TIME_TEXT
+        else INSTANT_PHRASE_TEMPLATE.format(instant=instant)
+    )
 
     return ", ".join(part for part in (SCHEMATIC_VIEW_TITLE, run_name, phrase) if part is not None)
 
@@ -614,7 +643,8 @@ def schematic_description(shown: SchematicShown) -> str:
     the scale, and the caption that names the scale. A line the schematic
     does not show, such as the off-scale line while no container is above
     the scale, is left out. Each compartment's amount and share appear
-    nowhere else in text, so the description gives every one of them.
+    nowhere else in text, so the description gives every one of them. A
+    label line that shows a dash is said in words (`SPOKEN_LABEL_DASHES`).
 
     Each caption is given on one line. The screen breaks a caption where its
     column is narrow, in the middle of a sentence too, and a screen reader
@@ -623,7 +653,8 @@ def schematic_description(shown: SchematicShown) -> str:
 
     containers = (
         SCHEMATIC_CONTAINER_LINE_TEMPLATE.format(
-            name=reading.name, lines=", ".join(reading.label_lines)
+            name=reading.name,
+            lines=", ".join(SPOKEN_LABEL_DASHES.get(line, line) for line in reading.label_lines),
         )
         for reading in shown.readings
     )

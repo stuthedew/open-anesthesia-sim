@@ -495,7 +495,7 @@ def test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instan
 
 
 def test_the_schematic_s_description_gives_every_container_s_values_with_their_units() -> None:
-    """At a 4% dial with no ventilation for 30 s, the description gives each container's three values.
+    """At a 4% dial with no ventilation for 30 s, the description gives each container's values.
 
     Each compartment's amount and share appear nowhere else in text, so a
     screen reader learns them only here (`PL-R1M6`). The expected circuit
@@ -551,9 +551,38 @@ def test_the_schematic_s_description_names_a_container_above_the_scale() -> None
     )
 
 
-def test_a_withheld_schematic_s_description_gives_the_dashes_the_screen_shows() -> None:
-    """While the values are withheld, each container's line gives the dashes its label prints."""
+def test_a_withheld_schematic_s_text_alternative_says_in_words_that_no_value_is_shown() -> None:
+    """While the values are withheld, each dash the screen shows is said in words.
+
+    On screen a dash says by how it looks that a value is withheld, and a
+    screen reader would read it as a bare dash or as nothing, so the text
+    alternative says it in words, as the readouts do (`PL-R1M6`).
+    """
 
     lines = schematic_description(WITHHELD_SCHEMATIC).splitlines()
 
-    assert lines[4:] == [f"{name}: —%, — mL vapour, — of agent" for name in _CONTAINER_NAMES]
+    assert lines[4:] == [
+        f"{name}: percent not shown, amount not shown, share not shown" for name in _CONTAINER_NAMES
+    ]
+    assert schematic_name(WITHHELD_SCHEMATIC.instant, None) == (
+        "Compartment schematic, simulated time not shown"
+    )
+    assert schematic_name(WITHHELD_SCHEMATIC.instant, "Run 2") == (
+        "Compartment schematic, Run 2, simulated time not shown"
+    )
+
+
+def test_a_run_with_no_agent_says_in_words_that_no_share_is_shown() -> None:
+    """With the dial at zero no container holds agent, so each share line says so in words.
+
+    The share caption names the reason, as it does on screen. The tensions and
+    amounts are real zeros and are given as numbers.
+    """
+
+    shown = schematic_shown(_run_with_no_ventilation(0.0, 30).snapshot(), ChartCeiling.STANDARD)
+    lines = schematic_description(shown).splitlines()
+
+    assert lines[4] == NO_AGENT_SHARE_CAPTION
+    assert lines[5:11] == [
+        f"{name}: 0.00%, 0 mL vapour, share not shown" for name in _CONTAINER_NAMES
+    ]

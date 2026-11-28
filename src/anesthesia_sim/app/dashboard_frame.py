@@ -55,6 +55,7 @@ from anesthesia_sim.app.chart_frame import (
     RunIndex,
     TraceStyle,
     latest_values_lines,
+    latest_wash_in_lines,
     plain_text,
     trace_style,
 )
@@ -4382,11 +4383,14 @@ def wash_in_plot_description(frame: ChartFrame | None) -> str:
     """Return the wash-in plot's long description, for a screen reader.
 
     It follows `concentration_chart_description` (`PL-R1M6`). It names the
-    type of chart and says that the values are modelled. Then it gives each
-    run's state line as the row above the plot words it
-    (`wash_in_state_lines`), and last the equilibrium line that the plot
-    draws. The lines are given without subscript markup. A withheld frame
-    gives what the concentration chart gives while it draws none.
+    type of chart and says that the values are modelled. Then it gives the
+    last point each run's trace draws, with its instant
+    (`chart_frame.latest_wash_in_lines`), and last the equilibrium line that
+    the plot draws. It leaves out the row above the plot, which is text a
+    screen reader already reads, and whose "Now" reading lies outside a
+    held window. The lines are given without subscript markup. A window in
+    which no run has a drawn point gives no values. A withheld frame gives
+    what the concentration chart gives while it draws none.
 
     Args:
         frame: The frame the plot drew, or None while it draws none.
@@ -4403,7 +4407,7 @@ def wash_in_plot_description(frame: ChartFrame | None) -> str:
         for line in (
             CHART_TYPE_TEXT,
             INTERPRETATION_DISCLAIMER_TEXT,
-            *wash_in_state_lines(frame),
+            *latest_wash_in_lines(frame),
             EQUILIBRIUM_REFERENCE_TEXT,
         )
     )

@@ -157,6 +157,7 @@ __all__ = [
     "format_compared_wash_in_hover",
     "format_trace_hover",
     "latest_values_lines",
+    "latest_wash_in_lines",
     "format_wash_in_hover",
     "nearest_trace_point",
     "nearest_wash_in_point",
@@ -1745,6 +1746,44 @@ def latest_values_lines(frame: ChartFrame) -> tuple[str, ...]:
             for quantity in frame.visible
         )
         lines.append(f"{context}: {values}.")
+
+    return tuple(lines)
+
+
+def latest_wash_in_lines(frame: ChartFrame) -> tuple[str, ...]:
+    """Return one sentence per run with the last F_A/F_I point the wash-in plot draws.
+
+    A screen reader reads these sentences in place of the trace, as the
+    wash-in plot's long description (`PL-R1M6`). Each is built as
+    `latest_values_lines` builds the concentration chart's: the hover's
+    qualifiers, "Modelled" and the agent, then the run while more than one is
+    drawn, then the instant of the run's last drawn point. That instant is the
+    right edge of a held window, or the end of a stretch that stopped, rather
+    than the run's own instant, so a sentence never states a value the plot
+    does not show. The value is worded as the hover words it
+    (`_wash_in_hover_value`), so a crossing column past equilibrium is named
+    as such rather than given as a quotient above 1. A run with no drawn
+    point gives no sentence.
+
+    Args:
+        frame: The frame the plot drew.
+
+    Returns:
+        The sentences, in the frame's run order.
+    """
+
+    lines: list[str] = []
+
+    for run in frame.runs:
+        drawn = [stretch for stretch in run.wash_in if stretch.times_s]
+
+        if not drawn:
+            continue
+
+        last = drawn[-1]
+        run_named = f", {run.label}," if frame.run_count > 1 else ""
+        context = f"{_hover_agent(run)}{run_named} at {_hover_instant(last.times_s[-1])}"
+        lines.append(f"{context}: {WASH_IN_HOVER_LABEL}, {_wash_in_hover_value(last.ratios[-1])}.")
 
     return tuple(lines)
 
