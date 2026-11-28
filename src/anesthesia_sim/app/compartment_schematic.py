@@ -166,9 +166,12 @@ OFF_SCALE_LINE_TEMPLATE: Final = (
 #: says what is hidden and why, then what brings the containers back, as
 #: NUREG-0700 Rev. 3 guidelines 2.7.3-1 and 10.3.4-8 ask (O'Hara, US Nuclear
 #: Regulatory Commission, 2020, pp. 2-86 and 10-14). It names the condition and
-#: then the verdict, as the schematic's other captions do.
+#: then the verdict, as the schematic's other captions do. "Scroll" is the
+#: remedy because the line is painted only where the box is tall enough for a
+#: scroll to bring the containers into view whole: where it is not, the Area
+#: shows its too-small notice in place of the View.
 CUT_CONTAINERS_TEXT: Final = (
-    "The containers do not fit whole in view, so they are hidden. Scroll to see them."
+    "The containers are not wholly in view, so the schematic hides them. Scroll to see them."
 )
 
 #: Each container's label ends with this line, which gives the compartment's

@@ -7031,14 +7031,14 @@ at a tension it does not hold. A label line cut in the same way could be read
 as other digits. So each label line and each share bar is drawn only while it
 is whole in view and clear of the heading. The six containers, with the lines
 that join them and the marks inside them, are drawn only while all six are. In
-their place the schematic states, in the warning colour, "The containers do not
-fit whole in view, so they are hidden. Scroll to see them." It states this where
-the space above the labels holds the line. No guideline in NUREG-0700 Rev. 3
-covers a drawing cut off by the edge of a box that scrolls, so the line follows
-the two nearest, both written for messages. An error message states the error
-and the operations that can follow it (guideline 2.7.3-1, p. 2-86), and a user
-is told when a received message is cut short to fit its space (guideline
-10.3.4-8, p. 10-14).
+their place the schematic states, in the warning colour, "The containers are
+not wholly in view, so the schematic hides them. Scroll to see them." It states
+this where the space above the labels holds the line. No guideline in
+NUREG-0700 Rev. 3 covers a drawing cut off by the edge of a box that scrolls,
+so the line follows the two nearest, both written for messages. An error
+message states the error and the operations that can follow it (guideline
+2.7.3-1, p. 2-86), and a user is told when a received message is cut short to
+fit its space (guideline 10.3.4-8, p. 10-14).
 
 **Where no scroll position can show a whole row of containers, the Area shows
 its too-small notice instead** (`PL-GWTR`). The box must be at least as tall as

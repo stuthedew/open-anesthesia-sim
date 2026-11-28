@@ -92,16 +92,16 @@ cannot be read as another value.
 run's heading (`clear_of_heading` in `app/pinned_heading.py`). Each time it
 paints, it works out from that which parts are whole there
 (`SchematicCanvas.shown_parts` in `app/qt_schematic.py`), and paints only
-those. The six containers, the lines that join them and the marks inside
-them are one part, because a fill is read against its neighbours and against
-the scale's marks. Each label line and each share bar is a part of its own. A
+those. The six containers, the lines that join them and the marks inside them
+are one part, because a fill is read against its neighbours and against the
+scale's marks. Each label line and each share bar is a part of its own. A
 container above the scale draws a line 2 px over its outline, so the
 containers count as whole only when that line is in view too. Where the
-containers are hidden, the canvas paints "The containers do not fit whole in
-view, so they are hidden. Scroll to see them." in the warning colour, at the
-top of the part in view and above the labels, where that space holds the whole
-line. `RunSchematic.pin_heading` repaints the canvas after each move of the
-heading, because a scroll moves pixels already painted.
+containers are hidden, the canvas paints "The containers are not wholly in
+view, so the schematic hides them. Scroll to see them." in the warning colour,
+at the top of the part in view and above the labels, where that space holds
+the whole line. `RunSchematic.pin_heading` repaints the canvas after each move
+of the heading, because a scroll moves pixels already painted.
 
 **Where no scroll position can show a row, the Area shows its notice.** The
 View declares a legible height: the heading and the canvas down to the
@@ -130,6 +130,23 @@ why, and what to do, and the notice names the remedy that works where the
 layout shows that dragging a border cannot. Guideline 10.3.4-8 (p. 10-14), for
 received messages, says that "the user should be informed when a message has
 been truncated, such as when a message exceeds the available space".
+
+**The wording, checked against writing guides** (2026-11-28). NN/g's error
+message guidelines ask to "concisely and precisely describe the issue" and to
+"offer some potential remedies"
+(https://www.nngroup.com/articles/error-message-guidelines/). Google's course
+on error messages asks to explain "how to fix the problem" after its cause
+(https://developers.google.cn/tech-writing/error-messages/show-fix). Both lines
+do. The first draft of the schematic's line said "they are hidden", and
+digital.gov's plain-language guide says "Active voice makes it clear who
+should do what" (https://digital.gov/guides/plain-language/writing), so the
+line now says "the schematic hides them". A reviewer of the wording proposed
+"Make the window taller" as the line's remedy. That would be wrong here: the
+line shows only where the box is tall enough for a scroll to show the
+containers whole, and the Area's notice covers the case where it is not. The
+reviewer also proposed that the notice say only the height it lacks. The
+notice's form is shared by every View and names width and height, so that
+change belongs to the notice as a whole and not to this item.
 
 **Where the schematic shows now** (measured 2026-11-28 on `b893e699` with this
 change, offscreen platform, in the Maintenance Workspace with a branch open).
