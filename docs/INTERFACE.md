@@ -4500,9 +4500,10 @@ does from the keyboard what a drag on the corner does
 (`test_every_control_a_reader_can_reach_says_what_it_is_for`,
 `test_each_selector_is_named_by_its_shown_label_on_every_platform`,
 `test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`,
-`test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot` and
+`test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot`,
 `test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`
-in `tests/integration/test_keyboard_focus.py`).
+and `test_a_name_that_does_not_start_with_the_shown_label_is_refused` in
+`tests/integration/test_keyboard_focus.py`).
 
 **A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
 reader says nothing when a label's text changes, and SC 4.1.3 (Status

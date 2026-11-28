@@ -3,14 +3,17 @@ id: PL-YSFX
 title: While two runs are compared, each run's playback selector reaches a screen reader as "Playback" alone, and in the Induction Workspace both plots' window selectors are "Time base" alone, so a screen-reader user cannot tell which run or plot a selector sets
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: presentation-safety
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/views.py, tests/integration/test_keyboard_focus.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/branch_controls.py, src/anesthesia_sim/app/qt_agent_price.py, src/anesthesia_sim/app/view_registry.py, tests/integration/approved_interface_strings.json, docs/INTERFACE.md, docs/items/PL-XV64-every-area-corner-reaches-a-screen-reader-as.md
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it; each selector is named and only the run or plot it sets is missing, so the release waits only on the owner test drive (filed 2026-11-27)
 added: 2026-11-27
+closed: 2026-11-28
+pr: 2356
 filed-pr: 2333
 payoff: a screen-reader user who reaches a playback or time base selector hears which run or plot it sets
+tests: tests/integration/test_keyboard_focus.py::test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing, tests/integration/test_keyboard_focus.py::test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot, tests/integration/test_keyboard_focus.py::test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn, tests/integration/test_keyboard_focus.py::test_a_name_that_does_not_start_with_the_shown_label_is_refused, tests/integration/test_keyboard_focus.py::test_each_selector_is_named_by_its_shown_label_on_every_platform
 recurrences: 2026-11-28 PL-XV64
 ---
 
@@ -113,3 +116,13 @@ each selector's name with its label's accessible name, which this change makes
 the selector's own name, so the test could no longer fail. Fixed: the test
 reads the label's shown text, and `label_control` refuses a name that does not
 start with it.
+
+**Documents checked, 2026-11-28.** `docs/INTERFACE.md` § "Color contrast,
+and the standard this interface is held to" now gives the run and plot names and the three cases
+still shared, which `PL-XV64` holds. `docs/ARCHITECTURE.md` § "Where new code
+belongs" (a new panel or control goes in three places) and its paragraph on
+how `run_view.py` and `simulation_view.py` read a run, and its note that
+`app/view_registry.py` is the one list of View kinds, are still true: the
+View titles moved into `dashboard_frame` constants that the registry reads,
+and the registry is still the list. `docs/interface-provenance.md`'s
+paragraph on the registry is still true for the same reason.
