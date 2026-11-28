@@ -4548,6 +4548,22 @@ it, or by what it holds, such as "Concentration chart legend"
 `test_each_compartment_box_is_named_by_the_words_it_shows`
 in `tests/integration/test_qt_chart.py`).
 
+**On macOS, a control's description is its name wherever Qt would read
+something else in its place** (`PL-26K2`). VoiceOver reads a widget's
+description in place of its name, and Qt describes a widget that has no
+description by its tool tip, or an entry field by its placeholder. So on
+macOS, a control that has a hint, a tool tip or a placeholder is described by
+its own name. Its hint, such as "The arrow keys move it. Shift moves it alone.
+Escape puts it back." for an Area border, or "Optional" for a mark's name
+field, goes in its help text, which the macOS bridge hands to VoiceOver as the
+element's help. On Windows and Linux, the hint stays the description, which a
+screen reader reads after the name. The Area menu and the Workspace menu have
+no name on any platform, so a screen reader says only their description
+everywhere
+(`test_a_control_s_hint_is_its_description_except_on_macos_where_it_is_its_help`
+and `test_on_macos_no_widget_is_described_by_less_than_its_name` in
+`tests/integration/test_keyboard_focus.py`).
+
 **Each Area, and each control that belongs to one Area, is named with the
 Area** (`PL-XV64`). An Area's name is the title of the View it shows, such as
 "Concentrations". Where two or more Areas show the same kind of View, each
@@ -4749,8 +4765,11 @@ bug report QTBUG-140871, which records VoiceOver reading a description in
 place of the name, all read 2026-11-28. The two plots' descriptions have no
 such line, because each of their value lines names its run while runs are
 compared, and its instant. Their names also give the window and whether it is
-held, and the Area's name while another Area shows a copy, which a Mac user
-does not hear (`PL-26K2`). After that line, the schematic's description names
+held, and the Area's name while another Area shows a copy. So on macOS,
+where VoiceOver reads the description in place of the name, every picture's
+description opens with its name and a full stop. Elsewhere it does not,
+because a screen reader there reads the name first (`PL-26K2`). After that
+line, the schematic's description names
 the picture and how its containers are joined, says that the values are
 modelled, and gives the tensions' unit and the amounts' unit. Then it takes the schematic's lines in the order a reader meets them:
 what the shares are of, one line for each container, such as "Fat: 0.03%,

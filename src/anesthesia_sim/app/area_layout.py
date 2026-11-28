@@ -157,7 +157,7 @@ from anesthesia_sim.app.pinned_heading import (
     pin_headings,
     pin_on_scroll,
 )
-from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
+from anesthesia_sim.app.qt_widgets import FocusRing, name_control, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.stylesheets import (
     foreground_stylesheet,
@@ -1382,7 +1382,11 @@ class AreaLayout(QWidget):
                 [self._names[area.id].text for area in areas_in(node.children[index - 1])]
             )
             place = f"{_BORDER_PLACE_WORDS[node.orientation]} {pane}"
-            splitter.handle(index).setAccessibleName(control_name(_BORDER_ACCESSIBLE_NAME, place))
+            name_control(
+                splitter.handle(index),
+                control_name(_BORDER_ACCESSIBLE_NAME, place),
+                _BORDER_ACCESSIBLE_DESCRIPTION,
+            )
 
         return splitter
 
@@ -2160,6 +2164,11 @@ class AreaLayout(QWidget):
                     handle.set_lit(shown, warning=shown and warning)
 
 
+# What the View chooser does, which a screen reader reads after its name
+# (`name_control`).
+_VIEW_CHOOSER_HINT: Final = "Choose the View this Area shows"
+
+
 class ViewChooser(QToolButton):
     """The first control in an Area's header. It names the Area's View and lists every View.
 
@@ -2192,7 +2201,8 @@ class ViewChooser(QToolButton):
         self.setObjectName("viewChooser")
         current = registered.get(area.view)
         self.setText(area.view if current is None else current.title)
-        self.setAccessibleDescription("Choose the View this Area shows")
+        # The Area names the chooser once it is built (`AreaFrame._name_area`).
+        name_control(self, self.text(), _VIEW_CHOOSER_HINT)
         self.setStyleSheet(view_chooser_stylesheet())
         self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
@@ -2503,7 +2513,7 @@ class AreaFrame(QFrame):
         by its Area too (`PL-RK9Z`).
         """
 
-        self.chooser.setAccessibleName(name.text)
+        name_control(self.chooser, name.text, _VIEW_CHOOSER_HINT)
 
         if self.view_scroll is not None:
             self.view_scroll.setAccessibleName(name.text)
@@ -3040,8 +3050,7 @@ class _AreaHandle(QSplitterHandle):
         # Put the handle in the tab order, so the keyboard can reach every
         # border (`PL-M352`).
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setAccessibleName(_BORDER_ACCESSIBLE_NAME)
-        self.setAccessibleDescription(_BORDER_ACCESSIBLE_DESCRIPTION)
+        name_control(self, _BORDER_ACCESSIBLE_NAME, _BORDER_ACCESSIBLE_DESCRIPTION)
 
     @property
     def lit(self) -> bool:
@@ -3219,7 +3228,7 @@ class _CornerZone(QWidget):
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
         # The frame names the corner once it is built (`name_for`).
-        self.setAccessibleDescription(_CORNER_ACCESSIBLE_DESCRIPTION)
+        name_control(self, "", _CORNER_ACCESSIBLE_DESCRIPTION)
         self.place()
         self.raise_()
 
@@ -3235,8 +3244,10 @@ class _CornerZone(QWidget):
         it lies.
         """
 
-        self.setAccessibleName(
-            control_name(_CORNER_ACCESSIBLE_NAME, f"{area.text}, {self.corner.place}")
+        name_control(
+            self,
+            control_name(_CORNER_ACCESSIBLE_NAME, f"{area.text}, {self.corner.place}"),
+            _CORNER_ACCESSIBLE_DESCRIPTION,
         )
 
     def set_grip_shown(self, shown: bool) -> None:
