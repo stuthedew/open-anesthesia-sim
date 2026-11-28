@@ -16,6 +16,7 @@ from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import theme
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import RUNNING_AGENT_LOCK_TEXT
+from anesthesia_sim.app.formatting import ChartCeiling
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, AGENT_SELECTOR_WIDTH
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
@@ -237,6 +238,7 @@ def test_building_a_run_view_opens_no_window_of_its_own(application: QApplicatio
         branch_control=False,
         name=lambda _run_id: None,
         charts_withheld=lambda: False,
+        chart_ceiling=lambda: ChartCeiling.STANDARD,
     )
     application.processEvents()
 

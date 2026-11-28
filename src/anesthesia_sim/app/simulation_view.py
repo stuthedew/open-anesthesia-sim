@@ -152,7 +152,7 @@ from anesthesia_sim.app.dashboard_frame import (
     stated_mark,
     trunk_reset_question,
 )
-from anesthesia_sim.app.formatting import AgentAmountUnit
+from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
 from anesthesia_sim.app.halt_gate import halt_gate
 from anesthesia_sim.app.pinned_heading import pin_on_scroll
 from anesthesia_sim.app.preferences import (
@@ -733,6 +733,7 @@ class SimulationView(QWidget):
             frame=self._handle_frame_request,
             compartment=self._handle_compartment_request,
             agent_cost_unit=self._handle_agent_cost_unit_request,
+            chart_ceiling=self._handle_chart_ceiling_request,
             agent_price=self._handle_agent_price_request,
             refused_entries_discard=self._handle_refused_entries_discard_request,
             adjustment_start=self._handle_adjustment_start_request,
@@ -1042,6 +1043,7 @@ class SimulationView(QWidget):
             branch_control=self._branch_control_shown,
             name=self._run_name,
             charts_withheld=self._charts_withheld,
+            chart_ceiling=self._chart_ceiling,
         )
 
         if not self._runs:
@@ -2044,6 +2046,7 @@ class SimulationView(QWidget):
                 selection.shown,
                 plot_width_px=width_px,
                 held_start_s=window.held_start_s,
+                ceiling=self._preferences.chart_ceiling,
             )
             for window, width_px in requests.items()
         }
@@ -2078,6 +2081,7 @@ class SimulationView(QWidget):
                         selection.shown,
                         plot_width_px=width_px,
                         held_start_s=window.held_start_s,
+                        ceiling=self._preferences.chart_ceiling,
                     )
                     for window, width_px in requests.items()
                 }
@@ -2132,6 +2136,17 @@ class SimulationView(QWidget):
         cases = tuple((run.run_id, run.case) for run in self._runs if run.run_id in shown)
 
         return not kept_frames_match(self._kept_frames, cases)
+
+    def _chart_ceiling(self) -> ChartCeiling:
+        """Return the top that the reader chose for every concentration chart and schematic.
+
+        It is held once, in the reader's preferences (`PL-7LZ7`). Each frame
+        is assembled at it, and each run reads it when it builds a
+        presentation, so every chart and every schematic on a frame draws
+        against the same top.
+        """
+
+        return self._preferences.chart_ceiling
 
     def _runs_the_views_show(self) -> tuple[int, ...] | None:
         """Name the pinned run on every Area, and say which runs the Views show.
@@ -2625,6 +2640,23 @@ class SimulationView(QWidget):
         """
 
         self._change_preferences(self._preferences.with_agent_cost_unit(unit))
+
+    @halt_gate
+    def _handle_chart_ceiling_request(self, ceiling: ChartCeiling) -> None:
+        """Put the reader's choice of axis top into the preferences, save them, and draw at once.
+
+        The top is a preference rather than a View's own setting, so every
+        concentration chart and every schematic shows the new top on the
+        frame drawn here (`PL-7LZ7`). A top off the `ChartCeiling` ladder is
+        refused by `Preferences.with_chart_ceiling`.
+
+        Raises:
+            TypeError: If `ceiling` is not a `ChartCeiling`. The halt gate
+                halts every run, because a View that asks for such a top
+                disagrees with the preferences store.
+        """
+
+        self._change_preferences(self._preferences.with_chart_ceiling(ceiling))
 
     @halt_gate
     def _handle_agent_price_request(self, agent_id: str, price: AgentPrice | None) -> None:

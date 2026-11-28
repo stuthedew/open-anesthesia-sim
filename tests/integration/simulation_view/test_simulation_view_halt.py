@@ -133,6 +133,10 @@ _HANDED_OUT_WITHOUT_THE_HALT_GATE: Final[dict[tuple[str, str], str]] = {
         "it returns whether the charts withhold their frame, for the banner of a stopped run, "
         "from the kept frames and each run's identity and case, and it reads no snapshot"
     ),
+    ("SimulationView", "self._chart_ceiling"): (
+        "it returns the reader's axis top from the preferences, for a run's panel to record "
+        "with its values, and it reads no run (`PL-7LZ7`)"
+    ),
     ("SimulationView", "self._open_runs"): (
         "it returns the open runs' identities to the tab strip, and it reads no snapshot"
     ),
@@ -1105,8 +1109,8 @@ LIVE_ON_A_HALT: Final[dict[str, str]] = {
         "simulation state, and it is never disabled (`PL-012`)."
     ),
     "ChartCeilingSelector": (
-        "a chart's axis top is the chart's own drawing setting, like its time base. "
-        "It touches no simulation state (`PL-K1VH`)."
+        "the axis top of the charts and the schematic is one of the reader's "
+        "preferences, which acts on no run (`PL-7LZ7`)."
     ),
     "TraceLegend": (
         "the legend's boxes ask the dashboard which compartments to draw. The "

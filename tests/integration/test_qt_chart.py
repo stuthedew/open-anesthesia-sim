@@ -56,6 +56,7 @@ from anesthesia_sim.app.dashboard_frame import (
     run_label,
 )
 from anesthesia_sim.app.formatting import (
+    ChartCeiling,
     format_chart_time_label,
     mac_awake_band_percent,
     mac_axis_ticks,
@@ -179,6 +180,7 @@ def _frame(
         shown,
         plot_width_px=plot_width_px,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 
@@ -489,6 +491,7 @@ def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplic
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
     chart = _shown(application, ConcentrationChart(), 480)
     chart.draw(frame)
@@ -2192,6 +2195,7 @@ def _previewing_frame(
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
         held_start_s=None,
+        ceiling=ChartCeiling.STANDARD,
     )
 
 

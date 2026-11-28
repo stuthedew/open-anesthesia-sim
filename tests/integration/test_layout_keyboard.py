@@ -111,6 +111,7 @@ _REQUESTS = ViewRequests(
     frame=lambda _time_base: None,
     compartment=lambda _quantity, _shown: None,
     agent_cost_unit=lambda _unit: None,
+    chart_ceiling=lambda _ceiling: None,
     agent_price=lambda _agent, _price: None,
     refused_entries_discard=lambda: None,
     adjustment_start=lambda _run: None,

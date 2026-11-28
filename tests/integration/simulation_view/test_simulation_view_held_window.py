@@ -389,5 +389,5 @@ def test_a_held_window_is_not_saved(application: QApplication) -> None:
     view = _held_view(application, SimulationController())
     saved = _concentration(view).save_state()
 
-    assert set(saved) == {"state_version", "time_base_s", "ceiling_mac"}
+    assert set(saved) == {"state_version", "time_base_s"}
     assert saved["time_base_s"] == 900.0
