@@ -113,6 +113,7 @@ from anesthesia_sim.app.dashboard_frame import (
     run_label,
     time_axis_caption,
     unmarked_changes_lines,
+    wash_in_preview_lines,
     wash_in_state_lines,
 )
 from anesthesia_sim.app.formatting import AgentAmountUnit, ChartCeiling
@@ -1066,6 +1067,9 @@ class WashInView(QWidget):
             outputs, not measurements.
         pinned_row: The row that holds `modelled_label`, which the View's
             Area keeps on screen above the View's scroll box.
+        preview_notes: One line per run, shown while that run's preview
+            region is empty because alveolar ventilation would be zero
+            (`dashboard_frame.wash_in_preview_lines`, `PL-PJWT`).
         time_base_selector: The control that sets the window's width.
     """
 
@@ -1082,6 +1086,7 @@ class WashInView(QWidget):
         self.state_notice = _state_notice(self._window.notice_text)
         self.withheld_text = _withheld_frame_notice()
         self.states = _RunLines(MUTED, italic=False)
+        self.preview_notes = _RunLines(MUTED, italic=True)
         self.unmarked_changes = _RunLines(MUTED, italic=True)
 
         column = _panel_column(self, _WASH_IN_VIEW_NAME)
@@ -1111,6 +1116,7 @@ class WashInView(QWidget):
         column.addWidget(self._legend_box)
         column.addWidget(self.withheld_text)
         column.addWidget(self.states.holder)
+        column.addWidget(self.preview_notes.holder)
         column.addWidget(self.unmarked_changes.holder)
         column.addWidget(self.chart, 1)
 
@@ -1133,6 +1139,7 @@ class WashInView(QWidget):
                 self.legend.show_run_names(_shown_run_names(tick.runs))
 
             self.states.drop_absent(())
+            self.preview_notes.drop_absent(())
             self.unmarked_changes.drop_absent(())
             return
 
@@ -1140,6 +1147,7 @@ class WashInView(QWidget):
 
         if frame is None:
             self.states.drop_absent(tick.runs)
+            self.preview_notes.drop_absent(tick.runs)
             self.unmarked_changes.drop_absent(tick.runs)
             return
 
@@ -1150,6 +1158,7 @@ class WashInView(QWidget):
         self.legend.show_run_names(tuple(run.label for run in frame.runs))
         self.chart.show_time_window(time_axis_caption(frame))
         self.states.show(tick.runs, wash_in_state_lines(frame))
+        self.preview_notes.show(tick.runs, wash_in_preview_lines(frame))
         self.unmarked_changes.show(tick.runs, unmarked_changes_lines(frame))
 
     @property

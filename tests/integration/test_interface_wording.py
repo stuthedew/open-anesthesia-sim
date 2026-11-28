@@ -77,6 +77,7 @@ from anesthesia_sim.app.area_layout import AreaNotice
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import INTERPRETATION_DISCLAIMER_TEXT
+from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS
 from anesthesia_sim.app.preferences import AgentPrice, LoadedPreferences, Preferences
 from anesthesia_sim.app.qt_chart import ConcentrationChart, WashInChart
 from anesthesia_sim.app.run_series import RecordedQuantity
@@ -94,8 +95,10 @@ from anesthesia_sim.layout.tree import Area, AreaId, Orientation, Split, ViewKin
 from anesthesia_sim.layout.workspace import Origin, Workspace, WorkspaceName, WorkspaceSet
 from tests.integration.simulation_view.simulation_view_support import (
     _delete_shown_views,
+    _dials,
     _fork_panel,
     _halted_branch_view,
+    _hold_thumb,
     _mark_editor,
     _real_step_failure,
 )
@@ -577,6 +580,26 @@ def _with_a_window_held(application: QApplication, _patch: pytest.MonkeyPatch) -
     return _strings_shown(application, controller, act=hold)
 
 
+def _with_zero_ventilation_previewed(
+    application: QApplication, _patch: pytest.MonkeyPatch
+) -> list[str]:
+    """Sevoflurane at 5 min, paused, with the alveolar ventilation thumb held at zero.
+
+    Both plots draw the preview's label while a thumb is held. The F_A/F_I
+    plot draws no ratio in the preview's region at zero ventilation, and the
+    line above it says why (`PL-PJWT`).
+    """
+
+    def hold(view: SimulationView) -> None:
+        _hold_thumb(_dials(view.runs[0])._alveolar_ventilation_slider, 0.0, FLOW_DISPLAY_DECIMALS)
+        view.render_tick()
+
+    controller = SimulationController()
+    _run_to(controller, 5 * _SECONDS_PER_MINUTE)
+
+    return _strings_shown(application, controller, act=hold)
+
+
 #: Each state that only an event brings up, and how the test brings it about.
 #: The run-state tests' "drawn frame" is a default run, which `RECORDED_POINTS`
 #: already covers.
@@ -594,6 +617,7 @@ EVENT_POINTS: Final[Mapping[str, Callable[[QApplication, pytest.MonkeyPatch], li
     "supported run length approaching": _approaching_the_supported_run_length,
     "branched in a pinned Workspace": _branched_in_a_pinned_workspace,
     "window held": _with_a_window_held,
+    "zero ventilation previewed": _with_zero_ventilation_previewed,
     **{
         name: _in_the_run_state_scenario(name)
         for name in _ONE_STATE_SCENARIOS

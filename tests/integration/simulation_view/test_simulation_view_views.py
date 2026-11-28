@@ -668,6 +668,51 @@ def test_a_held_thumb_previews_the_setting_without_applying_it(application: QApp
     assert concentration.preview_points(0, RecordedQuantity.ALVEOLAR) == ((), ())
 
 
+def test_a_held_thumb_at_zero_ventilation_says_above_the_f_a_f_i_plot_why_it_draws_no_ratio(
+    application: QApplication,
+) -> None:
+    """While the thumb is held at zero, a line above the F_A/F_I plot says why its preview is empty.
+
+    At zero alveolar ventilation the ratio is not a wash-in fraction, so the
+    plot draws none past the reach (rule 3 of `app/wash_in.py`). A line in
+    the rows above the plot says so, and goes when the thumb is let go
+    (`PL-PJWT`). Both plots keep the preview's own one-line label, so the
+    label covers no more of either plot than any other preview's does.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 300)
+    controller.pause()
+    view = _shown_view(application, controller)
+    wash_in_view = _wash_in(view)
+    concentration, wash_in = _concentration(view).chart, wash_in_view.chart
+    label = "Preview: Alveolar ventilation 0.0 L/min, not applied"
+    why = (
+        "Preview: alveolar ventilation would be zero, so the predicted ratio would not be a "
+        "wash-in fraction."
+    )
+    slider = _dials(view.runs[0])._alveolar_ventilation_slider
+
+    def shown_notes() -> list[str]:
+        return [line.text() for line in wash_in_view.preview_notes.lines if not line.isHidden()]
+
+    assert shown_notes() == []
+
+    _hold_thumb(slider, 0.0, FLOW_DISPLAY_DECIMALS)
+    view.render_tick()
+
+    assert concentration.preview_label(0) == label
+    assert wash_in.preview_label(0) == label
+    assert concentration.preview_points(0, RecordedQuantity.ALVEOLAR)[0]
+    assert shown_notes() == [why]
+
+    slider.slider.setSliderDown(False)
+    view.render_tick()
+
+    assert shown_notes() == []
+
+
 def test_a_preview_is_drawn_only_inside_its_region_with_its_label(
     application: QApplication,
 ) -> None:

@@ -115,6 +115,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import (
     WASH_IN_EQUILIBRIUM_RATIO,
+    WashInDomain,
     WashInReading,
     is_wash_in,
     read_wash_in_with_ventilation,
@@ -123,7 +124,11 @@ from anesthesia_sim.core.concentration import Fraction, MacPercent, Percent, per
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import MacAwakeReference
 from anesthesia_sim.core.rounding import WHOLE_COUNT_TOLERANCE
-from anesthesia_sim.core.supported_ranges import CaseInstant, require_case_instant
+from anesthesia_sim.core.supported_ranges import (
+    AlveolarVentilation,
+    CaseInstant,
+    require_case_instant,
+)
 
 __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
@@ -805,6 +810,10 @@ class RunPreview:
             labelled with its compartment's name, as in `RunFrame.fractions`.
         wash_in: The predicted F_A/F_I stretches, oldest first. They are the
             most recent stretches that fit the pool.
+        ventilation_stopped: Whether zero alveolar ventilation is why the
+            F_A/F_I plot draws no ratio past the reach
+            (`_ventilation_empties_the_preview`). The row above that plot then
+            says so (`PL-PJWT`).
     """
 
     label: str
@@ -812,6 +821,7 @@ class RunPreview:
     times_s: tuple[float, ...]
     fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]]
     wash_in: tuple[WashInStretch, ...]
+    ventilation_stopped: bool
 
     def percents(self, quantity: RecordedQuantity) -> tuple[float, ...]:
         """Return one predicted trace in percent, by the conversion `RunFrame.percents` makes."""
@@ -1425,6 +1435,47 @@ def _run_preview(
         times_s=window.times_s,
         fractions=MappingProxyType(fractions),
         wash_in=stretches[-MAX_CHART_WASH_IN_SEGMENTS:],
+        ventilation_stopped=_ventilation_empties_the_preview(
+            fractions, window.alveolar_ventilations_l_min
+        ),
+    )
+
+
+def _ventilation_empties_the_preview(
+    fractions: Mapping[RecordedQuantity, tuple[Fraction, ...]],
+    alveolar_ventilations_l_min: Sequence[AlveolarVentilation],
+) -> bool:
+    """Return whether zero alveolar ventilation is why the F_A/F_I plot draws no predicted ratio.
+
+    The first instant is the reach, which the run's own last step reached, so
+    only the later instants are predicted. Each predicted state is read by the
+    three rules of `app/wash_in.py`, in their order, as the run's own state is
+    (`read_wash_in_with_ventilation`). The result is true when no predicted
+    state has a ratio to draw and at least one has none by rule 3 alone,
+    because a step at zero alveolar ventilation reached it. Rule 1 comes first.
+    A state whose inspired concentration is too low to divide by has no ratio
+    at any ventilation, so a preview made only of such states is not put down
+    to the ventilation.
+
+    Args:
+        fractions: Each compartment's value at every instant of the window,
+            as `RunPreview.fractions` holds them.
+        alveolar_ventilations_l_min: For each instant, the alveolar
+            ventilation of the step that reached it, in L/min.
+    """
+
+    readings = [
+        read_wash_in_with_ventilation(alveolar, inspired, ventilation)
+        for alveolar, inspired, ventilation in zip(
+            fractions[RecordedQuantity.ALVEOLAR][1:],
+            fractions[RecordedQuantity.CIRCUIT][1:],
+            alveolar_ventilations_l_min[1:],
+            strict=True,
+        )
+    ]
+
+    return all(reading.plotted_ratio is None for reading in readings) and any(
+        reading.domain is WashInDomain.VENTILATION_STOPPED for reading in readings
     )
 
 

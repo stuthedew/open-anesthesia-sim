@@ -1386,6 +1386,28 @@ WASH_IN_VENTILATION_STOPPED_TEXT: Final = (
 )
 WASH_IN_UNDRAWN_SUFFIX_TEMPLATE: Final = " ({count} earlier stretch(es) not drawn)"
 
+# The line above the F_A/F_I plot that says why it draws no ratio in a
+# preview's region, while zero alveolar ventilation is the reason
+# (`RunPreview.ventilation_stopped`, rule 3 of `app/wash_in.py`, `PL-PJWT`).
+# Without it, the empty region looks like a drawing that failed. Nielsen Norman
+# Group's guidance on empty states says that "totally empty states cause
+# confusion about how and whether the system is working", and asks for a brief
+# message that says why nothing is shown (Kaplan, "Designing Empty States in
+# Complex Applications: 3 Guidelines", 2021). The line goes in the rows above
+# the plot, and not in the preview's label inside it. Above the equilibrium
+# line the plot has room for one line of text, so a longer label would cover
+# the equilibrium line and the curve of a compared run. Those rows already
+# hold the plot's own state line, and the concentration chart's rows already
+# name a preview whose traces leave the axis (`PL-5B1N`). The line opens with
+# the word that opens a preview's label, so it reads as part of the preview.
+# It has the construction of the state lines above: the condition, then "so",
+# then the verdict.
+WASH_IN_PREVIEW_VENTILATION_STOPPED_TEXT: Final = (
+    PREVIEW_LABEL_SUBJECT
+    + ": alveolar ventilation would be zero, so the predicted ratio would not be a "
+    "wash-in fraction."
+)
+
 # The two standing statements. The first says what the tool is *for*. The
 # second, placed beside the readouts themselves, says how to read a number on
 # it (`PL-2K1R`). The compartments this simulator exists to display are the
@@ -4371,6 +4393,28 @@ def wash_in_state_lines(frame: ChartFrame) -> tuple[str, ...]:
         compared_run_line(
             wash_in_state(run.wash_in_now, run.undrawn_wash_in_stretches), frame, index
         )
+        for index, run in enumerate(frame.runs)
+    )
+
+
+def wash_in_preview_lines(frame: ChartFrame) -> tuple[str | None, ...]:
+    """Each drawn run's line on why the F_A/F_I plot draws no ratio in its preview, if it says one.
+
+    The result has one entry for each run in `frame.runs`, in the same order.
+    An entry is `WASH_IN_PREVIEW_VENTILATION_STOPPED_TEXT` while the run draws
+    a preview whose region is empty because alveolar ventilation would be zero
+    (`RunPreview.ventilation_stopped`, `PL-PJWT`). While more than one run is
+    drawn, `compared_run_line` labels it with its run. Every other entry is
+    None.
+
+    Args:
+        frame: The frame the plot drew.
+    """
+
+    return tuple(
+        compared_run_line(WASH_IN_PREVIEW_VENTILATION_STOPPED_TEXT, frame, index)
+        if run.preview is not None and run.preview.ventilation_stopped
+        else None
         for index, run in enumerate(frame.runs)
     )
 

@@ -4308,6 +4308,29 @@ stored state. The caption reads the state that the run stored for the second it
 has reached, and the trace's right-hand end is drawn from that same state by the
 same division, so the two show the same ratio.
 
+**While a preview draws no ratio because alveolar ventilation would be zero, a
+line under the caption says so** (`PL-PJWT`). A state reached at zero
+ventilation has no wash-in fraction, so a preview of zero ventilation draws
+nothing past the run's current time. So does a preview of any slider on a run
+whose ventilation is already zero. The line reads "Preview: alveolar
+ventilation would be zero, so the predicted ratio would not be a wash-in
+fraction." It opens with the word that opens the preview's label, so it is read
+as part of the preview, and it goes when the slider is let go. Where every
+predicted inspired concentration is too low to divide by, the preview draws no
+ratio at any ventilation, so the line is not shown, as the caption names that
+reason first. Nielsen Norman Group's guidance on empty states asks for a brief
+message that says why an area shows nothing, so that a user does not take it
+for a failure (Kaplan, "Designing Empty States in Complex Applications: 3
+Guidelines", 2021, https://www.nngroup.com/articles/empty-state-interface-design/,
+read 2026-11-28). The line sits above the plot rather than in the preview's
+label, because above the equilibrium line the plot has room for one line of
+text, and a taller label covered the equilibrium line and a compared run's
+curve (`test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation`
+and `test_the_line_on_an_empty_f_a_f_i_preview_is_on_the_compared_run_that_draws_it`
+in `tests/unit/test_chart_frame.py`,
+`test_a_held_thumb_at_zero_ventilation_says_above_the_f_a_f_i_plot_why_it_draws_no_ratio`
+in `tests/integration/simulation_view/test_simulation_view_views.py`).
+
 **The gridlines and labels run from 0 to 1, with a little space above them.**
 Every published wash-in figure uses a scale of 0 to 1, and matching those
 figures is the point of this plot. The space above keeps a trace that ends at
@@ -6737,7 +6760,9 @@ While a user holds a slider's handle, the chart draws the trajectory that the
 run would take if the value under the handle were applied at the run's current
 time (`PL-5B1N`). Both plots draw it, so they never show two different futures.
 On the F_A/F_I plot the preview is the predicted ratio. A dot marks where a
-stretch of it stops, as on the run's curve.
+stretch of it stops, as on the run's curve. Where alveolar ventilation would be
+zero, that plot draws no predicted ratio, and a line under its caption says why
+(§ "F_A/F_I as a displayed ratio").
 
 **A preview is a prediction.** The run has not passed through it, so it is not a
 modelled state of the run. It is not a measurement either. It depends on a
