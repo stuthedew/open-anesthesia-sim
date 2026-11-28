@@ -183,3 +183,19 @@ def test_every_stylesheet_under_app_is_a_composer_call() -> None:
         f"the decision is written once (PL-Y4YX): {written_out}"
     )
     assert STYLING_MODULES <= set(writes_read), writes_read
+
+
+def test_a_heading_over_rows_draws_the_panel_colour_and_one_at_home_draws_nothing() -> None:
+    """A heading over scrolled rows hides them, and one at home leaves them be (`PL-DKQ5`).
+
+    The rule names the one widget by its object name and gives it the
+    panel's colour, which the theme defines. A heading not drawn gets no
+    rule at all, so the widgets inside it draw their own surfaces.
+    """
+
+    over_rows = stylesheets.heading_surface_stylesheet("areaChrome")
+
+    assert over_rows.startswith("QWidget#areaChrome ")
+    assert f"background-color: {theme.PANEL};" in over_rows
+    assert stylesheets.heading_surface_stylesheet("areaChrome", drawn=True) == over_rows
+    assert stylesheets.heading_surface_stylesheet("areaChrome", drawn=False) == ""

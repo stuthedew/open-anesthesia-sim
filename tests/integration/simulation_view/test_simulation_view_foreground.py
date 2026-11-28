@@ -74,9 +74,10 @@ FOREGROUND_NOT_DECLARED: dict[str, str] = {
         "surface, through `stylesheets.clear_scroll_area_stylesheet`, and draws no "
         "text: every row inside it is a widget of its own."
     ),
-    "QScrollArea": (
-        "the page's scroll area. It paints the viewport surface, which "
-        "`SimulationView` declares as BACKGROUND in a stylesheet, and no text: "
+    "HeadingScroll": (
+        "the page's scroll area (`pinned_heading.HeadingScroll`). It paints the "
+        "viewport surface, which `SimulationView` declares as BACKGROUND in a "
+        "stylesheet, and no text: "
         "every string inside it belongs to a widget of its own."
     ),
     "QScrollBar": (

@@ -139,7 +139,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QMenu,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QSplitter,
     QSplitterHandle,
@@ -150,7 +149,12 @@ from PySide6.QtWidgets import (
 
 from anesthesia_sim.app.chart_time_base import ChartWindow
 from anesthesia_sim.app.compartment_selection import CompartmentSelection
-from anesthesia_sim.app.pinned_heading import pin_headings, pin_on_scroll
+from anesthesia_sim.app.pinned_heading import (
+    HeadingScroll,
+    PinnedHeadingSection,
+    pin_headings,
+    pin_on_scroll,
+)
 from anesthesia_sim.app.qt_widgets import FocusRing, styled_label
 from anesthesia_sim.app.run_presentation import RunPresentation, ShownFrame, ValuesStanding
 from anesthesia_sim.app.stylesheets import (
@@ -254,6 +258,10 @@ __all__ = [
 
 # The height of the rule under an Area's header.
 _HEADER_RULE_PX: Final = 1
+
+# The object name of the part of an Area that holds its header, the rule under
+# it and its View's pinned row, which scopes that part's surface's stylesheet.
+_AREA_CHROME_NAME: Final = "areaChrome"
 
 # The space at each end of an Area's header row, before the chooser and after
 # the last control. It is as wide as a corner's drag zone, so the zone never
@@ -2316,6 +2324,15 @@ class AreaFrame(QFrame):
     no other run is shown in its place. When the Area is also too small for its
     View, this notice is shown rather than the too-small one.
 
+    **The header and the View's pinned row stay in view while the page scrolls
+    the Area** (`PL-DKQ5`). Together with the rule between them they are the
+    heading of a `PinnedHeadingSection` that holds the rest of the Area. While
+    the dashboard's page carries the Area's top above the window's edge, they
+    stand at the top of the Area's part in view, over the top of the View. While
+    the page is scrolled sideways, they start at the left edge of the part in
+    view. So the View's name, the pinned run and the View's units are on screen
+    wherever any of the View is.
+
     **A View sits in a scroll box of its own** (`PL-CBYS`). The box is a
     `ViewScroll`. Where the Area is shorter than the View's content, the
     reader scrolls the View inside the Area, and the page does not grow. A
@@ -2344,6 +2361,10 @@ class AreaFrame(QFrame):
             is a notice.
         pinned_row: The row that the View keeps above its scroll box, or None
             where the View declares none (`pinned_row`).
+        chrome: The header, the rule under it and the pinned row, which stay
+            at the top of the Area's part in view.
+        body: The section whose heading is `chrome`, and which holds the View
+            or a notice.
         too_small_notice: The notice shown in place of the View while the
             Area is too small for it, or None if the Area has never been too
             small.
@@ -2395,11 +2416,24 @@ class AreaFrame(QFrame):
         rule.setFixedHeight(_HEADER_RULE_PX)
         rule.setStyleSheet(foreground_stylesheet(GRIDLINE))
 
-        self._column = QVBoxLayout(self)
-        self._column.setContentsMargins(0, 0, 0, 0)
-        self._column.setSpacing(0)
-        self._column.addWidget(self.header)
-        self._column.addWidget(rule)
+        # The header, the rule and the View's pinned row are the heading of a
+        # section that holds the rest. While the page carries the Area's top
+        # out of the window, they stand at the top of the Area's part in view,
+        # so no value of the View is seen without them (`PL-DKQ5`).
+        self.chrome = QWidget()
+        chrome_rows = QVBoxLayout(self.chrome)
+        chrome_rows.setContentsMargins(0, 0, 0, 0)
+        chrome_rows.setSpacing(0)
+        chrome_rows.addWidget(self.header)
+        chrome_rows.addWidget(rule)
+        self.body = PinnedHeadingSection(
+            self.chrome, _AREA_CHROME_NAME, slides_left=True, surface_at_home=False
+        )
+        self._column = self.body.column
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        outer.addWidget(self.body)
         self.view_scroll = None if isinstance(content, AreaNotice) else ViewScroll(content)
 
         if self.view_scroll is not None:
@@ -2412,7 +2446,7 @@ class AreaFrame(QFrame):
         self.pinned_row = None if self.view_scroll is None else pinned_row(content)
 
         if self.pinned_row is not None:
-            self._column.addWidget(self.pinned_row)
+            chrome_rows.addWidget(self.pinned_row)
             self.pinned_row.show()
 
         self._column.addWidget(self.view_scroll or content, 1)
@@ -2598,7 +2632,7 @@ def pinned_row(view: QWidget) -> QWidget | None:
     return row if isinstance(row, QWidget) else None
 
 
-class ViewScroll(QScrollArea):
+class ViewScroll(HeadingScroll):
     """Holds an Area's View under the header, and scrolls it where the Area is smaller than it.
 
     The box gives the View all the room the Area has. It never draws the View

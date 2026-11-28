@@ -76,15 +76,17 @@ def clear_scroll_area_stylesheet() -> str:
     return "QScrollArea { background-color: transparent; }"
 
 
-def heading_surface_stylesheet(object_name: str) -> str:
+def heading_surface_stylesheet(object_name: str, *, drawn: bool = True) -> str:
     """The panel's colour with square corners, scoped to one widget, for a heading drawn over rows.
 
     A heading that stays in view while its rows scroll under it covers those
     rows (`app/pinned_heading.py`). Square corners leave no gap through which
-    a scrolled row could show.
+    a scrolled row could show. Where `drawn` is False the result is empty, for
+    a heading whose own rows draw their surfaces while it covers no row, such
+    as an Area's header and pinned row (`PL-DKQ5`).
     """
 
-    return f"QWidget#{object_name} {{ background-color: {PANEL}; }}"
+    return f"QWidget#{object_name} {{ background-color: {PANEL}; }}" if drawn else ""
 
 
 def panel_stylesheet(object_name: str) -> str:
