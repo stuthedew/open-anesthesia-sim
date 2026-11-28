@@ -333,11 +333,11 @@ def read_wash_in(
     the trace and the sentence beside it come from one evaluation of one rule,
     and they cannot come to disagree.
 
-    It does not know the ventilation, so it cannot apply rule 3. Its result is
-    the plot's reading only for a state that a ventilated step reached, so it
-    is not the plotted value. A reader of a run's state calls
-    `read_wash_in_with_ventilation`, and no other module in `src/` calls this
-    one (`test_only_the_full_reader_calls_the_reader_without_ventilation`,
+    It does not know the ventilation, so it cannot apply rule 3. Its result
+    matches the plotted value only for a state that a ventilated step reached.
+    A reader of a run's state calls `read_wash_in_with_ventilation`, and no
+    other module in `src/` calls this one
+    (`test_only_the_full_reader_calls_the_reader_without_ventilation`,
     `PL-ZZLW`).
 
     Args:
