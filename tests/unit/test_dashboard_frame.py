@@ -3434,16 +3434,19 @@ def test_the_wash_in_state_counts_the_stretches_the_plot_could_not_draw() -> Non
 def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_count() -> None:
     """The count of undrawn stretches is added after the state, never in place of it.
 
-    Each of the three states is checked against a literal. A state with no
+    Each of the four states is checked against a literal. A state with no
     ratio can follow earlier stretches, as it does after a washout, so its
     sentence names no cause that a count of earlier stretches would
-    contradict (`PL-P3ZL`).
+    contradict (`PL-P3ZL`). An apnoea is the commonest way a run gets undrawn
+    stretches, so the caption for a state reached at zero ventilation is
+    checked with a count after it too (`PL-ZZLW`).
     """
 
     ventilated = AlveolarVentilation(5.0)
     in_domain = read_wash_in_with_ventilation(0.0071, 0.01, ventilated)
     eliminating = read_wash_in_with_ventilation(0.02, 0.01, ventilated)
     no_ratio = read_wash_in_with_ventilation(0.002, 0.00004, ventilated)
+    apnoea = read_wash_in_with_ventilation(0.0071, 0.01, AlveolarVentilation(0.0))
 
     assert wash_in_state(in_domain, 2) == (
         "Now: F<sub>A</sub>/F<sub>I</sub> = 0.71 (2 earlier stretch(es) not drawn)"
@@ -3455,6 +3458,10 @@ def test_a_wash_in_state_with_undrawn_stretches_keeps_its_reading_before_the_cou
     assert wash_in_state(no_ratio, 2) == (
         "The inspired concentration is too low to divide by, so the ratio is not "
         "defined. (2 earlier stretch(es) not drawn)"
+    )
+    assert wash_in_state(apnoea, 2) == (
+        "Alveolar ventilation was zero over the last simulated second, so the ratio "
+        "is not a wash-in fraction. (2 earlier stretch(es) not drawn)"
     )
 
 

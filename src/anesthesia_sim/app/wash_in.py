@@ -337,7 +337,7 @@ def read_wash_in(
     matches the plotted value only for a state that a ventilated step reached.
     A reader of a run's state calls `read_wash_in_with_ventilation`, and no
     other module in `src/` calls this one
-    (`test_only_the_full_reader_calls_the_reader_without_ventilation`,
+    (`test_no_display_module_reads_the_ratio_without_the_ventilation_rule`,
     `PL-ZZLW`).
 
     Args:

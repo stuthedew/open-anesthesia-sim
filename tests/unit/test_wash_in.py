@@ -439,33 +439,55 @@ def test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run(agent:
     )
 
 
-def test_only_the_full_reader_calls_the_reader_without_ventilation() -> None:
-    """No module in `src/` reads the plotted ratio through `read_wash_in`, which skips rule 3.
+def test_no_display_module_reads_the_ratio_without_the_ventilation_rule() -> None:
+    """No module in `src/` but `app/wash_in.py` refers to a reader that skips rule 3.
 
-    `read_wash_in` cannot apply the rule that a state reached at zero alveolar
-    ventilation has no ratio, because it is not given the ventilation. A
-    display path that called it would draw a ratio through an apnoea
-    (`PL-ZZLW`). So every call of it under `src/` must be the one inside
-    `read_wash_in_with_ventilation`.
+    `read_wash_in` and `wash_in_ratio` are not given the ventilation, so they
+    cannot apply the rule that a state reached at zero alveolar ventilation
+    has no ratio. A display path that used either would draw a ratio through
+    an apnoea (`PL-ZZLW`). A module outside `app/wash_in.py` can reach either
+    only by importing it from that module or by reading it as an attribute of
+    `wash_in`, so the test finds both, whether the reader is then called,
+    passed or renamed. Inside `app/wash_in.py`, only
+    `read_wash_in_with_ventilation` may call `read_wash_in`.
     """
 
+    skipping_rule_3 = {"read_wash_in", "wash_in_ratio"}
     package = Path(anesthesia_sim.__file__).parent
-    callers: list[str] = []
+    references: list[str] = []
+    callers_inside: list[str] = []
 
     for path in sorted(package.rglob("*.py")):
+        module = str(path.relative_to(package))
         tree = ast.parse(path.read_text(encoding="utf-8"))
 
-        for function in ast.walk(tree):
-            if not isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
-                continue
+        if module == "app/wash_in.py":
+            for function in ast.walk(tree):
+                if isinstance(function, ast.FunctionDef | ast.AsyncFunctionDef):
+                    for node in ast.walk(function):
+                        if (
+                            isinstance(node, ast.Call)
+                            and isinstance(node.func, ast.Name)
+                            and node.func.id == "read_wash_in"
+                        ):
+                            callers_inside.append(function.name)
+            continue
 
-            for node in ast.walk(function):
-                called = isinstance(node, ast.Call) and (
-                    (isinstance(node.func, ast.Name) and node.func.id == "read_wash_in")
-                    or (isinstance(node.func, ast.Attribute) and node.func.attr == "read_wash_in")
-                )
+        for node in ast.walk(tree):
+            imported = (
+                isinstance(node, ast.ImportFrom)
+                and node.module == "anesthesia_sim.app.wash_in"
+                and any(alias.name in skipping_rule_3 for alias in node.names)
+            )
+            read_from_module = (
+                isinstance(node, ast.Attribute)
+                and node.attr in skipping_rule_3
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "wash_in"
+            )
 
-                if called:
-                    callers.append(f"{path.relative_to(package)}::{function.name}")
+            if imported or read_from_module:
+                references.append(f"{module}:{node.lineno}")
 
-    assert callers == ["app/wash_in.py::read_wash_in_with_ventilation"]
+    assert references == []
+    assert callers_inside == ["read_wash_in_with_ventilation"]
