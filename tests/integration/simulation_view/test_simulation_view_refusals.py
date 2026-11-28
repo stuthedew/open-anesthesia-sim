@@ -11,6 +11,7 @@ import logging
 import pytest
 from PySide6.QtWidgets import QApplication
 
+from anesthesia_sim.app import simulation_view as simulation_view_module
 from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import slider_position
 from anesthesia_sim.app.formatting import FLOW_DISPLAY_DECIMALS
@@ -26,10 +27,15 @@ from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from tests.integration.announcement_support import ASSERTIVE, Announcement, record_announcements
 from tests.integration.simulation_view.simulation_view_support import (
     _advance,
+    _branched_case,
+    _case_view,
     _concentration,
     _dials,
+    _failing_assembly,
     _hold_thumb,
+    _settle,
     _shown_view,
+    _take_fork,
 )
 
 # ---------------------------------------------- refusals, and the halt
@@ -155,6 +161,38 @@ def test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only(
     assert recorded[0].message.startswith(
         "Simulation stopped — an unexpected error occurred in the simulator"
     )
+
+
+def test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When every run halts at once, a screen reader is told of each run's halt (`PL-MP92`).
+
+    A frame that fails halts every run, and each run's banner changes in the
+    same action. Each halt interrupts what is being read, and a screen reader
+    may drop what it has queued when an interrupting announcement arrives
+    (WAI-ARIA 1.2's definition of `aria-live`). So the two banners are read as one
+    announcement, in the order the runs are drawn. Before `PL-MP92` they were
+    two announcements, and a screen-reader user could hear only Run 2's halt.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    _settle(application)
+    assert len(view.runs) == 2
+    recorded = record_announcements(monkeypatch)
+
+    monkeypatch.setattr(simulation_view_module, "assemble_chart_frame", _failing_assembly)
+    view.present(False)
+    _settle(application)
+
+    banners = [run._notice_text.notice() or "" for run in view.runs]
+    assert [banner.split(" — ")[0] for banner in banners] == [
+        "Run 1: Simulation stopped",
+        "Run 2: Simulation stopped",
+    ]
+    assert recorded == [Announcement(" ".join(banners), ASSERTIVE)]
 
 
 def test_a_refusal_notice_clears_once_a_setting_is_accepted(application: QApplication) -> None:

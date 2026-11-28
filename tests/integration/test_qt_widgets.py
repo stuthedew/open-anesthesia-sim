@@ -88,6 +88,7 @@ from anesthesia_sim.app.qt_widgets import (
     ParameterSlider,
     ReadoutRow,
     SelectorComboBox,
+    announce,
     initial_window_geometry,
     styled_label,
 )
@@ -1357,6 +1358,120 @@ def test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends(
         Announcement(
             "Simulation stopped — the values shown are the last completed step.", ASSERTIVE
         )
+    ]
+
+
+def test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every banner that one window changes in one action is read, in one announcement.
+
+    WAI-ARIA 1.2's definition of `aria-live` says that a screen reader "MAY choose to clear
+    queued changes when an assertive change occurs". So one announcement per
+    banner could leave a screen-reader user hearing only the last banner, as
+    happened with each compared run's halt but the last (`PL-MP92`). The
+    banners are read in the order they changed. The announcement interrupts
+    when any banner in it does, and waits until speech pauses when none does.
+    A banner that is hidden or unchanged adds nothing.
+    """
+
+    window = QWidget()
+    first, second, third = (NoticeLabel(window) for _ in range(3))
+    recorded = record_announcements(monkeypatch)
+
+    second.set_notice("Simulation stopped — supported run length reached.", MUTED)
+    first.set_notice("Setting refused — too high.")
+    third.set_notice("This run stops in 5s of simulated time.", MUTED)
+    application.processEvents()
+
+    assert recorded == [
+        Announcement(
+            "Simulation stopped — supported run length reached. Setting refused — too high. "
+            "This run stops in 5s of simulated time.",
+            ASSERTIVE,
+        )
+    ]
+
+    recorded.clear()
+    first.set_notice("This run stops in 4s of simulated time.", MUTED)
+    second.set_notice("Simulation stopped — supported run length reached.", MUTED)
+    third.set_notice(None)
+    application.processEvents()
+
+    assert recorded == [Announcement("This run stops in 4s of simulated time.", POLITE)]
+
+
+def test_a_message_asked_for_twice_in_one_action_is_read_once(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A message that two widgets of one window ask for in one action is read once.
+
+    A message asked for directly, as the dashboard asks for a refused branch,
+    is read with the window's banners, in the order each was asked for.
+    """
+
+    window = QWidget()
+    labels = [NoticeLabel(window) for _ in range(3)]
+    recorded = record_announcements(monkeypatch)
+
+    labels[0].set_notice("Setting refused — too high.")
+    announce(window, "A branch cannot be taken here.", interrupt=False)
+    labels[1].set_notice("Setting refused — too high.")
+    labels[2].set_notice("Setting refused — too high.")
+    application.processEvents()
+
+    assert recorded == [
+        Announcement("Setting refused — too high. A branch cannot be taken here.", ASSERTIVE)
+    ]
+
+
+def test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A label deleted before control returns to the event loop adds nothing to the announcement.
+
+    The banners of the labels that are still shown are read as usual.
+    """
+
+    window = QWidget()
+    kept, deleted, also_kept = (NoticeLabel(window) for _ in range(3))
+    recorded = record_announcements(monkeypatch)
+
+    kept.set_notice("Setting refused — too high.")
+    deleted.set_notice("Simulation stopped — supported run length reached.", MUTED)
+    also_kept.set_notice("This run stops in 5s of simulated time.", MUTED)
+    shiboken6.delete(deleted)
+    application.processEvents()
+
+    assert recorded == [
+        Announcement(
+            "Setting refused — too high. This run stops in 5s of simulated time.", ASSERTIVE
+        )
+    ]
+
+
+def test_each_window_reads_its_own_announcements(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two windows that each change a banner in one action make two announcements.
+
+    Each keeps its own politeness, so a muted banner in one window is not
+    made to interrupt by a warning in the other.
+    """
+
+    windows = [QWidget() for _ in range(3)]
+    labels = [NoticeLabel(window) for window in windows]
+    recorded = record_announcements(monkeypatch)
+
+    labels[0].set_notice("Setting refused — too high.")
+    labels[1].set_notice("Simulation stopped — supported run length reached.", MUTED)
+    labels[2].set_notice("This run stops in 5s of simulated time.", MUTED)
+    application.processEvents()
+
+    assert sorted(recorded, key=lambda announcement: announcement.message) == [
+        Announcement("Setting refused — too high.", ASSERTIVE),
+        Announcement("Simulation stopped — supported run length reached.", POLITE),
+        Announcement("This run stops in 5s of simulated time.", POLITE),
     ]
 
 

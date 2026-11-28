@@ -3,14 +3,17 @@ id: PL-MP92
 title: When every run halts at once, each run's banner interrupts the one before it, so a screen reader user hears only the last run's halt
 priority: P3
 effort: S
-status: untriaged
+status: done
 classes: defect
 feature: presentation-safety
-touches: src/anesthesia_sim/app/qt_widgets.py
+touches: src/anesthesia_sim/app/qt_widgets.py, docs/INTERFACE.md, tests/integration/test_qt_widgets.py, tests/integration/simulation_view/test_simulation_view_refusals.py
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it; it needs two compared runs and a frame that fails, so the release waits only on the owner test drive (filed 2026-11-27)
 added: 2026-11-27
+closed: 2026-11-28
+pr: 2352
 filed-pr: 2333
 payoff: a screen-reader user hears every run's halt when several runs stop at once
+tests: tests/integration/simulation_view/test_simulation_view_refusals.py::test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement, tests/integration/test_qt_widgets.py::test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement, tests/integration/test_qt_widgets.py::test_a_message_asked_for_twice_in_one_action_is_read_once, tests/integration/test_qt_widgets.py::test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read, tests/integration/test_qt_widgets.py::test_each_window_reads_its_own_announcements
 ---
 
 **Problem.** When a frame cannot be drawn, `SimulationView` halts every run at once, and each run's banner then changes in the same action. `PL-J7Z5` announces each banner from its own label (`qt_widgets.NoticeLabel`), and a failure interrupts what is being read. So with two runs compared, the second run's announcement interrupts the first, and a screen-reader user hears only that the second run stopped.
@@ -22,3 +25,62 @@ payoff: a screen-reader user hears every run's halt when several runs stop at on
 **Done when.** A test that halts two compared runs at once, with the announcement recorder in `tests/integration/announcement_support.py`, shows one assertive announcement that holds both runs' banners.
 
 **How it was found.** Building `PL-J7Z5`, 2026-11-27, while checking what a halt announces.
+
+**Decided 2026-11-28 (triage).** The brief's approach is the one the standard
+supports, so it is taken without a question. WAI-ARIA 1.2's definition of `aria-live`
+(https://www.w3.org/TR/wai-aria-1.2/, read 2026-11-28) says that for an
+assertive region a screen reader "could potentially clear the speech queue of
+previous updates", and that "User agents or assistive technologies MAY choose to
+clear queued changes when an assertive change occurs." Sending the second halt
+as a polite announcement would not help, because a polite announcement waits
+for a pause and can still be cleared by the next assertive one. One
+announcement holding every message cannot lose any of them. The collector
+takes every announcement the window asks for, not only the banners, because
+the dashboard's own announcements (a refused branch, a refused mark, the
+caption in the branch control's place) can arrive in the same action and are
+lost the same way. It is kept per window, as the brief says. A dialog and the
+main window that both announced in one action would still make two
+announcements. Every announcement comes from the dashboard's window today: each
+`RunView`'s banner and the three that `SimulationView` asks for itself. The
+other `NoticeLabel`s are built with `announces` False. One collector for the
+whole application would have to pick one window's widget as the source of the
+other window's message.
+
+**Generator check.** The fact misread is what one window announces in one
+action. Each banner held its own announcement, so no record saw two banners
+change together. No head's `misread:` states this fact, and no other item
+misreads it. `PL-J7Z5` built the announcement from each banner and filed this
+item as its known gap, so it is a one-off. The fix makes the window's
+collector that record.
+
+**Fix.** `qt_widgets._WindowAnnouncements` is a child of each window. It
+collects every request the window makes until control returns to the event
+loop, then sends one announcement: each message once, in the order asked for,
+joined by a space, interrupting if any message does. `announce` adds a request
+to it rather than sending at once, and `NoticeLabel` adds itself in place of
+its own timer. A label's request is read when the announcement is sent, so a
+banner written twice in one action is still read as the action leaves it. A
+request from a widget deleted before then is dropped, which
+`shiboken6.isValid` decides.
+
+**Tests.** In `tests/integration/test_qt_widgets.py`:
+`test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement`
+(three labels, the order and the politeness of the joined message),
+`test_a_message_asked_for_twice_in_one_action_is_read_once` (a repeated
+message, and a direct request read with the banners),
+`test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read` and
+`test_each_window_reads_its_own_announcements`. In
+`tests/integration/simulation_view/test_simulation_view_refusals.py`:
+`test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement`,
+which is the brief's "Done when" test.
+
+**Regression check.** With `src/anesthesia_sim/app/qt_widgets.py` put back to
+`origin/main` (aa4dca79) and the new tests kept, `QT_QPA_PLATFORM=offscreen
+PYTHONPATH=src python -m pytest -q
+tests/integration/simulation_view/test_simulation_view_refusals.py::test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement
+tests/integration/test_qt_widgets.py::test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement`
+failed both. The halt test recorded two announcements, Run 1's and then Run 2's
+("At index 0 diff: Announcement(message='Run 1: Simulation stopped — an
+unexpected error occurred in the simulator, ..."). The widget test recorded
+three ("Left contains 2 more items, first extra item:
+Announcement(message='Setting refused — too high.', ...").

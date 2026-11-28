@@ -4508,13 +4508,23 @@ reads out a refusal under a bookmark form or the branch control, and the
 caption. So two Areas that show the same refusal read it once, and a View
 built again after a Workspace switch shows it without reading it again. Each
 refused press is read, even where the refusal is already shown, so that a
-second press is not met with silence
-(`test_each_new_banner_is_read_out_once_and_a_warning_interrupts` and
-`test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends` in
+second press is not met with silence. Everything that the window asks a
+screen reader to read in one action is read as one announcement, in the
+order it was asked for, and it interrupts if any part of it does. WAI-ARIA
+1.2's definition of `aria-live` lets a screen reader drop what it has queued when an
+interrupting announcement arrives. So when every run halts at once, a user
+would otherwise hear only the last compared run's halt (`PL-MP92`)
+(`test_each_new_banner_is_read_out_once_and_a_warning_interrupts`,
+`test_a_banner_written_twice_in_one_action_is_read_once_as_it_ends`,
+`test_banners_that_change_in_one_action_in_one_window_are_read_as_one_announcement`,
+`test_a_message_asked_for_twice_in_one_action_is_read_once`,
+`test_a_banner_whose_label_is_deleted_before_the_action_ends_is_not_read` and
+`test_each_window_reads_its_own_announcements` in
 `tests/integration/test_qt_widgets.py`,
 `test_a_countdown_keeps_one_topic_while_its_time_left_changes` in
 `tests/unit/test_dashboard_frame.py`,
-`test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` in
+`test_a_refused_setting_and_a_halt_are_read_out_at_once_and_once_only` and
+`test_a_halt_of_every_run_reads_each_compared_run_s_banner_in_one_announcement` in
 `tests/integration/simulation_view/test_simulation_view_refusals.py`,
 `test_the_countdown_and_the_stop_at_the_supported_run_length_are_each_read_out_once`
 in `tests/integration/simulation_view/test_simulation_view_run_stops_itself.py`,
