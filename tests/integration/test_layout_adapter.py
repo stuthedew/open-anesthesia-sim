@@ -1161,27 +1161,6 @@ def test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone(
     }
 
 
-def test_an_area_s_name_counts_from_one_and_needs_a_title() -> None:
-    """An Area's name refuses a number below 1, a number that is not a whole number, or no title."""
-
-    assert AreaName("Wash-in").text == "Wash-in"
-    assert AreaName("Wash-in").among_copies is None
-    assert AreaName("Wash-in", 2).text == "Wash-in 2"
-    assert AreaName("Wash-in", 2).among_copies == "Wash-in 2"
-
-    with pytest.raises(ValueError, match="counts from 1, and 0 was given"):
-        AreaName("Wash-in", 0)
-
-    with pytest.raises(TypeError, match="not bool"):
-        AreaName("Wash-in", True)
-
-    with pytest.raises(TypeError, match="not float"):
-        AreaName("Wash-in", 1.5)  # type: ignore[arg-type]
-
-    with pytest.raises(ValueError, match="title given is empty"):
-        AreaName("")
-
-
 def test_a_view_replaced_and_chosen_again_comes_back_with_its_state(
     application: QApplication, shown: list[AreaLayout]
 ) -> None:

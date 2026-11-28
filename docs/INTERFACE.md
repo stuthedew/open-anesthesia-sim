@@ -4567,10 +4567,10 @@ in `tests/integration/simulation_view/test_simulation_view_charts.py`, and
 `test_after_a_swap_the_areas_are_numbered_by_their_new_places_not_by_their_ids`,
 `test_the_names_are_worked_out_again_when_a_view_is_changed_and_an_area_closed`,
 `test_a_border_after_a_pane_of_three_areas_names_all_three_with_a_serial_comma`,
-`test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone`,
-`test_an_area_s_name_counts_from_one_and_needs_a_title` and
+`test_a_border_after_a_pane_of_two_areas_joins_their_names_with_and_alone`
+and
 `test_the_menu_offers_each_operation_and_shows_a_join_the_layout_cannot_make`
-in `tests/integration/test_layout_adapter.py`).
+in `tests/integration/test_layout_adapter.py`, and `tests/unit/test_area_name.py`).
 
 **A new banner is read out without moving the focus** (`PL-J7Z5`). A screen
 reader says nothing when a label's text changes, and SC 4.1.3 (Status
