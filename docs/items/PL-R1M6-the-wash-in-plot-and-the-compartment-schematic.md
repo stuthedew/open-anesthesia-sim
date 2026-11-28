@@ -78,6 +78,14 @@ against this branch before those fixes (`7f0f1232`), and all four failed:
 "Now: FA/FI = 0.86" where the ratio at 45m was expected, and "—%, — mL
 vapour, — of agent" where the words were expected.
 
+**Full check, 2026-11-28.** The first full check's mutation step found eight
+changes to changed lines that no unit test caught. `wash_in_plot_name` had no
+unit test, and the wash-in test's runs could not tell `continue` from `break`
+for a run with no stretch, or a two-run frame from a one-run frame. The
+wash-in test now puts the undrawn run between two drawn ones, checks a
+two-run frame, and checks the plot's name with and without a frame. Each of
+the three kinds of change now fails it.
+
 **Blind review, 2026-11-28.** Two passes. Both found the same should-fix: the
 wash-in description gave the present reading, which a held window does not
 draw. Fixed, as above. Pass 1 found a second should-fix: a withheld
