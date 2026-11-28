@@ -1387,17 +1387,54 @@ def test_a_narrower_window_counts_the_rows_the_line_under_the_axis_top_control_t
     that every scroll position would cut (`PL-GWTR`).
     """
 
-    (tmp_path / PREFERENCES_FILE_NAME).write_text(
-        json.dumps(
-            {
-                "schema_version": 2,
-                "agent_cost_unit": "millilitres of liquid",
-                "agent_prices": [],
-                "chart_axis_top_mac": "a top typed by hand " * 8,
-            }
-        ),
-        encoding="utf-8",
+    def text_width(window_width: int) -> tuple[int, QFontMetrics]:
+        """Return how wide the line is drawn in a window `window_width` wide, and its font."""
+
+        view = _paused_dashboard(
+            application, shown, _SCHEMATIC_AND_BRANCH, (window_width, 800), branched=False
+        )
+        schematic = _schematic(view)
+
+        return (
+            schematic.pinned_row.width() - 2 * PANEL_PADDING,
+            QFontMetrics(schematic.ceiling_notice.font()),
+        )
+
+    def write_saved_top(raw: str) -> str:
+        """Write a preferences file whose saved top is `raw`, and return the line it gives."""
+
+        (tmp_path / PREFERENCES_FILE_NAME).write_text(
+            json.dumps(
+                {
+                    "schema_version": 2,
+                    "agent_cost_unit": "millilitres of liquid",
+                    "agent_prices": [],
+                    "chart_axis_top_mac": raw,
+                }
+            ),
+            encoding="utf-8",
+        )
+        refused = PreferencesStore(tmp_path).load().preferences.refused_chart_ceiling
+        assert refused is not None
+
+        return refused.reason
+
+    (wide, metrics), (narrow, _) = text_width(1366), text_width(1136)
+
+    def height(text: str, width: int) -> int:
+        return metrics.boundingRect(
+            QRect(0, 0, width, 10_000), Qt.TextFlag.TextWordWrap, text
+        ).height()
+
+    # The saved top is made long enough that its line takes more rows at the
+    # narrower width, in whichever font the platform draws text.
+    repeats = next(
+        count
+        for count in range(1, 40)
+        if height(saved := write_saved_top("a top typed by hand " * count), narrow)
+        > height(saved, wide)
     )
+    write_saved_top("a top typed by hand " * repeats)
     store = PreferencesStore(tmp_path)
     short = _paused_dashboard(
         application,
