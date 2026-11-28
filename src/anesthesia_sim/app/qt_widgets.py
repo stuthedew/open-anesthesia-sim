@@ -109,11 +109,7 @@ from PySide6.QtWidgets import (
 from shiboken6 import isValid
 
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
-from anesthesia_sim.app.branch_controls import (
-    FORK_POINT_ACCESSIBLE_NAME,
-    FORK_POINT_LABEL,
-    TAKE_FORK_LABEL,
-)
+from anesthesia_sim.app.branch_controls import FORK_POINT_KIND, FORK_POINT_LABEL, TAKE_FORK_LABEL
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.dashboard_frame import (
@@ -143,7 +139,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NewCaseQuestion,
     Readout,
     SettingReadout,
-    form_control_name,
+    control_name,
     height_entry_maximum_mac,
     readout_columns,
     readout_row_width,
@@ -2824,7 +2820,9 @@ class ForkPanel(QWidget):
         self.pin_text.setHidden(True)
         self.notice = NoticeLabel(self, announces=False)
         self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
-        label_control(self._point_label, self.point_selector, FORK_POINT_ACCESSIBLE_NAME)
+        label_control(
+            self._point_label, self.point_selector, control_name(FORK_POINT_LABEL, FORK_POINT_KIND)
+        )
         # The points behind the selector's entries, one per entry, in the
         # selector's order. `selected_point` returns one of them, and
         # `set_offer` rebuilds the entries when a new offer differs from them.
@@ -3261,9 +3259,9 @@ class MarkEditor(QWidget):
         )
 
         # Both forms have a "Name" field and an "Add" button, so each is named
-        # with its form's kind of mark as well (`form_control_name`).
-        time_name = form_control_name(MARK_NAME_FIELD_LABEL, TIME_MARK_KIND)
-        target_name = form_control_name(MARK_NAME_FIELD_LABEL, TARGET_MARK_KIND)
+        # with its form's kind of mark as well (`control_name`).
+        time_name = control_name(MARK_NAME_FIELD_LABEL, TIME_MARK_KIND)
+        target_name = control_name(MARK_NAME_FIELD_LABEL, TARGET_MARK_KIND)
 
         for label, control, name in (
             (instant_name, self.instant_spin, None),
@@ -3274,10 +3272,8 @@ class MarkEditor(QWidget):
         ):
             label_control(label, control, name)
 
-        self.add_time_button.setAccessibleName(form_control_name(ADD_MARK_LABEL, TIME_MARK_KIND))
-        self.add_target_button.setAccessibleName(
-            form_control_name(ADD_MARK_LABEL, TARGET_MARK_KIND)
-        )
+        self.add_time_button.setAccessibleName(control_name(ADD_MARK_LABEL, TIME_MARK_KIND))
+        self.add_target_button.setAccessibleName(control_name(ADD_MARK_LABEL, TARGET_MARK_KIND))
 
         # Both forms give their field names the width of the widest name, so
         # the fields of the two forms start at one edge and read as one column.
@@ -3630,18 +3626,44 @@ def label_control(label: QLabel, control: QWidget, name: str | None = None) -> N
     selector by its accessible name, so the control is given one as well. A
     spin box or an entry field takes the name on every platform.
 
+    A `name` is given to the label as well as to the control, while the label
+    still shows its own text. Qt reports a label by its accessible name where
+    it has one. So on Linux and macOS a selector is said to be for "Playback,
+    Run 2" and not for "Playback" alone (`PL-YSFX`). A caller whose name
+    changes calls this again with the new name. Only a name that differs is
+    written, so a name written again on each frame sends a screen reader no
+    change.
+
     Args:
         label: The label shown beside the control.
         control: The control the label names.
         name: The name for a screen reader, where the label's text alone does
             not say which control it is, such as one of two fields called
-            "Name". It starts with the label's text, which W3C's
-            Understanding document for WCAG 2.2 SC 2.5.3 (Label in Name)
-            calls best practice. It is the label's text by default.
+            "Name" (`dashboard_frame.control_name`). It is the label's text by
+            default.
+
+    Raises:
+        ValueError: `name` does not start with the label's text. A name that
+            starts with the label shown is what WCAG 2.2's Understanding
+            document for SC 2.5.3 (Label in Name) calls best practice, and it
+            lets a user of speech input say the label they see.
     """
 
+    if name is not None and not name.startswith(label.text()):
+        raise ValueError(
+            f"The name {name!r} for a screen reader does not start with the label "
+            f"shown beside its control, {label.text()!r}. Start the name with the "
+            "label, as dashboard_frame.control_name does."
+        )
+
     label.setBuddy(control)
-    control.setAccessibleName(label.text() if name is None else name)
+    spoken = label.text() if name is None else name
+
+    if control.accessibleName() != spoken:
+        control.setAccessibleName(spoken)
+
+    if label.accessibleName() != ("" if name is None else name):
+        label.setAccessibleName("" if name is None else name)
 
 
 class FocusedComboBox(SelectorComboBox):
