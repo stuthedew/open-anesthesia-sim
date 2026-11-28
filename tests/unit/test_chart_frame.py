@@ -32,6 +32,7 @@ from anesthesia_sim.app.chart_frame import (
     RunIndex,
     RunInput,
     WashInStretch,
+    _ventilation_empties_the_preview,
     assemble_chart_frame,
     chart_columns,
     compared_compartments,
@@ -3371,6 +3372,24 @@ def test_the_line_on_an_empty_f_a_f_i_preview_is_on_the_compared_run_that_draws_
     )
 
     assert wash_in_preview_lines(frame) == (None, f"Run 2 — {_STOPPED_TEXT}", None)
+
+
+def test_a_preview_whose_values_and_ventilations_differ_in_length_is_refused() -> None:
+    """A window that holds more fractions than ventilations raises rather than being read short.
+
+    Every predicted instant has both fractions and the ventilation of the step
+    that reached it. Read short, the flag would leave out the instants past
+    the shorter sequence, so it could put an empty preview down to the
+    ventilation, or not, from part of the window.
+    """
+
+    fractions = {
+        quantity: tuple(Fraction(0.01, name="fraction") for _ in range(3))
+        for quantity in (RecordedQuantity.ALVEOLAR, RecordedQuantity.CIRCUIT)
+    }
+
+    with pytest.raises(ValueError, match="zip"):
+        _ventilation_empties_the_preview(fractions, (AlveolarVentilation(0.0),) * 2)
 
 
 def test_a_frame_without_a_held_thumb_draws_no_preview() -> None:

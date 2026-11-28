@@ -13,7 +13,7 @@ closed: 2026-11-28
 pr: 2365
 filed-pr: 2329
 payoff: a user previewing zero ventilation is told why the F_A/F_I plot draws no preview, rather than seeing an empty region that looks like a drawing that failed
-tests: tests/unit/test_chart_frame.py::test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation, tests/unit/test_chart_frame.py::test_the_line_on_an_empty_f_a_f_i_preview_is_on_the_compared_run_that_draws_it, tests/integration/simulation_view/test_simulation_view_views.py::test_a_held_thumb_at_zero_ventilation_says_above_the_f_a_f_i_plot_why_it_draws_no_ratio
+tests: tests/unit/test_chart_frame.py::test_the_f_a_f_i_plot_says_why_it_draws_no_ratio_for_a_preview_at_zero_ventilation, tests/unit/test_chart_frame.py::test_the_line_on_an_empty_f_a_f_i_preview_is_on_the_compared_run_that_draws_it, tests/unit/test_chart_frame.py::test_a_preview_whose_values_and_ventilations_differ_in_length_is_refused, tests/integration/simulation_view/test_simulation_view_views.py::test_a_held_thumb_at_zero_ventilation_says_above_the_f_a_f_i_plot_why_it_draws_no_ratio
 ---
 
 **Problem.** While the user holds the alveolar ventilation slider at zero, the preview of the F_A/F_I plot draws nothing past the run's reach. Rule 3 of `src/anesthesia_sim/app/wash_in.py` (`PL-49D5`) leaves every predicted state without a ratio, because a step at zero ventilation reached it. The compartment chart still draws its preview, so the two plots show the same future, but the F_A/F_I plot's preview region is blank and its caption speaks only of the run's own state. A user cannot tell a blank preview from a preview that failed to draw.
