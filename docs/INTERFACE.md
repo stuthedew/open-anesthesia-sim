@@ -4488,9 +4488,10 @@ reader while it still shows its own text, because Linux and macOS take what a
 selector is for from that label. Each name starts with the label shown, which
 the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
 The W3C's ARIA Authoring Practices Guide asks that controls with the same
-role have different names unless they are identical. So no two controls that
-a reader can reach share a name, apart from three cases that are still to be
-named apart (`PL-XV64`): the Area corners, the Area borders, and the controls
+role have different names unless they are identical. So no two controls or
+pictures that a reader can reach share a name, in any shipped Workspace, with
+one run or with two compared (`PL-9XGQ`), apart from three cases that are
+still to be named apart (`PL-XV64`): the Area corners, the Area borders, and the controls
 of two Areas that show the same kind of View, such as the two halves of a
 split Concentrations Area. A scroll box that
 takes the focus so that the keyboard can scroll it is named by the heading
@@ -4635,6 +4636,19 @@ in `tests/unit/test_compartment_schematic.py`, and
 `test_the_wash_in_plot_and_each_schematic_tell_a_screen_reader_when_their_text_changes`
 and `test_every_plot_and_schematic_reaches_a_screen_reader_as_a_described_image`
 in `tests/integration/simulation_view/test_simulation_view_charts.py`).
+
+**Every picture in every shipped Workspace has a text alternative**
+(`PL-9XGQ`). A test finds each picture among the widgets shown, in each shipped
+Workspace and in one that shows every kind of View, with one run and with two
+compared. A picture is a plot, or any widget that this program paints for
+itself, apart from a short list of painted widgets that draw no picture, such
+as a legend's sample of a line beside the check box that names the line. Each
+picture must report itself as an image with a name and a description. So a
+plot, a diagram or a painted widget added later to any View fails the test
+until it has a text alternative or joins that list with its reason
+(`test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named`
+and `test_each_painted_widget_that_draws_no_picture_still_paints` in
+`tests/integration/test_keyboard_focus.py`).
 
 #### Minimum contrast for text and graphics
 

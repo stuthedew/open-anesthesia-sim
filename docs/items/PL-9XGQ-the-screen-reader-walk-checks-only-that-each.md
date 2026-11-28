@@ -27,3 +27,55 @@ misread: What a screen reader is told about each element: its role, and a name u
 **Done when.** A test walks the accessible tree of every shipped Workspace, with one run and with two compared. It fails on any plot or schematic with no name or no description, and on any two visible elements of one role in one window that share a name. It passes on `main` once `PL-R1M6`, `PL-YSFX` and `PL-XV64` are fixed.
 
 **Generator check.** This item is the head of one fact: what a screen reader is told about each element on screen, its role and a name that tells it apart from the others in its window. Each widget's writer misread it: `PL-RK9Z` (61 controls with no name, closed 2026-11-27), `PL-T9RB` (the concentration chart, closed 2026-11-27), `PL-R1M6` and `PL-YSFX`. No head's `misread:` states it (`bin/docket generators --misread`, read 2026-11-28).
+
+**Fix, 2026-11-28.** The walk in `tests/integration/test_keyboard_focus.py`
+now covers each shipped Workspace and the one that shows every kind of View,
+each with one run and with two compared. For each shipped Workspace the
+branch is taken in the first one, which shows the branch control, and the
+window then switches tab, as a user would. The window is large enough that
+each View draws all it can show.
+
+1. `test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`
+   now compares the pictures' names with the controls', and runs in every
+   walked Workspace. Static text is left out, because its name is the text
+   the screen shows in that place. Only the Workspace with every kind of View
+   checks that each entry of `SHARED_PURPOSES` is still needed, because a
+   shipped Workspace with one Area would have no border to share a name.
+2. `test_every_control_and_picture_in_every_workspace_reaches_a_screen_reader_named`
+   fails on a control a reader can reach that has no name, and on a picture
+   that does not report itself as an image with a name and a description. A
+   picture is any graphics view, which every plot is drawn in, or any widget
+   that a class of this program paints for itself. It is found among the
+   widgets shown, not from a list of known classes, so a diagram added later
+   on a new canvas class is in the walk.
+3. `PAINTED_NOT_PICTURES` lists the eight classes that paint themselves but
+   draw no picture, each with its reason: the Area border and corner, the
+   drag preview, the two legend samples, the compartment names over the
+   schematic, the focus ring and a selector's arrow.
+   `test_each_painted_widget_that_draws_no_picture_still_paints` fails on an
+   entry whose class is gone or no longer paints, so an entry cannot hide the
+   next class given its name.
+
+**Where it differs from the approach above.** The walk lands with `PL-XV64`'s
+two exceptions still listed in `SHARED_PURPOSES`, rather than after
+`PL-XV64`. Its own test fails when an entry is no longer needed, and
+`PL-XV64`'s done-when already asks that both go. Landing first puts the check
+on every change in the meantime.
+
+**Regression check, 2026-11-28.** Each of three planted faults fails the
+widened walk, and the walk passes without them. A wash-in plot description
+of "" fails the picture test in the Workspace with every View and in the
+induction Workspace, with one run and with two. A schematic name that drops
+the run fails the shared-name test with two runs compared, in the Workspace
+with every View and in the maintenance Workspace. Renaming the
+`ContainerNames` entry fails the picture test wherever a schematic is shown,
+and fails the stale-entry test. Before this change, no test in this file read
+a picture's name or description. `PL-R1M6`'s own tests catch the first two
+faults, but only for the widgets they name.
+
+**Documents checked, 2026-11-28.** `docs/INTERFACE.md`: the paragraph on
+controls that a screen reader can reach now says that no two controls or
+pictures share a name in any shipped Workspace, and a new paragraph after the
+schematic's says that every picture has a text alternative and lists the two
+new tests. `docs/ARCHITECTURE.md` and `docs/VERIFICATION.md` say nothing of
+this walk.
