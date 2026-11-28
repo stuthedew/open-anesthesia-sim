@@ -84,3 +84,14 @@ description in two calls, is fixed too. Pass 2 noted that the description
 says nothing of a preview, which the concentration chart's leaves out too.
 That is filed as `PL-MP1X`. Building this found that the wording test reads
 none of these texts, filed as `PL-96MX`.
+
+**Documents checked, 2026-11-28.** `docs/INTERFACE.md`, the wash-in plot's
+and the schematic's paragraphs, which now say what a screen reader hears from
+each, and § "Color contrast, and the standard this interface is held to".
+`docs/ARCHITECTURE.md`'s file tree, whose lines for `dashboard_frame.py` and
+`compartment_schematic.py` now say that each writes a screen reader's name and
+description, and whose lines for `qt_chart.py` and `qt_schematic.py` still
+hold, because neither formats a value. `docs/VERIFICATION.md` names
+accessibility only as the WCAG 2.2 AA bar, which this change meets more of.
+`docs/MODEL.md` and `docs/PARAMETERS.md` describe no text a screen reader
+hears.
