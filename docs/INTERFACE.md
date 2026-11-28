@@ -4528,7 +4528,11 @@ layout.
 5. The concentration chart's legend appears in no other kind of View. So its
    boxes and its scroll box add the Area's name only while two Areas show the
    chart, such as "Concentration chart legend, Concentrations 2".
-6. Each copy of the agent cost View's price form keeps the agent picked and
+6. Each plot, and each run's schematic, is named by what it shows, so two
+   copies of one picture would have one name. So the picture's name adds the
+   Area's name while two Areas show that kind of View, such as "Compartment
+   schematic, Run 2, at 10m of simulated time, Compartment schematic 2".
+7. Each copy of the agent cost View's price form keeps the agent picked and
    the price typed in it. So while two Areas show that View, each form's
    fields and buttons add the Area's name, such as "Bottle price, Agent cost
    2".

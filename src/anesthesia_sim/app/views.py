@@ -1021,13 +1021,15 @@ class ConcentrationView(QWidget):
         return self.chart.axis_titles()
 
     def name_controls(self, area: AreaName) -> None:
-        """Name the window and axis controls with `area`, and the legend's too where it is a copy.
+        """Name the window and axis controls with `area`, and the chart and legend where copied.
 
-        No other kind of View shows the legend, so its box and its scroll box
-        add the Area's name only while another Area shows this kind too.
+        No other kind of View shows the chart or its legend, so the chart, the
+        legend's boxes and its scroll box add the Area's name only while
+        another Area shows this kind too.
         """
 
         self._plot_controls.name_for(area)
+        self.chart.name_among_copies(area.among_copies)
         self.legend.name_boxes(area.among_copies)
         _name_box(self._legend_box, control_name(CONCENTRATION_LEGEND_NAME, area.among_copies))
 
@@ -1163,9 +1165,10 @@ class WashInView(QWidget):
         return self.chart.axis_titles()
 
     def name_controls(self, area: AreaName) -> None:
-        """Name the window controls with `area`, and the legend's scroll box while it is a copy."""
+        """Name the window controls with `area`, and the plot and legend box while it is a copy."""
 
         self._plot_controls.name_for(area)
+        self.chart.name_among_copies(area.among_copies)
         _name_box(self._legend_box, control_name(WASH_IN_LEGEND_NAME, area.among_copies))
 
 
@@ -1690,6 +1693,9 @@ class CompartmentSchematicView(QWidget):
         self._schematics = _RunWidgets(
             lambda run: RunSchematic(run.values.schematic, run.name), PAGE_SPACING
         )
+        # The name of the Area that holds the View while another Area shows a
+        # copy, which each run's schematic adds to its name (`name_controls`).
+        self._copied_in: str | None = None
         column = _panel_column(self, _SCHEMATIC_VIEW_NAME)
         self.qualifier_label = styled_label(
             f"{INTERPRETATION_DISCLAIMER_TEXT} {TENSION_UNIT_TEXT}\n{AMOUNT_UNIT_TEXT}", color=MUTED
@@ -1743,6 +1749,9 @@ class CompartmentSchematicView(QWidget):
         for schematic, run in zip(self._schematics.widgets, tick.runs, strict=True):
             schematic.show_name(run.name)
             schematic.show_schematic(run.values.schematic)
+            # A run's schematic built on this tick is named here, after the
+            # last `name_controls`.
+            schematic.canvas.name_among_copies(self._copied_in)
 
         filled = (run.values.schematic.ceiling for run in tick.runs)
         self._show_ceiling(
@@ -1782,9 +1791,13 @@ class CompartmentSchematicView(QWidget):
         )
 
     def name_controls(self, area: AreaName) -> None:
-        """Name the axis-top control with `area`."""
+        """Name the axis-top control with `area`, and each run's schematic while it is a copy."""
 
         self._plot_controls.name_for(area)
+        self._copied_in = area.among_copies
+
+        for schematic in self._schematics.widgets:
+            schematic.canvas.name_among_copies(self._copied_in)
 
 
 class AgentCostView(QWidget):

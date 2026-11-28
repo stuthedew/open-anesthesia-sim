@@ -137,6 +137,13 @@ are now named with the Area. The legend's boxes add the Area's name only while
 two Areas show the chart, through `AreaName.among_copies`, because no other
 kind of View shows a legend.
 
+`PL-R1M6` merged during this work and gave each plot and each run's
+schematic a name for a screen reader. Two halves of a split plot then gave
+two pictures one name, because each name says only what its picture shows.
+So `DescribedGraphic.name_among_copies` adds the Area's name to a picture's
+name while another Area shows the same kind of View, and the split test
+checks that each of the six pictures ends with its own Area's name.
+
 The brief said a split Agent cost or Bookmarks Area repeats its names too.
 Splitting every kind found that the copies of the Parameters, Agent
 accounting, Branch and Bookmarks Views, and the Agent cost View's unit

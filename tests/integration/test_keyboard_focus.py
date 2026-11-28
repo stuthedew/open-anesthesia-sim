@@ -37,7 +37,13 @@ from anesthesia_sim.app.qt_agent_price import (
     PRICE_FORM_KIND,
     SET_PRICE_LABEL,
 )
-from anesthesia_sim.app.qt_widgets import FocusRing, NewCaseDialog, SelectorComboBox, label_control
+from anesthesia_sim.app.qt_widgets import (
+    DescribedGraphic,
+    FocusRing,
+    NewCaseDialog,
+    SelectorComboBox,
+    label_control,
+)
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
     AGENT_COLOR_SCHEMES,
@@ -450,15 +456,28 @@ def test_each_half_of_a_split_area_names_its_controls_with_the_half_s_number(
     """`PL-XV64`: a split Area's halves name themselves, their corners and plot controls by number.
 
     The Areas showing one kind are numbered in reading order, as VS Code
-    numbers its editor groups. Each name still starts with the label shown,
-    and the legend's boxes add the number only while two concentration
-    charts are on screen.
+    numbers its editor groups. Each name still starts with the label shown.
+    The legend's boxes, and each plot and schematic picture, add the number
+    only while two Areas of their kind are on screen.
     """
 
     view = _compared_dashboard(application, 1)
     _split_each_area_of(view, application, PLOT_KINDS)
     purposes = [purpose for _, purpose in _reachable_purposes(view)]
+    pictures = [
+        QAccessible.queryAccessibleInterface(picture).text(QAccessible.Text.Name)
+        for picture in view.findChildren(DescribedGraphic)
+        if picture.isVisible()
+    ]
     view.close()
+
+    # Each half's plot, or its one run's schematic, ends its name with the
+    # half's Area, so no two pictures share a name.
+    halves = ("Concentrations", "Wash-in", "Compartment schematic")
+    assert sorted(name.rsplit(", ", 1)[1] for name in pictures) == sorted(
+        f"{title} {number}" for title in halves for number in (1, 2)
+    )
+    assert len(set(pictures)) == len(pictures)
 
     def starting(label: str) -> list[str]:
         return sorted(purpose for purpose in purposes if purpose.startswith(label))

@@ -139,7 +139,8 @@ screen-reader user hears only a control's name, so two copies of one View
 would otherwise offer two controls with the same name. The container works
 out each Area's name, an `AreaName`, after every change of the layout, and
 hands it to the View through `View.name_controls`. A View names each control
-beside its plot with that name, such as "Time base, Concentrations 2". A form
+beside its plot with that name, such as "Time base, Concentrations 2", and
+each plot picture while another Area shows the same kind of View. A form
 whose copies each keep what was typed in them is named in the same way, such
 as the agent cost View's price form. Every other control keeps its name,
 because each of its copies acts on the same shared state, and the W3C's ARIA

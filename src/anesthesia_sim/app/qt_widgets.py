@@ -3442,6 +3442,12 @@ class DescribedGraphic(QWidget):
     library on Linux does, reads them again only when told that they changed.
     So a subclass calls `report_text_changes` once at the end of its own
     `__init__`, and again after each draw.
+
+    Two Areas that show the same kind of View show two copies of its picture,
+    and a name that says only what the picture shows would be the same for
+    both. So while another Area shows the same kind of View, the name a
+    screen reader is given adds the name of the Area that holds the picture
+    (`name_among_copies`, `PL-XV64`).
     """
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -3449,6 +3455,9 @@ class DescribedGraphic(QWidget):
         _install_graphic_accessibility()
         # The name and description last reported, or None before the first.
         self._reported_texts: tuple[str, str] | None = None
+        # The name of the Area that holds the picture while another Area shows
+        # a copy of it, or None.
+        self._area: str | None = None
 
     def graphic_name(self) -> str:
         """Return the short text alternative, which says what the picture shows.
@@ -3468,6 +3477,22 @@ class DescribedGraphic(QWidget):
 
         raise NotImplementedError
 
+    def accessible_name(self) -> str:
+        """Return what a screen reader calls the picture, adding its Area's name while copied."""
+
+        return control_name(self.graphic_name(), self._area)
+
+    def name_among_copies(self, area: str | None) -> None:
+        """Add `area` to the picture's name, such as "Concentrations 2", or remove it when None.
+
+        `area` is the name of the Area that holds the picture while another
+        Area shows the same kind of View (`AreaName.among_copies`).
+        """
+
+        if area != self._area:
+            self._area = area
+            self.report_text_changes()
+
     def report_text_changes(self) -> None:
         """Tell assistive technology that the name or the description changed, if either did.
 
@@ -3476,7 +3501,7 @@ class DescribedGraphic(QWidget):
         it comes before any screen reader can have read them.
         """
 
-        texts = (self.graphic_name(), self.graphic_description())
+        texts = (self.accessible_name(), self.graphic_description())
         events = (QAccessible.Event.NameChanged, QAccessible.Event.DescriptionChanged)
 
         if self._reported_texts is not None:
@@ -3498,7 +3523,7 @@ class _DescribedGraphicAccessible(QAccessibleWidget):
         """Return the graphic's name or long description, or Qt's own text for anything else."""
 
         if kind is QAccessible.Text.Name:
-            return self._graphic.graphic_name()
+            return self._graphic.accessible_name()
 
         if kind is QAccessible.Text.Description:
             return self._graphic.graphic_description()
