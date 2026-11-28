@@ -62,13 +62,34 @@ code:
 
 ## Search the closest analog first
 
-Before a design choice rests on how another product does it, rank the
-candidates by how close each is: the same quantity or signal first, then the
-same class of product, then the same pattern of use. Say why the one you cite
-fits (project owner, 2026-11-27, `PL-HWZK`). For how a clinical value is drawn,
-anesthesia workstations, patient monitors and Gas Man rank above Blender.
-Blender stays the model for how Workspaces and Areas behave, because that is
-the pattern of use it shares with this interface.
+Before a design choice rests on how another product does it, compare it with
+a product of the same class. This is simulation software, so the comparison is
+another simulation program, never a patient monitor or an anesthesia
+workstation (project owner, 2026-11-28, `PL-HCHG`). Rank the candidates in this
+order, and say why the one you cite fits (project owner, 2026-11-27,
+`PL-HWZK`):
+
+1. **Gas Man, and other anesthesia or physiology simulation programs**, for
+   how a modelled value is drawn and how the program behaves. Among them, one
+   that shows the same quantity ranks first.
+2. **Blender**, for how Workspaces, Areas and Views behave, because that is
+   the pattern of use it shares with this interface.
+3. **The desktop platform guides**: Apple's Human Interface Guidelines, the
+   GNOME Human Interface Guidelines and Microsoft's Windows app design
+   guidance, for windows, dialogs, menus, controls and the keyboard.
+
+A published guideline or paper that is about displays in general, such as
+NUREG-0700 or a study of linked views, is a source and not a product, and it
+can still be cited. Where one of its rules protects a live value that changes
+behind the display, check that the reason applies here before citing it: in
+this simulator every value is modelled, and a run waits while a question is
+open (`PL-JV5H`).
+
+A monitor or a workstation can still be named for two other purposes. It can
+be named as what a user compares a displayed value with, which is why the
+alveolar readout says "end-tidal-equivalent". And its manual can be a source
+of the physical data the model needs, such as a machine's internal gas volume
+in `docs/machine-survey.md`. Neither use makes it the precedent for a design.
 
 ## Name the number that would change your mind, then go and count it
 
