@@ -23,7 +23,7 @@ from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QAbstractSlider, QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app import simulation_view as simulation_view_module
-from anesthesia_sim.app.area_layout import ViewScroll
+from anesthesia_sim.app.area_layout import AreaFrame, ViewScroll
 from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.compartment_schematic import (
@@ -1021,11 +1021,34 @@ def _paused_dashboard(
 
 
 def _shown_part(page: QScrollArea, scroll: ViewScroll) -> QRect:
-    """Return the part of the schematic's box in view on the page, in the page viewport's pixels."""
+    """Return the part of the schematic's box in view on the page, in the page viewport's pixels.
+
+    While the page carries the Area's top above the window's edge, the Area's
+    header and pinned row stand over the box's top (`PL-DKQ5`), so the part
+    they cover is not in view.
+    """
 
     box = QRect(scroll.viewport().mapTo(page.viewport(), QPoint(0, 0)), scroll.viewport().size())
+    shown = page.viewport().rect().intersected(box)
+    chrome = _frame_of(scroll).chrome
+    covered = QRect(chrome.mapTo(page.viewport(), QPoint(0, 0)), chrome.size())
 
-    return page.viewport().rect().intersected(box)
+    if covered.intersects(shown):
+        shown.setTop(covered.bottom() + 1)
+
+    return shown if shown.height() > 0 else QRect()
+
+
+def _frame_of(widget: QWidget) -> AreaFrame:
+    """Return the Area frame that holds `widget`."""
+
+    ancestor = widget.parentWidget()
+
+    while not isinstance(ancestor, AreaFrame):
+        assert ancestor is not None, widget
+        ancestor = ancestor.parentWidget()
+
+    return ancestor
 
 
 def _seen_without_heading(page: QScrollArea, run: RunSchematic, shown_part: QRect) -> list[QRect]:

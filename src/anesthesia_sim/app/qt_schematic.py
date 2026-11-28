@@ -55,7 +55,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final
 
-from PySide6.QtCore import QPointF, QRect, QRectF, QSize, Qt
+from PySide6.QtCore import QEvent, QObject, QPointF, QRect, QRectF, QSize, Qt
 from PySide6.QtGui import QBrush, QColor, QFontMetrics, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QHBoxLayout, QSizePolicy, QVBoxLayout, QWidget
 
@@ -757,7 +757,8 @@ class RunSchematic(PinnedHeadingSection):
     the top of the part of the schematic in view while the Area scrolls
     (`PinnedHeadingSection`). So on a laptop screen no label or share bar is
     in view without the run's name, its compartment's name or what its share
-    is of (`PL-3NGZ`).
+    is of (`PL-3NGZ`). While the page is scrolled sideways, the line that names
+    the run starts at the left edge of the part in view (`PL-DKQ5`).
 
     Args:
         shown: The schematic to draw first.
@@ -794,7 +795,15 @@ class RunSchematic(PinnedHeadingSection):
         line.addStretch(1)
         rows.addLayout(line)
         rows.addWidget(names)
-        super().__init__(heading, _RUN_HEADING_NAME)
+        # The line that names the run is the heading's general label, so it
+        # starts at the left edge of the part in view while the page scrolls
+        # sideways. The names stay over their containers (`PL-DKQ5`). Where the
+        # part in view is narrower than the line, the share caption gives way
+        # rather than the run's name, and is not drawn while it is cut, since
+        # a cut amount in it could be misread (`share_text_whole`).
+        share_text.setMinimumWidth(1)
+        super().__init__(heading, _RUN_HEADING_NAME, follows_left=line)
+        share_text.installEventFilter(self)
         self.name_text = name_text
         self.share_text = share_text
         self.names = names
@@ -832,6 +841,18 @@ class RunSchematic(PinnedHeadingSection):
             ),
             CUT_CONTAINERS_TEXT,
         )
+
+    def share_text_whole(self) -> bool:
+        """Return whether the share caption has the width its whole text needs, and so is drawn."""
+
+        return self.share_text.width() >= self.share_text.sizeHint().width()
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # Qt spells this in camelCase.
+        if watched is self.share_text and event.type() == QEvent.Type.Paint:
+            # A caption cut at its end is not painted (`share_text_whole`).
+            return not self.share_text_whole()
+
+        return super().eventFilter(watched, event)
 
     def pin_heading(self) -> None:
         """Place the heading over the part in view, and repaint the canvas for what it leaves clear.

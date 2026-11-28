@@ -38,6 +38,7 @@ from anesthesia_sim.app.agent_cost import UNIT_CHOICE_LABEL
 from anesthesia_sim.app.area_layout import SPLIT_SIDE_BY_SIDE_LABEL
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import AGENT_SELECTOR_LABEL, control_name, new_case_question
+from anesthesia_sim.app.pinned_heading import HeadingScroll
 from anesthesia_sim.app.qt_agent_price import (
     AGENT_FIELD_LABEL,
     APPLIES_ON_FIELD_LABEL,
@@ -178,7 +179,7 @@ def test_every_tab_stop_on_the_dashboard_shows_the_focus(
 
     # The controls that drew no mark before `PL-63FQ` are all in the walk.
     assert {"_SettingSlider", "SelectorComboBox", "TimeBaseSelector", "FocusedComboBox"} <= kinds
-    assert {"QScrollArea", "ViewScroll", "FittedScroll"} <= kinds
+    assert {"HeadingScroll", "ViewScroll", "FittedScroll"} <= kinds
     assert _unmarked(dashboard, application) == []
 
 
@@ -985,7 +986,7 @@ def test_the_ring_shows_after_a_tab_press_and_not_after_a_click(application: QAp
     page = next(
         area
         for area in view.findChildren(QScrollArea)
-        if type(area) is QScrollArea and area.widget().findChild(QSlider)
+        if type(area) is HeadingScroll and area.widget().findChild(QSlider)
     )
     blank = page.widget()
     QTest.mouseClick(
