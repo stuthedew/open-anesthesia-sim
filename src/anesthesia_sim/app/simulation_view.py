@@ -92,7 +92,7 @@ from time import perf_counter
 from typing import Final
 
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QShowEvent
+from PySide6.QtGui import QAccessible, QShowEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
     QBoxLayout,
@@ -284,6 +284,37 @@ def _widget_text(widget: QWidget) -> Iterator[InterfaceText]:
 
         for index in range(widget.count()):
             yield InterfaceText(widget.itemText(index), seen and index == current)
+
+
+def _spoken_text(widget: QWidget) -> Iterator[InterfaceText]:
+    """The name and the description a screen reader is told for `widget`, line by line.
+
+    A screen reader reads both from the widget's accessible interface. Qt
+    writes them from the accessible name and description set on the widget,
+    from its tool tip or from the label it is named by. A chart or a diagram
+    writes them from what it last drew (`qt_widgets.DescribedGraphic`). A text
+    that is the widget's own shown text or window title is left out, because
+    `_widget_text` already yields it. A description of several lines yields
+    one string for each line. None of these strings counts as seen, because a
+    screen reader says them and the screen does not show them (`PL-96MX`).
+    """
+
+    shown = {widget.windowTitle()}
+
+    if isinstance(widget, QLabel | QAbstractButton):
+        shown.add(widget.text())
+
+    node = QAccessible.queryAccessibleInterface(widget)
+
+    if node is None:
+        return
+
+    for kind in (QAccessible.Text.Name, QAccessible.Text.Description):
+        spoken = node.text(kind)
+
+        if spoken not in shown:
+            for line in spoken.splitlines():
+                yield InterfaceText(line, False)
 
 
 #: The Qt property that `SimulationView._order_focus` sets on each widget it
@@ -2952,9 +2983,11 @@ class SimulationView(QWidget):
     def interface_strings(self) -> tuple[str, ...]:
         """Every string the dashboard holds, whether or not a reader can see it now.
 
-        Use it to show that something is never said anywhere, since a hidden
-        string can be shown at any moment. To show that a reader is told
-        something, use `visible_strings`.
+        The strings include what a screen reader is told and the screen does
+        not show, such as a chart's description (`_spoken_text`). Use it to
+        show that something is never said anywhere, since a hidden string can
+        be shown at any moment. To show that a reader is told something, use
+        `visible_strings`.
         """
 
         return tuple(text.text for text in self._interface_text())
@@ -2977,3 +3010,4 @@ class SimulationView(QWidget):
 
         for widget in (self, *self.findChildren(QWidget)):
             yield from _widget_text(widget)
+            yield from _spoken_text(widget)

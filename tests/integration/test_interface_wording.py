@@ -8,7 +8,9 @@ registered View, records every string it holds at fixed points of a run of
 each agent, and compares them with `approved_interface_strings.json` beside
 this file. The simulation is deterministic, so the strings at a fixed
 simulated time are too. Hidden strings are included, because a hidden string
-can be shown at any moment.
+can be shown at any moment. So is what a screen reader is told and the screen
+does not show, such as a chart's long description, one string for each line,
+because a screen-reader user reads it in place of the picture (`PL-96MX`).
 
 Each digit is replaced by `#`, and each superscript digit by `^`, before the
 comparison. The test is about wording, and the numbers are the model's, which
@@ -72,6 +74,7 @@ from anesthesia_sim.app.area_layout import AreaNotice
 from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.preferences import AgentPrice, LoadedPreferences, Preferences
+from anesthesia_sim.app.qt_chart import ConcentrationChart
 from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.view_registry import REGISTERED
@@ -625,6 +628,36 @@ def test_every_string_the_view_shows_is_on_the_approved_list(
         f"{APPROVED_FILE.name}. This module's docstring says which changes wait "
         "for the project owner."
     )
+
+
+def test_a_changed_line_that_only_a_screen_reader_hears_differs_from_the_approved_list(
+    application: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A chart description that says "Measured" where it said "Modelled" fails the comparison.
+
+    The concentration chart's long description gives its values in words that
+    a screen reader reads and the screen does not show. Only that description
+    is changed here, so each difference is one of its lines: the line as
+    approved is gone, and the same line saying "Measured" is new (`PL-96MX`).
+    """
+
+    describe = ConcentrationChart.graphic_description
+    monkeypatch.setattr(
+        ConcentrationChart,
+        "graphic_description",
+        lambda chart: describe(chart).replace("Modelled", "Measured"),
+    )
+    approved = json.loads(APPROVED_FILE.read_text(encoding="utf-8"))
+    agent_id, seconds = RECORDED_POINTS["10 min"]
+    differences = _differences(
+        {"10 min": approved["10 min"]}, {"10 min": _strings_at(application, agent_id, seconds)}
+    )
+    gone = [line for line in differences if line.startswith("  10 min, gone: 'Modelled ")]
+    new = [line for line in differences if line.startswith("  10 min, new: 'Measured ")]
+
+    assert gone, differences
+    assert len(gone) + len(new) == len(differences), differences
+    assert [line.replace("new: 'Measured ", "gone: 'Modelled ") for line in new] == gone
 
 
 def test_a_changed_string_is_reported_as_one_gone_and_one_new() -> None:

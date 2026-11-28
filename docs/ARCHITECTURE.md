@@ -1325,8 +1325,9 @@ specialist standard in `CLAUDE.md` that applies to this document (`PL-KRGY`).
     appearance (`test_dark_appearance.py`). It sets a dark host's palette on
     the `QApplication`, whereas the other tests set a palette on one widget.
     It does so because the code under test declares palettes (`PL-RKRY`).
-  - A test holds every string the dashboard shows, at fixed points of a run
-    of each agent with the default settings, to a stored list
+  - A test holds every string the dashboard shows, and every name and
+    description a screen reader is told (`PL-96MX`), at fixed points of a
+    run of each agent with the default settings, to a stored list
     (`test_interface_wording.py`, with the list in
     `approved_interface_strings.json` beside it). Digits are masked, so the
     test holds wording and not the model's values. A change to that wording

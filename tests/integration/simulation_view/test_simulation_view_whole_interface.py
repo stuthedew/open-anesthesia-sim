@@ -66,6 +66,28 @@ def test_no_interface_string_drops_the_end_tidal_equivalent_hedge(
     )
 
 
+def test_what_a_screen_reader_alone_is_told_is_held_but_not_seen(application: QApplication) -> None:
+    """A chart's long description is among the strings held, and its own lines are not seen.
+
+    A screen reader reads the description, and the screen does not show it.
+    So the wording test and the checks of what is never said read its lines,
+    and a check that a reader is told something cannot pass on them alone
+    (`PL-96MX`). Some lines repeat a label the screen shows, so the test asks
+    only that the description has a line the screen does not show.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 60)
+    view = _shown_view(application, controller)
+    chart = _concentration(view).chart
+    lines = set(chart.graphic_description().splitlines())
+
+    assert lines, "the chart gave no description, so the assertions below prove nothing"
+    assert lines <= _interface_strings(view)
+    assert lines - _visible_strings(view), "each line of the description was counted as seen"
+
+
 def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio(
     application: QApplication,
 ) -> None:
