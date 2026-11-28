@@ -2,12 +2,14 @@
 id: PL-96MX
 title: The approved on-screen wording test leaves out what a screen reader hears from each chart and diagram, their names and long descriptions, so a change of that wording passes it unread
 priority: P3
-status: untriaged
+effort: S
+status: ready
 classes: defect
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_interface_wording.py, tests/integration/approved_interface_strings.json
 deferred-from: v0.7.0 - found after the freeze, not safety or science, and no user sees a wrong value from it; each description has its own tests and only the hand check of a later change is missing, so the release waits only on the owner test drive (filed 2026-11-28)
 added: 2026-11-28
+payoff: a change to what a screen reader hears from a chart, a diagram or a control is read by hand before it merges, as on-screen wording is
 ---
 
 **Problem.** `tests/integration/test_interface_wording.py` holds every string the dashboard shows to a list checked by hand (`approved_interface_strings.json`). It reads them through `SimulationView.interface_strings`, which collects each widget's shown text and a button's accessible name. It does not collect what a screen reader is told by an accessible interface: the name and long description of the concentration chart (`PL-T9RB`), of the wash-in plot and of each run's schematic (`PL-R1M6`), nor a selector's or a label's accessible name. A change to any of those sentences passes the wording test without anyone reading it.
