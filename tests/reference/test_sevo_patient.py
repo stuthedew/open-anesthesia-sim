@@ -2,6 +2,7 @@ from math import isfinite
 
 import pytest
 
+from anesthesia_sim.app import wash_in
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
@@ -222,6 +223,11 @@ def _plotted_wash_in_ratio(system: AgentUptakeSystem) -> float:
     of `read_wash_in` must lie in the wash-in domain, where agent has reached
     the circuit and F_A / F_I lies between 0 and 1. Outside that domain the
     curve plots nothing, and the lesson has nothing to compare.
+
+    The plot also draws no ratio for a state reached at zero alveolar
+    ventilation, which `read_wash_in` cannot see. So the reading is also
+    checked against `read_wash_in_with_ventilation`, which applies that rule
+    as well and gives the reading the plot draws (`PL-ZZLW`).
     """
 
     reading = read_wash_in(
@@ -230,6 +236,16 @@ def _plotted_wash_in_ratio(system: AgentUptakeSystem) -> float:
 
     assert reading.domain is WashInDomain.WASH_IN
     assert reading.plotted_ratio is not None
+    # Each run here keeps one ventilation from its start, so the system's
+    # ventilation is the ventilation of the step that reached this state.
+    assert (
+        wash_in.read_wash_in_with_ventilation(
+            system.alveoli.partial_pressure_fraction,
+            system.circuit.inspired_partial_pressure_fraction,
+            system.alveoli.alveolar_ventilation_l_min,
+        )
+        == reading
+    )
 
     return reading.plotted_ratio
 

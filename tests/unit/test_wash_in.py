@@ -12,10 +12,13 @@ They show only that the displayed ratio is the same quantity that the
 published test validates.
 """
 
+import ast
 import math
+from pathlib import Path
 
 import pytest
 
+import anesthesia_sim
 from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT, format_percent
 from anesthesia_sim.app.wash_in import (
     WASH_IN_DENOMINATOR_FLOOR_FRACTION,
@@ -434,3 +437,48 @@ def test_the_rounding_allowance_hides_no_clinical_change_over_a_whole_run(agent:
         "A longer run-length limit, a higher ventilation limit or a less soluble agent "
         "causes this (PL-N559)."
     )
+
+
+def test_no_display_module_reads_the_ratio_without_the_ventilation_rule() -> None:
+    """No module in `src/` but `app/wash_in.py` refers to a reader that skips rule 3.
+
+    `read_wash_in` and `wash_in_ratio` are not given the ventilation, so they
+    cannot apply the rule that a state reached at zero alveolar ventilation
+    has no ratio. A display path that used either would draw a ratio through
+    an apnoea (`PL-ZZLW`). A module outside `app/wash_in.py` can reach either
+    only by importing it from that module or by reading it as an attribute of
+    `wash_in`, so the test finds both, whether the reader is then called,
+    passed or renamed. The module itself is left out, because
+    `read_wash_in_with_ventilation` calls `read_wash_in` there, and the
+    mutation run renames that function in its copy of the module.
+    """
+
+    skipping_rule_3 = {"read_wash_in", "wash_in_ratio"}
+    package = Path(anesthesia_sim.__file__).parent
+    references: list[str] = []
+
+    for path in sorted(package.rglob("*.py")):
+        module = str(path.relative_to(package))
+
+        if module == "app/wash_in.py":
+            continue
+
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+
+        for node in ast.walk(tree):
+            imported = (
+                isinstance(node, ast.ImportFrom)
+                and node.module == "anesthesia_sim.app.wash_in"
+                and any(alias.name in skipping_rule_3 for alias in node.names)
+            )
+            read_from_module = (
+                isinstance(node, ast.Attribute)
+                and node.attr in skipping_rule_3
+                and isinstance(node.value, ast.Name)
+                and node.value.id == "wash_in"
+            )
+
+            if imported or read_from_module:
+                references.append(f"{module}:{node.lineno}")
+
+    assert references == []

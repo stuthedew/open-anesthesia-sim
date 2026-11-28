@@ -109,6 +109,7 @@ __all__ = [
     "WashInReading",
     "is_ventilated",
     "is_wash_in",
+    # Not the plotted value, because it skips rule 3 (`read_wash_in`).
     "read_wash_in",
     "read_wash_in_with_ventilation",
     "wash_in_quotient",
@@ -332,9 +333,12 @@ def read_wash_in(
     the trace and the sentence beside it come from one evaluation of one rule,
     and they cannot come to disagree.
 
-    It does not know the ventilation, so it cannot apply rule 3. Its result is
-    the plot's reading only for a state that a ventilated step reached. A
-    reader of a run's state calls `read_wash_in_with_ventilation`.
+    It does not know the ventilation, so it cannot apply rule 3. Its result
+    matches the plotted value only for a state that a ventilated step reached.
+    A reader of a run's state calls `read_wash_in_with_ventilation`, and no
+    other module in `src/` calls this one
+    (`test_no_display_module_reads_the_ratio_without_the_ventilation_rule`,
+    `PL-ZZLW`).
 
     Args:
         alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
