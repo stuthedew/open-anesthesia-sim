@@ -494,6 +494,27 @@ def test_a_screen_reader_names_each_schematic_by_its_view_its_run_and_its_instan
     )
 
 
+def test_the_schematic_s_description_opens_with_its_run_and_instant() -> None:
+    """The description's first line names the run while runs are compared, and the instant.
+
+    On macOS, VoiceOver reads the description as the element's label, in
+    place of the name, so the description must say itself which run and
+    which instant its values are for (`PL-2XRN`). Three cases are written
+    out: a lone run, a compared run, and a compared run whose instant is
+    withheld.
+    """
+
+    shown = schematic_shown(_run_with_no_ventilation(4.0, 30).snapshot(), ChartCeiling.STANDARD)
+
+    assert schematic_description(shown, None).splitlines()[0] == "At 30s of simulated time."
+    assert schematic_description(shown, "Run 2").splitlines()[0] == (
+        "Run 2, at 30s of simulated time."
+    )
+    assert schematic_description(WITHHELD_SCHEMATIC, "Run 3").splitlines()[0] == (
+        "Run 3, simulated time not shown."
+    )
+
+
 def test_the_schematic_s_description_gives_every_container_s_values_with_their_units() -> None:
     """At a 4% dial with no ventilation for 30 s, the description gives each container's values.
 
@@ -512,9 +533,10 @@ def test_the_schematic_s_description_gives_every_container_s_values_with_their_u
     percent = _circuit_percent(4.0, seconds, volume_l)
     millilitres = volume_l * percent / 100.0 * 1000.0
     shown = schematic_shown(snapshot, ChartCeiling.STANDARD)
-    lines = schematic_description(shown).splitlines()
+    lines = schematic_description(shown, None).splitlines()
 
-    assert lines[:4] == [
+    assert lines[:5] == [
+        "At 30s of simulated time.",
         "Diagram of the six compartments. Ventilation joins the circuit and the alveoli. "
         "Arterial blood runs from the alveoli to the three tissue groups side by side, their "
         "venous blood joins in mixed venous blood, and mixed venous blood returns to the "
@@ -523,13 +545,13 @@ def test_the_schematic_s_description_gives_every_container_s_values_with_their_u
         "Tensions are in % of 1 atm.",
         "Amounts are millilitres of vapour at 20 °C and 1 atm.",
     ]
-    assert lines[4] == SHARE_CAPTION
-    assert lines[5:11] == [
+    assert lines[5] == SHARE_CAPTION
+    assert lines[6:12] == [
         f"Circuit: {percent:.2f}%, {round(millilitres, -1):.0f} mL vapour, 100% of agent",
         *(f"{name}: 0.00%, 0 mL vapour, 0% of agent" for name in _CONTAINER_NAMES[1:]),
     ]
     assert shown.scale_caption is not None
-    assert lines[11:] == [" ".join(shown.scale_caption.splitlines())]
+    assert lines[12:] == [" ".join(shown.scale_caption.splitlines())]
 
 
 def test_the_schematic_s_description_names_a_container_above_the_scale() -> None:
@@ -544,9 +566,9 @@ def test_the_schematic_s_description_names_a_container_above_the_scale() -> None
     shown = schematic_shown(
         _run_with_no_ventilation(8.0, 10 * SECONDS_PER_MINUTE).snapshot(), ChartCeiling.STANDARD
     )
-    lines = schematic_description(shown).splitlines()
+    lines = schematic_description(shown, None).splitlines()
 
-    assert lines[5 + len(_CONTAINER_NAMES)] == (
+    assert lines[6 + len(_CONTAINER_NAMES)] == (
         "Above the top of the scale: Circuit. Each is drawn full, and its label gives its tension."
     )
 
@@ -559,9 +581,10 @@ def test_a_withheld_schematic_s_text_alternative_says_in_words_that_no_value_is_
     alternative says it in words, as the readouts do (`PL-R1M6`).
     """
 
-    lines = schematic_description(WITHHELD_SCHEMATIC).splitlines()
+    lines = schematic_description(WITHHELD_SCHEMATIC, None).splitlines()
 
-    assert lines[4:] == [
+    assert lines[0] == "Simulated time not shown."
+    assert lines[5:] == [
         f"{name}: percent not shown, amount not shown, share not shown" for name in _CONTAINER_NAMES
     ]
     assert schematic_name(WITHHELD_SCHEMATIC.instant, None) == (
@@ -580,9 +603,9 @@ def test_a_run_with_no_agent_says_in_words_that_no_share_is_shown() -> None:
     """
 
     shown = schematic_shown(_run_with_no_ventilation(0.0, 30).snapshot(), ChartCeiling.STANDARD)
-    lines = schematic_description(shown).splitlines()
+    lines = schematic_description(shown, None).splitlines()
 
-    assert lines[4] == NO_AGENT_SHARE_CAPTION
-    assert lines[5:11] == [
+    assert lines[5] == NO_AGENT_SHARE_CAPTION
+    assert lines[6:12] == [
         f"{name}: 0.00%, 0 mL vapour, share not shown" for name in _CONTAINER_NAMES
     ]

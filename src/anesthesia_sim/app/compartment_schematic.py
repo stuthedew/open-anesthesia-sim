@@ -609,15 +609,13 @@ def instant_line(instant: str, run_name: str | None) -> str:
     return COMPARED_INSTANT_LINE_TEMPLATE.format(run=run_name, instant=instant)
 
 
-def schematic_name(instant: str, run_name: str | None) -> str:
-    """Return what a screen reader calls one run's schematic: the View, the run and the instant.
+def _spoken_instant(instant: str, run_name: str | None) -> str:
+    """Return the run and the instant as a screen reader is told them.
 
-    This is the schematic's short text alternative, which WCAG 2.2 SC 1.1.1
-    asks of a diagram (`PL-R1M6`). It names the View, then the run while runs
-    are compared, then the instant, so it says what the line above the
-    schematic says, such as "Compartment schematic, Run 2, at 10m of
-    simulated time". While the instant is withheld, the line shows a dash,
-    and the name says so in words (`SPOKEN_WITHHELD_INSTANT_TEXT`).
+    An example is "Run 2, at 10m of simulated time". The run is named only
+    while runs are compared, as on the line above the schematic
+    (`instant_line`). While the instant is withheld, that line shows
+    a dash, and this says so in words (`SPOKEN_WITHHELD_INSTANT_TEXT`).
     """
 
     phrase = (
@@ -626,11 +624,33 @@ def schematic_name(instant: str, run_name: str | None) -> str:
         else INSTANT_PHRASE_TEMPLATE.format(instant=instant)
     )
 
-    return ", ".join(part for part in (SCHEMATIC_VIEW_TITLE, run_name, phrase) if part is not None)
+    return ", ".join(part for part in (run_name, phrase) if part is not None)
 
 
-def schematic_description(shown: SchematicShown) -> str:
+def schematic_name(instant: str, run_name: str | None) -> str:
+    """Return what a screen reader calls one run's schematic: the View, the run and the instant.
+
+    This is the schematic's short text alternative, which WCAG 2.2 SC 1.1.1
+    asks of a diagram (`PL-R1M6`). It names the View, then the run while runs
+    are compared, then the instant, so it says what the line above the
+    schematic says, such as "Compartment schematic, Run 2, at 10m of
+    simulated time".
+    """
+
+    return f"{SCHEMATIC_VIEW_TITLE}, {_spoken_instant(instant, run_name)}"
+
+
+def schematic_description(shown: SchematicShown, run_name: str | None) -> str:
     """Return one run's schematic as a long description, for a screen reader.
+
+    The first line says which run and which instant the values belong to,
+    such as "Run 2, at 10m of simulated time.", as the line above the
+    schematic does. The name says it too (`schematic_name`). But on macOS,
+    Qt 6.12 hands the description to VoiceOver as the element's label and the
+    name as its title, and VoiceOver reads the label in place of the title.
+    So without this line, a Mac user comparing two runs could hear one run's
+    values without being told which run they are. `docs/INTERFACE.md` names
+    the sources (`PL-2XRN`).
 
     The W3C's tutorial on complex images asks a diagram's long description
     for the essential information the picture conveys, its scales and values
@@ -658,7 +678,9 @@ def schematic_description(shown: SchematicShown) -> str:
         )
         for reading in shown.readings
     )
+    when = _spoken_instant(shown.instant, run_name)
     lines = (
+        f"{when[0].upper()}{when[1:]}.",
         SCHEMATIC_TYPE_TEXT,
         INTERPRETATION_DISCLAIMER_TEXT,
         TENSION_UNIT_TEXT,

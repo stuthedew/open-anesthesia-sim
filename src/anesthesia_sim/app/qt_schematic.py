@@ -187,7 +187,7 @@ class SchematicCanvas(DescribedGraphic):
     def graphic_description(self) -> str:
         """Return the schematic's long description (`schematic_description`)."""
 
-        return schematic_description(self._described)
+        return schematic_description(self._described, self._run_name)
 
     @property
     def _described(self) -> SchematicShown:
