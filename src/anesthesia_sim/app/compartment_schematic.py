@@ -66,6 +66,7 @@ from anesthesia_sim.core.concentration import percent_from_fraction
 __all__ = [
     "COMPARED_INSTANT_LINE_TEMPLATE",
     "CONTAINER_ORDER",
+    "CUT_CONTAINERS_TEXT",
     "INSTANT_LINE_TEMPLATE",
     "NO_AGENT_SHARE_CAPTION",
     "NO_SHARE_TEXT",
@@ -155,6 +156,22 @@ AMOUNT_UNIT_TEXT: Final = (
 OFF_SCALE_LINE_TEMPLATE: Final = (
     "Above the top of the scale: {compartments}.\n"
     "Each is drawn full, and its label gives its tension."
+)
+
+#: The line that the schematic paints in place of its containers while any of
+#: them is cut off, by a run's pinned heading or by the edge of the box or page
+#: that scrolls it (`PL-GWTR`). A container shows its tension as the height of
+#: its fill, so a container shown in part could look full, or empty, at a
+#: tension it does not hold. So the containers are drawn only whole. The line
+#: says what is hidden and why, then what brings the containers back, as
+#: NUREG-0700 Rev. 3 guidelines 2.7.3-1 and 10.3.4-8 ask (O'Hara, US Nuclear
+#: Regulatory Commission, 2020, pp. 2-86 and 10-14). It names the condition and
+#: then the verdict, as the schematic's other captions do. "Scroll" is the
+#: remedy because the line is painted only where the box is tall enough for a
+#: scroll to bring the containers into view whole: where it is not, the Area
+#: shows its too-small notice in place of the View.
+CUT_CONTAINERS_TEXT: Final = (
+    "The containers are not wholly in view, so the schematic hides them. Scroll to see them."
 )
 
 #: Each container's label ends with this line, which gives the compartment's

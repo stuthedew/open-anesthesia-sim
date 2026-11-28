@@ -224,6 +224,7 @@ from anesthesia_sim.layout.sizing import (
     border_range,
     border_share,
     drawn_bounds,
+    largest_height,
     minimum_extent,
     pixel_sizes,
     settle,
@@ -518,6 +519,11 @@ class AreaLayout(QWidget):
         # those widths differ from these makes the Areas settle again.
         self._width_fit: Fit | None = None
         self._narrowed_needs: dict[AreaId, PixelSize] = {}
+        # Each Area's legible need as of the last settle (`_legible_need`), and the
+        # Areas whose box was too short for it, with the Areas `_fit` holds below
+        # their need, in reading order (`too_small`).
+        self._legible_needs: dict[AreaId, PixelSize | None] = {}
+        self._too_small: tuple[TooSmall, ...] = ()
         # Each Area's floor as of the last settle, which `_fits` measures at a dragged width.
         self._floors: dict[AreaId, Floor] = {}
         self._build(frozenset())
@@ -649,8 +655,9 @@ class AreaLayout(QWidget):
         it then reads the size that each View needs, it reads what those passes
         would read.
 
-        If the size that a View needs changed, this method settles the Areas
-        again and tells the host that this widget's size hint changed. As a
+        If the size that a View needs changed, or the height in which it shows
+        its smallest part whole (`_legible_need`), this method settles the
+        Areas again and tells the host that this widget's size hint changed. As a
         result, the splitters have the sizes that the next pass would give them
         as soon as the frame is drawn (`PL-4L8B`). A host that sized this widget
         from its earlier hint also lays it out again (`PL-PHPZ`). This method
@@ -660,10 +667,15 @@ class AreaLayout(QWidget):
 
         _handle_layout_requests()
         needs = {area_id: self._need(area_id) for area_id in self._frames}
+        legible = {area_id: self._legible_need(area_id) for area_id in self._frames}
 
-        if needs == self._needs and (
-            self._width_fit is None
-            or self._narrowed(self._width_fit, needs) == self._narrowed_needs
+        if (
+            needs == self._needs
+            and legible == self._legible_needs
+            and (
+                self._width_fit is None
+                or self._narrowed(self._width_fit, needs) == self._narrowed_needs
+            )
         ):
             return
 
@@ -927,12 +939,16 @@ class AreaLayout(QWidget):
         return QSize(least.width_px, least.height_px)
 
     def too_small(self) -> tuple[TooSmall, ...]:
-        """The Areas too small for their View now, in reading order, with the size each needs."""
+        """The Areas too small for their View now, in reading order, with the size each needs.
 
-        fit = self._fit
-        assert fit is not None, "every build settles the Areas"
+        An Area is too small where the layout holds it below its need, and also
+        where its box is too short for its View's legible height
+        (`_legible_need`). Each size includes the Area's header.
+        """
 
-        return fit.too_small
+        assert self._fit is not None, "every build settles the Areas"
+
+        return self._too_small
 
     def corner_pressed(self, area_id: AreaId, at: QPoint, *, swap: bool = False) -> None:
         """Start a corner drag of the Area `area_id`, pressed at the screen position `at`.
@@ -1458,16 +1474,47 @@ class AreaLayout(QWidget):
             least = minimum_extent(tree, AREA_HANDLE_WIDTH, drawn_bounds(needs, floors))
             self._fit = fit
             self._drawn = fit.drawn
+            self._legible_needs = {area_id: self._legible_need(area_id) for area_id in self._frames}
+            held_below = {entry.area_id: entry for entry in fit.too_small}
+            too_small: list[TooSmall] = []
 
             for area_id, frame in self._frames.items():
                 bound = fit.bounds[area_id]
                 frame.setMinimumSize(bound.width_px, bound.height_px)
                 shown = self._views.get(area_id)
+                legible = self._legible_needs[area_id]
+                available = fit.apportionment.areas[area_id]
+                chrome = _chrome_height(frame)
 
-                if shown is None or area_id in fit.drawn:
+                if shown is None:
                     frame.show_view()
+                elif area_id in held_below:
+                    too_small.append(held_below[area_id])
+                    frame.show_too_small(
+                        self._registered[shown[0]].title,
+                        self._view_need(area_id),
+                        border_can_enlarge=True,
+                    )
+                elif legible is not None and available.height_px - chrome < legible.height_px:
+                    # The layout gives this Area its need, but its box cannot show
+                    # the View's smallest part whole (`PL-GWTR`). The Area is not
+                    # held taller. That would grow a page that scrolls, and the
+                    # page could then carry another View's title out of the
+                    # window (`PL-DKQ5`).
+                    needed = PixelSize(legible.width_px, legible.height_px + chrome)
+                    too_small.append(TooSmall(area_id, needed, available))
+                    reach = largest_height(
+                        tree, area_id, extent.height_px, AREA_HANDLE_WIDTH, fit.bounds
+                    )
+                    frame.show_too_small(
+                        self._registered[shown[0]].title,
+                        legible,
+                        border_can_enlarge=reach >= needed.height_px,
+                    )
                 else:
-                    frame.show_too_small(self._registered[shown[0]].title, self._view_need(area_id))
+                    frame.show_view()
+
+            self._too_small = tuple(too_small)
 
             for splitter in self._splitters.values():
                 self._lay_out(splitter)
@@ -1583,6 +1630,34 @@ class AreaLayout(QWidget):
             return measured[drawn_width_px]
 
         return Floor(width, height_at)
+
+    def _legible_need(self, area_id: AreaId) -> PixelSize | None:
+        """Return the least size below the header at which the View in `area_id` shows whole.
+
+        A View that declares a `legible_height` (`legible_height`) can show its
+        smallest part whole only in a box at least that tall. The result is
+        None where the View declares none. The size is the
+        View's need widened to that box and the row the View keeps above it. An
+        Area drawn shorter shows the too-small notice in place of the View,
+        though the layout does not hold the Area at this size (`PL-GWTR`). The
+        result is None for an Area with no View too.
+        """
+
+        shown = self._views.get(area_id)
+
+        if shown is None:
+            return None
+
+        height = legible_height(_widget(shown[1]))
+
+        if height is None:
+            return None
+
+        frame = self._frames[area_id]
+        row = 0 if frame.pinned_row is None else frame.pinned_row.sizeHint().height()
+        need = self._view_need(area_id)
+
+        return PixelSize(need.width_px, max(need.height_px, row + height))
 
     def _view_need(self, area_id: AreaId, drawn_width_px: int | None = None) -> PixelSize:
         """Return the least size at which the View in `area_id` is shown, below the Area's header.
@@ -2252,7 +2327,11 @@ class AreaFrame(QFrame):
     size the View needs and the size the Area has below its header. The notice
     is updated whenever the Area is resized, so a reader who drags a border
     sees it disappear as soon as the Area is large enough. It shows no value
-    from any run.
+    from any run. The same notice is shown where the layout gives the Area its
+    need but its box is shorter than the View's legible height, in which a
+    scroll would show the View's smallest part cut (`legible_height`,
+    `PL-GWTR`). Where no border can give the Area that height, as in a page
+    that scrolls, the notice says to make the window taller.
 
     Attributes:
         area_id: The Area this frame draws.
@@ -2342,6 +2421,8 @@ class AreaFrame(QFrame):
         content.show()
         self.too_small_notice: AreaNotice | None = None
         self._needed: PixelSize | None = None
+        # Whether the too-small notice's advice is to drag a border (`show_too_small`).
+        self._border_can_enlarge = True
         self.absent_notice: AreaNotice | None = None
         self._absent = False
 
@@ -2366,12 +2447,15 @@ class AreaFrame(QFrame):
 
         self._set_content_hidden(self._absent)
 
-    def show_too_small(self, title: str, needed: PixelSize) -> None:
+    def show_too_small(self, title: str, needed: PixelSize, *, border_can_enlarge: bool) -> None:
         """Hide the View, and state that it needs `needed` below the header, more than the Area has.
 
         Args:
             title: The View's title, as the chooser names it.
             needed: The least size the View is drawn at, below the header.
+            border_can_enlarge: Whether moving a border can give the Area
+                `needed`. Where it cannot, the notice says to make the window
+                taller instead (`too_small_text`).
         """
 
         notice = self.too_small_notice
@@ -2384,6 +2468,7 @@ class AreaFrame(QFrame):
             notice.title_label.setText(too_small_title(title))
 
         self._needed = needed
+        self._border_can_enlarge = border_can_enlarge
         self._set_content_hidden(True)
         notice.setHidden(self._absent)
         self._restate()
@@ -2450,7 +2535,9 @@ class AreaFrame(QFrame):
             return
 
         has = PixelSize(max(self.width(), 0), max(self.height() - _chrome_height(self), 0))
-        notice.body_label.setText(too_small_text(needed, has))
+        notice.body_label.setText(
+            too_small_text(needed, has, border_can_enlarge=self._border_can_enlarge)
+        )
 
         # Below the room the whole notice needs, the advice sentence gives way
         # to the short statement of the two sizes (`PL-Y65Q` route B).
@@ -2475,6 +2562,27 @@ class AreaFrame(QFrame):
 
         for zone in self.corners:
             zone.set_grip_shown(shown)
+
+
+def legible_height(view: QWidget) -> int | None:
+    """Return the least height of a box in which `view` can show its smallest part whole, or None.
+
+    A View declares it as a `legible_height` method, in pixels. A View whose
+    parts could be misread when cut, such as the compartment schematic's
+    containers, declares one, so that in a shorter box its Area shows a notice
+    rather than parts that a scroll would show cut (`PL-GWTR`). A View that
+    declares none, or whose method returns None, is shown in a box of any
+    height and scrolls there (`PL-CBYS`).
+    """
+
+    declared = getattr(view, "legible_height", None)
+
+    if not callable(declared):
+        return None
+
+    height = declared()
+
+    return height if isinstance(height, int) else None
 
 
 def pinned_row(view: QWidget) -> QWidget | None:

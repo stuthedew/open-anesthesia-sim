@@ -12,7 +12,10 @@ information visible", read 2026-11-27).
 
 The heading is drawn over the section's rows, on the panel's colour, so the
 part of a row under it is hidden. No row can be seen without the heading,
-though a row that stands across the heading's lower edge shows in part.
+though a row that stands across the heading's lower edge shows in part. A row
+whose cut part could be misread, such as a filled container or a line of
+digits, reads `clear_of_heading` and draws only what that part holds whole
+(`PL-GWTR`).
 
 Every box that scrolls a section moves the heading again after each scroll,
 and after each change of what it can scroll (`pin_on_scroll`). That includes
@@ -140,6 +143,26 @@ class PinnedHeadingSection(QWidget):
         self.column = QVBoxLayout()
         self.column.setContentsMargins(0, 0, 0, 0)
         outer.addLayout(self.column)
+
+    def clear_of_heading(self, row: QWidget) -> QRect:
+        """Return the part of `row` that is in view and not under the heading, in `row`'s pixels.
+
+        `row` is a widget in this section's column. The result is empty where
+        none of `row` is in view or all of it is under the heading. Its top is
+        the heading's lower edge, or the top of `row`'s part in view where that
+        is lower. A heading laid out in its own space covers no row, so the
+        result is then `row`'s part in view.
+        """
+
+        shown = in_view(row)
+
+        if shown.isEmpty():
+            return shown
+
+        heading_bottom = row.mapFrom(self, QPoint(0, self.heading.geometry().bottom() + 1)).y()
+        shown.setTop(max(shown.top(), heading_bottom))
+
+        return shown if shown.height() > 0 else QRect()
 
     def pin_heading(self) -> None:
         """Place the heading at the top of the section's part in view, over the rows there."""

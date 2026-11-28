@@ -83,7 +83,7 @@ from anesthesia_sim.app.view_contract import (
 from anesthesia_sim.app.view_registry import RegisteredView, RetiredTag, registry, retirements
 from anesthesia_sim.layout.model import Handle, LayoutModel
 from anesthesia_sim.layout.run_identity import RunId, SessionToken
-from anesthesia_sim.layout.sizing import PixelSize
+from anesthesia_sim.layout.sizing import PixelSize, TooSmall
 from anesthesia_sim.layout.tree import Area, AreaId, Node, Orientation, Split, ViewKind, Window
 
 _VIEW = ViewKind("test_view")
@@ -2122,6 +2122,138 @@ def test_an_area_held_at_its_floor_shows_its_whole_notice(
 
     for label in (notice.title_label, notice.body_label):
         assert label.height() >= label.heightForWidth(label.width()) > 0
+
+
+_LEGIBLE = ViewKind("legible_view")
+
+
+class _LegibleView(_TestView):
+    """The View of `_LEGIBLE`, which shows its smallest part whole only in a box `legible` tall."""
+
+    def __init__(self, context: ViewContext) -> None:
+        super().__init__(context)
+        # The least height, in pixels, of a box that shows this View's smallest
+        # part whole, or None for a View that can be shown in a box of any height.
+        self.legible: int | None = 300
+
+    def legible_height(self) -> int | None:
+        return self.legible
+
+
+# The test View and one that declares a legible height above its need.
+_LEGIBLE_SIZED = registry(
+    RegisteredView(_VIEW, "Test view", _TestView),
+    RegisteredView(_LEGIBLE, "Legible view", _LegibleView, minimum=PixelSize(100, 100)),
+)
+
+
+def _host_legible(
+    application: QApplication, hosts: list[QWidget], model: LayoutModel, size: tuple[int, int]
+) -> tuple[QWidget, AreaLayout]:
+    """Show `model` filling a window fixed at `size`, with a registry that holds `_LegibleView`."""
+
+    host = QWidget()
+    column = QVBoxLayout(host)
+    column.setContentsMargins(0, 0, 0, 0)
+    container = AreaLayout(model, _REQUESTS, registered=_LEGIBLE_SIZED, retired={})
+    column.addWidget(container)
+    host.setFixedSize(*size)
+    host.show()
+    application.processEvents()
+    hosts.append(host)
+
+    return host, container
+
+
+def _legible_view(container: AreaLayout) -> _LegibleView:
+    (view,) = (view for view in container.views() if isinstance(view, _LegibleView))
+
+    return view
+
+
+def test_an_area_shorter_than_its_view_s_legible_height_shows_the_notice_and_is_not_held_taller(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-GWTR`: a View drawn only in part could be misread, so its Area shows the notice instead.
+
+    The Legible view needs 100 by 100 px, and shows its smallest part whole
+    only in a box 300 px tall. The window is 400 by 600 px. 600 px less the
+    8 px handle leaves 592, and Area 1's 0.3 of it is 177.6. Rounded down, the
+    two Areas have 177 and 414, and the pixel left over goes to Area 1, which
+    lost more. So Area 1 is 178 px tall, and 151 px below its header. The
+    layout gives it its need, so it is not held at the legible height, which
+    would take room from Area 2. The notice says that a border drag can help,
+    because Area 2 can give up room. Dragging the border 200 px down gives
+    Area 1 a box of 351 px, and the View is shown.
+    """
+
+    model = _layout(_column((0.3, 0.7), Area(AreaId(1), _LEGIBLE), _area(2)), 3)
+    _, container = _host_legible(application, hosts, model, (400, 600))
+    frame = container.frame(AreaId(1))
+
+    assert _splitters(container)[()].sizes() == [178, 414]
+    assert frame.minimumHeight() == 100 + _CHROME_PX
+    assert not frame.content.isVisible()
+    assert _texts(frame) == [
+        "Too small for Legible view.",
+        "It needs at least 100 by 300 px; this Area is 400 by 151. "
+        "Drag a border to enlarge it, or choose a smaller View from the menu above.",
+    ]
+    assert container.too_small() == (
+        TooSmall(AreaId(1), PixelSize(100, 300 + _CHROME_PX), PixelSize(400, 178)),
+    )
+
+    _drag(application, _splitters(container)[()], 1, 200)
+
+    assert _splitters(container)[()].sizes() == [378, 214]
+    assert container.too_small() == ()
+    assert frame.content.isVisible() and _texts(frame) == []
+
+
+def test_an_area_no_border_can_make_legible_says_to_make_the_window_taller(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """`PL-GWTR`: where no border can give the room, the notice does not advise dragging one.
+
+    The Legible view fills a window 400 by 250 px, so its box is 223 px tall,
+    short of the 300 it needs. No border can make a lone Area taller than the
+    window. At 400 by 327 px the box is 300 px tall, and the View is shown.
+    """
+
+    host, container = _host_legible(
+        application, hosts, LayoutModel.single_area(_LEGIBLE), (400, 250)
+    )
+    frame = container.frame(AreaId(1))
+
+    assert not frame.content.isVisible()
+    assert _texts(frame) == [
+        "Too small for Legible view.",
+        "It needs at least 100 by 300 px; this Area is 400 by 223. "
+        "Make the window taller, or choose a smaller View from the menu above.",
+    ]
+
+    host.setFixedSize(400, 300 + _CHROME_PX)
+    application.processEvents()
+
+    assert container.too_small() == ()
+    assert frame.content.isVisible() and _texts(frame) == []
+
+
+def test_an_area_follows_its_view_s_legible_height_when_the_view_drops_it(
+    application: QApplication, hosts: list[QWidget]
+) -> None:
+    """A View whose legible height becomes None, as the schematic's is before a run, is shown."""
+
+    _, container = _host_legible(application, hosts, LayoutModel.single_area(_LEGIBLE), (400, 250))
+    frame = container.frame(AreaId(1))
+    assert not frame.content.isVisible()
+
+    _legible_view(container).legible = None
+    container.follow_needs()
+    application.processEvents()
+
+    assert container.too_small() == ()
+    assert frame.content.isVisible() and _texts(frame) == []
 
 
 def test_a_wide_stacked_area_holds_a_lower_floor(

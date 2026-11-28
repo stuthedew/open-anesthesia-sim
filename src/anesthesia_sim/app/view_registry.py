@@ -510,13 +510,20 @@ def too_small_title(title: str) -> str:
     return f"Too small for {title}."
 
 
-def too_small_text(needed: PixelSize, available: PixelSize) -> str:
+def too_small_text(needed: PixelSize, available: PixelSize, *, border_can_enlarge: bool) -> str:
     """The body of the notice an Area shows while it is too small for its View.
 
     `needed` is the least size the View is drawn at, and `available` is the
     size the Area has below its header. Both are sizes on screen, in whole
     logical pixels, and neither is a value from a run. The wording was
     decided in `PL-DB5G` Q3.
+
+    The body ends with what a user can do. Where no border can give the Area
+    the room, as in a page that scrolls, the body says to make the window
+    taller in place of dragging a border (`border_can_enlarge`, `PL-GWTR`).
+    NUREG-0700 Rev. 3 guideline 2.7.3-1 asks a message to state the operations
+    that can follow it (O'Hara, US Nuclear Regulatory Commission, 2020, p. 2-86),
+    and a border drag that cannot enlarge the Area is not one of them.
 
     Raises:
         TypeError: `needed` or `available` is not a `PixelSize`.
@@ -526,9 +533,11 @@ def too_small_text(needed: PixelSize, available: PixelSize) -> str:
         if not isinstance(size, PixelSize):
             raise TypeError(f"a size on screen is a PixelSize, not {type(size).__name__}")
 
+    remedy = "Drag a border to enlarge it" if border_can_enlarge else "Make the window taller"
+
     return (
         f"It needs at least {needed.width_px} by {needed.height_px} px; this Area is "
-        f"{available.width_px} by {available.height_px}. Drag a border to enlarge it, "
+        f"{available.width_px} by {available.height_px}. {remedy}, "
         "or choose a smaller View from the menu above."
     )
 

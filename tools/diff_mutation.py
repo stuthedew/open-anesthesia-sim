@@ -789,7 +789,9 @@ def first_step(root: Path, table: Mapping[str, object]) -> int:
     made the step take about 19 minutes in one process on 2026-11-11
     (`PL-R8HY`), and it spreads the tests over every core. So a test that
     fails only while that record is kept, or only when every test shares one
-    process, would pass here and still stop mutmut. None such is known.
+    process, would pass here and still stop mutmut. So would a fault in the
+    plugin that keeps the record: mutmut 3.8.0's plugin failed under pytest
+    9.2.0 and stopped every run while this step passed (`PL-LR03`).
 
     Returns pytest's exit status: 0 when every selected test passed in the
     copy. `Refusal` where the copy could not be built.
