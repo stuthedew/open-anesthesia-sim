@@ -3208,9 +3208,9 @@ def test_the_wash_in_caption_names_no_cause_once_a_washout_empties_the_circuit()
     The run takes 8% sevoflurane at 10 L/min for 30 s. Then the vaporizer is
     closed and ventilation stopped, so the fresh gas washes the circuit out
     while the patient keeps agent in the alveoli. By 300 s the inspired
-    concentration is below 0.005%, the smallest that the readout rounds up to
-    0.01% and so the smallest that the ratio is divided by (`PL-FSXD`). The
-    alveolar concentration is above it. The caption used to say here
+    concentration is below 0.005%. That is the smallest value the readout
+    rounds up to 0.01%, and so the smallest the ratio is divided by
+    (`PL-FSXD`). The alveolar concentration is above it. The caption used to say here
     that no agent had reached the circuit, which this run shows to be false
     (`PL-P3ZL`). The limit and the sentence are written out from
     `docs/INTERFACE.md` § "A point is drawn only inside two boundaries".

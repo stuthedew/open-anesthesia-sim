@@ -124,10 +124,9 @@ def test_the_search_for_the_floor_ends_on_the_readout_boundary() -> None:
 def test_each_inspired_value_the_readout_shows_gives_a_ratio_always_or_never() -> None:
     """Two inspired fractions that the readout shows alike are both divided by, or neither is.
 
-    Until `PL-FSXD` the floor was 0.01% itself. An inspired fraction from
-    0.005% up to 0.01% was then shown as `0.01%` beside a caption saying
-    that it was too low to divide by, while a fraction of 0.01% or more,
-    shown as the same `0.01%`, gave a drawn ratio. The grid runs in steps of
+    A floor of 0.01% fails here. The readout shows an inspired fraction from
+    0.005% up to 0.01% as `0.01%`, and that floor would give it no ratio
+    while a larger fraction, also shown as `0.01%`, got one. The grid runs in steps of
     0.00001% from zero to 0.03%, so it crosses three readout steps, and it
     adds the floor and its neighbour below. The two readout forms with no
     number, `0.00%` and `<0.01%`, must give no ratio, and `0.01%` must give

@@ -121,12 +121,13 @@ def _smallest_fraction_shown_as_one_display_step() -> Fraction:
 
     The readout rounds, so the boundary is about half a display step, near
     0.005%. Its exact value depends on how the binary fraction rounds, so it
-    is found by asking the readout rather than written down. The search halves
-    the interval between two adjacent doubles. It starts from zero, which the
-    readout shows as `0.00%`, and from one whole display step, which it shows
-    as `0.01%`. Positive doubles sort in the same order as their bit patterns,
-    so the search runs over the integers those patterns spell and ends after
-    at most 64 halvings, on the boundary to the last bit.
+    is found by asking the readout rather than written down. The search keeps
+    two bounds: one the readout shows as `0.00%` or `<0.01%`, and one it shows
+    as `0.01%`. It starts from zero and from one whole display step, and
+    halves the interval between the bounds until they are adjacent doubles.
+    Positive doubles sort in the same order as their bit patterns, so the
+    search runs over the integers those patterns spell. It ends after at most
+    64 halvings, on the boundary to the last bit.
     """
 
     # The search reads only non-negative doubles, whose sign bit is zero, so

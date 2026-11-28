@@ -5572,9 +5572,9 @@ Those steps come from the number of decimals displayed for concentration and
 for flow (`CONCENTRATION_DISPLAY_DECIMALS` and `FLOW_DISPLAY_DECIMALS`), so
 those two counts decide which settings can reach the model. A change to either
 decimal count is therefore derived in this section first. The code in
-`app/wash_in.py` computes a limit from the concentration readout: the
-smallest inspired fraction from which an F_A/F_I ratio may be formed, which
-is the smallest that the readout shows as one step
+`app/wash_in.py` computes one limit from the concentration readout. It is the
+smallest inspired fraction from which an F_A/F_I ratio may be formed, and the
+smallest that the readout shows as `0.01%`
 (`WASH_IN_DENOMINATOR_FLOOR_FRACTION`, § "F_A/F_I as a displayed ratio").
 Because the limit follows from that resolution, each extra decimal of
 concentration moves it down tenfold.
