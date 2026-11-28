@@ -513,7 +513,7 @@ from the corpus's section dump `modern_anesthetics/08_Part_IV_Ch5-6_Index`, and
 `docs/MODEL.md` § "Breathing circuit" cites it for the Zeus's surplus gas valve
 (`PL-WJNS`).
 
-Three pages of Hendrickx and De Wolf's chapter have been read since. Pages 163
+Eight pages of Hendrickx and De Wolf's chapter have been read since. Pages 163
 and 166 were read on 2026-09-26 (`PL-WMCJ`). On p. 163, Eger's five-compartment
 model adds a lung and an "intertissue diffusion" compartment, "hypothesized to
 be fat adjacent to well-perfused tissues", and the page cites Carpenter et al.
@@ -527,6 +527,28 @@ compartments to tissues "hardly feasible", and the chapter's authors find
 compartmental and physiologic models fit equally well (Hendrickx et al. 2006a).
 `docs/MODEL.md` and `docs/PARAMETERS.md` cite these pages for that
 description and those cautions, and for no value.
+
+Pages 161-162, 167, 169 and 171 were read on 2026-11-27 in full text from the
+project's private reference collection, with pages 159-173 around them
+(`PL-7R64`). Page 161 defines three concentrations. The delivered
+concentration, $`F_D`$, is that of the gas entering the circle at the common
+gas outlet. The gas is called the inspired mixture, $`F_I`$, once it enters the
+inspiratory limb. The end-expired concentration that the gas analyser measures
+at the Y-piece is $`F_A`$. Page 162 says that a fresh gas flow below minute
+ventilation fills the bag or bellows with exhaled gas as well, so the inspired
+mixture differs from the delivered one. Page 167 says that $`F_A/F_I`$ curves
+"have been proven to be of great didactic value to introduce the novice to
+'uptake and distribution'". The same page says that the curves do not show
+actual uptake, and that they assume a high fresh gas flow with a constant
+$`F_I`$. Page 169 says that rebreathed alveolar gas lowers $`F_I`$, so $`F_I`$
+and $`F_D`$ drift apart. It also says that the area above the curve,
+$`1 - F_A/F_I`$, approximates uptake better, citing Lin 1994. Page 171 shows
+that $`F_I - F_A`$ equals uptake divided by alveolar minute ventilation, when
+the small difference between inspired and expired alveolar ventilation is
+ignored. `docs/MODEL.md` § "Units and symbols" and `docs/VERIFICATION.md` §
+"Symbols" cite these pages for the symbols, for the path from delivered to
+inspired to alveolar gas, and for the curve's teaching role. They take no
+value from them.
 
 ### Targ, Yasuda & Eger 1989 — anesthetic solubility in a circuit's plastics and rubber
 
