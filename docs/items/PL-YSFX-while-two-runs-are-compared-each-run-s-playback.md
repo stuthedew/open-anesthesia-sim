@@ -67,14 +67,17 @@ the label alone when one run is drawn. `label_control` writes only a name that
 differs, so a name written again on each frame sends a screen reader no
 change.
 
-**Generator check, 2026-11-28.** Triage (`#2353`) records this item as a member of
-`PL-9XGQ`, whose `misread:` states the fact: what a screen reader is told
+**Generator check, 2026-11-28.** Triage (`#2353`) records this item as a
+member of `PL-9XGQ`, whose `misread:` states the fact: what a screen reader is told
 about each element, its role and a name unique in its window. This item
 builds the half of that head's fix that compares two names.
 `test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`
-fails on two controls that share a name, and the exceptions it lists are
-`PL-XV64`'s, which stays open until it is fixed. `PL-9XGQ` still owns the
-walk's other half, a plot or a schematic with no name or description.
+fails on two controls that share a name. The exceptions it lists are
+`PL-XV64`'s. That test builds each kind of View once, so it cannot see the
+plot controls of two Areas that show the same kind of View, which a split
+makes. `PL-XV64` holds that case too, and its "Done when" adds a split layout
+to the test. `PL-9XGQ` still owns the walk's other half, a plot or a
+schematic with no name or description.
 
 **Tests.** In `tests/integration/test_keyboard_focus.py`:
 `test_no_two_controls_a_reader_can_reach_are_said_to_be_for_the_same_thing`
@@ -82,7 +85,11 @@ walk's other half, a plot or a schematic with no name or description.
 table `SHARED_PURPOSES`, which is checked in both directions),
 `test_each_run_s_and_each_plot_s_controls_are_named_with_their_run_or_plot`
 (the brief's "Done when", against literal names), and
-`test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`.
+`test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_one_is_drawn`
+and `test_a_name_that_does_not_start_with_the_shown_label_is_refused`.
+`test_each_selector_is_named_by_its_shown_label_on_every_platform` now
+compares each selector's name with the text its label shows, because the
+label's accessible name is now the selector's own name.
 
 **Regression check.** The first two tests, with the third test and the two new
 imports taken out of a copy of the file, were run against `origin/main`
@@ -92,3 +99,17 @@ failed: with one run, "Left contains 6 more items, first extra item:
 ('Button', 'Show a later part of the run')"; with two runs, "Left contains 9
 more items, first extra item: ('Button', 'Pause')"; and "At index 0 diff:
 'Playback' != 'Playback, Run 1'".
+The refusal test was run against this branch's code before the refusal was
+added (63151ef3), and failed with "DID NOT RAISE ValueError".
+
+**Blind review, 2026-11-28.** Two passes. Both found one should-fix: a split
+gives two Areas of the same kind of View, so their plot controls share names,
+and the new sentence in `docs/INTERFACE.md` was false for that layout. It is
+filed into `PL-XV64`, whose Area names fix the corners, the borders and this
+case together, and the sentence now lists it among the cases still to be
+named apart. Pass 1 found a second should-fix:
+`test_each_selector_is_named_by_its_shown_label_on_every_platform` compared
+each selector's name with its label's accessible name, which this change makes
+the selector's own name, so the test could no longer fail. Fixed: the test
+reads the label's shown text, and `label_control` refuses a name that does not
+start with it.

@@ -241,11 +241,14 @@ def test_every_control_a_reader_can_reach_says_what_it_is_for(
 def test_each_selector_is_named_by_its_shown_label_on_every_platform(
     dashboard: SimulationView,
 ) -> None:
-    """Each selector has a label tied to it, and its accessible name starts with that label.
+    """Each selector has a label tied to it, and its accessible name starts with the label's text.
 
     Linux and macOS take a selector's purpose from the tied label, and Windows
     from the accessible name (`qt_widgets.label_control`). The run's agent
-    selector had no label shown beside it, so it gained one, "Agent".
+    selector had no label shown beside it, so it gained one, "Agent". The name
+    is compared with the text the label shows, not with the label's accessible
+    name, because `label_control` gives a label the selector's own name where
+    the label alone does not say which control it is (`PL-YSFX`).
     """
 
     selectors = [
@@ -262,11 +265,13 @@ def test_each_selector_is_named_by_its_shown_label_on_every_platform(
     assert AGENT_SELECTOR_LABEL in labels
 
     for node in selectors:
-        label = _labels(node)
+        tied = node.relations(QAccessible.Relation.Label)
         selector = node.object()
         assert isinstance(selector, QWidget)
-        assert label, selector.accessibleName()
-        assert selector.accessibleName().startswith(label[0]), label[0]
+        assert tied, selector.accessibleName()
+        shown = tied[0][0].object()
+        assert isinstance(shown, QLabel)
+        assert selector.accessibleName().startswith(shown.text()), shown.text()
 
 
 #: The controls a reader can reach that a screen reader is told are for the
@@ -400,6 +405,28 @@ def test_a_control_named_for_one_of_two_runs_takes_its_label_s_name_back_when_on
 
     label_control(label, selector, control_name("Playback", None))
     assert (_labels(node), selector.accessibleName()) == (["Playback"], "Playback")
+
+
+def test_a_name_that_does_not_start_with_the_shown_label_is_refused(
+    application: QApplication,
+) -> None:
+    """A name that drops the label shown is refused, and the control keeps the name it had.
+
+    A screen reader user would hear one name and a speech-input user would
+    have to say a word that is not on screen. "Rate of playback" beside a
+    label that shows "Playback" is such a name.
+    """
+
+    window = QWidget()
+    label = QLabel("Playback", window)
+    selector = SelectorComboBox(window)
+    selector.addItem("1× real time")
+    label_control(label, selector)
+
+    with pytest.raises(ValueError, match="'Rate of playback'.*'Playback'"):
+        label_control(label, selector, "Rate of playback")
+
+    assert (selector.accessibleName(), label.accessibleName()) == ("Playback", "")
 
 
 def test_a_plot_is_not_a_tab_stop(dashboard: SimulationView) -> None:

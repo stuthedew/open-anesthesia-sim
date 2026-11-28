@@ -3641,7 +3641,20 @@ def label_control(label: QLabel, control: QWidget, name: str | None = None) -> N
             not say which control it is, such as one of two fields called
             "Name" (`dashboard_frame.control_name`). It is the label's text by
             default.
+
+    Raises:
+        ValueError: `name` does not start with the label's text. A name that
+            starts with the label shown is what WCAG 2.2's Understanding
+            document for SC 2.5.3 (Label in Name) calls best practice, and it
+            lets a user of speech input say the label they see.
     """
+
+    if name is not None and not name.startswith(label.text()):
+        raise ValueError(
+            f"The name {name!r} for a screen reader does not start with the label "
+            f"shown beside its control, {label.text()!r}. Start the name with the "
+            "label, as dashboard_frame.control_name does."
+        )
 
     label.setBuddy(control)
     spoken = label.text() if name is None else name

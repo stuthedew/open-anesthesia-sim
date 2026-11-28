@@ -4489,8 +4489,10 @@ selector is for from that label. Each name starts with the label shown, which
 the Understanding document for SC 2.5.3 (Label in Name) calls best practice.
 The W3C's ARIA Authoring Practices Guide asks that controls with the same
 role have different names unless they are identical. So no two controls that
-a reader can reach share a name, apart from the Area corners and the Area
-borders, which are still to be named (`PL-XV64`). A scroll box that
+a reader can reach share a name, apart from three cases that are still to be
+named apart (`PL-XV64`): the Area corners, the Area borders, and the controls
+of two Areas that show the same kind of View, such as the two halves of a
+split Concentrations Area. A scroll box that
 takes the focus so that the keyboard can scroll it is named by the heading
 above it, or by what it holds, such as "Concentration chart legend". An Area's
 corner is named "Area corner", and its description says that the Area menu
